@@ -243,17 +243,15 @@ function pendingDescription(pendingTask: ChatPendingTask): string {
       const action = pendingTask.current_step?.label || pendingLabel(pendingTask)
       return `Step ${index} of ${total}: approve **${action}** before Gravitre runs it in your connected apps.`
     }
-    return (
-      `Gravitre will run ${total} steps across your connected apps. ` +
-      "Read steps can run directly. Write steps require approval unless your organization policy explicitly authorizes that action to run unattended."
-    )
+    return `${total} steps across your connected apps. Reads run on their own; writes wait for you unless policy allows them.`
   }
   if (pendingTask.type === "connector_action") {
     const params = pendingTask.params
-    const action =
-      params && typeof params.invoke_action === "string" ? params.invoke_action : "connector action"
     const kind = params && typeof params.kind === "string" ? params.kind : "write"
-    return `Gravitre will run ${action} (${kind} action) through your connected integration after you approve.`
+    const where = params?.integration ? ` in ${params.integration.charAt(0).toUpperCase()}${params.integration.slice(1)}` : ""
+    return kind === "read"
+      ? `Reads data${where}. Nothing is changed.`
+      : `Makes one change${where}. It runs only after you approve.`
   }
   if (pendingTask.type === "create_agent") {
     return "Gravitre will create your agent and notify you when it is ready."
@@ -275,43 +273,76 @@ function confirmButtonLabel(pendingTask: ChatPendingTask, confirming: boolean): 
   return "Confirm and create"
 }
 
-function StepBadge({ label, tone }: { label: string; tone: "read" | "write" | "skipped" | "warning" }) {
-  const styles = {
-    read: HIGHLIGHT.brand,
-    write: HIGHLIGHT.warning,
-    skipped: HIGHLIGHT.neutral,
-    warning: HIGHLIGHT.warning,
-  }[tone]
-  return (
-    <span className={cn("ml-1 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide", styles)}>
-      {label}
-    </span>
-  )
+type StepTone = "read" | "write" | "skipped"
+
+const STEP_TAG: Record<StepTone, { label: string; className: string }> = {
+  read: { label: "Runs automatically", className: "text-muted-foreground" },
+  write: { label: "Needs approval", className: "text-[color:var(--warning)]" },
+  skipped: { label: "Skipped", className: "text-muted-foreground" },
+}
+
+function StepBadge({ label, tone }: { label: string; tone: StepTone }) {
+  return <span className={cn("shrink-0 text-xs font-medium", STEP_TAG[tone].className)}>{label}</span>
+}
+
+function stepTone(step: OrchestrationStepPreview): StepTone {
+  if (step.supported === false) return "skipped"
+  return step.kind === "read" ? "read" : "write"
 }
 
 function OrchestrationStepList({ steps }: { steps: OrchestrationStepPreview[] }) {
   if (!steps.length) return null
+  const tones = steps.map(stepTone)
+  const count = (tone: StepTone) => tones.filter((t) => t === tone).length
+  const tally = [
+    count("read") ? `${count("read")} automatic` : null,
+    count("write") ? `${count("write")} need${count("write") === 1 ? "s" : ""} approval` : null,
+    count("skipped") ? `${count("skipped")} skipped` : null,
+  ].filter(Boolean)
   return (
-    <ol className="mt-2 space-y-2 text-xs text-muted-foreground">
-      {steps.map((step, index) => (
-        <li key={step.step_id || index} className="flex gap-2">
-          <span className="font-medium text-foreground/80">{index + 1}.</span>
-          <span className="min-w-0 flex-1">
-            <span className="text-foreground/90">{step.label || "Step"}</span>
-            {step.supported === false ? (
-              <StepBadge label="skipped" tone="skipped" />
-            ) : step.kind === "read" ? (
-              <StepBadge label="read auto" tone="read" />
-            ) : (
-              <StepBadge label="needs approval" tone="write" />
-            )}
-            {step.skip_reason ? (
-              <p className="mt-0.5 text-[11px] text-orange-700 dark:text-orange-400">{step.skip_reason}</p>
-            ) : null}
-          </span>
-        </li>
-      ))}
-    </ol>
+    <div className="mt-3 flex flex-col gap-2">
+      <p className="text-xs text-muted-foreground">{tally.join(" · ")}</p>
+      <ol className="flex flex-col">
+        {steps.map((step, index) => {
+          const tone = tones[index]
+          const last = index === steps.length - 1
+          return (
+            <li key={step.step_id || index} className="relative flex gap-3 pb-3 last:pb-0">
+              {!last ? (
+                <span aria-hidden className="absolute left-[9px] top-6 bottom-0 w-px bg-border" />
+              ) : null}
+              <span
+                aria-hidden
+                className={cn(
+                  "relative mt-0.5 flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full border text-[10px] font-medium tabular-nums",
+                  tone === "write"
+                    ? "border-[color:var(--warning)]/50 text-[color:var(--warning)]"
+                    : "border-border text-muted-foreground",
+                )}
+              >
+                {index + 1}
+              </span>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span
+                    className={cn(
+                      "min-w-0 text-sm text-foreground",
+                      tone === "skipped" && "text-muted-foreground line-through decoration-border",
+                    )}
+                  >
+                    {step.label || "Step"}
+                  </span>
+                  <StepBadge label={STEP_TAG[tone].label} tone={tone} />
+                </div>
+                {step.skip_reason ? (
+                  <p className="text-xs text-muted-foreground">{step.skip_reason}</p>
+                ) : null}
+              </div>
+            </li>
+          )
+        })}
+      </ol>
+    </div>
   )
 }
 
@@ -428,7 +459,7 @@ export function CanonicalArtifactTable({
           <tr className="border-b border-border/70 text-muted-foreground">
             {columns.map((column) => (
               <th key={column} className="py-1 pr-3 font-medium">
-                {column}
+                {column.charAt(0).toUpperCase() + column.slice(1).replace(/_/g, " ")}
               </th>
             ))}
           </tr>
@@ -470,11 +501,11 @@ function ArtifactCards({ artifacts }: { artifacts: ChatArtifact[] }) {
   const hosted = artifacts.filter((a) => a.kind === "hosted_file")
   const other = artifacts.filter((a) => a.kind !== "hosted_file")
   return (
-    <details className="mt-3 text-xs">
-      <summary className="cursor-pointer text-muted-foreground">
-        Artifacts ({artifacts.length})
-      </summary>
-      <div className="mt-1.5 divide-y divide-border/60">
+    <div className="mt-3 flex flex-col gap-1">
+      <p className="text-xs font-medium text-muted-foreground">
+        {artifacts.length === 1 ? "1 artifact" : `${artifacts.length} artifacts`}
+      </p>
+      <div className="divide-y divide-border/60 rounded-[var(--np-radius-md)] border border-border/60 px-3">
         {hosted.slice(0, 8).map((artifact) => (
           <div key={artifact.artifact_id || artifact.artifactId || artifact.title} className="py-1.5">
             <FileReferenceChip file={artifact} />
@@ -490,14 +521,14 @@ function ArtifactCards({ artifacts }: { artifacts: ChatArtifact[] }) {
             "flex w-full items-baseline justify-between gap-3 py-1.5 text-left text-xs text-foreground"
           const inner = (
             <>
-              <span className="min-w-0 truncate">
-                {title}
-                {artifact.kind ? (
-                  <span className="ml-2 text-muted-foreground">{artifact.kind}</span>
-                ) : null}
-                {preview ? (
-                  <span className="ml-2 text-muted-foreground line-clamp-1">{preview}</span>
-                ) : null}
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="truncate">
+                  {title}
+                  {artifact.kind ? (
+                    <span className="ml-2 font-mono text-[11px] text-muted-foreground">{artifact.kind}</span>
+                  ) : null}
+                </span>
+                {preview ? <span className="line-clamp-1 text-muted-foreground">{preview}</span> : null}
               </span>
             </>
           )
@@ -526,7 +557,7 @@ function ArtifactCards({ artifacts }: { artifacts: ChatArtifact[] }) {
           )
         })}
       </div>
-    </details>
+    </div>
   )
 }
 
@@ -640,20 +671,22 @@ export function ChatExecutionPanel({
     return (
       <div
         className={cn(
-          "mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm",
+          "mt-3 rounded-[var(--np-radius-lg)] border border-border bg-card px-4 py-3.5 text-sm",
           className,
         )}
       >
-        <div className="flex items-start gap-2">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+        <div className="flex items-start gap-2.5">
+          <CheckCircle2 className={cn("mt-0.5 h-4 w-4 shrink-0", HIGHLIGHT.brand)} aria-hidden />
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-foreground">
+            <p className="text-[15px] font-medium leading-snug text-foreground">
               {isPreview
                 ? "Live vendor preview"
                 : executionResult.task_label || executionResult.title || "Task completed"}
             </p>
             {executionResult.body ? (
-              <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{executionResult.body}</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                {executionResult.body}
+              </p>
             ) : null}
             <CanonicalArtifactTable
               rows={canonicalArtifactRows(executionResult)}
@@ -664,41 +697,42 @@ export function ChatExecutionPanel({
               executionPath={executionResult.structured?.execution_path}
             />
             {whatThisMeans ? (
-              <p className="mt-2 text-xs text-foreground/90">
-                <span className="font-medium">What this means: </span>
+              <p className="mt-3 border-l-2 border-border pl-3 text-sm leading-relaxed text-foreground">
                 {whatThisMeans}
               </p>
             ) : (
-              <p className="mt-2 text-[11px] text-muted-foreground">
+              <p className="mt-2 text-xs text-muted-foreground">
                 {resultUrl
-                  ? "Verified — open the run overview for a durable audit trail."
-                  : "Completed with inline summary only (no deep link returned)."}
+                  ? "Verified. Open the run for the full audit trail."
+                  : "Completed with an inline summary only."}
               </p>
             )}
             {steps.length > 1 ? (
-              <details className="mt-2 text-xs text-muted-foreground">
-                <summary className="cursor-pointer text-foreground/80">
-                  Execution ({steps.length} steps)
-                </summary>
-                <ol className="mt-1.5 space-y-1.5">
-                {steps.map((step) => (
-                  <li key={step.stepId || step.index} className="flex gap-2">
-                    <span className="font-medium text-foreground/80">{step.index}.</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="text-foreground/90">
-                        {step.success === false ? "○" : "✓"} {step.label || "Step"}
+              <div className="mt-3 flex flex-col gap-1.5">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {steps.length} steps
+                </p>
+                <ol className="flex flex-col gap-1.5">
+                  {steps.map((step) => (
+                    <li key={step.stepId || step.index} className="flex items-baseline gap-2 text-sm">
+                      {step.success === false ? (
+                        <span aria-label="Not completed" className="h-3 w-3 shrink-0 translate-y-0.5 rounded-full border border-border" />
+                      ) : (
+                        <CheckCircle2 aria-label="Completed" className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-muted-foreground" />
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="text-foreground">{step.label || "Step"}</span>
+                        {step.summary ? (
+                          <span className="text-muted-foreground"> · {step.summary}</span>
+                        ) : null}
+                        {step.evidenceUrl ? (
+                          <span className="block truncate text-xs text-muted-foreground">{step.evidenceUrl}</span>
+                        ) : null}
                       </span>
-                      {step.summary ? (
-                        <p className="mt-0.5 line-clamp-3">{step.summary}</p>
-                      ) : null}
-                      {step.evidenceUrl ? (
-                        <p className="mt-0.5 truncate text-[11px]">{step.evidenceUrl}</p>
-                      ) : null}
-                    </span>
-                  </li>
-                ))}
+                    </li>
+                  ))}
                 </ol>
-              </details>
+              </div>
             ) : null}
             {recommendation?.title ? (
               <div className="mt-2 rounded-lg border border-border/60 bg-background/60 px-2.5 py-2 text-[11px]">
@@ -829,17 +863,25 @@ export function ChatExecutionPanel({
               onReject={queuedForApprover ? undefined : onReject}
               onModify={queuedForApprover ? undefined : onModify}
               hideActions={queuedForApprover}
+              footer={
+                queuedForApprover ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="flex items-center gap-2 text-sm text-foreground">
+                      <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-[color:var(--warning)]" />
+                      Waiting on an approver
+                    </p>
+                    {pendingTask.params?.approval_id ? (
+                      <Button asChild size="sm" variant="outline" className="h-8">
+                        <Link href={`/approvals?id=${encodeURIComponent(String(pendingTask.params.approval_id))}`}>
+                          Open in Approvals
+                          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                        </Link>
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : undefined
+              }
             />
-            {queuedForApprover && pendingTask.params?.approval_id ? (
-              <p className="mt-2 text-xs text-muted-foreground">
-                <Link
-                  href={`/approvals?id=${encodeURIComponent(String(pendingTask.params.approval_id))}`}
-                  className="underline underline-offset-2"
-                >
-                  Open in Approvals
-                </Link>
-              </p>
-            ) : null}
           </div>
         )
       }
