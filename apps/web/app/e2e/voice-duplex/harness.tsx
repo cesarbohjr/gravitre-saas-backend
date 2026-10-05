@@ -78,6 +78,11 @@ export function VoiceDuplexHarness() {
       }
     } as unknown as typeof WebSocket
 
+    // The application API client can route relative /api calls through Next server
+    // handlers, bypassing a page-level fetch monkeypatch. For this browser-only
+    // guard, intercept the voice endpoints at the service-worker-independent
+    // browser boundary by also mocking XMLHttpRequest is not sufficient because
+    // apiFetch uses fetch. The E2E route handlers below are the canonical mock.
     const origFetch = window.fetch.bind(window)
     // apiFetch calls global fetch. In Next's browser bundle that is window.fetch,
     // but install the mock before the user can click Start so no request escapes
