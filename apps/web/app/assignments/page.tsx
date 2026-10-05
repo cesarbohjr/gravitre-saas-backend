@@ -449,18 +449,18 @@ export default function AssignmentsPage() {
     <AppShell title={SURFACE_COPY.pages.assignments.title} fillViewport>
       <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
         {/* Operating command strip */}
-        <div className="flex flex-col gap-3 border-b border-[color:var(--g-border-default)] px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] md:flex-row md:items-center md:gap-6">
+        <div className="flex items-center gap-3 border-b border-[color:var(--g-border-default)] px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] md:gap-6">
           <div className="min-w-0 flex-1">
-            <h1 className="text-[20px] font-semibold leading-tight tracking-[-0.02em] text-foreground">
+            <h1 className="text-[20px] font-semibold leading-tight tracking-[-0.02em] text-foreground md:text-[22px]">
               {SURFACE_COPY.pages.assignments.title}
             </h1>
-            <div className="mt-0.5">
+            <div className="mt-0.5 hidden md:block">
               <LiveStatus tone={statusTone}>
                 {showSkeleton ? "Loading assignments…" : statusParts.join(" · ")}
               </LiveStatus>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <AskGravitreSummonButton selected={selected ? { kind: "assignment", id: selected.id, label: selected.title } : null} />
             <SegmentedControl
               options={VIEW_MODES}
@@ -470,9 +470,10 @@ export default function AssignmentsPage() {
               iconOnly
               className="hidden md:inline-flex"
             />
-            <Button className="w-full sm:w-auto" onClick={openNewAssignment}>
+            <Button className="h-11 md:h-9" onClick={openNewAssignment}>
               <Icon name="add" size="sm" />
-              New assignment
+              <span className="md:hidden">New</span>
+              <span className="hidden md:inline">New assignment</span>
             </Button>
           </div>
         </div>

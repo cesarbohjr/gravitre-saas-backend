@@ -1775,3 +1775,19 @@ details[open] > .g-disclosure > :first-child::after {
 @media (prefers-reduced-motion: reduce) {
   [data-slot="button"], [data-slot="dialog-content"], [data-slot="sheet-content"] { transition: none !important; }
 }
+
+/* Assignments: live agent trace. Motion only when the user allows it. */
+@keyframes g-trace-scan {
+  0% { left: -33%; }
+  100% { left: 100%; }
+}
+@keyframes g-live-ping {
+  75%, 100% { transform: scale(2.2); opacity: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .g-trace-scan { animation: g-trace-scan 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+  .g-live-ping { animation: g-live-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .g-trace-scan { left: 0; width: 100%; opacity: 0.35; }
+}
