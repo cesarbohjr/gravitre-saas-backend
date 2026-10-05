@@ -103,6 +103,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         from app.workflows.repository import get_supabase_client
 
         client = get_supabase_client(self._settings)
+        owned_current = False
         if self._conversation_id:
             owned = (
                 client.table("conversations")
@@ -113,10 +114,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 .limit(1)
                 .execute()
             )
-            if not getattr(owned, "data", None):
-                return
+            owned_current = bool(getattr(owned, "data", None))
         message_id = str(self._active_assistant_message_id or "").strip()
-        if message_id:
+        if message_id and owned_current:
             client.table("conversation_messages").update(
                 {"content": reconciled_text.strip()}
             ).eq("id", message_id).eq("conversation_id", self._conversation_id).eq("role", "assistant").execute()
