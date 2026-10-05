@@ -112,6 +112,53 @@ def _is_approval_node(node: dict[str, Any]) -> bool:
     return node_type in _APPROVAL_NODE_TYPES or bool(node.get("has_approval_gate"))
 
 
+_WRITE_ACTION_HINTS = (
+    ".create", ".update", ".delete", ".send", ".post", ".refund", ".invite",
+    ".assign", ".archive", ".remove", ".cancel",
+)
+
+
+def _recovery_kind(step_type: str, config: dict[str, Any]) -> str:
+    action = str(
+        config.get("tool_action") or config.get("action") or config.get("invoke_action") or ""
+    ).lower()
+    if any(hint in action for hint in _WRITE_ACTION_HINTS):
+        return "write"
+    lowered = str(step_type or "").lower()
+    if "agent" in lowered:
+        return "agent_delegation"
+    if "workflow" in lowered:
+        return "workflow"
+    return "read"
+
+
+def _recovery_decision_for_failure(
+    *,
+    step_type: str,
+    config: dict[str, Any],
+    error_code: str | None,
+    exc: Exception,
+    retries_used: int,
+    retry_budget: int,
+):
+    from app.services.outcome_recovery_policy import decide_recovery
+
+    kind = _recovery_kind(step_type, config)
+    # A timeout/connection break after a mutating request leaves the provider
+    # effect unknown. Never blindly replay it; reconcile source state first.
+    uncertain = kind in {"write", "workflow", "agent_delegation"} and isinstance(
+        exc, (TimeoutError, ConnectionError)
+    )
+    return decide_recovery(
+        kind=kind,
+        error_code=error_code,
+        outcome_uncertain=uncertain,
+        retries_used=retries_used,
+        retry_budget=retry_budget,
+        alternate_capability_available=bool(config.get("alternate_capability_available")),
+    )
+
+
 def _build_execution_log(
     *,
     node_id: str,
@@ -612,7 +659,15 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
             last_exc = exc
             if policy["on_failure"] == "skip":
                 break
-            if attempts < max_attempts:
+            recovery = _recovery_decision_for_failure(
+                step_type=step_type,
+                config=config,
+                error_code="rate_limited",
+                exc=exc,
+                retries_used=attempts,
+                retry_budget=max_attempts,
+            )
+            if attempts < max_attempts and recovery.may_retry:
                 time.sleep(policy["retry_backoff_ms"] / 1000.0)
                 continue
             return _handle_node_failure(
@@ -623,7 +678,15 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
             last_exc = exc
             if policy["on_failure"] == "skip":
                 break
-            if attempts < max_attempts:
+            recovery = _recovery_decision_for_failure(
+                step_type=step_type,
+                config=config,
+                error_code="validation_error",
+                exc=exc,
+                retries_used=attempts,
+                retry_budget=max_attempts,
+            )
+            if attempts < max_attempts and recovery.may_retry:
                 time.sleep(policy["retry_backoff_ms"] / 1000.0)
                 continue
             return _handle_node_failure(
@@ -634,9 +697,26 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
             last_exc = exc
             if policy["on_failure"] == "skip":
                 break
-            if attempts < max_attempts:
+            recovery = _recovery_decision_for_failure(
+                step_type=step_type,
+                config=config,
+                error_code="timeout" if isinstance(exc, TimeoutError) else "step_failed",
+                exc=exc,
+                retries_used=attempts,
+                retry_budget=max_attempts,
+            )
+            if attempts < max_attempts and recovery.may_retry:
                 time.sleep(policy["retry_backoff_ms"] / 1000.0)
                 continue
+            if recovery.requires_reconciliation:
+                config = {
+                    **config,
+                    "outcome_recovery": {
+                        "action": recovery.action,
+                        "reason": recovery.reason,
+                        "requires_reconciliation": True,
+                    },
+                }
             from app.services.canvas_write_gate import (
                 CANVAS_WRITE_AUTHORITY_BLOCKED,
                 user_facing_message_from_write_authority_error,
