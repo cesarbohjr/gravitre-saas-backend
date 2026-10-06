@@ -2948,17 +2948,17 @@ function ConnectorsPageContent() {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-8 gap-1.5 shrink-0 text-xs text-muted-foreground"
+                className="h-9 w-9 shrink-0 p-0 text-muted-foreground"
                 onClick={toggleChromeCollapsed}
                 aria-pressed={chromeCollapsed}
                 aria-label={chromeCollapsed ? "Expand connectors header" : "Minimize connectors header"}
+                title={chromeCollapsed ? "Show filters" : "Minimize header"}
               >
                 {chromeCollapsed ? (
-                  <ChevronDown className="h-3.5 w-3.5" />
+                  <ChevronDown className="h-4 w-4" />
                 ) : (
-                  <ChevronUp className="h-3.5 w-3.5" />
+                  <ChevronUp className="h-4 w-4" />
                 )}
-                <span className="hidden sm:inline">{chromeCollapsed ? "Show filters" : "Minimize"}</span>
               </Button>
               {!chromeCollapsed ? (
                 <>
@@ -3026,14 +3026,14 @@ function ConnectorsPageContent() {
             </div>
             {!chromeCollapsed ? (
               <>
-                <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 lg:hidden">
+                <div className="flex w-full items-center gap-1 overflow-x-auto sm:w-auto lg:hidden">
                   {statusFilterOptions.map((status) => (
                     <button
                       key={status.value}
                       type="button"
                       onClick={() => setStatusFilter(status.value)}
                       className={cn(
-                        "flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        "flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9",
                         statusFilter === status.value
                           ? "border-foreground/25 bg-secondary text-foreground"
                           : "border-transparent text-muted-foreground hover:text-foreground",
@@ -3048,7 +3048,7 @@ function ConnectorsPageContent() {
                   ))}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-11 shrink-0 gap-1.5 text-sm">
+                      <Button variant="outline" size="sm" className="h-11 shrink-0 gap-1.5 text-sm sm:h-9">
                         <Filter className="h-3.5 w-3.5" />
                         {categoryFilter !== "all" ? categoryFilter.split(" / ")[0] : "Category"}
                       </Button>
