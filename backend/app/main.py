@@ -75,6 +75,7 @@ from app.routers import (
     org,
     lite,
     ml_models,
+    llm_models,
     ml_admin,
     ai_architecture_admin,
     intelligence_engine,
@@ -699,6 +700,7 @@ app.include_router(optimization.router)
 app.include_router(goals.router)
 app.include_router(scim.router)
 app.include_router(ml_models.router)
+app.include_router(llm_models.router)
 app.include_router(ml_admin.router)
 app.include_router(ai_architecture_admin.router)
 app.include_router(intelligence_engine.router)

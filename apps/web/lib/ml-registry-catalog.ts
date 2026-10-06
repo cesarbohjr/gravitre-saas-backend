@@ -146,7 +146,7 @@ export const ML_REGISTRY_TEMPLATES: Record<MlStackLayerId, MlRegistryTemplate> =
     name: "Revenue forecaster",
     description: "Projects weekly revenue with seasonality and holiday effects.",
     taskType: "weekly",
-    preferredBaseModelId: "prophet",
+    preferredBaseModelId: "forecaster",
   },
   anomaly: {
     layerId: "anomaly",
@@ -169,10 +169,10 @@ export const ML_REGISTRY_TEMPLATES: Record<MlStackLayerId, MlRegistryTemplate> =
 const LLM_BASE_MODELS: BaseModelOption[] = [
   // OpenAI (ChatGPT)
   {
-    id: "gpt-5.5",
-    label: "GPT-5.5",
+    id: "gpt-6-astra",
+    label: "GPT-6 Astra",
     versionTag: "flagship",
-    description: "Latest OpenAI flagship for complex reasoning and agent workflows.",
+    description: "OpenAI flagship for complex reasoning and agent workflows.",
     provider: "OpenAI",
     layer: "generative",
     availability: "platform",
@@ -180,10 +180,20 @@ const LLM_BASE_MODELS: BaseModelOption[] = [
     fineTunable: false,
   },
   {
-    id: "gpt-5.4-mini",
-    label: "GPT-5.4 Mini",
+    id: "gpt-6.1-sol",
+    label: "GPT-6.1 Sol",
+    versionTag: "balanced",
+    description: "Near-flagship OpenAI quality at a fraction of the cost.",
+    provider: "OpenAI",
+    layer: "generative",
+    availability: "platform",
+    fineTunable: false,
+  },
+  {
+    id: "gpt-6-luna",
+    label: "GPT-6 Luna",
     versionTag: "fast",
-    description: "Low-latency ChatGPT model for high-volume inference.",
+    description: "Fast, low-cost OpenAI model for high-volume inference.",
     provider: "OpenAI",
     layer: "generative",
     availability: "platform",
@@ -192,8 +202,8 @@ const LLM_BASE_MODELS: BaseModelOption[] = [
   {
     id: "gpt-4.1",
     label: "GPT-4.1",
-    versionTag: "2025-04",
-    description: "Production-grade ChatGPT base; strong tool use and instruction following.",
+    versionTag: "fine-tunable",
+    description: "OpenAI base supported for fine-tuning (SFT/DPO).",
     provider: "OpenAI",
     layer: "generative",
     availability: "platform",
@@ -202,48 +212,8 @@ const LLM_BASE_MODELS: BaseModelOption[] = [
   {
     id: "gpt-4.1-mini",
     label: "GPT-4.1 Mini",
-    versionTag: "2025-04",
-    description: "Cost-efficient OpenAI base; supported for fine-tuning (SFT/DPO).",
-    provider: "OpenAI",
-    layer: "generative",
-    availability: "platform",
-    fineTunable: true,
-  },
-  {
-    id: "gpt-4o",
-    label: "GPT-4o",
-    versionTag: "2024-08",
-    description: "Omni multimodal ChatGPT model for text + vision workloads.",
-    provider: "OpenAI",
-    layer: "generative",
-    availability: "platform",
-    fineTunable: false,
-  },
-  {
-    id: "gpt-4o-mini",
-    label: "GPT-4o Mini",
-    versionTag: "2024-07",
-    description: "Affordable GPT-4o variant for classification and extraction tasks.",
-    provider: "OpenAI",
-    layer: "generative",
-    availability: "platform",
-    fineTunable: false,
-  },
-  {
-    id: "o3-mini",
-    label: "o3-mini",
-    versionTag: "reasoning",
-    description: "OpenAI reasoning model for multi-step analysis (inference only).",
-    provider: "OpenAI",
-    layer: "generative",
-    availability: "platform",
-    fineTunable: false,
-  },
-  {
-    id: "o4-mini",
-    label: "o4-mini",
-    versionTag: "2025-04",
-    description: "Compact reasoning model; OpenAI supports RFT fine-tuning on this base.",
+    versionTag: "fine-tunable",
+    description: "Cost-efficient OpenAI base supported for fine-tuning (SFT/DPO).",
     provider: "OpenAI",
     layer: "generative",
     availability: "platform",
@@ -251,10 +221,20 @@ const LLM_BASE_MODELS: BaseModelOption[] = [
   },
   // Anthropic (Claude)
   {
-    id: "claude-sonnet-4-6",
-    label: "Claude Sonnet 4.6",
-    versionTag: "4.6",
-    description: "Balanced Claude model for writing, coding, and agent orchestration.",
+    id: "claude-fable-5-1",
+    label: "Claude Fable 5.1",
+    versionTag: "flagship",
+    description: "Anthropic's most capable model for the hardest long-horizon work.",
+    provider: "Anthropic",
+    layer: "generative",
+    availability: "platform",
+    fineTunable: false,
+  },
+  {
+    id: "claude-opus-5-5",
+    label: "Claude Opus 5.5",
+    versionTag: "5.5",
+    description: "Frontier Claude for deep reasoning, coding, and agents.",
     provider: "Anthropic",
     layer: "generative",
     availability: "platform",
@@ -262,20 +242,20 @@ const LLM_BASE_MODELS: BaseModelOption[] = [
     fineTunable: false,
   },
   {
-    id: "claude-haiku-4-5-20251001",
-    label: "Claude Haiku 4.5",
-    versionTag: "4.5 · 2025-10-01",
-    description: "Fastest Claude tier for routing, triage, and high-QPS agents.",
+    id: "claude-sonnet-5-5",
+    label: "Claude Sonnet 5.5",
+    versionTag: "5.5",
+    description: "Balanced Claude for writing, coding, and everyday agent work.",
     provider: "Anthropic",
     layer: "generative",
     availability: "platform",
     fineTunable: false,
   },
   {
-    id: "claude-opus-4-6",
-    label: "Claude Opus 4.6",
-    versionTag: "4.6",
-    description: "Highest-capability Claude for deep research and complex workflows.",
+    id: "claude-haiku-4-5",
+    label: "Claude Haiku 4.5",
+    versionTag: "fast",
+    description: "Fastest Claude for routing, triage, and high-QPS agents.",
     provider: "Anthropic",
     layer: "generative",
     availability: "platform",
@@ -283,69 +263,59 @@ const LLM_BASE_MODELS: BaseModelOption[] = [
   },
   // Google (Gemini)
   {
-    id: "gemini-2.5-pro",
-    label: "Gemini 2.5 Pro",
-    versionTag: "2.5",
-    description: "Google flagship multimodal model for long context and rich media.",
+    id: "gemini-3.1-pro-preview",
+    label: "Gemini 3.1 Pro",
+    versionTag: "preview",
+    description: "Google's most capable Gemini for long context and rich media.",
     provider: "Google",
     layer: "generative",
     availability: "platform",
     fineTunable: false,
   },
   {
-    id: "gemini-2.5-flash",
-    label: "Gemini 2.5 Flash",
-    versionTag: "2.5",
-    description: "Fast Gemini tier for agent loops, summarization, and tool use.",
+    id: "gemini-3.8-flash",
+    label: "Gemini 3.8 Flash",
+    versionTag: "3.8",
+    description: "Most intelligent Gemini Flash for agent loops and tool use.",
     provider: "Google",
     layer: "generative",
     availability: "platform",
     fineTunable: false,
   },
   {
-    id: "gemini-2.0-flash",
-    label: "Gemini 2.0 Flash",
-    versionTag: "2.0",
-    description: "Stable flash model for cost-sensitive production workloads.",
+    id: "gemini-3.5-flash-lite",
+    label: "Gemini 3.5 Flash-Lite",
+    versionTag: "fast",
+    description: "Fast, low-cost Gemini for summarization and extraction.",
     provider: "Google",
     layer: "generative",
     availability: "platform",
     fineTunable: false,
   },
-  // xAI (Grok)
   {
-    id: "grok-3",
-    label: "Grok 3",
-    versionTag: "3",
-    description: "xAI flagship model for real-time knowledge and conversational agents.",
-    provider: "xAI",
-    layer: "generative",
-    availability: "platform",
-    fineTunable: false,
-  },
-  {
-    id: "grok-3-mini",
-    label: "Grok 3 Mini",
-    versionTag: "3 mini",
-    description: "Efficient Grok variant for high-throughput inference.",
-    provider: "xAI",
-    layer: "generative",
-    availability: "platform",
-    fineTunable: false,
-  },
-  {
-    id: "grok-2-1212",
-    label: "Grok 2",
-    versionTag: "2 · 2024-12-12",
-    description: "Previous-generation Grok base (grok-2-1212 API id).",
-    provider: "xAI",
+    id: "gemini-3.1-flash-lite",
+    label: "Gemini 3.1 Flash-Lite",
+    versionTag: "cheapest",
+    description: "Cheapest Gemini for bulk classification work.",
+    provider: "Google",
     layer: "generative",
     availability: "platform",
     fineTunable: false,
   },
 ]
 
+// Base ids below must be trainable by backend/app/workers/training_worker.py
+// (directly or via its MODEL_BASE_ALIASES), otherwise training jobs fail.
 const CLASSIFIER_BASE_MODELS: BaseModelOption[] = [
+  {
+    id: "success_predictor",
+    label: "Outcome predictor",
+    versionTag: "Gravitre",
+    description: "Binary success/failure model that returns an outcome probability.",
+    provider: "Gravitre",
+    layer: "classical",
+    availability: "platform",
+  },
   {
     id: "xgboost",
     label: "XGBoost",
@@ -358,24 +328,13 @@ const CLASSIFIER_BASE_MODELS: BaseModelOption[] = [
     recommended: true,
   },
   {
-    id: "lightgbm",
-    label: "LightGBM",
-    versionTag: "4.x",
-    description: "Fast training on wide feature sets and large categoricals.",
-    provider: "Microsoft",
+    id: "gradient_boosting",
+    label: "Gradient boosting",
+    versionTag: "sklearn",
+    description: "Boosted trees without extra dependencies; good on skewed scoring data.",
+    provider: "scikit-learn",
     layer: "classical",
-    availability: "connected",
-    connectorVendor: "postgresql",
-  },
-  {
-    id: "catboost",
-    label: "CatBoost",
-    versionTag: "1.2",
-    description: "Handles high-cardinality categoricals without heavy encoding.",
-    provider: "Yandex",
-    layer: "classical",
-    availability: "connected",
-    connectorVendor: "snowflake",
+    availability: "platform",
   },
   {
     id: "random-forest",
@@ -400,38 +359,11 @@ const CLASSIFIER_BASE_MODELS: BaseModelOption[] = [
 
 const FORECASTER_BASE_MODELS: BaseModelOption[] = [
   {
-    id: "prophet",
-    label: "Prophet",
-    description: "Robust seasonality for business metrics.",
-    provider: "Meta",
-    layer: "timeseries",
-    availability: "connected",
-    connectorVendor: "postgresql",
-    recommended: true,
-  },
-  {
-    id: "neuralprophet",
-    label: "NeuralProphet",
-    description: "Neural extension of Prophet for complex seasonality.",
-    provider: "Open source",
-    layer: "timeseries",
-    availability: "connected",
-    connectorVendor: "postgresql",
-  },
-  {
-    id: "statsforecast-arima",
-    label: "StatsForecast ARIMA",
-    description: "Classical statistical forecasting baseline.",
-    provider: "Nixtla",
-    layer: "timeseries",
-    availability: "platform",
-  },
-  {
-    id: "chronos-bolt-base",
-    label: "Chronos Bolt",
-    versionTag: "Amazon",
-    description: "Foundation time-series model (zero-shot baseline + fine-tune).",
-    provider: "Amazon",
+    id: "forecaster",
+    label: "Metric forecaster",
+    versionTag: "Gravitre",
+    description: "Gradient-boosted regressor that projects business metrics forward.",
+    provider: "Gravitre",
     layer: "timeseries",
     availability: "platform",
     recommended: true,
@@ -448,25 +380,6 @@ const ANOMALY_BASE_MODELS: BaseModelOption[] = [
     availability: "connected",
     connectorVendor: "postgresql",
     recommended: true,
-  },
-  {
-    id: "autoencoder",
-    label: "Deep autoencoder",
-    versionTag: "PyTorch",
-    description: "Neural reconstruction error for complex multivariate patterns.",
-    provider: "PyTorch",
-    layer: "anomaly",
-    availability: "connected",
-    connectorVendor: "snowflake",
-  },
-  {
-    id: "merlion",
-    label: "Merlion",
-    versionTag: "Salesforce",
-    description: "Unified anomaly detection and forecasting toolkit.",
-    provider: "Salesforce",
-    layer: "anomaly",
-    availability: "platform",
   },
 ]
 
@@ -528,6 +441,19 @@ export function defaultBaseModelForType(
   return pick?.id ?? ""
 }
 
+/** Use `preferredId` when it is offered and usable; otherwise the type default. */
+export function preferredBaseModelForType(
+  modelType: MlModelType,
+  preferredId: string | null | undefined,
+  connectedVendorKeys: Set<string>
+): string {
+  const preferred = preferredId
+    ? resolveBaseModelOptions(modelType, connectedVendorKeys).find((o) => o.id === preferredId)
+    : undefined
+  if (preferred && preferred.availability !== "requires_connection") return preferred.id
+  return defaultBaseModelForType(modelType, connectedVendorKeys)
+}
+
 export function templateForLayer(layerId: MlStackLayerId): MlRegistryTemplate {
   return ML_REGISTRY_TEMPLATES[layerId]
 }
@@ -542,13 +468,11 @@ export function applyRegistryTemplate(
   taskType: string
   baseModel: string
 } {
-  const options = resolveBaseModelOptions(template.modelType, connectedVendorKeys)
-  const preferred = template.preferredBaseModelId
-    ? options.find((o) => o.id === template.preferredBaseModelId)
-    : undefined
-  const baseModel =
-    (preferred && preferred.availability !== "requires_connection" ? preferred.id : undefined)
-    ?? defaultBaseModelForType(template.modelType, connectedVendorKeys)
+  const baseModel = preferredBaseModelForType(
+    template.modelType,
+    template.preferredBaseModelId,
+    connectedVendorKeys
+  )
 
   return {
     modelType: template.modelType,
@@ -608,7 +532,7 @@ export const ML_TRAINING_GUIDANCE: Record<MlModelType, MlTrainingGuidance> = {
     headline: "Tabular classification on CRM or ops features",
     bullets: [
       "Normalize numeric features; encode categoricals before export.",
-      "XGBoost and LightGBM excel on skewed lead-scoring data.",
+      "XGBoost and gradient boosting excel on skewed lead-scoring data.",
       "Watch class imbalance. Prefer stratified splits and F1 over accuracy alone.",
     ],
     datasetHint: "Export labeled rows from PostgreSQL, Snowflake, or Segment.",
@@ -617,9 +541,9 @@ export const ML_TRAINING_GUIDANCE: Record<MlModelType, MlTrainingGuidance> = {
   forecaster: {
     headline: "Time-series projection with seasonality",
     bullets: [
-      "Include timestamp + target columns; Prophet handles holidays automatically.",
+      "Include timestamp + target columns with a consistent granularity.",
+      "Add calendar features (weekday, month, holiday flags) to capture seasonality.",
       "Backtest on rolling windows before deploying to workflows.",
-      "Chronos Bolt supports zero-shot baselines when labeled history is thin.",
     ],
     datasetHint: "Daily or hourly metric series with consistent granularity.",
     evalMetrics: ["mape", "rmse", "mae", "coverage"],

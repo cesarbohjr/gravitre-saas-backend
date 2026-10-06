@@ -24,7 +24,7 @@ export const BUILDER_SHOT_SEED: CanvasWorkflowNode[] = [
     type: "agent",
     name: "Data Validator",
     description: "Validate and clean records",
-    config: { model: "gpt-5.5", temperature: 0.3, role: "Data quality" },
+    config: { model: "gpt-6-astra", temperature: 0.3, role: "Data quality" },
     position: { x: 320, y: 40 },
     connections: ["node-3"],
     state: "idle",
