@@ -219,6 +219,9 @@ jobs:
           CONNECTOR_SECRETS_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_SECRETS_ENCRYPTION_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+          # Lets the smoke refresh an expired HubSpot OAuth token (else auth_expired).
+          HUBSPOT_CLIENT_ID: ${{ secrets.HUBSPOT_CLIENT_ID }}
+          HUBSPOT_CLIENT_SECRET: ${{ secrets.HUBSPOT_CLIENT_SECRET }}
         run: |
           set +e
           python -m pip install --upgrade pip
