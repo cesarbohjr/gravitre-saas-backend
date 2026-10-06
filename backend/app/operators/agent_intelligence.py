@@ -4234,6 +4234,7 @@ class AgentIntelligence:
                         cognitive_context=cognitive_ctx,
                         on_text_delta=on_text_delta,
                         compiled_reasoning_context=_compiled_unified_reasoning,
+                        response_style_key=str(persona.get("persona_key") or "") or None,
                     )
                 finally:
                     if delta_queue is not None:
