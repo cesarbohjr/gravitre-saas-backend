@@ -57,7 +57,7 @@ Disposition values: **Redesigned** (changed and visually reviewed), **Reviewed**
 | Approvals | `/approvals` | Redesigned (chip noise, dark tints) | yes | yes | type-check | — |
 | Notifications | `/notifications` | Redesigned (plain-language stats) | yes | yes | 10 tests | Native `<select>` for type filter not restyled |
 | Lite | `/lite/*` | **Not reviewed** | — | — | existing `lite-operating-states` tests | `/lite` only redirects. Needs a test page for the real Lite home |
-| Meson | Builder Meson tab | **Not reviewed** standalone | — | — | — | — |
+| Meson | Builder Meson tab | Reviewed; empty-state copy corrected | yes | Initial panel at 907×797 dark | Browser: Open step → Data Validator inspector | Updated copy could not be recaptured: preview returned 502 SANDBOX_NOT_LISTENING. AI suggestions, saved-workflow edits and apply remain unverified. |
 | Onboarding | `/welcome` (`/onboarding` redirects) | **Not reviewed** | — | — | — | Needs a test page for `/welcome` |
 | Desktop | desktop shell routes | **Not reviewed** | — | — | — | — |
 | Public | `/`, `/pricing`, `/login`, marketing | **Not reviewed** | — | — | — | Dev server dropped during capture |

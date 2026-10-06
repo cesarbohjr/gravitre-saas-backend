@@ -600,7 +600,11 @@ export function MesonCopilotPanel({
               <Skeleton className="h-16 w-full" />
             </div>
           ) : suggestions.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Add nodes to get step suggestions.</p>
+            <p className="text-xs text-muted-foreground">
+    {nodes.length === 0
+      ? "Add a step to get suggestions."
+      : "No step suggestions available for this canvas."}
+  </p>
           ) : (
             <motion.div className="space-y-2" variants={container} initial="initial" animate="animate">
               <AnimatePresence initial={false}>
