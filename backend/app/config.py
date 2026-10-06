@@ -1005,29 +1005,29 @@ class Settings(BaseSettings):
 # ---------------------------------------------------------------------------
 # complexity tier -> provider -> model id
 # Ids must exist in app/services/llm_catalog.py (enforced by
-# tests/services/test_llm_catalog.py). "high" stays on the balanced OpenAI /
-# Claude models like before: the flagships (gpt-6-astra, claude-opus-5-5) are
-# available as explicit picks rather than defaulted into every planning call.
+# tests/services/test_llm_catalog.py). Defaults stay on ids proven against the
+# production keys; newer models (GPT-6, Claude 5.x, Gemini 3.x) are explicit
+# picks until a live call has confirmed the key serves them.
 MODEL_TIERS: dict[str, dict[str, str]] = {
     "low": {
-        "openai": "gpt-6-luna",
-        "anthropic": "claude-haiku-4-5",
-        "gemini": "gemini-3.5-flash-lite",
+        "openai": "gpt-5.4-mini",
+        "anthropic": "claude-haiku-4-5-20251001",
+        "gemini": "gemini-2.5-flash",
     },
     "medium": {
-        "openai": "gpt-6.1-sol",
-        "anthropic": "claude-sonnet-5-5",
-        "gemini": "gemini-3.8-flash",
+        "openai": "gpt-5.5",
+        "anthropic": "claude-sonnet-4-6",
+        "gemini": "gemini-2.5-pro",
     },
     "high": {
-        "openai": "gpt-6.1-sol",
-        "anthropic": "claude-sonnet-5-5",
-        "gemini": "gemini-3.8-flash",
+        "openai": "gpt-5.5",
+        "anthropic": "claude-sonnet-4-6",
+        "gemini": "gemini-2.5-pro",
     },
     "vision": {
-        "openai": "gpt-6.1-sol",
-        "anthropic": "claude-sonnet-5-5",
-        "gemini": "gemini-3.8-flash",
+        "openai": "gpt-4o",
+        "anthropic": "claude-sonnet-4-6",
+        "gemini": "gemini-2.5-pro",
     },
 }
 

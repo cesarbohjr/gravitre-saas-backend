@@ -70,7 +70,7 @@ def test_available_models_hide_deprecated_but_resolver_still_accepts_them():
     assert "gpt-6-astra" in AVAILABLE_MODELS
     assert "claude-opus-5-5" in AVAILABLE_MODELS
     assert "gemini-3.8-flash" in AVAILABLE_MODELS
-    for legacy in ("gpt-5.5", "claude-sonnet-4-6", "claude-haiku-4-5-20251001", "gemini-2.5-pro"):
+    for legacy in ("gpt-4o-mini", "o3-mini", "claude-opus-4-6", "gemini-2.0-flash"):
         assert legacy not in AVAILABLE_MODELS
         model, _task = resolve_assistant_model("standard", legacy)
         assert model == legacy, f"saved agent model {legacy} must keep routing"
@@ -147,8 +147,23 @@ async def test_model_override_is_pinned_to_its_own_provider(mock_settings):
         gemini = await router.prepare_stream(
             task_type=TaskType.RAG_ANSWERING, prompt="hi", model_override="gemini-3.8-flash"
         )
-    assert prepared.priority == [("anthropic", "claude-sonnet-5-5")]
-    assert gemini.priority == [("gemini", "gemini-3.8-flash")]
+    assert prepared.priority[0] == ("anthropic", "claude-sonnet-5-5")
+    assert gemini.priority[0] == ("gemini", "gemini-3.8-flash")
+
+
+@pytest.mark.asyncio
+async def test_pinned_model_falls_back_to_the_tier_chain(mock_settings):
+    """A pinned model the key cannot serve must fail over, not fail the turn."""
+    router = ModelRouter(settings=mock_settings)
+    with patch("app.services.model_router.moderate_input", AsyncMock()):
+        prepared = await router.prepare_stream(
+            task_type=TaskType.RAG_ANSWERING, prompt="hi", model_override="gpt-6-luna"
+        )
+    assert prepared.priority[0] == ("openai", "gpt-6-luna")
+    fallback = prepared.priority[1:]
+    assert fallback, "no fallback after the pinned model"
+    assert ("openai", "gpt-6-luna") not in fallback
+    assert all(get_llm_model(model) is not None for _provider, model in fallback)
 
 
 @pytest.mark.asyncio
@@ -169,7 +184,7 @@ async def test_model_policy_checks_the_override_provider(mock_settings):
             org_id="org-1",
             model_override="claude-opus-5-5",
         )
-    assert prepared.priority == [("anthropic", "claude-opus-5-5")]
+    assert prepared.priority[0] == ("anthropic", "claude-opus-5-5")
 
 
 def _settings(**overrides) -> Settings:
@@ -201,7 +216,7 @@ def test_llm_catalog_endpoint_lists_visible_models_for_configured_providers():
     assert body["providers"] == ["openai"]
     ids = {m["id"] for m in body["models"]}
     assert "gpt-6-astra" in ids
-    assert "gpt-5.5" not in ids  # deprecated: routable, not listed
+    assert "gpt-4o-mini" not in ids  # deprecated: routable, not listed
     assert all(m["provider"] == "openai" for m in body["models"])
 
 

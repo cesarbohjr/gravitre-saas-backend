@@ -12,10 +12,10 @@ AVAILABLE_MODELS: dict[str, dict[str, str]] = {
 }
 
 MODE_DEFAULT_MODELS: dict[str, str] = {
-    "fast": "gpt-6-luna",
-    "standard": "gpt-6.1-sol",
-    "reasoning": "gpt-6-astra",
-    "agent": "gpt-6.1-sol",
+    "fast": "gpt-5.4-mini",
+    "standard": "gpt-5.5",
+    "reasoning": "gpt-5.5",
+    "agent": "gpt-5.5",
 }
 
 MODE_TASK_TYPE: dict[str, TaskType] = {
