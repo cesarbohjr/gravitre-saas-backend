@@ -9,6 +9,7 @@ import type { ReactNode } from "react"
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
+import { ArrowRight, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -29,7 +30,8 @@ import { DASHBOARD_PRESETS, KPI_BY_ID } from "@/lib/dashboard/kpi-registry"
 import type { HomeDashboardData } from "@/hooks/use-home-dashboard-data"
 import { DashboardWidgetView, resolveKpiValue } from "@/components/home/dashboard-widget-view"
 import { KpiPickerDialog } from "@/components/home/kpi-picker-dialog"
-import { OutcomeFlowSankey } from "@/components/home/outcome-flow-sankey"
+import { SystemOutcomes } from "@/components/home/system-outcomes"
+import { useDashboardView, useSectionCollapsed, type DashboardView } from "@/lib/dashboard/view-preference"
 import type { WelcomeRoleId } from "@/lib/welcome-flow"
 import { ROLE_QUICK_ACTIONS } from "@/lib/role-quick-actions"
 
@@ -100,6 +102,17 @@ export function HomeDashboard({
   const [dropOrder, setDropOrder] = useState<number | null>(null)
 
   const quickActions = ROLE_QUICK_ACTIONS[roleId] ?? ROLE_QUICK_ACTIONS.ops
+  const [view, setView] = useDashboardView()
+  // Customizing edits the KPI board, so it always happens in the Reports view.
+  const showReports = view === "reports" || editMode
+  const changeView = (next: DashboardView) => {
+    if (next === "ai" && editMode) setEditMode(false)
+    setView(next)
+  }
+  const startCustomize = () => {
+    setView("reports")
+    setEditMode(true)
+  }
 
   const { railWidgets, boardWidgets } = useMemo(() => {
     const rail: DashboardWidget[] = []
@@ -130,20 +143,25 @@ export function HomeDashboard({
         data-dashboard-command-strip=""
         className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--g-border-default)] px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)]"
       >
-        <h1 className="text-[20px] font-semibold leading-tight tracking-[-0.02em] text-foreground">Dashboard</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-[20px] font-semibold leading-tight tracking-[-0.02em] text-foreground">Dashboard</h1>
+          <DashboardViewToggle view={showReports ? "reports" : "ai"} onChange={changeView} />
+        </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={globalRange} onValueChange={(v) => setRange(v as DashboardRange)}>
-            <SelectTrigger className="h-8 w-[120px] text-xs" aria-label="Dashboard date range">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1h">Last hour</SelectItem>
-              <SelectItem value="24h">24 hours</SelectItem>
-              <SelectItem value="7d">7 days</SelectItem>
-              <SelectItem value="30d">30 days</SelectItem>
-              <SelectItem value="90d">90 days</SelectItem>
-            </SelectContent>
-          </Select>
+          {showReports ? (
+            <Select value={globalRange} onValueChange={(v) => setRange(v as DashboardRange)}>
+              <SelectTrigger className="h-8 w-[120px] text-xs" aria-label="Dashboard date range">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1h">Last hour</SelectItem>
+                <SelectItem value="24h">24 hours</SelectItem>
+                <SelectItem value="7d">7 days</SelectItem>
+                <SelectItem value="30d">30 days</SelectItem>
+                <SelectItem value="90d">90 days</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : null}
           {editMode ? (
             <>
               <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => setPickerOpen(true)}>
@@ -170,23 +188,34 @@ export function HomeDashboard({
               </Button>
             </>
           ) : (
-            <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => setEditMode(true)}>
+            <Button type="button" size="sm" variant="ghost" className="h-8" onClick={startCustomize}>
               Customize
             </Button>
           )}
         </div>
       </div>
 
-      {editMode ? (
+      {!showReports ? (
+        <div data-dashboard-view="ai" className="flex flex-col">
+          <OperatingFlow data={data} quickActions={quickActions} />
+          <div className="flex flex-col gap-6 border-t border-[color:var(--g-border-subtle)] px-[var(--np-page-pad-sm)] pb-8 pt-5 sm:px-[var(--np-page-pad)]">
+            <SystemOutcomes />
+            <OutcomePlaysPreview plays={data.plays} />
+            {showGettingStarted ? <GettingStartedNote /> : null}
+          </div>
+        </div>
+      ) : null}
+
+      {showReports && editMode ? (
         <p className={cn(TYPE.meta, "px-[var(--np-page-pad-sm)] pt-4 sm:px-[var(--np-page-pad)]")}>
           Drag widgets to reorder. Use the size button to cycle widths. Your layout is saved for {roleLabel}.
         </p>
-      ) : (
-        <OperatingFlow data={data} quickActions={quickActions} />
-      )}
+      ) : null}
 
-      {/* Measure — configured KPIs, secondary to the operation above */}
+      {/* Reports — the configured KPI board */}
+      {showReports ? (
       <motion.section
+        data-dashboard-view="reports"
         variants={reduced ? undefined : container}
         initial="initial"
         animate="animate"
@@ -196,20 +225,30 @@ export function HomeDashboard({
         {!editMode ? (
           <div className="flex items-baseline justify-between gap-3">
             <h2 id="dashboard-measure" className="text-[13px] font-semibold text-foreground">
-              Measure
+              Reports
             </h2>
-            <span className={TYPE.meta}>Configured KPIs · {RANGE_LABEL[globalRange]}</span>
+            <span className={TYPE.meta}>Your KPIs · {RANGE_LABEL[globalRange]}</span>
           </div>
         ) : (
           <h2 id="dashboard-measure" className="sr-only">
-            Measure
+            Reports
           </h2>
         )}
+
+        {!editMode && widgets.length === 0 ? (
+          <div className="flex flex-col items-start gap-3 rounded-[var(--np-radius-lg)] border border-dashed border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-surface)] p-5">
+            <p className="text-sm font-medium text-foreground">No KPIs on your board yet.</p>
+            <p className={TYPE.meta}>Pick the numbers you want to track and they appear here.</p>
+            <Button type="button" size="sm" className="h-8" onClick={() => { startCustomize(); setPickerOpen(true) }}>
+              Add KPIs
+            </Button>
+          </div>
+        ) : null}
 
         {!editMode && railWidgets.length > 0 ? (
           <motion.dl
             variants={item}
-            className="grid grid-cols-2 divide-x divide-y divide-[color:var(--g-border-subtle)] border-y border-[color:var(--g-border-subtle)] sm:grid-cols-3 lg:auto-cols-fr lg:grid-flow-col lg:grid-cols-none lg:divide-y-0"
+            className="grid grid-cols-2 divide-x divide-y divide-[color:var(--g-brand-border)] rounded-[var(--np-radius-md)] border border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-surface)] sm:grid-cols-3 lg:auto-cols-fr lg:grid-flow-col lg:grid-cols-none lg:divide-y-0"
           >
             {railWidgets.map((widget) => {
               const resolved = resolveKpiValue(widget.metricId, data)
@@ -243,12 +282,6 @@ export function HomeDashboard({
           </motion.dl>
         ) : null}
 
-        {!editMode ? (
-          <motion.div variants={item}>
-            <OutcomeFlowSankey />
-          </motion.div>
-        ) : null}
-
         {!editMode && data.playImpact && (data.playImpact.verifiedResultCount > 0 || data.playImpact.pendingVerificationCount > 0) ? (
           <motion.section variants={item} aria-labelledby="dashboard-play-impact" className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4 shadow-[var(--np-shadow)]">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -278,57 +311,6 @@ export function HomeDashboard({
             </div>
           </motion.section>
         ) : null}
-
-        {!editMode && data.plays.length > 0 ? (
-          <motion.section
-            variants={item}
-            aria-labelledby="dashboard-outcome-plays"
-            className="border-y border-[color:var(--g-border-subtle)]"
-          >
-            <div className="flex items-baseline justify-between gap-3 border-b border-[color:var(--g-border-subtle)] px-3 py-2">
-              <h3 id="dashboard-outcome-plays" className="text-[12px] font-semibold text-foreground">
-                Outcome plays
-              </h3>
-              <span className={TYPE.meta}>Readiness from connected capabilities</span>
-            </div>
-            <div className="divide-y divide-[color:var(--g-border-subtle)]">
-              {data.plays.map(({ play, readiness, workflowBindingCount }) => {
-                const state = readiness.act_within_policy_ready
-                  ? "Act within policy"
-                  : readiness.act_with_approval_ready
-                    ? "Act with approval"
-                    : readiness.recommend_ready
-                      ? "Ready to recommend"
-                      : readiness.observe_ready
-                        ? "Ready to observe"
-                        : readiness.dependency_status === "EXTERNAL_CONNECTION_REQUIRED"
-                          ? "Setup required"
-                          : "Needs attention"
-                return (
-                  <div
-                    key={play.key}
-                    className="grid gap-1 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">{play.name}</p>
-                      <p className={cn(TYPE.meta, "mt-0.5 line-clamp-1")}>{play.objective}</p>
-                      <p className={cn(TYPE.meta, "mt-0.5")}>
-                        {workflowBindingCount > 0
-                          ? `${workflowBindingCount} canonical workflow${workflowBindingCount === 1 ? "" : "s"} bound`
-                          : "No canonical workflow bound yet"}
-                      </p>
-                    </div>
-                    <span className="text-[11px] font-medium tracking-wide text-muted-foreground">
-                      {state}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </motion.section>
-        ) : null}
-
-
 
         {/* Desktop / tablet grid */}
         <motion.div
@@ -462,15 +444,12 @@ export function HomeDashboard({
         </motion.div>
 
         {showGettingStarted ? (
-          <motion.p variants={item} className={TYPE.meta}>
-            Resume setup from{" "}
-            <Link href={APP_ROUTES.welcome} className="underline underline-offset-2 hover:text-foreground">
-              Getting started
-            </Link>
-            .
-          </motion.p>
+          <motion.div variants={item}>
+            <GettingStartedNote />
+          </motion.div>
         ) : null}
       </motion.section>
+      ) : null}
 
       <KpiPickerDialog
         open={pickerOpen}
@@ -479,6 +458,143 @@ export function HomeDashboard({
         onAdd={addWidget}
       />
     </div>
+  )
+}
+
+const VIEW_OPTIONS: { id: DashboardView; label: string }[] = [
+  { id: "ai", label: "AI Native" },
+  { id: "reports", label: "Reports" },
+]
+
+/** AI Native is the operating briefing; Reports is the KPI board. AI Native is the default. */
+function DashboardViewToggle({ view, onChange }: { view: DashboardView; onChange: (view: DashboardView) => void }) {
+  return (
+    <div
+      role="group"
+      aria-label="Dashboard view"
+      data-dashboard-view-toggle=""
+      className="inline-flex items-center rounded-full border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-0.5"
+    >
+      {VIEW_OPTIONS.map((option) => {
+        const active = option.id === view
+        return (
+          <button
+            key={option.id}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(option.id)}
+            className={cn(
+              "inline-flex h-7 items-center rounded-full px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              active
+                ? "bg-[color:var(--g-brand)] text-white shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {option.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+const PLAYS_PREVIEW = 3
+
+function playState(readiness: HomeDashboardData["plays"][number]["readiness"]): { label: string; ready: boolean } {
+  if (readiness.act_within_policy_ready) return { label: "Act within policy", ready: true }
+  if (readiness.act_with_approval_ready) return { label: "Act with approval", ready: true }
+  if (readiness.recommend_ready) return { label: "Ready to recommend", ready: true }
+  if (readiness.observe_ready) return { label: "Ready to observe", ready: true }
+  if (readiness.dependency_status === "EXTERNAL_CONNECTION_REQUIRED") return { label: "Setup required", ready: false }
+  return { label: "Needs attention", ready: false }
+}
+
+/** Outcome play readiness as a collapsible preview; the full list lives on the Plays page. */
+function OutcomePlaysPreview({ plays }: { plays: HomeDashboardData["plays"] }) {
+  const [collapsed, toggle] = useSectionCollapsed("outcome-plays")
+  if (plays.length === 0) return null
+  const ready = plays.filter(({ readiness }) => playState(readiness).ready).length
+  const preview = plays.slice(0, PLAYS_PREVIEW)
+  return (
+    <section aria-labelledby="dashboard-outcome-plays" data-dashboard-plays="" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={!collapsed}
+          aria-controls="dashboard-outcome-plays-body"
+          className="-ml-1 inline-flex min-h-9 items-center gap-1.5 rounded-[6px] px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <ChevronDown
+            aria-hidden
+            className={cn("size-4 text-muted-foreground transition-transform motion-reduce:transition-none", collapsed && "-rotate-90")}
+          />
+          <h3 id="dashboard-outcome-plays" className="text-[13px] font-semibold text-foreground">
+            Outcome plays
+          </h3>
+          <span className="ml-1 rounded-full bg-[color:var(--g-brand)]/12 px-2 text-[11.5px] font-medium tabular-nums leading-5 text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]">
+            {ready} of {plays.length} ready
+          </span>
+        </button>
+        <span className={TYPE.meta}>Readiness from connected capabilities</span>
+      </div>
+      {collapsed ? null : (
+        <div id="dashboard-outcome-plays-body" className="flex flex-col gap-2">
+          <ul className="divide-y divide-[color:var(--g-border-subtle)] border-y border-[color:var(--g-border-subtle)]">
+            {preview.map(({ play, readiness, workflowBindingCount }) => {
+              const state = playState(readiness)
+              return (
+                <li
+                  key={play.key}
+                  className="grid gap-1 py-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">{play.name}</p>
+                    <p className={cn(TYPE.meta, "mt-0.5 line-clamp-1")}>{play.objective}</p>
+                    <p className={cn(TYPE.meta, "mt-0.5")}>
+                      {workflowBindingCount > 0
+                        ? `${workflowBindingCount} canonical workflow${workflowBindingCount === 1 ? "" : "s"} bound`
+                        : "No canonical workflow bound yet"}
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1.5 self-start text-[11px] font-medium tracking-wide sm:self-center",
+                      state.ready ? "text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]" : "text-muted-foreground",
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn("size-1.5 rounded-full", state.ready ? "bg-[color:var(--g-brand)]" : "bg-warning")}
+                    />
+                    {state.label}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+          <Link
+            href={APP_ROUTES.plays}
+            className="inline-flex min-h-9 items-center gap-1 self-start text-[12px] font-medium text-[color:var(--g-brand-active)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-[color:var(--g-brand)]"
+          >
+            {plays.length > PLAYS_PREVIEW ? `View all ${plays.length} plays` : "View plays"}
+            <ArrowRight className="size-3.5" aria-hidden />
+          </Link>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function GettingStartedNote() {
+  return (
+    <p className={TYPE.meta}>
+      Resume setup from{" "}
+      <Link href={APP_ROUTES.welcome} className="underline underline-offset-2 hover:text-foreground">
+        Getting started
+      </Link>
+      .
+    </p>
   )
 }
 

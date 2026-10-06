@@ -63,23 +63,23 @@ const KPI_ICON_STYLES: Record<
   { icon: ReactNode; iconClassName: string; iconWrapperClassName: string }
 > = {
   "agents.active": {
-    icon: <NucleoAgent className="h-3.5 w-3.5 opacity-70" aria-hidden />,
-    iconClassName: "bg-[color:var(--g-surface-2)] text-muted-foreground",
+    icon: <NucleoAgent className="h-3.5 w-3.5" aria-hidden />,
+    iconClassName: "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]",
     iconWrapperClassName: KPI_ICON_WRAPPER,
   },
   "runs.success_rate": {
-    icon: <NucleoSuccess className="h-3.5 w-3.5 opacity-70" aria-hidden />,
-    iconClassName: "bg-[color:var(--g-surface-2)] text-muted-foreground",
+    icon: <NucleoSuccess className="h-3.5 w-3.5" aria-hidden />,
+    iconClassName: "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]",
     iconWrapperClassName: KPI_ICON_WRAPPER,
   },
   "runs.avg_duration": {
-    icon: <NucleoHistory className="h-3.5 w-3.5 opacity-70" aria-hidden />,
-    iconClassName: "bg-[color:var(--g-surface-2)] text-muted-foreground",
+    icon: <NucleoHistory className="h-3.5 w-3.5" aria-hidden />,
+    iconClassName: "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]",
     iconWrapperClassName: KPI_ICON_WRAPPER,
   },
   "models.most_used": {
-    icon: <NucleoIntelligence className="h-3.5 w-3.5 opacity-70" aria-hidden />,
-    iconClassName: "bg-[color:var(--g-surface-2)] text-muted-foreground",
+    icon: <NucleoIntelligence className="h-3.5 w-3.5" aria-hidden />,
+    iconClassName: "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]",
     iconWrapperClassName: KPI_ICON_WRAPPER,
   },
 }
@@ -130,7 +130,7 @@ function AgentsDonut({ data }: { data: HomeDashboardData }) {
 
   const rows = [
     { label: "Executing", value: counts.processing, color: BRAND },
-    { label: "Available", value: counts.active + counts.idle, color: MUTED },
+    { label: "Available", value: counts.active + counts.idle, color: BRAND_SOFT },
     { label: "Needs attention", value: counts.error, color: WARNING },
   ]
   const slices = rows.filter((s) => s.value > 0)

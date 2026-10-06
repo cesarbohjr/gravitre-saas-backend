@@ -218,7 +218,7 @@ export function briefingSentence(lanes: FlowLane[], workforce: ReturnType<typeof
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
   const sentences: BriefingPart[][] = []
-  if (decisions === 0 && faults === 0) sentences.push([{ text: "All clear." }, { text: " Nothing needs your decision." }])
+  if (decisions === 0 && faults === 0) sentences.push([{ text: "All clear.", tone: "live" }, { text: " Nothing needs your decision." }])
   if (decisions > 0) {
     sentences.push([
       { text: plural(decisions, "decision", "decisions"), tone: "attention" },
@@ -265,7 +265,7 @@ const TONE_TEXT: Record<NonNullable<BriefingPart["tone"]>, string> = {
 const CELL: Record<WorkforceState, string> = {
   executing: "bg-[color:var(--g-brand)]",
   attention: "bg-destructive",
-  available: "bg-muted-foreground/45",
+  available: "bg-[color:var(--g-brand-muted)]",
   paused: "bg-[color:var(--g-border-default)]",
 }
 
@@ -465,7 +465,7 @@ function ChangedTimeline({ items }: { items: FlowItem[] }) {
           key={item.id}
           className="relative pl-5 before:absolute before:bottom-0 before:left-[5px] before:top-0 before:w-px before:bg-[color:var(--g-border-subtle)] first:before:top-4 last:before:bottom-auto last:before:h-4"
         >
-          <span aria-hidden className="absolute left-[2px] top-[15px] size-[7px] rounded-full border border-[color:var(--g-border-strong)] bg-background" />
+          <span aria-hidden className="absolute left-[2px] top-[15px] size-[7px] rounded-full border border-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]" />
           <Link href={item.href} className={cn("block rounded-[4px] px-2 py-2 transition-colors hover:bg-[color:var(--g-surface-1)]", ITEM_FOCUS)}>
             <span className="line-clamp-2 text-sm leading-snug text-foreground/90">{item.title}</span>
             <span className="mt-0.5 block truncate text-[13px] text-muted-foreground">
@@ -633,7 +633,7 @@ export function OperatingFlow({
                     )}
                   >
                     {item.title}
-                    <ArrowRight className="size-3.5 text-muted-foreground" aria-hidden />
+                    <ArrowRight className="size-3.5 text-[color:var(--g-brand)]" aria-hidden />
                   </Link>
                 </li>
               ))}
