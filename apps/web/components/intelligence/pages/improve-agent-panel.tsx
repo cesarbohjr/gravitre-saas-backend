@@ -208,7 +208,7 @@ export function ImproveAgentPanel({
         <p className={TYPE.meta}>
           Create an agent first.{" "}
           <Link href={APP_ROUTES.agents} className="font-medium text-[color:var(--g-brand-active)] hover:underline">
-            Open Agents
+            Open agents
           </Link>
         </p>
       ) : null}
@@ -315,7 +315,7 @@ export function ImproveAgentPanel({
                   <p className={TYPE.meta}>
                     {fineTunesError ? "Fine-tuned models could not be loaded." : "No ready fine-tuned models yet."}{" "}
                     <Link href={APP_ROUTES.training} className="font-medium text-[color:var(--g-brand-active)] hover:underline">
-                      Open Training
+                      Open training
                     </Link>
                   </p>
                 </li>
@@ -402,7 +402,7 @@ export function ImproveAgentPanel({
                       <li key={`${step.kind}-${step.target ?? index}`} className="flex items-start gap-3 px-3 py-2">
                         <span
                           className={cn(
-                            "mt-0.5 font-mono text-[10px] uppercase",
+                            "mt-0.5 text-xs font-medium",
                             line.outcome === "confirmed"
                               ? "text-[color:var(--g-brand-active)]"
                               : line.outcome === "failed"

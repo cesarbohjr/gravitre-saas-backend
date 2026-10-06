@@ -8,9 +8,11 @@
 import { useMemo } from "react"
 import useSWR from "swr"
 import { connectorsApi } from "@/lib/api"
-import { connectorVendorKey } from "@/lib/connectors"
+import { CONNECTOR_CATALOG, connectorVendorKey } from "@/lib/connectors"
 
 export type ConnectedAgentApp = { id: string; name: string; type: string }
+
+const KNOWN_APP_KEYS = new Set(CONNECTOR_CATALOG.map((entry) => entry.vendorKey))
 
 export const CONNECTED_APP_STATUSES = new Set(["connected", "healthy", "active", "syncing"])
 
@@ -27,9 +29,19 @@ export function connectedAppsFromConnectors(rows: ConnectorRow[] | undefined | n
   return Array.from(byKey.values()).sort((a, b) => a.name.localeCompare(b.name))
 }
 
-/** Saved `systems` / `permissions` entries (keys or older display names) as integration keys. */
+/**
+ * Saved `systems` / `permissions` entries (keys or older display names) as integration keys.
+ * A multi-word label that matches no known app (e.g. a custom scope) is kept as written
+ * rather than squashed into a key nothing matches.
+ */
 export function agentSystemKeys(saved: string[] | undefined | null): string[] {
-  const keys = (saved ?? []).map((name) => connectorVendorKey(String(name ?? ""))).filter(Boolean)
+  const keys = (saved ?? [])
+    .map((name) => {
+      const raw = String(name ?? "").trim()
+      const key = connectorVendorKey(raw)
+      return /\s/.test(raw) && !KNOWN_APP_KEYS.has(key) ? raw : key
+    })
+    .filter(Boolean)
   return Array.from(new Set(keys))
 }
 
