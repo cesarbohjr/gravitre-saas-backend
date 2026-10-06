@@ -4822,6 +4822,25 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
             {"error_code": exc.code, "error": str(exc)[:200]},
         )
         raise ToolValidationError(str(exc), code=exc.code) from exc
+    from app.services.agent_guardrail_limits import AgentGuardrailLimitError, enforce_agent_guardrail_limits
+
+    try:
+        enforce_agent_guardrail_limits(ctx, action)
+    except AgentGuardrailLimitError as exc:
+        _write_tool_audit(
+            ctx,
+            action,
+            cid,
+            "tool.invoke.failed",
+            {"error_code": exc.code, "error": str(exc)[:200]},
+        )
+        return NormalizedResult(
+            success=False,
+            action=action,
+            error_code=exc.code,
+            error_message=str(exc),
+            connector_id=cid,
+        )
     if federated_grant is None:
         try:
             assert_agent_tool_permission(ctx, action, cid, connector_type)

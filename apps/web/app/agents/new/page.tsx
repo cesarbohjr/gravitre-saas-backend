@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -28,8 +28,8 @@ import {
 } from "@/components/agents/agent-knowledge-packs-editor"
 import { formatReferenceFolderBreadcrumb } from "@/lib/agent-reference-folders"
 import type { AgentReferenceFolder } from "@/types/api"
-import { agentsApi, connectorsApi } from "@/lib/api"
-import { connectorVendorKey } from "@/lib/connectors"
+import { agentsApi } from "@/lib/api"
+import { useConnectedAgentApps } from "@/lib/agent-connected-apps"
 import {
   AGENT_DEPARTMENT_OPTIONS,
   inferAgentDepartment,
@@ -57,8 +57,10 @@ import {
   AGENT_CAPABILITY_OPTIONS,
   AGENT_GUARDRAIL_OPTIONS,
   capabilityNamesFromIds,
+  DEFAULT_MAX_ACTIONS_PER_HOUR,
   guardrailNamesFromIds,
 } from "@/lib/agent-config-catalog"
+import { MaxActionsPerHourInput } from "@/components/gravitre/max-actions-per-hour-input"
 import {
   DEFAULT_AGENT_RESPONSE_STYLE,
   responseStyleLabel,
@@ -75,9 +77,6 @@ const steps = [
 
 const suggestedCapabilities = AGENT_CAPABILITY_OPTIONS
 const guardrailOptions = AGENT_GUARDRAIL_OPTIONS
-const CONNECTED_STATUSES = new Set(["connected", "healthy", "active", "syncing"])
-
-type ConnectedApp = { id: string; name: string; type: string }
 
 export default function NewAgentPage() {
   const router = useRouter()
@@ -105,6 +104,7 @@ export default function NewAgentPage() {
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([])
   const [selectedSystems, setSelectedSystems] = useState<string[]>([])
   const [selectedGuardrails, setSelectedGuardrails] = useState<string[]>(["approval-changes", "admin-delete"])
+  const [maxActionsPerHour, setMaxActionsPerHour] = useState(DEFAULT_MAX_ACTIONS_PER_HOUR)
   const [referenceFolders, setReferenceFolders] = useState<AgentReferenceFolder[]>([])
   const [knowledgePacks, setKnowledgePacks] = useState<KnowledgePackSelection[]>([])
   const suggestedIdentity = useSuggestedAgentIdentity(agentName, agentPurpose)
@@ -118,21 +118,10 @@ export default function NewAgentPage() {
   const [responseStyle, setResponseStyle] = useState(DEFAULT_AGENT_RESPONSE_STYLE)
   const [customCapabilities] = useState<string[]>([])
   const {
-    data: connectorData,
+    apps: availableSystems,
     error: connectorError,
     isLoading: connectorsLoading,
-  } = useSWR("agent-create-connected-apps", () => connectorsApi.list(), { revalidateOnFocus: false })
-  // One row per connected vendor; the key matches the agent tool registry's integration names.
-  const availableSystems = useMemo<ConnectedApp[]>(() => {
-    const byKey = new Map<string, ConnectedApp>()
-    for (const row of connectorData?.connectors ?? []) {
-      if (!CONNECTED_STATUSES.has(String(row.status ?? "").toLowerCase())) continue
-      const id = connectorVendorKey(row.type ?? row.vendor ?? "")
-      if (!id || byKey.has(id)) continue
-      byKey.set(id, { id, name: row.name || row.vendor || id, type: row.vendor || row.type || "App" })
-    }
-    return Array.from(byKey.values()).sort((a, b) => a.name.localeCompare(b.name))
-  }, [connectorData])
+  } = useConnectedAgentApps()
 
   const toggleCapability = (id: string) => {
     setSelectedCapabilities(prev =>
@@ -199,6 +188,7 @@ export default function NewAgentPage() {
         capabilities: selectedCapabilityNames,
         systems: selectedSystemNames,
         guardrails: selectedGuardrailNames,
+        ...(selectedGuardrails.includes("rate-limit") ? { guardrailLimits: { maxActionsPerHour } } : {}),
         referenceFolders,
         knowledgePacks,
         status: "active",
@@ -552,6 +542,10 @@ export default function NewAgentPage() {
                     )
                   })}
                 </div>
+
+                {selectedGuardrails.includes("rate-limit") ? (
+                  <MaxActionsPerHourInput value={maxActionsPerHour} onChange={setMaxActionsPerHour} />
+                ) : null}
 
                 <div className="rounded-lg border border-warning/50 bg-warning/10 p-4">
                   <div className="flex items-start gap-3">

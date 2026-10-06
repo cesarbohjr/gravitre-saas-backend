@@ -524,6 +524,61 @@ def get_agent_persona(agent: dict[str, Any]) -> AgentPersona:
     return AGENT_PERSONAS["DEFAULT"]
 
 
+def agent_list_field(agent: dict[str, Any] | None, field: str, *, limit: int = 20) -> list[str]:
+    """Normalize an agents.<field> jsonb list (strings or {name|label|rule|...}) to text."""
+    raw = (agent or {}).get(field) if isinstance(agent, dict) else None
+    if not isinstance(raw, list):
+        return []
+    out: list[str] = []
+    for item in raw:
+        if isinstance(item, dict):
+            text = next(
+                (
+                    str(item.get(k)).strip()
+                    for k in ("rule", "text", "label", "name", "title", "description", "id")
+                    if isinstance(item.get(k), str) and str(item.get(k)).strip()
+                ),
+                "",
+            )
+            if item.get("enabled") is False:
+                text = ""
+        else:
+            text = str(item).strip() if item is not None else ""
+        if text and text not in out:
+            out.append(text[:200])
+        if len(out) >= limit:
+            break
+    return out
+
+
+def build_agent_instructions_section(agent: dict[str, Any] | None, *, max_custom_chars: int = 2000) -> str:
+    """Short "## Agent instructions" block: purpose, skills, admin safety rules, custom prompt.
+
+    Used by prompts (e.g. unified LIVE / voice) that do not embed the full
+    build_agent_system_prompt identity block.
+    """
+    if not isinstance(agent, dict):
+        return ""
+    lines: list[str] = []
+    purpose = str(agent.get("purpose") or agent.get("description") or "").strip()
+    if purpose:
+        lines.append(f"Primary purpose: {purpose[:500]}")
+    skills = agent_list_field(agent, "capabilities")
+    if skills:
+        lines.append(f"Assigned skills: {', '.join(skills)}")
+    rules = agent_list_field(agent, "guardrails")
+    if rules:
+        lines.append("Safety rules set by your admin (always follow):")
+        lines.extend(f"- {rule}" for rule in rules)
+    config = agent.get("config") if isinstance(agent.get("config"), dict) else {}
+    custom = str(config.get("system_prompt") or config.get("systemPrompt") or "").strip()
+    if custom:
+        lines.append(f"Agent-specific instructions:\n{custom[:max_custom_chars]}")
+    if not lines:
+        return ""
+    return "## Agent instructions\n" + "\n".join(lines)
+
+
 def build_agent_system_prompt(
     agent: dict[str, Any],
     *,
@@ -573,10 +628,10 @@ def build_agent_system_prompt(
         lines.append(f"Primary purpose: {purpose}")
     if systems_text:
         lines.append(f"Declared systems: {systems_text}")
-    capabilities = [str(c).strip() for c in (agent.get("capabilities") or []) if str(c).strip()]
+    capabilities = agent_list_field(agent, "capabilities")
     if capabilities:
         lines.append(f"Assigned skills: {', '.join(capabilities)}")
-    guardrails = [str(g).strip() for g in (agent.get("guardrails") or []) if str(g).strip()]
+    guardrails = agent_list_field(agent, "guardrails")
     if guardrails:
         lines.append("Safety rules set by your admin:")
         lines.extend(f"- {rule}" for rule in guardrails)

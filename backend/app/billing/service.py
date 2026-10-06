@@ -151,6 +151,16 @@ TOKENS_PER_CREDIT = 1000
 # Credit multiplier by model-name substring (first match wins). Keep current
 # provider families only; flagship reasoning models cost more credits per token.
 MODEL_MULTIPLIERS: list[tuple[str, float]] = [
+    # Current lineup (app/services/llm_catalog.py). Order matters: more specific
+    # needles (flash-lite, 3.1-pro) precede the broader family needle.
+    ("gpt-6-astra", 3.0),
+    ("gpt-6.1-sol", 1.5),
+    ("gpt-6-luna", 0.3),
+    ("claude-fable", 3.0),
+    ("claude-opus", 2.5),
+    ("gemini-3.1-pro", 1.5),
+    ("flash-lite", 0.3),
+    ("gemini-3", 1.0),
     ("gpt-5.5", 2.0),
     ("gpt-5.4-mini", 1.0),
     ("gpt-5.4-nano", 0.4),

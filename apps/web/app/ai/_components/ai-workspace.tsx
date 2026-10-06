@@ -153,6 +153,7 @@ import {
   AiVoiceAgentPicker,
 } from "./ai-voice-agent-picker"
 import { voiceProfileIsConfigured } from "@/lib/voice-configure-gate"
+import { resolveVoiceAgentId, showVoiceAgentPicker } from "@/lib/voice-agent-scope"
 import { AI_EXAMPLE_PROMPTS, AI_MODES, getModeMeta, type ModeId } from "./ai-mode-config"
 import { ConnectedFilePickerDialog } from "./connected-file-picker-dialog"
 import type { ConnectedFileAttachment } from "@/lib/connected-files-api"
@@ -351,6 +352,15 @@ export function AiWorkspace({
     () => resolveChatPersonaLabel(preferredPersona),
     [preferredPersona],
   )
+  // Agent-scoped chat speaks as the scoped agent (style, skills, knowledge,
+  // guardrails); agents without a voice profile use the default voice.
+  const scopedVoiceAgentId = agentScope?.agentId ?? null
+  const effectiveVoiceAgentId = resolveVoiceAgentId({
+    scopedAgentId: scopedVoiceAgentId,
+    pickedAgentId:
+      voiceAgentId !== AI_VOICE_AGENT_DEFAULT && selectedVoiceAgent ? selectedVoiceAgent.id : null,
+  })
+  const voicePickerVisible = showVoiceAgentPicker(scopedVoiceAgentId)
   const handleVoiceAgentChange = useCallback((next: string) => {
     setVoiceAgentId(next)
     if (typeof window !== "undefined") {
@@ -1935,10 +1945,7 @@ export function AiWorkspace({
     conversationId: activeConversationId,
     micDeviceId,
     micProfileOverride,
-    agentId:
-      voiceAgentId !== AI_VOICE_AGENT_DEFAULT && selectedVoiceAgent
-        ? selectedVoiceAgent.id
-        : undefined,
+    agentId: effectiveVoiceAgentId,
     getHistory: () =>
       messagesRef.current.slice(-24).map((m) => ({
         role: m.role,
@@ -2028,10 +2035,7 @@ export function AiWorkspace({
       setDuplexVoiceError(undefined)
       void speakAgentVoice(assistantText, {
         messageId: `voice-audio-recovery-${Date.now()}`,
-        agentId:
-          voiceAgentId !== AI_VOICE_AGENT_DEFAULT && selectedVoiceAgent
-            ? selectedVoiceAgent.id
-            : undefined,
+        agentId: effectiveVoiceAgentId,
       })
     },
     onError: (message, billing) => {
@@ -2068,10 +2072,7 @@ export function AiWorkspace({
     lastSpokenMessageIdRef.current = lastAssistant.id
     void speakAgentVoice(text, {
       messageId: lastAssistant.id,
-      agentId:
-        voiceAgentId !== AI_VOICE_AGENT_DEFAULT && selectedVoiceAgent
-          ? selectedVoiceAgent.id
-          : undefined,
+      agentId: effectiveVoiceAgentId,
     })
   }, [
     modality,
@@ -2079,8 +2080,7 @@ export function AiWorkspace({
     isChatBusy,
     messages,
     speakAgentVoice,
-    voiceAgentId,
-    selectedVoiceAgent,
+    effectiveVoiceAgentId,
     voiceDuplex.isActive,
   ])
 
@@ -2659,14 +2659,16 @@ export function AiWorkspace({
                 />
               </div>
 
-              <AiVoiceAgentPicker
-                agents={voiceAgents}
-                value={selectedVoiceAgent?.id ?? AI_VOICE_AGENT_DEFAULT}
-                onChange={handleVoiceAgentChange}
-                disabled={!user}
-                loading={Boolean(user) && agentsLoading}
-                className="hidden h-8 gap-1 px-2.5 text-[11px] sm:inline-flex"
-              />
+              {voicePickerVisible ? (
+                <AiVoiceAgentPicker
+                  agents={voiceAgents}
+                  value={selectedVoiceAgent?.id ?? AI_VOICE_AGENT_DEFAULT}
+                  onChange={handleVoiceAgentChange}
+                  disabled={!user}
+                  loading={Boolean(user) && agentsLoading}
+                  className="hidden h-8 gap-1 px-2.5 text-[11px] sm:inline-flex"
+                />
+              ) : null}
 
               <Button
                 variant="ghost"
@@ -2739,14 +2741,16 @@ export function AiWorkspace({
               chatMode={chatMode}
               onChatModeChange={setChatMode}
             />
-            <AiVoiceAgentPicker
-              agents={voiceAgents}
-              value={selectedVoiceAgent?.id ?? AI_VOICE_AGENT_DEFAULT}
-              onChange={handleVoiceAgentChange}
-              disabled={!user}
-              loading={Boolean(user) && agentsLoading}
-              className="h-8 shrink-0 px-2.5 text-[11px]"
-            />
+            {voicePickerVisible ? (
+              <AiVoiceAgentPicker
+                agents={voiceAgents}
+                value={selectedVoiceAgent?.id ?? AI_VOICE_AGENT_DEFAULT}
+                onChange={handleVoiceAgentChange}
+                disabled={!user}
+                loading={Boolean(user) && agentsLoading}
+                className="h-8 shrink-0 px-2.5 text-[11px]"
+              />
+            ) : null}
             <div className="ml-auto shrink-0">
               <ChatThemePicker
                 value={chatBackground}

@@ -81,10 +81,14 @@ def resolve_voice_and_tts_model(
     safeguard against that regression class recurring silently (Phase 4 of
     the 2026-09-06 investigation).
     """
-    _key, voice_id = resolve_voice_id(settings, voice_key)
+    from app.services.voice_agent_profile import resolve_session_voice
+
+    # Agent voice_profile (voice_id, then voice_key) wins over the requested voice;
+    # agents without a profile use the requested or default voice.
+    _key, voice_id = resolve_voice_id(settings, resolve_session_voice(agent, voice_key))
     profile = (agent or {}).get("voice_profile") if isinstance(agent, dict) else None
     if isinstance(profile, dict) and profile.get("voice_id"):
-        voice_id = str(profile.get("voice_id"))
+        voice_id = str(profile.get("voice_id")).strip() or voice_id
     model = (
         (profile.get("tts_model") if isinstance(profile, dict) else None)
         or settings.elevenlabs_tts_model
@@ -183,12 +187,17 @@ def build_pipecat_voice_task(
     if stt_service is not None:
         stt, stt_info = stt_service, dict(stt_service_info or {})
     else:
+        from app.services.voice_agent_profile import agent_voice_profile
+
+        _agent_profile = agent_voice_profile(agent)
         stt, stt_info = build_pipecat_stt(
             settings,
             provider=stt_provider,
             fallback_from=stt_fallback_from,
             fallback_reason=stt_fallback_reason,
             keyterms=keyterms,
+            language=_agent_profile.get("language"),
+            turn_sensitivity=_agent_profile.get("turn_sensitivity"),
         )
         if stt_info.get("stt_provider_key") != STT_FLUX and not dg_key and stt_info.get("stt_provider_key") != "openai":
             raise RuntimeError("DEEPGRAM_API_KEY required for Pipecat voice")

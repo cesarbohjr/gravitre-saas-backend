@@ -52,6 +52,30 @@ def normalize_voice_profile(raw: Any) -> dict[str, Any]:
     }
 
 
+def agent_voice_profile(agent: dict[str, Any] | None) -> dict[str, Any]:
+    """Normalized voice_profile for an agent row (defaults when none configured)."""
+    raw = None
+    if isinstance(agent, dict):
+        raw = agent.get("voice_profile") or agent.get("voiceProfile")
+    return normalize_voice_profile(raw)
+
+
+def resolve_session_voice(agent: dict[str, Any] | None, requested_voice: str | None) -> str | None:
+    """Voice for a session: the agent's configured voice wins over the request.
+
+    Precedence (shared by the Pipecat WS pipeline and HTTP voice turns):
+    agent voice_profile.voice_id -> agent voice_profile.voice_key -> requested
+    voice (picker / query param) -> None (caller's org/default voice).
+    Agents without a voice profile therefore speak with the requested or default voice.
+    """
+    profile = agent_voice_profile(agent)
+    return (
+        profile.get("voice_id")
+        or profile.get("voice_key")
+        or (str(requested_voice).strip() if requested_voice and str(requested_voice).strip() else None)
+    )
+
+
 def agent_self_recognition_section(agent: dict[str, Any]) -> str:
     """Inject assigned name into system context (Module D-style section, not a fork)."""
     name = str(agent.get("name") or "").strip()

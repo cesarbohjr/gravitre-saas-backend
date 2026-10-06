@@ -377,6 +377,9 @@ def resolve_agent_record(
         "status": operator.get("status") or "active",
         "config": config,
         "model": config.get("model"),
+        # Operator-only agents keep their fine-tune assignment in config
+        # (agents.trained_model_id has no operators equivalent column).
+        "trained_model_id": str(config.get("trained_model_id") or "").strip() or None,
     }
 
 
@@ -410,7 +413,10 @@ def select_model_for_agent(
     inference = resolve_agent_inference_model(client, org_id, agent)
     if inference.fine_tuned_openai_id:
         return inference.fine_tuned_openai_id
-    configured = (agent.get("model") or inference.base_model or "").strip()
+    from app.services.agent_finetune_service import explicit_agent_model
+
+    # "auto" (the creator default) means pick by task complexity, not a literal model id.
+    configured = explicit_agent_model(agent) or (inference.base_model if getattr(inference, "trained_model_id", None) else "")
     if configured:
         return configured
     params = parameters or {}
@@ -830,8 +836,13 @@ class AgentIntelligence:
         spoken_user_text: str | None = None,
         spoken_settings: Settings | None = None,
         operator_act_section: str | None = None,
+        response_style_key: str | None = None,
     ) -> str:
-        """Shared system prompt builder for execute_task() and execute_task_streaming()."""
+        """Shared system prompt builder for execute_task() and execute_task_streaming().
+
+        ``response_style_key`` is the request/user/org resolved style; a scoped
+        agent's own ``config.response_style`` always wins over it.
+        """
         from app.services.conversational_behavior import conversational_behavior_section
         from app.services.expert_dialogue_library import expert_dialogue_prompt_section
         from app.services.gravitre_voice import (
@@ -878,12 +889,27 @@ class AgentIntelligence:
         expert_section = ""
         if isinstance(agent_config, dict):
             expert_section = expert_dialogue_prompt_section(agent_config).strip()
+        from app.services.persona_service import (
+            build_response_style_section,
+            resolve_response_style_key,
+        )
+
+        # Response style is stable per agent/user, so it lives in the cacheable prefix.
+        style_section = build_response_style_section(
+            resolve_response_style_key(
+                agent_config if isinstance(agent_config, dict) else None,
+                response_style_key,
+            ),
+            spoken=bool(spoken_mode),
+        )
         sections = [
             persona_section.strip(),
             "",
             voice_system_prompt_section().strip(),
             "",
             conversational_behavior_section().strip(),
+            "",
+            style_section.strip(),
             "",
         ]
         if expert_section:
@@ -1324,6 +1350,67 @@ class AgentIntelligence:
             "context_explanation": turn_context.context_explanation if turn_context else None,
         }
 
+    async def _load_knowledge_assignments(
+        self, client: Any, org_id: str, agent: dict[str, Any] | None
+    ) -> list[dict[str, Any]]:
+        """DB assignments for a persisted agent, else config-derived ones."""
+        from app.core.io_pool import run_io
+        from app.services.agent_knowledge_assignment_service import (
+            get_agent_knowledge_assignment_service,
+        )
+
+        svc = get_agent_knowledge_assignment_service(self.settings)
+        agent = agent if isinstance(agent, dict) else {}
+        agent_id = str(agent.get("id") or "")
+        try:
+            if agent_id and is_persisted_agent_id(agent_id):
+                return list(await run_io(svc.list_assignments, client, org_id, agent_id) or [])
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("execute_task knowledge assignments skipped agent_id=%s error=%s", agent_id, exc)
+        try:
+            return svc.resolve_assignments(agent)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("execute_task config assignments skipped agent_id=%s error=%s", agent_id, exc)
+            return []
+
+    async def _knowledge_fabric_section(
+        self,
+        client: Any,
+        query: str,
+        agent: dict[str, Any] | None,
+        assignments: list[dict[str, Any]] | None,
+        settings: Settings,
+    ) -> str:
+        """Assigned knowledge-pack excerpts (same source the chat orchestrator uses)."""
+        from app.services.agent_knowledge_assignment_service import AgentKnowledgeAssignmentService
+
+        pack_ids = AgentKnowledgeAssignmentService.assigned_pack_ids(assignments)
+        if not pack_ids:
+            return ""
+        try:
+            from app.core.io_pool import run_io
+            from app.knowledge_fabric.retrieval import retrieve_knowledge_fabric
+
+            fabric = await run_io(
+                retrieve_knowledge_fabric,
+                client,
+                query,
+                assigned_pack_ids=pack_ids,
+                agent_department=str((agent or {}).get("department") or ""),
+                top_k=6,
+                settings=settings,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("execute_task knowledge_fabric skipped error=%s", exc)
+            return ""
+        lines = []
+        for hit in (fabric or {}).get("results") or []:
+            cite = hit.get("citation") or hit.get("source_id") or "knowledge pack"
+            lines.append(f"- [{cite}]\n{hit.get('content') or ''}")
+        if not lines:
+            return ""
+        return "## Assigned Knowledge Packs\n" + "\n\n".join(lines[:6])
+
     async def execute_task(
         self,
         *,
@@ -1403,14 +1490,29 @@ class AgentIntelligence:
         )
         task_text = resolved_plan.task_text
 
+        # Agent knowledge (assignments + config knowledge_packs/datasets) scopes
+        # retrieval exactly like the chat orchestrator does for jobs/workflows/ReAct.
+        knowledge_assignments = (
+            params.get("knowledge_assignments")
+            if isinstance(params.get("knowledge_assignments"), list)
+            else await self._load_knowledge_assignments(client, org_id, agent)
+        )
+        retrieval_params = (
+            {**params, "knowledge_assignments": knowledge_assignments}
+            if knowledge_assignments
+            else params
+        )
         retrieval = await self.unified_retrieval.retrieve(
             org_id=org_id,
             query=task_text,
             client=client,
             agent=agent,
-            parameters=params,
+            parameters=retrieval_params,
             environment_name=environment_name,
             user_id=actor_id,
+        )
+        fabric_section = await self._knowledge_fabric_section(
+            client, task_text, agent, knowledge_assignments, active_settings
         )
         org_context = retrieval.org_context
         connected = org_context.get("connectedIntegrations") or self.tool_registry.list_connected_integrations(
@@ -1456,6 +1558,8 @@ class AgentIntelligence:
             entity_block = "\n\n".join(
                 p for p in (entity_block or "", cognitive_sections["knowledge_section"]) if p
             ).strip()
+        if fabric_section:
+            entity_block = "\n\n".join(p for p in (entity_block or "", fabric_section) if p).strip()
 
         task_prompt = self._build_task_prompt(
             task_text,
@@ -1485,6 +1589,10 @@ class AgentIntelligence:
             entity_relationship_section=entity_block or None,
             conflicts=rag_conflicts,
             operator_act_section=operator_act.section,
+            response_style_key=str(
+                params.get("response_style") or params.get("preferred_persona") or ""
+            ).strip()
+            or None,
         )
         persona = get_agent_persona(agent)
         model = select_model_for_agent(agent, client, org_id, task_text, parameters=params)
@@ -3566,6 +3674,15 @@ class AgentIntelligence:
         early_agent: dict[str, Any] | None = None
         if agent_id:
             early_agent = resolve_agent_record(client, org_id, str(agent_id))
+        # A scoped agent's own response style beats request/user/org preference.
+        from app.services.persona_service import agent_response_style_key
+
+        _agent_style_key = agent_response_style_key(early_agent)
+        if _agent_style_key and _agent_style_key != persona.get("persona_key"):
+            _spoken_lite_flag = persona.get("spoken_lite_skip")
+            persona = get_persona_service(active_settings).persona_for_key(_agent_style_key)
+            if _spoken_lite_flag:
+                persona["spoken_lite_skip"] = True
 
         # Voice latency Phase 1 — tiered reasoning depth (same brain; not a fork).
         # Simple spoken turns skip heavy KNOWLEDGE merge + non-mandatory critic LLM.
@@ -4123,6 +4240,7 @@ class AgentIntelligence:
                         cognitive_context=cognitive_ctx,
                         on_text_delta=on_text_delta,
                         compiled_reasoning_context=_compiled_unified_reasoning,
+                        response_style_key=str(persona.get("persona_key") or "") or None,
                     )
                 finally:
                     if delta_queue is not None:
@@ -5231,7 +5349,9 @@ class AgentIntelligence:
             task_state = dict(task_state or {})
             task_state["current_plan"] = turn_ctx.strategic_plan
         specialist_modifier = turn_ctx.specialist_modifier
-        persona_modifier_parts = [part for part in (persona.get("system_prompt_modifier"), specialist_modifier) if part]
+        # The persona's domain emphasis now ships inside ## Response style (stable
+        # prefix) via response_style_key; only volatile specialist/research focus here.
+        persona_modifier_parts = [part for part in (specialist_modifier,) if part]
         from app.services.adaptive_research_cascade import build_research_policy_extension
 
         research_policy = build_research_policy_extension(
@@ -5268,6 +5388,7 @@ class AgentIntelligence:
             spoken_mode=bool(spoken_mode),
             spoken_user_text=query,
             spoken_settings=active_settings,
+            response_style_key=str(persona.get("persona_key") or "") or None,
             operator_act_section=build_operator_act_context(
                 user_text=task_text,
                 connected_integrations=connected_list,

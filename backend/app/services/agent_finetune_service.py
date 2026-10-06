@@ -10,6 +10,7 @@ from fastapi import HTTPException, status
 from pydantic import BaseModel
 
 from app.core.errors import error_detail
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.core.supabase_response import response_error
 from app.services.model_router import ModelResponse, ModelRouter, TaskType
 from app.services.providers.base import AllProvidersFailedError, ProviderInvalidResponseError
@@ -22,6 +23,14 @@ AUDIT_AGENT_MODEL_ASSIGNED = "agent.finetuned_model.assigned"
 AUDIT_AGENT_MODEL_INFERENCE = "agent.model.inference"
 
 DEFAULT_AGENT_BASE_MODEL = "gpt-4.1-mini"
+# Values the creator saves when the user leaves the model to Gravitre.
+AUTO_MODEL_VALUES = frozenset({"", "auto", "automatic", "default"})
+
+
+def explicit_agent_model(agent: dict[str, Any]) -> str | None:
+    """The model id an agent was pinned to, or None when it is left on auto."""
+    value = str(agent.get("model") or "").strip()
+    return None if value.lower() in AUTO_MODEL_VALUES else value
 
 
 @dataclass(frozen=True)
@@ -44,7 +53,7 @@ def _extract_fine_tuned_openai_id(metrics: dict[str, Any] | None) -> str | None:
 def resolve_agent_inference_model(client: Any, org_id: str, agent: dict[str, Any]) -> AgentInferenceModel:
     """Resolve base and optional fine-tuned OpenAI model for an agent."""
     agent_id = str(agent["id"])
-    base_model = (agent.get("model") or "").strip() or DEFAULT_AGENT_BASE_MODEL
+    base_model = explicit_agent_model(agent) or DEFAULT_AGENT_BASE_MODEL
     trained_model_id = agent.get("trained_model_id")
     if not trained_model_id:
         return AgentInferenceModel(
@@ -111,6 +120,78 @@ def resolve_agent_inference_model(client: Any, org_id: str, agent: dict[str, Any
     )
 
 
+def _validate_assignable_model(client: Any, org_id: str, trained_model_id: str) -> dict[str, Any]:
+    model = (
+        client.table("trained_models")
+        .select("id, org_id, model_type, status, name")
+        .eq("id", trained_model_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    if not model.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=error_detail("Trained model not found", "MODEL_NOT_FOUND"),
+        )
+    row = model.data[0]
+    if row.get("model_type") != "fine_tuned_llm":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail("Only fine_tuned_llm models can be assigned to agents", "INVALID_MODEL_TYPE"),
+        )
+    if row.get("status") not in {"ready", "deployed"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail("Model must be ready or deployed before assignment", "MODEL_NOT_READY"),
+        )
+    return dict(row)
+
+
+def load_operator_row(client: Any, org_id: str, agent_id: str) -> dict[str, Any] | None:
+    """Operator-only agent row (agents without a public.agents row), org-scoped."""
+    operator = (
+        client.table("operators")
+        .select("id, org_id, name, config")
+        .eq("id", agent_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    if not operator.data:
+        return None
+    return dict(operator.data[0])
+
+
+def _assign_trained_model_to_operator(
+    client: Any,
+    *,
+    org_id: str,
+    agent_id: str,
+    operator: dict[str, Any],
+    trained_model_id: str | None,
+) -> dict[str, Any]:
+    """Operator-only agents store the assignment in operators.config.trained_model_id.
+
+    resolve_agent_record reads it back from there, so runtime inference sees it.
+    """
+    config = safe_normalize_stored_dict(operator, key="config")
+    if trained_model_id:
+        config["trained_model_id"] = trained_model_id
+    else:
+        config.pop("trained_model_id", None)
+    updated = (
+        client.table("operators")
+        .update({"config": config, "updated_at": datetime.now(timezone.utc).isoformat()})
+        .eq("id", agent_id)
+        .eq("org_id", org_id)
+        .execute()
+    )
+    if not updated.data:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Agent update failed")
+    return {"id": agent_id, "org_id": org_id, "trained_model_id": trained_model_id, "config": config}
+
+
 def assign_trained_model_to_agent(
     client: Any,
     *,
@@ -119,7 +200,7 @@ def assign_trained_model_to_agent(
     trained_model_id: str | None,
     actor_id: str,
 ) -> dict[str, Any]:
-    """Assign or clear a fine-tuned model on an agent."""
+    """Assign or clear a fine-tuned model on an agent (agents row, else operator config)."""
     agent = (
         client.table("agents")
         .select("id, org_id, name, trained_model_id")
@@ -128,49 +209,38 @@ def assign_trained_model_to_agent(
         .limit(1)
         .execute()
     )
-    if not agent.data:
+
+    operator = None if agent.data else load_operator_row(client, org_id, agent_id)
+    if not agent.data and operator is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
 
     if trained_model_id:
-        model = (
-            client.table("trained_models")
-            .select("id, org_id, model_type, status, name")
-            .eq("id", trained_model_id)
+        _validate_assignable_model(client, org_id, trained_model_id)
+
+    if agent.data:
+        updated = (
+            client.table("agents")
+            .update(
+                {
+                    "trained_model_id": trained_model_id,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            .eq("id", agent_id)
             .eq("org_id", org_id)
-            .limit(1)
             .execute()
         )
-        if not model.data:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=error_detail("Trained model not found", "MODEL_NOT_FOUND"),
-            )
-        row = model.data[0]
-        if row.get("model_type") != "fine_tuned_llm":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=error_detail("Only fine_tuned_llm models can be assigned to agents", "INVALID_MODEL_TYPE"),
-            )
-        if row.get("status") not in {"ready", "deployed"}:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=error_detail("Model must be ready or deployed before assignment", "MODEL_NOT_READY"),
-            )
-
-    updated = (
-        client.table("agents")
-        .update(
-            {
-                "trained_model_id": trained_model_id,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }
+        if not updated.data:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Agent update failed")
+        result = dict(updated.data[0])
+    else:
+        result = _assign_trained_model_to_operator(
+            client,
+            org_id=org_id,
+            agent_id=agent_id,
+            operator=operator or {},
+            trained_model_id=trained_model_id,
         )
-        .eq("id", agent_id)
-        .eq("org_id", org_id)
-        .execute()
-    )
-    if not updated.data:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Agent update failed")
 
     write_audit_event(
         client,
@@ -181,7 +251,7 @@ def assign_trained_model_to_agent(
         resource_id=agent_id,
         metadata={"trainedModelId": trained_model_id},
     )
-    return dict(updated.data[0])
+    return result
 
 
 def list_deployable_fine_tuned_models(client: Any, org_id: str) -> list[dict[str, Any]]:

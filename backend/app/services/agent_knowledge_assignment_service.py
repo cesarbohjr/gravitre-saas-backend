@@ -81,8 +81,37 @@ class AgentKnowledgeAssignmentService:
                     )
                 )
                 assignments[-1]["fromConfig"] = True
+            elif isinstance(pack, str) and pack.strip():
+                # Agent creator / PATCH may store bare pack ids (e.g. "pack.sales.core").
+                assignments.append(
+                    self._serialize_row(
+                        {
+                            "agent_id": agent.get("id"),
+                            "source_type": "knowledge_pack",
+                            "source_id": pack.strip(),
+                            "label": pack.strip(),
+                            "freshness_status": "unknown",
+                            "enabled": True,
+                        }
+                    )
+                )
+                assignments[-1]["fromConfig"] = True
         for dataset in config.get("training_datasets") or config.get("datasets") or []:
-            if isinstance(dataset, dict):
+            if isinstance(dataset, str) and dataset.strip():
+                assignments.append(
+                    self._serialize_row(
+                        {
+                            "agent_id": agent.get("id"),
+                            "source_type": "dataset",
+                            "source_id": dataset.strip(),
+                            "label": dataset.strip(),
+                            "freshness_status": "unknown",
+                            "enabled": True,
+                        }
+                    )
+                )
+                assignments[-1]["fromConfig"] = True
+            elif isinstance(dataset, dict):
                 assignments.append(
                     self._serialize_row(
                         {
@@ -232,6 +261,19 @@ class AgentKnowledgeAssignmentService:
             row["freshness_status"] = freshness
             updated.append(row)
         return updated
+
+    @staticmethod
+    def assigned_pack_ids(assignments: list[dict[str, Any]] | None) -> list[str]:
+        """Enabled knowledge-fabric pack ids (``pack.*``) from serialized or raw rows."""
+        ids: list[str] = []
+        for row in assignments or []:
+            if not isinstance(row, dict) or not row.get("enabled", True):
+                continue
+            source_type = str(row.get("sourceType") or row.get("source_type") or "").lower()
+            source_id = str(row.get("sourceId") or row.get("source_id") or "").strip()
+            if source_type == "knowledge_pack" and source_id.startswith("pack.") and source_id not in ids:
+                ids.append(source_id)
+        return ids
 
     def build_prompt_section(self, assignments: list[dict[str, Any]]) -> str:
         enabled = [row for row in assignments if row.get("enabled", True)]

@@ -385,7 +385,8 @@ def test_persona_never_overrides_confidence_scores():
 
 
 def test_persona_modifiers_are_domain_focus_only():
-    """Module D: overlays must not redefine tone/humor (base Voice wins)."""
+    """system_prompt_modifier is domain emphasis only; tone/length live in
+    RESPONSE_STYLE_CRITERIA (see tests/services/test_response_style.py)."""
     banned = ("be warm", "be energetic", "humor", "communicate at the c-suite")
     for key, persona in PersonaService.COMMUNICATION_PERSONAS.items():
         mod = str(persona.get("system_prompt_modifier") or "").lower()

@@ -22,12 +22,6 @@ export type AgentCapabilityOption = {
   icon: LucideIcon
 }
 
-export type AgentSystemOption = {
-  id: string
-  name: string
-  type: string
-}
-
 export type AgentGuardrailOption = {
   id: string
   name: string
@@ -80,15 +74,6 @@ export const AGENT_CAPABILITY_OPTIONS: AgentCapabilityOption[] = [
   },
 ]
 
-export const AGENT_SYSTEM_OPTIONS: AgentSystemOption[] = [
-  { id: "hubspot", name: "HubSpot", type: "Marketing" },
-  { id: "salesforce", name: "Salesforce", type: "CRM" },
-  { id: "slack", name: "Slack", type: "Communication" },
-  { id: "google-analytics", name: "Google Analytics", type: "Analytics" },
-  { id: "postgresql", name: "PostgreSQL", type: "Database" },
-  { id: "microsoft365", name: "Microsoft 365", type: "Productivity" },
-]
-
 export const AGENT_GUARDRAIL_OPTIONS: AgentGuardrailOption[] = [
   {
     id: "approval-changes",
@@ -105,13 +90,13 @@ export const AGENT_GUARDRAIL_OPTIONS: AgentGuardrailOption[] = [
   {
     id: "env-restrict",
     name: "Workspace limits",
-    description: "Different rules for live vs test workspaces",
+    description: "Read-only in the live workspace; changes only in test workspaces",
     recommended: false,
   },
   {
     id: "rate-limit",
     name: "Slow down",
-    description: "Limit how many things it can do per hour",
+    description: "Limit how many actions it can take per hour",
     recommended: false,
   },
 ]
@@ -130,19 +115,6 @@ export function capabilityNamesFromIds(ids: string[], customNames: string[] = []
     .filter((value): value is string => Boolean(value))
   const extras = customNames.map((name) => name.trim()).filter(Boolean)
   return Array.from(new Set([...fromCatalog, ...extras]))
-}
-
-export function systemIdsFromNames(names: string[]): string[] {
-  const normalized = names.map((name) => name.trim().toLowerCase())
-  return AGENT_SYSTEM_OPTIONS.filter((option) =>
-    normalized.includes(option.name.toLowerCase()),
-  ).map((option) => option.id)
-}
-
-export function systemNamesFromIds(ids: string[]): string[] {
-  return ids
-    .map((id) => AGENT_SYSTEM_OPTIONS.find((option) => option.id === id)?.name)
-    .filter((value): value is string => Boolean(value))
 }
 
 export function guardrailIdsFromNames(names: string[]): string[] {
@@ -165,3 +137,35 @@ export function customCapabilityNames(names: string[]): string[] {
 
 /** Keep Database icon available for legacy new-page icon map imports. */
 export { Database }
+
+export const DEFAULT_MAX_ACTIONS_PER_HOUR = 60
+export const MAX_ACTIONS_PER_HOUR_LIMIT = 10000
+
+/** Clamp a user-entered hourly action limit; invalid input falls back to the default. */
+export function normalizeMaxActionsPerHour(value: unknown): number {
+  const n = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10)
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_MAX_ACTIONS_PER_HOUR
+  return Math.min(Math.floor(n), MAX_ACTIONS_PER_HOUR_LIMIT)
+}
+
+/** Read `config.guardrail_limits` into the camel-case shape the UI uses. */
+export function readGuardrailLimitsFromConfig(config: unknown): { maxActionsPerHour: number } {
+  const record = config && typeof config === "object" ? (config as Record<string, unknown>) : {}
+  const raw = record.guardrail_limits
+  const limits = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}
+  return { maxActionsPerHour: normalizeMaxActionsPerHour(limits.max_actions_per_hour) }
+}
+
+/** Accept `guardrailLimits` or `guardrail_limits` from a request body; null when absent. */
+export function guardrailLimitsConfigFromBody(
+  body: Record<string, unknown>,
+): { max_actions_per_hour: number } | null {
+  const raw = body.guardrailLimits ?? body.guardrail_limits
+  if (!raw || typeof raw !== "object") return null
+  const record = raw as Record<string, unknown>
+  return {
+    max_actions_per_hour: normalizeMaxActionsPerHour(
+      record.maxActionsPerHour ?? record.max_actions_per_hour,
+    ),
+  }
+}
