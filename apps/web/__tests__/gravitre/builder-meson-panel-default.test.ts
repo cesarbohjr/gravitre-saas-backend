@@ -7,7 +7,7 @@ const src = readFileSync(resolve(__dirname, "../../app/workflows/[id]/builder/pa
 describe("Workflow Builder inspector modes", () => {
   it("defaults the right inspector to Configure; Meson is a mode, not a permanent column", () => {
     expect(src).toMatch(/useState<InspectorMode>\("configure"\)/)
-    expect(src).toContain("const mesonPanelOpen = inspectorMode === \"meson\"")
+    expect(src).toContain("const mesonPanelOpen = inspectorOpen && inspectorMode === \"meson\"")
     expect(src).not.toContain("gravitre:mesonPanelOpen")
   })
 
@@ -18,8 +18,23 @@ describe("Workflow Builder inspector modes", () => {
     expect(effect).not.toContain('setInspectorMode("meson")')
   })
 
-  it("selecting a node returns to Configure and a live run opens Run / Trace", () => {
-    expect(src).toMatch(/if \(selectedNodeId\) setInspectorMode\("configure"\)/)
-    expect(src).toMatch(/if \(executionStatus === "running"\) setInspectorMode\("trace"\)/)
+  it("selecting a node opens Configure and a live run opens Run / Trace", () => {
+    expect(src).toMatch(/if \(selectedNodeId\) \{\s*setInspectorMode\("configure"\)\s*setInspectorOpen\(true\)/)
+    expect(src).toMatch(/if \(executionStatus === "running"\) \{\s*setInspectorMode\("trace"\)\s*setInspectorOpen\(true\)/)
+  })
+
+  it("keeps the inspector closed until something is selected, with an X and click-outside to close", () => {
+    expect(src).toContain("const [inspectorOpen, setInspectorOpen] = useState(false)")
+    expect(src).toMatch(/\{inspectorOpen \? \(\s*<BuilderInspector/)
+    expect(src).toContain("onClose={closeInspector}")
+    const click = src.slice(src.indexOf("const handleCanvasClick"), src.indexOf("}, [closeInspector])", src.indexOf("const handleCanvasClick")))
+    expect(click).toContain("closeInspector()")
+  })
+
+  it("pans the canvas by dragging empty space and keeps the second rail canvas-only", () => {
+    expect(src).toContain("onMouseDown={handleCanvasPanStart}")
+    expect(src).toContain("el.scrollLeft = pan.left - dx")
+    expect(src).toContain("<BuilderCanvasRail")
+    expect(src).not.toContain("<BuilderNav")
   })
 })

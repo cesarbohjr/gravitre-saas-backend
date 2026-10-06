@@ -1,103 +1,150 @@
 "use client"
 
-import type { ComponentType, ReactNode } from "react"
+import type { ComponentType, CSSProperties, ReactNode } from "react"
 import Link from "next/link"
 import {
   Activity,
   Bot,
-  CalendarClock,
   Database,
   ExternalLink,
-  History,
-  Layers,
-  PenLine,
+  GitBranch,
+  Maximize2,
+  PanelRight,
   Plug,
   Plus,
-  Share2,
-  ShieldCheck,
-  Store,
-  Workflow,
+  Sparkles,
+  Wrench,
+  X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
-type IconType = ComponentType<{ className?: string }>
+type IconType = ComponentType<{ className?: string; style?: CSSProperties }>
 
-type BuilderNavItem = { label: string; href: string; icon: IconType; current?: boolean }
+export type CanvasLibraryTab = "agents" | "connectors" | "sources" | "tools" | "decisions"
+
+/** Step categories, colour-coded the same way on the canvas, the rail legend and the library. */
+export const NODE_CATEGORY_ACCENTS = {
+  ai: { label: "AI agents", color: "var(--g-intelligence)" },
+  apps: { label: "Apps & data", color: "var(--g-emerald)" },
+  logic: { label: "Logic", color: "#8b6cf0" },
+  approval: { label: "Approvals", color: "var(--g-approval)" },
+} as const
+
+export type NodeCategory = keyof typeof NODE_CATEGORY_ACCENTS
+
+export function nodeCategory(type: string): NodeCategory {
+  if (type === "agent" || type === "council") return "ai"
+  if (type === "approval") return "approval"
+  if (type === "decision" || type === "if" || type === "switch" || type === "merge" || type === "loop") return "logic"
+  return "apps"
+}
+
+type RailTool = {
+  key: string
+  label: string
+  icon: IconType
+  onClick: () => void
+  pressed?: boolean
+  accent?: string
+}
+
+function RailButton({ tool }: { tool: RailTool }) {
+  const Icon = tool.icon
+  return (
+    <button
+      type="button"
+      onClick={tool.onClick}
+      title={tool.label}
+      aria-pressed={tool.pressed}
+      className={cn(
+        "relative flex h-8 w-full items-center gap-2.5 rounded-[5px] px-2 text-[13px] font-medium transition-colors",
+        "justify-center xl:justify-start",
+        tool.pressed
+          ? "bg-[color:var(--g-emerald-pale)] text-[color:var(--g-text-primary)] before:absolute before:inset-y-1.5 before:left-0 before:w-[2px] before:rounded-full before:bg-[color:var(--g-emerald)] before:content-['']"
+          : "text-muted-foreground hover:bg-[color:var(--g-chrome-hover)] hover:text-foreground",
+      )}
+    >
+      <Icon className="h-4 w-4 shrink-0" style={tool.accent ? { color: tool.accent } : undefined} />
+      <span className="sr-only xl:not-sr-only xl:truncate">{tool.label}</span>
+    </button>
+  )
+}
 
 /**
- * Builder-local navigation. Every destination is an existing route; nothing here
- * links to a surface the product does not already ship.
+ * Canvas tool rail: adding steps by category and canvas view controls. Site navigation
+ * lives in the app sidebar; this rail only acts on the canvas.
  */
-export function BuilderNav({ workflowId }: { workflowId: string }) {
-  const groups: { label: string; items: BuilderNavItem[] }[] = [
+export function BuilderCanvasRail({
+  onAddStep,
+  onFitView,
+  onShowOverview,
+  overviewOpen = false,
+  traceOverlay = false,
+  onToggleTraceOverlay,
+  mesonOpen = false,
+  onToggleMeson,
+}: {
+  onAddStep: (tab?: CanvasLibraryTab) => void
+  onFitView: () => void
+  onShowOverview: () => void
+  overviewOpen?: boolean
+  traceOverlay?: boolean
+  onToggleTraceOverlay: () => void
+  mesonOpen?: boolean
+  onToggleMeson: () => void
+}) {
+  const groups: { label: string; tools: RailTool[] }[] = [
     {
-      label: "Workflow",
-      items: [
-        { label: "Editor", href: `/workflows/${workflowId}/builder`, icon: PenLine, current: true },
-        { label: "Runs", href: "/runs", icon: History },
-        { label: "Approvals", href: "/approvals", icon: ShieldCheck },
-        { label: "Monitoring", href: "/activity", icon: Activity },
-        { label: "Schedules", href: "/schedules", icon: CalendarClock },
+      label: "Add to canvas",
+      tools: [
+        { key: "add", label: "Add step", icon: Plus, onClick: () => onAddStep() },
+        { key: "agents", label: "Agents", icon: Bot, onClick: () => onAddStep("agents"), accent: NODE_CATEGORY_ACCENTS.ai.color },
+        { key: "connectors", label: "Apps", icon: Plug, onClick: () => onAddStep("connectors"), accent: NODE_CATEGORY_ACCENTS.apps.color },
+        { key: "sources", label: "Sources", icon: Database, onClick: () => onAddStep("sources"), accent: NODE_CATEGORY_ACCENTS.apps.color },
+        { key: "tools", label: "Tools", icon: Wrench, onClick: () => onAddStep("tools"), accent: NODE_CATEGORY_ACCENTS.apps.color },
+        { key: "decisions", label: "Logic & approvals", icon: GitBranch, onClick: () => onAddStep("decisions"), accent: NODE_CATEGORY_ACCENTS.logic.color },
       ],
     },
     {
-      label: "Resources",
-      items: [
-        { label: "Agents", href: "/agents", icon: Bot },
-        { label: "Sources", href: "/sources", icon: Database },
-        { label: "Environments", href: "/environments", icon: Layers },
-      ],
-    },
-    {
-      label: "Build",
-      items: [
-        { label: "Workflows", href: "/workflows", icon: Workflow },
-        { label: "Marketplace", href: "/marketplace/assets", icon: Store },
-      ],
-    },
-    {
-      label: "Developer",
-      items: [
-        { label: "Connectors", href: "/connectors", icon: Plug },
-        { label: "Integrations", href: "/integrations", icon: Share2 },
+      label: "Canvas",
+      tools: [
+        { key: "fit", label: "Fit workflow", icon: Maximize2, onClick: onFitView },
+        { key: "overview", label: "Workflow details", icon: PanelRight, onClick: onShowOverview, pressed: overviewOpen },
+        { key: "trace", label: "Trace overlay", icon: Activity, onClick: onToggleTraceOverlay, pressed: traceOverlay },
+        { key: "meson", label: "Meson", icon: Sparkles, onClick: onToggleMeson, pressed: mesonOpen },
       ],
     },
   ]
 
   return (
     <nav
-      aria-label="Workflow builder"
-      data-review-surface="builder-nav"
+      aria-label="Canvas tools"
+      data-review-surface="builder-canvas-rail"
       data-composition="create"
-      className="hidden shrink-0 flex-col gap-4 overflow-y-auto border-r border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] py-3 lg:flex lg:w-12 xl:w-52"
+      className="hidden shrink-0 flex-col gap-4 overflow-y-auto border-r border-[color:var(--g-border-subtle)] bg-[color:var(--g-chrome)] py-3 lg:flex lg:w-12 xl:w-48"
     >
       {groups.map((group) => (
         <div key={group.label} className="flex flex-col gap-0.5 px-1.5 xl:px-2">
           <p className="hidden px-2 pb-1 text-xs font-medium text-muted-foreground xl:block">{group.label}</p>
-          {group.items.map((item) => {
-            const Icon = item.icon
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                aria-current={item.current ? "page" : undefined}
-                title={item.label}
-                className={cn(
-                  "relative flex h-8 items-center gap-2.5 rounded-[5px] px-2 text-[13px] font-medium transition-colors",
-                  "justify-center xl:justify-start",
-                  item.current
-                    ? "bg-[color:var(--g-emerald-pale)] text-[color:var(--g-text-primary)] before:absolute before:inset-y-1.5 before:left-0 before:w-[2px] before:rounded-full before:bg-[color:var(--g-emerald)] before:content-['']"
-                    : "text-muted-foreground hover:bg-[color:var(--g-chrome-hover)] hover:text-foreground",
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="sr-only xl:not-sr-only xl:truncate">{item.label}</span>
-              </Link>
-            )
-          })}
+          {group.tools.map((tool) => (
+            <RailButton key={tool.key} tool={tool} />
+          ))}
         </div>
       ))}
+      <div className="mt-auto hidden flex-col gap-1.5 px-4 pb-1 xl:flex" aria-label="Step colours">
+        <p className="pb-0.5 text-xs font-medium text-muted-foreground">Step colours</p>
+        {Object.values(NODE_CATEGORY_ACCENTS).map((accent) => (
+          <span key={accent.label} className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span aria-hidden className="size-2 rounded-full" style={{ background: accent.color }} />
+            {accent.label}
+          </span>
+        ))}
+      </div>
+      <p className="mt-auto px-2 text-center text-[10px] leading-3 text-muted-foreground xl:hidden" title="Drag empty canvas to pan">
+        Drag to pan
+      </p>
+      <p className="hidden px-4 text-[11px] text-muted-foreground xl:block">Drag empty canvas to pan.</p>
     </nav>
   )
 }
@@ -110,18 +157,23 @@ const INSPECTOR_TABS: { id: InspectorMode; label: string }[] = [
   { id: "trace", label: "Run / Trace" },
 ]
 
-/** Right contextual inspector: one surface, three modes. Configure is the default. */
+/**
+ * Right contextual inspector: one surface, three modes. Configure is the default.
+ * The builder opens it when something on the canvas is selected; `onClose` adds the X.
+ */
 export function BuilderInspector({
   mode,
   onModeChange,
   mesonAttention = false,
   traceLive = false,
+  onClose,
   children,
 }: {
   mode: InspectorMode
   onModeChange: (mode: InspectorMode) => void
   mesonAttention?: boolean
   traceLive?: boolean
+  onClose?: () => void
   children: ReactNode
 }) {
   return (
@@ -129,7 +181,7 @@ export function BuilderInspector({
       aria-label="Inspector"
       data-review-surface="builder-inspector"
       data-inspector-mode={mode}
-      className="dark hidden min-h-0 shrink-0 flex-col border-l border-[color:var(--g-border-subtle)] bg-[color:var(--g-carbon)] text-foreground lg:flex lg:w-[300px] xl:w-[340px]"
+      className="dark hidden min-h-0 shrink-0 flex-col border-l animate-in slide-in-from-right-2 duration-200 border-[color:var(--g-border-subtle)] bg-[color:var(--g-carbon)] text-foreground lg:flex lg:w-[300px] xl:w-[340px]"
     >
       <div role="tablist" aria-label="Inspector mode" className="flex h-10 shrink-0 items-stretch gap-4 border-b border-[color:var(--g-border-subtle)] px-4">
         {INSPECTOR_TABS.map((tab) => {
@@ -165,6 +217,17 @@ export function BuilderInspector({
             </button>
           )
         })}
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close panel"
+            title="Close panel (Esc)"
+            className="ml-auto inline-flex h-7 w-7 items-center justify-center self-center rounded-[5px] text-muted-foreground transition-colors hover:bg-[color:var(--g-surface-2)] hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        ) : null}
       </div>
       <div
         role="tabpanel"

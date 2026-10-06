@@ -30,6 +30,7 @@ import {
 import {
   NodeHandle,
   NodeHandles,
+  NodeCategoryBar,
   NodeMark,
   NodeSelectionEdge,
   agentStepRole,
@@ -43,10 +44,13 @@ import {
 } from "@/components/workflows/builder-node-chrome"
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
+  BuilderCanvasRail,
   BuilderInspector,
-  BuilderNav,
   BuilderRunTrace,
   BuilderWorkflowOverview,
+  NODE_CATEGORY_ACCENTS,
+  nodeCategory,
+  type CanvasLibraryTab,
   type GraphEndNode,
   type InspectorMode,
 } from "@/components/workflows/builder-chrome"
@@ -453,6 +457,7 @@ function CanvasNode({
   reliabilityMessage?: string | null
   }) {
   const config = getNodeTypeConfig(node.type)
+  const accent = NODE_CATEGORY_ACCENTS[nodeCategory(node.type)].color
   const agentRole = node.type === "agent" ? agentStepRole(node.config, node.name) : null
   const Icon = agentRole?.Icon ?? config.icon
   const actionName = node.selectedAction
@@ -586,6 +591,7 @@ function CanvasNode({
         )}
       >
         {isSelected ? <NodeSelectionEdge /> : null}
+        <NodeCategoryBar color={accent} />
         {/* Running indicator glow */}
         {node.state === "running" && (
           <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden rounded-t-[var(--np-radius-lg)] bg-info/70 motion-safe:animate-pulse" />
@@ -628,7 +634,7 @@ function CanvasNode({
 
         {/* Node header */}
         <div className="flex items-start gap-2.5 mb-2">
-          <NodeMark vendor={node.vendor} icon={Icon} />
+          <NodeMark vendor={node.vendor} icon={Icon} tint={accent} />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium leading-5 text-foreground truncate">{node.name}</p>
             <p className="truncate text-[11px] leading-4 text-muted-foreground" data-node-type-label>
@@ -873,7 +879,10 @@ function DecisionNode({
                 "text-foreground",
               )}
             >
-              <GitBranch className={cn("h-5 w-5", isEvaluating && "animate-pulse")} />
+              <GitBranch
+                className={cn("h-5 w-5", isEvaluating && "animate-pulse")}
+                style={{ color: NODE_CATEGORY_ACCENTS.logic.color }}
+              />
             </div>
           </div>
 
@@ -1360,6 +1369,7 @@ function AgentCouncilNode({
         )}
       >
         {isSelected ? <NodeSelectionEdge /> : null}
+        <NodeCategoryBar color={NODE_CATEGORY_ACCENTS.ai.color} />
         {isDebating || node.state === "running" ? (
           <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden rounded-t-[var(--np-radius-lg)] bg-[color:var(--g-brand)] motion-safe:animate-pulse" />
         ) : null}
@@ -1380,7 +1390,7 @@ function AgentCouncilNode({
 
         {/* Header: group glyph, title, type · participant count */}
         <div className="flex items-start gap-2.5">
-          <NodeMark icon={Users} />
+          <NodeMark icon={Users} tint={NODE_CATEGORY_ACCENTS.ai.color} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium leading-5 text-foreground">{node.name}</p>
             <p className="truncate text-[11px] leading-4 text-muted-foreground" data-node-type-label>
@@ -3061,8 +3071,10 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       .slice(0, 5)
   }, [workflowListData, id])
   const [inspectorMode, setInspectorMode] = useState<InspectorMode>("configure")
+  // The inspector stays closed until something on the canvas is selected or a tool opens it.
+  const [inspectorOpen, setInspectorOpen] = useState(false)
   const [mesonAttention, setMesonAttention] = useState(false)
-  const mesonPanelOpen = inspectorMode === "meson"
+  const mesonPanelOpen = inspectorOpen && inspectorMode === "meson"
   const isNarrowViewport = useIsMobile(1024)
   const prevNodeCountRef = useRef(0)
   const [intelligenceOpen, setIntelligenceOpen] = useState(false)
@@ -3338,12 +3350,21 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   
   const changeInspectorMode = useCallback((mode: InspectorMode) => {
     setInspectorMode(mode)
+    setInspectorOpen(true)
     if (mode === "meson") setMesonAttention(false)
   }, [])
 
+  const closeInspector = useCallback(() => {
+    setInspectorOpen(false)
+    setInspectorMode("configure")
+    setSelectedNodeId(null)
+    setSelectedEdge(null)
+  }, [])
+
   const toggleMesonPanel = useCallback(() => {
-    changeInspectorMode(inspectorMode === "meson" ? "configure" : "meson")
-  }, [changeInspectorMode, inspectorMode])
+    if (mesonPanelOpen) closeInspector()
+    else changeInspectorMode("meson")
+  }, [changeInspectorMode, closeInspector, mesonPanelOpen])
 
   const graphSeededRef = useRef(false)
   useEffect(() => {
@@ -3359,13 +3380,38 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     prevNodeCountRef.current = nodes.length
   }, [nodes.length, isLoadingGraph, inspectorMode])
 
+  // Selecting a step opens Configure; clearing the selection closes Configure (other modes stay put).
+  const inspectorModeRef = useRef(inspectorMode)
+  inspectorModeRef.current = inspectorMode
   useEffect(() => {
-    if (selectedNodeId) setInspectorMode("configure")
+    if (selectedNodeId) {
+      setInspectorMode("configure")
+      setInspectorOpen(true)
+    } else if (inspectorModeRef.current === "configure") {
+      setInspectorOpen(false)
+    }
   }, [selectedNodeId])
 
   useEffect(() => {
-    if (executionStatus === "running") setInspectorMode("trace")
+    if (executionStatus === "running") {
+      setInspectorMode("trace")
+      setInspectorOpen(true)
+    }
   }, [executionStatus])
+
+  // Esc closes the inspector when no field or dialog has focus.
+  useEffect(() => {
+    if (!inspectorOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return
+      const target = e.target as HTMLElement | null
+      if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return
+      if (document.querySelector("[role=dialog][data-state=open]")) return
+      closeInspector()
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [inspectorOpen, closeInspector])
 
   // Get selected node object
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null
@@ -3500,28 +3546,32 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     }
   }, [selectedNodeId])
 
+  // Pointer position in graph coordinates: the canvas scrolls, so add its scroll offset.
+  const toCanvasPoint = useCallback((clientX: number, clientY: number) => {
+    const el = canvasRef.current
+    if (!el) return null
+    const rect = el.getBoundingClientRect()
+    return { x: clientX - rect.left + el.scrollLeft, y: clientY - rect.top + el.scrollTop }
+  }, [])
+
   // Handle connection handle drag start - supports both mouse and touch
   const handleConnectionDragStart = useCallback((nodeId: string, e: React.MouseEvent | React.TouchEvent) => {
     e.stopPropagation()
     setIsDraggingConnection(true)
     setDragSourceNodeId(nodeId)
-    const rect = canvasRef.current?.getBoundingClientRect()
-    if (rect) {
-      // Get clientX/Y from either mouse or touch event
-      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
-      setDragMousePosition({ x: clientX - rect.left, y: clientY - rect.top })
-    }
-  }, [])
+    // Get clientX/Y from either mouse or touch event
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+    const point = toCanvasPoint(clientX, clientY)
+    if (point) setDragMousePosition(point)
+  }, [toCanvasPoint])
 
   // Handle mouse move during connection drag
   const handleConnectionDragMove = useCallback((e: React.MouseEvent) => {
     if (!isDraggingConnection) return
-    const rect = canvasRef.current?.getBoundingClientRect()
-    if (rect) {
-      setDragMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top })
-    }
-  }, [isDraggingConnection])
+    const point = toCanvasPoint(e.clientX, e.clientY)
+    if (point) setDragMousePosition(point)
+  }, [isDraggingConnection, toCanvasPoint])
 
   // Handle drop on node to create connection
   const handleConnectionDrop = useCallback((targetNodeId: string) => {
@@ -3608,13 +3658,87 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     toast("Connection cancelled")
   }, [])
 
-  // Handle canvas click - deselect
+  // Click-and-drag on empty canvas pans the view (the canvas is the scroll container).
+  const [isPanning, setIsPanning] = useState(false)
+  const panRef = useRef<{ x: number; y: number; left: number; top: number; moved: boolean } | null>(null)
+  const suppressCanvasClickRef = useRef(false)
+
+  const handleCanvasPanStart = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0 && e.button !== 1) return
+    const target = e.target as HTMLElement
+    if (target.closest("[data-canvas-node], button, a, input, textarea, select, [role=button], svg, [data-no-pan]")) return
+    const el = canvasRef.current
+    if (!el) return
+    e.preventDefault()
+    panRef.current = { x: e.clientX, y: e.clientY, left: el.scrollLeft, top: el.scrollTop, moved: false }
+    setIsPanning(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isPanning) return
+    const onMove = (e: MouseEvent) => {
+      const pan = panRef.current
+      const el = canvasRef.current
+      if (!pan || !el) return
+      const dx = e.clientX - pan.x
+      const dy = e.clientY - pan.y
+      if (!pan.moved && Math.hypot(dx, dy) > 4) pan.moved = true
+      if (pan.moved) {
+        el.scrollLeft = pan.left - dx
+        el.scrollTop = pan.top - dy
+      }
+    }
+    const onUp = () => {
+      // A drag that moved is a pan, not a click on empty canvas.
+      suppressCanvasClickRef.current = panRef.current?.moved ?? false
+      panRef.current = null
+      setIsPanning(false)
+    }
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onUp)
+    return () => {
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onUp)
+    }
+  }, [isPanning])
+
+  // Bring every step into view: centre the graph, or align its top-left when it is larger than the view.
+  const fitCanvasToNodes = useCallback(() => {
+    const el = canvasRef.current
+    if (!el || nodes.length === 0) return
+    const minX = Math.min(...nodes.map((n) => n.position.x))
+    const minY = Math.min(...nodes.map((n) => n.position.y))
+    const maxX = Math.max(...nodes.map((n) => n.position.x + footprintOf(n).w))
+    const maxY = Math.max(...nodes.map((n) => n.position.y + footprintOf(n).h))
+    const pad = 48
+    const left = maxX - minX + pad * 2 <= el.clientWidth ? (minX + maxX) / 2 - el.clientWidth / 2 : minX - pad
+    const top = maxY - minY + pad * 2 <= el.clientHeight ? (minY + maxY) / 2 - el.clientHeight / 2 : minY - pad
+    el.scrollTo({ left: Math.max(0, left), top: Math.max(0, top), behavior: "smooth" })
+  }, [nodes, footprintOf])
+
+  // Scrollable graph area: the outermost steps plus room to pan past them.
+  const canvasExtent = useMemo(() => {
+    let w = 0
+    let h = 0
+    for (const n of nodes) {
+      const size = footprintOf(n)
+      w = Math.max(w, n.position.x + size.w)
+      h = Math.max(h, n.position.y + size.h)
+    }
+    return { w: w + 480, h: h + 360 }
+  }, [nodes, footprintOf])
+
+  // Handle canvas click - deselect and close the inspector (clicking outside it)
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
+    if (suppressCanvasClickRef.current) {
+      suppressCanvasClickRef.current = false
+      return
+    }
     // A node click still bubbles here after the node selected itself on mouseup.
     if ((e.target as HTMLElement).closest("[data-canvas-node]")) return
-    setSelectedNodeId(null)
-    setSelectedEdge(null)
-  }, [])
+    if ((e.target as HTMLElement).closest("button, a, input, textarea, select, [role=button], [data-no-pan]")) return
+    closeInspector()
+  }, [closeInspector])
 
   // Handle showing node details (double-click)
   const handleShowDetails = useCallback((nodeId: string) => {
@@ -3748,8 +3872,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         selectedAction?: string
         config?: Record<string, unknown>
       }
-      const rect = canvasRef.current?.getBoundingClientRect()
-      if (!rect) return
+      const point = toCanvasPoint(e.clientX, e.clientY)
+      if (!point) return
       const newNode: WorkflowNode = {
         id: `node-${Date.now()}`,
         type: payload.type,
@@ -3757,8 +3881,8 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         description: payload.description,
         config: payload.config || {},
         position: {
-          x: Math.max(40, e.clientX - rect.left - 80),
-          y: Math.max(40, e.clientY - rect.top - 40),
+          x: Math.max(40, point.x - 80),
+          y: Math.max(40, point.y - 40),
         },
         connections: [],
         ...(payload.vendor ? { vendor: payload.vendor } : {}),
@@ -3769,7 +3893,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     } catch {
       // ignore malformed drag payloads
     }
-  }, [])
+  }, [toCanvasPoint])
 
   const applyMesonSuggestion = useCallback(
     (suggestion: MesonSuggestion) => {
@@ -4410,7 +4534,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     <MesonCopilotPanel
       open={mesonPanelOpen}
       embedded
-      onClose={() => changeInspectorMode("configure")}
+      onClose={closeInspector}
       workflowId={id}
       canPersist={canPersist}
       nodes={nodes.map((n) => ({
@@ -4675,7 +4799,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   key: "editor",
                   label: "Editor",
                   icon: PenLine,
-                  active: inspectorMode === "configure",
+                  active: !inspectorOpen || inspectorMode === "configure",
                   onClick: () => changeInspectorMode("configure"),
                 },
                 {
@@ -4697,12 +4821,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                   key: "trace",
                   label: "Trace",
                   icon: Activity,
-                  active: inspectorMode === "trace" || traceOverlay,
+                  active: (inspectorOpen && inspectorMode === "trace") || traceOverlay,
                   pressed: traceOverlay,
                   onClick: () => {
-                    if (inspectorMode === "trace" && traceOverlay) {
+                    if (inspectorOpen && inspectorMode === "trace" && traceOverlay) {
                       setTraceOverlay(false)
-                      changeInspectorMode("configure")
+                      closeInspector()
                     } else {
                       setTraceOverlay(true)
                       changeInspectorMode("trace")
@@ -4809,7 +4933,25 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
         {/* Main content */}
         <div className="flex flex-1 min-h-0 flex-col lg:flex-row lg:bg-[color:var(--g-chrome)]">
-          <BuilderNav workflowId={id} />
+          <BuilderCanvasRail
+            onAddStep={(tab?: CanvasLibraryTab) => {
+              if (tab) setActiveLibrary(tab)
+              openLibraryPanel()
+            }}
+            onFitView={fitCanvasToNodes}
+            onShowOverview={() => {
+              if (inspectorOpen && inspectorMode === "configure" && !selectedNodeId) closeInspector()
+              else {
+                setSelectedNodeId(null)
+                changeInspectorMode("configure")
+              }
+            }}
+            overviewOpen={inspectorOpen && inspectorMode === "configure" && !selectedNodeId}
+            traceOverlay={traceOverlay}
+            onToggleTraceOverlay={() => setTraceOverlay((on) => !on)}
+            mesonOpen={mesonPanelOpen}
+            onToggleMeson={toggleMesonPanel}
+          />
           {/* Left library panel - conditionally shown */}
           {libraryPanelOpen && (
           <div 
@@ -5365,16 +5507,19 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
           </div>
           )}
 
-          {/* Canvas */}
+          {/* Canvas: a scroll viewport for the graph; overlays sit outside it so panning doesn't move them */}
+          <div className="relative min-h-[50vh] min-w-0 flex-1 lg:min-h-0">
           <div 
             ref={canvasRef}
             data-trace-overlay={traceOverlay ? "on" : "off"}
             className={cn(
-              "flex-1 relative overflow-auto bg-background touch-pan-x touch-pan-y",
+              "absolute inset-0 overflow-auto bg-background touch-pan-x touch-pan-y",
+              isPanning ? "cursor-grabbing select-none" : "cursor-grab",
               isDraggingConnection && "cursor-crosshair",
               traceOverlay && "ring-1 ring-inset ring-[color:var(--g-signal)]/40",
             )}
             onClick={handleCanvasClick}
+            onMouseDown={handleCanvasPanStart}
             onDragOver={(e) => {
               if (e.dataTransfer.types.includes("application/gravitre-node")) {
                 e.preventDefault()
@@ -5388,27 +5533,19 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             onTouchMove={(e) => {
               // Only handle connection drag, not node drag (that's handled by CanvasNode)
               if (isDraggingConnection && e.touches.length === 1) {
-                const rect = canvasRef.current?.getBoundingClientRect()
-                if (rect) {
-                  setDragMousePosition({
-                    x: e.touches[0].clientX - rect.left,
-                    y: e.touches[0].clientY - rect.top
-                  })
-                }
+                const point = toCanvasPoint(e.touches[0].clientX, e.touches[0].clientY)
+                if (point) setDragMousePosition(point)
               }
             }}
             onTouchEnd={handleConnectionDragEnd}
           >
-            {traceOverlay ? (
-              <div className="pointer-events-none absolute right-4 top-4 z-20 max-w-sm border border-[color:var(--g-border-active)] bg-[color:var(--g-surface-active)] px-3 py-2 text-xs text-foreground">
-                <p className="text-xs font-medium text-muted-foreground">Trace</p>
-                <p className="mt-1">
-                  The path this workflow takes. Step durations appear after a real run.
-                </p>
-              </div>
-            ) : null}
             {/* Enhanced grid background with subtle gradient */}
-            <div className="pointer-events-none absolute inset-0 bg-[color:var(--g-canvas)]">
+            {/* Sized to the graph plus margin so there is room to pan past the outermost steps */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute left-0 top-0 min-h-full min-w-full bg-[color:var(--g-canvas)]"
+              style={{ width: canvasExtent.w, height: canvasExtent.h }}
+            >
               <div
                 className="absolute inset-0"
                 style={{
@@ -5418,27 +5555,6 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 }}
               />
             </div>
-
-            {/* Empty state CTA */}
-            {nodes.length === 0 && !isLoadingGraph && (
-              <div className="absolute inset-0 flex items-center justify-center z-10">
-                <div className="flex flex-col items-center gap-4 text-center max-w-md px-4">
-                  <div className="h-16 w-16 rounded-lg bg-muted/50 flex items-center justify-center border border-border">
-                    <Workflow className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">Start building your workflow</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Add your first step from the library to begin automating tasks
-                    </p>
-                  </div>
-                  <Button onClick={openLibraryPanel} size="lg" className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add first step
-                  </Button>
-                </div>
-              </div>
-            )}
 
             {/* Connections - render as one SVG for all lines */}
             <svg 
@@ -5831,6 +5947,36 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     )
   })()}
 
+          </div>
+            {traceOverlay ? (
+              <div className="pointer-events-none absolute right-4 top-4 z-20 max-w-sm border border-[color:var(--g-border-active)] bg-[color:var(--g-surface-active)] px-3 py-2 text-xs text-foreground">
+                <p className="text-xs font-medium text-muted-foreground">Trace</p>
+                <p className="mt-1">
+                  The path this workflow takes. Step durations appear after a real run.
+                </p>
+              </div>
+            ) : null}
+            {/* Empty state CTA */}
+            {nodes.length === 0 && !isLoadingGraph && (
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                <div className="pointer-events-auto flex flex-col items-center gap-4 text-center max-w-md px-4">
+                  <div className="h-16 w-16 rounded-lg bg-muted/50 flex items-center justify-center border border-border">
+                    <Workflow className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">Start building your workflow</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Add your first step from the library to begin automating tasks
+                    </p>
+                  </div>
+                  <Button onClick={openLibraryPanel} size="lg" className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add first step
+                  </Button>
+                </div>
+              </div>
+            )}
+
   {/* Drag-to-connect indicator */}
   {isDraggingConnection && (
   <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-success/10 border border-success/30 text-success rounded-full px-4 py-2 shadow-md z-50">
@@ -6037,7 +6183,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 onClick={openLibraryPanel}
                 size="sm"
                 variant="outline"
-                className="absolute top-4 left-4 h-8 w-8 p-0 bg-card"
+                className="absolute top-4 left-4 h-8 w-8 p-0 bg-card lg:hidden"
                 title="Add step"
                 aria-label="Add step"
               >
@@ -6047,11 +6193,13 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
 
           </div>
 
+          {inspectorOpen ? (
           <BuilderInspector
             mode={inspectorMode}
             onModeChange={changeInspectorMode}
             mesonAttention={mesonAttention}
             traceLive={executionStatus === "running"}
+            onClose={closeInspector}
           >
             {inspectorMode === "configure" ? (
               selectedNode && !isNarrowViewport ? (
@@ -6092,11 +6240,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               />
             ) : null}
           </BuilderInspector>
+          ) : null}
 
           {/* Below lg the inspector folds into sheets so configuration and Meson stay reachable. */}
           {isNarrowViewport ? renderConfigPanel(false) : null}
           {isNarrowViewport ? (
-            <Sheet open={inspectorMode === "trace"} onOpenChange={(open) => { if (!open) changeInspectorMode("configure") }}>
+            <Sheet open={inspectorOpen && inspectorMode === "trace"} onOpenChange={(open) => { if (!open) closeInspector() }}>
               <SheetContent side="bottom" className="flex h-[75vh] flex-col gap-0 overflow-y-auto p-0">
                 <SheetHeader className="border-b border-border px-4 py-3">
                   <SheetTitle className="text-[15px]">Run trace</SheetTitle>
@@ -6120,7 +6269,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             </Sheet>
           ) : null}
           {isNarrowViewport ? (
-            <Sheet open={mesonPanelOpen} onOpenChange={(open) => { if (!open) changeInspectorMode("configure") }}>
+            <Sheet open={mesonPanelOpen} onOpenChange={(open) => { if (!open) closeInspector() }}>
               <SheetContent side="bottom" className="flex h-[75vh] flex-col gap-0 p-0">
                 <SheetHeader className="border-b border-border px-4 py-3">
                   <SheetTitle className="text-[15px]">Meson</SheetTitle>
