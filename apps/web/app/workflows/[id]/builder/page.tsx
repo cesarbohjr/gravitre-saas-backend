@@ -4712,9 +4712,9 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               const toolBody = (
                 <>
                   <ToolIcon className="h-4 w-4" />
-                  <span className="sr-only lg:not-sr-only">{tool.label}</span>
+                  <span className="sr-only md:not-sr-only">{tool.label}</span>
                   {tool.active ? (
-                    <span aria-hidden className="lg:hidden">{tool.label}</span>
+                    <span aria-hidden className="md:hidden">{tool.label}</span>
                   ) : null}
                   {tool.attention ? (
                     <span aria-hidden className="size-1.5 rounded-full bg-[color:var(--g-brand)]" />
