@@ -238,8 +238,8 @@ export default function NotificationsPage() {
           <section aria-label="Inbox summary" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <GravitreMetric label="Unread" value={error ? "Not reported" : unreadCount ?? metricUnavailable}
               hint="Across your inbox" warning={!error && (unreadCount ?? 0) > 0} />
-            <GravitreMetric label="Today in loaded results" value={data && !error ? todayCount : metricUnavailable} />
-            <GravitreMetric label="Loaded notifications" value={data && !error ? notifications.length : metricUnavailable} />
+            <GravitreMetric label="Today" value={data && !error ? todayCount : metricUnavailable} hint="Received since midnight" />
+            <GravitreMetric label="Recent" value={data && !error ? notifications.length : metricUnavailable} hint="Latest 200 at most" />
           </section>
         </GravitrePageHeader>
 
@@ -267,7 +267,7 @@ export default function NotificationsPage() {
             {notifications.length > 0 && <Button variant="ghost" className="min-h-11 gap-2 sm:ml-auto"
               disabled={pending || !!error} onClick={archiveLoaded}><Archive className="h-4 w-4" />Archive loaded</Button>}
           </div>
-          <p className="mb-3 text-xs text-muted-foreground">Showing up to 200 recent notifications. Type and read filters apply to loaded results; unread count covers your inbox.</p>
+          <p className="mb-3 text-xs text-muted-foreground">Showing up to 200 recent notifications. Filters apply to this list; the unread count covers your whole inbox.</p>
           {error && <div role="alert" className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-card p-4">
             <p className="text-sm">Could not load notifications. {data ? "Showing previously loaded updates." : "Try again to see your inbox."}</p>
             <Button variant="outline" className="min-h-11" onClick={() => void mutate()} disabled={pending}>Retry</Button>
