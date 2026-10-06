@@ -30,7 +30,7 @@ export function Pricing() {
 
   return (
     <section>
-      <Container className="border-divide flex flex-col items-center justify-center border-x px-4 pt-10 pb-10 md:px-8">
+      <Container className="border-divide flex flex-col items-center justify-center md:border-x px-4 pt-10 pb-10 md:px-8">
         <Badge text="Pricing" />
         <SectionHeading className="mt-4">
           {MARKETING_COPY.pricing.headline[0]}{" "}
@@ -78,7 +78,7 @@ export function Pricing() {
 
       <DivideX />
 
-      <Container className="border-divide border-x">
+      <Container className="border-divide md:border-x">
         <div className="divide-divide grid grid-cols-1 divide-y md:grid-cols-3 md:divide-x md:divide-y-0">
           {tiers.map((tier) => (
             <TierMeta key={tier.name} tier={tier} isAnnual={isAnnual} />
@@ -88,7 +88,7 @@ export function Pricing() {
 
       <DivideX />
 
-      <Container className="border-divide hidden border-x md:block">
+      <Container className="border-divide hidden md:border-x md:block">
         <div className="divide-divide grid grid-cols-1 md:grid-cols-3 md:divide-x">
           {tiers.map((tier) => (
             <div key={`${tier.name}-features`} className="flex flex-col gap-4 p-4 md:p-8">

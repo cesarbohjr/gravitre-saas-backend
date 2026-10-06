@@ -169,7 +169,7 @@ export function GlobalCommandBar() {
         type="button"
         onClick={() => setIsOpen(true)}
         aria-label="Search or run a command"
-        className="group flex h-11 items-center justify-center gap-2 rounded-[4px] border border-[color:var(--g-border-default)] bg-background px-3 text-sm text-muted-foreground transition-colors hover:border-brand/40 hover:text-foreground sm:h-8 sm:px-3.5 lg:w-[min(260px,24vw)] lg:justify-start xl:w-[min(300px,20vw)]"
+        className="group flex h-11 w-11 items-center justify-center gap-2 rounded-md border border-transparent bg-transparent text-sm sm:w-auto sm:rounded-[4px] sm:border-[color:var(--g-border-default)] sm:bg-background sm:px-3 text-muted-foreground transition-colors hover:border-brand/40 hover:text-foreground sm:h-8 sm:px-3.5 lg:w-[min(260px,24vw)] lg:justify-start xl:w-[min(300px,20vw)]"
       >
         <Icon name="search" size="sm" className="shrink-0" />
         <span className="hidden lg:inline font-medium">Search or command...</span>

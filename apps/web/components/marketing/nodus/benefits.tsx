@@ -62,7 +62,7 @@ export const Benefits = () => {
     },
   ];
   return (
-    <Container className="border-divide relative overflow-hidden border-x px-4 py-20 md:px-8">
+    <Container className="border-divide relative overflow-hidden md:border-x px-4 py-20 md:px-8">
       <div className="relative flex flex-col items-center">
         <Badge text="Benefits" />
         <SectionHeading className="mt-4">

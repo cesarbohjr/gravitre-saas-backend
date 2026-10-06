@@ -10,7 +10,7 @@ import { SubHeading } from "./subheading"
  */
 export function HomeSecurityNote() {
   return (
-    <Container className="border-divide flex flex-col items-center justify-center border-x px-4 py-16 md:py-24">
+    <Container className="border-divide flex flex-col items-center justify-center md:border-x px-4 py-16 md:py-24">
       <SectionHeading className="text-center">Governed by design</SectionHeading>
       <SubHeading className="mx-auto mt-4 max-w-lg">
         Permissions, approvals, audit trails, and human oversight stay part of every action.

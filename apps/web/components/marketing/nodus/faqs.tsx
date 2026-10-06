@@ -47,7 +47,7 @@ export const FAQs = () => {
   }
 
   return (
-    <Container className="border-divide flex flex-col items-center border-x pt-12">
+    <Container className="border-divide flex flex-col items-center md:border-x pt-12">
       <Badge text="FAQs" />
       <SectionHeading className="mt-4">Frequently Asked Questions</SectionHeading>
 

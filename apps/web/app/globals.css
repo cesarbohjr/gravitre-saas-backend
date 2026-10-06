@@ -954,6 +954,11 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Taps and clicks shouldn't leave an outline; keyboard focus still shows one. */
+  :focus:not(:focus-visible) {
+    outline: none;
   }
   
   /* 

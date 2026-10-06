@@ -29,13 +29,16 @@ export function LogoSVG({ className, ...props }: SVGProps<SVGSVGElement>) {
 
 export const Logo = () => {
   return (
-    <Link href="/" className="flex items-center gap-2">
+    <Link
+      href="/"
+      className="flex size-10 items-center justify-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
       <Image
-        src="/images/gravitre-logo-black.png"
-        alt="Gravitre"
-        width={140}
-        height={40}
-        className="h-8 w-auto"
+        src="/images/gravitre-mark.png"
+        alt="Gravitre home"
+        width={32}
+        height={32}
+        className="size-8 rounded-lg"
         priority
       />
     </Link>

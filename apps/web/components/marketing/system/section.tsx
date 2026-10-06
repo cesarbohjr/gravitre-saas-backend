@@ -22,7 +22,7 @@ export function GravitreSection({
   return (
     <Container
       id={id}
-      className={cn("border-divide border-x px-4 py-14 md:px-8 md:py-20", className)}
+      className={cn("border-divide md:border-x px-4 py-14 md:px-8 md:py-20", className)}
     >
       {children}
     </Container>

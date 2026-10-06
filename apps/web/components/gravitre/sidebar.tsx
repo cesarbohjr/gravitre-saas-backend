@@ -213,27 +213,13 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                 </div>
               </>
             ) : (
-              <>
-                <div
-                  className={cn(
-                    "hidden items-center justify-center md:flex",
-                    navExpanded && "md:hidden",
-                  )}
-                >
-                  <img
-                    src="/images/gravitre-icon-black.png"
-                    alt="Gravitre"
-                    className="h-7 w-7 object-contain dark:invert"
-                  />
-                </div>
-                <div className={cn("min-w-0", navExpanded ? "md:block" : "md:hidden")}>
-                  <img
-                    src="/images/gravitre-logo-black.png"
-                    alt="Gravitre"
-                    className="h-7 w-auto max-w-[148px] object-contain object-left dark:invert"
-                  />
-                </div>
-              </>
+              <img
+                src="/images/gravitre-mark.png"
+                alt="Gravitre"
+                width={32}
+                height={32}
+                className="size-8 shrink-0 rounded-lg"
+              />
             )}
           </Link>
           <Button

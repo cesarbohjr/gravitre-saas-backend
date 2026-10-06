@@ -28,7 +28,7 @@ type Tab = {
 
 export const AgenticIntelligence = () => {
   return (
-    <Container className="border-divide overflow-x-hidden border-x">
+    <Container className="border-divide overflow-x-hidden md:border-x">
       <div className="flex flex-col items-center px-4 py-16 md:px-0">
         <Badge text="Features" />
         <SectionHeading className="mt-4 px-2">

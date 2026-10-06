@@ -12,7 +12,7 @@ import { SubHeading } from "./subheading"
  */
 export function HomePricingCta() {
   return (
-    <Container className="border-divide flex flex-col items-center justify-center border-x px-4 py-16 md:py-24">
+    <Container className="border-divide flex flex-col items-center justify-center md:border-x px-4 py-16 md:py-24">
       <SectionHeading className="text-center">Simple, honest pricing</SectionHeading>
       <SubHeading className="mx-auto mt-4 max-w-lg">
         See current Gravitre plans on the pricing page. No template demo prices here.

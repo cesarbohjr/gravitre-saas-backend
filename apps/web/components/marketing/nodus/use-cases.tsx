@@ -56,7 +56,7 @@ export const UseCases = () => {
   ];
   const [activeUseCase, setActiveUseCase] = useState<number | null>(null);
   return (
-    <Container className="border-divide relative overflow-hidden border-x px-4 md:px-8">
+    <Container className="border-divide relative overflow-hidden md:border-x px-4 md:px-8">
       <div className="relative flex flex-col items-center py-20">
         <Badge text="Use Cases" />
         <SectionHeading className="mt-4">
