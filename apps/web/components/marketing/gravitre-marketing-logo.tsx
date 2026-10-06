@@ -1,5 +1,5 @@
-import Image from "next/image"
 import Link from "next/link"
+import { GravitreMark } from "@/components/brand/gravitre-mark"
 import { cn } from "@/lib/utils"
 
 type GravitreMarketingLogoProps = {
@@ -9,26 +9,8 @@ type GravitreMarketingLogoProps = {
   priority?: boolean
 }
 
-function GravitreMark({
-  className,
-  size,
-  priority,
-}: {
-  className?: string
-  size: number
-  priority?: boolean
-}) {
-  return (
-    <Image
-      src="/images/gravitre-mark.png"
-      alt="Gravitre"
-      width={size}
-      height={size}
-      priority={priority}
-      className={cn("shrink-0 rounded-[22%]", className)}
-      style={{ width: size, height: size }}
-    />
-  )
+function Mark({ className, size }: { className?: string; size: number }) {
+  return <GravitreMark className={cn("w-auto", className)} style={{ height: size }} />
 }
 
 function wrap(image: React.ReactNode, href?: string) {
@@ -36,20 +18,16 @@ function wrap(image: React.ReactNode, href?: string) {
   return (
     <Link
       href={href}
-      className="inline-flex items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      aria-label="Gravitre home"
+      className="inline-flex items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {image}
     </Link>
   )
 }
 
-export function GravitreMarketingLogo({
-  className,
-  height = 40,
-  href = "/",
-  priority = false,
-}: GravitreMarketingLogoProps) {
-  return wrap(<GravitreMark size={height} priority={priority} className={className} />, href)
+export function GravitreMarketingLogo({ className, height = 40, href = "/" }: GravitreMarketingLogoProps) {
+  return wrap(<Mark size={height} className={className} />, href)
 }
 
 export function GravitreMarketingLogoWhite({
@@ -57,5 +35,5 @@ export function GravitreMarketingLogoWhite({
   height = 32,
   href = "/",
 }: Omit<GravitreMarketingLogoProps, "priority">) {
-  return wrap(<GravitreMark size={height} className={className} />, href)
+  return wrap(<Mark size={height} className={className} />, href)
 }

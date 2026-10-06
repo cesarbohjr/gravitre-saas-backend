@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { GravitreMark } from "@/components/brand/gravitre-mark"
 import { Button } from "@/components/ui/button"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Icon } from "@/lib/icons"
@@ -213,13 +214,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                 </div>
               </>
             ) : (
-              <img
-                src="/images/gravitre-mark.png"
-                alt="Gravitre"
-                width={32}
-                height={32}
-                className="size-8 shrink-0 rounded-lg"
-              />
+              <GravitreMark className="h-7" />
             )}
           </Link>
           <Button
