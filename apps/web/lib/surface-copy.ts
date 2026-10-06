@@ -16,10 +16,10 @@ export const SURFACE_COPY = {
     route: APP_ROUTES.intelligence,
   },
   learning: {
-    title: "Learning",
-    shortTitle: "Learning",
+    title: "Knowledge",
+    shortTitle: "Knowledge",
     description:
-      "Insights, relationships, and outcomes Gravitre has confirmed from your team's real work.",
+      "What Gravitre has learned about your business from real work: confirmed insights, how things relate, and what it remembers.",
     route: APP_ROUTES.learning,
     step: "Observe",
     stepSummary: "Watch queries, memory, and search quality improve over time.",
@@ -40,7 +40,7 @@ export const SURFACE_COPY = {
   models: {
     title: "Models",
     shortTitle: "Models",
-    description: "Register models, see where they are used, and improve them from evidence. Create and train in Model Studio.",
+    description: "The models behind forecasts and agents: what each one does, where it is used, and how it is doing. Create and train new ones in Model Studio.",
     badge: "Your model registry",
     heroTitle: "Models ready for real work",
     heroDescription:
@@ -216,9 +216,9 @@ export const SURFACE_COPY = {
       tabPlatformHealth: "Platform Health",
     },
     predictive: {
-      title: "Predictions",
+      title: "Forecasts",
       description:
-        "Risks and opportunities ahead, with confidence and evidence. Predictions are advisory until you act on them.",
+        "Risks and opportunities Gravitre expects next, with confidence and evidence. Nothing changes until you act on one.",
     },
     assignments: {
       title: "Assignments",

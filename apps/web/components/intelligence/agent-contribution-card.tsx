@@ -7,20 +7,27 @@ import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import type { AgentRoiRow } from "@/types/api"
 
+type ContributionView = PerformanceViewMode | "all"
+
 export function AgentContributionRow({
   agent,
-  viewMode,
+  viewMode = "all",
 }: {
   agent: AgentRoiRow
-  viewMode: PerformanceViewMode
+  viewMode?: ContributionView
 }) {
   const metrics = metricsForView(agent, viewMode)
   return (
     <div
       data-testid="agent-contribution-row"
-      className="grid gap-3 py-3 sm:grid-cols-[minmax(8rem,1fr)_repeat(3,minmax(0,1fr))]"
+      className={cn(
+        "grid grid-cols-2 gap-3 py-3",
+        metrics.length >= 4
+          ? "sm:grid-cols-[minmax(8rem,1.4fr)_repeat(4,minmax(0,1fr))]"
+          : "sm:grid-cols-[minmax(8rem,1fr)_repeat(3,minmax(0,1fr))]",
+      )}
     >
-      <p className="text-sm font-medium text-foreground">{agent.agentName}</p>
+      <p className="col-span-2 text-sm font-medium text-foreground sm:col-span-1">{agent.agentName}</p>
       {metrics.map((metric) => {
         const display = roiMetricDisplay(metric)
         return (
@@ -68,8 +75,15 @@ export function AgentContributionCard({
   )
 }
 
-function metricsForView(agent: AgentRoiRow, viewMode: PerformanceViewMode) {
+function metricsForView(agent: AgentRoiRow, viewMode: ContributionView) {
   switch (viewMode) {
+    case "all":
+      return [
+        agent.tasksCompleted,
+        agent.estimatedHoursSaved,
+        agent.revenueInfluencedUsd,
+        agent.agentCostUsd,
+      ]
     case "efficiency":
       return [agent.tasksCompleted, agent.estimatedHoursSaved]
     case "cost":

@@ -45,7 +45,8 @@ describe("UX Reset Phase 7 — progressive disclosure in the workspace", () => {
 
   it("models and studio use text sections, not pill strips", () => {
     const models = readFileSync(resolve(webRoot, "app/models/page.tsx"), "utf8")
-    expect(models).toMatch(/aria-label="Models catalog"/)
+    expect(models).toMatch(/aria-labelledby="models-yours-heading"/)
+    expect(models).toMatch(/aria-labelledby="models-built-in-heading"/)
     expect(models).toMatch(/AskGravitreSummonButton/)
     expect(models).not.toMatch(/TabsList/)
 

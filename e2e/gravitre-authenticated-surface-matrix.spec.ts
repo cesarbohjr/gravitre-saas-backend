@@ -51,7 +51,7 @@ test.describe("Authenticated product surface matrix", () => {
     await expect(page.getByTestId("intel-i2-stream")).toHaveCount(0)
   })
 
-  test("Intelligence — lens switch Learns → Predicts", async ({ page }) => {
+  test("Intelligence — lens switch Models → Forecasts", async ({ page }) => {
     await page.goto("/intelligence")
     await expect(page).not.toHaveURL(/\/login/)
     const map = page.getByTestId("intelligence-map-canvas")
@@ -61,7 +61,7 @@ test.describe("Authenticated product surface matrix", () => {
       .getByRole("tablist", { name: /Intelligence (map )?lenses/i })
       .first()
     await expect(lensBar).toBeVisible({ timeout: 30_000 })
-    for (const label of ["Learns", "Predicts"] as const) {
+    for (const label of ["Models", "Forecasts"] as const) {
       await lensBar.getByRole("tab", { name: label }).click()
       await expect(lensBar.getByRole("tab", { name: label, selected: true })).toBeVisible()
       await expect(map).toBeVisible()

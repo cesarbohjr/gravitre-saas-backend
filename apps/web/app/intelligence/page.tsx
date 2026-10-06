@@ -59,25 +59,7 @@ import { parseIntelligenceMapDeepLink } from "@/lib/intelligence/learning-map-fo
 import { relationsForSelection, selectionForMapNode } from "@/lib/intelligence/selection-relations"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
-import { ExtrovertSummary } from "@/components/gravitre/extrovert-summary"
-
-const ADVANCED_LINK_GROUPS = [
-  {
-    heading: "Measure",
-    description: "Business reports and predictive ops.",
-    links: [SURFACE_COPY.hubLinks.reports, SURFACE_COPY.hubLinks.predictive],
-  },
-  {
-    heading: "Models",
-    description: "Registry, built-in catalog, and training.",
-    links: [SURFACE_COPY.hubLinks.builtIn, SURFACE_COPY.hubLinks.models],
-  },
-  {
-    heading: "Knowledge",
-    description: "Learning hub and org memory.",
-    links: [SURFACE_COPY.hubLinks.learning, SURFACE_COPY.hubLinks.memory],
-  },
-]
+import { IntelligenceBrain } from "@/components/intelligence/brain/intelligence-brain"
 
 function IntelligenceSectionRedirect() {
   const router = useRouter()
@@ -427,15 +409,7 @@ function IntelligenceCenterInner() {
         <header className="px-4 pt-6 md:px-5">
           <p className={TYPE.eyebrow}>Understand / Evidence before answers</p>
           <h1 className="mt-2 font-sans text-xl font-medium leading-tight text-foreground sm:text-2xl">{copy.title}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">What is changing across the business?</p>
-          <div className="py-5">
-            <ExtrovertSummary label="Intelligence snapshot summary" items={[
-              { label: "Signals in view", value: signalsLoading ? null : signals.length },
-              { label: "Known entities", value: canonicalMetrics?.knowledge?.knownEntities ?? null },
-              { label: "Known relationships", value: canonicalMetrics?.knowledge?.knownRelationships ?? null, tone: "brand" },
-              { label: "Recorded outcomes", value: outcomes ? totalEvents : null },
-            ]} />
-          </div>
+          <p className="mt-2 pb-5 text-sm text-muted-foreground">What is changing across the business?</p>
         </header>
         {/* Investigation tools retain freshness, lenses, journey, and evidence. */}
         <div
@@ -455,7 +429,21 @@ function IntelligenceCenterInner() {
           </div>
         </div>
 
-        {/* Field-primary: the field owns the first viewport; insight and evidence rails are edge-attached */}
+        {/* The overview: the org as a layered network with its live metrics around it. */}
+        <div className="px-4 py-5 md:px-5">
+          <IntelligenceBrain
+            pageContext={pageContext}
+            loading={!pageContext && (snapshotLoadState === "LOADING" || snapshotLoadState === "UNINITIALIZED")}
+          />
+        </div>
+
+        {/* Explore: the field map with insight and evidence rails for drilling into specific connections */}
+        <div className="border-t border-[color:var(--g-border-default)] px-4 pb-3 pt-6 md:px-5">
+          <h2 className={TYPE.sectionTitle}>Explore connections</h2>
+          <p className={cn(TYPE.bodyMuted, "mt-1")}>
+            Pick a lens, then select anything on the map to see the evidence behind it.
+          </p>
+        </div>
         <section className="relative border-b border-divide">
           <div className="relative z-10 grid md:grid-cols-2 xl:min-h-[680px] xl:grid-cols-[272px_minmax(0,1fr)_296px]">
             <aside
@@ -587,7 +575,7 @@ function IntelligenceCenterInner() {
                 <div>
                   <h2 className={TYPE.sectionTitle}>Models, training, and routing</h2>
                   <p className={cn(TYPE.bodyMuted, "mt-1")}>
-                    Model health, simulations, and links to the detailed intelligence tools.
+                    Model health and the latest simulation. Each area has its own tab above.
                   </p>
                 </div>
                 <span className="text-xs font-medium text-muted-foreground">
@@ -621,32 +609,6 @@ function IntelligenceCenterInner() {
                   </div>
                 </section>
               </div>
-
-              {ADVANCED_LINK_GROUPS.map((group) => (
-                <section key={group.heading} aria-labelledby={`adv-${group.heading}`}>
-                  <div className="mb-2">
-                    <h3 id={`adv-${group.heading}`} className="text-sm font-semibold text-foreground">
-                      {group.heading}
-                    </h3>
-                    <p className={cn(TYPE.bodyMuted, "mt-1")}>{group.description}</p>
-                  </div>
-                  <nav className="flex flex-col gap-1" aria-label={group.heading}>
-                    {group.links.map((link) => (
-                      <Link
-                        key={link.route}
-                        href={link.route}
-                        className={cn(
-                          TYPE.meta,
-                          "py-1.5 underline-offset-4 hover:text-[color:var(--g-text-primary)] hover:underline",
-                        )}
-                      >
-                        {link.title}
-                        <span className="ml-2 text-[color:var(--g-text-muted)]">{link.summary}</span>
-                      </Link>
-                    ))}
-                  </nav>
-                </section>
-              ))}
 
               <div className="flex flex-wrap gap-2">
                 <Button variant="ghost" size="sm" asChild>

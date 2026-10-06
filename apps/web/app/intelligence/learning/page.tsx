@@ -51,9 +51,6 @@ export default function IntelligenceLearningPage() {
   const measuredOutcomes = metricsReady
     ? readNumber(outcomeMetrics.measuredOutcomes, 0)
     : null
-  const modelsTracked = metricsReady
-    ? readNumber(learningMetrics.modelsTracked, 0)
-    : null
   const suggestedQuestions = pageContext?.suggestedQuestions ?? []
 
   if (!user) {
@@ -100,7 +97,7 @@ export default function IntelligenceLearningPage() {
           isValidating={isValidating}
           onRefresh={() => mutate()}
         >
-          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
+          <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-3">
             <GravitreMetric
               label="Recent learnings"
               value={recentCount ?? "—"}
@@ -112,14 +109,10 @@ export default function IntelligenceLearningPage() {
               hint={isLoading ? "Loading intelligence…" : "Knowledge graph connections"}
             />
             <GravitreMetric
+              className="col-span-2 lg:col-span-1"
               label="Measured outcomes"
               value={measuredOutcomes ?? "—"}
               hint={isLoading ? "Loading intelligence…" : "Window attribution"}
-            />
-            <GravitreMetric
-              label="Models tracked"
-              value={modelsTracked ?? "—"}
-              hint={isLoading ? "Loading intelligence…" : "Registry scope — not learning claims"}
             />
           </section>
 

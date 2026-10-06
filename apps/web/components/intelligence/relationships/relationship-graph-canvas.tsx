@@ -227,6 +227,8 @@ function RelationshipGraphCanvasInner({ workspace }: { workspace: RelationshipsW
         fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
         minZoom={0.2}
         maxZoom={1.5}
+        // Let a plain scroll move the page; Ctrl + scroll or a pinch still zooms.
+        preventScrolling={false}
         proOptions={{ hideAttribution: true }}
         className="bg-[color:var(--g-surface-2)]/30"
       >

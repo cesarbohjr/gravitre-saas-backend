@@ -1,14 +1,15 @@
 "use client"
 
 /**
- * I5 — Learning hub product surface: segmented views + quality filters.
+ * Knowledge (route /intelligence/learning): one scrolling page, no inner tabs.
+ * Learnings first, then how things relate, then what Gravitre remembers.
+ * Models live on the Models tab only, so this page never repeats them.
  */
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { GravitreMetric } from "@/components/gravitre/nodus-product"
-import { SegmentedControl } from "@/components/gravitre/filter-chip"
 import { LearningInsightsList } from "@/components/intelligence/learning-insight-card"
 import { RelationshipsWorkspace } from "@/components/intelligence/relationships/relationships-workspace"
 import { IntelligenceAskCommandSurface } from "@/components/intelligence/shell"
@@ -22,20 +23,11 @@ import {
   DEFAULT_LEARNING_FILTERS,
   filterLearningInsights,
   type LearningInsightFilters,
-  type LearningSegment,
 } from "@/lib/intelligence/learning-filters"
 import { isSnapshotMetricsReady, type SnapshotLoadState } from "@/lib/intelligence/snapshot-state"
-import { statusShortLabel } from "@/lib/built-in-model-catalog"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
-import { ArrowRight, Brain, Cpu } from "@phosphor-icons/react"
-
-const SEGMENTS: { id: LearningSegment; label: string }[] = [
-  { id: "recent", label: "Learned recently" },
-  { id: "relationships", label: "Relationships" },
-  { id: "memory", label: "Memory" },
-  { id: "models", label: "Models" },
-]
+import { ArrowRight, Brain } from "@phosphor-icons/react"
 
 function LearningFilterRow({
   filters,
@@ -281,78 +273,6 @@ function MemoryPanel({
   )
 }
 
-function ModelsPanel({
-  pageContext,
-  metricsReady,
-  isLoading,
-}: {
-  pageContext?: IntelligencePageContextResponse | null
-  metricsReady: boolean
-  isLoading: boolean
-}) {
-  const learningMetrics =
-    pageContext?.metrics.learning ?? pageContext?.snapshot.metrics.learning ?? {}
-  const modelsImproved = metricsReady ? readNumber(learningMetrics.modelsImproved, null) : null
-  const modelsTracked = metricsReady ? readNumber(learningMetrics.modelsTracked, null) : null
-  const models = (pageContext?.snapshot.models ?? []) as Array<Record<string, unknown>>
-
-  return (
-    <div className="space-y-4">
-      <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)]">
-        <GravitreMetric
-          label="Models tracked"
-          value={modelsTracked ?? "—"}
-          hint={isLoading ? "Loading intelligence…" : "Registry scope — readiness, not learning claims"}
-        />
-        <GravitreMetric
-          label="Improved from evidence"
-          value={modelsImproved ?? "—"}
-          hint={isLoading ? "Loading intelligence…" : "Verified improvement outcomes only"}
-        />
-      </section>
-
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading model learning signals…</p>
-      ) : models.length === 0 ? (
-        <EmptyState
-          iconSlot={<Cpu className="h-8 w-8 text-primary" weight="duotone" aria-hidden />}
-          title="No models in learning scope yet"
-          description="Built-in and trained models appear here when the org catalog is active."
-          action={{
-            label: "Open models",
-            onClick: () => {
-              window.location.href = APP_ROUTES.builtInModels
-            },
-            variant: "outline",
-          }}
-        />
-      ) : (
-        <ul className="divide-y divide-divide border border-divide">
-          {models.map((model) => {
-            const id = readString(model.id, readString(model.technicalLabel, "model"))
-            const label = readString(model.businessLabel, id)
-            const status = readString(model.status, "unknown")
-            return (
-              <li key={id} className="flex items-baseline justify-between gap-3 px-3 py-2">
-                <p className="text-sm font-medium text-foreground">{label}</p>
-                <p className="text-xs text-muted-foreground">{statusShortLabel(status)}</p>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-
-      <Link
-        href={APP_ROUTES.builtInModels}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
-      >
-        Open built-in models
-        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-      </Link>
-    </div>
-  )
-}
-
 export function LearningStage({
   pageContext,
   loadState,
@@ -364,7 +284,6 @@ export function LearningStage({
   enabled: boolean
   suggestedQuestions?: string[]
 }) {
-  const [segment, setSegment] = useState<LearningSegment>("recent")
   const [filters, setFilters] = useState<LearningInsightFilters>(DEFAULT_LEARNING_FILTERS)
 
   const metricsReady = isSnapshotMetricsReady(loadState)
@@ -377,30 +296,20 @@ export function LearningStage({
   const hasNoBusinessLearning = pageContext?.qualityFlags?.includes("NO_BUSINESS_LEARNING_YET") ?? false
 
   const { data: relationshipsSnapshot, isLoading: relationshipsSnapshotLoading } = useSWR(
-    enabled && segment === "relationships" ? "intelligence/learning/relationships-snapshot" : null,
+    enabled ? "intelligence/learning/relationships-snapshot" : null,
     () => intelligenceApi.snapshot(),
     { revalidateOnFocus: false },
   )
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-3">
+    <div className="space-y-10 pt-6">
+      <section aria-labelledby="knowledge-learnings-heading" className="space-y-3">
         <div>
-          <p className={TYPE.eyebrow}>Learning views</p>
+          <h2 id="knowledge-learnings-heading" className={TYPE.sectionTitle}>Recent learnings</h2>
           <p className={cn(TYPE.meta, "mt-0.5")}>
-            What Gravitre has learned from your business — evidence, relationships, memory, and models.
+            Insights Gravitre confirmed from real work, newest first. Filter by evidence, confidence, or source.
           </p>
         </div>
-        <SegmentedControl
-          ariaLabel="Learning view"
-          options={SEGMENTS}
-          value={segment}
-          onChange={setSegment}
-          className="w-full max-w-full flex-wrap sm:w-auto"
-        />
-      </div>
-
-      {segment === "recent" ? (
         <LearnedRecentlyPanel
           insights={insights}
           isLoading={isLoading}
@@ -408,23 +317,25 @@ export function LearningStage({
           filters={filters}
           onFiltersChange={setFilters}
         />
-      ) : null}
+      </section>
 
-      {segment === "relationships" ? (
+      <section id="knowledge-relationships-heading" className="scroll-mt-24">
         <RelationshipsWorkspace
           data={relationshipsSnapshot}
           isLoading={relationshipsSnapshotLoading}
           enabled={enabled}
         />
-      ) : null}
+      </section>
 
-      {segment === "memory" ? (
+      <section aria-labelledby="knowledge-memory-heading" className="space-y-3">
+        <div>
+          <h2 id="knowledge-memory-heading" className={TYPE.sectionTitle}>Memory</h2>
+          <p className={cn(TYPE.meta, "mt-0.5")}>
+            Patterns that came up often enough to become lasting organization memory.
+          </p>
+        </div>
         <MemoryPanel pageContext={pageContext} metricsReady={metricsReady} isLoading={isLoading} />
-      ) : null}
-
-      {segment === "models" ? (
-        <ModelsPanel pageContext={pageContext} metricsReady={metricsReady} isLoading={isLoading} />
-      ) : null}
+      </section>
 
       <IntelligenceAskCommandSurface enabled={enabled} pageSuggestedQuestions={suggestedQuestions} />
     </div>

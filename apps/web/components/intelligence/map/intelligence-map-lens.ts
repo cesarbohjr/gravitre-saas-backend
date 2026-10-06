@@ -1,6 +1,7 @@
 /**
- * Map-first Intelligence overview — five brain lenses.
- * Each lens reconfigures the dominant map surface (not KPI cards).
+ * Map-first Intelligence overview — five lenses.
+ * Each lens reconfigures the dominant map surface (not KPI cards). Labels reuse
+ * the hub tab vocabulary so a lens and its tab never read as different things.
  */
 
 export type IntelligenceMapLens = "knows" | "learns" | "predicts" | "acts" | "improves"
@@ -12,27 +13,27 @@ export const INTELLIGENCE_MAP_LENSES: Array<{
 }> = [
   {
     id: "knows",
-    label: "Knows",
+    label: "Knowledge",
     description: "Entities, relationships, and connected knowledge",
   },
   {
     id: "learns",
-    label: "Learns",
+    label: "Models",
     description: "Training readiness and models improving over time",
   },
   {
     id: "predicts",
-    label: "Predicts",
+    label: "Forecasts",
     description: "Live predictions and risk signals by department",
   },
   {
     id: "acts",
-    label: "Acts",
+    label: "Agents",
     description: "Agents and workflows executing right now",
   },
   {
     id: "improves",
-    label: "Improves",
+    label: "Impact",
     description: "Measured outcomes and learning loops closing",
   },
 ]

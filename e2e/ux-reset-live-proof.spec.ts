@@ -115,13 +115,13 @@ test.describe("UX Reset live proof — morph, voice/tools, AuthGate, agent strea
     await page.screenshot({ path: `${SHOTS}/agent-stream.png`, fullPage: true })
   })
 
-  test("I11 hub is seven text links with no Training item", async ({ page }) => {
+  test("I11 hub is six text links with no Training item", async ({ page }) => {
     await page.goto("/e2e/shots/intelligence")
     const hub = page.getByRole("navigation", { name: "Intelligence hub" })
     await expect(hub).toBeVisible({ timeout: 60_000 })
-    await expect(hub.getByRole("link")).toHaveCount(7)
+    await expect(hub.getByRole("link")).toHaveCount(6)
     await expect(hub.getByRole("link", { name: "Training" })).toHaveCount(0)
     await expect(hub.getByRole("link", { name: "Reports" })).toBeVisible()
-    await expect(hub.getByRole("link", { name: "Model Studio" })).toBeVisible()
+    await expect(hub.getByRole("link", { name: "Model Studio" })).toHaveCount(0)
   })
 })

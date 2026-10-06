@@ -113,14 +113,14 @@ test.describe("Intelligence hub UI", () => {
     await expect(page.getByTestId("intelligence-map-canvas")).toBeVisible({ timeout: 60_000 })
   })
 
-  test("I11 — hub has seven tabs and no Training item", async ({ page }) => {
+  test("I11 — hub has six tabs and no Training or Model Studio item", async ({ page }) => {
     await page.goto("/intelligence")
     const hub = page.getByRole("navigation", { name: "Intelligence hub" })
     await expect(hub).toBeVisible({ timeout: 60_000 })
-    await expect(hub.getByRole("link")).toHaveCount(7)
+    await expect(hub.getByRole("link")).toHaveCount(6)
     await expect(hub.getByRole("link", { name: "Training" })).toHaveCount(0)
     await expect(hub.getByRole("link", { name: "Reports" })).toBeVisible()
-    await expect(hub.getByRole("link", { name: "Model Studio" })).toBeVisible()
+    await expect(hub.getByRole("link", { name: "Model Studio" })).toHaveCount(0)
   })
 
   test("I11 — Overview graph exposes List alternative", async ({ page }) => {
