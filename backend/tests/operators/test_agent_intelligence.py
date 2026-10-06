@@ -318,6 +318,38 @@ def test_select_model_for_agent_complexity_hint():
     assert model == "gpt-5.5"
 
 
+@pytest.mark.parametrize("saved_model", ["auto", "Auto", "", None, "default"])
+def test_select_model_for_agent_treats_auto_as_unpinned(saved_model):
+    from app.operators.agent_intelligence import MODEL_TIERS
+
+    with patch(
+        "app.operators.agent_intelligence.resolve_agent_inference_model",
+        return_value=SimpleNamespace(fine_tuned_openai_id=None, base_model="gpt-4.1-mini", trained_model_id=None),
+    ):
+        model = select_model_for_agent(
+            {"model": saved_model},
+            MagicMock(),
+            "org-1",
+            "short",
+            parameters={"complexity": "high"},
+        )
+    assert model == MODEL_TIERS["high"]["openai"]
+    assert model != "auto"
+
+
+def test_explicit_agent_model_and_inference_base_ignore_auto():
+    from app.services.agent_finetune_service import (
+        DEFAULT_AGENT_BASE_MODEL,
+        explicit_agent_model,
+        resolve_agent_inference_model,
+    )
+
+    assert explicit_agent_model({"model": " auto "}) is None
+    assert explicit_agent_model({"model": "gpt-5.5"}) == "gpt-5.5"
+    inference = resolve_agent_inference_model(MagicMock(), "org-1", {"id": "a1", "model": "auto"})
+    assert inference.base_model == DEFAULT_AGENT_BASE_MODEL
+
+
 def test_load_agent_task_history_filters_by_agent():
     client = MagicMock()
     client.table.return_value.select.return_value.eq.return_value.eq.return_value.eq.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(

@@ -23,6 +23,14 @@ AUDIT_AGENT_MODEL_ASSIGNED = "agent.finetuned_model.assigned"
 AUDIT_AGENT_MODEL_INFERENCE = "agent.model.inference"
 
 DEFAULT_AGENT_BASE_MODEL = "gpt-4.1-mini"
+# Values the creator saves when the user leaves the model to Gravitre.
+AUTO_MODEL_VALUES = frozenset({"", "auto", "automatic", "default"})
+
+
+def explicit_agent_model(agent: dict[str, Any]) -> str | None:
+    """The model id an agent was pinned to, or None when it is left on auto."""
+    value = str(agent.get("model") or "").strip()
+    return None if value.lower() in AUTO_MODEL_VALUES else value
 
 
 @dataclass(frozen=True)
@@ -45,7 +53,7 @@ def _extract_fine_tuned_openai_id(metrics: dict[str, Any] | None) -> str | None:
 def resolve_agent_inference_model(client: Any, org_id: str, agent: dict[str, Any]) -> AgentInferenceModel:
     """Resolve base and optional fine-tuned OpenAI model for an agent."""
     agent_id = str(agent["id"])
-    base_model = (agent.get("model") or "").strip() or DEFAULT_AGENT_BASE_MODEL
+    base_model = explicit_agent_model(agent) or DEFAULT_AGENT_BASE_MODEL
     trained_model_id = agent.get("trained_model_id")
     if not trained_model_id:
         return AgentInferenceModel(
