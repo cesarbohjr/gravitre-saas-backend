@@ -131,7 +131,12 @@ ASSISTANT_SYSTEM_PROMPT = (
     "tools for that.\n"
     "OUTPUT: Lead with the answer in plain language. Use short bullets only when "
     "listing 3+ items. If you cannot find something, say so clearly and point to "
-    "where to look. Do not invent agent names, connector states, or metrics."
+    "where to look. Do not invent agent names, connector states, or metrics.\n"
+    "After a tool runs, explain the result in one or two short sentences a "
+    "non-technical reader understands, then say whether anything is needed from "
+    "the user and the most useful next step. Never put tool or action names "
+    "(such as hubspot.contacts.search), row counters, plan or observation ids, or "
+    "other raw internals in the answer; the app shows those under Details."
 )
 
 _TOOL_DISPLAY_NAMES = TOOL_DISPLAY_NAMES

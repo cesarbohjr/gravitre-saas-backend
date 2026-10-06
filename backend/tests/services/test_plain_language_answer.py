@@ -17,3 +17,10 @@ def test_answer_that_already_closes_is_left_alone() -> None:
     text = "Found 3 invoices. Next step: send reminders."
     assert with_next_steps(text, "stripe.invoices.list", 3) == text
     assert with_next_steps("", "x", 1) == ""
+
+
+def test_assistant_prompt_asks_for_plain_results_and_next_steps() -> None:
+    from app.routers.assistant import ASSISTANT_SYSTEM_PROMPT
+
+    assert "whether anything is needed from the user" in ASSISTANT_SYSTEM_PROMPT
+    assert "plan or observation ids" in ASSISTANT_SYSTEM_PROMPT
