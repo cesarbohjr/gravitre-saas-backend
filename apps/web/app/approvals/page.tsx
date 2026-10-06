@@ -428,9 +428,11 @@ function DecisionCard({
           <span className={cn("rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium capitalize", config.badge)}>
             {approval.priority}
           </span>
-          <StatusChip status={approval.status}>
-            {formatStatusLabel(approval.status)}
-          </StatusChip>
+          {approval.status !== "pending" ? (
+            <StatusChip status={approval.status}>
+              {formatStatusLabel(approval.status)}
+            </StatusChip>
+          ) : null}
           {approval.status === "pending" && approval.context.runId ? (
             <EvidenceChip label="Same path continues" tone="waiting" />
           ) : null}
