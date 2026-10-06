@@ -196,6 +196,7 @@ def build_module_d_unified_system_prompt(
     include_few_shots: bool = True,
     spoken_prompt_v2: bool = False,
     spoken_length_band: object | None = None,
+    response_style_key: str | None = None,
 ) -> str:
     """Compose the system prompt for the unified reasoning call.
 
@@ -205,6 +206,9 @@ def build_module_d_unified_system_prompt(
     Phase 5 (conversational polish): ``spoken_prompt_v2`` appends Register 5b and
     ``spoken_length_band`` appends the per-turn spoken length ceiling. Both are
     additive to Register 5 and only apply when ``spoken_mode`` is true.
+
+    The response style section is always present: a scoped agent's
+    ``config.response_style`` wins over ``response_style_key`` (request/user/org).
     """
     from app.services.conversational_behavior import conversational_behavior_section
     from app.services.expert_dialogue_library import expert_dialogue_prompt_section
@@ -213,9 +217,19 @@ def build_module_d_unified_system_prompt(
         spoken_register_section,
     )
 
+    from app.operators.agent_prompts import build_agent_instructions_section
+    from app.services.persona_service import (
+        build_response_style_section,
+        resolve_response_style_key,
+    )
+
     parts = [
         MODULE_D_UNIFIED_SYSTEM_SPEC,
         conversational_behavior_section(),
+        build_response_style_section(
+            resolve_response_style_key(agent, response_style_key),
+            spoken=bool(spoken_mode),
+        ),
     ]
     if include_few_shots:
         shots = "\n\n".join(
@@ -231,6 +245,9 @@ def build_module_d_unified_system_prompt(
         self_name = agent_self_recognition_section(agent)
         if self_name:
             parts.append(self_name)
+        instructions = build_agent_instructions_section(agent)
+        if instructions:
+            parts.append(instructions)
         expert = expert_dialogue_prompt_section(agent, spoken_mode=spoken_mode)
         if expert:
             parts.append(expert)
