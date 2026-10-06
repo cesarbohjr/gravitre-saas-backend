@@ -146,7 +146,7 @@ export const ML_REGISTRY_TEMPLATES: Record<MlStackLayerId, MlRegistryTemplate> =
     name: "Revenue forecaster",
     description: "Projects weekly revenue with seasonality and holiday effects.",
     taskType: "weekly",
-    preferredBaseModelId: "prophet",
+    preferredBaseModelId: "forecaster",
   },
   anomaly: {
     layerId: "anomaly",
@@ -345,7 +345,18 @@ const LLM_BASE_MODELS: BaseModelOption[] = [
   },
 ]
 
+// Base ids below must be trainable by backend/app/workers/training_worker.py
+// (directly or via its MODEL_BASE_ALIASES), otherwise training jobs fail.
 const CLASSIFIER_BASE_MODELS: BaseModelOption[] = [
+  {
+    id: "success_predictor",
+    label: "Outcome predictor",
+    versionTag: "Gravitre",
+    description: "Binary success/failure model that returns an outcome probability.",
+    provider: "Gravitre",
+    layer: "classical",
+    availability: "platform",
+  },
   {
     id: "xgboost",
     label: "XGBoost",
@@ -358,24 +369,13 @@ const CLASSIFIER_BASE_MODELS: BaseModelOption[] = [
     recommended: true,
   },
   {
-    id: "lightgbm",
-    label: "LightGBM",
-    versionTag: "4.x",
-    description: "Fast training on wide feature sets and large categoricals.",
-    provider: "Microsoft",
+    id: "gradient_boosting",
+    label: "Gradient boosting",
+    versionTag: "sklearn",
+    description: "Boosted trees without extra dependencies; good on skewed scoring data.",
+    provider: "scikit-learn",
     layer: "classical",
-    availability: "connected",
-    connectorVendor: "postgresql",
-  },
-  {
-    id: "catboost",
-    label: "CatBoost",
-    versionTag: "1.2",
-    description: "Handles high-cardinality categoricals without heavy encoding.",
-    provider: "Yandex",
-    layer: "classical",
-    availability: "connected",
-    connectorVendor: "snowflake",
+    availability: "platform",
   },
   {
     id: "random-forest",
@@ -400,38 +400,11 @@ const CLASSIFIER_BASE_MODELS: BaseModelOption[] = [
 
 const FORECASTER_BASE_MODELS: BaseModelOption[] = [
   {
-    id: "prophet",
-    label: "Prophet",
-    description: "Robust seasonality for business metrics.",
-    provider: "Meta",
-    layer: "timeseries",
-    availability: "connected",
-    connectorVendor: "postgresql",
-    recommended: true,
-  },
-  {
-    id: "neuralprophet",
-    label: "NeuralProphet",
-    description: "Neural extension of Prophet for complex seasonality.",
-    provider: "Open source",
-    layer: "timeseries",
-    availability: "connected",
-    connectorVendor: "postgresql",
-  },
-  {
-    id: "statsforecast-arima",
-    label: "StatsForecast ARIMA",
-    description: "Classical statistical forecasting baseline.",
-    provider: "Nixtla",
-    layer: "timeseries",
-    availability: "platform",
-  },
-  {
-    id: "chronos-bolt-base",
-    label: "Chronos Bolt",
-    versionTag: "Amazon",
-    description: "Foundation time-series model (zero-shot baseline + fine-tune).",
-    provider: "Amazon",
+    id: "forecaster",
+    label: "Metric forecaster",
+    versionTag: "Gravitre",
+    description: "Gradient-boosted regressor that projects business metrics forward.",
+    provider: "Gravitre",
     layer: "timeseries",
     availability: "platform",
     recommended: true,
@@ -448,25 +421,6 @@ const ANOMALY_BASE_MODELS: BaseModelOption[] = [
     availability: "connected",
     connectorVendor: "postgresql",
     recommended: true,
-  },
-  {
-    id: "autoencoder",
-    label: "Deep autoencoder",
-    versionTag: "PyTorch",
-    description: "Neural reconstruction error for complex multivariate patterns.",
-    provider: "PyTorch",
-    layer: "anomaly",
-    availability: "connected",
-    connectorVendor: "snowflake",
-  },
-  {
-    id: "merlion",
-    label: "Merlion",
-    versionTag: "Salesforce",
-    description: "Unified anomaly detection and forecasting toolkit.",
-    provider: "Salesforce",
-    layer: "anomaly",
-    availability: "platform",
   },
 ]
 
@@ -528,6 +482,19 @@ export function defaultBaseModelForType(
   return pick?.id ?? ""
 }
 
+/** Use `preferredId` when it is offered and usable; otherwise the type default. */
+export function preferredBaseModelForType(
+  modelType: MlModelType,
+  preferredId: string | null | undefined,
+  connectedVendorKeys: Set<string>
+): string {
+  const preferred = preferredId
+    ? resolveBaseModelOptions(modelType, connectedVendorKeys).find((o) => o.id === preferredId)
+    : undefined
+  if (preferred && preferred.availability !== "requires_connection") return preferred.id
+  return defaultBaseModelForType(modelType, connectedVendorKeys)
+}
+
 export function templateForLayer(layerId: MlStackLayerId): MlRegistryTemplate {
   return ML_REGISTRY_TEMPLATES[layerId]
 }
@@ -542,13 +509,11 @@ export function applyRegistryTemplate(
   taskType: string
   baseModel: string
 } {
-  const options = resolveBaseModelOptions(template.modelType, connectedVendorKeys)
-  const preferred = template.preferredBaseModelId
-    ? options.find((o) => o.id === template.preferredBaseModelId)
-    : undefined
-  const baseModel =
-    (preferred && preferred.availability !== "requires_connection" ? preferred.id : undefined)
-    ?? defaultBaseModelForType(template.modelType, connectedVendorKeys)
+  const baseModel = preferredBaseModelForType(
+    template.modelType,
+    template.preferredBaseModelId,
+    connectedVendorKeys
+  )
 
   return {
     modelType: template.modelType,
@@ -608,7 +573,7 @@ export const ML_TRAINING_GUIDANCE: Record<MlModelType, MlTrainingGuidance> = {
     headline: "Tabular classification on CRM or ops features",
     bullets: [
       "Normalize numeric features; encode categoricals before export.",
-      "XGBoost and LightGBM excel on skewed lead-scoring data.",
+      "XGBoost and gradient boosting excel on skewed lead-scoring data.",
       "Watch class imbalance. Prefer stratified splits and F1 over accuracy alone.",
     ],
     datasetHint: "Export labeled rows from PostgreSQL, Snowflake, or Segment.",
@@ -617,9 +582,9 @@ export const ML_TRAINING_GUIDANCE: Record<MlModelType, MlTrainingGuidance> = {
   forecaster: {
     headline: "Time-series projection with seasonality",
     bullets: [
-      "Include timestamp + target columns; Prophet handles holidays automatically.",
+      "Include timestamp + target columns with a consistent granularity.",
+      "Add calendar features (weekday, month, holiday flags) to capture seasonality.",
       "Backtest on rolling windows before deploying to workflows.",
-      "Chronos Bolt supports zero-shot baselines when labeled history is thin.",
     ],
     datasetHint: "Daily or hourly metric series with consistent granularity.",
     evalMetrics: ["mape", "rmse", "mae", "coverage"],

@@ -64,3 +64,30 @@ async def test_training_worker_process_job_classifier(monkeypatch):
 
     await worker.process_job("job1")
     assert fake_registry.add_version.await_count == 1
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("random-forest", "random_forest"),
+        ("logistic-regression", "logistic"),
+        ("isolation-forest", "anomaly_detector"),
+        ("prophet", "forecaster"),
+        ("xgboost", "xgboost"),
+        ("success_predictor", "success_predictor"),
+        (" XGBoost ", "xgboost"),
+        ("gpt-4.1-mini", "gpt-4.1-mini"),
+        ("ft:gpt-4.1:org:x", "ft:gpt-4.1:org:x"),
+    ],
+)
+def test_normalize_model_base_accepts_web_and_worker_spellings(raw, expected):
+    from app.workers.training_worker import normalize_model_base
+
+    assert normalize_model_base(raw) == expected
+
+
+def test_normalize_model_base_rejects_unsupported_with_clear_message():
+    from app.workers.training_worker import normalize_model_base
+
+    with pytest.raises(ValueError, match="Unknown model base: catboost. Supported bases"):
+        normalize_model_base("catboost")

@@ -18,6 +18,43 @@ from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
 
+# Trainer ids this worker can run, plus the spellings the web registry uses
+# for the same trainers (hyphenated / product names). Anything else fails
+# fast with a message that lists what is supported.
+_CLASSIFIER_BASES = frozenset({"classifier", "random_forest", "xgboost", "logistic", "gradient_boosting"})
+_SUPPORTED_BASES = _CLASSIFIER_BASES | {"intent_classifier", "anomaly_detector", "forecaster", "success_predictor"}
+MODEL_BASE_ALIASES: dict[str, str] = {
+    "random-forest": "random_forest",
+    "logistic-regression": "logistic",
+    "logistic_regression": "logistic",
+    "gradient-boosting": "gradient_boosting",
+    "intent-classifier": "intent_classifier",
+    "isolation-forest": "anomaly_detector",
+    "isolation_forest": "anomaly_detector",
+    "anomaly-detector": "anomaly_detector",
+    "prophet": "forecaster",
+    "success-predictor": "success_predictor",
+}
+
+
+def normalize_model_base(raw: str | None) -> str:
+    """Map a registry/web base-model id onto a trainer id this worker runs.
+
+    LLM bases (``gpt-*`` / ``ft:*``) pass through unchanged. Raises
+    ``ValueError`` with the supported list for ids no trainer handles.
+    """
+    base = (raw or "").strip()
+    if base.startswith("gpt-") or base.startswith("ft:"):
+        return base
+    key = base.lower()
+    key = MODEL_BASE_ALIASES.get(key, key)
+    if key in _SUPPORTED_BASES:
+        return key
+    supported = ", ".join(sorted(_SUPPORTED_BASES | set(MODEL_BASE_ALIASES)))
+    raise ValueError(
+        f"Unknown model base: {base or '(empty)'}. Supported bases: gpt-* / ft:* (OpenAI fine-tuning), {supported}"
+    )
+
 
 class TrainingWorker:
     """Processes training jobs from the queue."""
@@ -59,14 +96,14 @@ class TrainingWorker:
             if not records:
                 raise ValueError("No training records found")
 
-            model_base = (job["model_base"] or "").strip()
+            model_base = normalize_model_base(job["model_base"])
             metrics: ModelMetrics | None = None
             model_artifact: bytes | None = None
             model_type: ModelType
             if model_base.startswith("gpt-") or model_base.startswith("ft:"):
                 model_type = ModelType.FINE_TUNED_LLM
                 metrics, model_artifact = await self._train_fine_tuned(job, dataset, records)
-            elif model_base in ["classifier", "random_forest", "xgboost", "logistic", "gradient_boosting"]:
+            elif model_base in _CLASSIFIER_BASES:
                 model_type = ModelType.CLASSIFIER
                 metrics, model_artifact = await self._train_classifier(job, dataset, records, classifier_type=model_base)
             elif model_base == "intent_classifier":

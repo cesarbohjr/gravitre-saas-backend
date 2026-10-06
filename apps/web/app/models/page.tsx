@@ -47,6 +47,7 @@ import {
   connectedDataSources,
   defaultBaseModelForType,
   modelTypeMeta,
+  preferredBaseModelForType,
   resolveBaseModelOptions,
   stackLayerById,
   templateForLayer,
@@ -77,6 +78,14 @@ export default function ModelsPage() {
   const [modelType, setModelType] = useState<MlModelType>("fine_tuned_llm")
   const [baseModel, setBaseModel] = useState("")
   const [taskType, setTaskType] = useState("")
+  // Model Studio intent (?intent=...) — its task profile and preferred base
+  // win over the per-type defaults so e.g. "Predict outcome" and "Classify"
+  // register different models.
+  const [intentPreset, setIntentPreset] = useState<{
+    modelType: MlModelType
+    taskType: string
+    preferredBaseModel: string
+  } | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const linkedToBuiltIn = searchParams.get("tab") === "built-in"
@@ -133,10 +142,15 @@ export default function ModelsPage() {
 
   useEffect(() => {
     if (!createOpen || selectedTemplateLayer) return
+    if (intentPreset && intentPreset.modelType === modelType) {
+      setBaseModel(preferredBaseModelForType(modelType, intentPreset.preferredBaseModel, connectedVendorKeys))
+      setTaskType(intentPreset.taskType)
+      return
+    }
     const next = defaultBaseModelForType(modelType, connectedVendorKeys)
     setBaseModel(next)
     setTaskType(TASK_TYPE_SUGGESTIONS[modelType][0] ?? "")
-  }, [modelType, connectedVendorKeys, createOpen, selectedTemplateLayer])
+  }, [modelType, connectedVendorKeys, createOpen, selectedTemplateLayer, intentPreset])
 
   function resetRegisterForm() {
     setName("")
@@ -148,6 +162,7 @@ export default function ModelsPage() {
 
   function openRegisterDialog() {
     setSelectedTemplateLayer(null)
+    setIntentPreset(null)
     resetRegisterForm()
     setCreateOpen(true)
   }
@@ -157,8 +172,12 @@ export default function ModelsPage() {
     const intent = studioIntentById(searchParams.get("intent"))
     openRegisterDialog()
     if (intent) {
+      setIntentPreset({
+        modelType: intent.modelType,
+        taskType: intent.taskType,
+        preferredBaseModel: intent.preferredBaseModel,
+      })
       setModelType(intent.modelType)
-      setTaskType(TASK_TYPE_SUGGESTIONS[intent.modelType][0] ?? "")
     }
   }, [searchParams])
 
