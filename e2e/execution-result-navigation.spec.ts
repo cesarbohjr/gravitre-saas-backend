@@ -41,8 +41,8 @@ test.describe("ExecutionResult navigation buttons", () => {
     await page.goto("/e2e/execution-result?scenario=hosted_files")
     await expect(page.getByTestId("execution-result-harness")).toBeVisible()
     await expect(page.getByTestId("preview-code-pane")).toBeVisible()
-    // Artifacts sit behind a disclosure since UX Reset Phase 7 (62760765).
-    await page.getByText(/^Artifacts \(\d+\)$/).click()
+    // Since the Carbon + Emerald redesign, artifacts are listed openly under an "N artifacts" label.
+    await expect(page.getByText(/^\d+ artifacts?$/)).toBeVisible()
     await expect(page.getByTestId("file-reference-chip").first()).toBeVisible()
     await expect(page.getByText("q3-ops-brief.md")).toBeVisible()
     await expect(page.getByText("q3-ops-brief.docx")).toBeVisible()
