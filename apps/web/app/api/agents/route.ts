@@ -19,6 +19,10 @@ import {
   type AgentIconId,
 } from "@/lib/agent-identity"
 import { syncOperatorMirror } from "@/lib/agent-operator-mirror"
+import {
+  guardrailLimitsConfigFromBody,
+  readGuardrailLimitsFromConfig,
+} from "@/lib/agent-config-catalog"
 import { readReferenceFoldersFromRecord } from "@/lib/agent-reference-folders"
 import {
   assertCanConfigureVoice,
@@ -94,6 +98,7 @@ function mapAgentRow(
     guardrails: Array.isArray(model.guardrails) ? model.guardrails : [],
     referenceFolders: readReferenceFoldersFromRecord(model),
     responseStyle: readResponseStyleFromConfig(model.config),
+    guardrailLimits: readGuardrailLimitsFromConfig(model.config),
     voiceProfile:
       model.voiceProfile && typeof model.voiceProfile === "object"
         ? model.voiceProfile
@@ -473,6 +478,8 @@ export async function POST(request: NextRequest) {
           : DEFAULT_AGENT_RESPONSE_STYLE,
     )
 
+    const guardrailLimits = guardrailLimitsConfigFromBody(body as Record<string, unknown>)
+
     const insertPayload = {
       org_id: orgId,
       name,
@@ -504,6 +511,7 @@ export async function POST(request: NextRequest) {
         reference_folders: referenceFolders,
         knowledge_packs: knowledgePacks,
         response_style: responseStyle,
+        ...(guardrailLimits ? { guardrail_limits: guardrailLimits } : {}),
       },
       status: String(snake.status ?? "active"),
       last_action:

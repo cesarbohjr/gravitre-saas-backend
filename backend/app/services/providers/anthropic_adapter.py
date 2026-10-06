@@ -11,6 +11,7 @@ import time
 from typing import Any, Callable
 
 from app.core.logging import get_logger
+from app.services.llm_catalog import model_accepts_temperature
 from app.services.providers.base import (
     CompletionOptions,
     Message,
@@ -101,7 +102,7 @@ class AnthropicAdapter(ProviderAdapter):
             from app.services.prompt_prefix_cache import anthropic_cached_system
 
             kwargs["system"] = anthropic_cached_system(system_text) or system_text
-        if options.temperature is not None:
+        if options.temperature is not None and model_accepts_temperature(model):
             kwargs["temperature"] = options.temperature
 
         async def _attempt() -> ProviderResponse:
@@ -157,7 +158,7 @@ class AnthropicAdapter(ProviderAdapter):
             from app.services.prompt_prefix_cache import anthropic_cached_system
 
             kwargs["system"] = anthropic_cached_system(system_text) or system_text
-        if options.temperature is not None:
+        if options.temperature is not None and model_accepts_temperature(model):
             kwargs["temperature"] = options.temperature
 
         start = time.perf_counter()

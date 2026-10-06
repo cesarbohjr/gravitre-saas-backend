@@ -22,6 +22,7 @@ from app.operator_module import router as operator_router
 from app.operators import router as operators_router
 from app.routers import (
     agent_memories,
+    agent_improvements,
     agent_knowledge_assignments,
     knowledge_fabric,
     agent_tool_permissions,
@@ -74,6 +75,7 @@ from app.routers import (
     org,
     lite,
     ml_models,
+    llm_models,
     ml_admin,
     ai_architecture_admin,
     intelligence_engine,
@@ -698,6 +700,7 @@ app.include_router(optimization.router)
 app.include_router(goals.router)
 app.include_router(scim.router)
 app.include_router(ml_models.router)
+app.include_router(llm_models.router)
 app.include_router(ml_admin.router)
 app.include_router(ai_architecture_admin.router)
 app.include_router(intelligence_engine.router)
@@ -719,6 +722,7 @@ app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)
 app.include_router(agent_memories.router)
 app.include_router(agent_knowledge_assignments.router)
+app.include_router(agent_improvements.router)
 app.include_router(knowledge_fabric.router)
 app.include_router(knowledge_fabric.internal_router)
 app.include_router(admin_intelligence.router)

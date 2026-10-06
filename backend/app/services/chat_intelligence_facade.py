@@ -188,7 +188,10 @@ class ChatIntelligenceFacade:
         inference = resolve_agent_inference_model(client, org_id, agent)
         if inference.fine_tuned_openai_id:
             return inference.fine_tuned_openai_id, {"source": "fine_tuned"}
-        configured = (agent.get("model") or inference.base_model or "").strip()
+        from app.services.agent_finetune_service import explicit_agent_model
+
+        # "auto" (the creator default) means pick by task complexity, not a literal model id.
+        configured = explicit_agent_model(agent) or (inference.base_model if getattr(inference, "trained_model_id", None) else "")
         if configured:
             return configured, {"source": "agent_configured"}
 

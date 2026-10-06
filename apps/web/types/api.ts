@@ -168,6 +168,10 @@ export interface AgentVoiceProfile {
   language?: string
 }
 
+export type AgentGuardrailLimits = {
+  maxActionsPerHour?: number
+}
+
 export interface Agent {
   id: string
   name: string
@@ -183,6 +187,8 @@ export interface Agent {
   voiceProfile?: AgentVoiceProfile
   /** Chat text persona key (Friendly Assistant, etc.) — stored in config.response_style */
   responseStyle?: string
+  /** Numbers behind the "Slow down" rule — stored in config.guardrail_limits */
+  guardrailLimits?: AgentGuardrailLimits
   stats: AgentStats
   capabilities: string[]
   permissions: string[]
@@ -1227,6 +1233,7 @@ export interface CreateAgentRequest {
   personality?: AgentPersonality
   voiceProfile?: AgentVoiceProfile
   responseStyle?: string
+  guardrailLimits?: AgentGuardrailLimits
   capabilities?: string[]
   permissions?: string[]
   systems?: string[]

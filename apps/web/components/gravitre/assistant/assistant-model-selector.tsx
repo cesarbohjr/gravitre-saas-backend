@@ -15,24 +15,28 @@ export type IntelligenceMode = "fast" | "standard" | "reasoning" | "agent"
 
 export const MODEL_OPTIONS = [
   { id: "auto", label: "Auto (recommended)", shortLabel: "Auto", group: "featured" },
-  { id: "gpt-5.5", label: "GPT-5.5", shortLabel: "GPT-5.5", description: "Most capable", group: "featured" },
+  { id: "gpt-6-astra", label: "GPT-6 Astra", shortLabel: "GPT-6", description: "Most capable", group: "featured" },
   {
-    id: "claude-sonnet-4-6",
-    label: "Claude Sonnet 4.6",
-    shortLabel: "Claude Sonnet",
-    description: "Best for writing",
+    id: "claude-opus-5-5",
+    label: "Claude Opus 5.5",
+    shortLabel: "Claude Opus",
+    description: "Best for writing and reasoning",
     group: "featured",
   },
   {
-    id: "gemini-2.5-pro",
-    label: "Gemini 2.5 Pro",
+    id: "gemini-3.1-pro-preview",
+    label: "Gemini 3.1 Pro",
     shortLabel: "Gemini Pro",
-    description: "Multimodal",
+    description: "Multimodal, long context",
     group: "featured",
   },
-  { id: "gpt-5.4-mini", label: "GPT-5.4 Mini", shortLabel: "GPT-5.4 Mini", description: "Fast & efficient", group: "OpenAI" },
-  { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5", shortLabel: "Haiku", description: "Fastest response", group: "Anthropic" },
-  { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", shortLabel: "Gemini Flash", description: "Fast & cheap", group: "Google" },
+  { id: "gpt-6.1-sol", label: "GPT-6.1 Sol", shortLabel: "GPT-6.1 Sol", description: "Balanced", group: "OpenAI" },
+  { id: "gpt-6-luna", label: "GPT-6 Luna", shortLabel: "GPT-6 Luna", description: "Fast & cheap", group: "OpenAI" },
+  { id: "claude-fable-5-1", label: "Claude Fable 5.1", shortLabel: "Fable", description: "Hardest long tasks", group: "Anthropic" },
+  { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5", shortLabel: "Sonnet", description: "Balanced", group: "Anthropic" },
+  { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", shortLabel: "Haiku", description: "Fastest response", group: "Anthropic" },
+  { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", shortLabel: "Gemini Flash", description: "Fast & capable", group: "Google" },
+  { id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash-Lite", shortLabel: "Flash-Lite", description: "Cheapest", group: "Google" },
 ] as const
 
 const modes: {

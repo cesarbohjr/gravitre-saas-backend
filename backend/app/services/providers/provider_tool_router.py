@@ -13,6 +13,7 @@ import uuid
 from typing import Any, Literal
 
 from app.core.logging import get_logger
+from app.services.llm_catalog import model_accepts_temperature, provider_for_model
 from app.services.providers.base import ProviderUnavailableError
 from app.services.providers.tool_completion import (
     ToolCallSpec,
@@ -53,13 +54,10 @@ def _get_anthropic_tool_client(anthropic: Any, api_key: str, timeout_s: float) -
 
 
 def resolve_provider_for_model(model_id: str) -> ProviderName:
-    from app.services.assistant_mode import AVAILABLE_MODELS
-
     model = str(model_id or "").strip()
-    if model in AVAILABLE_MODELS:
-        provider = str(AVAILABLE_MODELS[model]["provider"] or "").strip().lower()
-        if provider in {"openai", "anthropic", "gemini"}:
-            return provider  # type: ignore[return-value]
+    catalog_provider = provider_for_model(model)
+    if catalog_provider is not None:
+        return catalog_provider
     lowered = model.lower()
     if lowered.startswith("claude") or "anthropic" in lowered:
         return "anthropic"
@@ -210,7 +208,7 @@ async def _complete_anthropic_with_tools(
         kwargs["tools"] = native_tools
         if tool_choice and tool_choice != "none":
             kwargs["tool_choice"] = {"type": "auto"}
-    if temperature is not None:
+    if temperature is not None and model_accepts_temperature(model):
         kwargs["temperature"] = temperature
     client = _get_anthropic_tool_client(anthropic, api_key, 60.0)
     resp = await client.messages.create(**kwargs)

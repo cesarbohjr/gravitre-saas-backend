@@ -23,6 +23,8 @@ export const AGENT_PATCH_HANDLED_KEYS = [
   "reference_folders",
   "knowledgePacks",
   "knowledge_packs",
+  "guardrailLimits",
+  "guardrail_limits",
 ] as const
 
 export function agentPatchBodyIsHandled(body: Record<string, unknown>, snakeBody: Record<string, unknown>): boolean {

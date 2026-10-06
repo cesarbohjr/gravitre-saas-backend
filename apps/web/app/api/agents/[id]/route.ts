@@ -14,6 +14,10 @@ import {
   type AgentAvatarColorId,
 } from "@/lib/agent-identity"
 import { syncOperatorMirror } from "@/lib/agent-operator-mirror"
+import {
+  guardrailLimitsConfigFromBody,
+  readGuardrailLimitsFromConfig,
+} from "@/lib/agent-config-catalog"
 import { readReferenceFoldersFromRecord } from "@/lib/agent-reference-folders"
 import { snakeToCamel, camelToSnake } from "@/lib/supabase/transforms"
 import {
@@ -92,6 +96,7 @@ function mapAgentRow(input: Record<string, unknown>) {
       ? ((model.config as Record<string, unknown>).knowledge_packs as Array<{ id: string; name: string; department?: string }>)
       : [],
     responseStyle: readResponseStyleFromConfig(model.config),
+    guardrailLimits: readGuardrailLimitsFromConfig(model.config),
     config: model.config && typeof model.config === "object" ? model.config : {},
     voiceProfile:
       model.voiceProfile && typeof model.voiceProfile === "object"
@@ -385,6 +390,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     nextConfig = {
       ...(nextConfig ?? currentConfig),
       response_style: style,
+    }
+  }
+
+  const guardrailLimits = guardrailLimitsConfigFromBody(bodyRecord)
+  if (guardrailLimits) {
+    nextConfig = {
+      ...(nextConfig ?? currentConfig),
+      guardrail_limits: guardrailLimits,
     }
   }
 

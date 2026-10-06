@@ -13,9 +13,9 @@ import {
   capabilityNamesFromIds,
   guardrailIdsFromNames,
   guardrailNamesFromIds,
-  systemIdsFromNames,
-  systemNamesFromIds,
+  normalizeMaxActionsPerHour,
 } from "@/lib/agent-config-catalog"
+import { agentSystemKeys } from "@/lib/agent-connected-apps"
 import {
   DEFAULT_AGENT_RESPONSE_STYLE,
   normalizeAgentResponseStyle,
@@ -191,7 +191,7 @@ function CapabilityForm({
     [agent.capabilities],
   )
   const initialSystems = useMemo(
-    () => systemIdsFromNames(agent.permissions ?? []),
+    () => agentSystemKeys(agent.permissions ?? []),
     [agent.permissions],
   )
   const initialGuardrails = useMemo(
@@ -203,6 +203,8 @@ function CapabilityForm({
   const [customCapabilities, setCustomCapabilities] = useState(initialCustom)
   const [systemIds, setSystemIds] = useState(initialSystems)
   const [guardrailIds, setGuardrailIds] = useState(initialGuardrails)
+  const initialMaxPerHour = normalizeMaxActionsPerHour(agent.guardrailLimits?.maxActionsPerHour)
+  const [maxActionsPerHour, setMaxActionsPerHour] = useState(initialMaxPerHour)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const busy = useRef(false)
@@ -214,7 +216,8 @@ function CapabilityForm({
     JSON.stringify([...systemIds].sort()) !==
       JSON.stringify([...initialSystems].sort()) ||
     JSON.stringify([...guardrailIds].sort()) !==
-      JSON.stringify([...initialGuardrails].sort())
+      JSON.stringify([...initialGuardrails].sort()) ||
+    maxActionsPerHour !== initialMaxPerHour
 
   const handleSave = async () => {
     if (busy.current || !dirty) return
@@ -224,24 +227,16 @@ function CapabilityForm({
     try {
       const updated = await agentsApi.update(agent.id, {
         capabilities: capabilityNamesFromIds(capabilityIds, customCapabilities),
-        permissions: [
-          ...systemNamesFromIds(systemIds),
-          ...(agent.permissions ?? []).filter(
-            (name) => !systemIdsFromNames([name]).length,
-          ),
-        ],
-        systems: [
-          ...systemNamesFromIds(systemIds),
-          ...(agent.permissions ?? []).filter(
-            (name) => !systemIdsFromNames([name]).length,
-          ),
-        ],
+        // Integration keys, so tool scoping matches the registry; empty means every connected app.
+        permissions: systemIds,
+        systems: systemIds,
         guardrails: [
           ...guardrailNamesFromIds(guardrailIds),
           ...(agent.guardrails ?? []).filter(
             (name) => !guardrailIdsFromNames([name]).length,
           ),
         ],
+        guardrailLimits: { maxActionsPerHour },
       } as Partial<Agent> & { systems?: string[] })
       setSavedAgent(updated)
       toast.success("Capabilities saved")
@@ -274,22 +269,14 @@ function CapabilityForm({
           onCustomCapabilitiesChange={setCustomCapabilities}
           onSystemIdsChange={setSystemIds}
           onGuardrailIdsChange={setGuardrailIds}
+          maxActionsPerHour={maxActionsPerHour}
+          onMaxActionsPerHourChange={setMaxActionsPerHour}
           knowledgeHref={`/agents/${agent.id}/knowledge`}
         />
       </fieldset>
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}
-        </p>
-      ) : null}
-      {(agent.permissions ?? []).filter(
-        (name) => !systemIdsFromNames([name]).length,
-      ).length ? (
-        <p className="break-words text-xs text-muted-foreground">
-          Other connector labels retained:{" "}
-          {(agent.permissions ?? [])
-            .filter((name) => !systemIdsFromNames([name]).length)
-            .join(", ")}
         </p>
       ) : null}
       {(agent.guardrails ?? []).filter(
@@ -303,9 +290,8 @@ function CapabilityForm({
         </p>
       ) : null}
       <p className="text-xs text-muted-foreground">
-        Catalog selections are configuration labels. Existing non-catalog
-        connector and guardrail labels are preserved. Runtime authorization is
-        governed by workspace policy.
+        The apps you pick decide which connector tools this agent can call.
+        Existing non-catalog guardrail labels are preserved.
       </p>
       <div className="flex flex-wrap items-center justify-end gap-3">
         <span
@@ -324,6 +310,7 @@ function CapabilityForm({
               setCustomCapabilities(initialCustom)
               setSystemIds(initialSystems)
               setGuardrailIds(initialGuardrails)
+              setMaxActionsPerHour(initialMaxPerHour)
               setError(null)
             }}
           >

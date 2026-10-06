@@ -96,7 +96,8 @@ def get_agent(client: Any, org_id: str, agent_id: str) -> dict[str, Any] | None:
     result = (
         client.table("agents")
         .select(
-            "id,org_id,name,purpose,role,model,systems,status,config,trained_model_id,department"
+            "id,org_id,name,purpose,role,model,systems,status,config,trained_model_id,department,"
+            "capabilities,guardrails,voice_profile"
         )
         .eq("id", agent_id)
         .eq("org_id", org_id)

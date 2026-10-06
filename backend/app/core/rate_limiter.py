@@ -38,6 +38,19 @@ class _SlidingWindow:
 
 
 _memory = _SlidingWindow()
+_memory_by_window: dict[int, _SlidingWindow] = {}
+_memory_by_window_lock = Lock()
+
+
+def _memory_window(window_seconds: int) -> _SlidingWindow:
+    if window_seconds == _WINDOW_S:
+        return _memory
+    with _memory_by_window_lock:
+        window = _memory_by_window.get(window_seconds)
+        if window is None:
+            window = _SlidingWindow(float(window_seconds))
+            _memory_by_window[window_seconds] = window
+        return window
 
 
 def _redis_hit(client: Any, redis_key: str, limit: int, window_s: int) -> tuple[bool, int, int | None]:
@@ -62,6 +75,15 @@ class RateLimiter:
         limit: int,
         window_seconds: int = 60,
     ) -> dict[str, Any]:
+        return self.check_sync(identifier, limit, window_seconds)
+
+    def check_sync(
+        self,
+        identifier: str,
+        limit: int,
+        window_seconds: int = 60,
+    ) -> dict[str, Any]:
+        """Count one hit against ``identifier`` and say whether it is within ``limit``."""
         if limit <= 0:
             return {"allowed": True, "remaining": limit, "retry_after": None}
 
@@ -85,7 +107,7 @@ class RateLimiter:
             except Exception as exc:  # noqa: BLE001
                 logger.debug("rate_limit redis fallback identifier=%s error=%s", identifier, exc)
 
-        allowed, remaining = _memory.hit(identifier, limit)
+        allowed, remaining = _memory_window(window_seconds).hit(identifier, limit)
         retry_after = window_seconds if not allowed else None
         return {"allowed": allowed, "remaining": remaining, "retry_after": retry_after}
 

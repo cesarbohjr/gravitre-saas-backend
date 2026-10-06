@@ -261,14 +261,8 @@ class IntelligenceOrchestrator:
         except Exception as exc:  # noqa: BLE001
             logger.debug("orchestrator jit skills skipped error=%s", exc)
 
-        fabric_pack_ids = [
-            str(row.get("source_id") or "")
-            for row in knowledge_assignments
-            if isinstance(row, dict)
-            and str(row.get("source_type") or "").lower() == "knowledge_pack"
-            and str(row.get("source_id") or "").startswith("pack.")
-            and row.get("enabled", True)
-        ]
+        # Serialized assignment rows are camelCase (sourceType/sourceId); accept both.
+        fabric_pack_ids = self._knowledge.assigned_pack_ids(knowledge_assignments)
         # Tool expertise packs: driven by granted connectors (one source, many departments)
         try:
             from app.knowledge_fabric.tool_knowledge import tool_packs_for_connected_vendors

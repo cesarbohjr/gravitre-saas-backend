@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   formatModelCatalogRow,
   recommendedImprovementForStatus,
+  STUDIO_INTENTS,
   studioIntentById,
   whereUsedLabel,
 } from "@/lib/intelligence/model-catalog-display"
@@ -9,6 +10,7 @@ import {
   buildModelUsageTopology,
   layoutModelUsageTopology,
 } from "@/lib/intelligence/model-usage-topology"
+import { resolveBaseModelOptions, TASK_TYPE_SUGGESTIONS } from "@/lib/ml-registry-catalog"
 import type { MlModelSummary } from "@/types/api"
 
 const draft: MlModelSummary = {
@@ -52,6 +54,27 @@ describe("model-catalog-display", () => {
     expect(studioIntentById("forecast")?.modelType).toBe("forecaster")
     expect(studioIntentById("improve_agent")?.modelType).toBe("fine_tuned_llm")
     expect(studioIntentById("missing")).toBeNull()
+  })
+
+  it("gives every studio intent a distinct registration profile", () => {
+    const signatures = STUDIO_INTENTS.map(
+      (item) => `${item.modelType}|${item.taskType}|${item.preferredBaseModel}`
+    )
+    expect(new Set(signatures).size).toBe(STUDIO_INTENTS.length)
+    const predict = studioIntentById("predict")
+    const classify = studioIntentById("classify")
+    expect(predict?.taskType).toBe("binary")
+    expect(predict?.preferredBaseModel).toBe("success_predictor")
+    expect(classify?.taskType).toBe("multiclass")
+    expect(classify?.preferredBaseModel).toBe("xgboost")
+  })
+
+  it("only points studio intents at base models and task types the registry offers", () => {
+    for (const item of STUDIO_INTENTS) {
+      expect(TASK_TYPE_SUGGESTIONS[item.modelType]).toContain(item.taskType)
+      const ids = resolveBaseModelOptions(item.modelType, new Set()).map((o) => o.id)
+      expect(ids).toContain(item.preferredBaseModel)
+    }
   })
 
   it("does not invent dollar performance", () => {
