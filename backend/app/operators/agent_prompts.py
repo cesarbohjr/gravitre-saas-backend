@@ -573,6 +573,13 @@ def build_agent_system_prompt(
         lines.append(f"Primary purpose: {purpose}")
     if systems_text:
         lines.append(f"Declared systems: {systems_text}")
+    capabilities = [str(c).strip() for c in (agent.get("capabilities") or []) if str(c).strip()]
+    if capabilities:
+        lines.append(f"Assigned skills: {', '.join(capabilities)}")
+    guardrails = [str(g).strip() for g in (agent.get("guardrails") or []) if str(g).strip()]
+    if guardrails:
+        lines.append("Safety rules set by your admin:")
+        lines.extend(f"- {rule}" for rule in guardrails)
     if connected_integrations:
         lines.append(f"Active integrations: {', '.join(connected_integrations)}")
     if org_context:

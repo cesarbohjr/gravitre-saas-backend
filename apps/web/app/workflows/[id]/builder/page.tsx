@@ -76,6 +76,8 @@ import {
   type DebateContribution,
 } from "@/lib/workflows/builder-persistence"
 import { applyEnrichmentWorkflowSetup } from "@/lib/workflows/enrichment-workflow-setup"
+import { isBranchingNode, reconcileBranchTargets } from "@/lib/workflows/branch-wiring"
+import { BranchRoutingPanel, BranchTargetsEditor } from "@/components/workflows/branch-routing-panel"
 import { classifyCanvasNodeWriteAuthority } from "@/lib/workflows/write-authority"
 import type { WorkflowDryRunResponse } from "@/types/api"
 import {
@@ -1774,6 +1776,7 @@ function ConfigPanel({
   actionCatalog = null,
   lastRunId = null,
   inline = false,
+  allNodes = [],
 }: {
   node: WorkflowNode | null
   onClose: () => void
@@ -1786,6 +1789,8 @@ function ConfigPanel({
   lastRunId?: string | null
   /** Render docked inside the builder inspector instead of as a modal sheet. */
   inline?: boolean
+  /** Every canvas node, for branch targets and step-output field suggestions. */
+  allNodes?: WorkflowNode[]
 }) {
   const [formValues, setFormValues] = useState<Record<string, string>>({})
   const [showDecisionHelp, setShowDecisionHelp] = useState(true)
@@ -2376,6 +2381,10 @@ function ConfigPanel({
   </div>
   )}
 
+  {(node.type === "if" || node.type === "switch") && (
+    <BranchRoutingPanel node={node} allNodes={allNodes} onUpdate={onUpdate} />
+  )}
+
   {/* Decision Node Configuration */}
   {node.type === "decision" && (
   <div className="space-y-5 pt-4 border-t border-[color:var(--g-signal)]/20">
@@ -2502,7 +2511,7 @@ function ConfigPanel({
           className="h-24 text-sm bg-secondary border-border resize-none font-mono"
         />
         <p className="text-[10px] text-muted-foreground mt-1">
-          Example: If score &gt; 80 → High Value. Mirror each rule in “When to take this branch” below.
+          Notes for your team. Each branch&apos;s “When to take this branch” is what the run checks, top to bottom.
         </p>
       </div>
     )}
@@ -2608,6 +2617,8 @@ function ConfigPanel({
         ))}
       </div>
     </div>
+
+    <BranchTargetsEditor node={node} allNodes={allNodes} onUpdate={onUpdate} />
 
     {/* AI Reasoning Display (if available) */}
     {node.decisionConfig?.reasoning && (
@@ -3066,6 +3077,19 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   
   const seedOverride = useBuilderSeed()
   const [nodes, setNodes] = useState<WorkflowNode[]>(() => seedOverride ?? [])
+  // Keep IF / Switch / Decision branch targets in step with their connections, so a
+  // newly drawn edge is routed to a free branch and a removed edge frees its branch.
+  useEffect(() => {
+    setNodes((prev) => {
+      let changed = false
+      const next = prev.map((n) => {
+        const reconciled = reconcileBranchTargets(n)
+        if (reconciled !== n) changed = true
+        return reconciled
+      })
+      return changed ? next : prev
+    })
+  }, [nodes])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [traceOverlay, setTraceOverlay] = useState(false)
   const [activeLibrary, setActiveLibrary] = useState<"agents" | "connectors" | "sources" | "tools" | "decisions">("agents")
@@ -3847,7 +3871,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
               },
               outputPaths: [
                 { id: "high", label: "High value", condition: "score > 80" },
-                { id: "medium", label: "Medium value", condition: "score 40-80" },
+                { id: "medium", label: "Medium value", condition: "score >= 40" },
                 { id: "low", label: "Low value", condition: "score < 40", isDefault: true },
               ],
             },
@@ -4449,6 +4473,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       actionCatalog={actionCatalogData ?? null}
       lastRunId={lastRunId}
       inline={inline}
+      allNodes={nodes}
     />
   )
 
@@ -5050,7 +5075,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                         },
                         outputPaths: [
                           { id: "high", label: "High value", condition: "score > 80" },
-                          { id: "medium", label: "Medium value", condition: "score 40-80" },
+                          { id: "medium", label: "Medium value", condition: "score >= 40" },
                           { id: "low", label: "Low value", condition: "score < 40", isDefault: true },
                         ],
                       }
@@ -5446,10 +5471,6 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 const isDecisionSource = conn.from.type === "decision"
                 const isDecisionTarget = conn.to.type === "decision"
                 
-                // For decision nodes, find the path index to offset connections
-                const pathIndex = isDecisionSource 
-                  ? conn.from.connections.indexOf(conn.to.id)
-                  : 0
                 const totalPaths = isDecisionSource 
                   ? conn.from.connections.length 
                   : 1
@@ -5517,10 +5538,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                 const labelY = (fromY + toY) / 2 - 12
                 
                 // For decision nodes, show the path label instead of data label
-                const decisionPathLabel =
-                  isDecisionSource &&
-                  (conn.from.outputPaths?.find((p) => p.targetNodeId === conn.to.id)?.label ??
-                    conn.from.outputPaths?.[pathIndex]?.label)
+                const decisionPathLabel = isBranchingNode(conn.from)
+                  ? conn.from.outputPaths
+                      ?.filter((p) => p.targetNodeId === conn.to.id)
+                      .map((p) => p.label)
+                      .join(" / ")
+                  : undefined
                 const dataLabel = decisionPathLabel || conn.from.dataLabel
                 
                 // Handler to disconnect this connection

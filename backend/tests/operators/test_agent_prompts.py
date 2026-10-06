@@ -113,3 +113,19 @@ def test_build_synthetic_agent_for_task_uses_revenue_ops():
     assert agent["role"] == "REVENUE_OPS"
     assert agent["config"]["synthetic"] is True
     assert agent["name"] == AGENT_PERSONAS["REVENUE_OPS"].display_name
+
+
+def test_system_prompt_includes_creator_skills_and_safety_rules():
+    from app.operators.agent_prompts import build_agent_system_prompt
+
+    prompt = build_agent_system_prompt(
+        {
+            "name": "Mara",
+            "purpose": "Run marketing reporting",
+            "capabilities": ["Analyze data", "Create reports"],
+            "guardrails": ["Ask before making changes", "Slow down"],
+        }
+    )
+    assert "Assigned skills: Analyze data, Create reports" in prompt
+    assert "Safety rules set by your admin:" in prompt
+    assert "- Slow down" in prompt

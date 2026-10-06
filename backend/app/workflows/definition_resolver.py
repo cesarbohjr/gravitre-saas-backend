@@ -86,7 +86,11 @@ def _normalize_edges(edges: list[dict[str, Any]], nodes: list[dict[str, Any]]) -
             from_id = str(edge.get("from_node_id") or edge.get("from") or "")
             to_id = str(edge.get("to_node_id") or edge.get("to") or "")
             if from_id and to_id:
-                normalized.append({"from_node_id": from_id, "to_node_id": to_id})
+                row: dict[str, Any] = {"from_node_id": from_id, "to_node_id": to_id}
+                if isinstance(edge.get("condition"), dict) and edge.get("condition"):
+                    row["condition"] = edge["condition"]
+                    row["edge_type"] = edge.get("edge_type") or "branch"
+                normalized.append(row)
         if normalized:
             return normalized
     return _sequential_edges(nodes)

@@ -421,3 +421,43 @@ def test_execute_workflow_steps_delegates_to_graph_engine(monkeypatch):
     graph_mock.assert_called_once()
     assert graph_mock.call_args.args[4] == nodes
     assert graph_mock.call_args.args[5] == edges
+
+
+def test_if_node_runs_only_the_taken_branch(monkeypatch):
+    from app.workflows.handlers import ConditionHandler
+
+    executed: list[str] = []
+
+    class _AgentHandler:
+        supports_execute = True
+
+        def execute(self, context):
+            executed.append(context.step_id)
+            return {"ok": True}
+
+    def factory(step_type):
+        return ConditionHandler() if step_type == "condition" else _AgentHandler()
+
+    _patch_runtime(monkeypatch, factory)
+    nodes = [
+        {"id": "s1", "node_type": "source", "title": "Trigger"},
+        {"id": "if1", "node_type": "task", "title": "Ready?", "metadata": {"builder_node_type": "if"},
+         "config": {"expression": "$score > 80 and $region == EMEA"}},
+        {"id": "yes", "node_type": "agent", "title": "Yes", "metadata": {"agent_id": "a", "task": "t"}},
+        {"id": "no", "node_type": "agent", "title": "No", "metadata": {"agent_id": "b", "task": "t"}},
+        {"id": "after_yes", "node_type": "agent", "title": "After yes", "metadata": {"agent_id": "c", "task": "t"}},
+        {"id": "join", "node_type": "agent", "title": "Join", "metadata": {"agent_id": "d", "task": "t"}},
+    ]
+    edges = [
+        {"from_node_id": "s1", "to_node_id": "if1"},
+        {"from_node_id": "if1", "to_node_id": "yes", "condition": {"branch": "true"}},
+        {"from_node_id": "if1", "to_node_id": "no", "condition": {"branch": "false"}},
+        {"from_node_id": "yes", "to_node_id": "after_yes"},
+        {"from_node_id": "after_yes", "to_node_id": "join"},
+        {"from_node_id": "no", "to_node_id": "join"},
+    ]
+    status, *_ = execute_workflow_graph(
+        MagicMock(), "org", "user", "run-1", nodes, edges, {"score": 50, "region": "EMEA"}, MagicMock()
+    )
+    assert status == "completed"
+    assert sorted(executed) == ["join", "no"]

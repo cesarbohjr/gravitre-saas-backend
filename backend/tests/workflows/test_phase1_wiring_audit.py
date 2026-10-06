@@ -7,7 +7,7 @@ from app.workflows.builder_sync import definition_to_builder_nodes, edge_endpoin
 
 def test_resolve_permitted_tools_prefers_agent_systems():
     agent = {"id": "a", "systems": ["hubspot", "slack"], "config": {}}
-    assert resolve_permitted_tools(agent, None) == ["hubspot", "slack"]
+    assert resolve_permitted_tools(agent, None) == ["hubspot", "slack", "platform"]
     assert resolve_permitted_tools(None, None) == ["*"]
 
 

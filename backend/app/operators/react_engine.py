@@ -182,8 +182,35 @@ def resolve_permitted_tools(
                 return [str(t) for t in raw]
     systems = agent.get("systems") or []
     if systems:
-        return [str(s) for s in systems]
+        # The agent creator stores display names ("Google Analytics"); the
+        # registry matches integration keys ("google_analytics").
+        allowed: list[str] = []
+        for system in systems:
+            key = _system_integration_key(system)
+            if key and key not in allowed:
+                allowed.append(key)
+        # Scoping by apps must not strip Gravitre's own tools (reports, workflows).
+        if allowed and "platform" not in allowed:
+            allowed.append("platform")
+        return allowed or ["*"]
     return ["*"]
+
+
+_SYSTEM_KEY_ALIASES = {
+    "microsoft_365": "microsoft365",
+    "office_365": "microsoft365",
+    "postgres": "postgresql",
+}
+
+
+def _system_integration_key(system: Any) -> str:
+    key = str(system).strip().lower()
+    for sep in (" ", "-", "."):
+        key = key.replace(sep, "_")
+    while "__" in key:
+        key = key.replace("__", "_")
+    key = key.strip("_")
+    return _SYSTEM_KEY_ALIASES.get(key, key)
 
 
 def _truncate_observation(payload: Any, *, tool_name: str | None = None) -> str:

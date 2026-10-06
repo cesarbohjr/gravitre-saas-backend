@@ -522,7 +522,26 @@ async def test_serial_force_runs_reads_sequentially(engine: ReActEngine, tool_ct
 
 def test_resolve_permitted_tools_from_agent_systems():
     allowed = resolve_permitted_tools({"systems": ["hubspot", "slack"]})
-    assert allowed == ["hubspot", "slack"]
+    assert allowed == ["hubspot", "slack", "platform"]
+
+
+def test_resolve_permitted_tools_normalizes_creator_display_names():
+    allowed = resolve_permitted_tools(
+        {"systems": ["HubSpot", "Google Analytics", "Microsoft 365", "PostgreSQL"]}
+    )
+    assert allowed == ["hubspot", "google_analytics", "microsoft365", "postgresql", "platform"]
+
+
+def test_creator_scoped_agent_keeps_selected_app_and_platform_tools():
+    from app.services.tool_registry import get_tool_registry
+
+    registry = get_tool_registry()
+    permitted = resolve_permitted_tools({"systems": ["Google Analytics"]})
+    tools = registry.get_tools_for_agent(permitted, ["google_analytics", "jira", "platform"])
+    integrations = {t["integration"] for t in tools}
+    assert "google_analytics" in integrations
+    assert "platform" in integrations
+    assert "jira" not in integrations
 
 
 def test_resolve_permitted_tools_explicit_override():

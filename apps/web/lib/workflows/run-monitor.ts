@@ -36,9 +36,11 @@ export function mapStepStatusToNodeState(status: string): NodeState {
   const normalized = status.toLowerCase()
   if (normalized === "running") return "running"
   if (normalized === "failed" || normalized === "error") return "error"
-  if (normalized === "completed" || normalized === "success" || normalized === "skipped") {
+  if (normalized === "completed" || normalized === "success") {
     return "success"
   }
+  // Skipped steps (an untaken IF / Switch branch) did not run; don't paint them green.
+  if (normalized === "skipped") return "idle"
   if (normalized === "waiting" || normalized === "pending" || normalized === "waiting_approval") {
     return "waiting"
   }
