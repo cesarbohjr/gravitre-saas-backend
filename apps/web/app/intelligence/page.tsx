@@ -59,7 +59,7 @@ import { parseIntelligenceMapDeepLink } from "@/lib/intelligence/learning-map-fo
 import { relationsForSelection, selectionForMapNode } from "@/lib/intelligence/selection-relations"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
-import { ExtrovertSummary } from "@/components/gravitre/extrovert-summary"
+import { IntelligenceBrain } from "@/components/intelligence/brain/intelligence-brain"
 
 function IntelligenceSectionRedirect() {
   const router = useRouter()
@@ -409,15 +409,7 @@ function IntelligenceCenterInner() {
         <header className="px-4 pt-6 md:px-5">
           <p className={TYPE.eyebrow}>Understand / Evidence before answers</p>
           <h1 className="mt-2 font-sans text-xl font-medium leading-tight text-foreground sm:text-2xl">{copy.title}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">What is changing across the business?</p>
-          <div className="py-5">
-            <ExtrovertSummary label="Intelligence snapshot summary" items={[
-              { label: "Signals in view", value: signalsLoading ? null : signals.length },
-              { label: "Known entities", value: canonicalMetrics?.knowledge?.knownEntities ?? null },
-              { label: "Known relationships", value: canonicalMetrics?.knowledge?.knownRelationships ?? null, tone: "brand" },
-              { label: "Recorded outcomes", value: outcomes ? totalEvents : null },
-            ]} />
-          </div>
+          <p className="mt-2 pb-5 text-sm text-muted-foreground">What is changing across the business?</p>
         </header>
         {/* Investigation tools retain freshness, lenses, journey, and evidence. */}
         <div
@@ -437,7 +429,21 @@ function IntelligenceCenterInner() {
           </div>
         </div>
 
-        {/* Field-primary: the field owns the first viewport; insight and evidence rails are edge-attached */}
+        {/* The overview: the org as a layered network with its live metrics around it. */}
+        <div className="px-4 py-5 md:px-5">
+          <IntelligenceBrain
+            pageContext={pageContext}
+            loading={!pageContext && (snapshotLoadState === "LOADING" || snapshotLoadState === "UNINITIALIZED")}
+          />
+        </div>
+
+        {/* Explore: the field map with insight and evidence rails for drilling into specific connections */}
+        <div className="border-t border-[color:var(--g-border-default)] px-4 pb-3 pt-6 md:px-5">
+          <h2 className={TYPE.sectionTitle}>Explore connections</h2>
+          <p className={cn(TYPE.bodyMuted, "mt-1")}>
+            Pick a lens, then select anything on the map to see the evidence behind it.
+          </p>
+        </div>
         <section className="relative border-b border-divide">
           <div className="relative z-10 grid md:grid-cols-2 xl:min-h-[680px] xl:grid-cols-[272px_minmax(0,1fr)_296px]">
             <aside
