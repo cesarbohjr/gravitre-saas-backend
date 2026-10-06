@@ -22,7 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { agentSwarmApi } from "@/lib/api"
+import { agentSwarmApi, agentsApi } from "@/lib/api"
 import {
   extractCouncilRounds,
   extractDissentingOpinions,
@@ -77,12 +77,25 @@ export function SwarmRunDetailPanel({
   onClose,
   onMutateList,
   onBusyChange,
+  hideClose = false,
 }: {
   swarmRunId: string
   onClose: () => void
   onMutateList: () => void
   onBusyChange?: (busy: boolean) => void
+  /** Set when a parent drawer already provides its own close control. */
+  hideClose?: boolean
 }) {
+  const { data: agentsData } = useSWR("agent-swarm/detail/agents", () =>
+    agentsApi.list(),
+  )
+  const agentNames = useMemo(
+    () =>
+      new Map(
+        (agentsData?.agents ?? []).map((agent) => [agent.id, agent.name]),
+      ),
+    [agentsData],
+  )
   const [busy, setBusy] = useState<string | null>(null)
   const lock = useRef(false)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -201,16 +214,18 @@ export function SwarmRunDetailPanel({
               {run?.objective ?? (isLoading ? "Loading…" : "Select a run")}
             </CardDescription>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="min-w-11 shrink-0"
-            disabled={busy !== null}
-            onClick={onClose}
-            aria-label="Close detail"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          {hideClose ? null : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="min-w-11 shrink-0"
+              disabled={busy !== null}
+              onClick={onClose}
+              aria-label="Close detail"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
         {run ? (
           <div className="flex flex-wrap gap-2 pt-2">
@@ -463,7 +478,11 @@ export function SwarmRunDetailPanel({
               <SubagentToolGroup count={run.subtasks.length}>
                 <ul className="space-y-2">
                   {(run.subtasks ?? []).map((subtask) => (
-                    <SubtaskCard key={subtask.id} subtask={subtask} />
+                    <SubtaskCard
+                      key={subtask.id}
+                      subtask={subtask}
+                      agentName={agentNames.get(subtask.agentId)}
+                    />
                   ))}
                 </ul>
               </SubagentToolGroup>
@@ -475,7 +494,13 @@ export function SwarmRunDetailPanel({
   )
 }
 
-function SubtaskCard({ subtask }: { subtask: AgentSwarmSubtask }) {
+function SubtaskCard({
+  subtask,
+  agentName,
+}: {
+  subtask: AgentSwarmSubtask
+  agentName?: string
+}) {
   const summary = subtaskReadableSummary(subtask)
 
   return (
@@ -483,7 +508,7 @@ function SubtaskCard({ subtask }: { subtask: AgentSwarmSubtask }) {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <span className="flex items-center gap-1.5 font-medium">
           <Bot className="h-3.5 w-3.5 text-muted-foreground" />
-          Agent {subtask.agentId.slice(0, 8)}
+          {agentName ?? `Agent ${subtask.agentId.slice(0, 8)}`}
         </span>
         <SwarmSubtaskStatusBadge status={subtask.status} />
       </div>
