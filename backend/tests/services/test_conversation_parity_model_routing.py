@@ -16,7 +16,7 @@ def _settings(**overrides):
 
 
 def test_conversational_depth_uses_quality_tier_when_voice_override_is_unset() -> None:
-    assert _resolve_model(_settings(), reasoning_depth="conversational") == "gpt-5.5"
+    assert _resolve_model(_settings(), reasoning_depth="conversational") == "gpt-6.1-sol"
 
 
 def test_voice_fast_model_requires_explicit_configuration() -> None:
@@ -30,7 +30,7 @@ def test_voice_fast_model_requires_explicit_configuration() -> None:
 
 
 def test_unified_full_depth_does_not_fall_through_to_legacy_gpt4o_mini() -> None:
-    assert _resolve_model(_settings(), reasoning_depth="full", task_shaped=False) == "gpt-5.5"
+    assert _resolve_model(_settings(), reasoning_depth="full", task_shaped=False) == "gpt-6.1-sol"
 
 
 def test_task_tier_is_honored_when_explicitly_configured() -> None:
@@ -40,5 +40,5 @@ def test_task_tier_is_honored_when_explicitly_configured() -> None:
             reasoning_depth="full",
             task_shaped=True,
         )
-        == "gpt-5.4-mini"
+        == "gpt-6-luna"
     )
