@@ -376,6 +376,7 @@ export function ChatTranscript({
                             onReject={onRejectExecution}
                             onModify={onModifyExecution}
                             canApprove={canApprove}
+                            answerText={displayText}
                           />
                           <ExplainabilityPanel
                             explanation={explainability}

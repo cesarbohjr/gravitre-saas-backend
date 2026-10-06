@@ -35,6 +35,7 @@ test.describe("ExecutionResult navigation buttons", () => {
     await page.goto("/e2e/execution-result?scenario=inline_only")
     await expect(page.getByText('Created contact list "Inline summary only".')).toBeVisible()
     await expect(page.getByRole("link", { name: /View in/i })).toHaveCount(0)
+    await expect(page.getByText("Completed with an inline summary only.")).toHaveCount(0)
   })
 
   test("hosted_files scenario renders Phase 2 file-reference chips", async ({ page }) => {
@@ -89,6 +90,8 @@ test.describe("ExecutionResult navigation buttons", () => {
     await expect(page.getByTestId("canonical-artifact-table")).toBeVisible()
     await expect(page.getByText("https://example.com/")).toBeVisible()
     await expect(page.getByText("https://www.iana.org/help/example-domains")).toBeVisible()
+    // Plan ids, execution path and digests sit behind the Details disclosure.
+    await page.getByTestId("execution-details").locator("summary").click()
     await expect(page.getByTestId("canonical-screenshot-digest")).toContainText("Browser screenshot digest")
     await expect(page.getByTestId("canonical-execution-path")).toHaveText("computer_browser_read")
     await page.screenshot({
@@ -103,6 +106,8 @@ test.describe("ExecutionResult navigation buttons", () => {
     await expect(page.getByTestId("canonical-artifact-table")).toBeVisible()
     await expect(page.getByText("List HubSpot contacts")).toBeVisible()
     await expect(page.getByRole("cell", { name: "READ, connected" }).first()).toBeVisible()
+    // Plan ids, execution path and digests sit behind the Details disclosure.
+    await page.getByTestId("execution-details").locator("summary").click()
     await expect(page.getByTestId("canonical-execution-path")).toHaveText("catalog_search_eligible")
     await page.screenshot({
       path: "docs/delivery/_artifacts/catalog-search-harness.png",

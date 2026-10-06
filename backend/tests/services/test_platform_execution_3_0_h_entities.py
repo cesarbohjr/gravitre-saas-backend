@@ -173,7 +173,9 @@ def test_listing_contact_count_binds_table_artifact() -> None:
     assert turn is not None
     assert turn["writes_started"] is False
     assert turn["execution_path"] == "listing_f2_read"
-    assert turn["message"] == "This HubSpot account has 57 contacts."
+    assert turn["message"].startswith("This HubSpot account has 57 contacts.")
+    assert "Nothing else is needed from you" in turn["message"]
+    assert "hubspot.contacts.search" not in turn["message"]
     arts = turn["task_state"]["work_artifacts"]
     assert arts[-1]["kind"] == "table"
     assert arts[-1]["metadata"]["exportable"] is True
@@ -182,6 +184,9 @@ def test_listing_contact_count_binds_table_artifact() -> None:
     ]
     assert "57" in str(arts[-1]["metadata"]["code"])
     assert "skip-me" not in str(arts[-1]["metadata"]["code"])
+    # The readable report carries no internal ids or row counters.
+    assert "obs=" not in str(arts[-1]["metadata"]["code"])
+    assert "Outcome:" not in str(arts[-1]["metadata"]["code"])
     rows = turn["task_state"]["execution_observations"][-1]["structured"]["rows"]
     assert rows == [
         {"system": "HubSpot", "object": "contacts", "count": 57, "source": "hubspot.contacts.search"}

@@ -216,7 +216,25 @@ type ChatExecutionPanelProps = {
   onModify?: () => void
   /** Admin/owner (or policy approver) — show Approve button; others see queued copy. */
   canApprove?: boolean
+  /** The assistant's own answer text, so the panel never repeats it. */
+  answerText?: string | null
   className?: string
+}
+
+function normalizeForCompare(text: string | null | undefined): string {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[*_`#>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+/** True when `candidate` adds nothing the reader has not already seen in `answer`. */
+export function repeatsAnswer(candidate: string | null | undefined, answer: string | null | undefined): boolean {
+  const c = normalizeForCompare(candidate)
+  if (!c) return true
+  const a = normalizeForCompare(answer)
+  return Boolean(a) && a.includes(c)
 }
 
 function pendingLabel(pendingTask: ChatPendingTask): string {
@@ -432,26 +450,58 @@ export function canonicalArtifactRows(
     .filter((row): row is Record<string, string> => row !== null)
 }
 
-export function CanonicalArtifactTable({
-  rows,
-  planId,
-  observationIds,
-  exportable,
-  screenshotDigest,
-  executionPath,
-}: {
-  rows: Array<Record<string, string>>
+type CanonicalProvenanceProps = {
   planId?: string | null
   observationIds?: string[] | null
   exportable?: boolean | null
   screenshotDigest?: string | null
   executionPath?: string | null
+}
+
+/** Plan, observation and execution ids: audit detail, never the main answer. */
+export function CanonicalProvenance({
+  planId,
+  observationIds,
+  exportable,
+  screenshotDigest,
+  executionPath,
+}: CanonicalProvenanceProps) {
+  const digest = (screenshotDigest || "").trim()
+  return (
+    <>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        {planId ? `Plan ${planId}` : "Bound to the current plan"}
+        {observationIds?.length ? ` · Observation ${observationIds[0]}` : ""}
+        {exportable ? " · Exportable from conversation state" : ""}
+        {executionPath ? (
+          <>
+            {" · "}
+            <span data-testid="canonical-execution-path">{executionPath}</span>
+          </>
+        ) : null}
+      </p>
+      {digest ? (
+        <p className="mt-1 text-[11px] text-muted-foreground" data-testid="canonical-screenshot-digest">
+          Browser screenshot digest {digest.slice(0, 16)}…
+        </p>
+      ) : null}
+    </>
+  )
+}
+
+export function CanonicalArtifactTable({
+  rows,
+  provenance = true,
+  ...provenanceProps
+}: CanonicalProvenanceProps & {
+  rows: Array<Record<string, string>>
+  /** False when the ids are shown elsewhere (the chat Details disclosure). */
+  provenance?: boolean
 }) {
   if (!rows.length) return null
   const columns = Array.from(
     new Set(rows.flatMap((row) => Object.keys(row))),
   ).filter((key) => key !== "password")
-  const digest = (screenshotDigest || "").trim()
   return (
     <div className="mt-3 overflow-x-auto" data-testid="canonical-artifact-table">
       <table className="w-full min-w-[16rem] border-collapse text-left text-xs">
@@ -476,22 +526,7 @@ export function CanonicalArtifactTable({
           ))}
         </tbody>
       </table>
-      <p className="mt-2 text-[11px] text-muted-foreground">
-        {planId ? `Plan ${planId}` : "Bound to the current plan"}
-        {observationIds?.length ? ` · Observation ${observationIds[0]}` : ""}
-        {exportable ? " · Exportable from conversation state" : ""}
-        {executionPath ? (
-          <>
-            {" · "}
-            <span data-testid="canonical-execution-path">{executionPath}</span>
-          </>
-        ) : null}
-      </p>
-      {digest ? (
-        <p className="mt-1 text-[11px] text-muted-foreground" data-testid="canonical-screenshot-digest">
-          Browser screenshot digest {digest.slice(0, 16)}…
-        </p>
-      ) : null}
+      {provenance ? <CanonicalProvenance {...provenanceProps} /> : null}
     </div>
   )
 }
@@ -570,6 +605,7 @@ export function ChatExecutionPanel({
   onReject,
   onModify,
   canApprove = false,
+  answerText,
   className,
 }: ChatExecutionPanelProps) {
   if (executionResult && executionResult.success === false) {
@@ -668,166 +704,189 @@ export function ChatExecutionPanel({
       null
     const steps = executionResult.structured?.stepBreakdown || []
     const isPreview = Boolean(executionResult.structured?.inlinePreview)
+    const structured = executionResult.structured || {}
+    const fromStructured = hostedFilesFromUnknown(structured)
+    const previewHtml =
+      structured.previewHtml ||
+      structured.preview_html ||
+      artifacts.find((a) => a.metadata?.previewHtml)?.metadata?.previewHtml ||
+      null
+    const code =
+      structured.code ||
+      structured.content ||
+      artifacts.find((a) => a.metadata?.code)?.metadata?.code ||
+      null
+    const previewFormat =
+      structured.previewFormat ||
+      structured.format ||
+      artifacts.find((a) => a.metadata?.previewFormat)?.metadata?.previewFormat ||
+      null
+    // A report Gravitre bound from its own observations restates the answer; it is
+    // supporting detail. A generated document or page is the deliverable itself.
+    const boundReport =
+      artifacts.some((a) => a.source === "e5_execution_plan") ||
+      Boolean(structured.plan_id && (structured as { outcome?: string | null }).outcome)
+    const deliverableInline = !boundReport && Boolean(previewHtml || (code && String(code).trim()))
+    const body = executionResult.body?.trim() || ""
+    const showBody = Boolean(body) && !repeatsAnswer(body, answerText)
+    const showWhatThisMeans =
+      Boolean(whatThisMeans) && !repeatsAnswer(whatThisMeans, answerText) && whatThisMeans !== body
+    const showHeading = isPreview || deliverableInline
+    const tableRows = canonicalArtifactRows(executionResult)
+    // One row restates the answer ("57 contacts"); several rows are content.
+    const tableInline = tableRows.length > 1
+    const hostedArtifacts = artifacts.filter((a) => a.kind === "hosted_file")
+    const otherArtifacts = artifacts.filter((a) => a.kind !== "hosted_file")
+    const provenance = {
+      planId: structured.plan_id || executionResult.entity_id,
+      observationIds: structured.observation_ids,
+      exportable: structured.exportable,
+      screenshotDigest: structured.screenshot_digest,
+      executionPath: structured.execution_path,
+    }
+    const hasProvenance = Boolean(
+      tableRows.length ||
+        structured.plan_id ||
+        structured.observation_ids?.length ||
+        structured.execution_path ||
+        structured.screenshot_digest,
+    )
+    const hasDetails =
+      hasProvenance ||
+      steps.length > 1 ||
+      otherArtifacts.length > 0 ||
+      (!deliverableInline && Boolean(previewHtml || code))
+    const external = resolveExternalUrl(executionResult)
+    const vendor = (executionResult.integration || "source").trim()
+    const externalLabel = vendor
+      ? `Open in ${vendor.charAt(0).toUpperCase()}${vendor.slice(1)}`
+      : "Open in source"
     return (
-      <div
-        className={cn(
-          "mt-3 rounded-[var(--np-radius-lg)] border border-border bg-card px-4 py-3.5 text-sm",
-          className,
-        )}
-      >
-        <div className="flex items-start gap-2.5">
-          <CheckCircle2 className={cn("mt-0.5 h-4 w-4 shrink-0", HIGHLIGHT.brand)} aria-hidden />
-          <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-medium leading-snug text-foreground">
-              {isPreview
-                ? "Live vendor preview"
-                : executionResult.task_label || executionResult.title || "Task completed"}
-            </p>
-            {executionResult.body ? (
-              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-                {executionResult.body}
-              </p>
+      <div className={cn("mt-3 text-sm", className)} data-testid="execution-result-summary">
+        {showHeading ? (
+          <p className="flex items-center gap-2 text-[15px] font-medium leading-snug text-foreground">
+            <CheckCircle2 className={cn("h-4 w-4 shrink-0", HIGHLIGHT.brand)} aria-hidden />
+            {isPreview
+              ? "Live vendor preview"
+              : executionResult.task_label || executionResult.title || "Task completed"}
+          </p>
+        ) : null}
+        {showBody ? (
+          <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground">{body}</p>
+        ) : null}
+        {showWhatThisMeans ? (
+          <p className="mt-2 text-sm leading-relaxed text-foreground">{whatThisMeans}</p>
+        ) : null}
+        {recommendation?.title ? (
+          <p className="mt-2 text-sm leading-relaxed text-foreground" data-testid="execution-next-step">
+            <span className="font-medium">Next step: </span>
+            {recommendation.title}
+            {recommendation.reason ? `. ${recommendation.reason}` : ""}
+            {recommendation.suggestedUtterance ? (
+              <span className="text-muted-foreground">
+                {" "}Say &ldquo;{recommendation.suggestedUtterance}&rdquo; and I&apos;ll do it.
+              </span>
             ) : null}
-            <CanonicalArtifactTable
-              rows={canonicalArtifactRows(executionResult)}
-              planId={executionResult.structured?.plan_id || executionResult.entity_id}
-              observationIds={executionResult.structured?.observation_ids}
-              exportable={executionResult.structured?.exportable}
-              screenshotDigest={executionResult.structured?.screenshot_digest}
-              executionPath={executionResult.structured?.execution_path}
-            />
-            {whatThisMeans ? (
-              <p className="mt-3 border-l-2 border-border pl-3 text-sm leading-relaxed text-foreground">
-                {whatThisMeans}
-              </p>
-            ) : (
-              <p className="mt-2 text-xs text-muted-foreground">
-                {resultUrl
-                  ? "Verified. Open the run for the full audit trail."
-                  : "Completed with an inline summary only."}
-              </p>
-            )}
-            {steps.length > 1 ? (
-              <div className="mt-3 flex flex-col gap-1.5">
-                <p className="text-xs font-medium text-muted-foreground">
-                  {steps.length} steps
-                </p>
-                <ol className="flex flex-col gap-1.5">
-                  {steps.map((step) => (
-                    <li key={step.stepId || step.index} className="flex items-baseline gap-2 text-sm">
-                      {step.success === false ? (
-                        <span aria-label="Not completed" className="h-3 w-3 shrink-0 translate-y-0.5 rounded-full border border-border" />
-                      ) : (
-                        <CheckCircle2 aria-label="Completed" className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-muted-foreground" />
-                      )}
-                      <span className="min-w-0 flex-1">
-                        <span className="text-foreground">{step.label || "Step"}</span>
-                        {step.summary ? (
-                          <span className="text-muted-foreground"> · {step.summary}</span>
-                        ) : null}
-                        {step.evidenceUrl ? (
-                          <span className="block truncate text-xs text-muted-foreground">{step.evidenceUrl}</span>
-                        ) : null}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
+          </p>
+        ) : null}
+        {assumptions.length > 0 ? (
+          <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-2.5 py-2 text-xs text-amber-900 dark:text-amber-200">
+            <p className="font-medium">I assumed</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+              {assumptions.slice(0, 4).map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {tableInline ? <CanonicalArtifactTable rows={tableRows} provenance={false} /> : null}
+        {fromStructured.length && !hostedArtifacts.length ? (
+          <FileReferenceChipRow files={fromStructured} />
+        ) : null}
+        <ArtifactCards artifacts={hostedArtifacts} />
+        {deliverableInline ? (
+          <PreviewCodePane
+            title={structured.title || executionResult.title || "Output"}
+            code={code}
+            previewHtml={previewHtml}
+            previewFormat={previewFormat}
+          />
+        ) : null}
+        {resultUrl || external ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {resultUrl ? (
+              <Button asChild size="sm" className="h-8">
+                {isExternalUrl(resultUrl) ? (
+                  <a href={resultUrl} target="_blank" rel="noopener noreferrer">
+                    {resultLinkLabel(executionResult, resultUrl)}
+                    <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                  </a>
+                ) : (
+                  <Link href={resultUrl}>
+                    {resultLinkLabel(executionResult, resultUrl)}
+                    <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                  </Link>
+                )}
+              </Button>
             ) : null}
-            {recommendation?.title ? (
-              <div className="mt-2 rounded-lg border border-border/60 bg-background/60 px-2.5 py-2 text-[11px]">
-                <p className="font-medium text-foreground">What I&apos;d look at next</p>
-                <p className="mt-0.5 text-muted-foreground">
-                  {recommendation.title}
-                  {recommendation.reason ? ` — ${recommendation.reason}` : ""}
-                </p>
-                {recommendation.suggestedUtterance ? (
-                  <p className="mt-1 text-foreground/80">
-                    Suggest only — say &ldquo;{recommendation.suggestedUtterance}&rdquo; to proceed.
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-            {assumptions.length > 0 ? (
-              <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-2.5 py-2 text-[11px] text-amber-900 dark:text-amber-200">
-                <p className="font-medium">Assumptions</p>
-                <ul className="mt-1 list-disc space-y-0.5 pl-4">
-                  {assumptions.slice(0, 4).map((note) => (
-                    <li key={note}>{note}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {(() => {
-              const structured = executionResult.structured || {}
-              const fromStructured = hostedFilesFromUnknown(structured)
-              const previewHtml =
-                structured.previewHtml ||
-                structured.preview_html ||
-                artifacts.find((a) => a.metadata?.previewHtml)?.metadata?.previewHtml ||
-                null
-              const code =
-                structured.code ||
-                structured.content ||
-                artifacts.find((a) => a.metadata?.code)?.metadata?.code ||
-                null
-              const previewFormat =
-                structured.previewFormat ||
-                structured.format ||
-                artifacts.find((a) => a.metadata?.previewFormat)?.metadata?.previewFormat ||
-                null
-              return (
-                <>
-                  {fromStructured.length && !artifacts.some((a) => a.kind === "hosted_file") ? (
-                    <FileReferenceChipRow files={fromStructured} />
-                  ) : null}
-                  <PreviewCodePane
-                    title={structured.title || executionResult.title || "Output"}
-                    code={code}
-                    previewHtml={previewHtml}
-                    previewFormat={previewFormat}
-                  />
-                </>
-              )
-            })()}
-            <ArtifactCards artifacts={artifacts} />
-            {resultUrl || resolveExternalUrl(executionResult) ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {resultUrl ? (
-                  <Button asChild size="sm" className="h-8">
-                    {isExternalUrl(resultUrl) ? (
-                      <a href={resultUrl} target="_blank" rel="noopener noreferrer">
-                        {resultLinkLabel(executionResult, resultUrl)}
-                        <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                      </a>
-                    ) : (
-                      <Link href={resultUrl}>
-                        {resultLinkLabel(executionResult, resultUrl)}
-                        <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                      </Link>
-                    )}
-                  </Button>
-                ) : null}
-                {(() => {
-                  const external = resolveExternalUrl(executionResult)
-                  if (!external) return null
-                  const vendor = (executionResult.integration || "source").trim()
-                  const label = vendor
-                    ? `Open in ${vendor.charAt(0).toUpperCase()}${vendor.slice(1)}`
-                    : "Open in source"
-                  return (
-                    <Button asChild size="sm" variant="outline" className="h-8">
-                      <a href={external} target="_blank" rel="noopener noreferrer">
-                        {label}
-                        <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                      </a>
-                    </Button>
-                  )
-                })()}
-              </div>
+            {external ? (
+              <Button asChild size="sm" variant="outline" className="h-8">
+                <a href={external} target="_blank" rel="noopener noreferrer">
+                  {externalLabel}
+                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                </a>
+              </Button>
             ) : null}
           </div>
-        </div>
+        ) : null}
+        {hasDetails ? (
+          <details className="group/details mt-3 text-xs text-muted-foreground" data-testid="execution-details">
+            <summary className="cursor-pointer select-none text-foreground/80">Details</summary>
+            <div className="mt-2 border-l-2 border-border/60 pl-3">
+              {tableInline ? (
+                hasProvenance ? <CanonicalProvenance {...provenance} /> : null
+              ) : (
+                <CanonicalArtifactTable rows={tableRows} {...provenance} />
+              )}
+              {steps.length > 1 ? (
+                <div className="mt-3 flex flex-col gap-1.5">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {steps.length} steps
+                  </p>
+                  <ol className="flex flex-col gap-1.5">
+                    {steps.map((step) => (
+                      <li key={step.stepId || step.index} className="flex items-baseline gap-2 text-sm">
+                        {step.success === false ? (
+                          <span aria-label="Not completed" className="h-3 w-3 shrink-0 translate-y-0.5 rounded-full border border-border" />
+                        ) : (
+                          <CheckCircle2 aria-label="Completed" className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-muted-foreground" />
+                        )}
+                        <span className="min-w-0 flex-1">
+                          <span className="text-foreground">{step.label || "Step"}</span>
+                          {step.summary ? (
+                            <span className="text-muted-foreground"> · {step.summary}</span>
+                          ) : null}
+                          {step.evidenceUrl ? (
+                            <span className="block truncate text-xs text-muted-foreground">{step.evidenceUrl}</span>
+                          ) : null}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
+              {!deliverableInline ? (
+                <PreviewCodePane
+                  title={structured.title || executionResult.title || "Output"}
+                  code={code}
+                  previewHtml={previewHtml}
+                  previewFormat={previewFormat}
+                />
+              ) : null}
+              <ArtifactCards artifacts={otherArtifacts} />
+            </div>
+          </details>
+        ) : null}
       </div>
     )
   }

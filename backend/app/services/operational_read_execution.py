@@ -641,10 +641,13 @@ async def try_operational_read_short_circuit_turn(
             meta["capability_id"] = plan.capability_id
             meta["jit_runtime"] = "procedure_only"
             last["metadata"] = meta
+    from app.services.plain_language_answer import with_next_steps
+
+    answer = summary if pending_auth else with_next_steps(summary, action_key, _result_count(invoked.data))
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",
-        "message": summary,
+        "message": answer,
         "task_state": merged_state,
         "workflow_status": "completed",
         "execution_path": "operational_f1_read",
