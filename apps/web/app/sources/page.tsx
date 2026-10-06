@@ -4,7 +4,7 @@ import { useState } from "react"
 import useSWR from "swr"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { GravitrePageHeader, LiveStatus } from "@/components/gravitre/nodus-product"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
@@ -129,7 +129,6 @@ export default function SourcesPage() {
 
   const categories = Object.keys(groupedSources) as (keyof typeof categoryLabels)[]
   const connectedCount = sources.filter((s) => s.status === "connected" || s.status === "syncing").length
-  const errorCount = sources.filter((s) => s.status === "error").length
   const totalRecords = sources.reduce((acc, s) => acc + (s.recordCount ?? 0), 0)
   const totalTables = sources.reduce((a, s) => a + (s.tables ?? 0), 0)
 
@@ -148,26 +147,6 @@ export default function SourcesPage() {
         <GravitrePageHeader
           title={SOURCES_TITLE}
           description={SOURCES_DESCRIPTION}
-          status={
-            sources.length > 0 ? (
-              <span className="flex flex-wrap items-center gap-x-4 gap-y-1" data-testid="sources-health-line">
-                <LiveStatus tone={errorCount > 0 ? "attention" : connectedCount > 0 ? "live" : "idle"}>
-                  <span>
-                    <span className="font-semibold tabular-nums text-[color:var(--g-text-primary)]">{connectedCount}</span>
-                    {" of "}
-                    <span className="tabular-nums">{sources.length}</span> connected
-                  </span>
-                </LiveStatus>
-                <span className={cn(errorCount > 0 && "font-medium text-destructive")}>
-                  <span className="tabular-nums">{errorCount}</span> {errorCount === 1 ? "error" : "errors"}
-                </span>
-                <span>
-                  <span className="tabular-nums">{formatCompactCount(totalRecords)}</span> records ·{" "}
-                  <span className="tabular-nums">{totalTables}</span> tables
-                </span>
-              </span>
-            ) : null
-          }
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
@@ -188,7 +167,7 @@ export default function SourcesPage() {
             active={fabricStage}
             onSelect={(next) => setFabricStage(next as FabricStage | null)}
             phases={[
-              { id: "connected", label: "Connected", count: connectedCount, tone: "done", hint: `of ${sources.length} sources` },
+              { id: "connected", label: "Connected", count: connectedCount, tone: "done", hint: `of ${sources.length} · ${formatCompactCount(totalRecords)} records` },
               { id: "ingesting", label: "Ingesting now", count: sources.filter(FABRIC_STAGE_MATCH.ingesting).length, tone: "live" },
               { id: "attention", label: "Needs attention", count: needsAttention.length, tone: "risk" },
               { id: "schema", label: "Schema discovered", count: sources.filter(FABRIC_STAGE_MATCH.schema).length, tone: "neutral", hint: `${totalTables} tables` },
@@ -206,6 +185,34 @@ export default function SourcesPage() {
                   Retry
                 </Button>
               </div>
+            ) : null}
+
+            {needsAttention.length > 0 ? (
+              <section aria-labelledby="sources-attention-first" className="lg:hidden" data-testid="sources-attention-first">
+                <h2 id="sources-attention-first" className="mb-2 text-sm font-semibold text-foreground">
+                  Needs attention <span className="tabular-nums text-muted-foreground">{needsAttention.length}</span>
+                </h2>
+                <ul className="divide-y divide-[color:var(--g-border-subtle)] rounded-[var(--np-radius-lg)] border border-destructive/30 bg-destructive/[0.04]">
+                  {needsAttention.map((source) => (
+                    <li key={source.id}>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedSource(source.id)}
+                        className="flex min-h-11 w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                      >
+                        <span className={cn("h-2 w-2 shrink-0 rounded-full", source.status === "error" ? "bg-destructive" : "bg-muted-foreground/50")} aria-hidden />
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate text-sm font-medium text-foreground">{source.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {source.status === "error" ? "Sync failed" : "Disconnected"} · last sync {source.lastSync}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-sm font-medium text-foreground">Review</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ) : null}
 
             <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[color:var(--g-border-default)]">
@@ -360,7 +367,7 @@ export default function SourcesPage() {
             {selectedSource && !compactInspector ? (
               <SourceInspector source={selectedSource} onSync={handleSync} onDelete={handleDelete} isMutating={mutatingSourceId === selectedSource.id} />
             ) : null}
-            <section data-testid="sources-needs-attention">
+            <section data-testid="sources-needs-attention" className="hidden lg:block">
               <h2 className="text-[13px] font-semibold text-foreground">Needs attention</h2>
               {sources.length === 0 ? (
                 <p className="mt-2 text-[13px] text-muted-foreground">
@@ -418,7 +425,7 @@ export default function SourcesPage() {
               )}
             </section>
 
-            <section className="border-t border-[color:var(--g-border-default)] pt-5">
+            <section className="hidden border-t border-[color:var(--g-border-default)] pt-5 lg:block">
               <h2 className="text-[13px] font-semibold text-foreground">Connect a system</h2>
               <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
                 Databases and warehouses your agents and workflows can query.

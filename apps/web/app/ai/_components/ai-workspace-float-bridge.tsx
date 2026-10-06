@@ -48,6 +48,7 @@ import { useOptionalGravitreAIWorkspace } from "@/components/gravitre/ai-workspa
 import { GravitreAIRuntimeDetails } from "@/components/gravitre/ai-runtime-details"
 import { toLegacyPresentationMode } from "@/lib/gravitre-ai-presentation"
 import { deriveAiRuntimeState } from "@/lib/gravitre-ai-runtime-state"
+import { AiCompactStart } from "./ai-starting-state"
 
 export interface GravitreAIFloatBridgeProps {
   presence: GravitreHelperPresence
@@ -198,6 +199,9 @@ export function GravitreAIFloatBridge({
             tier === "small" ? "px-2.5 py-2.5" : "px-3 py-3",
           )}
         >
+          {messages.length === 0 && !showWaiting ? (
+            <AiCompactStart onInputChange={onInputChange} inputRef={inputRef} />
+          ) : null}
           <GravitreAIConversationTranscript
             routeKey="/ai"
             messages={messages}

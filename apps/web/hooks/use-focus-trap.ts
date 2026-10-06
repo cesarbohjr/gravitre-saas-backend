@@ -56,7 +56,12 @@ function getFocusable(container: HTMLElement): HTMLElement[] {
  * synchronous-ref caller this resolves on the very first check, so its
  * behavior and existing tests are unaffected.
  */
-export function useFocusTrap(containerRef: RefObject<HTMLElement | null>, active: boolean): void {
+export function useFocusTrap(
+  containerRef: RefObject<HTMLElement | null>,
+  active: boolean,
+  /** Preferred first focus target (e.g. the composer); falls back to the first focusable. */
+  initialFocusSelector?: string,
+): void {
   const previouslyFocused = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
@@ -68,7 +73,10 @@ export function useFocusTrap(containerRef: RefObject<HTMLElement | null>, active
     const activate = (container: HTMLElement) => {
       previouslyFocused.current = document.activeElement as HTMLElement | null
 
-      const initial = getFocusable(container)[0] ?? container
+      const preferred = initialFocusSelector
+        ? container.querySelector<HTMLElement>(initialFocusSelector)
+        : null
+      const initial = preferred ?? getFocusable(container)[0] ?? container
       initial.focus()
 
       const onKeyDown = (event: KeyboardEvent) => {
@@ -121,5 +129,5 @@ export function useFocusTrap(containerRef: RefObject<HTMLElement | null>, active
         toRestore.focus()
       }
     }
-  }, [active, containerRef])
+  }, [active, containerRef, initialFocusSelector])
 }

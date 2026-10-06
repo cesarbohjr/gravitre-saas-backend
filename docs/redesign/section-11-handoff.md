@@ -1,0 +1,157 @@
+# Gravitre redesign — Section 11 delivery report
+
+Branch: `v0/assignment-deliverable-report`. Nothing in this report has been deployed to gravitre.app. Section 11 forbids deploying from the master prompt, so that needs a separate explicit instruction.
+
+Each surface is reported against separate evidence types, as Section 11 requires:
+**Source** (code changed), **Visual** (rendered screenshot at 907×797 dark, using the `/e2e/shots/*` test pages and fixture data), **Tests** (vitest), **Live API**, **Owner tenant** and **Deploy**.
+A screenshot is not evidence of persistence or backend authorization. Live API, owner-tenant and deploy evidence were **not collected** for any surface in this pass.
+
+---
+
+## 1. Recovery diagnosis and preserved functionality
+
+**Diagnosis.** The product's main problems were in the presentation layer, not in the data layer:
+
+- **Too many competing primary actions.** Headers on Agents, Workflows, Connectors and Connector detail had 3–5 buttons with the same weight.
+- **Repeated content.** The Dashboard had a second, page-level composer next to the global Ask bar. The multi-agent inspector showed the recommendation three times. Connector and Source detail repeated fields in both the status grid and the overview.
+- **Leaked internal values.** Raw agent IDs (`agt_…`), connector slugs (`hubspot`) and lowercase status enums were shown instead of names.
+- **Light-mode-only fills.** Tinted cards and evidence chips used fixed pale backgrounds that turned into glaring blocks in dark mode.
+- **Layout bugs at tablet width.** Labels only appeared at 1024px and up, filters stacked into tall columns, and headers were double-indented because both the header and its wrapper added padding.
+- **Risky interactions.** One click on a Builder connection deleted it.
+
+**Preserved.** No API contract, route, permission check, data fetch or persistence path was changed. Every control that was removed from a header is still reachable:
+
+| Removed from header | Where it lives now |
+| --- | --- |
+| Agents "Multi-agent run" | Multi-agent tab on the same page |
+| Workflows "Create from Goal" / "Build with Meson" | "Start from" menu next to New workflow |
+| Workflows Filter | Search toolbar |
+| Connector / Source "Back" | Breadcrumb (`Connectors` / `Sources`) |
+| Dashboard page composer | Global Ask Gravitre bar and contextual question chips |
+| Duplicate overview fields | Status grid (single source) |
+
+Existing test hooks were kept, including `AskGravitreSummonButton` and the swarm panel's "Close detail" button, which the drawer can opt out of.
+
+## 2. Route / control disposition matrix
+
+Disposition values: **Redesigned** (changed and visually reviewed), **Reviewed** (rendered and met the spec, no change needed), **Not reviewed** (no evidence collected yet).
+
+| Family | Route | Disposition | Source | Visual | Tests | Remaining gap |
+| --- | --- | --- | --- | --- | --- | --- |
+| Assignments | `/assignments`, detail, deliverable | Redesigned (earlier batches) | yes | yes | yes | Phone breakpoint not re-captured this pass |
+| Dashboard | `/home` | Redesigned | yes | yes | yes (`phase-5-contextual-ask`) | — |
+| Agents | `/agents` | Redesigned | yes | yes | type-check | — |
+| Plays | `/plays` | Reviewed | — | yes | — | — |
+| Workflows | `/workflows` | Redesigned | yes | yes | type-check | — |
+| Builder | `/workflows/[id]/builder` | Redesigned | yes | yes | browser: select → Delete removes edge | Edge selection uses Delete/Backspace and the X marker; no undo |
+| Runs | `/runs/[id]` | Redesigned | yes | yes | type-check | — |
+| Schedules | `/schedules` | Reviewed | — | yes | — | — |
+| Intelligence | Field, Learning, Memory, Performance, Predictions, Reports | Redesigned (tints, header alignment) | yes | yes | type-check | Overview test page only renders the tab strip |
+| Relationships | `/intelligence/relationships` | Redesigned (toolbar wraps) | yes | yes | type-check | — |
+| Multi-agent | `/multi-agent-run` | Redesigned | yes | yes (list, completed, failed) | 19 swarm tests | — |
+| Connectors | `/connectors` | Redesigned | yes | yes | type-check | — |
+| Connector detail | `/connectors/[id]` | Redesigned | yes | yes | 9 tests | — |
+| Sources | `/sources`, `/sources/[id]` | Redesigned (detail), Reviewed (list) | yes | yes | type-check | — |
+| Knowledge | No standalone route | Covered through Sources detail and agent knowledge panels | — | via Sources | — | A standalone Knowledge route is an owner decision (see §6) |
+| Settings / Billing / Audit | `/settings/*`, `/audit` | Redesigned (billing month), Reviewed | yes | yes | type-check | — |
+| Activity | `/activity` | Reviewed | — | yes | — | — |
+| Approvals | `/approvals` | Redesigned (chip noise, dark tints) | yes | yes | type-check | — |
+| Notifications | `/notifications` | Redesigned (plain-language stats) | yes | yes | 10 tests | Native `<select>` for type filter not restyled |
+| Lite | `/lite/tasks` (Lite home; `/lite` redirects) | Redesigned (list rows, status text, shell padding aligned to header) | yes | yes (`/e2e/shots/lite-tasks`) | 6 `lite-operating-states` tests | Assign, Results and Deliverables now captured at 907×797 dark (`/e2e/shots/lite-assign`, `lite-results`, `lite-deliverables`). Assign: labelled fields, `aria-pressed` workflow choice, required-input hint, sentence-case button. Results and Deliverables reviewed, no change needed (success rate is a backend percentage; "(operational)" labels are intentional reporting-honesty copy). Browser actions against test data: submitting Assign reaches the post-success `router.push("/lite/tasks")` (which only runs after `assignWork` resolves); Deliverables Download creates a blob and saves it under the deliverable name with no error. Not exercised against the real backend. |
+| Meson | Builder Meson tab | Reviewed; empty-state copy corrected | yes | Initial panel at 907×797 dark | Browser: Open step → Data Validator inspector | Updated copy recaptured and confirmed ("No step suggestions available for this canvas."; no "Add nodes"). AI suggestions, saved-workflow edits and apply remain unverified. |
+| Onboarding | `/welcome` (`/onboarding` redirects) | Redesigned (floating Ask bar hidden so it no longer covers footer actions; step icon tint mixed into surface) | yes | yes, step 1 (`/e2e/shots/welcome`) | 24 tests (`ai-helper`, `ai-auth-gate`) | Steps 2–5 not captured. The test page lives under `/e2e/shots/`, so its capture still shows the Ask bar; the hide rule is covered by unit tests |
+| Browser extension | `apps/extension` popup, side panel and injected overlay | Readability, spacing, dark theme, focus indicators, live session announcements and sidebar copy updated Redesigned; system-font stack fixed (was falling back to monospace) | yes | yes: popup 360×420 and side panel 400×760 dark via dev-only `/e2e/static/extension/*` with a Chrome stand-in | Manifest asset check, JS syntax; browser: Sign out → "Not connected" + "Connect Gravitre" | Injected overlay on a host page, real Chrome runtime messaging, enrichment, approval writes and live AI untested. |
+| Desktop | `apps/desktop/src/App.tsx` (Tauri companion) | Code review; dark theme, compact sign-in layout, readable text, focus states, section state and IME-safe composer updated ; system-font stack fixed | yes | yes: sign-in screen 907×797 dark via dev-only `/e2e/static/desktop/*` (built `dist`) | `pnpm build` passed; browser: "Paste auth link (dev)" opens its prompt | Signed-in views, native Tauri build, auth deep links, notifications, voice, approval writes and live AI untested. |
+| Public | `/`, `/pricing`, `/login`, `/about`, `/careers`, `/blog` , `/features`, `/features/extension`, `/features/marketplace`, `/features/technology` | Reviewed (no change needed; marketing is intentionally light-only) | — | yes, 907px, no horizontal overflow or error | — | Cookie banner covers the lower viewport until dismissed, by design |
+| Goals, Marketplace | `/goals`, `/marketplace` | Reviewed (no change needed) | — | yes, 907×797 dark | existing journey tests | — |
+| Models, Training | `/models`, `/training` | Redesigned: header doubled the container padding (title at 104px vs tabs at 88px); now aligned at 88px | — | yes, 907×797 dark | browser alignment check | — |
+
+This matrix covers the families the master prompt names. Section 11 asks for it to be regenerated from the repository, and that full per-route regeneration has **not** been done. Routes outside these families are unaccounted for.
+
+**Control records for changed controls:**
+
+| Control | Trigger | Result | Pending / error | Keyboard | Return path |
+| --- | --- | --- | --- | --- | --- |
+| Builder connection | Click line | Selects (highlighted, X marker shown) | — | Delete / Backspace removes; Esc or canvas click clears | Click canvas or a node |
+| Builder connection X | Click marker on selected line | Removes connection | — | Focusable button | — |
+| Workflows "Start from" | Click | Menu: Goal, Meson | — | Menu keyboard via Radix | Esc closes |
+| Connectors filters | Toolbar | Filter list in place | — | Native focus order | — |
+
+## 3. Assignments journey
+
+Delivered in earlier batches: list → creation → detail → readable deliverable → review → recovery. Dark tablet evidence was re-checked during the section 5 gate. Phone and sparse/long-content states were **not** re-captured in this pass.
+
+## 4. Canonical system decisions applied
+
+- **One primary action per header.** Secondary actions go in a menu or toolbar.
+- **Breadcrumbs replace "Back" buttons.**
+- **Tints are mixed into the theme surface** (`color-mix` with the theme's own background), never fixed light colors, so they work in both light and dark mode.
+- **Definition grids for evidence.** Two columns, with empty values dimmed.
+- **Human labels only.** Vendor names, agent names, and capitalized statuses instead of slugs, IDs and enums.
+- **Labels from 768px**, not 1024px, wherever they fit.
+
+## 5. Use of existing components and contracts
+
+All changes reuse existing components (`GravitrePageHeader`, `ExtrovertSummary`, `EvidenceChip`, `GravitreMetric`, `SwarmRunDetailPanel`, the existing Builder canvas) and existing SWR keys. The only new data call is the agent-name lookup in the swarm panel. It reuses the agents list the start dialog already loads and falls back to the ID when names are unavailable.
+
+## 6. Remaining routes, decisions and unverified behavior
+
+**Remaining routes:**
+- Onboarding steps 2–5
+- Desktop signed-in views and the extension's injected overlay
+- Full repository route regeneration
+
+**Unverified behavior (needs a real signed-in account and backend):**
+- Live AI: Meson suggestions, Ask Gravitre answers, extension enrichment, desktop chat and voice
+- Real backend writes: task submission, approval writes, file contents of downloads
+
+**Completed groups (with the gaps listed in §2):**
+- Knowledge, Sources and Connectors
+- Activity, Approvals and Notifications
+- Lite, Meson, Onboarding, Desktop, browser extension and Public pages
+- Goals, Marketplace, Models and Training
+
+**Product decisions for the owner:**
+- Whether Builder connection delete needs undo.
+- Whether the Notifications type filter should become a segmented control.
+- Whether Knowledge deserves a standalone route.
+
+**Unverified behavior:**
+- Live API and owner-tenant behavior for every surface.
+- Phone breakpoints for everything except Assignments.
+- Light mode for surfaces changed in this pass.
+- Hover, focus, loading and permission-denied states, except where existing tests cover them.
+
+## 7. Integration handoff
+
+**Changed areas this pass:**
+- `components/home/*`, `app/agents/page.tsx`
+- `app/workflows/page.tsx`, `app/workflows/[id]/builder/page.tsx`, `app/runs/[id]/page.tsx`
+- `components/gravitre/extrovert-summary.tsx`, the four Intelligence pages, `components/intelligence/relationships/*`
+- `components/agent-swarm/swarm-run-detail-panel.tsx`, `lib/swarm-result-format.ts`, `app/multi-agent-run/page.tsx`
+- `app/connectors/page.tsx`, `app/connectors/[id]/page.tsx`, `components/connectors/connector-linkage.tsx`
+- `app/settings/billing/page.tsx`
+- `app/sources/[id]/page.tsx`, `app/approvals/page.tsx`, `components/marketing/creative/primitives/evidence-chip.tsx`
+- `app/notifications/page.tsx`
+- `app/lite/tasks/page.tsx`, `components/gravitre/lite-page-shell.tsx`
+- `app/welcome/page.tsx`, `components/gravitre/ai-helper.tsx` (Ask bar hidden on `/welcome` and `/onboarding`)
+- `components/workflows/meson-copilot-panel.tsx`
+- `apps/desktop/src/App.tsx`, `apps/desktop/src/styles.css`
+- `apps/extension/popup.html`, `popup.css`, `sidepanel.html`, `content/overlay.css`
+
+**Test-only additions:**
+- `app/e2e/shots/multi-agent-run`, `notifications`, `lite-tasks`, `welcome`
+- Swarm and Lite task fixtures in `lib/e2e-shot-fixtures.ts`
+
+**Tests updated:**
+- `phase-5-contextual-ask` (page composer removed)
+- `notification-inbox` (stat label)
+- `ai-helper` (Ask bar hidden on onboarding routes)
+
+**Assumptions:**
+- The 907×797 dark preview is the primary review viewport.
+- Fixture data is representative of real data.
+
+**Risks:**
+- `EvidenceChip` and `ExtrovertSummary` are shared, so their tint change affects marketing surfaces too. Those were not re-captured.
+- The local dev server repeatedly stopped responding during long capture runs. Treat any surface without a screenshot as unverified.

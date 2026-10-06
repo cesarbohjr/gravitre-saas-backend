@@ -36,7 +36,10 @@ export function GravitreAICompositionSwitch({
   className?: string
 }) {
   const reasonId = useId()
-  const reason = resolved.reason ?? (resolved.available.length === 1 ? "no-work" : null)
+  // A switch with one usable option is not a choice. Before any work exists it
+  // only adds two dead controls to the header, so it appears with the first artifact.
+  if (resolved.available.length < 2) return null
+  const reason = resolved.reason
   const describedBy = reason ? reasonId : undefined
   return (
     <div className={cn("flex min-w-0 items-center gap-2", className)} data-gravitre-ai-composition={resolved.composition}>

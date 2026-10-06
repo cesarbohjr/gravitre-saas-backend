@@ -48,7 +48,7 @@
  * unchanged — the one already-approved Lucide exception.
  */
 
-import { useCallback, useEffect, useMemo, useState, type PointerEvent, type PropsWithChildren, type ReactNode } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent, type PropsWithChildren, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { motion, useDragControls, useMotionValue, useReducedMotion } from "framer-motion"
 // GripVertical is the ONE approved Lucide exception for the drag-handle/
@@ -210,6 +210,22 @@ export function GravitreFloatingWorkspace({
     },
   })
 
+  // The window is anchored by CSS (bottom + a left offset that clears the nav
+  // rail, matching the launcher). Drag constraints are translations relative to
+  // that untransformed origin, so they have to be derived from it — a fixed
+  // {top: 8, left: 8} only works for an element anchored at the top-left corner.
+  const frameRef = useRef<HTMLDivElement | null>(null)
+  const [originLeft, setOriginLeft] = useState(16)
+  const measureOrigin = useCallback(() => {
+    const el = frameRef.current
+    if (!el) return
+    const left = Number.parseFloat(getComputedStyle(el).left)
+    if (Number.isFinite(left)) setOriginLeft(left)
+  }, [])
+  useLayoutEffect(() => {
+    if (!docked) measureOrigin()
+  }, [docked, measureOrigin, viewport])
+
   const onHeaderPointerDown = useCallback(
     (event: PointerEvent<HTMLDivElement>) => {
       // Never start a drag from an interactive control inside the header —
@@ -217,17 +233,32 @@ export function GravitreFloatingWorkspace({
       if (docked) return
       const target = event.target as HTMLElement
       if (target.closest("button,a,input,textarea")) return
+      measureOrigin()
       dragControls.start(event)
     },
-    [dragControls, docked],
+    [dragControls, docked, measureOrigin],
   )
 
   if (typeof document === "undefined" || !viewport) return null
+
+  const edge = 8
+  const bottomOffset = 16 + keyboardInset
+  const originTop = viewport.height - bottomOffset - size.height
+  // When the origin already clears the nav rail (md+), never let a drag carry
+  // the window back over it — the rail is essential navigation.
+  const minX = originLeft > 24 ? 0 : edge - originLeft
+  const dragBounds = {
+    left: minX,
+    right: Math.max(minX, viewport.width - edge - originLeft - size.width),
+    top: Math.min(0, edge - originTop),
+    bottom: 0,
+  }
 
   const copy = GRAVITRE_HELPER_PRESENCE_COPY[presence]
 
   return createPortal(
     <motion.div
+      ref={frameRef}
       layoutId={reduceMotion ? undefined : GRAVITRE_AI_WORKSPACE_LAYOUT_ID}
       drag={!docked}
       dragListener={false}
@@ -242,15 +273,10 @@ export function GravitreFloatingWorkspace({
               y: dragY,
               width: size.width,
               height: size.height,
-              bottom: 16 + keyboardInset,
+              bottom: bottomOffset,
             }
       }
-      dragConstraints={{
-        left: 8,
-        right: Math.max(8, viewport.width - size.width - 8),
-        top: 8,
-        bottom: Math.max(8, viewport.height - size.height - 8),
-      }}
+      dragConstraints={dragBounds}
       onDragEnd={() => persistGeometry(size)}
       initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -261,7 +287,7 @@ export function GravitreFloatingWorkspace({
         WINDOW_CHROME.frame,
         docked
           ? "inset-y-0 right-0 rounded-none border-y-0 border-r-0"
-          : "bottom-4 left-4 max-h-[min(100dvh-2rem,760px)] sm:bottom-5 sm:left-5",
+          : "left-4 max-h-[min(100dvh-2rem,760px)] md:left-[calc(var(--np-sidebar-rail)+12px)] md:[:root:has([data-nav-expanded=true])_&]:left-[calc(var(--np-sidebar)+12px)]",
       )}
       data-gravitre-float-workspace=""
       data-gravitre-wm-placement={docked ? "docked" : "window"}
@@ -276,7 +302,7 @@ export function GravitreFloatingWorkspace({
         className={cn(
           WINDOW_CHROME.header,
           "justify-between gap-2",
-          !docked && "cursor-grab active:cursor-grabbing",
+          !docked && "cursor-grab select-none active:cursor-grabbing",
         )}
       >
         <div className="flex min-w-0 items-center gap-2">

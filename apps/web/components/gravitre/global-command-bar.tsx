@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import { createPortal } from "react-dom"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Icon, type IconName } from "@/lib/icons"
@@ -66,6 +67,9 @@ export function GlobalCommandBar() {
   const viewMode = useViewModeSafe()
   const isLite = Boolean(viewMode?.isLite)
   const { summonWorkspace } = useGravitreAIWorkspace()
+  const [portalReady, setPortalReady] = useState(false)
+
+  useEffect(() => setPortalReady(true), [])
 
   // Filter items based on query
   const filteredItems = useCallback(() => {
@@ -174,6 +178,8 @@ export function GlobalCommandBar() {
         </kbd>
       </button>
 
+      {/* Portaled to <body> so the palette follows the app theme instead of the header's forced `.dark` scope. */}
+      {portalReady && createPortal(
       <AnimatePresence>
         {isOpen && (
           <>
@@ -288,7 +294,9 @@ export function GlobalCommandBar() {
             </motion.div>
           </>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body,
+      )}
     </>
   )
 }

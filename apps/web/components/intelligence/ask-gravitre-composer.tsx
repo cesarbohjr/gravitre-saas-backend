@@ -87,7 +87,7 @@ export function AskGravitreComposer({
               key={question}
               type="button"
               onClick={() => summon(question, true)}
-              className="text-left text-xs text-[color:var(--g-text-secondary)] hover:text-[color:var(--g-brand)] hover:underline"
+              className="inline-flex min-h-11 items-center text-left text-xs text-[color:var(--g-text-secondary)] hover:text-[color:var(--g-brand)] hover:underline sm:min-h-0"
             >
               {question}
             </button>
@@ -133,7 +133,7 @@ export function AskGravitreComposer({
                 key={question}
                 type="button"
                 onClick={() => summon(question, true)}
-                className="text-left text-xs text-[color:var(--g-text-secondary)] hover:text-[color:var(--g-brand)] hover:underline"
+                className="inline-flex min-h-11 items-center text-left text-xs text-[color:var(--g-text-secondary)] hover:text-[color:var(--g-brand)] hover:underline sm:min-h-0"
               >
                 {question}
               </button>
@@ -142,7 +142,7 @@ export function AskGravitreComposer({
         <button
           type="button"
           onClick={() => summon("", false)}
-          className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
+          className="inline-flex min-h-11 items-center gap-1 text-xs font-medium sm:min-h-0 text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
         >
           Open Gravitre
           <ArrowRight className="h-3 w-3" />

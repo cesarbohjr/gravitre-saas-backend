@@ -98,7 +98,7 @@ export function PlaySetup({ playKey, playVersion, readiness }: { playKey: string
       <div className="mt-5 border-t border-divide pt-5">
         <label htmlFor="play-goal" className="text-sm font-medium">Goal</label>
         <p className="mt-1 text-xs text-muted-foreground">Optional. Link this Play to the business objective it is intended to improve.</p>
-        <select id="play-goal" value={goalId} onChange={(event) => setGoalId(event.target.value)} className="mt-3 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+        <select id="play-goal" value={goalId} onChange={(event) => setGoalId(event.target.value)} className="mt-3 h-11 w-full rounded-md border border-input bg-background px-3 text-sm">
           <option value="">No linked goal</option>
           {(goalsData?.goals ?? []).filter((goal) => goal.status !== "cancelled").map((goal) => <option key={goal.id} value={goal.id}>{goal.objective}</option>)}
         </select>

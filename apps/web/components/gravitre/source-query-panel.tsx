@@ -58,7 +58,7 @@ export function SourceQueryPanel({ sourceId, suggestions = [] }: SourceQueryPane
               key={item}
               type="button"
               onClick={() => void runQuery(item)}
-              className="rounded-full bg-secondary px-3 py-1 text-[11px] text-muted-foreground hover:text-foreground"
+              className="inline-flex min-h-11 items-center rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground hover:text-foreground md:min-h-0 md:text-[11px]"
             >
               {item}
             </button>

@@ -66,10 +66,12 @@ export function PerformanceStage({
   const actionsCompleted = metricsReady ? readNumber(execMetrics.actionsCompleted, null) : null
   const runningWorkflows = metricsReady ? readNumber(execMetrics.runningWorkflows, null) : null
 
-  const hoursSaved = roiMetricDisplay(roi?.orgTotals.estimatedHoursSaved)
-  const agentCost = roiMetricDisplay(roi?.orgTotals.agentCostUsd)
-  const tasks = roiMetricDisplay(roi?.orgTotals.tasksCompleted)
-  const revenue = roiMetricDisplay(roi?.orgTotals.revenueInfluencedUsd)
+  const roiTotals = roi?.orgTotals
+  const roiAgents = roi?.agents ?? []
+  const hoursSaved = roiMetricDisplay(roiTotals?.estimatedHoursSaved)
+  const agentCost = roiMetricDisplay(roiTotals?.agentCostUsd)
+  const tasks = roiMetricDisplay(roiTotals?.tasksCompleted)
+  const revenue = roiMetricDisplay(roiTotals?.revenueInfluencedUsd)
 
   const hasNoAttribution =
     pageContext?.qualityFlags?.includes("NO_OUTCOME_ATTRIBUTION") ||
@@ -223,14 +225,14 @@ export function PerformanceStage({
         </div>
         {roiLoading && !roi ? (
           <p className="text-sm text-muted-foreground">Loading agent contribution…</p>
-        ) : !roi || roi.agents.length === 0 ? (
+        ) : roiAgents.length === 0 ? (
           <EmptyState
             title="No agent contribution in this period"
             description="Rows appear when agents complete recorded work. Hours saved stay estimates until measured time-on-task exists."
           />
         ) : (
           <div className="divide-y divide-[color:var(--g-border-default)] border-y border-[color:var(--g-border-default)]">
-            {roi.agents.map((agent) => (
+            {roiAgents.map((agent) => (
               <AgentContributionRow key={agent.agentId} agent={agent} viewMode={viewMode} />
             ))}
           </div>

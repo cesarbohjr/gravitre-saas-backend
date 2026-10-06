@@ -86,7 +86,11 @@ export function deriveMissionStages(input: {
             state: working && !turnReplied ? "active" : "complete",
             detail: `${planSteps} step${planSteps === 1 ? "" : "s"}`,
           }
-        : { state: "pending", detail: "No plan reported" },
+        : turnReplied
+          ? // A direct answer never needed a plan; "pending" beside a completed
+            // Work stage read as a skipped step.
+            { state: "not_needed", detail: "Answered directly" }
+          : { state: "pending", detail: "No plan reported" },
     work: failed
       ? { state: "failed", detail: "Stopped with an error" }
       : partial

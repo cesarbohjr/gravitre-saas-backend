@@ -6,13 +6,31 @@ import AssignmentsPage from "@/app/assignments/page"
 import ConnectorsPage from "@/app/connectors/page"
 import HomePage from "@/app/home/page"
 import IntelligencePage from "@/app/intelligence/page"
+import IntelligencePerformancePage from "@/app/intelligence/performance/page"
+import IntelligencePredictivePage from "@/app/intelligence/predictive/page"
+import IntelligenceReportsPage from "@/app/intelligence/reports/page"
+import IntelligenceLearningPage from "@/app/intelligence/learning/page"
+import IntelligenceMemoryPage from "@/app/intelligence/memory/page"
 import MarketplaceAssetsPage from "@/app/marketplace/assets/page"
 import MarketplaceInstalledPage from "@/app/marketplace/installed/page"
 import SourcesPage from "@/app/sources/page"
 import MetricsPage from "@/app/metrics/page"
 import WorkflowsPage from "@/app/workflows/page"
+import SchedulesPage from "@/app/schedules/page"
+import ModelsPage from "@/app/models/page"
+import TrainingPage from "@/app/training/page"
+import GoalsPage from "@/app/goals/page"
+import PlaysPage from "@/app/plays/page"
+import SettingsPage from "@/app/settings/page"
+import AuditPage from "@/app/audit/page"
 import AiWorkspaceProofPage from "./_components/ai-workspace-proof-page"
 import AgentChatProofPage from "./_components/agent-chat-proof-page"
+import NotificationsPage from "@/app/notifications/page"
+import LiteTasksPage from "@/app/lite/tasks/page"
+import LiteAssignPage from "@/app/lite/assign/page"
+import LiteResultsPage from "@/app/lite/results/page"
+import LiteDeliverablesPage from "@/app/lite/deliverables/page"
+import WelcomePage from "@/app/welcome/page"
 
 import { GravitreAIWorkspaceHost } from "@/components/gravitre/ai-workspace-host"
 import { ShotAuthProvider } from "./shot-auth"
@@ -34,13 +52,31 @@ export const SHOT_SURFACES = {
   connectors: ConnectorsPage,
   home: HomePage,
   "intelligence-field": IntelligencePage,
+  "intelligence-performance": IntelligencePerformancePage,
+  "intelligence-predictive": IntelligencePredictivePage,
+  "intelligence-reports": IntelligenceReportsPage,
+  "intelligence-learning": IntelligenceLearningPage,
+  "intelligence-memory": IntelligenceMemoryPage,
   marketplace: MarketplaceAssetsPage,
   "marketplace-installed": MarketplaceInstalledPage,
   workflows: WorkflowsPage,
+  schedules: SchedulesPage,
+  models: ModelsPage,
+  goals: GoalsPage,
+  plays: PlaysPage,
+  settings: SettingsPage,
+  audit: AuditPage,
+  training: TrainingPage,
   sources: SourcesPage,
   metrics: MetricsPage,
   proof: AiWorkspaceProofPage,
   "agent-chat": AgentChatProofPage,
+  notifications: NotificationsPage,
+  "lite-tasks": LiteTasksPage,
+  "lite-assign": LiteAssignPage,
+  "lite-results": LiteResultsPage,
+  "lite-deliverables": LiteDeliverablesPage,
+  welcome: WelcomePage,
 } as const
 
 export function ShotSurface({ name }: { name: keyof typeof SHOT_SURFACES }) {
@@ -48,7 +84,7 @@ export function ShotSurface({ name }: { name: keyof typeof SHOT_SURFACES }) {
   return (
     <ShotAuthProvider>
       <Surface />
-      {name !== "ai" ? <GravitreAIWorkspaceHost fixtureBoundary /> : null}
+      {name !== "ai" && name !== "welcome" ? <GravitreAIWorkspaceHost fixtureBoundary /> : null}
     </ShotAuthProvider>
   )
 }

@@ -49,7 +49,7 @@ export function LitePageShell({
       >
         {headerChildren}
       </GravitrePageHeader>
-      <div className="space-y-4 p-4 sm:p-6">{children}</div>
+      <div className="flex flex-col gap-4 px-4 py-4 sm:py-6">{children}</div>
     </AppShell>
   )
 }

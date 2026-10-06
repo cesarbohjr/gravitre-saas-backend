@@ -27,7 +27,7 @@ export const Button = <T extends React.ElementType = "button">({
         variant === "primary"
           ? "bg-charcoal-900 text-white dark:bg-white dark:text-black"
           : variant === "brand"
-            ? "bg-brand text-white"
+            ? "bg-brand text-brand-foreground"
             : "border-divide border bg-white text-black transition duration-200 hover:bg-gray-300 dark:border-neutral-700 dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800",
         className,
       )}

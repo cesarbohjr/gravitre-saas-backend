@@ -313,7 +313,7 @@ export function SchedulesView({
                       type="button"
                       onClick={() => setCalendarScope(scope.id)}
                       className={cn(
-                        "border-b-2 py-1 text-[13px] font-medium transition-colors",
+                        "inline-flex min-h-11 items-center border-b-2 py-1 text-[13px] font-medium transition-colors sm:min-h-0",
                         active
                           ? "border-[color:var(--g-text-primary)] text-foreground"
                           : "border-transparent text-muted-foreground hover:text-foreground",
@@ -341,7 +341,7 @@ export function SchedulesView({
                     type="button"
                     onClick={() => setView(v.id)}
                     className={cn(
-                      "inline-flex min-h-8 items-center gap-1.5 rounded-[2px] px-2.5 py-1 text-[13px] font-medium transition-colors",
+                      "inline-flex min-h-11 items-center gap-1.5 rounded-[2px] px-2.5 py-1 text-[13px] font-medium transition-colors sm:min-h-8",
                       active
                         ? "bg-[color:var(--g-text-primary)] text-background"
                         : "text-muted-foreground hover:text-foreground",

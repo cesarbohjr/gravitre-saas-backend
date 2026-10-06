@@ -26,7 +26,7 @@ function statusLabel(status: string): string {
 export function dashboardStatusLine(data: HomeDashboardData): { text: string; tone: "live" | "idle" | "attention" } {
   const parts: string[] = []
   if (data.agentTotal != null) {
-    parts.push(`${data.activeAgents ?? 0} of ${data.agentTotal} agents working`)
+    parts.push(`${data.agentStatusCounts?.processing ?? 0} of ${data.agentTotal} agents executing`)
   }
   if (data.pendingApprovals > 0) {
     parts.push(`${data.pendingApprovals} waiting on you`)

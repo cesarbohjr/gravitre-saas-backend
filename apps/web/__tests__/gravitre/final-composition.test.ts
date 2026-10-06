@@ -11,7 +11,7 @@ describe("3.0 Plus final composition", () => {
     expect(src).toMatch(/data-flow-height="content"/)
     expect(src).not.toMatch(/100dvh-400px/)
     expect(src).not.toMatch(/h-\[420px\]/)
-    expect(src).toMatch(/md:max-h-\[360px\] xl:max-h-\[440px\]/)
+    expect(src).not.toMatch(/overflow-y-auto/)
   })
 
   it("outcome flow sits directly under the KPI strip, before secondary widgets", () => {

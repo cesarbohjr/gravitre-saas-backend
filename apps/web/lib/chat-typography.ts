@@ -3,7 +3,7 @@
  */
 
 export const CHAT_ROLE_LABEL_CLASS =
-  "mb-1 px-0.5 text-[9px] font-medium uppercase tracking-[0.08em] text-[color:var(--chat-surface-muted,var(--g-text-muted))]"
+  "mb-1 px-0.5 text-[12px] font-medium text-[color:var(--g-text-secondary,var(--g-text-muted))]"
 
 /** 14px on small screens, 15px from `sm` up: the comfortable reading size the
  *  assistant renderer also targets, so user and assistant turns match.
@@ -15,9 +15,12 @@ export const CHAT_ROLE_LABEL_CLASS =
 export const CHAT_BUBBLE_BASE_CLASS =
   "max-w-full rounded-[var(--np-radius-md)] text-[14px] leading-relaxed sm:text-[15px]"
 
-/** User turns — brand green (not marketing blue / ChatGPT purple). */
+/** User turns — a quiet brand-tinted surface with body-colored text. A solid
+ *  green fill with white text out-shouted every answer, so the eye landed on the
+ *  question instead of the reply. The tint keeps authorship unambiguous while
+ *  the assistant's content stays the loudest thing in the thread. */
 export const CHAT_USER_BUBBLE_CLASS =
-  "bg-[color:var(--g-brand)] px-3 py-2 text-white"
+  "border border-[color:color-mix(in_oklab,var(--g-brand)_28%,transparent)] bg-[color:color-mix(in_oklab,var(--g-brand)_12%,transparent)] px-3.5 py-2 text-[color:var(--g-text-primary)]"
 
 /**
  * Assistant turns — no card.

@@ -273,7 +273,7 @@ function TrainingPageContent() {
     isLoading: agentsFallbackLoading,
     mutate: mutateAgentsFallback,
   } = useSWR(
-    swrKey && workflowAgentsData?.agents.length === 0
+    swrKey && workflowAgentsData && (workflowAgentsData.agents ?? []).length === 0
       ? "training/agents-fallback"
       : null,
     async () => {
@@ -781,6 +781,7 @@ function TrainingPageContent() {
         <LearningSurfacesCallout current="agent-training" />
 
         <GravitrePageHeader
+          className="px-0 sm:px-0"
           title={SURFACE_COPY.training.title}
           description={SURFACE_COPY.training.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}

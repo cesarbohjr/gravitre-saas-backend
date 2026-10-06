@@ -15,8 +15,8 @@ export function GravitreEvidenceMark({
         "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold",
         tone === "evidence" &&
           "border-[color:color-mix(in_oklch,var(--g-intelligence)_35%,#eaedf1)] bg-[color:var(--g-intelligence-soft)] text-[color:var(--g-intelligence)]",
-        tone === "error" && "border-red-200 bg-red-50 text-red-700",
-        tone === "waiting" && "border-amber-200 bg-amber-50 text-amber-800",
+        tone === "error" && "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300",
+        tone === "waiting" && "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300",
       )}
     >
       <span

@@ -16,7 +16,7 @@ import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { WorkflowFleetSummary } from "@/components/workflows/workflow-fleet-summary"
 import { Button } from "@/components/ui/button"
 import { Icon } from "@/lib/icons"
-import { Blocks, Edit, LayoutGrid, Rows3, Target, TrendingUp, Activity, AlertTriangle, FileEdit } from "lucide-react"
+import { Blocks, ChevronDown, Edit, LayoutGrid, Rows3, Target } from "lucide-react"
 import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import {
@@ -136,10 +136,12 @@ const columns = [
     key: "name",
     header: "Workflow",
     render: (item: Workflow) => (
-      <div>
-        <span className="font-medium text-foreground">{item.name}</span>
-        <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
-      </div>
+      <Link href={`/workflows/${item.id}`} className="group block min-w-0 max-w-md">
+        <span className="block truncate font-medium text-foreground group-hover:text-[color:var(--g-emerald-deep)]">{item.name}</span>
+        {item.description ? (
+          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground" title={item.description}>{item.description}</p>
+        ) : null}
+      </Link>
     ),
   },
   {
@@ -359,116 +361,33 @@ export default function WorkflowsPage() {
               <AskGravitreSummonButton />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn("gap-2", RADIUS.control)}>
-                    <Icon name="filter" size="sm" />
-                    <span className="hidden sm:inline">Filter</span>
-                    {activeFiltersCount > 0 && (
-                      <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-info text-[10px] font-medium text-info-foreground">
-                        {activeFiltersCount}
-                      </span>
-                    )}
+                  <Button variant="outline" size="sm" className={cn("h-11 min-w-11 gap-2 sm:h-8 sm:min-w-0", RADIUS.control)}>
+                    <Target className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Start from</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel>Status</DropdownMenuLabel>
-                  <DropdownMenuCheckboxItem
-                    checked={statusFilter.includes("active")}
-                    onCheckedChange={(checked) => 
-                      setStatusFilter(checked 
-                        ? [...statusFilter, "active"] 
-                        : statusFilter.filter(s => s !== "active")
-                      )
-                    }
-                  >
-                    Active
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={statusFilter.includes("paused")}
-                    onCheckedChange={(checked) => 
-                      setStatusFilter(checked 
-                        ? [...statusFilter, "paused"] 
-                        : statusFilter.filter(s => s !== "paused")
-                      )
-                    }
-                  >
-                    Paused
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={statusFilter.includes("draft")}
-                    onCheckedChange={(checked) => 
-                      setStatusFilter(checked 
-                        ? [...statusFilter, "draft"] 
-                        : statusFilter.filter(s => s !== "draft")
-                      )
-                    }
-                  >
-                    Draft
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Environment</DropdownMenuLabel>
-                  <DropdownMenuCheckboxItem
-                    checked={envFilter.includes("production")}
-                    onCheckedChange={(checked) => 
-                      setEnvFilter(checked 
-                        ? [...envFilter, "production"] 
-                        : envFilter.filter(e => e !== "production")
-                      )
-                    }
-                  >
-                    Production
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={envFilter.includes("staging")}
-                    onCheckedChange={(checked) => 
-                      setEnvFilter(checked 
-                        ? [...envFilter, "staging"] 
-                        : envFilter.filter(e => e !== "staging")
-                      )
-                    }
-                  >
-                    Staging
-                  </DropdownMenuCheckboxItem>
-                  {activeFiltersCount > 0 && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onSelect={() => {
-                          setStatusFilter([])
-                          setEnvFilter([])
-                        }}
-                        className="text-xs text-muted-foreground"
-                      >
-                        Clear all filters
-                      </DropdownMenuItem>
-                    </>
-                  )}
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuItem onSelect={() => setGoalWizardOpen(true)} className="flex items-start gap-3 py-2">
+                    <Target className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--g-emerald-deep)]" />
+                    <span className="flex flex-col">
+                      <span className="text-sm font-medium">Create from Goal</span>
+                      <span className="text-xs text-muted-foreground">Describe an outcome, review the plan</span>
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setMesonWizardOpen(true)} className="flex items-start gap-3 py-2">
+                    <Blocks className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--g-emerald-deep)]" />
+                    <span className="flex flex-col">
+                      <span className="text-sm font-medium">Build with Meson</span>
+                      <span className="text-xs text-muted-foreground">Let Meson draft the steps for you</span>
+                    </span>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              {/* Secondary actions share one neutral outline treatment. They
-                  were previously tinted success-green and violet, which read as
-                  three competing primary actions and pulled violet in from
-                  outside the palette. */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setGoalWizardOpen(true)}
-                className={cn("gap-2", RADIUS.control)}
-              >
-                <Target className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Create from Goal</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setMesonWizardOpen(true)}
-                className={cn("gap-2", RADIUS.control)}
-              >
-                <Blocks className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Build with Meson</span>
-              </Button>
-              <Button size="sm" className={cn("gap-2", RADIUS.control)} asChild>
+              <Button size="sm" className={cn("h-11 gap-2 px-4 sm:h-8 sm:px-3", RADIUS.control)} asChild>
                 <Link href="/workflows/new/builder">
                   <Icon name="add" size="sm" />
+                  <span className="sm:hidden">New</span>
                   <span className="hidden sm:inline">New workflow</span>
                 </Link>
               </Button>
@@ -476,9 +395,6 @@ export default function WorkflowsPage() {
           }
           />
           <div className="px-4 pb-4 md:px-6">
-            <div className="mb-3 flex items-center gap-2 text-xs font-medium text-[color:var(--g-emerald-deep)]">
-              <Activity className="h-3.5 w-3.5" /> Operating state
-            </div>
           <PhaseBand
             label="Workflow phases"
             loading={isLoading && workflows.length === 0}
@@ -498,21 +414,6 @@ export default function WorkflowsPage() {
         {/* List is the product; live counts live in Totals. */}
 
         <div className="relative z-10 flex-1 overflow-y-auto px-4 py-5 md:px-6 md:py-6 scrollbar-on-hover">
-          {workflows.length > 0 && (
-            <div className="mb-5 grid grid-cols-2 gap-2 lg:grid-cols-4">
-              {[
-                { label: "Running", value: runningCount, icon: Activity, detail: "Executing now" },
-                { label: "Active", value: activeCount, icon: TrendingUp, detail: "Enabled workflows" },
-                { label: "Attention", value: errorCount + pausedCount, icon: AlertTriangle, detail: "Failed or paused" },
-                { label: "Drafts", value: draftCount, icon: FileEdit, detail: "Not yet active" },
-              ].map((metric) => (
-                <div key={metric.label} className="group flex min-h-24 items-start justify-between rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-4 text-left">
-                  <div><p className="text-[11px] font-medium text-muted-foreground">{metric.label}</p><p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{Math.max(0, metric.value)}</p><p className="mt-1 text-xs text-muted-foreground">{metric.detail}</p></div>
-                  <metric.icon className="h-4 w-4 text-[color:var(--g-emerald-deep)] opacity-75 transition-opacity group-hover:opacity-100" />
-                </div>
-              ))}
-            </div>
-          )}
           {/* Error state with retry */}
           {error && (
             <ErrorState
@@ -573,6 +474,94 @@ export default function WorkflowsPage() {
               />
             </div>
             
+            <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" aria-label="Filter workflows" className={cn("h-11 min-w-11 gap-2 sm:h-8 sm:min-w-0", RADIUS.control)}>
+                      <Icon name="filter" size="sm" />
+                      <span className="hidden sm:inline">Filter</span>
+                      {activeFiltersCount > 0 && (
+                        <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-info text-[10px] font-medium text-info-foreground">
+                          {activeFiltersCount}
+                        </span>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuLabel>Status</DropdownMenuLabel>
+                    <DropdownMenuCheckboxItem
+                      checked={statusFilter.includes("active")}
+                      onCheckedChange={(checked) => 
+                        setStatusFilter(checked 
+                          ? [...statusFilter, "active"] 
+                          : statusFilter.filter(s => s !== "active")
+                        )
+                      }
+                    >
+                      Active
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={statusFilter.includes("paused")}
+                      onCheckedChange={(checked) => 
+                        setStatusFilter(checked 
+                          ? [...statusFilter, "paused"] 
+                          : statusFilter.filter(s => s !== "paused")
+                        )
+                      }
+                    >
+                      Paused
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={statusFilter.includes("draft")}
+                      onCheckedChange={(checked) => 
+                        setStatusFilter(checked 
+                          ? [...statusFilter, "draft"] 
+                          : statusFilter.filter(s => s !== "draft")
+                        )
+                      }
+                    >
+                      Draft
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Environment</DropdownMenuLabel>
+                    <DropdownMenuCheckboxItem
+                      checked={envFilter.includes("production")}
+                      onCheckedChange={(checked) => 
+                        setEnvFilter(checked 
+                          ? [...envFilter, "production"] 
+                          : envFilter.filter(e => e !== "production")
+                        )
+                      }
+                    >
+                      Production
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={envFilter.includes("staging")}
+                      onCheckedChange={(checked) => 
+                        setEnvFilter(checked 
+                          ? [...envFilter, "staging"] 
+                          : envFilter.filter(e => e !== "staging")
+                        )
+                      }
+                    >
+                      Staging
+                    </DropdownMenuCheckboxItem>
+                    {activeFiltersCount > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onSelect={() => {
+                            setStatusFilter([])
+                            setEnvFilter([])
+                          }}
+                          className="text-xs text-muted-foreground"
+                        >
+                          Clear all filters
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
             <SegmentedControl
               options={VIEW_MODES}
               value={viewMode}
@@ -580,6 +569,7 @@ export default function WorkflowsPage() {
               ariaLabel="Switch workflow layout"
               className="hidden shrink-0 bg-secondary/50 md:inline-flex"
             />
+            </div>
           </div>
 
           {/* Freshness + result count */}

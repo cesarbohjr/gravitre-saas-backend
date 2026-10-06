@@ -44,7 +44,7 @@ it("keeps destination links separate from actions and discloses loaded count sco
   expect(row.querySelector('a button')).toBeNull()
   expect(row.textContent).toContain("Unread")
   expect(container.querySelector('[aria-label="Inbox summary"]')?.textContent).toContain("Unread7")
-  expect(container.textContent).toContain("Loaded notifications2")
+  expect(container.textContent).toContain("Recent2")
   expect(container.textContent).toContain("Showing up to 200")
 })
 it("does not show empty inbox or zero counts while loading", () => {

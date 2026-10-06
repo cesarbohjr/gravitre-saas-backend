@@ -52,6 +52,7 @@ export default function PredictiveOpsPage() {
     <AppShell title={copy.title}>
       <div className="space-y-8 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
         <GravitrePageHeader
+          className="px-0 pt-0 sm:px-0 sm:pt-0"
           title={copy.title}
           description={copy.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}

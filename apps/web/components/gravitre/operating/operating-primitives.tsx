@@ -63,7 +63,7 @@ export function PhaseBand({
       aria-label={label}
       data-phase-band=""
       className={cn(
-        "flex overflow-x-auto border-y border-[color:var(--g-border-default)] bg-[color:var(--g-canvas)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "grid grid-cols-2 gap-px border-y border-[color:var(--g-border-default)] bg-[color:var(--g-border-subtle)] md:flex md:gap-0 md:bg-[color:var(--g-canvas)]",
         className,
       )}
     >
@@ -90,8 +90,9 @@ export function PhaseBand({
           </>
         )
         const cellClass = cn(
-          "relative min-w-[148px] flex-1 px-4 py-3 text-left",
-          index > 0 && "border-l border-[color:var(--g-border-subtle)]",
+          "relative min-w-0 bg-[color:var(--g-canvas)] px-4 py-3 text-left md:flex-1 md:basis-0 md:px-3",
+          index > 0 && "md:border-l md:border-[color:var(--g-border-subtle)]",
+          index === phases.length - 1 && phases.length % 2 === 1 && "col-span-2 md:col-span-1",
           populated && PHASE_WASH[tone],
         )
         return onSelect ? (

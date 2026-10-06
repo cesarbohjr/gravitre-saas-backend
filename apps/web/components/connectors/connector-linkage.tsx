@@ -51,11 +51,12 @@ function workflowUsesVendor(workflow: Workflow, vendor: string): boolean {
 }
 
 function tierActions(catalog: VendorActionCatalog): ConnectorActionDefinition[] {
+  const tiers = catalog.tiers
   return [
-    ...catalog.tiers.v1.actions,
-    ...catalog.tiers.v2.actions,
-    ...catalog.tiers.v3.actions,
-    ...(catalog.tiers.v4?.actions ?? []),
+    ...(tiers?.v1?.actions ?? []),
+    ...(tiers?.v2?.actions ?? []),
+    ...(tiers?.v3?.actions ?? []),
+    ...(tiers?.v4?.actions ?? []),
   ]
 }
 
@@ -73,6 +74,8 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
   )
 
   const actions = useMemo(() => (catalog ? tierActions(catalog) : []), [catalog])
+  const demoWorkflows = catalog?.demoWorkflows ?? []
+  const vendorName = catalog?.displayName || vendor
   const chatReadyCount = actions.filter((a) => a.chatExecutable).length
   const workflowOnlyCount = actions.filter((a) => a.implemented && !a.chatExecutable).length
   const plannedCount = actions.filter((a) => !a.implemented).length
@@ -92,7 +95,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
               {linkedWorkflows.length === 1 ? "workflow" : "workflows"}
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Steps that call {vendor} will fail until the connection is restored. Reconnect to keep these workflows
+              Steps that call {vendorName} will fail until the connection is restored. Reconnect to keep these workflows
               running.
             </p>
           </div>
@@ -110,14 +113,14 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
               </CardTitle>
               {actions.length > 0 ? (
                 <span className="text-xs text-muted-foreground">
-                  {chatReadyCount} chat
-                  {workflowOnlyCount > 0 ? ` · ${workflowOnlyCount} workflow` : ""}
+                  {chatReadyCount} chat-ready
+                  {workflowOnlyCount > 0 ? ` · ${workflowOnlyCount} workflow only` : ""}
                   {plannedCount > 0 ? ` · ${plannedCount} planned` : ""}
                 </span>
               ) : null}
             </div>
             <CardDescription className="text-xs">
-              Chat-ready tools vs workflow-only catalog entries for this vendor
+              Checked actions run from chat. Add any action to a new workflow.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -146,22 +149,16 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
-                      <span
-                        className={cn(
-                          "rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium capitalize",
-                          action.chatExecutable
-                            ? STATUS.verified
-                            : action.implemented
-                              ? STATUS.running
-                              : STATUS.idle,
-                        )}
-                      >
-                        {action.chatExecutable
-                          ? "Chat"
-                          : action.implemented
-                            ? "Workflow"
-                            : "Planned"}
-                      </span>
+                      {action.chatExecutable ? null : (
+                        <span
+                          className={cn(
+                            "rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium",
+                            action.implemented ? STATUS.running : STATUS.idle,
+                          )}
+                        >
+                          {action.implemented ? "Workflow only" : "Planned"}
+                        </span>
+                      )}
                       {action.implemented ? (
                         <Button
                           asChild
@@ -176,9 +173,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
                             Add
                           </Link>
                         </Button>
-                      ) : (
-                        <span className="px-1.5 text-[10px] text-muted-foreground">Planned</span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -209,7 +204,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
                   <Button asChild variant="outline" size="sm" className="gap-1.5">
                     <Link href={`/workflows/new/builder?vendor=${encodeURIComponent(vendor)}`}>
                       <Plus className="h-3.5 w-3.5" />
-                      Build a workflow with {vendor}
+                      Build a workflow with {vendorName}
                     </Link>
                   </Button>
                 ) : null}
@@ -241,7 +236,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
       </div>
 
       {/* Demo workflow install cards */}
-      {catalog && catalog.demoWorkflows.length > 0 ? (
+      {demoWorkflows.length > 0 ? (
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
@@ -249,12 +244,12 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
               Starter workflows
             </CardTitle>
             <CardDescription className="text-xs">
-              Prebuilt {catalog.displayName} workflows you can install in one click
+              Prebuilt {catalog?.displayName} workflows you can install in one click
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {catalog.demoWorkflows.map((demo) => (
+              {demoWorkflows.map((demo) => (
                 <div
                   key={demo.id}
                   className="flex flex-col gap-2 rounded-lg border border-border bg-secondary/20 p-3"
@@ -277,7 +272,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
                   <p className="line-clamp-2 text-xs text-muted-foreground">{demo.description}</p>
                   <div className="mt-auto flex items-center justify-between pt-1">
                     <span className="text-[10px] text-muted-foreground">
-                      {demo.steps.length} {demo.steps.length === 1 ? "step" : "steps"} · {demo.department}
+                      {demo.steps?.length ?? 0} {demo.steps?.length === 1 ? "step" : "steps"} · {demo.department}
                     </span>
                     <Button
                       asChild
