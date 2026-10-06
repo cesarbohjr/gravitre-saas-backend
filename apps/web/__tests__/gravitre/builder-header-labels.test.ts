@@ -19,8 +19,8 @@ describe("Workflow Builder header", () => {
     expect([...positions].sort((a, b) => a - b)).toEqual(positions)
   })
 
-  it("keeps toolbar names for assistive tech while icon-only below lg", () => {
-    expect(page).toContain('<span className="sr-only lg:not-sr-only">{tool.label}</span>')
+  it("keeps toolbar names for assistive tech while icon-only below md", () => {
+    expect(page).toContain('<span className="sr-only md:not-sr-only">{tool.label}</span>')
     expect(page).not.toMatch(/<span className="hidden sm:inline">(Settings|Meson|Intelligence|Preview|Last run)<\/span>/)
   })
 })

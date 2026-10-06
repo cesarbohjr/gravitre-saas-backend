@@ -98,7 +98,7 @@ describe("canonical capability convergence", () => {
 
   it("does not promise automatic writes in the chat execution panel", () => {
     const chat = read("components/gravitre/assistant/chat-execution-panel.tsx")
-    expect(chat).toMatch(/Write steps require approval unless your organization policy explicitly authorizes/)
+    expect(chat).toMatch(/writes wait for you unless policy allows them/)
     expect(chat).not.toMatch(/write steps run automatically unless your approval settings require confirmation/i)
   })
 })

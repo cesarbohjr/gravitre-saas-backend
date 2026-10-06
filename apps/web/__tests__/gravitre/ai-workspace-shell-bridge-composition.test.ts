@@ -110,12 +110,12 @@ const body = () => container.querySelector("[data-gravitre-ai-composition-body]"
 const transcriptWrapper = () => container.querySelector('[data-stub="transcript"]')!.parentElement!
 
 describe("composition", () => {
-  it("is Conversation with Work/Split disabled when there is no work", () => {
+  it("is Conversation with no Work/Split switch when there is no work", () => {
     render(props())
     expect(body()?.getAttribute("data-gravitre-ai-composition-body")).toBe("conversation")
-    const buttons = Array.from(container.querySelectorAll('[role="group"] button, [role="radiogroup"] button'))
-    const disabled = buttons.filter((b) => b.hasAttribute("disabled")).map((b) => b.textContent)
-    expect(disabled).toEqual(expect.arrayContaining(["Work", "Split"]))
+    const labels = Array.from(container.querySelectorAll('[role="group"] button, [role="radiogroup"] button')).map((b) => b.textContent)
+    expect(labels).not.toContain("Work")
+    expect(labels).not.toContain("Split")
     expect(calls.canvas).toBe(0)
   })
 

@@ -34,7 +34,7 @@ export function AuthorityLadder({ readiness, className }: { readiness: Authority
   return (
     <div className={cn("flex min-w-0 flex-col gap-2", className)}>
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Authority</p>
+        <p className="text-xs font-medium text-muted-foreground">Authority</p>
         <p className="text-sm font-medium text-foreground">{current ? current.label : "Not started"}</p>
       </div>
       <ol aria-label={`Authority: ${earned} of ${RUNGS.length} levels earned`} className="grid grid-cols-4 gap-1">

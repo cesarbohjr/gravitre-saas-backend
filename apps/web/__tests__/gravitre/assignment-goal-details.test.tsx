@@ -38,37 +38,37 @@ beforeEach(() => {
 })
 afterEach(() => { act(() => root.unmount()); container.remove(); vi.unstubAllGlobals() })
 const click = (scope: ParentNode, text: string) => act(() => [...scope.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === text)!.click())
-it("discloses a selected deliverable in a compact sheet with separate selection and review controls", () => {
+it("shows the returned report inline without opening a review or decision control", () => {
   state.data = job; act(() => root.render(<AssignmentDetailPage params={params} />))
   expect(document.querySelector('[role="dialog"]')).toBeNull()
-  const select = container.querySelector<HTMLButtonElement>('button[aria-pressed]')!
-  expect(select.querySelector("button")).toBeNull()
-  act(() => select.click())
-  expect(document.querySelector('[data-slot="sheet-content"]')?.textContent).toContain("Returned report")
-  expect(container.textContent).toContain("Agent-reported confidence: 0%")
+  expect(container.textContent).toContain("Returned report")
+  expect(container.textContent).toContain("0% (agent-reported)")
+  expect([...container.querySelectorAll("button")].some(b => b.textContent?.includes("Review and decide"))).toBe(false)
 })
+const approvalJob: AgentJob = { ...job, result: { ...job.result as object, requires_approval: true } }
 it("does not mark approval locally while the persisted decision is pending", async () => {
   let finish!: (updated: AgentJob) => void
   state.approve.mockImplementation(() => new Promise<AgentJob>(resolve => { finish = resolve }))
-  state.data = job; act(() => root.render(<AssignmentDetailPage params={params} />))
-  click(container, "Review assignment")
+  state.data = approvalJob; act(() => root.render(<AssignmentDetailPage params={params} />))
+  click(container, "Review and decide")
   const dialog = document.querySelector('[role="dialog"]')!
-  click(dialog, "Approve →")
-  expect(container.textContent).not.toContain("Assignment approved")
+  click(dialog, "Approve")
+  expect(container.textContent).not.toContain("Approved")
   expect([...dialog.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.includes("Approve"))?.disabled).toBe(true)
-  await act(async () => { finish({ ...job, result: { ...job.result as object, approval_status: "approved" } }) })
+  await act(async () => { finish({ ...approvalJob, result: { ...approvalJob.result as object, approval_status: "approved" } }) })
   expect(state.approve).toHaveBeenCalledExactlyOnceWith("assignment")
-  expect(container.textContent).toContain("Assignment approved")
+  expect(container.textContent).toContain("Approved")
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Done")
 })
 it("keeps approval unset when the decision API fails", async () => {
-  state.approve.mockRejectedValue(new Error("Permission denied")); state.data = job
-  act(() => root.render(<AssignmentDetailPage params={params} />)); click(container, "Review assignment")
+  state.approve.mockRejectedValue(new Error("Permission denied")); state.data = approvalJob
+  act(() => root.render(<AssignmentDetailPage params={params} />)); click(container, "Review and decide")
   const dialog = document.querySelector('[role="dialog"]')!
-  await act(async () => [...dialog.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === "Approve →")!.click())
-  expect(container.textContent).not.toContain("Assignment approved")
+  await act(async () => [...dialog.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === "Approve")!.click())
+  expect(container.textContent).not.toContain("Approved")
+  expect(container.textContent).toContain("Needs your decision")
   expect(state.mutate).not.toHaveBeenCalled()
-  expect(dialog.textContent).toContain("Approve →")
+  expect(dialog.textContent).toContain("Approve")
   expect(dialog.querySelector('[role="alert"]')?.textContent).toContain("Permission denied")
 })
 it("retains cached assignment output when refresh fails", () => {
@@ -111,7 +111,7 @@ it("preserves zero progress and goal evidence during a failed refresh", () => {
   expect(container.querySelector('[role="progressbar"]')?.getAttribute("aria-valuenow")).toBe("0")
   expect(container.textContent).toContain("Could not refresh goal")
   expect(container.textContent).toContain("Contact customers")
-  expect(container.textContent).toContain("in progress")
+  expect(container.textContent).toContain("In progress")
 })
 
 it("can dismiss a review opened by the approval query without recording a decision", () => {
@@ -127,7 +127,7 @@ it("does not report a successful push when the destination returns ok:false", as
   state.data = { ...job, result: { ...job.result as object, approval_status: "approved" } }
   state.push.mockResolvedValue({ ok: false })
   act(() => root.render(<AssignmentDetailPage params={params} />))
-  await act(async () => [...container.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === "Push to destination")!.click())
+  await act(async () => [...container.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === "Push")!.click())
   expect(state.push).toHaveBeenCalledExactlyOnceWith("assignment")
   expect(toast.error).toHaveBeenCalledWith("Push failed", { description: "The destination did not confirm delivery" })
   expect(toast.success).not.toHaveBeenCalled()
@@ -136,7 +136,7 @@ it("does not report a successful push when the destination returns ok:false", as
 it("does not invent execution phases or a percentage when the handoff omits its trace and progress", () => {
   state.data = job
   act(() => root.render(<AssignmentDetailPage params={params} />))
-  expect(container.textContent).toContain("Reported progress: Not reported")
+  expect(container.textContent).toContain("Progress not reported")
   expect(container.textContent).toContain("Step-level trace not reported")
   expect(container.textContent).not.toContain("Gathering Context")
   expect(container.querySelector('[role="progressbar"]')).toBeNull()
