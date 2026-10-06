@@ -76,29 +76,66 @@ const RESULT: ChatExecutionResult = {
   ],
 }
 
+const CONTACT_COUNT_ANSWER =
+  "This HubSpot account has 57 contacts.\n\nNothing else is needed from you. If it helps, I can list them, or break them down by owner or lifecycle stage."
+
+// A bound read as the backend sends it: the report restates the answer, so it
+// belongs behind Details with the plan and observation ids.
+const CONTACT_COUNT: ChatExecutionResult = {
+  success: true,
+  entity_type: "report",
+  entity_id: "2c81a222-959b-42a5-90bc-cf2d0d3d6570",
+  title: "HubSpot contacts",
+  body: "This HubSpot account has 57 contacts.",
+  artifacts: [
+    {
+      artifact_id: "report:2c81a222-959b-42a5-90bc-cf2d0d3d6570",
+      kind: "table",
+      title: "HubSpot contacts",
+      preview: "This HubSpot account has 57 contacts.",
+      source: "e5_execution_plan",
+    },
+  ],
+  structured: {
+    code: "This HubSpot account has 57 contacts.",
+    previewFormat: "markdown",
+    title: "HubSpot contacts",
+    plan_id: "2c81a222-959b-42a5-90bc-cf2d0d3d6570",
+    observation_ids: ["af5d9390-2011-4e23-b4be-808b314e3b00"],
+    exportable: true,
+    rows: [{ count: "57", object: "contacts", source: "hubspot.contacts.search", system: "HubSpot" }],
+  },
+}
+
 const STATES = {
   approval: { mode: "confirm", pending: CONNECTOR_APPROVAL, result: null },
   plan: { mode: "confirm", pending: ORCHESTRATION_PLAN, result: null },
   queued: { mode: "awaiting_approval", pending: QUEUED_APPROVAL, result: null },
   result: { mode: null, pending: null, result: RESULT },
+  contacts: { mode: null, pending: null, result: CONTACT_COUNT },
 } as const
 
 type StateKey = keyof typeof STATES
 
 function TurnFrame({ state }: { state: StateKey }) {
   const { mode, pending, result } = STATES[state]
+  const answer =
+    state === "contacts"
+      ? CONTACT_COUNT_ANSWER
+      : state === "result"
+        ? "Done. Here is what changed."
+        : "Here is what I will do. Nothing writes to Salesforce until you approve."
   return (
     <section data-turn-state={state} className="flex flex-col gap-3">
-      <p className="text-sm leading-relaxed text-foreground">
-        {state === "result"
-          ? "Done. Here is what changed."
-          : "Here is what I will do. Nothing writes to Salesforce until you approve."}
+      <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+        {answer}
       </p>
       <ChatExecutionPanel
         dialogueMode={mode}
         pendingTask={pending}
         executionResult={result}
         canApprove
+        answerText={answer}
         onConfirm={() => {}}
         onReject={() => {}}
         onModify={() => {}}

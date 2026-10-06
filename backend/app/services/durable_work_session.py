@@ -525,14 +525,10 @@ def bind_finished_work(
         required=False,
     )
     report_title = str(title or default_title).strip()[:160]
-    markdown_bits = [f"Outcome: {outcome}", diagnosis]
-    if evidence:
-        markdown_bits.append("")
-        markdown_bits.append("Evidence")
-        markdown_bits.extend(f"- {line}" for line in evidence)
-    if plan_id:
-        markdown_bits.append("")
-        markdown_bits.append(f"Plan `{plan_id}`")
+    # The report a person reads: the answer, then any table. Evidence lines
+    # (action keys, row counters, observation ids) stay on the deliverable
+    # contract and artifact metadata for audit, not in the readable report.
+    markdown_bits = [diagnosis]
     structured_rows = []
     for row in source_rows:
         blob = row.get("structured") if isinstance(row.get("structured"), dict) else {}

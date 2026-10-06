@@ -376,10 +376,13 @@ def try_listing_f2_read_turn(
         provider_invoked=True,
     )
     payload = execution_result_from_finished_work(merged, body=summary, success=bool(invoked.success))
+    from app.services.plain_language_answer import with_next_steps
+
+    answer = with_next_steps(summary, action_key, int(count)) if invoked.success else summary
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",
-        "message": summary,
+        "message": answer,
         "task_state": merged,
         "workflow_status": "completed" if invoked.success else "failed",
         "execution_path": "listing_f2_read",
