@@ -287,13 +287,13 @@ export const MOTION_CONCEPT = {
  * label. Never invent TRAINED/live claims from these alone.
  */
 export const STATUS = {
-  pending: "text-[color:var(--warning)]",
+  pending: "text-[color:var(--status-approval-text)]",
   approved: "text-[color:var(--g-text-secondary)]",
-  rejected: "text-destructive",
+  rejected: "text-[color:var(--status-failed-text)]",
   running: "text-[color:var(--g-text-secondary)]",
-  failed: "text-destructive",
+  failed: "text-[color:var(--status-failed-text)]",
   verified: "text-[color:var(--g-text-secondary)]",
-  estimate: "text-[color:var(--warning)]",
+  estimate: "text-[color:var(--status-approval-text)]",
   paused: "text-[color:var(--g-text-secondary)]",
   idle: "text-[color:var(--g-text-muted)]",
 } as const
@@ -302,15 +302,15 @@ export type StatusTone = keyof typeof STATUS
 
 /** Dot fill paired with STATUS chip tones (Nodus status column). */
 export const STATUS_DOT: Record<StatusTone, string> = {
-  pending: "bg-[color:var(--g-approval)]",
-  approved: "bg-[color:var(--g-brand)]",
-  rejected: "bg-destructive",
-  running: "bg-[color:var(--g-brand)]",
-  failed: "bg-destructive",
-  verified: "bg-[color:var(--g-brand)]",
-  estimate: "bg-[color:var(--g-approval)]",
-  paused: "bg-[color:var(--g-approval)]",
-  idle: "bg-[color:var(--g-text-muted)]",
+  pending: "bg-[color:var(--status-pending)]",
+  approved: "bg-[color:var(--status-approved)]",
+  rejected: "bg-[color:var(--status-rejected)]",
+  running: "bg-[color:var(--status-running)]",
+  failed: "bg-[color:var(--status-failed)]",
+  verified: "bg-[color:var(--status-verified)]",
+  estimate: "bg-[color:var(--status-estimate)]",
+  paused: "bg-[color:var(--status-pending)]",
+  idle: "bg-[color:var(--status-idle)]",
 }
 
 /**
@@ -318,11 +318,11 @@ export const STATUS_DOT: Record<StatusTone, string> = {
  * pair with a dot or a 2px edge when the state must stand out.
  */
 export const HIGHLIGHT = {
-  brand: "text-[color:var(--g-brand-active)]",
-  signal: "text-[color:var(--info)]",
-  intelligence: "text-[color:var(--g-electric)]",
-  warning: "text-[color:var(--warning)]",
-  danger: "text-destructive",
+  brand: "text-[color:var(--brand-text)]",
+  signal: "text-[color:var(--status-running-text)]",
+  intelligence: "text-[color:var(--intelligence-text)]",
+  warning: "text-[color:var(--warning-text)]",
+  danger: "text-[color:var(--danger-text)]",
   neutral: "text-[color:var(--g-text-secondary)]",
 } as const
 

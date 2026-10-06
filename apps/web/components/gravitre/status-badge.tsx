@@ -36,12 +36,12 @@ const variantStyles: Record<BadgeVariant, string> = {
 }
 
 const variantDotStyles: Record<BadgeVariant, string> = {
-  default: "bg-[color:var(--g-text-muted)]",
-  success: "bg-[color:var(--g-brand)]",
-  warning: "bg-[color:var(--g-approval)]",
-  error: "bg-destructive",
-  info: "bg-[color:var(--g-signal)]",
-  muted: "bg-[color:var(--g-text-muted)]",
+  default: "bg-[color:var(--status-idle)]",
+  success: "bg-[color:var(--status-approved)]",
+  warning: "bg-[color:var(--status-pending)]",
+  error: "bg-[color:var(--status-failed)]",
+  info: "bg-[color:var(--status-running)]",
+  muted: "bg-[color:var(--status-idle)]",
 }
 
 /** Legacy variant → STATUS tone when callers still pass variant alone. */

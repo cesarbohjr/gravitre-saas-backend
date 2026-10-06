@@ -55,14 +55,6 @@
 
 :root {
   /* Emerald Intelligence — approved Gravitre product identity (2026-10). */
-  --g-emerald: #00a878;
-  --g-emerald-deep: #007f5f;
-  --g-emerald-mint: #cff7e8;
-  --g-emerald-pale: #eaf8f2;
-  --g-carbon: #101816;
-  --g-bone: #f5f3ec;
-  --g-electric: #315cff;
-  --g-warmth: #ff654d;
   --g-viz-primary: var(--g-emerald);
   --g-viz-secondary: var(--g-electric);
   --g-viz-attention: var(--g-warmth);
@@ -70,112 +62,39 @@
   --g-viz-tooltip: var(--g-carbon);
   /* Gravitre Brand — light-first (Nodus full-match) */
   /* Brand green #00a878 — Emerald implementation (Figma page 03). */
-  --brand: #00a878;
-  --brand-soft: #cff7e8;
   /* Explicit brand ladder (Nodus product reconstruction Gate 2026-09-07) */
-  --g-brand: #00a878;
-  --g-brand-hover: #008f67;
-  --g-brand-active: #007f5f;
-  --g-brand-soft: #cff7e8;
-  --g-brand-muted: #63d6b3;
-  --g-brand-surface: color-mix(in srgb, #00a878 6%, #ffffff);
-  --g-brand-border: color-mix(in srgb, #00a878 22%, #eaedf1);
-  --g-brand-glow: 0 8px 28px -10px color-mix(in srgb, #00a878 30%, transparent);
   /* Nodus Product Image layout tokens (measured from dashboard@3x.png) */
   --np-sidebar: 236px;
   --np-sidebar-rail: 64px;
   /* 3.0 Plus operating environment: navigation and command chrome sit on a quiet
      tone; the working surface is a raised, inset workspace panel. */
-  --g-chrome: #f2f3f1;
-  --g-chrome-hover: #e8eae7;
-  --g-workspace-radius: 10px;
   /* Graphite frame: navigation and command chrome are the instrument; the
      workspace inside stays light. */
-  --g-frame: oklch(0.145 0.003 260);
-  --g-frame-rule: oklch(0.25 0.003 260);
-  --g-workspace-shadow: 0 0 0 1px #e3e6e2, 0 1px 2px rgb(16 24 40 / 0.04), 0 12px 32px -18px rgb(16 24 40 / 0.14);
-  --g-rail-bg: #fafbfa;
   /* P12 desktop densify — ops panes, not marketing canvas */
   --np-page-pad: 16px;
   --np-page-pad-sm: 12px;
   --np-kpi-gap: 12px;
-  --np-radius-sm: 4px;
-  --np-radius-md: 6px;
-  --np-radius-lg: 8px;
   --np-row-h: 36px;
   --np-header-h: 36px;
   --np-nav-icon: 16px;
-  --np-shadow: var(--shadow-aceternity);
-  --background: #ffffff;
-  --foreground: #202020;
-  --card: #ffffff;
-  --card-foreground: #202020;
-  --popover: #ffffff;
-  --popover-foreground: #202020;
   /* Primary = Gravitre brand green (was approximate oklch; now exact hex) */
-  --primary: #00a878;
-  --primary-foreground: #ffffff;
-  --secondary: #f5f5f5;
-  --secondary-foreground: #202020;
-  --muted: #f5f5f5;
   /* #8b8b8b was 3.5:1 on white (fails WCAG AA for body copy). */
-  --muted-foreground: #66666b;
   /* Accent = the interactive hover/active SURFACE token (shadcn semantics),
      not a decorative brand color. It was electric blue (hue 250, chroma .16 on
      the foreground), which tinted every `hover:bg-accent` / `hover:text-
      accent-foreground` blue and fought the emerald active state. Keep it on the
      brand-neutral ramp (hue 160); genuine blue lives in --info / --chart-2. */
-  --accent: #f5f5f5;
-  --accent-foreground: #202020;
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: #eaedf1;
-  --input: #f5f5f5;
-  --ring: #00a878;
   /* Status colors. The -foreground pairs are for content sitting on a SOLID
      status fill (e.g. a filled success dot); text on a low-opacity status tint
      should use text-success/-warning/-info instead. */
-  --success: oklch(0.55 0.18 145);
-  --success-foreground: oklch(0.99 0 0);
-  --warning: oklch(0.65 0.18 75);
-  --warning-foreground: oklch(0.18 0.02 75);
-  --info: oklch(0.55 0.2 250);
-  --info-foreground: oklch(0.99 0 0);
   /* Chart colors - emerald primary, blue secondary */
-  --chart-1: oklch(0.6 0.14 162);
-  --chart-2: oklch(0.55 0.2 250);
-  --chart-3: oklch(0.65 0.18 75);
-  --chart-4: oklch(0.55 0.18 320);
-  --chart-5: oklch(0.50 0.22 25);
   /* Schedule kind colors — distinct purple / blue / green (calendar legend) */
-  --schedule-workflow: oklch(0.52 0.24 305);
-  --schedule-task: oklch(0.52 0.2 250);
-  --schedule-job: oklch(0.52 0.17 158);
   /* Workflow builder connection lines (theme-stable; no inline hex in UI) */
-  --workflow-line: var(--info);
-  --workflow-line-mid: var(--schedule-task);
-  --workflow-line-active: var(--success);
-  --workflow-line-active-mid: oklch(0.62 0.17 158);
   --workflow-decision: var(--g-signal);
   --workflow-decision-mid: var(--g-signal);
-  --workflow-line-dim: var(--muted-foreground);
-  --radius: 0.375rem;
   /* Premium elevation scale (light) — soft, layered, low-spread shadows */
-  --elevation-1: 0 1px 2px -1px oklch(0.18 0.02 160 / 0.08), 0 1px 3px oklch(0.18 0.02 160 / 0.06);
-  --elevation-2: 0 2px 4px -2px oklch(0.18 0.02 160 / 0.08), 0 4px 12px -2px oklch(0.18 0.02 160 / 0.08);
-  --elevation-3: 0 8px 24px -6px oklch(0.18 0.02 160 / 0.12), 0 2px 6px -2px oklch(0.18 0.02 160 / 0.08);
-  --elevation-4: 0 20px 48px -12px oklch(0.18 0.02 160 / 0.18), 0 8px 20px -8px oklch(0.18 0.02 160 / 0.10);
   /* Top inset highlight for "glass" edge on elevated surfaces */
-  --highlight-edge: inset 0 1px 0 0 oklch(1 0 0 / 0.6);
   /* Sidebar: subtle cool surface with brand-emerald accents */
-  --sidebar: #f2f3f1;
-  --sidebar-foreground: #202020;
-  --sidebar-primary: #00a878;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e8eae7;
-  --sidebar-accent-foreground: #202020;
-  --sidebar-border: #eaedf1;
-  --sidebar-ring: #00a878;
   /* Assistant chat avatar (design handoff). A muted brand green (#3f5b52) that
      stays dark in both themes so the white mark keeps contrast without needing a
      per-theme asset swap. `speaking` brightens to --primary, which is the same
@@ -199,14 +118,6 @@
   --gv-voice-orb-backdrop-edge: #0a1028;
   /* Semantic runtime / governance status (Phase 9) — map to BO/approval/agent
      honesty chips. Never paint "TRAINED" or live ops claims from these alone. */
-  --status-pending: var(--warning);
-  --status-approved: var(--success);
-  --status-rejected: var(--destructive);
-  --status-running: var(--info);
-  --status-failed: var(--destructive);
-  --status-verified: var(--success);
-  --status-estimate: var(--warning);
-  --status-idle: var(--muted-foreground);
 
   /* ------------------------------------------------------------------
      Nodus full-match foundations (light-first).
@@ -214,84 +125,15 @@
      violet intelligence (product only) · cyan signal · amber approval.
      Same token names bridge web app, desktop, extension, responsive web.
      ------------------------------------------------------------------ */
-  --g-canvas: #ffffff;
   --g-void: var(--g-canvas);
-  --g-background: #f9f9f9;
-  --g-background-muted: #f5f5f5;
-  --g-surface-1: #ffffff;
-  --g-surface-2: #f9f9f9;
-  --g-surface-3: #f5f5f5;
-  --g-surface-elevated: #ffffff;
-  --g-surface-active: color-mix(in srgb, #00a878 6%, var(--g-surface-1));
   /* Light mode gets authority from ink and rules, not darker surfaces:
      structure is carried by border-default rules, so they must read on white. */
-  --g-text-primary: #18181b;
-  --g-text-secondary: #343434;
-  --g-text-muted: #66666b;
   --g-text-disabled: color-mix(in srgb, var(--g-text-muted) 55%, transparent);
-  --g-border-subtle: color-mix(in srgb, #eaedf1 85%, transparent);
-  --g-border-default: #e2e4e8;
-  --g-border-strong: #d7d7d7;
-  --g-border-active: color-mix(in srgb, var(--primary) 28%, var(--g-border-default));
-  --g-intelligence: #315cff;
-  --g-intelligence-bright: #315cff;
-  --g-intelligence-soft: color-mix(in srgb, #315cff 12%, var(--g-surface-1));
-  --g-intelligence-surface: color-mix(in srgb, #315cff 8%, var(--g-surface-1));
-  --g-intelligence-glow: 0 0 #0000;
-  --g-emerald: var(--primary);
-  --g-emerald-bright: #008f67;
-  --g-emerald-soft: #cff7e8;
-  --g-emerald-surface: color-mix(in srgb, var(--primary) 8%, var(--g-surface-1));
-  --g-emerald-glow: 0 8px 28px -10px color-mix(in srgb, var(--primary) 30%, transparent);
   /* Nodus divide / pattern tokens */
-  --divide: #e2e4e8;
-  --dots: #eaedf1;
-  --line: #eaedf1;
   --footer-link: #676767;
   --canvas: #c0c0c0;
   --canvas-fill: #d7d7d7;
-  --g-signal: oklch(0.52 0.12 240);
-  --g-signal-soft: #e8f1fb;
-  --g-signal-surface: color-mix(in oklch, oklch(0.52 0.12 240) 8%, var(--g-surface-1));
-  --g-approval: oklch(0.72 0.14 75);
-  --g-approval-bright: oklch(0.62 0.15 75);
-  --g-approval-soft: oklch(0.95 0.04 75);
-  --g-approval-surface: color-mix(in oklch, oklch(0.72 0.14 75) 10%, var(--g-surface-1));
-  --g-warning: var(--warning);
-  --g-danger: var(--destructive);
-  --g-success: var(--success);
-  --g-glow-intelligence: var(--g-intelligence-glow);
-  --g-glow-operational: var(--g-emerald-glow);
-  --g-glow-signal: 0 6px 24px -8px color-mix(in oklch, var(--g-signal) 28%, transparent);
-  --g-glow-approval: 0 6px 20px -8px color-mix(in oklch, var(--g-approval) 22%, transparent);
-  --g-light-intelligence: radial-gradient(
-    ellipse at center,
-    color-mix(in oklch, var(--g-intelligence) 12%, transparent) 0%,
-    transparent 70%
-  );
-  --g-light-operational: radial-gradient(
-    ellipse at center,
-    color-mix(in oklch, var(--g-emerald) 12%, transparent) 0%,
-    transparent 70%
-  );
-  --g-light-neutral: radial-gradient(
-    ellipse at center,
-    color-mix(in oklch, var(--foreground) 4%, transparent) 0%,
-    transparent 72%
-  );
-  --g-highlight-intelligence: inset 0 1px 0 0 color-mix(in oklch, oklch(0.55 0.16 290) 14%, transparent);
-  --g-highlight-operational: inset 0 1px 0 0 color-mix(in oklch, var(--primary) 16%, transparent);
-  --g-highlight-top: inset 0 1px 0 0 oklch(1 0 0 / 0.85);
-  --g-shadow-subtle: 0 1px 2px oklch(0.22 0.02 165 / 0.04);
-  --g-shadow-surface: 0 1px 2px -1px oklch(0.22 0.02 165 / 0.06), 0 2px 8px -2px oklch(0.22 0.02 165 / 0.06);
-  --g-shadow-elevated: 0 4px 16px -4px oklch(0.22 0.02 165 / 0.1), 0 2px 6px -2px oklch(0.22 0.02 165 / 0.06);
   --g-shadow-product: 0 20px 48px -16px oklch(0.22 0.02 165 / 0.18), 0 8px 20px -8px oklch(0.22 0.02 165 / 0.08);
-  --g-material-panel: linear-gradient(
-    165deg,
-    color-mix(in oklch, var(--g-surface-1) 92%, oklch(1 0 0) 8%) 0%,
-    var(--g-surface-1) 52%,
-    var(--g-surface-2) 100%
-  );
   --g-blur-atmosphere: 64px;
   /* Duration + ease base */
   --g-duration-micro: 150ms;
@@ -331,11 +173,6 @@
   /* Radius (aligned with design-system RADIUS) */
   /* Sharp-technical geometry: small radii on working surfaces; the larger
      panel radius is reserved for elevated / conversational surfaces. */
-  --g-radius-control: 0.375rem;
-  --g-radius-field: 0.375rem;
-  --g-radius-tile: 0.375rem;
-  --g-radius-card: 0.5rem;
-  --g-radius-panel: 0.625rem;
   /* Space scale */
   --g-space-1: 0.25rem;
   --g-space-2: 0.5rem;
@@ -415,157 +252,32 @@
 
 .dark {
   /* Graphite, not navy: neutral charcoal ladder with emerald as the only hue. */
-  --background: oklch(0.155 0.002 260);
-  --foreground: oklch(0.96 0 0);
-  --card: oklch(0.19 0.002 260);
-  --card-foreground: oklch(0.96 0 0);
-  --popover: oklch(0.215 0.002 260);
-  --popover-foreground: oklch(0.96 0 0);
-  --primary: oklch(0.72 0.14 162);
-  --primary-foreground: oklch(0.16 0.02 162);
-  --secondary: oklch(0.235 0.002 260);
-  --secondary-foreground: oklch(0.96 0 0);
-  --muted: oklch(0.235 0.002 260);
-  --muted-foreground: oklch(0.72 0.004 260);
-  --accent: oklch(0.255 0.003 260);
-  --accent-foreground: oklch(0.96 0 0);
-  --destructive: oklch(0.62 0.2 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.28 0.003 260);
-  --input: oklch(0.235 0.002 260);
-  --ring: oklch(0.72 0.14 162);
   /* Status colors. Dark-mode fills are lighter than their light-mode
      counterparts, so their foregrounds invert to dark to stay legible. */
-  --success: oklch(0.65 0.18 145);
-  --success-foreground: oklch(0.15 0.02 145);
-  --warning: oklch(0.75 0.15 75);
-  --warning-foreground: oklch(0.15 0.02 75);
   /* Info: Electric blue (primary accent) */
-  --info: oklch(0.65 0.2 250);
-  --info-foreground: oklch(0.15 0.02 250);
   /* Categorical scale — hues must stay stable across themes so a series keeps
      its identity; only lightness adapts. Dark mode had drifted: chart-2 was
      green (145) vs blue (250) in light, colliding with chart-1/--success, and
      chart-4 was cyan (200) vs magenta (320) — which also made the "violet"
      point of the .ai-chat-canvas mesh render cyan in dark mode. */
-  --chart-1: oklch(0.72 0.14 162);
-  --chart-2: oklch(0.68 0.18 250);
-  --chart-3: oklch(0.75 0.15 75);
-  --chart-4: oklch(0.68 0.16 320);
-  --chart-5: oklch(0.65 0.20 25);
   /* Schedule kind colors — brighter purple / blue / green for dark surfaces */
-  --schedule-workflow: oklch(0.72 0.22 305);
-  --schedule-task: oklch(0.68 0.19 250);
-  --schedule-job: oklch(0.72 0.16 158);
-  --workflow-line: var(--info);
-  --workflow-line-mid: var(--schedule-task);
-  --workflow-line-active: var(--success);
-  --workflow-line-active-mid: oklch(0.78 0.16 145);
   --workflow-decision: var(--g-signal);
   --workflow-decision-mid: var(--g-signal);
-  --workflow-line-dim: var(--muted-foreground);
   /* Premium elevation scale (dark) — deeper drops + subtle light top edge */
-  --elevation-1: 0 1px 2px oklch(0 0 0 / 0.4), inset 0 1px 0 0 oklch(1 0 0 / 0.04);
-  --elevation-2: 0 4px 12px -2px oklch(0 0 0 / 0.5), inset 0 1px 0 0 oklch(1 0 0 / 0.05);
-  --elevation-3: 0 12px 32px -8px oklch(0 0 0 / 0.6), inset 0 1px 0 0 oklch(1 0 0 / 0.06);
-  --elevation-4: 0 24px 56px -12px oklch(0 0 0 / 0.7), inset 0 1px 0 0 oklch(1 0 0 / 0.07);
-  --highlight-edge: inset 0 1px 0 0 oklch(1 0 0 / 0.07);
   /* Sidebar: Even deeper */
   /* Nodus ramp + divide tokens are used directly by utilities (text-charcoal-900,
      bg-gray-100, border-divide), so they must follow the theme too. */
-  --color-charcoal-900: oklch(0.96 0 0);
-  --color-charcoal-800: oklch(0.9 0 0);
-  --color-charcoal-700: oklch(0.84 0 0);
-  --color-gray-100: oklch(0.19 0.002 260);
-  --color-gray-200: oklch(0.215 0.002 260);
-  --color-gray-300: oklch(0.28 0.003 260);
-  --color-gray-400: oklch(0.36 0.003 260);
-  --color-gray-500: oklch(0.5 0.003 260);
-  --color-gray-600: oklch(0.7 0.004 260);
-  --color-brand-soft: color-mix(in oklch, oklch(0.72 0.14 162) 14%, transparent);
-  --brand-soft: var(--color-brand-soft);
-  --divide: var(--border);
-  --dots: oklch(0.3 0.003 260);
-  --line: var(--border);
   --footer-link: var(--muted-foreground);
   --canvas: oklch(0.36 0.003 260);
   --canvas-fill: oklch(0.28 0.003 260);
-  --g-background-muted: var(--muted);
-  --g-border-strong: oklch(0.36 0.003 260);
-  --g-brand-soft: var(--color-brand-soft);
-  --g-brand-surface: color-mix(in oklch, oklch(0.72 0.14 162) 8%, var(--card));
-  --g-brand-border: color-mix(in oklch, oklch(0.72 0.14 162) 30%, var(--border));
-  --g-surface-elevated: var(--popover);
-  --g-highlight-top: inset 0 1px 0 0 oklch(1 0 0 / 0.05);
-  --np-shadow: 0 0 0 1px var(--border);
-  --shadow-aceternity: 0 0 0 1px var(--border);
-  --sidebar: oklch(0.13 0.002 260);
-  --g-chrome: oklch(0.13 0.002 260);
-  --g-chrome-hover: oklch(0.19 0.003 260);
-  --g-workspace-shadow: 0 0 0 1px var(--border), 0 16px 40px -24px rgb(0 0 0 / 0.6);
-  --g-rail-bg: color-mix(in oklch, var(--card) 70%, var(--background));
-  --sidebar-foreground: oklch(0.96 0 0);
-  --sidebar-primary: oklch(0.72 0.14 162);
-  --sidebar-primary-foreground: oklch(0.16 0.02 162);
-  --sidebar-accent: oklch(0.215 0.002 260);
-  --sidebar-accent-foreground: oklch(0.96 0 0);
-  --sidebar-border: oklch(0.24 0.003 260);
-  --sidebar-ring: oklch(0.72 0.14 162);
   /* Lifted slightly on the near-black dark canvas so the circle reads as a chip
      rather than dissolving into the background. */
   --assistant-avatar: oklch(0.46 0.042 165);
   --assistant-avatar-foreground: oklch(0.99 0 0);
   /* Status aliases inherit theme success/warning/info/destructive above. */
-  --status-pending: var(--warning);
-  --status-approved: var(--success);
-  --status-rejected: var(--destructive);
-  --status-running: var(--info);
-  --status-failed: var(--destructive);
-  --status-verified: var(--success);
-  --status-estimate: var(--warning);
-  --status-idle: var(--muted-foreground);
 
   /* Design Pass 2 aliases — dark values where intelligence/emerald diverge */
-  --g-canvas: var(--background);
-  --g-void: var(--background);
-  --g-background: var(--background);
-  --g-surface-1: var(--card);
-  --g-surface-2: color-mix(in oklch, var(--card) 86%, var(--muted) 14%);
-  --g-surface-3: var(--accent);
-  --g-surface-active: color-mix(in oklch, oklch(0.70 0.14 305) 8%, var(--card));
-  --g-text-primary: var(--foreground);
-  --g-text-secondary: var(--muted-foreground);
-  --g-text-muted: var(--muted-foreground);
   --g-text-disabled: color-mix(in oklch, var(--muted-foreground) 50%, transparent);
-  --g-border-subtle: color-mix(in oklch, var(--border) 75%, transparent);
-  --g-border-default: var(--border);
-  --g-border-active: color-mix(in oklch, var(--primary) 40%, var(--border));
-  --g-intelligence: #6b8aff;
-  --g-intelligence-bright: #6b8aff;
-  --g-intelligence-soft: color-mix(in srgb, #315cff 16%, transparent);
-  --g-intelligence-glow: 0 0 #0000;
-  --g-emerald: var(--primary);
-  --g-emerald-bright: oklch(0.78 0.14 162);
-  --g-emerald-soft: color-mix(in oklch, var(--primary) 10%, transparent);
-  --g-emerald-glow: 0 0 40px color-mix(in oklch, var(--primary) 28%, transparent);
-  --g-signal: var(--info);
-  --g-signal-soft: color-mix(in oklch, var(--info) 12%, transparent);
-  --g-signal-surface: color-mix(in oklch, var(--info) 10%, var(--card));
-  --g-approval: oklch(0.78 0.12 75);
-  --g-approval-bright: oklch(0.82 0.13 75);
-  --g-approval-soft: color-mix(in oklch, oklch(0.78 0.12 75) 12%, transparent);
-  --g-approval-surface: color-mix(in oklch, oklch(0.78 0.12 75) 10%, var(--card));
-  --g-warning: var(--warning);
-  --g-danger: var(--destructive);
-  --g-success: var(--success);
-  --g-glow-intelligence: var(--g-intelligence-glow);
-  --g-glow-operational: var(--g-emerald-glow);
-  --g-glow-signal: 0 0 32px color-mix(in oklch, var(--info) 24%, transparent);
-  --g-glow-approval: 0 0 28px color-mix(in oklch, var(--g-approval) 22%, transparent);
-  --g-highlight-intelligence: inset 0 1px 0 0 color-mix(in oklch, oklch(0.70 0.14 305) 16%, transparent);
-  --g-highlight-operational: inset 0 1px 0 0 color-mix(in oklch, var(--primary) 20%, transparent);
-  --g-shadow-surface: var(--elevation-1);
-  --g-shadow-elevated: var(--elevation-2);
   --g-blur-atmosphere: 56px;
 
   /* Window Manager chrome (dark) */
@@ -615,7 +327,6 @@
   /* Shared illustration language */
   --g-graphic-line: 1.25px;
   --g-graphic-node: 5px;
-  --g-graphic-glow: 0 0 24px -6px color-mix(in srgb, var(--primary) 28%, transparent);
   --g-graphic-dot: 2.5px;
   --g-graphic-grid: 24px;
   --g-graphic-blur: 28px;
@@ -786,6 +497,7 @@
   --g-shadow-surface: 0 1px 0 rgb(21 22 24 / 0.03);
   --g-shadow-elevated: 0 1px 2px rgb(21 22 24 / 0.06), 0 6px 16px -8px rgb(21 22 24 / 0.12);
   --elevation-1: 0 1px 0 rgb(21 22 24 / 0.04);
+  --overlay: rgb(21 22 24 / 0.4);
   --elevation-2: 0 1px 2px rgb(21 22 24 / 0.06), 0 6px 16px -8px rgb(21 22 24 / 0.12);
   --elevation-3: 0 2px 4px rgb(21 22 24 / 0.06), 0 12px 28px -12px rgb(21 22 24 / 0.18);
   --elevation-4: 0 4px 8px rgb(21 22 24 / 0.06), 0 20px 40px -16px rgb(21 22 24 / 0.22);
@@ -981,6 +693,7 @@
   --g-highlight-top: inset 0 0 0 0 #0000;
   --highlight-edge: inset 0 0 0 0 #0000;
   --elevation-1: 0 0 0 1px var(--border);
+  --overlay: rgb(0 0 0 / 0.66);
   --elevation-2: 0 0 0 1px var(--border), 0 8px 20px -10px rgb(0 0 0 / 0.6);
   --elevation-3: 0 0 0 1px var(--border), 0 14px 32px -14px rgb(0 0 0 / 0.7);
   --elevation-4: 0 0 0 1px var(--border), 0 22px 48px -18px rgb(0 0 0 / 0.75);
@@ -1819,7 +1532,6 @@ details[open] > .g-disclosure > :first-child::after {
   background-color: var(--tw-gradient-from, transparent);
 }
 
-
 /* Emerald Intelligence — semantic art and motion primitives. */
 .g-intelligence-field {
   background-color: var(--g-carbon);
@@ -1841,7 +1553,6 @@ details[open] > .g-disclosure > :first-child::after {
   .g-motion-route { stroke-dasharray: 8 8; animation: g-route .8s linear infinite; }
   .g-motion-verify { transform-origin: center; animation: g-verify .18s ease-out both; }
 }
-
 
 /* Emerald Intelligence responsive composition contracts. */
 [data-composition] { container-type: inline-size; }

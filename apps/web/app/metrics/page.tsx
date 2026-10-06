@@ -289,10 +289,10 @@ function MetricCard({
   const isPositive = change === undefined ? null : change >= 0
   const gradientId = `metric-${useId().replace(/:/g, "")}`
   const accents = {
-    blue: { color: "var(--g-electric)", surface: "bg-[color:color-mix(in_srgb,var(--g-electric)_5%,white)]" },
-    emerald: { color: "var(--g-emerald)", surface: "bg-[color:var(--g-emerald-pale)]" },
-    amber: { color: "var(--g-warmth)", surface: "bg-[color:color-mix(in_srgb,var(--g-warmth)_10%,white)]" },
-    red: { color: "var(--g-danger)", surface: "bg-[color:color-mix(in_srgb,var(--g-danger)_6%,white)]" },
+    blue: { color: "var(--g-electric)", surface: "bg-[color:color-mix(in_srgb,var(--g-electric)_6%,var(--card))]" },
+    emerald: { color: "var(--g-emerald)", surface: "bg-[color:color-mix(in_srgb,var(--g-emerald)_8%,var(--card))]" },
+    amber: { color: "var(--g-warmth)", surface: "bg-[color:color-mix(in_srgb,var(--g-warmth)_10%,var(--card))]" },
+    red: { color: "var(--g-danger)", surface: "bg-[color:color-mix(in_srgb,var(--g-danger)_7%,var(--card))]" },
   }
   const accent = accents[accentColor]
 
