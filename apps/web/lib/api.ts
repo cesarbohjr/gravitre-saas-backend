@@ -7,6 +7,11 @@ import { extractApiErrorMessage } from "@/lib/api-error-message"
 import { apiFetch, fetcher } from "@/lib/fetcher"
 import { requestAgentInterrupt } from "@/lib/agent-interrupts"
 import type {
+  AgentImprovementState,
+  AgentImprovementsRequest,
+  AgentImprovementsResult,
+} from "@/lib/intelligence/agent-improvements"
+import type {
   User,
   UserProfile,
   Organization,
@@ -510,6 +515,14 @@ export interface AgentCapabilityProfile {
   memoryCount: number
   freshnessStatus: string
   confidenceScore: number
+}
+
+/** Model Studio "Improve agent": apply selected improvements and read back what landed. */
+export const agentImprovementsApi = {
+  getState: (agentId: string) =>
+    fetcher<AgentImprovementState>(apiUrl(`/api/agents/${encodeURIComponent(agentId)}/improvements`)),
+  apply: (agentId: string, body: AgentImprovementsRequest) =>
+    postJson<AgentImprovementsResult>(apiUrl(`/api/agents/${encodeURIComponent(agentId)}/improvements`), body),
 }
 
 export const agentKnowledgeApi = {
