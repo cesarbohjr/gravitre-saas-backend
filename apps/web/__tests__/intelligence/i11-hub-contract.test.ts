@@ -6,15 +6,25 @@ import {
 import { buildLensMetrics } from "@/components/intelligence/map/build-lens-metrics"
 
 describe("I11 hub contract", () => {
-  it("keeps exactly seven hub tabs and never lists Training", () => {
-    expect(INTELLIGENCE_HUB_TABS).toHaveLength(7)
+  it("keeps one level of six hub tabs and never lists Training or Model Studio", () => {
+    expect(INTELLIGENCE_HUB_TABS).toHaveLength(6)
+    expect(INTELLIGENCE_HUB_TABS.map((tab) => tab.label)).not.toContain("Model Studio")
     expect(INTELLIGENCE_HUB_TABS.map((tab) => tab.label)).not.toContain("Training")
     expect(INTELLIGENCE_HUB_TABS.some((tab) => tab.href.includes("/training"))).toBe(false)
   })
 
-  it("routes /training into Model Studio, not a Training tab", () => {
-    expect(resolveIntelligenceHubTab("/training")).toBe("model-studio")
+  it("routes /training and Model Studio under Models, not their own tabs", () => {
+    expect(resolveIntelligenceHubTab("/training")).toBe("models")
+    expect(resolveIntelligenceHubTab("/intelligence/model-studio")).toBe("models")
     expect(resolveIntelligenceHubTab("/intelligence/reports")).toBe("reports")
+  })
+})
+
+describe("Intelligence vocabulary", () => {
+  it("gives every tab a distinct plain-language name and purpose", () => {
+    const labels = INTELLIGENCE_HUB_TABS.map((tab) => tab.label)
+    expect(labels).toEqual(["Overview", "Knowledge", "Forecasts", "Impact", "Models", "Reports"])
+    for (const tab of INTELLIGENCE_HUB_TABS) expect(tab.description.length).toBeGreaterThan(10)
   })
 })
 

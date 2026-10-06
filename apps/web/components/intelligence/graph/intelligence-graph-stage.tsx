@@ -19,7 +19,10 @@ import {
   signalDepartmentKey,
   type MapNode,
 } from "@/components/intelligence/map/map-topology"
-import { IntelligenceGraphToolbar } from "@/components/intelligence/graph/intelligence-graph-toolbar"
+import {
+  IntelligenceGraphToolbar,
+  IntelligenceGraphViewControls,
+} from "@/components/intelligence/graph/intelligence-graph-toolbar"
 import { IntelligenceGraphList } from "@/components/intelligence/graph/intelligence-graph-list"
 import {
   DomSvgGraphRenderer,
@@ -28,10 +31,13 @@ import {
   useGraphInteraction,
   DEFAULT_VIEWBOX,
   CLUSTER_THRESHOLD,
+  MAX_ZOOM,
+  MIN_ZOOM,
   isDenseGraph,
   shouldShowNodeLabel,
   type GraphPoint,
 } from "@/lib/intelligence/graph"
+import type { MapNodeKind } from "@/components/intelligence/map/map-topology"
 import {
   focusedRelationshipPaths,
   isCompactIntelligenceViewport,
@@ -140,6 +146,9 @@ export function IntelligenceGraphStage({
   const [mobileExplorerOpen, setMobileExplorerOpen] = useState(false)
   const [listView, setListView] = useState(false)
   const [dragPositions, setDragPositions] = useState<Map<string, GraphPoint>>(new Map())
+  const [wheelHint, setWheelHint] = useState(false)
+  const wheelHintTimer = useRef<number | null>(null)
+  const autoFitKey = useRef<string | null>(null)
   const reducePreference = useReducedMotion()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
@@ -258,10 +267,63 @@ export function IntelligenceGraphStage({
     [selectedId, onSelectionChange, interaction],
   )
 
+  // Re-frame only when the focused set itself changes, so a user's own zoom and
+  // pan are never snapped back on the next render.
+  const fitToView = interaction.fitToView
+  const focusKey = (focusNodeIds ?? []).join("|")
+  const layoutPositions = renderModel.layout.positions
   useEffect(() => {
-    if (!focusNodeIds?.length) return
-    interaction.fitToView(renderModel.layout.positions, focusNodeIds)
-  }, [focusNodeIds, renderModel.layout.positions, interaction])
+    if (!focusKey) return
+    fitToView(layoutPositions, focusKey.split("|"))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- positions read at focus time only
+  }, [focusKey, fitToView])
+
+  // Open framed on what exists: a lone node should not float in an empty canvas.
+  const fitKey = `${layoutCacheKey}:${layoutPositions.size}`
+  useEffect(() => {
+    if (focusKey || layoutPositions.size === 0) return
+    if (autoFitKey.current === fitKey) return
+    autoFitKey.current = fitKey
+    fitToView(layoutPositions)
+  }, [fitKey, layoutPositions, focusKey, fitToView])
+
+  // Scroll belongs to the page. Zoom needs Ctrl/⌘ + scroll or a pinch; a plain
+  // scroll over the graph shows a short hint instead (cooperative gestures).
+  // Native listener because React's onWheel is passive and cannot preventDefault.
+  const handleWheel = interaction.handleWheel
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onWheel = (event: WheelEvent) => {
+      if (handleWheel(event)) {
+        event.preventDefault()
+        setWheelHint(false)
+        return
+      }
+      setWheelHint(true)
+      if (wheelHintTimer.current) window.clearTimeout(wheelHintTimer.current)
+      wheelHintTimer.current = window.setTimeout(() => setWheelHint(false), 1400)
+    }
+    el.addEventListener("wheel", onWheel, { passive: false })
+    return () => el.removeEventListener("wheel", onWheel)
+  }, [handleWheel])
+  useEffect(
+    () => () => {
+      if (wheelHintTimer.current) window.clearTimeout(wheelHintTimer.current)
+    },
+    [],
+  )
+
+  const kindCounts = useMemo(() => {
+    const counts: Partial<Record<MapNodeKind, number>> = {}
+    for (const node of graph.nodes) counts[node.kind] = (counts[node.kind] ?? 0) + 1
+    return counts
+  }, [graph.nodes])
+
+  const surfaceSize = useCallback(() => {
+    const el = containerRef.current
+    return el ? { width: el.offsetWidth, height: el.offsetHeight } : undefined
+  }, [])
 
   useEffect(() => {
     const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement))
@@ -294,12 +356,21 @@ export function IntelligenceGraphStage({
       } else if (event.key === "Enter" && interaction.state.selectedNodeId) {
         const node = graph.nodeById(interaction.state.selectedNodeId)
         if (node) toggleSelection(node)
+      } else if (event.key === "+" || event.key === "=") {
+        event.preventDefault()
+        interaction.zoomIn()
+      } else if (event.key === "-" || event.key === "_") {
+        event.preventDefault()
+        interaction.zoomOut()
+      } else if (event.key === "0") {
+        event.preventDefault()
+        interaction.fitToView(renderModel.layout.positions)
       } else if (event.key === "Escape") {
         onSelectionChange?.(null)
         interaction.setSelectedNodeId(null)
       }
     },
-    [interaction, visibleNodeIds, graph, toggleSelection, onSelectionChange],
+    [interaction, visibleNodeIds, graph, toggleSelection, onSelectionChange, renderModel.layout.positions],
   )
 
   const onNodeDrag = useCallback(
@@ -324,18 +395,10 @@ export function IntelligenceGraphStage({
       <IntelligenceGraphToolbar
         searchQuery={interaction.state.searchQuery}
         onSearchChange={interaction.setSearchQuery}
+        searchMatchCount={searchMatches.size}
         kindFilter={interaction.state.kindFilter}
         onKindFilterChange={interaction.setKindFilter}
-        onZoomIn={interaction.zoomIn}
-        onZoomOut={interaction.zoomOut}
-        onFit={() => interaction.fitToView(renderModel.layout.positions)}
-        onReset={() => {
-          interaction.resetViewport()
-          setDragPositions(new Map())
-        }}
-        onFocusSelected={() => {
-          if (selectedId) interaction.focusNode(renderModel.layout.positions, selectedId)
-        }}
+        kindCounts={kindCounts}
         isFullscreen={isFullscreen}
         onToggleFullscreen={() => {
           const el = containerRef.current
@@ -343,7 +406,6 @@ export function IntelligenceGraphStage({
           if (document.fullscreenElement) void document.exitFullscreen()
           else void el.requestFullscreen()
         }}
-        hasSelection={Boolean(selectedId)}
         spatialEnabled={spatialEnabled && !reduced}
         onSpatialChange={setSpatialEnabled}
         spatialDisabled={reduced}
@@ -417,7 +479,6 @@ export function IntelligenceGraphStage({
         data-testid="intelligence-map-canvas"
         tabIndex={0}
         onKeyDown={handleKeyDown}
-        onWheel={interaction.handleWheel}
         onPointerDown={(e) => {
           if (e.target === e.currentTarget || (e.target as HTMLElement).dataset.panSurface === "true") {
             interaction.beginPan(e.clientX, e.clientY)
@@ -425,17 +486,23 @@ export function IntelligenceGraphStage({
         }}
         onPointerMove={(e) => {
           if (e.buttons === 0) return
-          interaction.moveDrag(e.clientX, e.clientY, interaction.state.viewport.scale, onNodeDrag)
+          interaction.moveDrag(
+            e.clientX,
+            e.clientY,
+            interaction.state.viewport.scale,
+            onNodeDrag,
+            surfaceSize(),
+          )
         }}
         onPointerUp={interaction.endDrag}
         onPointerLeave={interaction.endDrag}
         className={cn(
-          "dark relative min-h-[44vh] flex-1 overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-carbon)] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
+          "dark relative min-h-[56vh] flex-1 overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-carbon)] text-foreground outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
           isFullscreen && "min-h-[100vh] rounded-none border-0",
           !showCanvas && "hidden",
         )}
         role="application"
-        aria-label={`Interactive Gravitre intelligence map — ${lens} lens`}
+        aria-label={`Interactive Gravitre intelligence map — ${lens} lens. Drag to pan, Ctrl or Command and scroll to zoom, plus and minus keys to zoom, 0 to fit.`}
       >
         <div data-pan-surface="true" className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-[color:var(--g-carbon)]" />
@@ -646,6 +713,37 @@ export function IntelligenceGraphStage({
             ) : null}
           </motion.div>
         )}
+
+        {hasNodes && !error ? (
+          <IntelligenceGraphViewControls
+            scale={viewport.scale}
+            onZoomIn={interaction.zoomIn}
+            onZoomOut={interaction.zoomOut}
+            onFit={() => interaction.fitToView(renderModel.layout.positions)}
+            onFocusSelected={() => {
+              if (selectedId) interaction.focusNode(renderModel.layout.positions, selectedId)
+            }}
+            onReset={() => {
+              interaction.resetViewport()
+              setDragPositions(new Map())
+            }}
+            hasSelection={Boolean(selectedId)}
+            canZoomIn={viewport.scale < MAX_ZOOM - 0.001}
+            canZoomOut={viewport.scale > MIN_ZOOM + 0.001}
+          />
+        ) : null}
+
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-black/35 transition-opacity duration-200",
+            wheelHint ? "opacity-100" : "opacity-0",
+          )}
+        >
+          <p className="rounded-md bg-black/70 px-3 py-1.5 text-xs font-medium text-white">
+            Hold Ctrl (⌘ on Mac) and scroll to zoom
+          </p>
+        </div>
       </div>
     </div>
   )

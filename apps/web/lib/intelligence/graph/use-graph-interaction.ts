@@ -7,7 +7,7 @@ import {
   graphInteractionController,
   type GraphInteractionState,
 } from "./graph-interaction-controller"
-import type { GraphPoint, GraphViewport } from "./types"
+import { DEFAULT_VIEWBOX, type GraphPoint, type GraphViewport } from "./types"
 
 type DragMode =
   | { kind: "pan"; startX: number; startY: number; origin: GraphViewport }
@@ -117,14 +117,21 @@ export function useGraphInteraction(initial?: Partial<GraphInteractionState>) {
     })
   }, [state])
 
+  /**
+   * Scroll belongs to the page. The graph only zooms on a deliberate gesture:
+   * Ctrl/⌘ + wheel, or a trackpad pinch (which browsers report as ctrlKey).
+   * Returns true when the event was used for zoom so the caller can
+   * preventDefault; otherwise the caller lets the page scroll and may show a hint.
+   */
   const handleWheel = useCallback(
-    (event: React.WheelEvent) => {
-      event.preventDefault()
+    (event: Pick<WheelEvent, "deltaY" | "ctrlKey" | "metaKey">): boolean => {
+      if (!event.ctrlKey && !event.metaKey) return false
       const delta = event.deltaY < 0 ? 1 : -1
       dispatch({
         type: "viewport",
         viewport: graphInteractionController.zoomAt(state.viewport, delta),
       })
+      return true
     },
     [state.viewport],
   )
@@ -154,30 +161,38 @@ export function useGraphInteraction(initial?: Partial<GraphInteractionState>) {
     [],
   )
 
+  /**
+   * `surface` is the unscaled pixel size of the graph surface. Viewport
+   * translate is a percentage of that surface, so a pan follows the pointer 1:1;
+   * node drags convert pixels into layout (viewBox) units at the current zoom.
+   */
   const moveDrag = useCallback(
     (
       clientX: number,
       clientY: number,
       scale: number,
       onNodeDrag?: (nodeId: string, point: GraphPoint) => void,
+      surface?: { width: number; height: number },
     ) => {
       const drag = dragRef.current
       if (!drag) return
-      const dx = (clientX - drag.startX) / scale
-      const dy = (clientY - drag.startY) / scale
+      const width = surface?.width || DEFAULT_VIEWBOX.w
+      const height = surface?.height || DEFAULT_VIEWBOX.h
+      const dxPx = clientX - drag.startX
+      const dyPx = clientY - drag.startY
       if (drag.kind === "pan") {
         dispatch({
           type: "viewport",
           viewport: {
             ...drag.origin,
-            translateX: drag.origin.translateX + (dx / 10) * 100,
-            translateY: drag.origin.translateY + (dy / 10) * 100,
+            translateX: drag.origin.translateX + (dxPx / width) * 100,
+            translateY: drag.origin.translateY + (dyPx / height) * 100,
           },
         })
       } else if (drag.kind === "node" && onNodeDrag) {
         onNodeDrag(drag.nodeId, {
-          x: drag.origin.x + dx * 2,
-          y: drag.origin.y + dy * 2,
+          x: drag.origin.x + (dxPx / scale) * (DEFAULT_VIEWBOX.w / width),
+          y: drag.origin.y + (dyPx / scale) * (DEFAULT_VIEWBOX.h / height),
         })
       }
     },

@@ -61,24 +61,6 @@ import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { ExtrovertSummary } from "@/components/gravitre/extrovert-summary"
 
-const ADVANCED_LINK_GROUPS = [
-  {
-    heading: "Measure",
-    description: "Business reports and predictive ops.",
-    links: [SURFACE_COPY.hubLinks.reports, SURFACE_COPY.hubLinks.predictive],
-  },
-  {
-    heading: "Models",
-    description: "Registry, built-in catalog, and training.",
-    links: [SURFACE_COPY.hubLinks.builtIn, SURFACE_COPY.hubLinks.models],
-  },
-  {
-    heading: "Knowledge",
-    description: "Learning hub and org memory.",
-    links: [SURFACE_COPY.hubLinks.learning, SURFACE_COPY.hubLinks.memory],
-  },
-]
-
 function IntelligenceSectionRedirect() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -587,7 +569,7 @@ function IntelligenceCenterInner() {
                 <div>
                   <h2 className={TYPE.sectionTitle}>Models, training, and routing</h2>
                   <p className={cn(TYPE.bodyMuted, "mt-1")}>
-                    Model health, simulations, and links to the detailed intelligence tools.
+                    Model health and the latest simulation. Each area has its own tab above.
                   </p>
                 </div>
                 <span className="text-xs font-medium text-muted-foreground">
@@ -621,32 +603,6 @@ function IntelligenceCenterInner() {
                   </div>
                 </section>
               </div>
-
-              {ADVANCED_LINK_GROUPS.map((group) => (
-                <section key={group.heading} aria-labelledby={`adv-${group.heading}`}>
-                  <div className="mb-2">
-                    <h3 id={`adv-${group.heading}`} className="text-sm font-semibold text-foreground">
-                      {group.heading}
-                    </h3>
-                    <p className={cn(TYPE.bodyMuted, "mt-1")}>{group.description}</p>
-                  </div>
-                  <nav className="flex flex-col gap-1" aria-label={group.heading}>
-                    {group.links.map((link) => (
-                      <Link
-                        key={link.route}
-                        href={link.route}
-                        className={cn(
-                          TYPE.meta,
-                          "py-1.5 underline-offset-4 hover:text-[color:var(--g-text-primary)] hover:underline",
-                        )}
-                      >
-                        {link.title}
-                        <span className="ml-2 text-[color:var(--g-text-muted)]">{link.summary}</span>
-                      </Link>
-                    ))}
-                  </nav>
-                </section>
-              ))}
 
               <div className="flex flex-wrap gap-2">
                 <Button variant="ghost" size="sm" asChild>

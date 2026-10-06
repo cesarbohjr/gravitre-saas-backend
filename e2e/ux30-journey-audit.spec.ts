@@ -90,7 +90,7 @@ test.describe("UX/UI 3.0 Plus — authenticated journey audit (staging first)", 
     await expect(page.getByTestId("intel-i2-toggle")).toBeVisible()
     await expect(page.getByTestId("intel-i2-stream")).toHaveCount(0)
 
-    for (const label of ["Learns", "Predicts"] as const) {
+    for (const label of ["Models", "Forecasts"] as const) {
       await lensBar.getByRole("tab", { name: label }).click()
       await expect(lensBar.getByRole("tab", { name: label, selected: true })).toBeVisible()
       await expect(page.getByTestId("intel-i3-matrix")).toBeVisible()

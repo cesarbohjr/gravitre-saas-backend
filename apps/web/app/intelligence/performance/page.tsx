@@ -14,9 +14,9 @@ import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-
 import { ArrowsClockwise } from "@phosphor-icons/react"
 
 const copy = {
-  title: "Performance",
+  title: "Impact",
   description:
-    "Diagnostic workspace: outcome first, then contributing stages, selected span, and evidence. Waterfall stays subordinate.",
+    "What your agents delivered: outcomes, time saved, revenue influenced, and what it cost.",
 }
 
 export default function IntelligencePerformancePage() {
@@ -39,7 +39,7 @@ export default function IntelligencePerformancePage() {
   if (!user) {
     return (
       <AppShell title={copy.title}>
-        <EmptyState title="Sign in required" description="Log in to view performance." />
+        <EmptyState title="Sign in required" description="Log in to view impact." />
       </AppShell>
     )
   }
@@ -48,7 +48,7 @@ export default function IntelligencePerformancePage() {
     return (
       <AppShell title={copy.title}>
         <ErrorState
-          title="Unable to load performance"
+          title="Unable to load impact"
           description={error instanceof ApiError ? error.message : "Try again in a moment."}
           onRetry={() => mutate()}
         />

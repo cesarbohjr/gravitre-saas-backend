@@ -9,7 +9,6 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { IntelligenceShell } from "@/components/intelligence/shell"
 import { BuiltInModelsPanel } from "@/app/intelligence/models/page"
-import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { ModelsStage } from "@/components/intelligence/pages/models-stage"
 import { studioIntentById } from "@/lib/intelligence/model-catalog-display"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -80,9 +79,10 @@ export default function ModelsPage() {
   const [taskType, setTaskType] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [typeFilter, setTypeFilter] = useState<string>("all")
-  const [modelsTab, setModelsTab] = useState<"registry" | "built-in">(
-    searchParams.get("tab") === "built-in" ? "built-in" : "registry",
-  )
+  const linkedToBuiltIn = searchParams.get("tab") === "built-in"
+  useEffect(() => {
+    if (linkedToBuiltIn) document.getElementById("built-in")?.scrollIntoView({ block: "start" })
+  }, [linkedToBuiltIn])
   const [selectedTemplateLayer, setSelectedTemplateLayer] = useState<MlStackLayerId | null>(null)
   const [isCreating, setIsCreating] = useState(false)
 
@@ -259,39 +259,18 @@ export default function ModelsPage() {
         <IntelligenceShell activeTab="models" loadState={isLoading && models.length === 0 ? "LOADING" : "READY"}>
 
         {/*
-          Intelligence redesign Phase 1 (2026-09-11): Built-in Models folded
-          into Models as a real tab (no strong technical reason to keep them
-          separate — see the Phase 0 proposal). /intelligence/models and its
-          /models/built-in alias still work unchanged for existing bookmarks;
-          this tab renders the exact same BuiltInModelsPanel component.
+          One level of navigation: the registry and the built-in catalog are two
+          sections of one page, not tabs inside the Models tab. ?tab=built-in
+          still deep-links by scrolling to the built-in section.
         */}
-        <Tabs value={modelsTab} onValueChange={(value) => setModelsTab(value as "registry" | "built-in")}>
-          <nav aria-label="Models catalog" className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-            {(
-              [
-                { id: "registry" as const, label: "Registry" },
-                { id: "built-in" as const, label: "Built-in models" },
-              ]
-            ).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setModelsTab(item.id)}
-                className={cn(
-                  "inline-flex min-h-11 items-center text-xs underline-offset-4 md:min-h-0",
-                  modelsTab === item.id
-                    ? "text-[color:var(--g-text-primary)] underline"
-                    : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-          <TabsContent value="built-in" className="pt-4">
-            <BuiltInModelsPanel />
-          </TabsContent>
-          <TabsContent value="registry" className="space-y-6 pt-4">
+        <section aria-labelledby="models-yours-heading" className="space-y-6">
+          <div>
+            <h2 id="models-yours-heading" className="text-base font-semibold text-foreground">Your models</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Models your team registered or trained. Create a new one in Model Studio.
+            </p>
+          </div>
+
 
         {models.length > 0 || isLoading ? (
           <details className="text-sm">
@@ -365,8 +344,17 @@ export default function ModelsPage() {
             onRegister={() => router.push(APP_ROUTES.intelligenceModelStudio)}
           />
         )}
-          </TabsContent>
-        </Tabs>
+        </section>
+
+        <section id="built-in" aria-labelledby="models-built-in-heading" className="mt-10 space-y-4 scroll-mt-24">
+          <div>
+            <h2 id="models-built-in-heading" className="text-base font-semibold text-foreground">Built-in models</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Models Gravitre provides and trains on your organization&apos;s data.
+            </p>
+          </div>
+          <BuiltInModelsPanel />
+        </section>
         </IntelligenceShell>
       </div>
 

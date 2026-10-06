@@ -31,11 +31,11 @@ export type CanonicalGraphEdge = {
 const CANONICAL_CORE_ID = "core:gravitre"
 
 const LENS_CAPTIONS: Record<IntelligenceMapLens, string> = {
-  knows: "Knowledge — entities and domains from canonical intelligence graph",
-  learns: "Learning — business insights from canonical intelligence graph",
-  predicts: "Predictions — deduped signals from canonical intelligence graph",
-  acts: "Actions — configured and running agents from canonical intelligence graph",
-  improves: "Outcomes — measured improvements from canonical intelligence graph",
+  knows: "Knowledge: entities and how they connect",
+  learns: "Models: what Gravitre is learning and from where",
+  predicts: "Forecasts: risks and opportunities ahead",
+  acts: "Agents: configured and running now",
+  improves: "Impact: measured improvements",
 }
 
 function normalizeEdgeType(raw: string): MapEdge["edgeType"] {

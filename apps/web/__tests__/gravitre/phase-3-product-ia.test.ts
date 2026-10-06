@@ -66,7 +66,8 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     const src = readFileSync(resolve(webRoot, "app/intelligence/page.tsx"), "utf8")
     expect(src).toMatch(/Attention, learnings, and impact/)
     expect(src).toMatch(/<details className="[^"]*mx-auto max-w-\[1600px\]/)
-    expect(src).toMatch(/aria-label=\{group\.heading\}/)
+    // Hub tabs carry navigation; the overview no longer repeats them as link groups.
+    expect(src).not.toMatch(/ADVANCED_LINK_GROUPS/)
     expect(src).not.toMatch(/hover:border-\[color:var\(--g-brand-border\)\]/)
     const workspace = readFileSync(
       resolve(webRoot, "components/intelligence/relationships/relationships-workspace.tsx"),
@@ -83,20 +84,21 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(toolbar).toMatch(/>\s*Focus\s*</)
   })
 
-  it("performance leads with outcome then stages; inspector closed until selection", () => {
+  it("impact shows totals, then agents, then outcome stages, with no view switcher", () => {
     const src = readFileSync(
       resolve(webRoot, "components/intelligence/pages/performance-stage.tsx"),
       "utf8",
     )
-    const outcome = src.indexOf("{TYPE.eyebrow}>Outcome</p>")
+    const totals = src.indexOf("Totals across all agents")
+    const agents = src.indexOf("<AgentContributionRow")
+    const outcome = src.indexOf(">Outcome</p>")
     const flow = src.lastIndexOf("<OutcomeAttributionFlow")
-    const metrics = src.indexOf("Totals for the selected view")
-    expect(outcome).toBeGreaterThan(0)
+    expect(totals).toBeGreaterThan(0)
+    expect(agents).toBeGreaterThan(totals)
+    expect(outcome).toBeGreaterThan(agents)
     expect(flow).toBeGreaterThan(outcome)
-    expect(metrics).toBeGreaterThan(flow)
-    expect(src).toMatch(/AgentContributionRow/)
+    expect(src).not.toMatch(/SegmentedControl/)
     expect(src).not.toMatch(/AgentContributionCard/)
-    expect(src).toMatch(/bars are omitted rather than invented/)
     const flowSrc = readFileSync(
       resolve(webRoot, "components/intelligence/outcome-attribution-flow.tsx"),
       "utf8",

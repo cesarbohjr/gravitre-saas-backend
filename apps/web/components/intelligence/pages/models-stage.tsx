@@ -18,11 +18,6 @@ import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import type { MlModelSummary } from "@/types/api"
 
-const VIEW_OPTIONS: { id: ModelCatalogView; label: string }[] = [
-  { id: "business", label: "Business view" },
-  { id: "technical", label: "Technical view" },
-]
-
 export function ModelsStage({
   models,
   isLoading,
@@ -43,29 +38,19 @@ export function ModelsStage({
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className={TYPE.eyebrow}>Catalog</p>
           <p className={cn(TYPE.meta, "mt-0.5")}>
-            Purpose, business status, and where models are used — not an engineering registry dump.
+            What each model does, whether it is in use, and where.
           </p>
         </div>
-        <nav aria-label="Models view" className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          {VIEW_OPTIONS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setView(item.id)}
-              className={cn(
-                TYPE.meta,
-                "inline-flex min-h-11 items-center underline-offset-4 md:min-h-0",
-                view === item.id
-                  ? "text-[color:var(--g-text-primary)] underline"
-                  : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
-              )}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
+        <label className={cn(TYPE.meta, "inline-flex min-h-11 cursor-pointer items-center gap-2 md:min-h-0")}>
+          <input
+            type="checkbox"
+            className="h-4 w-4 accent-[color:var(--g-brand)]"
+            checked={view === "technical"}
+            onChange={(e) => setView(e.target.checked ? "technical" : "business")}
+          />
+          Show technical details
+        </label>
       </div>
 
       <ModelUsageTopology models={catalog} />

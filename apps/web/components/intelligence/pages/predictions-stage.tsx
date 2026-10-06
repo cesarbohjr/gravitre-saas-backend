@@ -82,7 +82,7 @@ export function PredictionsStage({
     <div className="space-y-6">
       <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-3">
         <GravitreMetric
-          label="Active predictions"
+          label="Active forecasts"
           value={activeCount ?? "—"}
           hint={isLoading ? "Loading intelligence…" : "Deduped business signals"}
         />
@@ -119,7 +119,7 @@ export function PredictionsStage({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className={TYPE.eyebrow}>Department</p>
-          <p className={cn(TYPE.meta, "mt-0.5")}>Filter prediction cards by department</p>
+          <p className={cn(TYPE.meta, "mt-0.5")}>Show forecasts for one department</p>
         </div>
         <Select value={department} onValueChange={setDepartment}>
           <SelectTrigger className="w-full sm:w-52" aria-label="Filter by department">
@@ -135,15 +135,15 @@ export function PredictionsStage({
         </Select>
       </div>
 
-      <PredictionRiskOpportunityTopology predictions={predictions} />
+      {predictions.length > 0 ? <PredictionRiskOpportunityTopology predictions={predictions} /> : null}
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading predictions…</p>
       ) : predictions.length === 0 ? (
         <EmptyState
           variant="ai"
-          title="No predictions in this view"
-          description="Business predictions appear when Gravitre collects forward-looking signals from your connected sources."
+          title="No forecasts in this view"
+          description="Forecasts appear when Gravitre spots risks or opportunities in your connected sources."
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">

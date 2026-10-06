@@ -13,7 +13,7 @@ test.describe("Relationships graph workspace", () => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto("/e2e/shots/relationships", { waitUntil: "networkidle" })
 
-    await expect(page.getByRole("heading", { name: "Organization knowledge graph" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "How things relate" })).toBeVisible()
     await expect(page.getByText("Organization knowledge", { exact: true }).first()).toBeVisible()
     await expect(page.getByText("Learned relationships", { exact: true }).first()).toBeVisible()
     await expect(page.getByRole("group", { name: "View mode" })).toBeVisible()

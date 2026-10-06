@@ -59,7 +59,7 @@ export function OutcomeAttributionFlow({
             Contributing stages
           </p>
           <p className={cn(TYPE.meta, "mt-0.5")}>
-            Select a stage to inspect the span and evidence. Inspector stays closed until then.
+            Each step that led to this result. Select one to see the evidence behind it.
           </p>
         </div>
         {paths.length > 1 ? (

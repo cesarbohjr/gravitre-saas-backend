@@ -105,7 +105,7 @@ export function InsightRail({
         <div className="flex items-baseline justify-between gap-2">
           <RailHeading id="insight-learned">Learned</RailHeading>
           <Link href={APP_ROUTES.learning} className="text-[11.5px] font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]">
-            Learning hub
+            Knowledge
           </Link>
         </div>
         {learnings.length === 0 ? (
@@ -260,9 +260,9 @@ export function EvidenceRail({
         <RailHeading id="evidence-expert">Go deeper</RailHeading>
         <ul className="-mx-2">
           {[
-            { label: "Relationship graph", href: APP_ROUTES.learning },
+            { label: "Relationships", href: `${APP_ROUTES.learning}#knowledge-relationships-heading` },
             { label: "Department reports", href: APP_ROUTES.intelligenceReports },
-            { label: "Predictions", href: APP_ROUTES.intelligencePredictive },
+            { label: "Forecasts", href: APP_ROUTES.intelligencePredictive },
           ].map((link) => (
             <li key={link.href}>
               <Link

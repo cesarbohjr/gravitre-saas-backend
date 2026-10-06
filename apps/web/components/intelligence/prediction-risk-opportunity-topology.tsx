@@ -90,10 +90,10 @@ export function PredictionRiskOpportunityTopology({
     >
       <div className="border-b border-divide px-4 py-3">
         <p id="prediction-topology-heading" className={TYPE.eyebrow}>
-          Risk / opportunity topology
+          Risks and opportunities
         </p>
         <p className={cn(TYPE.meta, "mt-0.5")}>
-          Risks on the left, opportunities on the right — connected through the prediction horizon.
+          Risks on the left, opportunities on the right.
         </p>
       </div>
       <div className="relative mx-auto aspect-[640/280] max-h-[280px] w-full">

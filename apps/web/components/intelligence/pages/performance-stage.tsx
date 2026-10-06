@@ -1,25 +1,22 @@
 "use client"
 
 /**
- * UX Reset 2.0 Phase E — Diagnostic workspace: Outcome → stages → span → evidence.
- * Pipeline/waterfall stays subordinate. Real instrumentation only.
+ * Impact (route /intelligence/performance): totals → per-agent table → how one
+ * outcome happened. Real instrumentation only; unknown stays "—", never zero.
  */
 import { useMemo, useState } from "react"
 import useSWR from "swr"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { GravitreMetric } from "@/components/gravitre/nodus-product"
-import { SegmentedControl } from "@/components/gravitre/filter-chip"
 import { AgentContributionRow } from "@/components/intelligence/agent-contribution-card"
 import { OutcomeAttributionFlow } from "@/components/intelligence/outcome-attribution-flow"
 import { IntelligenceAskCommandSurface } from "@/components/intelligence/shell"
 import { enterpriseApi, type IntelligencePageContextResponse } from "@/lib/api"
 import { readNumber } from "@/lib/intelligence/helpers"
 import {
-  PERFORMANCE_VIEW_MODES,
   outcomeHeadline,
   pickPrimaryOutcomePath,
   roiMetricDisplay,
-  type PerformanceViewMode,
 } from "@/lib/intelligence/performance-display"
 import { qualityFlagToCopy } from "@/lib/intelligence/quality-copy"
 import { isSnapshotMetricsReady, type SnapshotLoadState } from "@/lib/intelligence/snapshot-state"
@@ -39,7 +36,6 @@ export function PerformanceStage({
   enabled: boolean
   suggestedQuestions?: string[]
 }) {
-  const [viewMode, setViewMode] = useState<PerformanceViewMode>("impact")
   const metricsReady = isSnapshotMetricsReady(loadState)
   const isLoading = loadState === "LOADING" || loadState === "UNINITIALIZED"
 
@@ -80,147 +76,61 @@ export function PerformanceStage({
   const headline = outcomeHeadline(activePath)
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-3">
+    <div className="space-y-8">
+      {/*
+        One level of navigation: no view switcher. Every total for the window is
+        visible at once, then the per-agent table, then how one outcome happened.
+      */}
+      <section aria-labelledby="impact-totals-heading" className="space-y-3">
         <div>
-          <p className={TYPE.eyebrow}>Outcome</p>
-          <h2 className={cn(TYPE.sectionTitle, "mt-1")}>
-            {isLoading
-              ? "Loading diagnostic…"
-              : headline ?? "No measured outcome in this window"}
-          </h2>
-          <p className={cn(TYPE.meta, "mt-1")}>
-            Evidence-backed results only. Unknown stays unknown — never a false zero.
-            Waterfall timings appear only when a span is instrumented.
+          <p id="impact-totals-heading" className={TYPE.eyebrow}>Last 30 days</p>
+          <p className={cn(TYPE.meta, "mt-0.5")}>
+            Totals across all agents. A dash means Gravitre has no evidence yet, never zero.
           </p>
         </div>
-        <SegmentedControl
-          ariaLabel="Performance view"
-          options={PERFORMANCE_VIEW_MODES}
-          value={viewMode}
-          onChange={setViewMode}
-          className="w-full max-w-full flex-wrap sm:w-auto"
-        />
-      </div>
-
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading outcome attribution…</p>
-      ) : (
-        <OutcomeAttributionFlow
-          paths={paths}
-          selectedPathId={selectedPathId}
-          onPathChange={setPathId}
-        />
-      )}
-
-      {hasNoAttribution && metricsReady ? (
-        <p className={cn(TYPE.meta, "border-b border-divide py-2")}>
-          {qualityFlagToCopy("NO_OUTCOME_ATTRIBUTION")}
-        </p>
-      ) : null}
-
-      <details>
-        <summary className="g-disclosure cursor-pointer border-b border-divide py-2">
-          <p className={TYPE.eyebrow}>Metrics</p>
-          <p className={cn(TYPE.meta, "mt-0.5")}>Totals for the selected view.</p>
-        </summary>
-      <div className="grid grid-cols-2 gap-[var(--np-kpi-gap)] py-4 lg:grid-cols-4">
-        {viewMode === "impact" ? (
-          <>
-            <GravitreMetric
-              label="Measured outcomes"
-              value={measuredOutcomes ?? "—"}
-              hint={isLoading ? "Loading intelligence…" : "Canonical IMPROVES window"}
-            />
-            <GravitreMetric
-              label="Revenue influenced"
-              value={roiLoading ? "—" : revenue.value}
-              hint={roiLoading ? "Loading ROI…" : revenue.hint || "Verified monetary metadata only"}
-            />
-            <GravitreMetric
-              label="Actions completed"
-              value={actionsCompleted ?? "—"}
-              hint={isLoading ? "Loading intelligence…" : "Attributed execution"}
-            />
-            <GravitreMetric
-              label="Estimated hours saved"
-              value={roiLoading ? "—" : hoursSaved.value}
-              hint={roiLoading ? "Loading ROI…" : hoursSaved.hint}
-            />
-          </>
-        ) : null}
-        {viewMode === "efficiency" ? (
-          <>
-            <GravitreMetric
-              label="Tasks completed"
-              value={roiLoading ? "—" : tasks.value}
-              hint={roiLoading ? "Loading ROI…" : tasks.hint || "Operational count"}
-            />
-            <GravitreMetric
-              label="Estimated hours saved"
-              value={roiLoading ? "—" : hoursSaved.value}
-              hint={roiLoading ? "Loading ROI…" : hoursSaved.hint}
-            />
-          </>
-        ) : null}
-        {viewMode === "agents" ? (
-          <>
-            <GravitreMetric
-              label="Actions completed"
-              value={actionsCompleted ?? "—"}
-              hint={isLoading ? "Loading intelligence…" : "Execution window"}
-            />
-            <GravitreMetric
-              label="Estimated hours saved"
-              value={roiLoading ? "—" : hoursSaved.value}
-              hint={roiLoading ? "Loading ROI…" : hoursSaved.hint}
-            />
-          </>
-        ) : null}
-        {viewMode === "reliability" ? (
-          <>
-            <GravitreMetric
-              label="Actions completed"
-              value={actionsCompleted ?? "—"}
-              hint={isLoading ? "Loading intelligence…" : "Execution window"}
-            />
-            <GravitreMetric
-              label="Running workflows"
-              value={runningWorkflows ?? "—"}
-              hint={isLoading ? "Loading intelligence…" : "Live runs"}
-            />
-          </>
-        ) : null}
-        {viewMode === "cost" ? (
-          <>
-            <GravitreMetric
-              label="Agent cost"
-              value={roiLoading ? "—" : agentCost.value}
-              hint={roiLoading ? "Loading ROI…" : agentCost.hint || "Measured model spend"}
-            />
-            <GravitreMetric
-              label="Estimated hours saved"
-              value={roiLoading ? "—" : hoursSaved.value}
-              hint={roiLoading ? "Loading ROI…" : hoursSaved.hint}
-            />
-          </>
-        ) : null}
-      </div>
-      </details>
-
-      <details>
-        <summary className="g-disclosure cursor-pointer border-b border-divide py-2">
-          <p className={TYPE.eyebrow}>Instrumentation</p>
-          <p className={cn(TYPE.meta, "mt-0.5")}>
-            Pipeline and waterfall stay subordinate. This window has no per-span duration
-            telemetry — bars are omitted rather than invented.
-          </p>
-        </summary>
-      </details>
+        <div className="grid grid-cols-2 gap-[var(--np-kpi-gap)] md:grid-cols-3 xl:grid-cols-6">
+          <GravitreMetric
+            label="Measured outcomes"
+            value={measuredOutcomes ?? "—"}
+            hint={isLoading ? "Loading…" : "Results with evidence"}
+          />
+          <GravitreMetric
+            label="Revenue influenced"
+            value={roiLoading ? "—" : revenue.value}
+            hint={roiLoading ? "Loading…" : revenue.hint || "Verified amounts only"}
+          />
+          <GravitreMetric
+            label="Hours saved"
+            value={roiLoading ? "—" : hoursSaved.value}
+            hint={roiLoading ? "Loading…" : hoursSaved.hint || "Estimate"}
+          />
+          <GravitreMetric
+            label="Tasks completed"
+            value={roiLoading ? "—" : tasks.value}
+            hint={roiLoading ? "Loading…" : tasks.hint || "Finished agent work"}
+          />
+          <GravitreMetric
+            label="Agent cost"
+            value={roiLoading ? "—" : agentCost.value}
+            hint={roiLoading ? "Loading…" : agentCost.hint || "Model spend"}
+          />
+          <GravitreMetric
+            label="Running now"
+            value={runningWorkflows ?? "—"}
+            hint={
+              isLoading
+                ? "Loading…"
+                : actionsCompleted != null
+                  ? `${actionsCompleted} actions completed`
+                  : "Live workflow runs"
+            }
+          />
+        </div>
+      </section>
 
       <div className="space-y-3">
         <div>
-          <p className={TYPE.eyebrow}>Agent contribution</p>
+          <p className={TYPE.eyebrow}>By agent</p>
           <p className={cn(TYPE.meta, "mt-0.5 max-w-3xl")}>{AGENT_ROI_METHODOLOGY}</p>
         </div>
         {roiLoading && !roi ? (
@@ -233,11 +143,41 @@ export function PerformanceStage({
         ) : (
           <div className="divide-y divide-[color:var(--g-border-default)] border-y border-[color:var(--g-border-default)]">
             {roiAgents.map((agent) => (
-              <AgentContributionRow key={agent.agentId} agent={agent} viewMode={viewMode} />
+              <AgentContributionRow key={agent.agentId} agent={agent} />
             ))}
           </div>
         )}
       </div>
+
+      <section aria-labelledby="impact-outcome-heading" className="space-y-3">
+        <div>
+          <p id="impact-outcome-heading" className={TYPE.eyebrow}>Outcome</p>
+          <h2 className={cn(TYPE.sectionTitle, "mt-1 text-pretty")}>
+            {isLoading
+              ? "Loading outcome…"
+              : headline ?? "No measured outcome in this window"}
+          </h2>
+          <p className={cn(TYPE.meta, "mt-1")}>
+            How the most complete recent outcome came about, step by step. Only steps with evidence are shown.
+          </p>
+        </div>
+
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading outcome steps…</p>
+        ) : (
+          <OutcomeAttributionFlow
+            paths={paths}
+            selectedPathId={selectedPathId}
+            onPathChange={setPathId}
+          />
+        )}
+
+        {hasNoAttribution && metricsReady && paths.length > 0 ? (
+          <p className={cn(TYPE.meta, "border-b border-divide py-2")}>
+            {qualityFlagToCopy("NO_OUTCOME_ATTRIBUTION")}
+          </p>
+        ) : null}
+      </section>
 
       <IntelligenceAskCommandSurface enabled={enabled} pageSuggestedQuestions={suggestedQuestions} />
     </div>
