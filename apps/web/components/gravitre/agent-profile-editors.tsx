@@ -13,6 +13,7 @@ import {
   capabilityNamesFromIds,
   guardrailIdsFromNames,
   guardrailNamesFromIds,
+  normalizeMaxActionsPerHour,
 } from "@/lib/agent-config-catalog"
 import { agentSystemKeys } from "@/lib/agent-connected-apps"
 import {
@@ -202,6 +203,8 @@ function CapabilityForm({
   const [customCapabilities, setCustomCapabilities] = useState(initialCustom)
   const [systemIds, setSystemIds] = useState(initialSystems)
   const [guardrailIds, setGuardrailIds] = useState(initialGuardrails)
+  const initialMaxPerHour = normalizeMaxActionsPerHour(agent.guardrailLimits?.maxActionsPerHour)
+  const [maxActionsPerHour, setMaxActionsPerHour] = useState(initialMaxPerHour)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const busy = useRef(false)
@@ -213,7 +216,8 @@ function CapabilityForm({
     JSON.stringify([...systemIds].sort()) !==
       JSON.stringify([...initialSystems].sort()) ||
     JSON.stringify([...guardrailIds].sort()) !==
-      JSON.stringify([...initialGuardrails].sort())
+      JSON.stringify([...initialGuardrails].sort()) ||
+    maxActionsPerHour !== initialMaxPerHour
 
   const handleSave = async () => {
     if (busy.current || !dirty) return
@@ -232,6 +236,7 @@ function CapabilityForm({
             (name) => !guardrailIdsFromNames([name]).length,
           ),
         ],
+        guardrailLimits: { maxActionsPerHour },
       } as Partial<Agent> & { systems?: string[] })
       setSavedAgent(updated)
       toast.success("Capabilities saved")
@@ -264,6 +269,8 @@ function CapabilityForm({
           onCustomCapabilitiesChange={setCustomCapabilities}
           onSystemIdsChange={setSystemIds}
           onGuardrailIdsChange={setGuardrailIds}
+          maxActionsPerHour={maxActionsPerHour}
+          onMaxActionsPerHourChange={setMaxActionsPerHour}
           knowledgeHref={`/agents/${agent.id}/knowledge`}
         />
       </fieldset>
@@ -303,6 +310,7 @@ function CapabilityForm({
               setCustomCapabilities(initialCustom)
               setSystemIds(initialSystems)
               setGuardrailIds(initialGuardrails)
+              setMaxActionsPerHour(initialMaxPerHour)
               setError(null)
             }}
           >

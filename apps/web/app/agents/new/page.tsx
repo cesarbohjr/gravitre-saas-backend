@@ -57,8 +57,10 @@ import {
   AGENT_CAPABILITY_OPTIONS,
   AGENT_GUARDRAIL_OPTIONS,
   capabilityNamesFromIds,
+  DEFAULT_MAX_ACTIONS_PER_HOUR,
   guardrailNamesFromIds,
 } from "@/lib/agent-config-catalog"
+import { MaxActionsPerHourInput } from "@/components/gravitre/max-actions-per-hour-input"
 import {
   DEFAULT_AGENT_RESPONSE_STYLE,
   responseStyleLabel,
@@ -102,6 +104,7 @@ export default function NewAgentPage() {
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([])
   const [selectedSystems, setSelectedSystems] = useState<string[]>([])
   const [selectedGuardrails, setSelectedGuardrails] = useState<string[]>(["approval-changes", "admin-delete"])
+  const [maxActionsPerHour, setMaxActionsPerHour] = useState(DEFAULT_MAX_ACTIONS_PER_HOUR)
   const [referenceFolders, setReferenceFolders] = useState<AgentReferenceFolder[]>([])
   const [knowledgePacks, setKnowledgePacks] = useState<KnowledgePackSelection[]>([])
   const suggestedIdentity = useSuggestedAgentIdentity(agentName, agentPurpose)
@@ -185,6 +188,7 @@ export default function NewAgentPage() {
         capabilities: selectedCapabilityNames,
         systems: selectedSystemNames,
         guardrails: selectedGuardrailNames,
+        ...(selectedGuardrails.includes("rate-limit") ? { guardrailLimits: { maxActionsPerHour } } : {}),
         referenceFolders,
         knowledgePacks,
         status: "active",
@@ -538,6 +542,10 @@ export default function NewAgentPage() {
                     )
                   })}
                 </div>
+
+                {selectedGuardrails.includes("rate-limit") ? (
+                  <MaxActionsPerHourInput value={maxActionsPerHour} onChange={setMaxActionsPerHour} />
+                ) : null}
 
                 <div className="rounded-lg border border-warning/50 bg-warning/10 p-4">
                   <div className="flex items-start gap-3">

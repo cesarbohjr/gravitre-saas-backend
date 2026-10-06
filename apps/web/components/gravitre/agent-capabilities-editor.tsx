@@ -14,8 +14,10 @@ import {
   AGENT_GUARDRAIL_OPTIONS,
   capabilityNamesFromIds,
   customCapabilityNames,
+  DEFAULT_MAX_ACTIONS_PER_HOUR,
   guardrailNamesFromIds,
 } from "@/lib/agent-config-catalog"
+import { MaxActionsPerHourInput } from "@/components/gravitre/max-actions-per-hour-input"
 import { useConnectedAgentApps } from "@/lib/agent-connected-apps"
 
 type AgentCapabilitiesEditorProps = {
@@ -27,6 +29,8 @@ type AgentCapabilitiesEditorProps = {
   onCustomCapabilitiesChange: (names: string[]) => void
   onSystemIdsChange: (ids: string[]) => void
   onGuardrailIdsChange: (ids: string[]) => void
+  maxActionsPerHour?: number
+  onMaxActionsPerHourChange?: (value: number) => void
   knowledgeHref?: string
   className?: string
 }
@@ -44,6 +48,8 @@ export function AgentCapabilitiesEditor({
   onCustomCapabilitiesChange,
   onSystemIdsChange,
   onGuardrailIdsChange,
+  maxActionsPerHour = DEFAULT_MAX_ACTIONS_PER_HOUR,
+  onMaxActionsPerHourChange,
   knowledgeHref,
   className,
 }: AgentCapabilitiesEditorProps) {
@@ -265,11 +271,11 @@ export function AgentCapabilitiesEditor({
       <section className="space-y-3">
         <div>
           <h3 className="text-sm font-semibold text-foreground">
-            Actions / approval gates
+            Safety rules
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Configuration labels for intended limits. Effective enforcement is
-            shown under Governance.
+            Slow down and Workspace limits are enforced on every action this
+            agent takes. Spending caps live under Governance.
           </p>
         </div>
         <div className="space-y-2">
@@ -310,6 +316,9 @@ export function AgentCapabilitiesEditor({
             )
           })}
         </div>
+        {guardrailIds.includes("rate-limit") && onMaxActionsPerHourChange ? (
+          <MaxActionsPerHourInput value={maxActionsPerHour} onChange={onMaxActionsPerHourChange} />
+        ) : null}
         <p className="text-[11px] text-muted-foreground">
           Selected apps: {systemIds.map(appName).join(", ") || "every connected app"} ·
           Gates: {guardrailNamesFromIds(guardrailIds).join(", ") || "none"}
