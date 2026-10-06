@@ -17,6 +17,7 @@ from app.connectors.webhook import (
     validate_path,
 )
 from app.core.async_bridge import run_coro_sync
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.tool_service import (
     STEP_TYPE_TO_ACTION,
     invoke_tool,
@@ -608,7 +609,7 @@ class ConditionHandler(StepHandler):
         ctx = ConditionContext(
             parameters=params,
             step_outputs=dict(context.step_outputs or {}),
-            node_names=dict(cfg.get("node_aliases") or {}),
+            node_names=safe_normalize_stored_dict(cfg, key="node_aliases"),
             upstream=upstream if isinstance(upstream, dict) else {},
         )
         node_type = str(cfg.get("builder_node_type") or "")
