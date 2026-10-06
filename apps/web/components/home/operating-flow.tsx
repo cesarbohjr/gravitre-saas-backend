@@ -334,23 +334,26 @@ function briefingPrompts(lanes: FlowLane[]): string[] {
 function PromptChips({ prompts }: { prompts: string[] }) {
   const { summonWorkspace, pageContext } = useGravitreAIWorkspace()
   return (
-    <ul className="flex flex-wrap gap-2" aria-label="Suggested questions">
-      {prompts.map((prompt) => (
-        <li key={prompt} className="min-w-0 max-w-full">
-          <button
-            type="button"
-            data-ask-prompt=""
-            onClick={() =>
-              summonWorkspace({ presentation: "compact", composerText: prompt, submit: false, selected: pageContext.selected })
-            }
-            className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border border-[color:var(--g-border-default)] px-3.5 text-left text-[13px] text-muted-foreground transition-colors hover:border-[color:var(--g-border-strong)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <CornerDownRight className="size-3.5 shrink-0" aria-hidden />
-            <span className="truncate">{prompt}</span>
-          </button>
-        </li>
-      ))}
-    </ul>
+    <div className="flex min-w-0 flex-wrap items-center gap-x-1 text-[13px]">
+      <span className="pr-1 font-medium text-foreground">Ask Gravitre</span>
+      <ul className="flex min-w-0 flex-wrap items-center gap-x-1" aria-label="Suggested questions">
+        {prompts.map((prompt) => (
+          <li key={prompt} className="min-w-0 max-w-full">
+            <button
+              type="button"
+              data-ask-prompt=""
+              onClick={() =>
+                summonWorkspace({ presentation: "compact", composerText: prompt, submit: false, selected: pageContext.selected })
+              }
+              className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-[6px] px-2 text-left text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <CornerDownRight className="size-3.5 shrink-0" aria-hidden />
+              <span className="truncate">{prompt}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 

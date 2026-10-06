@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { OperatingAskLine, OperatingFlow } from "@/components/home/operating-flow"
+import { OperatingFlow } from "@/components/home/operating-flow"
 import { NucleoClose } from "@/components/icons/nucleo/semantic"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { cardVariants, useMotionPrefs } from "@/lib/animations"
@@ -182,7 +182,7 @@ export function HomeDashboard({
           Drag widgets to reorder. Use the size button to cycle widths. Your layout is saved for {roleLabel}.
         </p>
       ) : (
-        <OperatingFlow data={data} quickActions={quickActions} ask={<OperatingAskLine />} />
+        <OperatingFlow data={data} quickActions={quickActions} />
       )}
 
       {/* Measure — configured KPIs, secondary to the operation above */}

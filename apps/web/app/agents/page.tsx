@@ -22,7 +22,6 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
-import { APP_ROUTES } from "@/lib/app-routes"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import {
   Tooltip,
@@ -42,7 +41,6 @@ import {
   ChevronDown,
   PanelRightClose,
   PanelRightOpen,
-  Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { NUCLEO_SIZE } from "@/lib/design-system"
@@ -776,10 +774,6 @@ export default function AgentsPage() {
         onClick={() => setMesonWizardOpen(true)}
         isOpen={mesonWizardOpen}
       />
-      <Button variant="ghost" onClick={() => router.push(APP_ROUTES.multiAgentRun)}>
-        <Users className="size-4" />
-        <span className="hidden sm:inline">Multi-agent run</span>
-      </Button>
       <Button onClick={() => router.push("/agents/new")}>
         <Plus className="size-4" />
         <span className="hidden sm:inline">New agent</span>
@@ -824,7 +818,6 @@ export default function AgentsPage() {
             <>
               <GravitrePageHeader
                 className="shrink-0"
-                eyebrow="Manage / Identity + capability"
                 title={SURFACE_COPY.pages.agents.rosterTitle}
                 description="A team of specialists. See who is working, what they can do, and where attention is needed."
                 icon={<NucleoWorkflow size={NUCLEO_SIZE.default} />}

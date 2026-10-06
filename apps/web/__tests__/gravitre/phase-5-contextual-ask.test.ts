@@ -16,9 +16,11 @@ describe("UX Reset Phase 5 — contextual Ask Gravitre", () => {
 
   it("remaining primary surfaces summon the same workspace", () => {
     const home = readFileSync(resolve(webRoot, "components/home/home-dashboard.tsx"), "utf8")
-    expect(home).toMatch(/OperatingAskLine/)
+    // Master prompt §5: no duplicate page composer — contextual prompts summon the canonical workspace.
+    expect(home).not.toMatch(/<OperatingAskLine/)
     const operatingFlow = readFileSync(resolve(webRoot, "components/home/operating-flow.tsx"), "utf8")
     expect(operatingFlow).toMatch(/useGravitreAIWorkspace/)
+    expect(operatingFlow).toMatch(/data-ask-prompt/)
     const pages = [
       "app/marketplace/assets/page.tsx",
       "app/agents/[id]/page.tsx",
