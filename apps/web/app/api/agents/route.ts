@@ -493,7 +493,6 @@ export async function POST(request: NextRequest) {
           ? snake.stats
           : {
               tasksToday: 0,
-              successRate: 100,
               avgResponseTime: "-",
               workflowsUsing: 0,
             },

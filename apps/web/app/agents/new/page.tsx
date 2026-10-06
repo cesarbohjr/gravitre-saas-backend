@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -28,7 +28,8 @@ import {
 } from "@/components/agents/agent-knowledge-packs-editor"
 import { formatReferenceFolderBreadcrumb } from "@/lib/agent-reference-folders"
 import type { AgentReferenceFolder } from "@/types/api"
-import { agentsApi } from "@/lib/api"
+import { agentsApi, connectorsApi } from "@/lib/api"
+import { connectorVendorKey } from "@/lib/connectors"
 import {
   AGENT_DEPARTMENT_OPTIONS,
   inferAgentDepartment,
@@ -55,10 +56,8 @@ import type { AgentVoiceProfile } from "@/types/api"
 import {
   AGENT_CAPABILITY_OPTIONS,
   AGENT_GUARDRAIL_OPTIONS,
-  AGENT_SYSTEM_OPTIONS,
   capabilityNamesFromIds,
   guardrailNamesFromIds,
-  systemNamesFromIds,
 } from "@/lib/agent-config-catalog"
 import {
   DEFAULT_AGENT_RESPONSE_STYLE,
@@ -75,11 +74,10 @@ const steps = [
 ]
 
 const suggestedCapabilities = AGENT_CAPABILITY_OPTIONS
-const availableSystems = AGENT_SYSTEM_OPTIONS.map((system) => ({
-  ...system,
-  connected: !["postgresql", "microsoft365"].includes(system.id),
-}))
 const guardrailOptions = AGENT_GUARDRAIL_OPTIONS
+const CONNECTED_STATUSES = new Set(["connected", "healthy", "active", "syncing"])
+
+type ConnectedApp = { id: string; name: string; type: string }
 
 export default function NewAgentPage() {
   const router = useRouter()
@@ -118,7 +116,23 @@ export default function NewAgentPage() {
     language: "en",
   })
   const [responseStyle, setResponseStyle] = useState(DEFAULT_AGENT_RESPONSE_STYLE)
-  const [customCapabilities, setCustomCapabilities] = useState<string[]>([])
+  const [customCapabilities] = useState<string[]>([])
+  const {
+    data: connectorData,
+    error: connectorError,
+    isLoading: connectorsLoading,
+  } = useSWR("agent-create-connected-apps", () => connectorsApi.list(), { revalidateOnFocus: false })
+  // One row per connected vendor; the key matches the agent tool registry's integration names.
+  const availableSystems = useMemo<ConnectedApp[]>(() => {
+    const byKey = new Map<string, ConnectedApp>()
+    for (const row of connectorData?.connectors ?? []) {
+      if (!CONNECTED_STATUSES.has(String(row.status ?? "").toLowerCase())) continue
+      const id = connectorVendorKey(row.type ?? row.vendor ?? "")
+      if (!id || byKey.has(id)) continue
+      byKey.set(id, { id, name: row.name || row.vendor || id, type: row.vendor || row.type || "App" })
+    }
+    return Array.from(byKey.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [connectorData])
 
   const toggleCapability = (id: string) => {
     setSelectedCapabilities(prev =>
@@ -147,7 +161,7 @@ export default function NewAgentPage() {
           (!showVoiceConfigure || voiceProfileIsConfigured(voiceProfile))
         )
       case 2: return selectedCapabilities.length > 0 || customCapabilities.length > 0
-      case 3: return selectedSystems.length > 0
+      case 3: return true
       case 4: return true
       case 5: return true
       default: return false
@@ -157,7 +171,10 @@ export default function NewAgentPage() {
   const handleCreate = async () => {
     setIsCreating(true)
     try {
-      const selectedSystemNames = systemNamesFromIds(selectedSystems)
+      // Store integration keys so tool scoping matches the registry; empty means every connected app.
+      const selectedSystemNames = selectedSystems.filter((id) =>
+        availableSystems.some((system) => system.id === id),
+      )
       const selectedCapabilityNames = capabilityNamesFromIds(
         selectedCapabilities,
         customCapabilities,
@@ -355,17 +372,6 @@ export default function NewAgentPage() {
                   </div>
                 </div>
 
-                <GravitreSurface>
-                  <div className="flex items-start gap-3">
-                    <NucleoWorkflow className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">AI will suggest capabilities</p>
-                      <p className="text-sm text-muted-foreground">
-                        Based on your description, we&apos;ll recommend relevant capabilities and systems
-                      </p>
-                    </div>
-                  </div>
-                </GravitreSurface>
               </div>
             )}
 
@@ -423,21 +429,37 @@ export default function NewAgentPage() {
                   </p>
                 </div>
 
+                <p className="text-sm text-muted-foreground">
+                  {selectedSystems.length === 0
+                    ? "No apps selected: this agent can use every app your workspace has connected."
+                    : "This agent can only use the apps you select, plus Gravitre's own reporting and workflow tools."}
+                </p>
+
                 <div className="space-y-3">
+                  {connectorsLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading connected apps…</p>
+                  ) : connectorError ? (
+                    <p role="alert" className="text-sm text-destructive">
+                      Could not load connected apps. You can continue; the agent will use every connected app.
+                    </p>
+                  ) : availableSystems.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No apps are connected yet. Connect one to give this agent tools, or continue and add apps later.
+                    </p>
+                  ) : null}
                   {availableSystems.map((sys) => {
                     const isSelected = selectedSystems.includes(sys.id)
                     return (
                       <button
                         key={sys.id}
-                        onClick={() => sys.connected && toggleSystem(sys.id)}
-                        disabled={!sys.connected}
+                        type="button"
+                        onClick={() => toggleSystem(sys.id)}
+                        aria-pressed={isSelected}
                         className={cn(
                           "flex w-full items-center justify-between rounded-lg border p-4 transition-all",
-                          !sys.connected
-                            ? "border-border bg-card opacity-50 cursor-not-allowed"
-                            : isSelected
-                              ? "border-foreground bg-foreground/5"
-                              : "border-border bg-card hover:border-foreground/30"
+                          isSelected
+                            ? "border-foreground bg-foreground/5"
+                            : "border-border bg-card hover:border-foreground/30"
                         )}
                       >
                         <div className="flex items-center gap-3">
@@ -448,9 +470,7 @@ export default function NewAgentPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          {!sys.connected ? (
-                            <span className="text-xs text-muted-foreground">Not connected</span>
-                          ) : isSelected ? (
+                          {isSelected ? (
                             <Check className="h-5 w-5 text-foreground" />
                           ) : (
                             <div className="h-5 w-5 rounded border border-border" />
@@ -575,6 +595,14 @@ export default function NewAgentPage() {
                   </div>
 
                   <div className="p-5">
+                    <p className="text-xs font-medium text-muted-foreground">Team and model</p>
+                    <ul className="mt-2 space-y-1 text-sm text-foreground">
+                      <li>Department: {selectedDepartment}</li>
+                      <li>Default model: {agentModel === "auto" ? "Automatic (workspace default)" : agentModel}</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-5">
                     <p className="text-xs font-medium text-muted-foreground">Personality</p>
                     <ul className="mt-2 space-y-1 text-sm text-foreground">
                       <li>
@@ -603,6 +631,9 @@ export default function NewAgentPage() {
                   {/* Connected Systems */}
                   <div className="p-5">
                     <p className="text-xs font-medium text-muted-foreground">Connected systems</p>
+                    {selectedSystems.length === 0 ? (
+                      <p className="mt-2 text-sm text-muted-foreground">Every connected app</p>
+                    ) : null}
                     <div className="mt-2 flex flex-wrap gap-2">
                       {selectedSystems.map(id => {
                         const sys = availableSystems.find(s => s.id === id)
@@ -631,6 +662,19 @@ export default function NewAgentPage() {
                       </ul>
                     ) : (
                       <p className="mt-2 text-sm text-muted-foreground">No cloud folders linked yet.</p>
+                    )}
+                  </div>
+
+                  <div className="p-5">
+                    <p className="text-xs font-medium text-muted-foreground">Knowledge packs</p>
+                    {knowledgePacks.length > 0 ? (
+                      <ul className="mt-2 space-y-1">
+                        {knowledgePacks.map((pack) => (
+                          <li key={pack.id} className="text-sm text-foreground">{pack.name}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-2 text-sm text-muted-foreground">No knowledge packs assigned.</p>
                     )}
                   </div>
 
