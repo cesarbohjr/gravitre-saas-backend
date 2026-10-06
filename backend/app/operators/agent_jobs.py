@@ -541,6 +541,9 @@ def push_job_deliverable(
     result["push_destination"] = destination
     result["report_content"] = content
     result["reportContent"] = content
+    # A new attempt replaces any earlier push outcome.
+    result.pop("push_status", None)
+    result.pop("push_error", None)
 
     if "export" in destination or "download" in destination or destination in {"review", ""}:
         # Mark delivered for in-app export/download — no external connector required.
@@ -558,7 +561,7 @@ def push_job_deliverable(
         )
         if "slack" in destination:
             channel = str(result.get("slack_channel") or result.get("channel") or "general").lstrip("#")
-            invoke_tool(
+            delivery = invoke_tool(
                 ctx,
                 "slack.post_message",
                 {"channel": channel, "message": content[:3000]},
@@ -582,7 +585,7 @@ def push_job_deliverable(
                 params["contact_id"] = result.get("contact_id")
             if action.startswith("salesforce"):
                 params = {"description": content[:2000], "subject": "Gravitre assignment deliverable"}
-            invoke_tool(ctx, action, params)
+            delivery = invoke_tool(ctx, action, params)
         elif "outlook" in destination or "email" in destination or "gmail" in destination:
             to_addr = str(
                 result.get("email_to")
@@ -596,7 +599,7 @@ def push_job_deliverable(
                     "or choose Slack, HubSpot, or Export."
                 )
             subject = str(result.get("email_subject") or "Gravitre assignment deliverable").strip()
-            invoke_tool(
+            delivery = invoke_tool(
                 ctx,
                 "email.send",
                 {"to": to_addr, "subject": subject, "body": content[:8000]},
@@ -606,6 +609,20 @@ def push_job_deliverable(
                 f"Destination '{destination}' is not supported for push yet. "
                 "Choose Slack, HubSpot, Salesforce, Outlook (with recipient), or Export."
             )
+
+        if not delivery.success:
+            # invoke_tool reports failure in its result instead of raising, so a
+            # failed or ambiguous send must never be recorded as delivered.
+            if delivery.error_code == "outcome_uncertain":
+                result["push_status"] = "outcome_uncertain"
+                result["push_error"] = delivery.error_message
+                result["push_attempted_at"] = _now()
+                client.table("agent_jobs").update({"result": result, "updated_at": _now()}).eq("id", job_id).eq("org_id", org_id).execute()
+                raise DeliveryBlocked(
+                    f"The push to {destination} may have gone through before the connection dropped. "
+                    f"Check {destination} before pushing again so it is not sent twice."
+                )
+            raise ValueError(delivery.error_message or f"Push to {destination} failed.")
 
     result["pushed_at"] = _now()
     result.setdefault("push_status", "sent")
