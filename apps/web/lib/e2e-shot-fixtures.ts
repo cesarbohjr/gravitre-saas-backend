@@ -1205,6 +1205,48 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   },
   // useOrgAdmin reads this first; without it the settings shell hides the Admin tier.
   "/api/settings/lite-membership": { is_admin: true },
+  "/api/lite/tasks": {
+    tasks: [
+      {
+        id: "lt_invoice_chase",
+        workflow_id: "wf_invoice_chase",
+        workflow_name: "Chase overdue invoices",
+        status: "processing",
+        progress: 62,
+        input_summary: "14 invoices over 30 days, Northwind EU",
+        created_at: "2026-10-05T08:12:00Z",
+      },
+      {
+        id: "lt_renewal_brief",
+        workflow_id: "wf_renewal_brief",
+        workflow_name: "Renewal brief for Q4 accounts",
+        status: "completed",
+        progress: 100,
+        input_summary: "9 accounts renewing before Dec 31",
+        created_at: "2026-10-04T15:40:00Z",
+        completed_at: "2026-10-04T16:05:00Z",
+      },
+      {
+        id: "lt_ticket_triage",
+        workflow_id: "wf_ticket_triage",
+        workflow_name: "Triage weekend support tickets",
+        status: "pending",
+        progress: 0,
+        input_summary: "Zendesk queue, 38 open tickets",
+        created_at: "2026-10-05T09:01:00Z",
+      },
+      {
+        id: "lt_lead_enrich",
+        workflow_id: "wf_lead_enrich",
+        workflow_name: "Enrich inbound leads",
+        status: "failed",
+        progress: 40,
+        input_summary: "HubSpot list: October webinar",
+        created_at: "2026-10-03T11:20:00Z",
+        error: "HubSpot token expired. Reconnect HubSpot to retry.",
+      },
+    ],
+  },
   "/api/settings/organization": {
     organization: {
       id: DEMO_ORG_ID,

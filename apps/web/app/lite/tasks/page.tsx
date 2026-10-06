@@ -5,7 +5,7 @@ import useSWR from "swr"
 import Link from "next/link"
 import { ListTodo } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { relativeTime } from "@/lib/agent-job-result"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { liteApi } from "@/lib/api"
@@ -20,6 +20,13 @@ const statusConfig = {
   processing: { label: "Processing", icon: "spinner", className: "animate-spin motion-reduce:animate-none" },
   completed: { label: "Completed", icon: "check", className: "" },
   failed: { label: "Failed", icon: "error", className: "" },
+}
+
+const STATUS_TEXT: Record<string, string> = {
+  pending: "text-warning",
+  processing: "text-info",
+  completed: "text-success",
+  failed: "text-destructive",
 }
 
 type TaskFilter = "all" | "pending" | "processing" | "completed" | "failed"
@@ -92,105 +99,95 @@ export default function LiteTasksPage() {
       }
     >
       {error ? <WorkSectionErrorCard title="Could not load tasks" message={error instanceof Error ? error.message : "Try again to retrieve the latest data."} onRetry={() => void mutate()} /> : null}
-      <div className="divide-y divide-divide border-y border-divide">
+      <ul className="flex flex-col divide-y divide-divide border-y border-divide">
         {tasks.map((task) => {
           const status = statusConfig[task.status as keyof typeof statusConfig] ?? { label: "Not reported", icon: "clock", className: "" }
+          const isActive = task.status === "processing" || task.status === "pending"
+          const showProgress = task.status === "processing" && task.progress != null && task.progress > 0
+          const progress = Math.min(100, Math.max(0, task.progress ?? 0))
+          const timeLabel =
+            task.status === "completed" && task.completed_at
+              ? `Finished ${relativeTime(task.completed_at)}`
+              : `Started ${relativeTime(task.created_at)}`
 
           return (
-            <div key={task.id} className="group py-4">
-              <div className="grid min-w-0 grid-cols-[44px_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[44px_minmax(0,1fr)_auto]">
-                <div
-                  className={cn(
-                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
-                    task.status === "processing" && "bg-info/10",
-                    task.status === "pending" && "bg-warning/10",
-                    task.status === "completed" && "bg-success/10",
-                    task.status === "failed" && "bg-destructive/10",
-                  )}
-                >
+            <li key={task.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:gap-6">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <div className="flex min-w-0 items-center gap-2">
                   <Icon
                     name={status.icon as IconName}
-                    size="lg"
-                    className={cn(
-                      task.status === "processing" && "text-info",
-                      task.status === "pending" && "text-warning",
-                      task.status === "completed" && "text-success",
-                      task.status === "failed" && "text-destructive",
-                      status.className,
-                    )}
+                    size="sm"
+                    aria-hidden="true"
+                    className={cn("shrink-0", STATUS_TEXT[task.status], status.className)}
                   />
+                  <h3 className="truncate font-medium text-foreground">{task.workflow_name}</h3>
+                  <span className={cn("shrink-0 text-xs font-medium", STATUS_TEXT[task.status])}>
+                    {status.label}
+                  </span>
                 </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <h3 className="font-semibold text-foreground transition-colors group-hover:text-primary">
-                      {task.workflow_name}
-                    </h3>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-xs",
-                        task.status === "processing" && "border-info/30 bg-info/10 text-info",
-                        task.status === "pending" && "border-warning/30 bg-warning/10 text-warning",
-                        task.status === "completed" &&
-                          "border-success/30 bg-success/10 text-success",
-                        task.status === "failed" &&
-                          "border-destructive/30 bg-destructive/10 text-destructive",
-                      )}
+                <p className="truncate pl-6 text-sm text-muted-foreground">
+                  {task.input_summary || "No input summary"}
+                  <span aria-hidden="true">{" · "}</span>
+                  <time dateTime={task.completed_at ?? task.created_at} title={new Date(task.completed_at ?? task.created_at).toLocaleString()}>
+                    {timeLabel}
+                  </time>
+                </p>
+                {task.status === "failed" && task.error ? (
+                  <p className="pl-6 text-sm text-destructive">{task.error}</p>
+                ) : null}
+                {showProgress ? (
+                  <div className="flex items-center gap-3 pl-6 pt-1">
+                    <div
+                      className="h-1 max-w-xs flex-1 overflow-hidden rounded-full bg-secondary"
+                      role="progressbar"
+                      aria-label={`${task.workflow_name} progress`}
+                      aria-valuenow={progress}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
                     >
-                      {status.label}
-                    </Badge>
-                  </div>
-                  <p className="mb-3 text-sm text-muted-foreground">
-                    {task.input_summary || "No input summary"}
-                  </p>
-
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Icon name="clock" size="xs" />
-                      {new Date(task.created_at).toLocaleString()}
-                    </span>
-                  </div>
-
-                  {(task.status === "processing" || task.status === "pending") && (
-                    <div className="mt-4">
-                      {task.progress != null ? <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
-                        <div
-                          className="h-full rounded-full bg-primary transition-[width] duration-200 motion-reduce:transition-none"
-                          style={{ width: `${Math.min(100, Math.max(0, task.progress))}%` }}
-                        />
-                      </div>
-                      : null}
-                      <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{task.progress == null ? "Progress not reported" : `${task.progress}% complete`}</span>
-                        {task.completed_at ? <span>Completed</span> : null}
-                      </div>
+                      <div
+                        className="h-full rounded-full bg-info transition-[width] duration-200 motion-reduce:transition-none"
+                        style={{ width: `${progress}%` }}
+                      />
                     </div>
-                  )}
-                </div>
-
-                <div className="col-start-2 sm:col-start-3">
-                  {task.status === "completed" && (
-                    <Button asChild size="sm" variant="outline" className="min-h-11">
-                      <Link href="/lite/deliverables">
-                        Deliverables
-                      </Link>
-                    </Button>
-                  )}
-                  {(task.status === "processing" || task.status === "pending") && (
-                    <Button size="sm" variant="outline" className="min-h-11" disabled={Boolean(cancellingId)} onClick={() => handleCancel(task.id)}>
-                      {cancellingId === task.id ? "Cancelling…" : "Cancel"}
-                    </Button>
-                  )}
-                </div>
+                    <span className="text-xs tabular-nums text-muted-foreground">{progress}%</span>
+                  </div>
+                ) : null}
+                {isActive && task.progress == null ? (
+                  <p className="pl-6 text-xs text-muted-foreground">Progress not reported</p>
+                ) : null}
               </div>
-            </div>
+
+              <div className="flex shrink-0 pl-6 sm:pl-0">
+                {task.status === "completed" && (
+                  <Button asChild size="sm" variant="outline">
+                    <Link href="/lite/deliverables">View deliverables</Link>
+                  </Button>
+                )}
+                {task.status === "failed" && (
+                  <Button asChild size="sm" variant="outline">
+                    <Link href="/lite/assign">Assign again</Link>
+                  </Button>
+                )}
+                {isActive && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-muted-foreground"
+                    disabled={Boolean(cancellingId)}
+                    onClick={() => handleCancel(task.id)}
+                  >
+                    {cancellingId === task.id ? "Cancelling…" : "Cancel"}
+                  </Button>
+                )}
+              </div>
+            </li>
           )
         })}
         {!error && !tasks.length ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">No tasks yet.</div>
+          <li className="p-8 text-center text-sm text-muted-foreground">No tasks yet.</li>
         ) : null}
-      </div>
+      </ul>
     </LitePageShell>
   )
 }

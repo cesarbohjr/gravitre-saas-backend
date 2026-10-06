@@ -26,6 +26,8 @@ import AuditPage from "@/app/audit/page"
 import AiWorkspaceProofPage from "./_components/ai-workspace-proof-page"
 import AgentChatProofPage from "./_components/agent-chat-proof-page"
 import NotificationsPage from "@/app/notifications/page"
+import LiteTasksPage from "@/app/lite/tasks/page"
+import WelcomePage from "@/app/welcome/page"
 
 import { GravitreAIWorkspaceHost } from "@/components/gravitre/ai-workspace-host"
 import { ShotAuthProvider } from "./shot-auth"
@@ -67,6 +69,8 @@ export const SHOT_SURFACES = {
   proof: AiWorkspaceProofPage,
   "agent-chat": AgentChatProofPage,
   notifications: NotificationsPage,
+  "lite-tasks": LiteTasksPage,
+  welcome: WelcomePage,
 } as const
 
 export function ShotSurface({ name }: { name: keyof typeof SHOT_SURFACES }) {
@@ -74,7 +78,7 @@ export function ShotSurface({ name }: { name: keyof typeof SHOT_SURFACES }) {
   return (
     <ShotAuthProvider>
       <Surface />
-      {name !== "ai" ? <GravitreAIWorkspaceHost fixtureBoundary /> : null}
+      {name !== "ai" && name !== "welcome" ? <GravitreAIWorkspaceHost fixtureBoundary /> : null}
     </ShotAuthProvider>
   )
 }
