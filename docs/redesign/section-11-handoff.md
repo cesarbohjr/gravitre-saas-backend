@@ -59,7 +59,7 @@ Disposition values: **Redesigned** (changed and visually reviewed), **Reviewed**
 | Lite | `/lite/*` | **Not reviewed** | — | — | existing `lite-operating-states` tests | `/lite` only redirects. Needs a test page for the real Lite home |
 | Meson | Builder Meson tab | Reviewed; empty-state copy corrected | yes | Initial panel at 907×797 dark | Browser: Open step → Data Validator inspector | Updated copy could not be recaptured: preview returned 502 SANDBOX_NOT_LISTENING. AI suggestions, saved-workflow edits and apply remain unverified. |
 | Onboarding | `/welcome` (`/onboarding` redirects) | **Not reviewed** | — | — | — | Needs a test page for `/welcome` |
-| Desktop | desktop shell routes | **Not reviewed** | — | — | — | — |
+| Desktop | `apps/desktop/src/App.tsx` (Tauri companion) | Code review; dark theme, compact sign-in layout, readable text, focus states, section state and IME-safe composer updated | yes | Blocked: browser request to port 4173 loaded web marketing on port 3000, not Desktop | Frozen-lockfile install and `pnpm build` passed (TypeScript + Vite) | Visual/interaction verification incomplete. Native build, auth deep links, notifications, voice, approval writes and live AI untested. |
 | Public | `/`, `/pricing`, `/login`, marketing | **Not reviewed** | — | — | — | Dev server dropped during capture |
 | Goals, Marketplace, Models, Training | — | **Not reviewed** this pass | — | — | existing journey tests | — |
 

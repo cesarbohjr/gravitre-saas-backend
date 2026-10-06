@@ -398,6 +398,7 @@ export default function App() {
             key={id}
             type="button"
             className={`tab ${tab === id ? "active" : ""}`}
+            aria-pressed={tab === id}
             onClick={() => setTab(id)}
           >
             {label}
@@ -556,7 +557,9 @@ export default function App() {
               onChange={(e) => setInput(e.target.value)}
               placeholder={modality === "voice" ? "Speak or type…" : "Message Gravitre…"}
               rows={2}
+              aria-label="Message Gravitre"
               onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing || e.keyCode === 229) return
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault()
                   void onSend()
