@@ -130,7 +130,7 @@ export const STUDIO_INTENTS = [
   {
     id: "improve_agent",
     label: "Improve agent",
-    description: "Fine-tune an assistant on your examples and tone.",
+    description: "Pick an agent and add coaching, a new model, a fine-tune, or knowledge.",
     modelType: "fine_tuned_llm" as const,
   },
   {

@@ -377,6 +377,9 @@ def resolve_agent_record(
         "status": operator.get("status") or "active",
         "config": config,
         "model": config.get("model"),
+        # Operator-only agents keep their fine-tune assignment in config
+        # (agents.trained_model_id has no operators equivalent column).
+        "trained_model_id": str(config.get("trained_model_id") or "").strip() or None,
     }
 
 

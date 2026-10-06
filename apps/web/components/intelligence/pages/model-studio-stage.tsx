@@ -10,6 +10,7 @@ import useSWR from "swr"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { IntelligenceAskCommandSurface } from "@/components/intelligence/shell"
+import { ImproveAgentPanel } from "@/components/intelligence/pages/improve-agent-panel"
 import { SelectionInspector } from "@/components/gravitre/selection-inspector"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Button } from "@/components/ui/button"
@@ -82,6 +83,8 @@ export function ModelStudioStage({
   const compactInspector = useIsMobile(1024)
   const [inspectorOpen, setInspectorOpen] = useState(false)
   const [intent, setIntent] = useState<StudioIntentId | null>(null)
+  const [improvePending, setImprovePending] = useState(false)
+  const improvingAgent = intent === "improve_agent"
   const [externalQuery, setExternalQuery] = useState("")
   const [externalSearchTerm, setExternalSearchTerm] = useState("")
   const [externalProvider, setExternalProvider] = useState("")
@@ -318,7 +321,7 @@ export function ModelStudioStage({
                   key={item.id}
                   type="button"
                   onClick={() => { setSegment(item.id); setInspectorOpen(false); setDatasetInspectorOpen(false) }}
-                  disabled={externalReferenceSaving}
+                  disabled={externalReferenceSaving || improvePending}
                   aria-current={active ? "step" : undefined}
                   className={cn(
                     "flex min-h-11 shrink-0 items-baseline gap-2 border-b-2 px-2 py-1.5 text-left text-sm lg:border-b-0 lg:border-l-2 lg:py-2",
@@ -351,6 +354,7 @@ export function ModelStudioStage({
                         <button
                           type="button"
                           onClick={() => { setIntent(item.id); setInspectorOpen(true) }}
+                          disabled={improvePending}
                           aria-pressed={selected}
                           className={cn(
                             "min-h-11 w-full px-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
@@ -370,10 +374,14 @@ export function ModelStudioStage({
                   <SelectionInspector
                     open={inspectorOpen}
                     onOpenChange={setInspectorOpen}
+                    pending={improvePending}
                     title={STUDIO_INTENTS.find((item) => item.id === intent)?.label ?? "Model intent"}
-                    description="Review the model's purpose before registering it."
+                    description={improvingAgent ? "Pick an agent and choose what to change." : "Review the model's purpose before registering it."}
                     className="flex-1 border-l border-divide p-4"
                   >
+                    {improvingAgent ? (
+                      <ImproveAgentPanel enabled={enabled} onPendingChange={setImprovePending} />
+                    ) : (
                     <div data-review-surface="studio-inspect">
                     <p className={TYPE.eyebrow}>Intent</p>
                     <p className="mt-1 text-sm font-medium text-foreground">
@@ -388,19 +396,22 @@ export function ModelStudioStage({
                       </Button>
                     ) : null}
                     </div>
+                    )}
                   </SelectionInspector>
                 ) : (
                   <p className="sr-only">Select an intent — inspector stays closed until then.</p>
                 )}
               </div>
-              <Button
-                onClick={() => compactInspector ? setInspectorOpen(true) : startCreate()}
-                disabled={!intent}
-                className="min-h-11 gap-1.5"
-              >
-                {compactInspector ? "Review selected intent" : "Continue to register"}
-                <ArrowRight className="h-4 w-4" aria-hidden />
-              </Button>
+              {improvingAgent && !compactInspector ? null : (
+                <Button
+                  onClick={() => compactInspector ? setInspectorOpen(true) : startCreate()}
+                  disabled={!intent}
+                  className="min-h-11 gap-1.5"
+                >
+                  {improvingAgent ? "Choose agent" : compactInspector ? "Review selected intent" : "Continue to register"}
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </Button>
+              )}
             </div>
           ) : null}
 

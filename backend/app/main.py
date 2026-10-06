@@ -22,6 +22,7 @@ from app.operator_module import router as operator_router
 from app.operators import router as operators_router
 from app.routers import (
     agent_memories,
+    agent_improvements,
     agent_knowledge_assignments,
     knowledge_fabric,
     agent_tool_permissions,
@@ -719,6 +720,7 @@ app.include_router(operators_router.router)
 app.include_router(operators_router.agents_router)
 app.include_router(agent_memories.router)
 app.include_router(agent_knowledge_assignments.router)
+app.include_router(agent_improvements.router)
 app.include_router(knowledge_fabric.router)
 app.include_router(knowledge_fabric.internal_router)
 app.include_router(admin_intelligence.router)
