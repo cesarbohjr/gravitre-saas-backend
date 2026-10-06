@@ -22,12 +22,6 @@ export type AgentCapabilityOption = {
   icon: LucideIcon
 }
 
-export type AgentSystemOption = {
-  id: string
-  name: string
-  type: string
-}
-
 export type AgentGuardrailOption = {
   id: string
   name: string
@@ -80,15 +74,6 @@ export const AGENT_CAPABILITY_OPTIONS: AgentCapabilityOption[] = [
   },
 ]
 
-export const AGENT_SYSTEM_OPTIONS: AgentSystemOption[] = [
-  { id: "hubspot", name: "HubSpot", type: "Marketing" },
-  { id: "salesforce", name: "Salesforce", type: "CRM" },
-  { id: "slack", name: "Slack", type: "Communication" },
-  { id: "google-analytics", name: "Google Analytics", type: "Analytics" },
-  { id: "postgresql", name: "PostgreSQL", type: "Database" },
-  { id: "microsoft365", name: "Microsoft 365", type: "Productivity" },
-]
-
 export const AGENT_GUARDRAIL_OPTIONS: AgentGuardrailOption[] = [
   {
     id: "approval-changes",
@@ -130,19 +115,6 @@ export function capabilityNamesFromIds(ids: string[], customNames: string[] = []
     .filter((value): value is string => Boolean(value))
   const extras = customNames.map((name) => name.trim()).filter(Boolean)
   return Array.from(new Set([...fromCatalog, ...extras]))
-}
-
-export function systemIdsFromNames(names: string[]): string[] {
-  const normalized = names.map((name) => name.trim().toLowerCase())
-  return AGENT_SYSTEM_OPTIONS.filter((option) =>
-    normalized.includes(option.name.toLowerCase()),
-  ).map((option) => option.id)
-}
-
-export function systemNamesFromIds(ids: string[]): string[] {
-  return ids
-    .map((id) => AGENT_SYSTEM_OPTIONS.find((option) => option.id === id)?.name)
-    .filter((value): value is string => Boolean(value))
 }
 
 export function guardrailIdsFromNames(names: string[]): string[] {

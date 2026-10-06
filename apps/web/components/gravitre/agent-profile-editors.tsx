@@ -13,9 +13,8 @@ import {
   capabilityNamesFromIds,
   guardrailIdsFromNames,
   guardrailNamesFromIds,
-  systemIdsFromNames,
-  systemNamesFromIds,
 } from "@/lib/agent-config-catalog"
+import { agentSystemKeys } from "@/lib/agent-connected-apps"
 import {
   DEFAULT_AGENT_RESPONSE_STYLE,
   normalizeAgentResponseStyle,
@@ -191,7 +190,7 @@ function CapabilityForm({
     [agent.capabilities],
   )
   const initialSystems = useMemo(
-    () => systemIdsFromNames(agent.permissions ?? []),
+    () => agentSystemKeys(agent.permissions ?? []),
     [agent.permissions],
   )
   const initialGuardrails = useMemo(
@@ -224,18 +223,9 @@ function CapabilityForm({
     try {
       const updated = await agentsApi.update(agent.id, {
         capabilities: capabilityNamesFromIds(capabilityIds, customCapabilities),
-        permissions: [
-          ...systemNamesFromIds(systemIds),
-          ...(agent.permissions ?? []).filter(
-            (name) => !systemIdsFromNames([name]).length,
-          ),
-        ],
-        systems: [
-          ...systemNamesFromIds(systemIds),
-          ...(agent.permissions ?? []).filter(
-            (name) => !systemIdsFromNames([name]).length,
-          ),
-        ],
+        // Integration keys, so tool scoping matches the registry; empty means every connected app.
+        permissions: systemIds,
+        systems: systemIds,
         guardrails: [
           ...guardrailNamesFromIds(guardrailIds),
           ...(agent.guardrails ?? []).filter(
@@ -282,16 +272,6 @@ function CapabilityForm({
           {error}
         </p>
       ) : null}
-      {(agent.permissions ?? []).filter(
-        (name) => !systemIdsFromNames([name]).length,
-      ).length ? (
-        <p className="break-words text-xs text-muted-foreground">
-          Other connector labels retained:{" "}
-          {(agent.permissions ?? [])
-            .filter((name) => !systemIdsFromNames([name]).length)
-            .join(", ")}
-        </p>
-      ) : null}
       {(agent.guardrails ?? []).filter(
         (name) => !guardrailIdsFromNames([name]).length,
       ).length ? (
@@ -303,9 +283,8 @@ function CapabilityForm({
         </p>
       ) : null}
       <p className="text-xs text-muted-foreground">
-        Catalog selections are configuration labels. Existing non-catalog
-        connector and guardrail labels are preserved. Runtime authorization is
-        governed by workspace policy.
+        The apps you pick decide which connector tools this agent can call.
+        Existing non-catalog guardrail labels are preserved.
       </p>
       <div className="flex flex-wrap items-center justify-end gap-3">
         <span

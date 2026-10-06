@@ -12,12 +12,11 @@ import { Button } from "@/components/ui/button"
 import {
   AGENT_CAPABILITY_OPTIONS,
   AGENT_GUARDRAIL_OPTIONS,
-  AGENT_SYSTEM_OPTIONS,
   capabilityNamesFromIds,
   customCapabilityNames,
   guardrailNamesFromIds,
-  systemNamesFromIds,
 } from "@/lib/agent-config-catalog"
+import { useConnectedAgentApps } from "@/lib/agent-connected-apps"
 
 type AgentCapabilitiesEditorProps = {
   capabilityIds: string[]
@@ -49,6 +48,16 @@ export function AgentCapabilitiesEditor({
   className,
 }: AgentCapabilitiesEditorProps) {
   const [draftCapability, setDraftCapability] = useState("")
+  const { apps, error: appsError, isLoading: appsLoading } = useConnectedAgentApps()
+  // Connected apps, plus any saved selection whose connector was since removed so it can be cleared.
+  const appChoices = useMemo(() => {
+    const connected = apps.map((app) => ({ ...app, connected: true }))
+    const missing = systemIds
+      .filter((id) => !apps.some((app) => app.id === id))
+      .map((id) => ({ id, name: id.replace(/_/g, " "), type: "", connected: false }))
+    return [...connected, ...missing]
+  }, [apps, systemIds])
+  const appName = (id: string) => appChoices.find((app) => app.id === id)?.name ?? id
 
   const resolvedCapabilityNames = useMemo(
     () => capabilityNamesFromIds(capabilityIds, customCapabilities),
@@ -190,15 +199,31 @@ export function AgentCapabilitiesEditor({
       <section className="space-y-3">
         <div>
           <h3 className="text-sm font-semibold text-foreground">
-            Connectors / apps
+            Connected apps
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Systems this agent is allowed to use. Live connector setup still
-            happens under Integrations.
+            {systemIds.length === 0
+              ? "No apps selected: this agent can use every app your workspace has connected."
+              : "This agent can only use the apps you select, plus Gravitre’s own reporting and workflow tools."}
           </p>
         </div>
+        {appsLoading ? (
+          <p className="text-xs text-muted-foreground">Loading connected apps…</p>
+        ) : appsError ? (
+          <p role="alert" className="text-xs text-destructive">
+            Could not load connected apps. Saved selections are kept.
+          </p>
+        ) : appChoices.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            No apps are connected yet.{" "}
+            <Link href="/connectors" className="underline underline-offset-2 hover:text-foreground">
+              Connect one
+            </Link>{" "}
+            to give this agent tools.
+          </p>
+        ) : null}
         <div className="grid gap-2 sm:grid-cols-2">
-          {AGENT_SYSTEM_OPTIONS.map((system) => {
+          {appChoices.map((system) => {
             const selected = systemIds.includes(system.id)
             return (
               <button
@@ -219,8 +244,13 @@ export function AgentCapabilitiesEditor({
                   <span className="block text-sm font-medium text-foreground">
                     {system.name}
                   </span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {system.type}
+                  <span
+                    className={cn(
+                      "text-[11px]",
+                      system.connected ? "text-muted-foreground" : "text-warning",
+                    )}
+                  >
+                    {system.connected ? system.type : "Not connected, so it has no tools"}
                   </span>
                 </span>
                 {selected ? (
@@ -281,7 +311,7 @@ export function AgentCapabilitiesEditor({
           })}
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Selected apps: {systemNamesFromIds(systemIds).join(", ") || "none"} ·
+          Selected apps: {systemIds.map(appName).join(", ") || "every connected app"} ·
           Gates: {guardrailNamesFromIds(guardrailIds).join(", ") || "none"}
         </p>
       </section>
