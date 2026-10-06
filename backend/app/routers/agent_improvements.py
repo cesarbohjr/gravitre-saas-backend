@@ -1,7 +1,7 @@
 """Model Studio "Improve agent": apply selected improvements to one agent."""
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -41,7 +41,7 @@ async def get_agent_improvement_state(
     agent_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
-    client=Depends(get_supabase),
+    client: Annotated[Any, Depends(get_supabase)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
@@ -53,7 +53,7 @@ async def post_agent_improvements(
     agent_id: str,
     body: AgentImprovementsBody,
     admin: Annotated[tuple, Depends(require_admin)],
-    client=Depends(get_supabase),
+    client: Annotated[Any, Depends(get_supabase)],
 ) -> dict:
     user, org_id = admin
     request = ImprovementRequest(
