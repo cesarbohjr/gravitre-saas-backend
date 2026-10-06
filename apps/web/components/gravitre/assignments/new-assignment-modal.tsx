@@ -72,7 +72,7 @@ function ModalStepIndicator({ currentStep }: { currentStep: number }) {
             <div
               className={cn(
                 "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors",
-                isActive && "bg-emerald-500 text-white",
+                isActive && "bg-emerald-500 text-brand-foreground",
                 isComplete && "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400",
                 !isActive && !isComplete && "bg-secondary text-muted-foreground",
               )}

@@ -217,8 +217,11 @@ function parseWorkspaceMode(value: string | null): ModeId {
 function isAiWorkspacePath(pathname: string): boolean {
   const path = pathname.split("?")[0] ?? ""
   if (path === "/ai" || path.startsWith("/ai/")) return true
-  if (process.env.NEXT_PUBLIC_PLAYWRIGHT_E2E === "1" && path === "/e2e/shots/ai") return true
-  return false
+  // Mirrors the /e2e/shots layout gate (404 in production unless the E2E flag
+  // is set), so plain dev capture can deep-link `?c=` like Playwright can.
+  const captureAllowed =
+    process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_PLAYWRIGHT_E2E === "1"
+  return captureAllowed && path === "/e2e/shots/ai"
 }
 
 export function AiWorkspace({

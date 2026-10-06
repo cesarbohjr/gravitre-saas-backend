@@ -1,6 +1,7 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { useState, type ReactNode } from "react"
+import { SlidersHorizontal } from "lucide-react"
 import { SegmentedControl } from "@/components/gravitre/filter-chip"
 import { cn } from "@/lib/utils"
 import type {
@@ -65,25 +66,54 @@ export function FleetControls({
   searchSlot?: ReactNode
   className?: string
 }) {
-  const hasFilters = Boolean(
-    filters.department || filters.status || filters.role || filters.model,
-  )
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const activeFilterCount = [filters.department, filters.status, filters.role, filters.model].filter(Boolean).length
+  const hasFilters = activeFilterCount > 0
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("flex flex-col gap-2", className)}>
+      <div className="flex items-center gap-2">
+        {searchSlot ? <div className="min-w-0 flex-1 lg:max-w-md">{searchSlot}</div> : null}
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((open) => !open)}
+          aria-expanded={filtersOpen}
+          aria-controls="fleet-filters"
+          className={cn(
+            "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md border px-3 text-sm font-medium lg:hidden",
+            hasFilters
+              ? "border-[color:var(--g-emerald)] text-[color:var(--g-text-primary)]"
+              : "border-divide text-[color:var(--g-text-secondary)]",
+          )}
+        >
+          <SlidersHorizontal className="size-4" aria-hidden />
+          Filters
+          {hasFilters ? (
+            <span className="rounded-full bg-[color:var(--g-emerald)] px-1.5 text-xs tabular-nums text-[color:var(--g-canvas)]">
+              {activeFilterCount}
+            </span>
+          ) : null}
+        </button>
+      </div>
+
+      <div
+        id="fleet-filters"
+        className={cn("flex-col gap-2 lg:flex", filtersOpen ? "flex" : "hidden")}
+      >
       <div className="flex flex-wrap items-center gap-2">
         <SegmentedControl
           ariaLabel="Fleet view"
           options={VIEW_OPTIONS}
           value={view}
           onChange={onViewChange}
+          className="[&>button]:min-h-10 lg:[&>button]:min-h-0"
         />
         <label className="flex items-center gap-1.5 text-xs text-[color:var(--g-text-muted)]">
           <span className="sr-only sm:not-sr-only">Sort</span>
           <select
             value={sort}
             onChange={(e) => onSortChange(e.target.value as AgentsFleetSortId)}
-            className="h-8 rounded-md border border-divide bg-[color:var(--g-surface-1)] px-2 text-xs text-[color:var(--g-text-primary)]"
+            className="h-11 rounded-md border border-divide bg-[color:var(--g-surface-1)] px-2 text-sm text-[color:var(--g-text-primary)] lg:h-8 lg:text-xs"
             aria-label="Sort agents"
           >
             {SORT_OPTIONS.map((opt) => (
@@ -96,7 +126,7 @@ export function FleetControls({
         <button
           type="button"
           onClick={onToggleSortDir}
-          className="h-8 rounded-md border border-divide px-2 text-xs text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]"
+          className="h-11 min-w-11 rounded-md border border-divide px-2 text-sm text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)] lg:h-8 lg:min-w-0 lg:text-xs"
           aria-label={`Sort direction ${sortDir}`}
           title={sortDir === "asc" ? "Ascending" : "Descending"}
         >
@@ -106,7 +136,7 @@ export function FleetControls({
           <button
             type="button"
             onClick={onClearFilters}
-            className="h-8 rounded-md px-2 text-xs font-medium text-[color:var(--g-brand)]"
+            className="h-11 rounded-md px-2 text-sm font-medium text-[color:var(--g-brand)] lg:h-8 lg:text-xs"
           >
             Clear filters
           </button>
@@ -119,7 +149,6 @@ export function FleetControls({
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
-        {searchSlot ? <div className="w-full min-w-[12rem] sm:w-auto sm:flex-[2_1_14rem]">{searchSlot}</div> : null}
         <FilterSelect
           label="Department"
           value={filters.department}
@@ -145,6 +174,7 @@ export function FleetControls({
           options={models.filter((m) => m && m !== "—")}
           onChange={(model) => onFiltersChange({ model })}
         />
+      </div>
       </div>
     </div>
   )
@@ -193,7 +223,7 @@ function FilterSelect({
       <select
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value ? e.target.value : null)}
-        className="h-8 rounded-md border border-divide bg-[color:var(--g-surface-1)] px-2 text-xs text-[color:var(--g-text-primary)]"
+        className="h-11 rounded-md border border-divide bg-[color:var(--g-surface-1)] px-2 text-sm text-[color:var(--g-text-primary)] lg:h-8 lg:text-xs"
       >
         <option value="">All</option>
         {options.map((opt) => (

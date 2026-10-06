@@ -53,7 +53,7 @@ export function LearningSurfacesCallout({
               aria-current={isCurrent ? "page" : undefined}
               className={cn(
                 TYPE.meta,
-                "underline-offset-4",
+                "inline-flex min-h-11 items-center underline-offset-4 md:min-h-0",
                 isCurrent
                   ? "text-[color:var(--g-text-primary)] underline"
                   : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",

@@ -8,7 +8,6 @@ import { NoResultsState } from "@/components/gravitre/empty-state"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import {
   GravitreEmpty,
-  GravitreMetric,
   GravitrePageHeader,
 } from "@/components/gravitre/nodus-product"
 import { HubFilterBar, HubFilterField } from "@/components/gravitre/hub-filter-bar"
@@ -39,7 +38,6 @@ import {
   FileJson,
   FileText,
   User,
-  Clock,
   FileText as EntityIcon,
 } from "lucide-react"
 import { categorizeAuditEvent } from "@/lib/audit-category"
@@ -326,34 +324,28 @@ export default function AuditPage() {
         )}
 
         <div className="flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] overflow-auto px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-3.5">
-          <section aria-label="Audit summary" className="grid shrink-0 grid-cols-1 sm:grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
-            <GravitreMetric
-              label="Matching events"
-              value={isLoading ? "—" : error || !Number.isFinite(data?.total) ? "Not reported" : data?.total}
-              hint="Selected range, action and entity"
-              icon={<Clock className="h-4 w-4" />}
-            />
-            <GravitreMetric
-              label="Active users"
-              value={summaryLoading ? "—" : summaryError || !Array.isArray(summaryData?.byUser) ? "Not reported" : summaryData.byUser.length}
-              hint="In selected range"
-              icon={<User className="h-4 w-4" />}
-            />
-            <GravitreMetric
-              label="In view"
-              value={isLoading ? "—" : error || !data ? "Not reported" : filteredLogs.length}
-              hint="Matches on this loaded page"
-              icon={<EntityIcon className="h-4 w-4" />}
-            />
-            <GravitreMetric
-              label="Offset"
-              value={offset}
-              hint={`Page size ${limit}`}
-              icon={<FileText className="h-4 w-4" />}
-            />
+          <section
+            aria-label="Audit summary"
+            className="flex shrink-0 flex-wrap items-baseline gap-x-6 gap-y-2 border-b border-divide pb-3"
+          >
+            <dl className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+              <div className="flex items-baseline gap-2">
+                <dt className="text-xs text-muted-foreground">Matching events</dt>
+                <dd className="text-sm font-semibold tabular-nums text-foreground">
+                  {isLoading ? "—" : error || !Number.isFinite(data?.total) ? "Not reported" : data?.total}
+                </dd>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <dt className="text-xs text-muted-foreground">Active users</dt>
+                <dd className="text-sm font-semibold tabular-nums text-foreground">
+                  {summaryLoading ? "—" : summaryError || !Array.isArray(summaryData?.byUser) ? "Not reported" : summaryData.byUser.length}
+                </dd>
+              </div>
+            </dl>
+            <p className="text-xs text-muted-foreground sm:ml-auto">
+              Search covers the loaded page of up to {limit}. Exports cover the whole date range.
+            </p>
           </section>
-
-          <p className="text-xs text-muted-foreground">Search applies to the loaded page of up to 50 events. Exports cover the selected date range.</p>
           {summaryError && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
             <p>Could not load audit summary. Event results are separate.</p>
             <Button variant="outline" className="min-h-11" onClick={() => void refreshSummary()}>Retry summary</Button>

@@ -319,6 +319,7 @@ function MultiAgentRunContent() {
                 <SwarmRunDetailPanel
                   key={selectedId}
                   swarmRunId={selectedId}
+                  hideClose
                   onBusyChange={(busy) => {
                     detailBusy.current = busy
                   }}

@@ -10,7 +10,6 @@ import {
   GravitreEmpty,
   GravitrePageHeader,
   GravitreSurface,
-  LiveStatus,
 } from "@/components/gravitre/nodus-product"
 import { StatusChip } from "@/components/gravitre/visual"
 import { Button } from "@/components/ui/button"
@@ -23,7 +22,6 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
-import { APP_ROUTES } from "@/lib/app-routes"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import {
   Tooltip,
@@ -43,12 +41,12 @@ import {
   ChevronDown,
   PanelRightClose,
   PanelRightOpen,
-  Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { NUCLEO_SIZE } from "@/lib/design-system"
 import { AgentSurfaceSwitch } from "@/components/agents/agent-surface-switch"
 import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
+import { WorkforceBriefing } from "@/components/agents/workforce-briefing"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
@@ -56,14 +54,13 @@ import { agentsApi } from "@/lib/api"
 import { FleetControls, FleetControlsCollapsed, GraphView, ListView, TeamView } from "@/components/agents/fleet-v4"
 import { AgentCapabilityOverview } from "@/components/agents/fleet-v4/agent-capability-overview"
 import { AgentFleetInspectorBody } from "@/components/agents/fleet-v4/agent-fleet-inspector"
-import type { AgentDepartmentId, AgentRuntimeState } from "@/components/agents/fleet-v4/types"
+import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
 import {
   agentStatusToRuntime,
   mapApiDepartmentToFleet,
   mapFleetDepartmentToApi,
   toFleetAgent,
 } from "@/lib/agent-identity-bridge"
-import { PhaseBand } from "@/components/gravitre/operating/operating-primitives"
 import { normalizeAgentDepartment, type AgentDepartment } from "@/lib/agent-display"
 import { buildFleetGraphModel } from "@/lib/agents-fleet-graph"
 import { filterFleetAgents, sortFleetAgents, uniqueSorted } from "@/lib/agents-fleet-query"
@@ -72,7 +69,6 @@ import { useAgentsFleetPrefs } from "@/hooks/use-agents-fleet-prefs"
 import { agentSwarmApi } from "@/lib/api"
 import type { Agent as ApiAgent, AgentSwarmRun } from "@/types/api"
 import {
-  agentStatusIsLiveWork,
   normalizeAgentStatus,
   presentAgentStatus,
   taskRuntimeBadgeClass,
@@ -619,19 +615,6 @@ export default function AgentsPage() {
     await handleDepartmentChange(agentId, fleetId)
   }
   
-  const workforce = useMemo(() => {
-    let working = 0
-    let active = 0
-    let errored = 0
-    for (const agent of agents) {
-      const status = normalizeAgentStatus(agent.status)
-      if (agentStatusIsLiveWork(status)) working += 1
-      if (status === "active" || status === "processing") active += 1
-      if (status === "error") errored += 1
-    }
-    return { working, active, errored }
-  }, [agents])
-
   const runtimeCounts = useMemo(() => {
     const counts = { executing: 0, available: 0, failed: 0, idle: 0 }
     for (const agent of agents) {
@@ -791,10 +774,6 @@ export default function AgentsPage() {
         onClick={() => setMesonWizardOpen(true)}
         isOpen={mesonWizardOpen}
       />
-      <Button variant="ghost" onClick={() => router.push(APP_ROUTES.multiAgentRun)}>
-        <Users className="size-4" />
-        <span className="hidden sm:inline">Multi-agent run</span>
-      </Button>
       <Button onClick={() => router.push("/agents/new")}>
         <Plus className="size-4" />
         <span className="hidden sm:inline">New agent</span>
@@ -839,20 +818,11 @@ export default function AgentsPage() {
             <>
               <GravitrePageHeader
                 className="shrink-0"
-                eyebrow="Manage / Identity + capability"
                 title={SURFACE_COPY.pages.agents.rosterTitle}
                 description="A team of specialists. See who is working, what they can do, and where attention is needed."
                 icon={<NucleoWorkflow size={NUCLEO_SIZE.default} />}
-                status={
-                  agents.length > 0 ? (
-                    <LiveStatus tone={workforce.errored > 0 ? "attention" : workforce.working > 0 ? "live" : "idle"}>
-                      {`${workforce.working} working · ${workforce.active} on duty · ${agents.length} teammates`}
-                      {workforce.errored > 0 ? ` · ${workforce.errored} need attention` : ""}
-                    </LiveStatus>
-                  ) : null
-                }
                 actions={
-                  <div className="flex flex-wrap items-center justify-end gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2 [&_button]:min-h-11 lg:[&_button]:min-h-0">
                     {rosterActions}
                   </div>
                 }
@@ -864,16 +834,11 @@ export default function AgentsPage() {
               </GravitrePageHeader>
 
               {agents.length > 0 ? (
-                <PhaseBand
-                  label="Workforce state"
+                <WorkforceBriefing
+                  counts={runtimeCounts}
+                  total={agents.length}
                   active={prefs.filters.status}
-                  onSelect={(next) => setFilters({ status: next as AgentRuntimeState | null })}
-                  phases={[
-                    { id: "executing", label: "Working now", count: runtimeCounts.executing, tone: "live" },
-                    { id: "available", label: "On duty", count: runtimeCounts.available, tone: "done", hint: "Ready for work" },
-                    { id: "failed", label: "Needs attention", count: runtimeCounts.failed, tone: "risk" },
-                    { id: "idle", label: "Idle", count: runtimeCounts.idle, tone: "neutral" },
-                  ]}
+                  onSelect={(next) => setFilters({ status: next })}
                 />
               ) : null}
 
@@ -901,7 +866,7 @@ export default function AgentsPage() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         aria-label="Search agents"
-                        className="h-8 w-full rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)] bg-background pl-8 pr-8 text-[13px] text-[color:var(--g-text-primary)] placeholder:text-[color:var(--g-text-muted)] hover:border-[color:var(--g-border-strong)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/20"
+                        className="h-11 w-full rounded-[var(--np-radius-md)] text-base lg:h-8 lg:!text-[13px] border border-[color:var(--g-border-default)] bg-background pl-8 pr-8 text-[13px] text-[color:var(--g-text-primary)] placeholder:text-[color:var(--g-text-muted)] hover:border-[color:var(--g-border-strong)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/20"
                       />
                       {searchQuery ? (
                         <button
@@ -937,7 +902,11 @@ export default function AgentsPage() {
           <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-4">
             {!chromeCollapsed && !error && !isLoading && prefs.view !== "graph" && fleetAgents.length > 0 ? (() => {
               const overviewAgent = fleetAgents.find((agent) => agent.id === visibleSelectedAgent?.id) ?? fleetAgents[0]
-              return <AgentCapabilityOverview agent={overviewAgent} connectedSystems={agentsById.get(overviewAgent.id)?.connectedSystems ?? []} onInspect={selectAgentById} />
+              return (
+                <div className="hidden md:block">
+                  <AgentCapabilityOverview agent={overviewAgent} connectedSystems={agentsById.get(overviewAgent.id)?.connectedSystems ?? []} onInspect={selectAgentById} />
+                </div>
+              )
             })() : null}
             <div className="relative z-10 w-full min-h-[360px] flex-1 sm:min-h-0">
               {error ? (

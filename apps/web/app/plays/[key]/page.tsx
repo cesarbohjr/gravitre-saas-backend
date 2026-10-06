@@ -46,22 +46,32 @@ export default function PlayDetailPage() {
   const { data, error, isLoading, mutate } = useSWR<Payload>(key ? `/api/plays/${key}/readiness` : null, fetcher)
   const { data: installationData } = useSWR<{ installation: { id: string; operatingMode: string; status: string } | null }>(key ? `/api/plays/${key}/installation` : null, fetcher)
 
+  const playMissing = Boolean(data) && (!data?.play || !data?.readiness)
+
   return (
-    <AppShell title={data?.play.name ?? "Play"}>
+    <AppShell title={data?.play?.name ?? "Play"}>
       <div className="mx-auto max-w-4xl space-y-6 pb-8" data-composition="operate">
         <GravitrePageHeader
           eyebrow="Plays"
-          title={isLoading ? "Loading…" : data?.play.name ?? "Play"}
-          description={data?.play.objective}
+          title={isLoading ? "Loading…" : data?.play?.name ?? "Play"}
+          description={data?.play?.objective}
           icon={<PlayCircle className="h-5 w-5" />}
-          actions={<Button variant="ghost" size="sm" asChild><Link href="/plays"><ArrowLeft className="size-4" />Back to plays</Link></Button>}
+          actions={<Button variant="ghost" size="sm" className="min-h-11" asChild><Link href="/plays"><ArrowLeft className="size-4" />Back to plays</Link></Button>}
         >
-          {data ? <Badge variant="outline">{mode(data.readiness)}</Badge> : null}
+          {data?.readiness ? <Badge variant="outline">{mode(data.readiness)}</Badge> : null}
         </GravitrePageHeader>
 
         <div className="space-y-5 px-[var(--np-page-pad-sm)] sm:px-[var(--np-page-pad)]">
           {error ? (
             <WorkSectionErrorCard title="Could not load play" message={error instanceof Error ? error.message : "Unknown error"} onRetry={() => void mutate()} />
+          ) : playMissing ? (
+            <section className="border-y border-divide py-6">
+              <h2 className="text-base font-semibold text-foreground">This play isn&apos;t available</h2>
+              <p className="mt-1 text-pretty text-sm leading-relaxed text-muted-foreground">
+                No play matches <span className="font-mono text-foreground">{key}</span> in this workspace. It may have been renamed or removed from the catalog.
+              </p>
+              <Button size="sm" variant="outline" className="mt-4 min-h-11" asChild><Link href="/plays">Browse plays</Link></Button>
+            </section>
           ) : isLoading || !data ? <Skeleton className="h-72 rounded-[10px]" /> : (
             <>
               <section className="border-b border-divide py-4">

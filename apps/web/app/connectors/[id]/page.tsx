@@ -25,7 +25,6 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { TYPE } from "@/lib/design-system"
 import {
-  ArrowLeft,
   XCircle,
   RefreshCw,
   Settings,
@@ -200,7 +199,8 @@ export default function ConnectorDetailPage() {
   }
 
   return (
-    <AppShell title={connector.name} breadcrumbVendor={connector.type}>\n      <div data-composition="manage" className="contents">
+    <AppShell title={connector.name} breadcrumbVendor={connector.type}>
+      <div data-composition="manage" className="contents">
       <div className="flex min-h-full flex-col" data-testid="connector-detail-b">
         <GravitrePageHeader
           eyebrow="Connectors"
@@ -210,12 +210,6 @@ export default function ConnectorDetailPage() {
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <AskGravitreSummonButton />
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/connectors">
-                  <ArrowLeft className="mr-1 h-4 w-4" />
-                  Back
-                </Link>
-              </Button>
               <KnowledgeSyncButton
                 connectorId={connectorId}
                 connectorType={String(
@@ -228,7 +222,6 @@ export default function ConnectorDetailPage() {
                 )}
               />
               <Button
-                variant="outline"
                 size="sm"
                 className="gap-2"
                 onClick={handleSync}
@@ -248,8 +241,8 @@ export default function ConnectorDetailPage() {
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                    <MoreVertical className="h-4 w-4" />
+                  <Button variant="outline" size="sm" className="h-11 w-11 p-0 md:h-8 md:w-8" aria-label="More connector actions">
+                    <MoreVertical className="h-4 w-4" aria-hidden />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -287,8 +280,6 @@ export default function ConnectorDetailPage() {
             >
               {connector.environment}
             </span>
-            <span className="text-xs text-muted-foreground">{connector.type}</span>
-            <span className="text-border text-xs">|</span>
             <span className="text-xs text-muted-foreground">{connector.category}</span>
             <span className="text-border text-xs">|</span>
             <span className="text-xs text-muted-foreground">Created {connector.createdAt}</span>
@@ -298,7 +289,7 @@ export default function ConnectorDetailPage() {
         <div className="flex-1 space-y-6 overflow-auto p-4 md:p-6">
           <section data-testid="connector-detail-status" className="border-b border-divide pb-4">
             <p className={TYPE.eyebrow}>Live status</p>
-            <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-4">
+            <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-3 md:grid-cols-3">
             <div>
               <dt className="text-xs text-muted-foreground">Status</dt>
               <dd className="text-sm font-medium capitalize text-foreground">{connector.status}</dd>
@@ -310,10 +301,6 @@ export default function ConnectorDetailPage() {
             <div>
               <dt className="text-xs text-muted-foreground">Sync interval</dt>
               <dd className="text-sm font-medium text-foreground">{connector.config.syncInterval}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted-foreground">Environment</dt>
-              <dd className="text-sm font-medium capitalize text-foreground">{connector.environment}</dd>
             </div>
             </dl>
             <p className={cn(TYPE.meta, "mt-3")}>
@@ -389,10 +376,6 @@ export default function ConnectorDetailPage() {
                     ) : null}
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground font-medium">Sync interval</label>
-                <p className="text-sm font-medium">Every {connector.config.syncInterval}</p>
-              </div>
           </section>
         </div>
 
@@ -483,7 +466,8 @@ export default function ConnectorDetailPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>\n      </div>
+      </div>
+      </div>
     </AppShell>
   )
 }

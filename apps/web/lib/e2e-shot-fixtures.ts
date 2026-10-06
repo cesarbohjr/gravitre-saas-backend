@@ -412,7 +412,128 @@ const workflows = [
  * renders as a silent empty state rather than an error, so a missing key looks
  * like a design problem instead of a fixture problem.
  */
+// Multi-agent run review: one finished run with contributions and a merged
+// recommendation, and one failed run with a connector error, so the list and
+// the inspector show every state a reviewer needs to judge.
+const swarmRenewalRisk = {
+  id: "swr_renewal_risk",
+  orgId: DEMO_ORG_ID,
+  parentAgentId: "agt_deal_desk",
+  objective: "Assess Q3 renewal risk for Northwind Logistics and recommend a save plan",
+  status: "completed",
+  decisionMethod: "majority_vote",
+  councilSessionId: "cns_renewal_risk",
+  finalRecommendation:
+    "Offer a 12-month renewal at the current rate with a dedicated onboarding review in week 2. Usage dropped 31% after the March API change, but 4 of 5 open tickets are resolved and the champion is still active.",
+  finalConfidence: 0.82,
+  aggregateResult: { votes: { renew_with_review: 2, discount_10: 1 } },
+  errorMessage: null,
+  executionVerified: true,
+  createdAt: AGO(48),
+  updatedAt: AGO(41),
+  completedAt: AGO(41),
+  subtasks: [
+    {
+      id: "sst_rr_01",
+      swarmRunId: "swr_renewal_risk",
+      agentId: "agt_deal_desk",
+      taskPrompt: "Review contract terms, pricing history and renewal date",
+      scopedTools: [],
+      sortOrder: 0,
+      status: "completed",
+      agentJobId: "job_rr_01",
+      result: { recommendation: "renew_with_review", renewalDate: "2026-07-31", currentArr: 48000 },
+      errorMessage: null,
+      executionVerified: true,
+      createdAt: AGO(48),
+      completedAt: AGO(44),
+    },
+    {
+      id: "sst_rr_02",
+      swarmRunId: "swr_renewal_risk",
+      agentId: "agt_support_escalation",
+      taskPrompt: "Summarize open and recent support tickets",
+      scopedTools: [],
+      sortOrder: 1,
+      status: "completed",
+      agentJobId: "job_rr_02",
+      result: { recommendation: "renew_with_review", openTickets: 1, resolvedLast30d: 4 },
+      errorMessage: null,
+      executionVerified: true,
+      createdAt: AGO(48),
+      completedAt: AGO(43),
+    },
+    {
+      id: "sst_rr_03",
+      swarmRunId: "swr_renewal_risk",
+      agentId: "agt_lead_triage",
+      taskPrompt: "Check product usage trend and champion engagement",
+      scopedTools: [],
+      sortOrder: 2,
+      status: "completed",
+      agentJobId: "job_rr_03",
+      result: { recommendation: "discount_10", usageChange: -0.31, championActive: true },
+      errorMessage: null,
+      executionVerified: true,
+      createdAt: AGO(48),
+      completedAt: AGO(42),
+    },
+  ],
+}
+
+const swarmChurnAudit = {
+  id: "swr_churn_audit",
+  orgId: DEMO_ORG_ID,
+  parentAgentId: "agt_support_escalation",
+  objective: "Audit churned accounts from May for shared root causes",
+  status: "failed",
+  decisionMethod: "chair_decides",
+  councilSessionId: null,
+  finalRecommendation: null,
+  finalConfidence: null,
+  aggregateResult: {},
+  errorMessage: "HubSpot connection expired before the account export finished. Reconnect HubSpot and run again.",
+  executionVerified: true,
+  createdAt: AGO(26 * 60),
+  updatedAt: AGO(26 * 60 - 3),
+  completedAt: AGO(26 * 60 - 3),
+  subtasks: [
+    {
+      id: "sst_ca_01",
+      swarmRunId: "swr_churn_audit",
+      agentId: "agt_support_escalation",
+      taskPrompt: "Group cancellation reasons from exit tickets",
+      scopedTools: [],
+      sortOrder: 0,
+      status: "completed",
+      agentJobId: "job_ca_01",
+      result: { topReason: "onboarding_gap", accounts: 7 },
+      errorMessage: null,
+      executionVerified: true,
+      createdAt: AGO(26 * 60),
+      completedAt: AGO(26 * 60 - 2),
+    },
+    {
+      id: "sst_ca_02",
+      swarmRunId: "swr_churn_audit",
+      agentId: "agt_lead_triage",
+      taskPrompt: "Export churned account history from HubSpot",
+      scopedTools: [],
+      sortOrder: 1,
+      status: "failed",
+      agentJobId: "job_ca_02",
+      result: null,
+      errorMessage: "401 from HubSpot: token expired",
+      executionVerified: true,
+      createdAt: AGO(26 * 60),
+      completedAt: AGO(26 * 60 - 3),
+    },
+  ],
+}
+
 export const SHOT_FIXTURES: Record<string, unknown> = {
+  "/api/agent-swarm/swr_renewal_risk": swarmRenewalRisk,
+  "/api/agent-swarm/swr_churn_audit": swarmChurnAudit,
   __supabaseUser: supabaseUser,
   __orgId: DEMO_ORG_ID,
 
@@ -868,6 +989,8 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
           },
         ],
       },
+      swarmRenewalRisk,
+      swarmChurnAudit,
     ],
   },
   "/api/agent-swarm/swr_revenue_enrich": {
@@ -927,6 +1050,69 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       { id: "src_ingesting", name: "Service event archive", type: "mongodb", category: "nosql", status: "syncing", environment: "staging", lastSync: AGO(3), tables: 4, recordCount: 1800, workflowsUsing: 1, operatorsUsing: 1 },
       { id: "src_attention", name: "Finance reporting warehouse", type: "snowflake", category: "warehouse", status: "error", environment: "production", lastSync: AGO(180), tables: 8, recordCount: 6400, workflowsUsing: 2, operatorsUsing: 1, description: "Connection requires review before the next ingestion." },
     ],
+  },
+  // Source detail (/e2e/shots/source-detail/src_warehouse). Shapes follow
+  // app/sources/[id]/page.tsx: `{ source }`, `{ tables }`, `{ history }`.
+  "/api/sources/src_warehouse": {
+    source: {
+      id: "src_warehouse",
+      name: "Northwind operations warehouse",
+      type: "postgres",
+      typeId: "postgres",
+      status: "connected",
+      environment: "production",
+      description: "Operational system of record for accounts, service requests and invoicing.",
+      lastSync: AGO(12),
+      createdAt: AGO(60 * 24 * 41),
+      recordCount: 12400,
+      tables: 16,
+      connectionHost: "warehouse.northwind.internal",
+      connectionPort: 5432,
+      connectionDatabase: "ops_prod",
+      syncIntervalSeconds: 3600,
+    },
+  },
+  "/api/sources/src_warehouse/schema": {
+    tables: [
+      { name: "accounts", schema: "public", columns: Array.from({ length: 14 }, (_, i) => ({ name: `c${i}`, type: "text" })) },
+      { name: "service_requests", schema: "public", columns: Array.from({ length: 19 }, (_, i) => ({ name: `c${i}`, type: "text" })) },
+      { name: "invoices", schema: "billing", columns: Array.from({ length: 11 }, (_, i) => ({ name: `c${i}`, type: "text" })) },
+      { name: "contract_renewals", schema: "billing", columns: Array.from({ length: 9 }, (_, i) => ({ name: `c${i}`, type: "text" })) },
+      { name: "workflow_events", schema: "ops", columns: Array.from({ length: 7 }, (_, i) => ({ name: `c${i}`, type: "text" })) },
+    ],
+  },
+  "/api/sources/src_warehouse/sync-history": {
+    history: [
+      { id: "sh_3", status: "success", records: 12400, tables: 16, createdAt: AGO(12), trigger: "scheduled", durationMs: 41000 },
+      { id: "sh_2", status: "failed", error: "Connection reset while reading billing.invoices", createdAt: AGO(72), trigger: "scheduled" },
+      { id: "sh_1", status: "success", records: 12310, tables: 16, createdAt: AGO(132), trigger: "manual", durationMs: 38000 },
+    ],
+  },
+  "/api/sources/src_warehouse/agent-assignments": {
+    sourceName: "Northwind operations warehouse",
+    assignedCount: 2,
+    agents: [
+      { agentId: "agt_lead_triage", agentName: "Lead triage", department: "Revenue", role: "Qualifies inbound leads", assigned: true, assignmentId: "asg_1" },
+      { agentId: "agt_support_resolver", agentName: "Support resolver", department: "Support", role: "Resolves tier-1 tickets", assigned: true, assignmentId: "asg_2" },
+      { agentId: "agt_renewals", agentName: "Renewals desk", department: "Finance", role: "Prepares renewal quotes", assigned: false, assignmentId: null },
+    ],
+  },
+  // Connector detail (/e2e/shots/connector-detail/con_hubspot).
+  "/api/connectors/con_hubspot": {
+    connector: {
+      id: "con_hubspot",
+      name: "HubSpot",
+      vendor: "hubspot",
+      type: "hubspot",
+      status: "connected",
+      authStatus: "active",
+      environment: "production",
+      lastSync: AGO(3),
+      createdAt: AGO(60 * 24 * 90),
+      description: "Marketing, sales, and service",
+      syncFrequency: "Every 15 minutes",
+      config: { webhookUrl: "https://hooks.gravitre.app/hubspot/northwind" },
+    },
   },
   "/api/metrics/runs": {
     runVolume: [
@@ -1017,14 +1203,410 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   "/api/settings/dashboard-layout": {
     layout: null,
   },
+  // useOrgAdmin reads this first; without it the settings shell hides the Admin tier.
+  "/api/settings/lite-membership": { is_admin: true },
+  "/api/lite/tasks": {
+    tasks: [
+      {
+        id: "lt_invoice_chase",
+        workflow_id: "wf_invoice_chase",
+        workflow_name: "Chase overdue invoices",
+        status: "processing",
+        progress: 62,
+        input_summary: "14 invoices over 30 days, Northwind EU",
+        created_at: "2026-10-05T08:12:00Z",
+      },
+      {
+        id: "lt_renewal_brief",
+        workflow_id: "wf_renewal_brief",
+        workflow_name: "Renewal brief for Q4 accounts",
+        status: "completed",
+        progress: 100,
+        input_summary: "9 accounts renewing before Dec 31",
+        created_at: "2026-10-04T15:40:00Z",
+        completed_at: "2026-10-04T16:05:00Z",
+      },
+      {
+        id: "lt_ticket_triage",
+        workflow_id: "wf_ticket_triage",
+        workflow_name: "Triage weekend support tickets",
+        status: "pending",
+        progress: 0,
+        input_summary: "Zendesk queue, 38 open tickets",
+        created_at: "2026-10-05T09:01:00Z",
+      },
+      {
+        id: "lt_lead_enrich",
+        workflow_id: "wf_lead_enrich",
+        workflow_name: "Enrich inbound leads",
+        status: "failed",
+        progress: 40,
+        input_summary: "HubSpot list: October webinar",
+        created_at: "2026-10-03T11:20:00Z",
+        error: "HubSpot token expired. Reconnect HubSpot to retry.",
+      },
+    ],
+  },
+  "/api/lite/workflows": {
+    workflows: [
+      {
+        id: "wf_invoice_chase",
+        name: "Chase overdue invoices",
+        description: "Sends polite, escalating reminders and flags disputes for a person.",
+        required_inputs: ["Customer list"],
+      },
+      {
+        id: "wf_lead_enrich",
+        name: "Enrich inbound leads",
+        description: "Adds company, role and fit score to new leads.",
+        required_inputs: ["HubSpot list"],
+      },
+      {
+        id: "wf_weekly_report",
+        name: "Weekly pipeline report",
+        description: "Summarizes pipeline changes into a one-page brief.",
+        required_inputs: [],
+      },
+    ],
+  },
+  "/api/lite/results": {
+    summary: {
+      period: "30d",
+      tasks_completed: 42,
+      success_rate: 92.86,
+      avg_completion_time_hours: 1.6,
+      by_workflow: [
+        { workflow_name: "Chase overdue invoices", count: 18 },
+        { workflow_name: "Enrich inbound leads", count: 15 },
+        { workflow_name: "Weekly pipeline report", count: 9 },
+      ],
+    },
+    recent: [
+      {
+        id: "lt_weekly_report",
+        workflow_id: "wf_weekly_report",
+        workflow_name: "Weekly pipeline report",
+        status: "completed",
+        progress: 100,
+        input_summary: "Week of Sep 28",
+        created_at: "2026-10-04T08:00:00Z",
+      },
+    ],
+  },
+  "/api/lite/deliverables": {
+    deliverables: [
+      {
+        id: "dl_pipeline_brief",
+        task_id: "lt_weekly_report",
+        task_name: "Weekly pipeline report",
+        name: "Pipeline brief - week of Sep 28.pdf",
+        type: "pdf",
+        size_bytes: 284_000,
+        download_url: "/api/lite/deliverables/dl_pipeline_brief/download",
+        created_at: "2026-10-04T08:12:00Z",
+      },
+      {
+        id: "dl_invoice_log",
+        task_id: "lt_invoice_chase",
+        task_name: "Chase overdue invoices",
+        name: "Reminder log.csv",
+        type: "csv",
+        size_bytes: 18_400,
+        download_url: "/api/lite/deliverables/dl_invoice_log/download",
+        created_at: "2026-10-03T16:40:00Z",
+      },
+    ],
+  },
+  "/api/settings/organization": {
+    organization: {
+      id: DEMO_ORG_ID,
+      name: "Northwind Logistics",
+      slug: "northwind-logistics",
+      primaryDomain: "northwind.example",
+      logoUrl: "",
+    },
+  },
+  // Shape matches `User` in types/api.ts; TeamSettings keys rows on id.
+  "/api/settings/team": {
+    team: [
+      { id: "usr_dana", email: "dana@northwind.example", full_name: "Dana Whitfield", role: "owner", job_title: "COO", department: "Operations" },
+      { id: "usr_marcus", email: "marcus@northwind.example", full_name: "Marcus Oyelaran", role: "admin", job_title: "RevOps lead", department: "Revenue" },
+      { id: "usr_priya", email: "priya@northwind.example", full_name: "Priya Raman", role: "member", job_title: "Account executive", department: "Sales" },
+      { id: "usr_lena", email: "lena@northwind.example", full_name: "Lena Sato", role: "member", job_title: "Support manager", department: "Support" },
+    ],
+  },
   "/api/settings/agents-fleet": {
     prefs: null,
+  },
+  // Shapes match AuditListResponse / AuditSummary in types/api.ts.
+  "/api/audit/summary": {
+    byAction: { approve: 2, reject: 1, execute: 1, update: 1, invite: 1 },
+    byUser: [
+      { user_id: "usr_dana", user_name: "Dana Whitfield", count: 3 },
+      { user_id: "usr_marcus", user_name: "Marcus Oyelaran", count: 2 },
+    ],
+    byEntityType: { approval: 3, workflow: 1, settings: 1, user: 1 },
+  },
+  "/api/audit": {
+    total: 6,
+    hasMore: false,
+    logs: [
+      { id: "aud_1", action: "approve", entity_type: "approval", entity_id: "apr_renewal", entity_name: "Acme renewal discount", user_id: "usr_dana", user_name: "Dana Whitfield", created_at: AGO(12), details: { description: "Approved a 12% renewal discount for Acme before it was written to HubSpot.", outcome: "approved", destination: "HubSpot" } },
+      { id: "aud_2", action: "execute", entity_type: "workflow", entity_id: "wf_invoice", entity_name: "Overdue invoice follow-up", agent_id: "agt_collections", agent_name: "Collections agent", created_at: AGO(38), details: { description: "Sent 4 reminder emails for invoices over 30 days.", outcome: "completed" } },
+      { id: "aud_3", action: "reject", entity_type: "approval", entity_id: "apr_bulk", entity_name: "Bulk contact deletion", user_id: "usr_marcus", user_name: "Marcus Oyelaran", created_at: AGO(95), details: { description: "Rejected deleting 212 contacts; the list included active customers.", outcome: "rejected" } },
+      { id: "aud_4", action: "update", entity_type: "settings", entity_id: "set_sso", entity_name: "SSO enforcement", user_id: "usr_dana", user_name: "Dana Whitfield", created_at: AGO(240), details: { description: "Required SSO for all members.", outcome: "applied" } },
+      { id: "aud_5", action: "approve", entity_type: "approval", entity_id: "apr_ticket", entity_name: "Escalate priority ticket", user_id: "usr_marcus", user_name: "Marcus Oyelaran", created_at: AGO(410), details: { description: "Approved escalating ticket #4821 to the on-call manager.", outcome: "approved" } },
+      { id: "aud_6", action: "invite", entity_type: "user", entity_id: "usr_lena", entity_name: "Lena Sato", user_id: "usr_dana", user_name: "Dana Whitfield", created_at: AGO(1440), details: { description: "Invited Lena Sato as a member.", outcome: "sent" } },
+    ],
   },
 
   // Requested as /api/workflows?org_id=… — the query string is ignored by the
   // pathname matcher, but the page still gates the request on an org being
   // resolved from /api/organizations above.
+  "/api/goals": {
+    goals: [
+      {
+        id: "goal_pipeline",
+        objective: "Recover $1.2M of stalled Q3 pipeline",
+        category: "revenue",
+        priority: "high",
+        department: "Sales",
+        status: "active",
+        connectedSystems: ["HubSpot", "Salesforce", "Slack"],
+        successMetrics: { primary: "Stalled deals re-engaged within 14 days" },
+        createdAt: T(60 * 24 * 6),
+      },
+      {
+        id: "goal_churn",
+        objective: "Cut first-90-day churn below 4%",
+        category: "retention",
+        priority: "high",
+        department: "Customer Success",
+        status: "active",
+        connectedSystems: ["Zendesk", "Stripe"],
+        successMetrics: { primary: "90-day logo churn" },
+        createdAt: T(60 * 24 * 12),
+      },
+      {
+        id: "goal_close",
+        objective: "Close the books two days faster each month",
+        category: "finance",
+        priority: "medium",
+        department: "Finance",
+        status: "paused",
+        connectedSystems: ["QuickBooks"],
+        createdAt: T(60 * 24 * 20),
+      },
+      {
+        id: "goal_onboard",
+        objective: "Automate new-hire IT provisioning",
+        category: "operations",
+        priority: "low",
+        department: "IT",
+        status: "draft",
+        createdAt: T(60 * 24 * 2),
+      },
+    ],
+  },
+  "/api/goals/goal_pipeline/progress": {
+    goal: {
+      id: "goal_pipeline",
+      objective: "Recover $1.2M of stalled Q3 pipeline",
+      status: "active",
+      category: "revenue",
+      department: "Sales",
+    },
+    completionPercentage: 58,
+    milestoneStatus: [
+      { id: "m1", title: "Identify deals with no activity in 21+ days", status: "completed" },
+      { id: "m2", title: "Draft re-engagement sequences per deal stage", status: "completed" },
+      { id: "m3", title: "Route high-value deals to account owners for approval", status: "in_progress" },
+      { id: "m4", title: "Send approved outreach and log replies to Salesforce", status: "pending" },
+      { id: "m5", title: "Measure recovered pipeline against the $1.2M target", status: "pending" },
+    ],
+  },
+  "/api/plays": {
+    count: 3,
+    plays: [
+      {
+        play: {
+          key: "pipeline_recovery",
+          name: "Stalled pipeline recovery",
+          objective: "Find deals that have gone quiet, draft the right follow-up, and route it to the owner for approval.",
+          version: "1.3.0",
+        },
+        readiness: {
+          dependency_status: "ready",
+          observe_ready: true,
+          recommend_ready: true,
+          act_with_approval_ready: true,
+          act_within_policy_ready: false,
+          blockers: [],
+          connector_groups: [{ ready: true }, { ready: true }],
+        },
+        workflowBindingCount: 3,
+      },
+      {
+        play: {
+          key: "churn_early_warning",
+          name: "Churn early warning",
+          objective: "Watch support and billing signals for at-risk accounts and recommend a save plan.",
+          version: "0.9.2",
+        },
+        readiness: {
+          observe_ready: true,
+          recommend_ready: true,
+          act_with_approval_ready: false,
+          blockers: [],
+          connector_groups: [{ ready: true }, { ready: true }, { ready: false }],
+        },
+        workflowBindingCount: 1,
+      },
+      {
+        play: {
+          key: "invoice_collections",
+          name: "Invoice collections",
+          objective: "Chase overdue invoices with polite, escalating reminders and flag disputes for a person.",
+          version: "1.0.0",
+        },
+        readiness: {
+          observe_ready: false,
+          blockers: ["Connect an accounting connector such as QuickBooks or Xero"],
+          connector_groups: [{ ready: false }],
+        },
+        workflowBindingCount: 0,
+      },
+    ],
+  },
+  "/api/plays/pipeline_recovery/readiness": {
+    play: {
+      key: "pipeline_recovery",
+      name: "Stalled pipeline recovery",
+      objective: "Find deals that have gone quiet, draft the right follow-up, and route it to the owner for approval.",
+      version: "1.3.0",
+    },
+    readiness: {
+      observe_ready: true,
+      recommend_ready: true,
+      act_with_approval_ready: true,
+      act_within_policy_ready: false,
+      blockers: [],
+      connector_groups: [{ ready: true }, { ready: true }],
+    },
+    workflowBindings: [],
+    workflowBindingCount: 3,
+  },
+  "/api/plays/pipeline_recovery/installation": {
+    installation: {
+      id: "inst_pipeline",
+      goalId: "goal_pipeline",
+      operatingMode: "ACT WITH APPROVAL",
+      status: "ready",
+    },
+  },
+  "/api/plays/pipeline_recovery/outcomes": {
+    truthRule: "Verified success requires source-of-record evidence.",
+    outcomes: [
+      {
+        id: "out_recovered",
+        measurement_status: "measured",
+        created_at: T(60 * 26),
+        metadata: {
+          verification_state: "VERIFIED SUCCESS",
+          metric_key: "pipeline_recovered",
+          delta_value: 184000,
+          currency: "USD",
+          verified: true,
+        },
+      },
+      {
+        id: "out_reply_rate",
+        measurement_status: "pending",
+        created_at: T(60 * 4),
+        metadata: { verification_state: "INCONCLUSIVE", metric_key: "reply_rate" },
+      },
+    ],
+  },
+  "/api/plays/pipeline_recovery/outcomes/out_recovered/evidence": {
+    playKey: "pipeline_recovery",
+    evidence: {
+      metric: {
+        key: "pipeline_recovered",
+        baseline: 0,
+        result: 184000,
+        delta: 184000,
+        currency: "USD",
+        measuredAt: T(60 * 26),
+      },
+      play: { key: "pipeline_recovery", runId: "prn_7f21c9", installationId: "inst_pipeline" },
+      workflow: { id: "wf_reengage", runId: "run_reengage_1182" },
+      governance: { approvalStatus: "approved", requiredApprovals: 1 },
+      sourceRecords: [
+        { system: "salesforce", record_type: "Opportunity", record_id: "0068c00001AbCdE" },
+        { system: "salesforce", record_type: "Opportunity", record_id: "0068c00001FgHiJ" },
+      ],
+      verification: { state: "Verified success", method: "Source-of-record diff", verified: true, confidence: 0.94 },
+    },
+  },
   "/api/workflows": { workflows },
+  "/api/ml/models": {
+    models: [
+      { id: "mdl_churn", name: "Churn risk scorer", description: "Flags accounts likely to churn in the next 60 days.", model_type: "classifier", status: "deployed", current_version: 3, deployed_version: 3, base_model: "gradient-boosted-trees", created_at: "2026-03-02T15:00:00Z", updated_at: "2026-05-08T09:30:00Z" },
+      { id: "mdl_lead_score", name: "Lead fit score", description: "Ranks inbound leads by fit with closed-won accounts.", model_type: "regressor", status: "training", current_version: 2, deployed_version: 1, created_at: "2026-04-11T12:00:00Z", updated_at: "2026-05-09T18:10:00Z" },
+      { id: "mdl_ticket_route", name: "Ticket router", description: null, model_type: "classifier", status: "draft", current_version: 0, created_at: "2026-05-07T10:00:00Z" },
+    ],
+  },
+  "/api/ml/models/mdl_churn": {
+    id: "mdl_churn",
+    name: "Churn risk scorer",
+    description: "Flags accounts likely to churn in the next 60 days.",
+    model_type: "classifier",
+    task_type: "binary_classification",
+    status: "deployed",
+    current_version: 3,
+    deployed_version: 3,
+    base_model: "gradient-boosted-trees",
+    created_at: "2026-03-02T15:00:00Z",
+    updated_at: "2026-05-08T09:30:00Z",
+    versions: [
+      { version: 3, metrics: { accuracy: 0.91, f1: 0.87, auc: 0.94 }, artifact_size_bytes: 4820000, created_at: "2026-05-08T09:30:00Z" },
+      { version: 2, metrics: { accuracy: 0.88, f1: 0.83, auc: 0.91 }, artifact_size_bytes: 4610000, created_at: "2026-04-15T14:00:00Z" },
+      { version: 1, metrics: { accuracy: 0.84, f1: 0.79 }, artifact_size_bytes: 4100000, created_at: "2026-03-02T15:00:00Z" },
+    ],
+  },
+  // Shape must match ScheduledItem in types/api.ts; one item per schedule phase.
+  "/api/schedules": {
+    items: [
+      { kind: "workflow", id: "sch_lead_triage", title: "Inbound lead triage", subtitle: "Every 15 minutes", status: "running", cron: "*/15 * * * *", timezone: "America/Chicago", scheduleType: "recurring", workflowId: "wf_lead_triage", startedAt: T(2), lastRunAt: T(17), nextRunAt: T(-13), progress: 60 },
+      { kind: "workflow", id: "sch_deal_desk", title: "Deal desk sync", subtitle: "Weekdays at 08:00", status: "enabled", cron: "0 8 * * 1-5", timezone: "America/New_York", scheduleType: "recurring", workflowId: "wf_deal_desk", lastRunAt: T(38), nextRunAt: T(-960) },
+      { kind: "workflow", id: "sch_support_routing", title: "Support escalation routing", subtitle: "Hourly", status: "failed", cron: "0 * * * *", timezone: "UTC", scheduleType: "recurring", workflowId: "wf_support_routing", lastRunAt: T(44), nextRunAt: T(-16) },
+      { kind: "workflow", id: "sch_invoice_recon", title: "Invoice reconciliation", subtitle: "Paused by operator", status: "disabled", cron: "30 6 * * *", timezone: "Europe/London", scheduleType: "recurring", workflowId: "wf_invoice_recon", lastRunAt: T(2880) },
+      { kind: "workflow", id: "sch_churn_digest", title: "Churn risk digest", subtitle: "Once", status: "scheduled", timezone: "America/Chicago", scheduleType: "once", workflowId: "wf_churn_digest", runAt: T(-2880), nextRunAt: T(-2880) },
+    ],
+  },
+  "/api/runs/run_support_4821": {
+    run: {
+      id: "run_support_4821",
+      workflow_id: "wf_support_routing",
+      workflow_name: "Support escalation routing",
+      status: "failed",
+      environment: "production",
+      triggered_by: "Schedule · hourly",
+      created_by: "dana.whitfield@northwind.example",
+      started_at: T(44),
+      completed_at: T(41),
+      duration_ms: 192000,
+      records_processed: 37,
+      error: "Zendesk returned 429 Too Many Requests while assigning ticket #88213.",
+    },
+    steps: [
+      { id: "stp_1", name: "Fetch open escalations", stepType: "source", status: "completed", orderIndex: 0, startedAt: T(44), completedAt: T(44), outputSnapshot: { tickets: 37 } },
+      { id: "stp_2", name: "Classify severity", stepType: "agent", status: "completed", orderIndex: 1, startedAt: T(44), completedAt: T(43), outputSnapshot: { p1: 3, p2: 11, p3: 23 } },
+      { id: "stp_3", name: "Approve P1 reassignment", stepType: "approval", status: "completed", orderIndex: 2, startedAt: T(43), completedAt: T(42), outputSnapshot: { decision: "approved", approver: "Dana Whitfield" } },
+      { id: "stp_4", name: "Assign tickets in Zendesk", stepType: "connector", status: "failed", orderIndex: 3, startedAt: T(42), completedAt: T(41), errorMessage: "429 Too Many Requests — rate limit resets in 60s.", isRetryable: true, outputSnapshot: { assigned: 29, remaining: 8 } },
+      { id: "stp_5", name: "Notify on-call channel", stepType: "task", status: "skipped", orderIndex: 4 },
+    ],
+  },
   // Capture-only agent jobs (AgentJob shape) spanning every execution phase.
   "/api/assignments": {
     jobs: [
@@ -1256,6 +1838,41 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         created_at: AGO(1500),
         updated_at: AGO(1440),
         message_count: 4,
+      },
+    ],
+  },
+  "/api/conversations/cv_lead_triage/messages": {
+    has_more: false,
+    messages: [
+      {
+        id: "m1",
+        conversation_id: "cv_lead_triage",
+        role: "user",
+        content: "Why did the Salesforce write in Lead Triage get blocked this morning?",
+        created_at: AGO(64),
+      },
+      {
+        id: "m2",
+        conversation_id: "cv_lead_triage",
+        role: "assistant",
+        content:
+          "The 08:12 run of **Lead Triage** stopped at step 4, *Update Opportunity*, before writing anything.\n\n- **Cause:** the connected Salesforce user `ops-integration@northwind.com` has read-only access on Opportunity.\n- **Impact:** 14 leads were scored but not routed. No records were changed.\n- **Since:** the permission set was edited yesterday at 17:40.\n\nI can draft a request to restore edit access, or re-run the 14 leads once access is back.",
+        created_at: AGO(63),
+      },
+      {
+        id: "m3",
+        conversation_id: "cv_lead_triage",
+        role: "user",
+        content: "Draft the access request and queue the re-run for after it is approved.",
+        created_at: AGO(20),
+      },
+      {
+        id: "m4",
+        conversation_id: "cv_lead_triage",
+        role: "assistant",
+        content:
+          "Done. Two things are waiting on you:\n\n1. **Access request** to the Salesforce admin, restoring *Edit* on Opportunity for the integration user.\n2. **Re-run of 14 leads** in Lead Triage, held until the request is approved.\n\nNothing will write to Salesforce until you approve both.",
+        created_at: AGO(12),
       },
     ],
   },

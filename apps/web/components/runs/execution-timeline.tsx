@@ -178,7 +178,8 @@ function PayloadSummary({
         <button
           type="button"
           onClick={() => setShowRaw((open) => !open)}
-          className="text-[10px] font-medium text-muted-foreground hover:text-foreground"
+          aria-expanded={showRaw}
+          className="-my-3 inline-flex min-h-11 items-center px-2 text-xs font-medium text-muted-foreground hover:text-foreground md:my-0 md:min-h-0 md:px-0"
         >
           {showRaw ? "Hide raw data" : "Raw data"}
         </button>

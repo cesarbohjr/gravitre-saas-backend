@@ -52,7 +52,6 @@ import {
   shouldShowClusterTimestamp,
   shouldShowDayDivider,
 } from "@/lib/chat-message-time"
-import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { ReadAloudButton } from "@/components/gravitre/assistant/read-aloud-button"
 import { GravitreChatAvatar } from "@/components/gravitre/assistant/gravitre-chat-avatar"
 
@@ -231,7 +230,7 @@ export function ChatTranscript({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="mx-auto flex w-full max-w-[880px] flex-col gap-5 px-1 py-2">
+      <div className="mx-auto flex w-full max-w-[760px] flex-col gap-6 px-1 py-2">
         {visible.map(({ message, index: sourceIndex }, visibleIndex) => {
           const isUser = message.role === "user"
           const text = uiMessageText(message)
@@ -285,9 +284,9 @@ export function ChatTranscript({
                 isUser ? "flex-row-reverse" : "flex-row",
               )}
             >
-              {isUser ? (
-                <UserAccountAvatar useCurrentUser size="md" />
-              ) : (
+              {/* User turns carry no avatar: "You" already names the author, and a
+                  second colored disc competed with the assistant mark. */}
+              {isUser ? null : (
                 <GravitreChatAvatar
                   state={
                     speakingMessageId === message.id

@@ -5,7 +5,7 @@
   right: 16px;
   z-index: 2147483646;
   width: min(340px, calc(100vw - 24px));
-  font-family: "Inter Display", "Segoe UI", system-ui, sans-serif;
+  font-family: "Inter Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
   color: var(--g-text-primary);
   /* P13 — compressed mineral system */
   --g-brand: #16a374;
@@ -47,6 +47,31 @@
 
 #gravitre-overlay-root * {
   box-sizing: border-box;
+}
+
+#gravitre-overlay-root { --g-text-muted: #636363; --g-brand: #128a63; line-height: 1.5; }
+#gravitre-overlay-root .gvt-card { padding: 16px; }
+#gravitre-overlay-root :is(.gvt-muted, .gvt-section-title, .gvt-label, .gvt-value, .gvt-badge, .gvt-btn, .gvt-outcome-title) { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+#gravitre-overlay-root :is(.gvt-section-title, .gvt-label) { font-family: inherit; text-transform: none; letter-spacing: 0; }
+#gravitre-overlay-root .gvt-brand { font-size: 18px; }
+#gravitre-overlay-root :is(.gvt-btn, .gvt-close) { min-height: 44px; }
+#gravitre-overlay-root .gvt-close { min-width: 44px; }
+#gravitre-overlay-root :is(button, a, input, textarea):focus-visible { outline: 2px solid var(--g-brand); outline-offset: 3px; }
+@media (prefers-color-scheme: dark) {
+  #gravitre-overlay-root {
+    color-scheme: dark;
+    --g-canvas: #202020;
+    --g-surface-1: #202020;
+    --g-surface-2: #343434;
+    --g-text-primary: #f5f5f5;
+    --g-text-secondary: #f5f5f5;
+    --g-text-muted: #b8b8b8;
+    --divide: #343434;
+    --g-brand-soft: color-mix(in srgb, var(--g-brand) 15%, var(--g-surface-1));
+    --g-brand-hover: #0f7a58;
+    --g-danger: #f5a3a3;
+    --g-approval-text: #e8cb75;
+  }
 }
 
 .gvt-card {

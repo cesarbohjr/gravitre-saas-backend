@@ -20,27 +20,53 @@ function reportedModel(model: string): string {
 /** Figma 10:73 + 10:78, adapted to the real filtered roster and saved identity. */
 export function AgentCapabilityOverview({ agent, connectedSystems = [], onInspect }: { agent: FleetAgent; connectedSystems?: string[]; onInspect: (id: string) => void }) {
   const systems = connectedSystems
+  const scope = agentScopeLabel(agent.departmentLabel, agent.role)
   return (
-    <section aria-label={`${agent.name} overview`} className="mb-5 grid overflow-hidden rounded-xl md:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]" data-testid="agent-capability-overview">
-      <div className="flex min-w-0 flex-col items-start bg-[color:var(--g-emerald-deep)] p-5 text-white sm:p-6">
-        <p className="text-xs font-semibold text-[color:var(--g-emerald-mint)]">{agentScopeLabel(agent.departmentLabel, agent.role)}</p>
-        <div className="mt-4 flex items-center gap-3">
-          <GravitreAgentIdentity icon={agent.icon} identityColor={agent.identityColor} size="md" />
-          <h2 className="min-w-0 break-words font-sans text-[29px] font-medium leading-tight">{agent.name}</h2>
+    <section
+      aria-label={`${agent.name} overview`}
+      className="mb-5 flex flex-col gap-4 rounded-xl border border-border bg-[color:var(--g-surface-1)] p-4"
+      data-testid="agent-capability-overview"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center gap-3">
+        <GravitreAgentIdentity icon={agent.icon} identityColor={agent.identityColor} size="md" />
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <h2 className="min-w-0 truncate font-sans text-base font-semibold leading-snug">{agent.name}</h2>
+            <GravitreAgentStatus runtimeState={agent.runtimeState} configState={agent.configState} />
+          </div>
+          {scope ? <p className="truncate text-sm text-muted-foreground">{scope}</p> : null}
         </div>
-        <div className="mt-3 rounded-md bg-white px-2 py-1"><GravitreAgentStatus runtimeState={agent.runtimeState} configState={agent.configState} /></div>
-        {agent.currentActivity ? <p className="mt-3 text-sm leading-6 text-[color:var(--g-emerald-mint)]">{agent.currentActivity}</p> : null}
-        <Button onClick={() => onInspect(agent.id)} className="mt-5 min-h-11 bg-white text-[color:var(--g-emerald-deep)] hover:bg-[color:var(--g-emerald-mint)] focus-visible:ring-white">Inspect agent <ArrowRight className="ml-2 size-4" aria-hidden /></Button>
       </div>
-      <div className="min-w-0 bg-[color:var(--g-surface-1)] p-5 sm:p-6">
-        <h3 className="text-xs font-semibold text-[color:var(--g-emerald-deep)]">Capability context</h3>
-        <dl className="mt-4 space-y-3 text-sm">
-          <div><dt className="text-xs text-muted-foreground">Model</dt><dd className="mt-1 break-words">{reportedModel(agent.model)}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">Connected systems</dt><dd className="mt-1 break-words">{systems.length ? systems.join(" · ") : "No systems listed"}</dd></div>
-          {agent.workflowCount != null ? <div><dt className="text-xs text-muted-foreground">Used in workflows</dt><dd className="mt-1 tabular-nums">{agent.workflowCount}</dd></div> : null}
-        </dl>
-        <Button asChild variant="ghost" size="sm" className="mt-4 -ml-3 text-[color:var(--g-emerald-deep)]"><Link href={`/agents/${encodeURIComponent(agent.id)}`}>Open configuration <ArrowRight className="ml-2 size-3.5" aria-hidden /></Link></Button>
+      <div className="flex shrink-0 items-center gap-2">
+        <Button onClick={() => onInspect(agent.id)} className="min-h-11 flex-1 sm:flex-none">
+          Inspect agent <ArrowRight className="ml-2 size-4" aria-hidden />
+        </Button>
+        <Button asChild variant="ghost" className="min-h-11 flex-1 text-muted-foreground hover:text-foreground sm:flex-none">
+          <Link href={`/agents/${encodeURIComponent(agent.id)}`}>Configure</Link>
+        </Button>
       </div>
+      </div>
+
+      <dl className="grid min-w-0 grid-cols-2 gap-x-6 gap-y-3 border-t border-border pt-3 text-sm sm:grid-cols-3">
+        <div className="min-w-0">
+          <dt className="text-xs text-muted-foreground">Model</dt>
+          <dd className="mt-0.5 truncate">{reportedModel(agent.model)}</dd>
+        </div>
+        <div className="col-span-2 min-w-0 sm:col-span-1">
+          <dt className="text-xs text-muted-foreground">Connected systems</dt>
+          <dd className="mt-0.5 truncate" title={systems.join(" · ") || undefined}>{systems.length ? systems.join(" · ") : "No systems listed"}</dd>
+        </div>
+        {agent.workflowCount != null ? (
+          <div className="min-w-0">
+            <dt className="text-xs text-muted-foreground">Used in workflows</dt>
+            <dd className="mt-0.5 tabular-nums">{agent.workflowCount}</dd>
+          </div>
+        ) : null}
+        {agent.currentActivity ? (
+          <p className="col-span-full truncate text-sm text-[color:var(--g-emerald-mint)]">{agent.currentActivity}</p>
+        ) : null}
+      </dl>
     </section>
   )
 }

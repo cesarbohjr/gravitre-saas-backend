@@ -184,7 +184,7 @@ export default function SourceDetailPage() {
     return (
       <AppShell title="Source">
         <div className="p-6">
-          <button onClick={() => router.push("/sources")} className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <button onClick={() => router.push("/sources")} className="mb-4 flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Back to sources
           </button>
           <WorkSectionErrorCard title="Source unavailable" message={error instanceof Error ? error.message : "This source was not returned."} onRetry={() => void mutate()} />
@@ -212,12 +212,6 @@ export default function SourceDetailPage() {
           icon={<NucleoConnector className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/sources">
-                  <ArrowLeft className="mr-1 h-4 w-4" />
-                  Back
-                </Link>
-              </Button>
               <StatusBadge variant={statusVariants[status] ?? "muted"} dot>
                 {status}
               </StatusBadge>
@@ -254,7 +248,11 @@ export default function SourceDetailPage() {
         <div className="space-y-6 px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
           {error ? <WorkSectionErrorCard title="Source refresh unavailable" message="Showing the last returned source. Retry to refresh its lifecycle and counts." onRetry={() => void mutate()} /> : null}
           <section className="grid grid-cols-1 gap-[var(--np-kpi-gap)] sm:grid-cols-2 lg:grid-cols-4">
-            <GravitreMetric label="Status" value={status} hint="Connection lifecycle" />
+            <GravitreMetric
+              label="Status"
+              value={status.charAt(0).toUpperCase() + status.slice(1)}
+              hint="Connection lifecycle"
+            />
             <GravitreMetric
               label="Tables"
               value={formatCount(tables)}
@@ -300,22 +298,10 @@ export default function SourceDetailPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground font-medium">Last sync</p>
-                  <p className="text-sm text-foreground mt-1">{formatRelative(lastSync)}</p>
-                </div>
-                <div>
                   <p className="text-xs text-muted-foreground font-medium">Sync frequency</p>
                   <p className="text-sm text-foreground mt-1">
                     {reportedNumber(source.syncIntervalSeconds) == null ? "Not reported" : `Every ${Math.round(Number(source.syncIntervalSeconds) / 60)} minutes`}
                   </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Tables</p>
-                  <p className="text-sm text-foreground mt-1">{formatCount(tables)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Total records</p>
-                  <p className="text-sm text-foreground mt-1">{formatCount(records)}</p>
                 </div>
               </div>
             </div>

@@ -266,12 +266,15 @@ async def update_deliverable_endpoint(
 ) -> dict[str, Any]:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    job = jobs.update_job_deliverable(
-        _client(settings),
-        org_id,
-        job_id,
-        content=body.content,
-    )
+    try:
+        job = jobs.update_job_deliverable(
+            _client(settings),
+            org_id,
+            job_id,
+            content=body.content,
+        )
+    except jobs.DeliveryBlocked as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
     return _public(job)
@@ -296,6 +299,8 @@ async def push_deliverable_endpoint(
             settings=settings,
             environment_name=environment,
         )
+    except jobs.DeliveryBlocked as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return payload

@@ -289,10 +289,10 @@ function MetricCard({
   const isPositive = change === undefined ? null : change >= 0
   const gradientId = `metric-${useId().replace(/:/g, "")}`
   const accents = {
-    blue: { color: "var(--g-electric)", surface: "bg-[color:color-mix(in_srgb,var(--g-electric)_5%,white)]" },
-    emerald: { color: "var(--g-emerald)", surface: "bg-[color:var(--g-emerald-pale)]" },
-    amber: { color: "var(--g-warmth)", surface: "bg-[color:color-mix(in_srgb,var(--g-warmth)_10%,white)]" },
-    red: { color: "var(--g-danger)", surface: "bg-[color:color-mix(in_srgb,var(--g-danger)_6%,white)]" },
+    blue: { color: "var(--g-electric)", surface: "bg-[color:color-mix(in_srgb,var(--g-electric)_6%,var(--card))]" },
+    emerald: { color: "var(--g-emerald)", surface: "bg-[color:color-mix(in_srgb,var(--g-emerald)_8%,var(--card))]" },
+    amber: { color: "var(--g-warmth)", surface: "bg-[color:color-mix(in_srgb,var(--g-warmth)_10%,var(--card))]" },
+    red: { color: "var(--g-danger)", surface: "bg-[color:color-mix(in_srgb,var(--g-danger)_7%,var(--card))]" },
   }
   const accent = accents[accentColor]
 
@@ -560,7 +560,7 @@ export default function MetricsPage() {
         >
           <a
             href="/intelligence"
-            className="inline-block text-xs text-primary underline-offset-4 hover:underline"
+            className="inline-flex min-h-11 items-center text-sm text-primary underline-offset-4 hover:underline"
           >
             Back to Intelligence hub
           </a>

@@ -17,9 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { LiveStatus } from "@/components/gravitre/nodus-product/page-header"
-import { dashboardStatusLine } from "@/components/home/dashboard-operating"
-import { OperatingAskLine, OperatingFlow } from "@/components/home/operating-flow"
+import { OperatingFlow } from "@/components/home/operating-flow"
 import { NucleoClose } from "@/components/icons/nucleo/semantic"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { cardVariants, useMotionPrefs } from "@/lib/animations"
@@ -117,7 +115,6 @@ export function HomeDashboard({
     () => packWidgets(editMode ? widgets : boardWidgets),
     [editMode, widgets, boardWidgets],
   )
-  const status = dashboardStatusLine(data)
 
   const onDrop = (targetOrder: number) => {
     if (!dragId) return
@@ -131,16 +128,10 @@ export function HomeDashboard({
       {/* Operating command strip — identity, live state, AI command line, range and layout controls */}
       <div
         data-dashboard-command-strip=""
-        className="flex flex-col gap-3 border-b border-[color:var(--g-border-default)] px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] lg:flex-row lg:items-center lg:gap-6"
+        className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--g-border-default)] px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)]"
       >
-        <div className="min-w-0 shrink-0 lg:max-w-[460px]">
-          <h1 className="text-[20px] font-semibold leading-tight tracking-[-0.02em] text-foreground">Dashboard</h1>
-          <div className="mt-0.5">
-            <LiveStatus tone={status.tone}>{status.text}</LiveStatus>
-          </div>
-        </div>
-        <OperatingAskLine className="min-w-0 flex-1 lg:max-w-[560px]" />
-        <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+        <h1 className="text-[20px] font-semibold leading-tight tracking-[-0.02em] text-foreground">Dashboard</h1>
+        <div className="flex flex-wrap items-center gap-2">
           <Select value={globalRange} onValueChange={(v) => setRange(v as DashboardRange)}>
             <SelectTrigger className="h-8 w-[120px] text-xs" aria-label="Dashboard date range">
               <SelectValue />

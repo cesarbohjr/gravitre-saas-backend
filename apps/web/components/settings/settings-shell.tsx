@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react"
 import Link from "next/link"
+import { ShieldCheck, User, Users, type LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -11,6 +12,7 @@ import {
   ADMIN_ONLY_SETTINGS_SECTIONS,
   SETTINGS_SECTIONS,
   SETTINGS_TIER_LABELS,
+  SETTINGS_TIER_SCOPE,
   WIDE_SETTINGS_SECTIONS,
   settingsSectionsForTier,
   type SettingsSectionId,
@@ -18,6 +20,37 @@ import {
 } from "@/lib/settings-sections"
 
 const TIER_ORDER: SettingsTier[] = ["personal", "organization", "admin"]
+
+const TIER_ICON: Record<SettingsTier, LucideIcon> = {
+  personal: User,
+  organization: Users,
+  admin: ShieldCheck,
+}
+
+function ScopeLine({ tier, className }: { tier: SettingsTier; className?: string }) {
+  const scope = SETTINGS_TIER_SCOPE[tier]
+  const Icon = TIER_ICON[tier]
+  return (
+    <p data-settings-scope={tier} className={cn("flex items-start gap-2 text-xs leading-relaxed text-muted-foreground", className)}>
+      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[color:var(--g-brand)]" aria-hidden="true" />
+      <span className="min-w-0 text-pretty">
+        <span className="font-medium text-foreground">{scope.label}</span>
+        <span aria-hidden="true">{" · "}</span>
+        <span className="sr-only">. </span>
+        {scope.detail}
+      </span>
+    </p>
+  )
+}
+
+function TierHeading({ tier }: { tier: SettingsTier }) {
+  return (
+    <div className="mb-1.5 flex items-baseline justify-between gap-2 px-3">
+      <p className={TYPE.eyebrow}>{SETTINGS_TIER_LABELS[tier]}</p>
+      <p className="text-[11px] text-muted-foreground">{SETTINGS_TIER_SCOPE[tier].label}</p>
+    </div>
+  )
+}
 
 interface SettingsShellProps {
   activeSection: SettingsSectionId
@@ -65,6 +98,7 @@ export function SettingsShell({
           {!hideHeader && <>
             <h1 className={cn(TYPE.pageTitle, "[overflow-wrap:anywhere]")}>{activeMeta?.title}</h1>
             <p className={cn(TYPE.pageLead, "mt-1")}>{activeMeta?.description}</p>
+            {activeMeta ? <ScopeLine tier={activeMeta.tier} className="mt-2" /> : null}
           </>}
         </div>
         <SheetTrigger asChild>
@@ -80,7 +114,7 @@ export function SettingsShell({
         </SheetHeader>
         <nav aria-label="Settings section sheet" className="space-y-4 px-4 pb-6">
           {tiers.map((tier) => <div key={tier}>
-            <p className={cn(TYPE.eyebrow, "mb-1.5 px-3")}>{SETTINGS_TIER_LABELS[tier]}</p>
+            <TierHeading tier={tier} />
             <div className="space-y-1">
               {settingsSectionsForTier(tier, isAdmin).map((section) => <SettingsNavItem key={section.id}
                 section={section} activeSection={activeSection} onSectionChange={onSectionChange}
@@ -96,7 +130,7 @@ export function SettingsShell({
             const sections = settingsSectionsForTier(tier, isAdmin)
             return (
               <div key={tier}>
-                <p className={cn(TYPE.eyebrow, "mb-1.5 px-3")}>{SETTINGS_TIER_LABELS[tier]}</p>
+                <TierHeading tier={tier} />
                 <div className="space-y-1">
                   {sections.map((section) => (
                     <SettingsNavItem
@@ -129,6 +163,7 @@ export function SettingsShell({
             <div className="mb-6 hidden lg:block">
               <h1 className={cn(TYPE.pageTitle, "mb-1")}>{activeMeta?.title}</h1>
               <p className={TYPE.pageLead}>{activeMeta?.description}</p>
+              {activeMeta ? <ScopeLine tier={activeMeta.tier} className="mt-3" /> : null}
             </div>
           ) : null}
           {children}

@@ -602,7 +602,7 @@ function ConnectorOptionsMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" aria-label={`${connector.name} options`}>
+        <Button variant="ghost" size="icon" className="-my-2 h-11 w-11 shrink-0" aria-label={`${connector.name} options`}>
           <MoreVertical className="h-3.5 w-3.5" />
         </Button>
       </DropdownMenuTrigger>
@@ -1448,7 +1448,7 @@ function AddConnectorModal({
                 </button>
                 {Object.entries(connectorCategories).map(([cat, data]) => {
                   const colorMap: Record<string, { active: string, inactive: string }> = {
-                    emerald: { active: "bg-emerald-500 text-white", inactive: "hover:bg-emerald-500/10 hover:text-emerald-800 dark:hover:text-emerald-400" },
+                    emerald: { active: "bg-emerald-500 text-brand-foreground", inactive: "hover:bg-emerald-500/10 hover:text-emerald-800 dark:hover:text-emerald-400" },
                     blue: { active: "bg-blue-500 text-white", inactive: "hover:bg-blue-500/10 hover:text-blue-800 dark:hover:text-blue-400" },
                     violet: { active: "bg-[color:var(--g-signal)] text-white", inactive: "hover:bg-[color:var(--g-signal-surface)] hover:text-[color:var(--g-signal)]" },
                     amber: { active: "bg-amber-500 text-white", inactive: "hover:bg-amber-500/10 hover:text-amber-800 dark:hover:text-amber-400" },
@@ -2986,17 +2986,17 @@ function ConnectorsPageContent() {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-8 gap-1.5 shrink-0 text-xs text-muted-foreground"
+                className="h-9 w-9 shrink-0 p-0 text-muted-foreground"
                 onClick={toggleChromeCollapsed}
                 aria-pressed={chromeCollapsed}
                 aria-label={chromeCollapsed ? "Expand connectors header" : "Minimize connectors header"}
+                title={chromeCollapsed ? "Show filters" : "Minimize header"}
               >
                 {chromeCollapsed ? (
-                  <ChevronDown className="h-3.5 w-3.5" />
+                  <ChevronDown className="h-4 w-4" />
                 ) : (
-                  <ChevronUp className="h-3.5 w-3.5" />
+                  <ChevronUp className="h-4 w-4" />
                 )}
-                <span className="hidden sm:inline">{chromeCollapsed ? "Show filters" : "Minimize"}</span>
               </Button>
               {!chromeCollapsed ? (
                 <>
@@ -3007,6 +3007,15 @@ function ConnectorsPageContent() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem
+                        className="gap-2"
+                        disabled={isLiveRefreshing || isValidating || !orgId}
+                        onSelect={() => void refreshLiveStatus()}
+                      >
+                        <RefreshCw className={cn("h-4 w-4 text-muted-foreground", (isLiveRefreshing || isValidating) && "animate-spin")} />
+                        Check live status
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
                         <Link href="/marketplace/billing" className="gap-2">
                           <Receipt className="h-4 w-4 text-muted-foreground" />
@@ -3032,30 +3041,11 @@ function ConnectorsPageContent() {
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 shrink-0"
-                    onClick={() => openAddModal()}
-                  >
-                    <LayoutGrid className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Browse all</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 shrink-0"
-                    disabled={isLiveRefreshing || isValidating || !orgId}
-                    onClick={() => void refreshLiveStatus()}
-                  >
-                    <RefreshCw className={cn("h-3.5 w-3.5", (isLiveRefreshing || isValidating) && "animate-spin")} />
-                    <span className="hidden sm:inline">Check live status</span>
-                  </Button>
                 </>
               ) : null}
-              <Button onClick={() => openAddModal()} className="gap-2 shrink-0">
+              <Button onClick={() => openAddModal()} className="min-h-11 gap-2 shrink-0 sm:min-h-9">
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add connector</span>
+                Add connector
               </Button>
             </div>
           }
@@ -3074,18 +3064,19 @@ function ConnectorsPageContent() {
             </div>
             {!chromeCollapsed ? (
               <>
-                <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 lg:hidden">
+                <div className="flex w-full items-center gap-1 overflow-x-auto sm:w-auto lg:hidden">
                   {statusFilterOptions.map((status) => (
                     <button
                       key={status.value}
                       type="button"
                       onClick={() => setStatusFilter(status.value)}
                       className={cn(
-                        "flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all",
+                        "flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9",
                         statusFilter === status.value
-                          ? "border-[color:var(--g-emerald)] bg-[color:var(--g-emerald-pale)] text-[color:var(--g-text-primary)] shadow-[var(--np-shadow)]"
+                          ? "border-foreground/25 bg-secondary text-foreground"
                           : "border-transparent text-muted-foreground hover:text-foreground",
                       )}
+                      aria-pressed={statusFilter === status.value}
                     >
                       {"dot" in status && status.dot ? (
                         <div className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
@@ -3095,7 +3086,7 @@ function ConnectorsPageContent() {
                   ))}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-8 shrink-0 gap-1.5 text-xs">
+                      <Button variant="outline" size="sm" className="h-11 shrink-0 gap-1.5 text-sm sm:h-9">
                         <Filter className="h-3.5 w-3.5" />
                         {categoryFilter !== "all" ? categoryFilter.split(" / ")[0] : "Category"}
                       </Button>
@@ -3144,7 +3135,7 @@ function ConnectorsPageContent() {
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="hidden h-9 gap-2 md:flex">
+                    <Button variant="outline" size="sm" className="hidden h-9 gap-2 lg:flex">
                       <Filter className="h-3.5 w-3.5" />
                       {categoryFilter !== "all" ? categoryFilter.split(" / ")[0] : "Category"}
                     </Button>
@@ -3198,16 +3189,6 @@ function ConnectorsPageContent() {
         {connectors.length > 0 ? (
           <PhaseBand label="Capability fabric" phases={capabilityPhases} loading={isLoading && connectors.length === 0} />
         ) : null}
-
-        {/* Recommended connectors (AI-driven, from usage signals) */}
-        <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />
-
-        <AvailableConnectorsStrip
-          entries={availableToConnect}
-          onBrowseAll={() => openAddModal()}
-          onSelect={(type) => openAddModal(type)}
-          showBrowseAll={false}
-        />
         </>
         ) : null}
 
@@ -3428,6 +3409,17 @@ function ConnectorsPageContent() {
           )}
           </>
           )}
+          {!chromeCollapsed && connectors.length > 0 ? (
+            <div className="-mx-4 mt-8 border-t border-[color:var(--g-border-default)] pt-2 md:-mx-6" data-testid="connectors-discovery">
+              <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />
+              <AvailableConnectorsStrip
+                entries={availableToConnect}
+                onBrowseAll={() => openAddModal()}
+                onSelect={(type) => openAddModal(type)}
+                showBrowseAll={false}
+              />
+            </div>
+          ) : null}
           </div>
         </div>
 

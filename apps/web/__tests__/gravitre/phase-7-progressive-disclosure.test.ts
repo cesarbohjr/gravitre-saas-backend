@@ -24,13 +24,13 @@ describe("UX Reset Phase 7 — progressive disclosure in the workspace", () => {
     expect(src).not.toMatch(/rounded-xl border border-border\/60 bg-card\/50/)
   })
 
-  it("artifacts and execution steps are disclosed, not card-first", () => {
+  it("artifacts and execution steps lead with a count, not uppercase card headers", () => {
     const src = readFileSync(
       resolve(webRoot, "components/gravitre/assistant/chat-execution-panel.tsx"),
       "utf8",
     )
-    expect(src).toMatch(/Artifacts \(/)
-    expect(src).toMatch(/Execution \(/)
+    expect(src).toMatch(/`\$\{artifacts\.length\} artifacts`/)
+    expect(src).toMatch(/\{steps\.length\} steps/)
     expect(src).not.toMatch(/uppercase tracking-wide text-muted-foreground">Artifacts/)
   })
 

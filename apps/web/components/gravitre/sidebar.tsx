@@ -183,7 +183,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
           <Link
             href="/"
             className={cn(
-              "flex min-w-0 flex-1 items-center",
+              "flex min-h-11 min-w-0 flex-1 items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               !navExpanded && "md:justify-center",
             )}
             onClick={onClose}

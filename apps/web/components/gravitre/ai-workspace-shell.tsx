@@ -106,7 +106,8 @@ export function GravitreAIWorkspaceShell({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const { reduced: reduceMotion } = useMotionPrefs()
 
-  useFocusTrap(containerRef, isFullscreen)
+  // Fullscreen is where work happens: land in the composer, not on the first tab.
+  useFocusTrap(containerRef, isFullscreen, "textarea:not([disabled])")
 
   useEffect(() => {
     if (!isFullscreen) return

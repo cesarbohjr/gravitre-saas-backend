@@ -39,7 +39,10 @@ export function isWorkflowBuilderPath(pathname: string): boolean {
 
 export function shouldShowGravitreAIHelper(pathname: string): boolean {
   const path = pathname.split("?")[0] ?? ""
-  return path !== "/ai" && !path.startsWith("/ai/")
+  if (path === "/ai" || path.startsWith("/ai/")) return false
+  // Onboarding is a full-screen setup flow; the floating pill covers its footer actions.
+  if (/^\/(welcome|onboarding)(\/|$)/.test(path)) return false
+  return true
 }
 
 /**

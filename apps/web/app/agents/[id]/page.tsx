@@ -246,7 +246,8 @@ export default function AgentProfilePage({
   const orgId = typeof window !== "undefined" ? getSelectedOrgFromStorage()?.id : undefined
 
   return (
-    <AppShell title={agent.name}>\n      <div data-composition="manage" className="contents">
+    <AppShell title={agent.name}>
+      <div data-composition="manage" className="contents">
       <div className="flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)]">
         <div className="border-b border-divide px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)]">
           <AgentSurfaceSwitch surface="operate" agentId={agent.id} />
@@ -337,7 +338,7 @@ export default function AgentProfilePage({
                 aria-selected={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={cn(
-                  "-mb-px h-9 shrink-0 whitespace-nowrap border-b-2 px-0.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "-mb-px h-11 shrink-0 whitespace-nowrap sm:h-9 border-b-2 px-0.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   activeTab === tab.id
                     ? "border-foreground text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground",
@@ -404,7 +405,7 @@ export default function AgentProfilePage({
                       <h3 id="agent-recent-work-heading" className="text-[13px] font-semibold text-foreground">
                         Recent work
                       </h3>
-                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setActiveTab("history")}>
+                      <Button variant="ghost" size="sm" className="min-h-11 text-xs sm:min-h-7" onClick={() => setActiveTab("history")}>
                         Work history
                       </Button>
                     </div>
@@ -518,7 +519,8 @@ export default function AgentProfilePage({
             )}
           </AnimatePresence>
         </div>
-      </div>\n      </div>
+      </div>
+      </div>
     </AppShell>
   )
 }

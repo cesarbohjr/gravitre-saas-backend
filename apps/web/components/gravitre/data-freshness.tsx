@@ -85,7 +85,7 @@ export function DataFreshness({
           type="button"
           onClick={onRefresh}
           disabled={isRefreshing}
-          className="ml-0.5 rounded p-0.5 text-muted-foreground/70 transition-colors hover:text-foreground disabled:opacity-50"
+          className="-my-3 -mr-3 inline-flex h-11 w-11 items-center justify-center rounded text-muted-foreground/70 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           aria-label="Refresh data"
         >
           <RefreshCw className={cn("h-3 w-3", isRefreshing && "animate-spin")} />

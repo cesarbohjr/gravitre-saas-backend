@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
 import { useMotionPrefs } from "@/lib/animations"
 import { Button } from "@/components/ui/button"
@@ -258,6 +258,7 @@ export function AssignmentApprovalDialog({
   agentName,
   confidence,
   reportContent,
+  report,
   qualityChecks,
   onApprove,
   onReject,
@@ -269,6 +270,8 @@ export function AssignmentApprovalDialog({
   agentName: string
   confidence: number | null
   reportContent: string
+  /** Structured rendering of the deliverable; falls back to `reportContent` text. */
+  report?: ReactNode
   qualityChecks: Array<{ label: string; status: "pass" | "warn" }>
   onApprove: () => Promise<void>
   onReject: (reason: string) => Promise<void>
@@ -345,7 +348,7 @@ export function AssignmentApprovalDialog({
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
               {decisionSuccess === "approved"
-                ? "Outputs are cleared for delivery."
+                ? "Your decision was recorded. Nothing has been sent — pushing to a destination is a separate step."
                 : "The rejection was saved on this assignment."}
             </p>
             <Button className="mt-6 min-h-11" onClick={() => { setDecisionSuccess(null); setRejectMode(false); setRejectReason(""); onOpenChange(false) }}>Done</Button>
@@ -361,25 +364,32 @@ export function AssignmentApprovalDialog({
         </DialogHeader>
 
         <div className="max-h-[42vh] overflow-y-auto px-6 py-4">
-          <div className="break-words whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
-            {reportContent}
-          </div>
+          {report ?? (
+            <div className="break-words whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
+              {reportContent}
+            </div>
+          )}
         </div>
 
-        <div className="border-t border-divide px-6 py-4">
-          <p className="mb-3 text-xs font-medium text-muted-foreground">
-            Evidence
+        <div className="flex flex-col gap-3 border-t border-divide px-6 py-4">
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-medium text-muted-foreground">Evidence</p>
+            <ul className="flex flex-col gap-2">
+              {qualityChecks.map((check) => (
+                <li key={check.label} className="flex items-start gap-2 text-sm">
+                  <Icon
+                    name={check.status === "pass" ? "check" : "warning"}
+                    size="sm"
+                    className={cn("mt-0.5 shrink-0", check.status === "pass" ? "text-[color:var(--g-brand)]" : "text-[color:var(--g-approval)]")}
+                  />
+                  <span className="text-foreground">{check.label}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="text-xs leading-relaxed text-muted-foreground" data-approval-consequence>
+            Approving records your decision on this assignment. It does not send anything; delivering the output to a destination is a separate Push step.
           </p>
-          <ul className="space-y-2">
-            {qualityChecks.map((check) => (
-              <li key={check.label} className="flex items-start gap-2 text-sm">
-                <span className={check.status === "pass" ? "text-[color:var(--g-brand)]" : "text-amber-600"}>
-                  {check.status === "pass" ? "✓" : "⚠"}
-                </span>
-                <span className="text-foreground">{check.label}</span>
-              </li>
-            ))}
-          </ul>
         </div>
 
         {decisionError ? <p role="alert" className="px-6 pb-4 text-sm text-destructive">{decisionError}</p> : null}
@@ -444,7 +454,7 @@ export function AssignmentApprovalDialog({
                 ) : (
                   <Icon name="check" size="sm" />
                 )}
-                Approve →
+                Approve
               </Button>
             </>
           )}

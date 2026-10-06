@@ -2,14 +2,14 @@
 
 /**
  * EditTool-inspired write-authority chrome (ADAPT).
- * Same PreActionCard payload + handlers — retokened header only; no layout/IA change.
+ * Same PreActionCard payload + handlers.
  */
 
 import Link from "next/link"
-import { CheckCircle2, Loader2, Pencil, XCircle } from "lucide-react"
+import { Check, Loader2, Pencil, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { RADIUS, STATUS, TYPE } from "@/lib/design-system"
+import { RADIUS, TYPE } from "@/lib/design-system"
 import { NucleoApproval } from "@/components/icons/nucleo/semantic"
 import type { PreActionCardPayload, PreActionRiskLevel } from "@/lib/pre-action-card"
 
@@ -25,20 +25,32 @@ type PreActionCardProps = {
   className?: string
   /** Hide footer actions (e.g. Approvals page owns Approve/Reject). */
   hideActions?: boolean
+  /** Replaces the action row, e.g. a queued-for-approver status. */
+  footer?: React.ReactNode
 }
 
-function riskTone(level?: PreActionRiskLevel): string {
-  if (level === "high") return STATUS.rejected
-  if (level === "medium") return STATUS.pending
-  if (level === "low") return STATUS.verified
-  return STATUS.idle
+const RISK_LABEL: Record<PreActionRiskLevel, string> = {
+  low: "Low risk",
+  medium: "Medium risk",
+  high: "High risk",
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+const RISK_TONE: Record<PreActionRiskLevel, string> = {
+  low: "text-[color:var(--g-text-secondary)] bg-muted",
+  medium: "text-[color:var(--warning)] bg-[color:var(--warning)]/10",
+  high: "text-destructive bg-destructive/10",
+}
+
+function sentenceCase(value: string): string {
+  const trimmed = value.trim()
+  return trimmed ? trimmed.charAt(0).toUpperCase() + trimmed.slice(1) : trimmed
+}
+
+function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-border/40 py-1.5 last:border-0">
-      <span className={TYPE.meta}>{label}</span>
-      <span className="shrink-0 text-right text-xs font-medium capitalize text-foreground">{value}</span>
+    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-4">
+      <dt className={cn(TYPE.meta, "shrink-0 sm:w-24")}>{label}</dt>
+      <dd className="min-w-0 text-sm text-foreground">{children}</dd>
     </div>
   )
 }
@@ -53,13 +65,8 @@ export function PreActionCard({
   onModify,
   className,
   hideActions = false,
+  footer,
 }: PreActionCardProps) {
-  const showExplain =
-    Boolean(payload.estimatedImpact) ||
-    Boolean(payload.riskLevel) ||
-    Boolean(payload.approvalReason) ||
-    Boolean(payload.entity)
-
   const modifyHref =
     !onModify && payload.source === "approvals_queue" && payload.conversationId
       ? `/ai?conversation=${encodeURIComponent(payload.conversationId)}`
@@ -68,18 +75,21 @@ export function PreActionCard({
   const title =
     variant === "chat"
       ? payload.requiresApproval
-        ? "Approval required"
-        : "Ready to execute"
+        ? "Needs your approval"
+        : "Ready to run"
       : "Pre-action review"
+
+  const showAction = Boolean(payload.action && payload.action !== payload.title)
+  const hasFacts =
+    Boolean(payload.entity) || showAction || Boolean(payload.estimatedImpact) || Boolean(payload.approvalReason)
+  const showActions = !hideActions && Boolean(onApprove || onReject || onModify || modifyHref)
 
   return (
     <div
       className={cn(
         "overflow-hidden border bg-card text-sm",
         RADIUS.card,
-        variant === "chat"
-          ? "border-[color:var(--status-pending)]/30"
-          : "border-border",
+        variant === "chat" ? "border-[color:var(--warning)]/35" : "border-border",
         className,
       )}
       data-testid="pre-action-card"
@@ -87,107 +97,93 @@ export function PreActionCard({
       data-risk={payload.riskLevel || ""}
       data-impact={payload.estimatedImpact || ""}
     >
-      <div
-        className={cn(
-          "flex h-8 items-center gap-1.5 border-b border-border px-3",
-          variant === "chat" ? STATUS.pending : "bg-muted/40 text-muted-foreground",
-          "rounded-none border-x-0 border-t-0",
-        )}
-      >
-        <NucleoApproval className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        <span className={cn(TYPE.meta, "truncate font-medium")}>{title}</span>
+      <div className="flex items-center justify-between gap-3 px-4 pt-3.5">
+        <div
+          className={cn(
+            "flex min-w-0 items-center gap-1.5 text-xs font-medium",
+            variant === "chat" ? "text-[color:var(--warning)]" : "text-muted-foreground",
+          )}
+        >
+          <NucleoApproval className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span className="truncate">{title}</span>
+        </div>
+        {payload.riskLevel ? (
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center rounded-[4px] px-1.5 py-0.5 text-xs font-medium",
+              RISK_TONE[payload.riskLevel],
+            )}
+          >
+            {RISK_LABEL[payload.riskLevel]}
+          </span>
+        ) : null}
       </div>
 
-      <div className="min-w-0 space-y-1 bg-background px-3 py-2.5">
-        <p className="text-sm font-medium text-foreground">{payload.title}</p>
+      <div className="flex min-w-0 flex-col gap-1 px-4 pt-2">
+        <p className="text-[15px] font-medium leading-snug text-foreground text-pretty">{payload.title}</p>
         {payload.description ? (
-          <p className="text-xs text-muted-foreground">{payload.description}</p>
-        ) : null}
-
-        {showExplain ? (
-          <div className="mt-2 space-y-0.5" data-testid="pre-action-explain">
-            {payload.entity ? <DetailRow label="Entity" value={payload.entity} /> : null}
-            {payload.action && payload.action !== payload.title ? (
-              <DetailRow label="Action" value={payload.action} />
-            ) : null}
-            {payload.estimatedImpact ? (
-              <DetailRow label="Impact" value={payload.estimatedImpact} />
-            ) : null}
-            {payload.riskLevel ? (
-              <div className="flex items-center justify-between gap-3 border-b border-border/40 py-1.5 last:border-0">
-                <span className={TYPE.meta}>Risk</span>
-                <span
-                  className={cn(
-                    "inline-flex rounded px-1.5 py-0.5 text-xs font-medium",
-                    riskTone(payload.riskLevel),
-                  )}
-                >
-                  {payload.riskLevel}
-                </span>
-              </div>
-            ) : null}
-            {payload.approvalReason ? (
-              <DetailRow label="Why approval" value={payload.approvalReason} />
-            ) : null}
-          </div>
-        ) : null}
-
-        {!hideActions && (onApprove || onReject || onModify || modifyHref) ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {onApprove ? (
-              <Button size="sm" className="h-8" disabled={confirming} onClick={onApprove}>
-                {confirming ? (
-                  <>
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                    {approveLabel || "Approving…"}
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-                    {approveLabel || "Approve"}
-                  </>
-                )}
-              </Button>
-            ) : null}
-            {onReject ? (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                disabled={confirming}
-                onClick={onReject}
-              >
-                <XCircle className="mr-1.5 h-3.5 w-3.5" />
-                Reject
-              </Button>
-            ) : null}
-            {onModify ? (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 text-muted-foreground"
-                disabled={confirming}
-                onClick={onModify}
-              >
-                <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                Modify
-              </Button>
-            ) : null}
-            {modifyHref ? (
-              <Button size="sm" variant="ghost" className="h-8 text-muted-foreground" asChild>
-                <Link href={modifyHref}>
-                  <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                  Modify
-                </Link>
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-
-        {payload.modifyHint && (onModify || modifyHref) ? (
-          <p className="mt-2 text-[11px] text-muted-foreground">{payload.modifyHint}</p>
+          <p className="text-sm leading-relaxed text-muted-foreground text-pretty">{payload.description}</p>
         ) : null}
       </div>
+
+      {hasFacts ? (
+        <dl className="mx-4 mt-3 flex flex-col gap-2 border-t border-border/60 pt-3" data-testid="pre-action-explain">
+          {payload.entity ? <Fact label="Where">{sentenceCase(payload.entity)}</Fact> : null}
+          {payload.estimatedImpact ? <Fact label="Changes">{payload.estimatedImpact}</Fact> : null}
+          {payload.approvalReason ? <Fact label="Why">{sentenceCase(payload.approvalReason)}</Fact> : null}
+          {showAction ? (
+            <Fact label="Action">
+              <code className="break-all font-mono text-xs text-muted-foreground">{payload.action}</code>
+            </Fact>
+          ) : null}
+        </dl>
+      ) : null}
+
+      {footer ? (
+        <div className="mt-3.5 border-t border-border/60 px-4 py-3">{footer}</div>
+      ) : showActions ? (
+        <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-border/60 px-4 py-3">
+          {onApprove ? (
+            <Button size="sm" className="h-8" disabled={confirming} onClick={onApprove}>
+              {confirming ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : (
+                <Check className="h-3.5 w-3.5" aria-hidden />
+              )}
+              {approveLabel || (confirming ? "Approving…" : "Approve")}
+            </Button>
+          ) : null}
+          {onModify ? (
+            <Button size="sm" variant="outline" className="h-8" disabled={confirming} onClick={onModify}>
+              <Pencil className="h-3.5 w-3.5" aria-hidden />
+              Modify
+            </Button>
+          ) : null}
+          {modifyHref ? (
+            <Button size="sm" variant="outline" className="h-8" asChild>
+              <Link href={modifyHref}>
+                <Pencil className="h-3.5 w-3.5" aria-hidden />
+                Modify
+              </Link>
+            </Button>
+          ) : null}
+          {onReject ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              disabled={confirming}
+              onClick={onReject}
+            >
+              <X className="h-3.5 w-3.5" aria-hidden />
+              Reject
+            </Button>
+          ) : null}
+          {payload.modifyHint && (onModify || modifyHref) ? (
+            <p className="ml-auto text-xs text-muted-foreground">{payload.modifyHint}</p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }

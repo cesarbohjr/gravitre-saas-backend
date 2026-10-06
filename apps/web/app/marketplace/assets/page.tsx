@@ -12,17 +12,24 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
-import {
-  GravitreEmpty,
-  GravitreMetric,
-} from "@/components/gravitre/nodus-product"
-import { AssetTrustBadges } from "@/components/marketplace/asset-trust-badges"
-import { Badge } from "@/components/ui/badge"
+import { GravitreEmpty } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { SegmentedControl } from "@/components/gravitre/filter-chip"
-import { HUB_TABS, TYPE } from "@/lib/design-system"
+import { MarketplaceCatalogToolbar } from "@/components/marketplace/marketplace-catalog-toolbar"
+import {
+  MarketplaceOutcomeTiles,
+  type OutcomeTile,
+} from "@/components/marketplace/marketplace-outcome-tiles"
+import { TYPE } from "@/lib/design-system"
 import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
@@ -30,8 +37,10 @@ import { cn } from "@/lib/utils"
 import {
   BookOpen,
   Bot,
+  ChevronDown,
   ChevronRight,
   Loader2,
+  MoreHorizontal,
   Package,
   Plug,
   Search,
@@ -47,9 +56,6 @@ import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { AssetSaveButton } from "@/components/marketplace/asset-save-button"
 import {
-  EntitlementBadge,
-  NonAdminPurchaseNotice,
-  PackContentsPreview,
   PriceBadge,
   assetRequiresPurchase,
   formatAssetPrice,
@@ -64,8 +70,8 @@ const TYPE_FILTERS = [
   { id: "ai_agent", label: "Agents", icon: Bot },
   { id: "workflow", label: "Workflows", icon: Workflow },
   { id: "knowledge_pack", label: "Knowledge", icon: BookOpen },
-  { id: "department_pack", label: "Department packs", icon: Package },
-  { id: "connector_config", label: "Partner connectors", icon: Plug },
+  { id: "department_pack", label: "Packs", icon: Package },
+  { id: "connector_config", label: "Connectors", icon: Plug },
   { id: "play", label: "Plays", icon: Workflow },
   { id: "outcome_pack", label: "Outcome packs", icon: Package },
   { id: "dataset_pack", label: "Datasets", icon: Package },
@@ -80,6 +86,27 @@ const PRICE_FILTERS = [
 ] as const
 
 type PriceFilter = (typeof PRICE_FILTERS)[number]["id"]
+
+const PRIMARY_TYPES = new Set([
+  "all",
+  "department_pack",
+  "ai_agent",
+  "workflow",
+  "connector_config",
+])
+
+const LISTING_TYPE_LABEL: Record<string, string> = {
+  ai_agent: "Agent",
+  workflow: "Workflow",
+  knowledge_pack: "Knowledge",
+  department_pack: "Department pack",
+  connector_config: "Connector",
+  play: "Play",
+  outcome_pack: "Outcome pack",
+  dataset_pack: "Dataset",
+  dashboard_pack: "Dashboard",
+  capability_package: "Skill or plugin",
+}
 
 /** Asset mark: vendor logo for partner connectors, role/kind glyph otherwise. */
 function AssetMark({ asset }: { asset: MarketplaceAssetSummary }) {
@@ -207,10 +234,14 @@ function useDebouncedValue<T>(value: T, delayMs = 300): T {
 
 function AssetCardSkeleton() {
   return (
-    <div className="space-y-2 py-4">
-      <Skeleton className="h-4 w-56" />
-      <Skeleton className="h-3 w-72" />
-      <Skeleton className="h-3 w-40" />
+    <div className="flex h-56 flex-col gap-3 rounded-xl border border-[color:var(--g-border-subtle)] p-4">
+      <div className="flex items-center gap-3">
+        <Skeleton className="size-10 rounded-lg" />
+        <Skeleton className="h-4 w-40" />
+      </div>
+      <Skeleton className="h-3 w-full" />
+      <Skeleton className="h-3 w-2/3" />
+      <Skeleton className="mt-auto h-9 w-full" />
     </div>
   )
 }
@@ -230,214 +261,161 @@ function AssetCard({
   onInstall: (asset: MarketplaceAssetSummary) => void
   onClone: (asset: MarketplaceAssetSummary) => void
 }) {
-  const ready =
-    asset.connectorsReady === true || asset.requiredConnectorsTotal === 0
   const blocked = asset.connectorsReady === false && !asset.installed
   const needsPurchase = assetRequiresPurchase(asset)
   const showPrimaryAction = isAdmin && !asset.installed
-
   const adds = capabilitySummary(asset)
   const systems = asset.connectorChecklist ?? []
-  const isOutcome =
-    asset.assetType === "play" ||
-    asset.assetType === "outcome_pack" ||
-    asset.assetType === "department_pack"
+  const missing = systems.filter((item) => item.required && !item.connected).length
+  const typeLabel =
+    LISTING_TYPE_LABEL[asset.assetType] ??
+    capitalizeFirst(asset.assetType.replace(/_/g, " "))
+  const department = (asset.department ?? "All departments").replace(/_/g, " ")
+  const readiness = asset.installed
+    ? "Installed in this workspace"
+    : !asset.connectorChecklist
+      ? "Setup requirements not reported"
+      : systems.length === 0
+        ? "No setup required"
+        : missing > 0
+          ? `Connect ${missing} required app${missing === 1 ? "" : "s"}`
+          : "Ready to install"
 
   return (
     <article
-      className={cn(
-        "group relative grid gap-x-6 gap-y-3 py-4 md:grid-cols-[minmax(0,1fr)_220px_auto]",
-        isOutcome &&
-          "my-2 overflow-hidden rounded-[12px] border border-[color:var(--g-border-default)] bg-background px-4 shadow-[0_14px_38px_-34px_rgba(16,24,22,.55)] transition-[border-color,box-shadow,transform] duration-200 motion-safe:hover:-translate-y-0.5 hover:border-[color:var(--g-emerald)] hover:shadow-[0_18px_42px_-32px_rgba(0,127,95,.38)] md:px-5",
-      )}
+      className="group relative flex h-full flex-col rounded-xl border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-4 transition-colors duration-200 focus-within:border-[color:var(--g-text-muted)] hover:border-[color:var(--g-text-muted)]"
       data-testid="marketplace-pack-row"
     >
-      <div className="flex min-w-0 gap-3">
-        {isOutcome ? (
-          <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-[9px] border border-[color:var(--g-emerald)]/25 bg-[color:var(--g-emerald-pale)] text-[color:var(--g-emerald-deep)]">
-            <AssetMark asset={asset} />
-          </div>
-        ) : (
+      <div className="flex items-start gap-3">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] [&>*]:mt-0">
           <AssetMark asset={asset} />
-        )}
-        <div className="min-w-0">
-          <button
-            type="button"
-            onClick={() => onOpenDetail(asset)}
-            className="min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <h3
-              className={cn(
-                "text-[14px] font-semibold leading-snug text-foreground",
-                isOutcome && "text-[15px] tracking-[-0.01em]",
-              )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs text-muted-foreground">
+            {typeLabel}
+            <span aria-hidden> · </span>
+            <span className="capitalize">{department}</span>
+          </p>
+          <h3 className="mt-0.5 text-[15px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
+            <button
+              type="button"
+              onClick={() => onOpenDetail(asset)}
+              className="text-left after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
             >
               {asset.title}
-            </h3>
-          </button>
-          <p className="mt-0.5 text-[12.5px] text-foreground">
-            <span className="text-muted-foreground">Adds </span>
-            {adds}
-            <span className="text-muted-foreground"> · </span>
-            <span className="capitalize text-muted-foreground">
-              {(asset.department ?? "All departments").replace(/_/g, " ")}
-            </span>
-          </p>
-          {asset.description ? (
-            <p className="mt-1 line-clamp-2 max-w-2xl text-[12.5px] leading-relaxed text-muted-foreground">
-              {asset.description}
-            </p>
-          ) : null}
+            </button>
+          </h3>
         </div>
+        <PriceBadge asset={asset} className="relative z-10 shrink-0" />
       </div>
-      <div className="min-w-0 pl-7 md:pl-0">
-        <p className="text-xs font-medium text-muted-foreground">Requires</p>
-        {systems.length === 0 ? (
-          <p className="mt-1 text-[12.5px] text-foreground">
-            No setup required
-          </p>
-        ) : (
-          <ul
-            className="mt-1 space-y-0.5 text-[12.5px]"
-            aria-label={capitalizeFirst(connectorSummary(asset))}
-          >
-            {systems.slice(0, 3).map((item) => (
-              <li
-                key={item.connectorType}
-                className="flex items-center gap-1.5"
-              >
-                <ProviderLogo
-                  provider={item.connectorType}
-                  label={item.label}
-                  size="sm"
-                  decorative
-                  className="shrink-0"
-                />
-                <span className="truncate text-foreground">{item.label}</span>
-                <span
-                  aria-hidden
+
+      {asset.description ? (
+        <p className="mt-3 line-clamp-2 text-pretty text-[13px] leading-relaxed text-muted-foreground">
+          {asset.description}
+        </p>
+      ) : null}
+      <p className="mt-2 text-xs text-muted-foreground">
+        Adds <span className="text-foreground">{adds}</span>
+        {asset.averageRating != null ? (
+          <span className="ml-2 inline-flex items-center gap-0.5">
+            <Star className="size-3 fill-warning text-warning" aria-hidden />
+            {asset.averageRating.toFixed(1)}
+            <span className="sr-only"> average rating</span>
+          </span>
+        ) : null}
+      </p>
+
+      <div className="mt-auto pt-4">
+        <div className="flex min-h-7 items-center gap-2 border-t border-[color:var(--g-border-subtle)] pt-3">
+          {systems.length > 0 ? (
+            <ul className="flex shrink-0 items-center" aria-label={capitalizeFirst(connectorSummary(asset))}>
+              {systems.slice(0, 4).map((item, index) => (
+                <li
+                  key={item.connectorType}
                   className={cn(
-                    "size-1.5 shrink-0 rounded-full",
-                    item.connected
-                      ? "bg-[color:var(--g-brand)]"
-                      : item.required
-                        ? "bg-warning"
-                        : "bg-muted-foreground/40",
+                    "rounded-full bg-[color:var(--g-surface-1)] ring-2 ring-[color:var(--g-surface-1)]",
+                    index > 0 && "-ml-1.5",
+                    !item.connected && "opacity-60",
                   )}
-                />
-                <span className="shrink-0 text-muted-foreground">
-                  {item.connected
-                    ? "connected"
-                    : item.required
-                      ? "required"
-                      : "optional"}
-                </span>
-              </li>
-            ))}
-            {systems.length > 3 ? (
-              <li className="text-muted-foreground">
-                +{systems.length - 3} more
-              </li>
-            ) : null}
-          </ul>
-        )}
-        {!ready ? (
-          <p className="mt-1 text-[11.5px] text-amber-800 dark:text-warning">
-            Connect required apps to install
-          </p>
-        ) : null}
-      </div>
-      <div className="flex flex-wrap items-start gap-2 pl-7 md:justify-end md:pl-0">
-        <PriceBadge asset={asset} />
-        <AssetSaveButton
-          slug={asset.slug}
-          assetId={asset.id}
-          size="icon"
-          variant="ghost"
-        />
-        {showPrimaryAction ? (
-          <Button
-            size="sm"
-            disabled={Boolean(busy)}
-            onClick={() => onInstall(asset)}
-            title={
-              blocked && !needsPurchase
-                ? "Connect required apps first"
-                : undefined
-            }
-          >
-            {busy === asset.id
-              ? "Installing…"
-              : needsPurchase
-                ? `Buy & install · ${formatAssetPrice(asset)}`
-                : blocked
-                  ? "Connect apps"
-                  : "Install"}
-          </Button>
-        ) : asset.installed ? (
-          <Button size="sm" variant="outline" asChild>
-            <Link href="/marketplace/installed">Installed</Link>
-          </Button>
-        ) : null}
-        <Button size="sm" variant="outline" onClick={() => onOpenDetail(asset)}>
-          Details
-        </Button>
-        {isAdmin ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={Boolean(busy)}
-            onClick={() => onClone(asset)}
-          >
-            {busy === `clone:${asset.id}` ? "Cloning…" : "Clone"}
-          </Button>
-        ) : null}
-      </div>
-      <details className="pl-7 md:col-span-3">
-        <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
-          {isOutcome ? "Under the hood" : "More about this pack"}
-        </summary>
-        <div className="mt-2 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <EntitlementBadge asset={asset} />
-            {asset.federated || asset.source === "partner_registry" ? (
-              <Badge variant="outline">Partner registry</Badge>
-            ) : null}
-            {asset.visibility === "internal" ? (
-              <Badge variant="outline">Internal</Badge>
-            ) : null}
-            <AssetTrustBadges asset={asset} />
-            {asset.installCount != null && asset.installCount > 0 ? (
-              <span className="text-[11px] text-muted-foreground">
-                {asset.installCount.toLocaleString()} installs
-              </span>
-            ) : null}
-            {asset.averageRating != null ? (
-              <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground">
-                <Star
-                  className="h-3 w-3 fill-warning text-warning"
-                  aria-hidden
-                />
-                {asset.averageRating.toFixed(1)}
-                {asset.reviewCount ? (
-                  <span> · {asset.reviewCount} reviews</span>
-                ) : null}
-              </span>
-            ) : null}
-          </div>
-          {(asset.tags ?? []).length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
-              {(asset.tags ?? []).map((tag) => (
-                <Badge key={tag} variant="outline" className="text-[10px]">
-                  {tag}
-                </Badge>
+                >
+                  <ProviderLogo provider={item.connectorType} label={item.label} size="sm" />
+                </li>
               ))}
-            </div>
+              {systems.length > 4 ? (
+                <li className="ml-1 text-xs tabular-nums text-muted-foreground">+{systems.length - 4}</li>
+              ) : null}
+            </ul>
           ) : null}
-          <PackContentsPreview items={asset.packItems} compact />
-          {!isAdmin && needsPurchase ? <NonAdminPurchaseNotice /> : null}
+          <span
+            className={cn(
+              "min-w-0 truncate text-xs",
+              missing > 0 && !asset.installed
+                ? "text-amber-800 dark:text-warning"
+                : "text-muted-foreground",
+            )}
+          >
+            {readiness}
+          </span>
         </div>
-      </details>
+
+        <div className="relative z-10 mt-3 flex items-center gap-1.5">
+          {showPrimaryAction ? (
+            <Button
+              size="sm"
+              className="flex-1"
+              disabled={Boolean(busy)}
+              onClick={() => onInstall(asset)}
+              title={blocked && !needsPurchase ? "Connect required apps first" : undefined}
+            >
+              {busy === asset.id
+                ? "Installing…"
+                : needsPurchase
+                  ? `Buy & install · ${formatAssetPrice(asset)}`
+                  : blocked
+                    ? "Connect apps"
+                    : "Install"}
+            </Button>
+          ) : asset.installed ? (
+            <Button size="sm" variant="outline" className="flex-1" asChild>
+              <Link href="/marketplace/installed">Manage install</Link>
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" className="flex-1" onClick={() => onOpenDetail(asset)}>
+              View details
+            </Button>
+          )}
+          <AssetSaveButton slug={asset.slug} assetId={asset.id} size="icon" variant="ghost" className="size-11 md:size-9" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="ghost" className="size-11 md:size-9" aria-label={`More actions for ${asset.title}`}>
+                <MoreHorizontal className="size-4" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem className="min-h-11 md:min-h-9" onSelect={() => onOpenDetail(asset)}>
+                More about this pack
+              </DropdownMenuItem>
+              {isAdmin ? (
+                <DropdownMenuItem
+                  className="min-h-11 md:min-h-9"
+                  disabled={Boolean(busy)}
+                  onSelect={() => onClone(asset)}
+                >
+                  {busy === `clone:${asset.id}` ? "Cloning…" : "Clone as private draft"}
+                </DropdownMenuItem>
+              ) : null}
+              {!isAdmin && needsPurchase ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <p className="px-2 py-1.5 text-xs text-muted-foreground">
+                    Paid listing. An org admin completes the purchase.
+                  </p>
+                </>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
     </article>
   )
 }
@@ -608,6 +586,45 @@ function MarketplaceAssetsContent() {
     return map
   }, [categories?.assetTypes])
 
+  const typeOptions = useMemo(
+    () =>
+      TYPE_FILTERS.map((filter) => ({
+        id: filter.id as string,
+        label: filter.label as string,
+        count:
+          filter.id === "all"
+            ? categories?.totalAssets
+            : typeCounts.get(filter.id),
+        primary: PRIMARY_TYPES.has(filter.id),
+      })).filter(
+        (option) =>
+          (isAdmin || option.id !== "capability_package") &&
+          (option.primary || Boolean(option.count) || typeFilter === option.id),
+      ),
+    [categories?.totalAssets, isAdmin, typeCounts, typeFilter],
+  )
+
+  const outcomeTiles = useMemo<OutcomeTile[]>(
+    () =>
+      OUTCOME_PATHS.map((path) => {
+        const facet =
+          departmentFacets.find(
+            (item) => item.key.toLowerCase() === path.department.toLowerCase(),
+          ) ??
+          (path.label === "Run IT"
+            ? departmentFacets.find((item) => item.key.toLowerCase() === "it")
+            : undefined)
+        return {
+          label: path.label,
+          detail: path.detail,
+          tone: path.tone,
+          department: facet?.key ?? path.department,
+          count: facet?.count,
+        }
+      }),
+    [departmentFacets],
+  )
+
   const activeDepartmentLabel = useMemo(() => {
     if (!departmentFilter) return null
     const match = departmentFacets.find(
@@ -740,329 +757,130 @@ function MarketplaceAssetsContent() {
     categories?.totalAssets,
   ])
 
+  const hasFilters =
+    typeFilter !== "all" ||
+    Boolean(departmentFilter) ||
+    priceFilter !== "all" ||
+    Boolean(debouncedSearch)
+  const clearFilters = () => {
+    setTypeFilter("all")
+    setDepartmentFilter(null)
+    setPriceFilter("all")
+    setSearch("")
+  }
+
   return (
     <AppShell title="Marketplace">
       {/* shrink-0 keeps AppShell's flex-col <main> from compressing the catalog
          so the grid can scroll with the page instead of clipping. */}
       <div
-        className="relative shrink-0 bg-[color:var(--g-canvas)] [&_[data-slot=button]]:min-h-11"
+        className="relative shrink-0 bg-[color:var(--g-canvas)] [&_[data-slot=button]]:min-h-11 md:[&_[data-slot=button]]:min-h-9"
         data-testid="marketplace-catalog-b"
         data-composition="discover"
       >
-        {/* Discovery hero: identity, search, and asset type as the primary axis */}
-        <section className="border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-canvas)] px-[var(--np-page-pad-sm)] pt-6 sm:px-[var(--np-page-pad)] sm:pt-9">
-          <div className="mx-auto max-w-[1240px]">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <section className="border-b border-[color:var(--g-border-subtle)] px-[var(--np-page-pad-sm)] pb-8 pt-6 sm:px-[var(--np-page-pad)] sm:pt-9">
+          <div className="mx-auto flex max-w-[1240px] flex-col gap-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div className="max-w-2xl">
-                <p className={TYPE.eyebrow}>Marketplace / Outcomes first</p>
-                <h1
-                  className={cn(
-                    TYPE.pageTitle,
-                    "mt-2 text-balance",
-                  )}
-                >
+                <p className={TYPE.eyebrow}>Marketplace</p>
+                <h1 className={cn(TYPE.pageTitle, "mt-2 text-balance")}>
                   Put Gravitre to work.
                 </h1>
-                <p className={cn(TYPE.pageLead, "mt-2")}>
-                  Start with the outcome. Gravitre assembles the intelligence
-                  underneath.
+                <p className={cn(TYPE.pageLead, "mt-2 text-pretty")}>
+                  Install ready-made outcomes: agents, workflows and knowledge,
+                  wired to the apps you already use.
                 </p>
               </div>
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-start gap-3 lg:justify-end">
-                  <AskGravitreSummonButton label="Find an outcome" prompt="Help me find a suitable outcome pack and inspect its required systems, permissions and reported readiness." />
-                  {isAdmin ? (
-                    <Button asChild size="sm" variant="outline">
-                      <Link href="/marketplace/capabilities">
-                        Skills & plugins
-                        <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
-                      </Link>
+              <div className="flex flex-wrap items-center gap-2">
+                <AskGravitreSummonButton label="Find an outcome" prompt="Help me find a suitable outcome pack and inspect its required systems, permissions and reported readiness." />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="min-h-11 gap-1.5 md:min-h-8">
+                      Manage
+                      <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden />
                     </Button>
-                  ) : null}
-                  <Button asChild size="sm" variant="outline">
-                    <Link href="/marketplace/installed">
-                      View installed
-                      <ChevronRight className="ml-1 h-4 w-4" aria-hidden />
-                    </Link>
-                  </Button>
-                </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-60">
+                    <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
+                      Your workspace
+                    </DropdownMenuLabel>
+                    {[
+                      { href: "/marketplace/installed", label: "Installed listings" },
+                      { href: "/marketplace/saved", label: "Saved for later" },
+                      ...(isAdmin
+                        ? [{ href: "/marketplace/capabilities", label: "Skills & plugins" }]
+                        : []),
+                    ].map((link) => (
+                      <DropdownMenuItem key={link.href} asChild className="min-h-11 md:min-h-9">
+                        <Link href={link.href}>{link.label}</Link>
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
+                      Partners
+                    </DropdownMenuLabel>
+                    {[
+                      { href: "/marketplace/connectors", label: "Partner connectors" },
+                      { href: "/marketplace/submit", label: "Submit a listing" },
+                      { href: "/connectors", label: "Connected apps" },
+                    ].map((link) => (
+                      <DropdownMenuItem key={link.href} asChild className="min-h-11 md:min-h-9">
+                        <Link href={link.href}>{link.label}</Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
-            <div className="mt-5 flex flex-col gap-5">
-              {!isLoading && !error && featuredOutcome ? (
-                <div className="order-2 md:order-1">
-                  <MarketplaceFeaturedOutcome
-                    asset={featuredOutcome}
-                    onPreview={openDetail}
-                  />
-                </div>
-              ) : null}
-              <div className="relative order-1 max-w-2xl md:order-3">
-                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search outcomes, plays and capabilities…"
-                  aria-label="Search marketplace"
-                  className="h-11 rounded-[12px] border-[color:var(--g-border-default)] bg-background pl-10 text-[14px] shadow-[0_8px_24px_-18px_rgb(16_24_40/0.3)]"
+            <div className="relative max-w-2xl">
+              <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              <Input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search agents, workflows, packs and apps"
+                aria-label="Search marketplace"
+                className="h-12 rounded-xl border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] pl-11 text-[15px]"
+              />
+            </div>
+
+            {!isLoading && !error && featuredOutcome && !hasFilters ? (
+              <MarketplaceFeaturedOutcome asset={featuredOutcome} onPreview={openDetail} />
+            ) : null}
+
+            <div>
+              <h2 className="text-[13px] font-semibold text-foreground">Start from an outcome</h2>
+              <div className="mt-3">
+                <MarketplaceOutcomeTiles
+                  tiles={outcomeTiles}
+                  activeDepartment={departmentFilter}
+                  onSelect={setDepartmentFilter}
                 />
               </div>
-              <div
-                className="order-3 grid gap-3 sm:grid-cols-2 md:order-2 lg:grid-cols-4"
-                aria-label="Browse by outcome"
-              >
-                {OUTCOME_PATHS.map((path) => {
-                  const facet =
-                    departmentFacets.find(
-                      (item) =>
-                        item.key.toLowerCase() ===
-                        path.department.toLowerCase(),
-                    ) ??
-                    (path.label === "Run IT"
-                      ? departmentFacets.find(
-                          (item) => item.key.toLowerCase() === "it",
-                        )
-                      : undefined)
-                  const department = facet?.key ?? path.department
-                  const active =
-                    departmentFilter?.toLowerCase() === department.toLowerCase()
-                  return (
-                    <button
-                      key={path.label}
-                      type="button"
-                      onClick={() =>
-                        setDepartmentFilter(active ? null : department)
-                      }
-                      aria-pressed={active}
-                      className={cn(
-                        "group relative min-h-[4.5rem] overflow-hidden rounded-[10px] border p-3 text-left transition-[transform,border-color,background-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-24 sm:p-4 motion-safe:hover:-translate-y-0.5",
-                        !active &&
-                          (path.tone === "electric"
-                            ? "bg-[color:color-mix(in_srgb,var(--g-electric)_7%,white)]"
-                            : path.tone === "coral"
-                              ? "bg-[color:color-mix(in_srgb,var(--g-warmth)_10%,white)]"
-                              : "bg-[color:var(--g-emerald-pale)]"),
-                        active
-                          ? "border-[color:var(--g-emerald)] bg-[color:var(--g-emerald-pale)] shadow-[0_14px_32px_-24px_rgba(0,127,95,.7)]"
-                          : "border-transparent hover:border-[color:var(--g-emerald)]",
-                      )}
-                    >
-                      <span className="block text-[14px] font-semibold text-[color:var(--g-text-primary)]">
-                        {path.label}
-                      </span>
-                      <span className="mt-1 block max-w-[18rem] text-xs leading-5 text-[color:var(--g-text-muted)]">
-                        {path.detail}
-                      </span>
-                      <span className="mt-2 flex items-center gap-2 text-xs font-medium text-[color:var(--g-emerald-deep)]">
-                        Explore{" "}
-                        <ChevronRight className="size-3.5" aria-hidden />
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div
-              role="group"
-              aria-label="Asset type"
-              className={cn(HUB_TABS.nav, "mt-6")}
-            >
-              {TYPE_FILTERS.map((filter) => {
-                if (!isAdmin && filter.id === "capability_package") return null
-                const count =
-                  filter.id === "all"
-                    ? categories?.totalAssets
-                    : typeCounts.get(filter.id)
-                const isMarketplace3Type = [
-                  "play",
-                  "outcome_pack",
-                  "dataset_pack",
-                  "dashboard_pack",
-                ].includes(filter.id)
-                if (isMarketplace3Type && !count && typeFilter !== filter.id)
-                  return null
-                return (
-                  <button
-                    key={filter.id}
-                    type="button"
-                    aria-pressed={typeFilter === filter.id}
-                    onClick={() => setTypeFilter(filter.id)}
-                    className={cn(
-                      HUB_TABS.link,
-                      typeFilter === filter.id
-                        ? HUB_TABS.active
-                        : HUB_TABS.idle,
-                    )}
-                  >
-                    {filter.label}
-                    {typeof count === "number" ? (
-                      <span className="ml-1 tabular-nums text-[color:var(--g-text-muted)]">
-                        {count}
-                      </span>
-                    ) : null}
-                  </button>
-                )
-              })}
             </div>
           </div>
         </section>
 
-        <div className="mx-auto grid max-w-[1240px] gap-6 px-[var(--np-page-pad-sm)] py-5 sm:px-[var(--np-page-pad)] lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8">
-          <aside
-            className="min-w-0 space-y-5 lg:sticky lg:top-4 lg:self-start"
-            aria-label="Refine"
-          >
-            <nav aria-label="Departments" className="space-y-0.5">
-              <p className="px-2 pb-1 text-[12px] font-semibold text-foreground">
-                Departments
-              </p>
-              <div className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
-                {[
-                  {
-                    key: null as string | null,
-                    count: categories?.totalAssets ?? 0,
-                  },
-                  ...departmentFacets,
-                ].map((facet) => {
-                  const active = departmentFilter === facet.key
-                  return (
-                    <button
-                      key={facet.key ?? "all"}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => setDepartmentFilter(facet.key)}
-                      className={cn(
-                        "flex shrink-0 items-center justify-between gap-3 rounded-[8px] px-2 py-1.5 text-left text-[13px] capitalize transition-colors",
-                        active
-                          ? "bg-[color:var(--g-brand-soft)] font-medium text-[color:var(--g-text-primary)]"
-                          : "text-[color:var(--g-text-muted)] hover:bg-[color:var(--g-surface-1)] hover:text-[color:var(--g-text-primary)]",
-                      )}
-                    >
-                      <span className="truncate">
-                        {facet.key
-                          ? facet.key.replace(/_/g, " ")
-                          : "All departments"}
-                      </span>
-                      <span className="text-[11.5px] tabular-nums text-[color:var(--g-text-muted)]">
-                        {facet.count}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </nav>
-            <div className="space-y-1.5 px-2">
-              <p className="text-[12px] font-semibold text-foreground">Price</p>
-              <SegmentedControl
-                options={PRICE_FILTERS}
-                value={priceFilter}
-                onChange={setPriceFilter}
-                ariaLabel="Filter by price"
-              />
-            </div>
-            <nav
-              aria-label="More marketplace"
-              className="hidden space-y-0.5 lg:block"
-            >
-              <p className="px-2 pb-1 text-[12px] font-semibold text-foreground">
-                More
-              </p>
-              {[
-                { href: "/marketplace/submit", label: "Partner submissions" },
-                {
-                  href: "/marketplace/connectors",
-                  label: "Partner connectors",
-                },
-                { href: "/connectors", label: "Connectors" },
-              ].map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="block rounded-[8px] px-2 py-1.5 text-[13px] text-[color:var(--g-text-muted)] transition-colors hover:bg-[color:var(--g-surface-1)] hover:text-foreground"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
-            <details className="hidden px-2 lg:block">
-              <summary className="g-disclosure cursor-pointer py-1">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Catalog
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Counts reflect your current search and filters.
-                </p>
-              </summary>
-              <section className="grid gap-2 py-2">
-                <GravitreMetric
-                  label="Catalog packs"
-                  value={
-                    categories
-                      ? categories.totalAssets == null
-                        ? "Not reported"
-                        : categories.totalAssets.toLocaleString()
-                      : "—"
-                  }
-                  hint="Published assets"
-                />
-                <GravitreMetric
-                  label="In view"
-                  value={isLoading ? "—" : visibleAssets.length}
-                  hint={
-                    activeDepartmentLabel
-                      ? activeDepartmentLabel
-                      : "Current filters"
-                  }
-                />
-                <GravitreMetric
-                  label="Installed (view)"
-                  value={
-                    isLoading
-                      ? "—"
-                      : visibleAssets.filter((a) => a.installed).length
-                  }
-                  hint="Among loaded results"
-                />
-              </section>
-            </details>
-          </aside>
+        <div className="mx-auto max-w-[1240px] px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]">
+          <MarketplaceCatalogToolbar
+            types={typeOptions}
+            typeValue={typeFilter}
+            onTypeChange={setTypeFilter}
+            departments={departmentFacets}
+            departmentValue={departmentFilter}
+            onDepartmentChange={setDepartmentFilter}
+            priceValue={priceFilter}
+            onPriceChange={setPriceFilter}
+            hasFilters={hasFilters}
+            onClear={clearFilters}
+          />
 
-          <div className="min-w-0 space-y-4">
-            {/* Result meta + clear */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-muted-foreground">
-                {isLoading
-                  ? "Loading catalog…"
-                  : `${visibleAssets.length} ${visibleAssets.length === 1 ? "pack" : "packs"}`}
-                {activeDepartmentLabel ? (
-                  <span className="capitalize"> · {activeDepartmentLabel}</span>
-                ) : null}
-              </p>
-              {typeFilter !== "all" ||
-              departmentFilter ||
-              priceFilter !== "all" ||
-              debouncedSearch ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setTypeFilter("all")
-                    setDepartmentFilter(null)
-                    setPriceFilter("all")
-                    setSearch("")
-                  }}
-                >
-                  Clear filters
-                </Button>
-              ) : null}
-            </div>
-
+          <div className="mt-5 flex flex-col gap-8">
             {error || federatedError || categoryError ? (
               <div
                 role="alert"
-                className="space-y-2 border-l-2 border-[color:var(--g-warmth)] pl-4 text-sm"
+                className="flex flex-col items-start gap-2 border-l-2 border-[color:var(--g-warmth)] pl-4 text-sm"
               >
                 <p>
                   Some catalog data could not be refreshed. Loaded assets remain
@@ -1082,10 +900,11 @@ function MarketplaceAssetsContent() {
                 </Button>
               </div>
             ) : null}
+
             {isLoading && !data ? (
               <div
                 data-review-surface="marketplace-discovery"
-                className="divide-y divide-[color:var(--g-border-subtle)] border-y border-[color:var(--g-border-default)]"
+                className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
               >
                 {Array.from({ length: 6 }).map((_, index) => (
                   <AssetCardSkeleton key={index} />
@@ -1094,31 +913,33 @@ function MarketplaceAssetsContent() {
             ) : !data && !federatedData ? null : visibleAssets.length === 0 ? (
               <GravitreEmpty
                 title={emptyMessage}
-                hint="Adjust filters or clear search to see more packs."
+                hint="Adjust filters or clear search to see more listings."
               />
             ) : (
-              <div className="space-y-8">
+              <>
                 <section
                   data-review-surface="marketplace-discovery"
                   aria-labelledby="marketplace-discovery-heading"
                 >
-                  <h2
-                    id="marketplace-discovery-heading"
-                    className={TYPE.sectionTitle}
-                  >
-                    Plays and outcome packs
-                  </h2>
-                  <p className={cn(TYPE.meta, "mt-1")}>
-                    Choose the result. Reveal the machinery when you need it.
-                  </p>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h2 id="marketplace-discovery-heading" className={TYPE.sectionTitle}>
+                      Catalog
+                    </h2>
+                    <p className={TYPE.meta}>
+                      {discoveryAssets.length}{" "}
+                      {discoveryAssets.length === 1 ? "listing" : "listings"}
+                      {activeDepartmentLabel ? (
+                        <span className="capitalize"> · {activeDepartmentLabel}</span>
+                      ) : null}
+                    </p>
+                  </div>
                   {discoveryAssets.length === 0 ? (
                     <p className="mt-3 text-sm text-muted-foreground">
-                      No uninstalled packs match these filters. Installed packs
-                      are listed under ops below.
+                      Everything matching these filters is already installed.
                     </p>
                   ) : (
                     <div
-                      className="mt-3 divide-y divide-[color:var(--g-border-subtle)] border-y border-[color:var(--g-border-default)]"
+                      className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
                       data-testid="marketplace-scan-list"
                     >
                       {discoveryAssets.map((asset) => (
@@ -1137,34 +958,38 @@ function MarketplaceAssetsContent() {
                 </section>
                 {installedInView.length > 0 ? (
                   <section data-review-surface="marketplace-ops">
-                    <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">
-                      Installed in this workspace
-                    </h2>
-                    <p className={cn(TYPE.meta, "mt-0.5")}>
-                      Already in this workspace. Open the installed list to
-                      manage.
-                    </p>
-                    <ul className="mt-3 divide-y divide-divide border-y border-divide">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+                        Installed in this workspace
+                      </h2>
+                      <Link
+                        href="/marketplace/installed"
+                        className="inline-flex min-h-11 items-center gap-1 text-[13px] font-medium text-[color:var(--g-emerald)] hover:underline md:min-h-0"
+                      >
+                        Manage all
+                        <ChevronRight className="size-3.5" aria-hidden />
+                      </Link>
+                    </div>
+                    <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                       {installedInView.map((asset) => (
-                        <li
-                          key={asset.id}
-                          className="flex items-center justify-between gap-3 py-2.5"
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-foreground">
+                        <li key={asset.id}>
+                          <button
+                            type="button"
+                            onClick={() => openDetail(asset)}
+                            className="flex min-h-14 w-full items-center gap-3 rounded-lg border border-[color:var(--g-border-subtle)] px-3 text-left transition-colors hover:border-[color:var(--g-text-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <AssetMark asset={asset} />
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                               {asset.title}
-                            </p>
-                            <p className={cn(TYPE.meta, "mt-0.5")}>Installed</p>
-                          </div>
-                          <Button size="sm" variant="outline" asChild>
-                            <Link href="/marketplace/installed">Manage</Link>
-                          </Button>
+                            </span>
+                            <span className="text-xs text-[color:var(--g-emerald)]">Installed</span>
+                          </button>
                         </li>
                       ))}
                     </ul>
                   </section>
                 ) : null}
-              </div>
+              </>
             )}
           </div>
         </div>

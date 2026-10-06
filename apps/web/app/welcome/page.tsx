@@ -437,7 +437,7 @@ function StepShell({
       className="space-y-4"
     >
       <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-[color:var(--g-emerald-pale)] ring-1 ring-[color:var(--g-emerald)]/25">
+        <div className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-[color:color-mix(in_oklab,var(--g-emerald)_14%,var(--g-surface-1))] ring-1 ring-[color:var(--g-emerald)]/25">
           <Icon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
         </div>
         <div>

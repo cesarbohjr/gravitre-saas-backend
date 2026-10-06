@@ -663,7 +663,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href={APP_ROUTES.activity}
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground md:min-h-0"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to activity
@@ -699,20 +699,34 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           <section data-review-surface="run-outcome" className="space-y-2 border-b border-divide pb-4">
             <p className={TYPE.eyebrow}>Evidence</p>
             <p className={cn(TYPE.meta)}>{headerDescription}</p>
-            <ul className="space-y-1.5 text-sm text-foreground">
-              <li>
-                Terminal: {run.status.replace(/_/g, " ")}
-              </li>
-              <li>Systems: {recordedSystems.length ? recordedSystems.join(", ") : "None recorded"}</li>
-              <li>Actions: {recordedActions.length ? recordedActions.join(", ") : "None recorded"}</li>
-              <li>Output: {recordedOutput ?? "None recorded"}</li>
-              <li>
-                Recoveries:{" "}
-                {compensationSummary
-                  ? `${compensationSummary.compensated} compensated · ${compensationSummary.failed} failed`
-                  : "None recorded"}
-              </li>
-            </ul>
+            <dl className="mt-3 grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
+              {(
+                [
+                  ["Terminal", run.status.replace(/_/g, " ")],
+                  ["Systems", recordedSystems.length ? recordedSystems.join(", ") : null],
+                  ["Actions", recordedActions.length ? recordedActions.join(" → ") : null],
+                  ["Output", recordedOutput ?? null],
+                  [
+                    "Recoveries",
+                    compensationSummary
+                      ? `${compensationSummary.compensated} compensated · ${compensationSummary.failed} failed`
+                      : null,
+                  ],
+                ] as Array<[string, string | null]>
+              ).map(([label, value]) => (
+                <div key={label} className="contents">
+                  <dt className="text-muted-foreground">{label}</dt>
+                  <dd
+                    className={cn(
+                      "min-w-0 text-pretty first-letter:uppercase",
+                      value ? "text-foreground" : "text-muted-foreground/70",
+                    )}
+                  >
+                    {value ?? "None recorded"}
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </section>
 
           {businessOutcome ? (

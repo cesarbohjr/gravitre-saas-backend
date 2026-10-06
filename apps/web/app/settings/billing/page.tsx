@@ -806,12 +806,12 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                       {autoRenewEnabled ? (
                         <>
                           Your {currentPlan!.name} plan renews automatically
-                          {renewalLabel ? ` — ${renewalLabel.toLowerCase()}` : ""}.
+                          {renewalLabel ? ` — ${renewalLabel.charAt(0).toLowerCase()}${renewalLabel.slice(1)}` : ""}.
                         </>
                       ) : (
                         <>
                           Auto-renew is off
-                          {renewalLabel ? ` — ${renewalLabel.toLowerCase()}` : ""}. Turn it back on
+                          {renewalLabel ? ` — ${renewalLabel.charAt(0).toLowerCase()}${renewalLabel.slice(1)}` : ""}. Turn it back on
                           anytime before access ends.
                         </>
                       )}

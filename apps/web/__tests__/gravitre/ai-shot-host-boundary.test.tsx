@@ -14,6 +14,7 @@ vi.mock("@/app/ai/_components/ai-workspace", () => ({ AiWorkspace: () => {
   return <div data-runtime="" data-user={auth?.user?.id ?? "none"} />
 } }))
 vi.mock("@/components/gravitre/app-shell", () => ({ AppShell: ({ children }: { children: React.ReactNode }) => <main data-app-shell="">{children}</main> }))
+vi.mock("next/navigation", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/navigation")>()), useSearchParams: () => new URLSearchParams() }))
 vi.mock("framer-motion", () => ({ LayoutGroup: ({ children }: { children: React.ReactNode }) => <>{children}</> }))
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 let host: HTMLDivElement, root: Root

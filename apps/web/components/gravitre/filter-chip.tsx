@@ -32,7 +32,7 @@ export function FilterChip({ label, active, onClick, icon: Icon, count, classNam
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-1.5 border px-3 py-1.5 text-sm font-medium",
+        "inline-flex min-h-11 items-center gap-1.5 border px-3 py-1.5 text-sm font-medium sm:min-h-0",
         RADIUS.control,
         INTERACTION,
         active
@@ -108,8 +108,8 @@ export function SegmentedControl<T extends string>({
             aria-label={iconOnly ? option.label : undefined}
             onClick={() => onChange(option.id)}
             className={cn(
-              "relative inline-flex items-center justify-center gap-1.5 text-xs font-medium",
-              iconOnly ? "p-2" : "px-3 py-1",
+              "relative inline-flex min-h-11 items-center justify-center gap-1.5 text-xs font-medium sm:min-h-0",
+              iconOnly ? "min-w-11 p-2 sm:min-w-0" : "px-3 py-1",
               RADIUS.control,
               INTERACTION,
               active ? "text-primary" : "text-muted-foreground hover:text-foreground",

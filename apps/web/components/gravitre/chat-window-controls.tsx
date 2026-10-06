@@ -60,16 +60,22 @@ export function ChatWindowControls({
   leading?: ReactNode
   className?: string
 }) {
-  const ids = controlsForSurface(surface)
+  // A manifest entry with no handler would render a button that does nothing,
+  // which is worse than the missing control it was meant to fix.
+  const ids = controlsForSurface(surface).filter((id) => handlers[id])
+  const layoutIds = ids.filter((id) => id !== "minimizeToHelper")
+  const hasClose = ids.includes("minimizeToHelper")
+
+  // Three groups, left to right: panels (leading), window layout, close. The
+  // dividers let the eye find "close" without scanning a row of look-alike icons.
+  const divider = <span aria-hidden className="mx-1 h-4 w-px shrink-0 bg-[color:var(--g-border-default)]" />
 
   return (
     <div className={className ?? "flex flex-wrap items-center justify-end gap-0.5"}>
       {leading}
-      {ids.map((id) => {
-        const onClick = handlers[id]
-        // A manifest entry with no handler would render a button that does
-        // nothing, which is worse than the missing control it was meant to fix.
-        if (!onClick) return null
+      {leading && layoutIds.length > 0 ? divider : null}
+      {[...layoutIds, ...(hasClose ? (["minimizeToHelper"] as const) : [])].map((id) => {
+        const onClick = handlers[id]!
         const label = CHAT_WINDOW_CONTROL_LABELS[id]
         const Icon = ICONS[id]
         return (
