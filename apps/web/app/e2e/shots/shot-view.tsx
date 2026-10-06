@@ -27,6 +27,9 @@ import AiWorkspaceProofPage from "./_components/ai-workspace-proof-page"
 import AgentChatProofPage from "./_components/agent-chat-proof-page"
 import NotificationsPage from "@/app/notifications/page"
 import LiteTasksPage from "@/app/lite/tasks/page"
+import LiteAssignPage from "@/app/lite/assign/page"
+import LiteResultsPage from "@/app/lite/results/page"
+import LiteDeliverablesPage from "@/app/lite/deliverables/page"
 import WelcomePage from "@/app/welcome/page"
 
 import { GravitreAIWorkspaceHost } from "@/components/gravitre/ai-workspace-host"
@@ -70,6 +73,9 @@ export const SHOT_SURFACES = {
   "agent-chat": AgentChatProofPage,
   notifications: NotificationsPage,
   "lite-tasks": LiteTasksPage,
+  "lite-assign": LiteAssignPage,
+  "lite-results": LiteResultsPage,
+  "lite-deliverables": LiteDeliverablesPage,
   welcome: WelcomePage,
 } as const
 

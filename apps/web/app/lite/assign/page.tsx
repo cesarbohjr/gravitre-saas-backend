@@ -77,13 +77,14 @@ function LiteAssignContent() {
       loadingLabel="Loading workflows"
     >
       <Card className="space-y-4 p-4">
-        <div>
-          <p className="mb-2 text-sm font-medium">Workflow</p>
+        <div role="group" aria-labelledby="lite-assign-workflow-label">
+          <p id="lite-assign-workflow-label" className="mb-2 text-sm font-medium">Workflow</p>
           <div className="grid gap-2">
             {(data?.workflows ?? []).map((workflow, index) => (
               <motion.button
                 key={workflow.id}
                 type="button"
+                aria-pressed={workflowId === workflow.id}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: Math.min(index, 8) * 0.04, type: "spring", stiffness: 380, damping: 30 }}
@@ -114,18 +115,33 @@ function LiteAssignContent() {
         </div>
 
         <div>
-          <p className="mb-2 text-sm font-medium">Task notes</p>
-          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <label htmlFor="lite-assign-notes" className="mb-2 block text-sm font-medium">
+            Notes for your team
+          </label>
+          <Textarea
+            id="lite-assign-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="What should they focus on? Any deadlines or exceptions?"
+          />
         </div>
 
         <div>
-          <p className="mb-2 text-sm font-medium">Inputs (JSON)</p>
-          <Input value={inputsRaw} onChange={(e) => setInputsRaw(e.target.value)} />
-          {selectedWorkflow?.required_inputs?.length ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Required inputs: {selectedWorkflow.required_inputs.join(", ")}
-            </p>
-          ) : null}
+          <label htmlFor="lite-assign-inputs" className="mb-2 block text-sm font-medium">
+            Inputs <span className="font-normal text-muted-foreground">(optional, JSON)</span>
+          </label>
+          <Input
+            id="lite-assign-inputs"
+            value={inputsRaw}
+            onChange={(e) => setInputsRaw(e.target.value)}
+            className="font-mono"
+            aria-describedby="lite-assign-inputs-hint"
+          />
+          <p id="lite-assign-inputs-hint" className="mt-2 text-xs text-muted-foreground">
+            {selectedWorkflow?.required_inputs?.length
+              ? `This workflow needs: ${selectedWorkflow.required_inputs.join(", ")}.`
+              : "Leave as {} if the workflow needs nothing extra."}
+          </p>
         </div>
 
         <Button onClick={handleSubmit} disabled={submitting} className="gap-2">
@@ -134,7 +150,7 @@ function LiteAssignContent() {
           ) : (
             <Icon name="play" size="sm" />
           )}
-          {submitting ? "Assigning..." : "Assign Task"}
+          {submitting ? "Assigning…" : "Assign task"}
         </Button>
       </Card>
     </LitePageShell>

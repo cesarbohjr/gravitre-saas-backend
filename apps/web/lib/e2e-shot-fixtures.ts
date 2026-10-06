@@ -1247,6 +1247,76 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       },
     ],
   },
+  "/api/lite/workflows": {
+    workflows: [
+      {
+        id: "wf_invoice_chase",
+        name: "Chase overdue invoices",
+        description: "Sends polite, escalating reminders and flags disputes for a person.",
+        required_inputs: ["Customer list"],
+      },
+      {
+        id: "wf_lead_enrich",
+        name: "Enrich inbound leads",
+        description: "Adds company, role and fit score to new leads.",
+        required_inputs: ["HubSpot list"],
+      },
+      {
+        id: "wf_weekly_report",
+        name: "Weekly pipeline report",
+        description: "Summarizes pipeline changes into a one-page brief.",
+        required_inputs: [],
+      },
+    ],
+  },
+  "/api/lite/results": {
+    summary: {
+      period: "30d",
+      tasks_completed: 42,
+      success_rate: 92.86,
+      avg_completion_time_hours: 1.6,
+      by_workflow: [
+        { workflow_name: "Chase overdue invoices", count: 18 },
+        { workflow_name: "Enrich inbound leads", count: 15 },
+        { workflow_name: "Weekly pipeline report", count: 9 },
+      ],
+    },
+    recent: [
+      {
+        id: "lt_weekly_report",
+        workflow_id: "wf_weekly_report",
+        workflow_name: "Weekly pipeline report",
+        status: "completed",
+        progress: 100,
+        input_summary: "Week of Sep 28",
+        created_at: "2026-10-04T08:00:00Z",
+      },
+    ],
+  },
+  "/api/lite/deliverables": {
+    deliverables: [
+      {
+        id: "dl_pipeline_brief",
+        task_id: "lt_weekly_report",
+        task_name: "Weekly pipeline report",
+        name: "Pipeline brief - week of Sep 28.pdf",
+        type: "pdf",
+        size_bytes: 284_000,
+        download_url: "/api/lite/deliverables/dl_pipeline_brief/download",
+        created_at: "2026-10-04T08:12:00Z",
+      },
+      {
+        id: "dl_invoice_log",
+        task_id: "lt_invoice_chase",
+        task_name: "Chase overdue invoices",
+        name: "Reminder log.csv",
+        type: "csv",
+        size_bytes: 18_400,
+        download_url: "/api/lite/deliverables/dl_invoice_log/download",
+        created_at: "2026-10-03T16:40:00Z",
+      },
+    ],
+  },
   "/api/settings/organization": {
     organization: {
       id: DEMO_ORG_ID,
