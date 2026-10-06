@@ -44,19 +44,25 @@ export function PlayRunControl({ playKey, installation, readiness }: { playKey: 
     }
   }
 
-  if (!installation) return <p className="text-xs text-muted-foreground">Save Play setup before running it.</p>
+  const note = (text: string) => (
+    <div className="flex items-start gap-3 rounded-[12px] border border-divide bg-[color:var(--g-surface-1)] p-4">
+      <ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+      <p className="text-[13px] leading-5 text-muted-foreground">{text}</p>
+    </div>
+  )
+  if (!installation) return note("Save Play setup before running it.")
   if (installation.operatingMode === "OBSERVE" || installation.operatingMode === "RECOMMEND") {
-    return <p className="text-xs text-muted-foreground">This operating mode does not take external action. Action execution is available only after you explicitly choose an action mode.</p>
+    return note("This operating mode does not take external action. Action execution is available only after you explicitly choose an action mode.")
   }
   if (installation.operatingMode === "ACT WITHIN POLICY") {
-    return <p className="text-xs text-muted-foreground">Act within policy stays locked until effective runtime action authorization can be proven for this Play.</p>
+    return note("Act within policy stays locked until effective runtime action authorization can be proven for this Play.")
   }
 
   return (
-    <div className="rounded-xl border border-divide p-4">
-      <div className="flex items-start justify-between gap-4">
+    <div className="rounded-[12px] border border-divide bg-[color:var(--g-surface-1)] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-sm font-medium"><ShieldCheck className="size-4" />Run with approval</div>
+          <div className="flex items-center gap-2 text-[15px] font-semibold"><ShieldCheck className="size-4 text-[color:var(--g-emerald)]" />Run with approval</div>
           <p className="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">Starts the workflows linked to this Play. Consequential actions remain in Gravitre&apos;s existing approval queue and cannot execute until approved.</p>
         </div>
         <Button onClick={runPlay} disabled={!canRun || running} aria-describedby={!canRun ? "play-run-disabled-reason" : undefined}>

@@ -95,6 +95,12 @@ type Props = {
   density?: "chat" | "timeline" | "export"
   /** When ActivityTracePanel renders TRACE, hide duplicate timeline steps here. */
   suppressTimeline?: boolean
+  /**
+   * Render straight onto the surrounding pane instead of as a card inside it.
+   * The Activity inspector already is the frame; a second boxed card read as a
+   * small window inside a window.
+   */
+  flush?: boolean
 }
 
 /**
@@ -250,6 +256,7 @@ export function BusinessOutcomeView({
   className,
   density = "chat",
   suppressTimeline = false,
+  flush = false,
 }: Props) {
   const sections = outcome.sections || {}
   const state = resolveOutcomeState(outcome)
@@ -286,6 +293,7 @@ export function BusinessOutcomeView({
         density === "chat" && "border-l-2",
         density === "chat" && style.accent,
         density === "timeline" && state === "flagged" && "border-l-2 border-l-warning",
+        flush && "rounded-none border-0 bg-transparent px-0 py-0 shadow-none",
         className,
       )}
       data-business-outcome-id={outcome.id}
@@ -305,7 +313,8 @@ export function BusinessOutcomeView({
               "flex items-start justify-between gap-2",
               // In the inspector the card scrolls inside a fixed-height pane, so
               // pin the identity of what you're reading to the top.
-              collapsibleSections && "sticky top-0 z-10 -mx-0.5 bg-[color:var(--g-surface-2)]/95 px-0.5 py-0.5 backdrop-blur-sm",
+              collapsibleSections && "sticky top-0 z-10 -mx-0.5 px-0.5 py-0.5 backdrop-blur-sm",
+              collapsibleSections && (flush ? "bg-[color:var(--g-surface-1)]/95" : "bg-[color:var(--g-surface-2)]/95"),
             )}
           >
             <p className="min-w-0 break-words font-medium text-foreground">{outcome.title || "Outcome"}</p>
@@ -549,9 +558,22 @@ export function BusinessOutcomeView({
           ) : null}
 
           {density !== "chat" && outcome.pipelineStagesCompleted?.length ? (
-            <p className="mt-3 text-[10px] text-muted-foreground">
-              Pipeline: {outcome.pipelineStagesCompleted.join(" → ")}
-            </p>
+            <div className="mt-4">
+              <p className="text-[11px] font-medium text-muted-foreground">Pipeline</p>
+              <ol className="mt-1.5 flex flex-wrap items-center gap-1" aria-label="Completed pipeline stages">
+                {outcome.pipelineStagesCompleted.map((stage, index) => (
+                  <li key={`${stage}-${index}`} className="flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[color:var(--g-emerald-pale)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--g-brand-active)] dark:bg-[color:var(--g-emerald-soft)] dark:text-[color:var(--g-brand)]">
+                      <span className="size-1.5 rounded-full bg-[color:var(--g-emerald)]" aria-hidden />
+                      {stage.replace(/[_-]+/g, " ")}
+                    </span>
+                    {index < (outcome.pipelineStagesCompleted?.length ?? 0) - 1 ? (
+                      <span className="h-px w-2 bg-[color:var(--g-border-default)]" aria-hidden />
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+            </div>
           ) : null}
         </div>
       </div>

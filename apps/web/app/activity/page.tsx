@@ -30,7 +30,7 @@ import {
 } from "@/components/gravitre/nodus-product"
 import { formatStatusLabel } from "@/components/gravitre/status-badge"
 import { StatusChip } from "@/components/gravitre/visual"
-import { ExtrovertSummary } from "@/components/gravitre/extrovert-summary"
+import { ActivityStatStrip } from "@/components/activity/activity-stat-strip"
 import { summarizeActivityView } from "@/lib/activity-view-summary"
 import { ListSkeleton } from "@/components/gravitre/loading-state"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
@@ -363,7 +363,8 @@ function ActivityPageInner() {
       <div className="relative flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)] lg:overflow-hidden" data-composition="operate">
 
         <GravitrePageHeader
-          className="relative z-10 shrink-0 bg-[color:var(--g-canvas)]"
+          family="expert"
+          className="relative z-10 shrink-0"
           eyebrow="Operate / Work in motion"
           title="Activity"
           description="Work in motion. Outcomes, exceptions and evidence—without the noise."
@@ -392,7 +393,8 @@ function ActivityPageInner() {
             </div>
           }
         >
-          <div className="-mb-px flex gap-5 border-b border-[color:var(--g-border-default)]" aria-label="Activity views">
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+          <div className="-mb-px flex gap-5" aria-label="Activity views">
             {activityTabs.map((item) => {
               const active = tab === item.id
               return (
@@ -418,18 +420,18 @@ function ActivityPageInner() {
               )
             })}
           </div>
-        </GravitrePageHeader>
-        {tab !== "failures" ? (
-          <div className="shrink-0 px-[var(--np-page-pad-sm)] pb-4 sm:px-[var(--np-page-pad)]">
-            <ExtrovertSummary label="Activity counts in current view" items={[
-              { label: "Running", value: isPanelLoading || panelError ? null : viewSummary.running },
-              { label: "Needs approval", value: isPanelLoading || panelError ? null : viewSummary.approval, tone: "attention" },
-              { label: "Completed", value: isPanelLoading || panelError ? null : viewSummary.completed },
-              { label: "Verified", value: isPanelLoading || panelError ? null : viewSummary.verified, tone: "brand" },
-            ]} />
-            <p className="mt-2 text-xs text-muted-foreground">Counts reflect loaded results and current filters.</p>
+          {tab !== "failures" ? (
+            <ActivityStatStrip
+              items={[
+                { label: "running", value: isPanelLoading || panelError ? null : viewSummary.running, tone: "info" },
+                { label: "need approval", value: isPanelLoading || panelError ? null : viewSummary.approval, tone: "attention" },
+                { label: "completed", value: isPanelLoading || panelError ? null : viewSummary.completed, tone: "neutral" },
+                { label: "verified", value: isPanelLoading || panelError ? null : viewSummary.verified, tone: "brand" },
+              ]}
+            />
+          ) : null}
           </div>
-        ) : null}
+        </GravitrePageHeader>
 
         <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-3.5 lg:overflow-hidden">
 
@@ -1004,14 +1006,18 @@ function ActivityPageInner() {
                         exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
                         transition={{ duration: MOTION.base }}
                       >
-                        <p className={TYPE.eyebrow}>Outcome</p>
-                        <div className="mt-3 space-y-4">
-                          <ActivityTracePanel outcome={selectedOutcome} />
+                        {/* The outcome reads directly on the pane (no inner card), result
+                            first, then how it got there. */}
+                        <div className="space-y-5">
                           <BusinessOutcomeView
                             outcome={selectedOutcome}
                             density="timeline"
                             suppressTimeline
+                            flush
                           />
+                          <div className="border-t border-divide pt-4">
+                            <ActivityTracePanel outcome={selectedOutcome} />
+                          </div>
                         </div>
                       </motion.div>
                     </AnimatePresence>
