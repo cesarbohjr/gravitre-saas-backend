@@ -7,6 +7,7 @@ from collections import defaultdict, deque
 from datetime import datetime, timezone
 from typing import Any
 
+from app.workflows.branching import edge_branches, normalize_paths, slug as branch_slug
 from app.workflows.constants import SCHEMA_VERSION
 from app.workflows.repository import (
     create_workflow_edge,
@@ -304,14 +305,34 @@ def _node_to_step(node: dict[str, Any], nodes_by_id: dict[str, dict], edges: lis
         decision_cfg = metadata.get("decisionConfig") if isinstance(metadata.get("decisionConfig"), dict) else {}
         if not decision_cfg and isinstance(config.get("decisionConfig"), dict):
             decision_cfg = config.get("decisionConfig")
+        strategy = str(decision_cfg.get("strategy") or config.get("strategy") or "rule-based")
+        # The decision-level text is the expression for rules and the instructions for AI.
+        decision_text = str(decision_cfg.get("conditions") or "").strip()
         expression = (
-            decision_cfg.get("conditions")
-            or decision_cfg.get("expression")
-            or config.get("expression")
+            config.get("expression")
             or config.get("condition")
-            or ""
+            or decision_cfg.get("expression")
+            or (decision_text if strategy == "rule-based" else "")
         )
-        branches = decision_cfg.get("outputPaths") or decision_cfg.get("output_paths") or config.get("branches") or {}
+        raw_paths = (
+            metadata.get("outputPaths")
+            or decision_cfg.get("outputPaths")
+            or decision_cfg.get("output_paths")
+            or config.get("outputPaths")
+            or config.get("branches")
+            or []
+        )
+        paths = normalize_paths(raw_paths)
+        if node_type == "if" and str(expression or "").strip():
+            # IF keeps its test on the node; the non-default path is "taken when it holds".
+            for path in paths:
+                if not path["is_default"] and not path["condition"]:
+                    path["condition"] = str(expression).strip()
+        node_aliases: dict[str, str] = {}
+        for other_id, other in nodes_by_id.items():
+            other_name = other.get("name") or other.get("title")
+            if other_name:
+                node_aliases.setdefault(branch_slug(other_name), str(other_id))
         return {
             "id": step_id,
             "name": name,
@@ -319,8 +340,11 @@ def _node_to_step(node: dict[str, Any], nodes_by_id: dict[str, dict], edges: lis
             "config": {
                 "builder_node_type": node_type,
                 "expression": expression,
-                "strategy": decision_cfg.get("strategy") or config.get("strategy") or "rule-based",
-                "branches": branches,
+                "strategy": strategy,
+                "paths": paths,
+                "objective": decision_cfg.get("objective") or "",
+                "instructions": decision_text if strategy != "rule-based" else "",
+                "node_aliases": node_aliases,
                 "default_branch": decision_cfg.get("defaultPath")
                 or decision_cfg.get("default_branch")
                 or config.get("default_branch")
@@ -921,8 +945,11 @@ def sync_builder_graph(
             payload={
                 "from_node_id": from_id,
                 "to_node_id": to_id,
-                "edge_type": raw.get("edge_type") or raw.get("edgeType"),
-                "condition": raw.get("condition"),
+                "edge_type": raw.get("edge_type")
+                or raw.get("edgeType")
+                or ("branch" if edge_branches(raw) else None),
+                "condition": raw.get("condition")
+                or ({"branches": edge_branches(raw)} if edge_branches(raw) else None),
             },
             created_by=created_by,
         )
@@ -953,6 +980,11 @@ def sync_builder_graph(
             {
                 "from_node_id": str(edge["from_node_id"]),
                 "to_node_id": str(edge["to_node_id"]),
+                **(
+                    {"edge_type": edge.get("edge_type"), "condition": edge["condition"]}
+                    if isinstance(edge.get("condition"), dict) and edge.get("condition")
+                    else {}
+                ),
             }
             for edge in stored_edges
         ],

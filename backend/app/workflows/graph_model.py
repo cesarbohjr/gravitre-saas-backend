@@ -9,6 +9,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.workflows.branching import edge_branches
 from app.workflows.builder_sync import _node_to_step
 
 _PASSTHROUGH_NODE_TYPES = frozenset({"source", "trigger"})
@@ -29,6 +30,8 @@ class ExecutionGraph:
     predecessors: dict[str, list[str]] = field(default_factory=dict)
     successors: dict[str, list[str]] = field(default_factory=dict)
     entry_nodes: list[str] = field(default_factory=list)
+    # (from, to) -> branch labels the edge is restricted to; absent = always taken.
+    edge_branches: dict[tuple[str, str], list[str]] = field(default_factory=dict)
 
 
 def build_execution_graph(
@@ -38,6 +41,7 @@ def build_execution_graph(
     nodes_by_id = {str(n["id"]): n for n in nodes if n.get("id")}
     node_ids = list(nodes_by_id.keys())
     parsed_edges: list[tuple[str, str]] = []
+    branches_by_edge: dict[tuple[str, str], list[str]] = {}
     predecessors: dict[str, list[str]] = {nid: [] for nid in node_ids}
     successors: dict[str, list[str]] = {nid: [] for nid in node_ids}
 
@@ -47,6 +51,9 @@ def build_execution_graph(
         if src not in nodes_by_id or dst not in nodes_by_id:
             continue
         parsed_edges.append((src, dst))
+        labels = edge_branches(raw)
+        if labels:
+            branches_by_edge.setdefault((src, dst), []).extend(labels)
         predecessors[dst].append(src)
         successors[src].append(dst)
 
@@ -58,6 +65,7 @@ def build_execution_graph(
         predecessors=predecessors,
         successors=successors,
         entry_nodes=entry_nodes,
+        edge_branches=branches_by_edge,
     )
 
 
@@ -102,7 +110,7 @@ def validate_execution_graph(graph: ExecutionGraph) -> None:
         node_type = str(node.get("node_type") or node.get("type") or "")
         if node_type in _PASSTHROUGH_NODE_TYPES:
             continue
-        step = _node_to_step(node, graph.nodes_by_id, _edges_as_dicts(graph.edges))
+        step = _node_to_step(node, graph.nodes_by_id, graph_edge_dicts(graph))
         if step is None:
             continue
         if node_id not in reachable:
@@ -128,8 +136,61 @@ def topological_batches(graph: ExecutionGraph) -> list[list[str]]:
     return batches
 
 
-def _edges_as_dicts(edges: list[tuple[str, str]]) -> list[dict[str, Any]]:
-    return [{"from_node_id": src, "to_node_id": dst} for src, dst in edges]
+def _edges_as_dicts(
+    edges: list[tuple[str, str]],
+    branches: dict[tuple[str, str], list[str]] | None = None,
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for src, dst in edges:
+        edge: dict[str, Any] = {"from_node_id": src, "to_node_id": dst}
+        labels = (branches or {}).get((src, dst))
+        if labels:
+            edge["edge_type"] = "branch"
+            edge["condition"] = {"branches": list(labels)}
+        out.append(edge)
+    return out
+
+
+def graph_edge_dicts(graph: ExecutionGraph) -> list[dict[str, Any]]:
+    return _edges_as_dicts(graph.edges, graph.edge_branches)
+
+
+def _output_branch(output: Any) -> str | None:
+    if isinstance(output, dict) and output.get("branch") is not None and not output.get("skipped"):
+        return str(output["branch"])
+    return None
+
+
+def untaken_branch_reason(
+    graph: ExecutionGraph,
+    node_id: str,
+    node_outputs: dict[str, Any],
+    skipped_nodes: list[str] | set[str],
+) -> dict[str, Any] | None:
+    """Return why ``node_id`` should be skipped, or None when at least one incoming path is live.
+
+    An incoming edge is dead when its source sat on an untaken branch, or when the edge is labelled
+    with branches and the source chose a different branch. A node runs if any incoming
+    edge is live (so a merge after an IF runs once, on whichever side was taken).
+    """
+    preds = graph.predecessors.get(node_id, [])
+    if not preds:
+        return None
+    del skipped_nodes  # on_failure skips keep downstream running; only untaken branches propagate
+    dead: list[dict[str, Any]] = []
+    for pred in preds:
+        output = node_outputs.get(pred)
+        if isinstance(output, dict) and output.get("skipped") and output.get("reason") == "branch_not_taken":
+            dead.append({"from": pred, "reason": "upstream_branch_not_taken"})
+            continue
+        labels = graph.edge_branches.get((pred, node_id))
+        if not labels:
+            return None
+        chosen = _output_branch(output)
+        if chosen is None or chosen in labels:
+            return None
+        dead.append({"from": pred, "reason": "branch_not_taken", "branch": labels, "chosen": chosen})
+    return {"skipped": True, "reason": "branch_not_taken", "incoming": dead}
 
 
 def _upstream_outputs(graph: ExecutionGraph, node_id: str, node_outputs: dict[str, Any]) -> dict[str, Any]:

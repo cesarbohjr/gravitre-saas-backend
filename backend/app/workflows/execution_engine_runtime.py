@@ -452,7 +452,7 @@ def _save_graph_checkpoint(
         "skipped_nodes": ctx.skipped_nodes,
         "approval_context": approval_context or {},
         "nodes": list(ctx.graph.nodes_by_id.values()),
-        "edges": _graph._edges_as_dicts(ctx.graph.edges),
+        "edges": _graph.graph_edge_dicts(ctx.graph),
     }
     if pause_reason:
         checkpoint["pause_reason"] = pause_reason
@@ -482,6 +482,43 @@ def _save_checkpoint(
     update_run(ctx.client, ctx.run_id, status=RUN_STATUS_AWAITING_APPROVAL)
 
 
+def _skip_untaken_branch_node(
+    ctx: _GraphRunContext,
+    node: dict[str, Any],
+    node_id: str,
+    step_index: int,
+    untaken: dict[str, Any],
+) -> _NodeRunResult:
+    """Record a node on a branch the IF / Switch / Decision did not choose, without running it."""
+    with ctx.lock:
+        ctx.node_outputs[node_id] = untaken
+        ctx.skipped_nodes.append(node_id)
+    step_def = _node_to_step(node, ctx.graph.nodes_by_id, ctx.edge_dicts)
+    if step_def is None or _is_approval_node(node):
+        return _NodeRunResult(node_id, step_index)
+    step_id = str(step_def["id"])
+    created = create_step(
+        client=ctx.client,
+        run_id=ctx.run_id,
+        org_id=ctx.org_id,
+        step_id=step_id,
+        step_index=step_index,
+        step_name=str(step_def.get("name") or step_id),
+        step_type=str(step_def["type"]),
+    )
+    now = datetime.now(timezone.utc).isoformat()
+    update_step(
+        client=ctx.client,
+        step_uuid=str(created["id"]),
+        status=STEP_STATUS_SKIPPED,
+        input_snapshot={},
+        output_snapshot=untaken,
+        completed_at=now,
+    )
+    emit_execute_step_completed(ctx.client, ctx.org_id, ctx.user_id, ctx.run_id, step_index, step_id)
+    return _NodeRunResult(node_id, step_index + 1)
+
+
 def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) -> _NodeRunResult:
     try:
         enforce_interrupt(ctx.client, ctx.org_id, "workflow_run", ctx.run_id, actor_id=ctx.user_id)
@@ -490,6 +527,11 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
 
     node = ctx.graph.nodes_by_id[node_id]
     policy = _node_policy(node)
+
+    with ctx.lock:
+        untaken = _graph.untaken_branch_reason(ctx.graph, node_id, ctx.node_outputs, ctx.skipped_nodes)
+    if untaken is not None:
+        return _skip_untaken_branch_node(ctx, node, node_id, step_index, untaken)
 
     if _is_approval_node(node):
         upstream = _graph._upstream_outputs(ctx.graph, node_id, ctx.node_outputs)
@@ -1152,7 +1194,7 @@ def execute_workflow_graph(
         user_id=user_id,
         run_id=run_id,
         graph=graph,
-        edge_dicts=_graph._edges_as_dicts(graph.edges),
+        edge_dicts=_graph.graph_edge_dicts(graph),
         parameters=dict(parameters or {}),
         client=client,
         environment_name=environment_name,
@@ -1345,7 +1387,7 @@ def resolve_approval_batch_and_resume(
         user_id=user_id,
         run_id=run_id,
         graph=graph,
-        edge_dicts=_graph._edges_as_dicts(graph.edges),
+        edge_dicts=_graph.graph_edge_dicts(graph),
         parameters=params,
         client=client,
         environment_name=environment_name,
@@ -1422,7 +1464,7 @@ def resume_workflow_graph(
         user_id=user_id,
         run_id=run_id,
         graph=graph,
-        edge_dicts=_graph._edges_as_dicts(graph.edges),
+        edge_dicts=_graph.graph_edge_dicts(graph),
         parameters=params,
         client=client,
         environment_name=environment_name,
@@ -1517,7 +1559,7 @@ def resume_paused_workflow_graph(
         user_id=user_id,
         run_id=run_id,
         graph=graph,
-        edge_dicts=_graph._edges_as_dicts(graph.edges),
+        edge_dicts=_graph.graph_edge_dicts(graph),
         parameters=params,
         client=client,
         environment_name=environment_name,
@@ -1645,7 +1687,7 @@ def retry_workflow_step(
         user_id=user_id,
         run_id=run_id,
         graph=graph,
-        edge_dicts=_graph._edges_as_dicts(graph.edges),
+        edge_dicts=_graph.graph_edge_dicts(graph),
         parameters=params,
         client=client,
         environment_name=environment_name,

@@ -572,82 +572,151 @@ class CouncilStepHandler(StepHandler):
 
 
 def _eval_simple_condition(expression: Any, parameters: dict[str, Any] | None) -> tuple[bool, str]:
-    """Safe, intentionally limited condition eval for IF/Switch dry-run + execute.
+    """Evaluate a condition against run parameters; returns (ok, "true"|"false"|"default")."""
+    from app.workflows.branching import ConditionContext, evaluate_condition
 
-    Supports:
-    - empty → True (default branch)
-    - literal true/false / 1/0
-    - param key presence: ``$foo`` / ``params.foo`` truthiness
-    - equality: ``$status == closed`` / ``params.stage == won``
-    """
-    text = str(expression or "").strip()
-    if not text:
+    if not str(expression or "").strip():
         return True, "default"
-    params = parameters or {}
-    lower = text.lower()
-    if lower in {"true", "1", "yes"}:
-        return True, "true"
-    if lower in {"false", "0", "no"}:
-        return False, "false"
-
-    # equality: left == right
-    if "==" in text:
-        left, right = [p.strip() for p in text.split("==", 1)]
-        left_val = _resolve_condition_operand(left, params)
-        right_val = _resolve_condition_operand(right, params)
-        ok = str(left_val).strip().lower() == str(right_val).strip().lower()
-        return ok, "true" if ok else "false"
-
-    # bare param / $param truthiness
-    val = _resolve_condition_operand(text, params)
-    ok = bool(val) and str(val).strip().lower() not in {"false", "0", "none", "null", ""}
+    ok = evaluate_condition(expression, ConditionContext(parameters=dict(parameters or {})))
     return ok, "true" if ok else "false"
 
 
-def _resolve_condition_operand(token: str, params: dict[str, Any]) -> Any:
-    raw = token.strip().strip("'\"")
-    if raw.startswith("$"):
-        return params.get(raw[1:])
-    if raw.startswith("params."):
-        return params.get(raw[len("params.") :])
-    if raw in params:
-        return params.get(raw)
-    return raw
-
-
 class ConditionHandler(StepHandler):
+    """IF / Switch / Decision: pick one branch; the graph engine skips the others."""
+
     step_type = "condition"
     supports_execute = True
 
     def simulate(self, context: StepContext) -> dict[str, Any]:
-        cfg = context.config or {}
-        ok, branch = _eval_simple_condition(cfg.get("expression") or cfg.get("condition"), context.parameters)
-        default = str(cfg.get("default_branch") or "default")
-        chosen = branch if ok or branch in {"true", "false"} else default
-        if not ok and branch == "false":
-            chosen = "false"
-        return _truncate_output_snapshot(
-            {
-                "simulated": True,
-                "branch": chosen,
-                "matched": ok,
-                "expression": cfg.get("expression") or cfg.get("condition"),
-                "builder_node_type": cfg.get("builder_node_type"),
-            }
-        )
+        out = self._decide(context, allow_ai=False)
+        out["simulated"] = True
+        return _truncate_output_snapshot(out)
 
     def execute(self, context: StepContext) -> dict[str, Any]:
+        return _truncate_output_snapshot(self._decide(context, allow_ai=True))
+
+    def _decide(self, context: StepContext, *, allow_ai: bool) -> dict[str, Any]:
+        from app.workflows.branching import ConditionContext, evaluate_condition, select_rule_branch
+
         cfg = context.config or {}
-        ok, branch = _eval_simple_condition(cfg.get("expression") or cfg.get("condition"), context.parameters)
-        return _truncate_output_snapshot(
-            {
-                "branch": branch,
-                "matched": ok,
-                "expression": cfg.get("expression") or cfg.get("condition"),
-                "builder_node_type": cfg.get("builder_node_type"),
-                "when_branch": branch,
-            }
+        params = {
+            k: v
+            for k, v in (context.parameters or {}).items()
+            if k not in {"upstream_outputs", "skipped_nodes"}
+        }
+        upstream = (context.parameters or {}).get("upstream_outputs") or {}
+        ctx = ConditionContext(
+            parameters=params,
+            step_outputs=dict(context.step_outputs or {}),
+            node_names=dict(cfg.get("node_aliases") or {}),
+            upstream=upstream if isinstance(upstream, dict) else {},
         )
+        node_type = str(cfg.get("builder_node_type") or "")
+        strategy = str(cfg.get("strategy") or "rule-based")
+        paths = cfg.get("paths") if isinstance(cfg.get("paths"), list) else []
+        expression = cfg.get("expression") or cfg.get("condition")
+        base = {
+            "builder_node_type": node_type,
+            "strategy": strategy,
+            "expression": expression,
+        }
+
+        def chosen(branch: str, *, matched: bool, method: str, **extra: Any) -> dict[str, Any]:
+            label = next((p.get("label") for p in paths if p.get("id") == branch), branch)
+            return {
+                **base,
+                "branch": branch,
+                "when_branch": branch,
+                "branch_label": label,
+                "matched": matched,
+                "method": method,
+                **extra,
+            }
+
+        # IF without explicit paths: the expression picks "true" / "false".
+        if not paths:
+            ok = evaluate_condition(expression, ctx) if str(expression or "").strip() else True
+            return chosen("true" if ok else "false", matched=ok, method="rule")
+
+        rule_hit: str | None = None
+        default_id: str | None = None
+        if strategy in {"rule-based", "hybrid"}:
+            rule_hit, default_id = select_rule_branch(paths, ctx)
+            if rule_hit:
+                return chosen(rule_hit, matched=True, method="rule")
+        else:
+            _, default_id = select_rule_branch([p for p in paths if p.get("is_default")], ctx)
+
+        if strategy in {"ai-assisted", "hybrid"}:
+            if not allow_ai:
+                fallback = default_id or str(paths[0]["id"])
+                return chosen(fallback, matched=False, method="ai_not_run_in_preview")
+            ai = _ai_choose_branch(context, cfg, paths, ctx)
+            return chosen(ai["branch"], matched=True, method="ai", reasoning=ai.get("reasoning"), confidence=ai.get("confidence"))
+
+        if default_id:
+            return chosen(default_id, matched=False, method="default")
+        return chosen(str(cfg.get("default_branch") or "default"), matched=False, method="no_match")
+
+
+def _ai_choose_branch(
+    context: StepContext,
+    cfg: dict[str, Any],
+    paths: list[dict[str, Any]],
+    ctx: Any,
+) -> dict[str, Any]:
+    """Ask the model to pick one branch by label. Raises if it can't, so the run fails visibly."""
+    from pydantic import BaseModel
+
+    from app.services.model_router import TaskType, get_model_router
+
+    class _BranchChoice(BaseModel):
+        branch: str
+        reasoning: str = ""
+        confidence: float = 0.0
+
+    options = [{"id": p["id"], "label": p["label"], "when": p.get("condition") or ""} for p in paths]
+    evidence = {
+        "previous_step_outputs": ctx.upstream,
+        "run_inputs": ctx.parameters,
+    }
+    prompt = (
+        f"Decision: {cfg.get('objective') or 'Choose the next branch for this workflow.'}\n"
+        f"Instructions: {cfg.get('instructions') or 'Pick the branch that best fits the evidence.'}\n"
+        f"Branches (answer with one id): {json.dumps(options)}\n"
+        f"Evidence: {json.dumps(evidence, default=str)[:12000]}"
+    )
+    response = run_coro_sync(
+        get_model_router().complete(
+            task_type=TaskType.DECISION_REASONING,
+            prompt=prompt,
+            system_prompt=(
+                "You route a business workflow. Choose exactly one branch id from the list. "
+                'Respond as JSON: {"branch": "<id>", "reasoning": "<one sentence>", "confidence": 0-1}.'
+            ),
+            temperature=0.0,
+            max_tokens=300,
+            response_format=_BranchChoice,
+            org_id=context.org_id,
+        )
+    )
+    parsed = response.parsed if isinstance(getattr(response, "parsed", None), dict) else None
+    if not parsed:
+        try:
+            parsed = json.loads(getattr(response, "content", "") or "{}")
+        except json.JSONDecodeError:
+            parsed = {}
+    pick = str((parsed or {}).get("branch") or "").strip()
+    by_id = {str(p["id"]): p for p in paths}
+    by_label = {str(p["label"]).strip().lower(): p for p in paths}
+    match = by_id.get(pick) or by_label.get(pick.lower())
+    if not match:
+        raise ValueError(f"AI decision returned an unknown branch {pick!r}")
+    return {
+        "branch": str(match["id"]),
+        "reasoning": str((parsed or {}).get("reasoning") or "")[:500],
+        "confidence": (parsed or {}).get("confidence"),
+    }
 
 
 class TransformHandler(StepHandler):

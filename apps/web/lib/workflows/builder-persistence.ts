@@ -7,6 +7,11 @@ import {
   connectorConfigWithBind,
   resolveConnectorBind,
 } from "@/lib/workflows/builder-connector-bind"
+import {
+  edgeBranchesFor,
+  reconcileBranchTargets,
+  restoreBranchTargets,
+} from "@/lib/workflows/branch-wiring"
 
 export type CanvasNodeType =
   | "agent"
@@ -308,14 +313,25 @@ export function apiGraphToCanvasNodes(
       councilConfig: (metadata.councilConfig ?? mergedConfig.councilConfig) as CouncilConfig | undefined,
     }
   })
-  return autoLayoutCanvasNodes(nodes)
+  return autoLayoutCanvasNodes(restoreBranchTargets(nodes, apiEdges))
 }
 
-export function canvasToSavePayload(nodes: CanvasWorkflowNode[]) {
-  const edges: Array<{ fromNodeId: string; toNodeId: string }> = []
+export function canvasToSavePayload(inputNodes: CanvasWorkflowNode[]) {
+  const nodes = inputNodes.map((node) => reconcileBranchTargets(node))
+  const edges: Array<{
+    fromNodeId: string
+    toNodeId: string
+    edge_type?: "branch"
+    condition?: { branches: string[] }
+  }> = []
   for (const node of nodes) {
     for (const target of node.connections) {
-      edges.push({ fromNodeId: node.id, toNodeId: target })
+      const branches = edgeBranchesFor(node, target)
+      edges.push(
+        branches.length
+          ? { fromNodeId: node.id, toNodeId: target, edge_type: "branch", condition: { branches } }
+          : { fromNodeId: node.id, toNodeId: target },
+      )
     }
   }
   return {
