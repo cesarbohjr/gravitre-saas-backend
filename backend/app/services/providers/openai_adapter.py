@@ -34,9 +34,9 @@ _MAX_ATTEMPTS = 3
 
 
 def _supports_custom_temperature(model: str) -> bool:
-    """GPT-5 / o-series models reject non-default temperature."""
+    """GPT-5+ / o-series models reject non-default temperature (omitting it is always safe)."""
     lowered = model.lower()
-    if lowered.startswith(("gpt-5", "o1", "o3", "o4")):
+    if lowered.startswith(("gpt-5", "gpt-6", "o1", "o3", "o4")):
         return False
     return True
 
@@ -48,7 +48,7 @@ def _uses_max_completion_tokens(model: str) -> bool:
     Unsupported parameter: 'max_tokens' … Use 'max_completion_tokens' instead.
     """
     lowered = model.lower()
-    return lowered.startswith(("gpt-5", "o1", "o3", "o4"))
+    return lowered.startswith(("gpt-5", "gpt-6", "o1", "o3", "o4"))
 
 
 def _apply_max_tokens_kwargs(kwargs: dict[str, Any], model: str, max_tokens: int | None) -> None:

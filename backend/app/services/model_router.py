@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from app.config import MODEL_TIERS, TASK_COMPLEXITY, Settings, get_settings
 from app.core.logging import get_logger
+from app.services.llm_catalog import pricing_per_1k as llm_pricing_per_1k
 from app.services.ai_guardrails import (
     AIContentFlaggedError,
     AIGuardrailError,
@@ -42,6 +43,7 @@ from app.services.providers.failover import (
     run_failover_stream,
 )
 from app.services.providers.gemini_adapter import GeminiAdapter
+from app.services.providers.provider_tool_router import resolve_provider_for_model
 from app.services.providers.openai_adapter import OpenAIAdapter
 from app.core.db import get_supabase_client
 
@@ -69,21 +71,19 @@ class TaskType(StrEnum):
     OPTIMIZATION_ANALYSIS = "optimization"
 
 
-# Per-1K token pricing (input, cached_input, output). Comment shows per-1M.
-# cached_input applies to prompt tokens served from the provider's prompt cache
-# (defaults to the normal input rate when the provider has no separate cache rate).
-# Verified May 2026.
+# Per-1K token pricing (input, cached_input, output), derived from the LLM
+# catalog (app/services/llm_catalog.py; edit prices there). cached_input applies
+# to prompt tokens served from the provider's prompt cache (defaults to the
+# normal input rate when the provider has no separate cache rate).
 _MODEL_PRICING_PER_1K: dict[str, tuple[float, float, float]] = {
-    "gpt-4.1": (0.002, 0.002, 0.008),                      # $2.00 in / $8.00 out per 1M
-    "gpt-5.5": (0.005, 0.0005, 0.030),                     # $5.00 in / $0.50 cached / $30.00 out per 1M
-    "gpt-5.4-mini": (0.00075, 0.00075, 0.0045),            # $0.75 in / $4.50 out per 1M
-    "gpt-5.4-nano": (0.0002, 0.0002, 0.00125),             # $0.20 in / $1.25 out per 1M
+    **llm_pricing_per_1k(),
     "text-embedding-3-small": (0.00002, 0.00002, 0.0),     # $0.02 / 1M input (embeddings)
-    "claude-sonnet-4-6": (0.003, 0.003, 0.015),            # $3.00 in / $15.00 out per 1M
-    "claude-haiku-4-5-20251001": (0.0008, 0.0008, 0.004),  # $0.80 in / $4.00 out per 1M
-    "gemini-2.5-pro": (0.00125, 0.00125, 0.010),           # $1.25 in / $10.00 out per 1M
-    "gemini-2.5-flash": (0.0000875, 0.0000875, 0.00035),   # $0.0875 in / $0.35 out per 1M (non-thinking)
 }
+
+
+def _priority_for_override(model_override: str) -> list[tuple[str, str]]:
+    """Pin an explicit model to the provider that serves it, not always OpenAI."""
+    return [(resolve_provider_for_model(model_override), model_override)]
 
 
 class ModelResponse(BaseModel):
@@ -197,7 +197,7 @@ class ModelRouter:
             try:
                 client = get_supabase_client(self.settings)
                 policy = load_org_model_policy(client, org_id)
-                assert_model_allowed(policy, provider="openai", model=model)
+                assert_model_allowed(policy, provider=resolve_provider_for_model(model), model=model)
             except AIModelPolicyError:
                 raise
             except Exception:  # noqa: BLE001
@@ -290,7 +290,7 @@ class ModelRouter:
 
         # Build the failover priority chain.
         if model_override:
-            priority = [("openai", model_override)]
+            priority = _priority_for_override(model_override)
         elif getattr(self.settings, "ai_failover_enabled", True):
             priority = build_priority(getattr(self.settings, "preferred_ai_provider", "openai"), complexity)
         else:
@@ -418,7 +418,7 @@ class ModelRouter:
             try:
                 client = get_supabase_client(self.settings)
                 policy = load_org_model_policy(client, org_id)
-                assert_model_allowed(policy, provider="openai", model=model)
+                assert_model_allowed(policy, provider=resolve_provider_for_model(model), model=model)
             except AIModelPolicyError:
                 raise
             except Exception:  # noqa: BLE001
@@ -488,7 +488,7 @@ class ModelRouter:
         messages.append({"role": "user", "content": fence_untrusted(user_prompt)})
 
         if model_override:
-            priority = [("openai", model_override)]
+            priority = _priority_for_override(model_override)
         elif getattr(self.settings, "ai_failover_enabled", True):
             priority = build_priority(getattr(self.settings, "preferred_ai_provider", "openai"), complexity)
         else:
@@ -843,8 +843,8 @@ class ModelRouter:
     }
 
     VISION_MODELS: dict[str, str] = {
-        "openai": "gpt-4o",
-        "anthropic": "claude-3-5-sonnet-20241022",
+        "openai": MODEL_TIERS["vision"]["openai"],
+        "anthropic": MODEL_TIERS["vision"]["anthropic"],
     }
 
     def route_for_sensitivity(self, sensitivity: str, task_complexity: str = "medium") -> str:

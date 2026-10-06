@@ -1004,26 +1004,30 @@ class Settings(BaseSettings):
 # Multi-provider model tiering (typed; consumed by the router/failover layer)
 # ---------------------------------------------------------------------------
 # complexity tier -> provider -> model id
+# Ids must exist in app/services/llm_catalog.py (enforced by
+# tests/services/test_llm_catalog.py). "high" stays on the balanced OpenAI /
+# Claude models like before: the flagships (gpt-6-astra, claude-opus-5-5) are
+# available as explicit picks rather than defaulted into every planning call.
 MODEL_TIERS: dict[str, dict[str, str]] = {
     "low": {
-        "openai": "gpt-5.4-mini",
-        "anthropic": "claude-haiku-4-5-20251001",
-        "gemini": "gemini-2.5-flash",
+        "openai": "gpt-6-luna",
+        "anthropic": "claude-haiku-4-5",
+        "gemini": "gemini-3.5-flash-lite",
     },
     "medium": {
-        "openai": "gpt-5.5",
-        "anthropic": "claude-sonnet-4-6",
-        "gemini": "gemini-2.5-pro",
+        "openai": "gpt-6.1-sol",
+        "anthropic": "claude-sonnet-5-5",
+        "gemini": "gemini-3.8-flash",
     },
     "high": {
-        "openai": "gpt-5.5",
-        "anthropic": "claude-sonnet-4-6",
-        "gemini": "gemini-2.5-pro",
+        "openai": "gpt-6.1-sol",
+        "anthropic": "claude-sonnet-5-5",
+        "gemini": "gemini-3.8-flash",
     },
     "vision": {
-        "openai": "gpt-4o",
-        "anthropic": "claude-3-5-sonnet-20241022",
-        "gemini": "gemini-2.5-pro",
+        "openai": "gpt-6.1-sol",
+        "anthropic": "claude-sonnet-5-5",
+        "gemini": "gemini-3.8-flash",
     },
 }
 
