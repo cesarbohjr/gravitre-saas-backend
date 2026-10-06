@@ -3088,6 +3088,29 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogType, setDialogType] = useState<"connect" | "disconnect">("connect")
   const [pendingConnection, setPendingConnection] = useState<{ from: string; to: string } | null>(null)
+  // Clicking an edge only selects it; removal is a deliberate second step (X button or Delete key).
+  const [selectedEdge, setSelectedEdge] = useState<{ from: string; to: string } | null>(null)
+
+  useEffect(() => {
+    if (!selectedEdge) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return
+      if (e.key === "Escape") {
+        setSelectedEdge(null)
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault()
+        const { from, to } = selectedEdge
+        setNodes((prev) =>
+          prev.map((n) => (n.id === from ? { ...n, connections: n.connections.filter((c) => c !== to) } : n)),
+        )
+        setSelectedEdge(null)
+        toast.info("Connection removed")
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [selectedEdge])
   
   // Drag-to-connect state
   const [isDraggingConnection, setIsDraggingConnection] = useState(false)
@@ -3445,6 +3468,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   // Handle node click - implements the click-to-select-then-click-to-connect pattern
 // Simplified click - just select/deselect nodes
   const handleNodeClick = useCallback((clickedNodeId: string) => {
+    setSelectedEdge(null)
     if (selectedNodeId === clickedNodeId) {
       setSelectedNodeId(null)
     } else {
@@ -3565,6 +3589,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
     // A node click still bubbles here after the node selected itself on mouseup.
     if ((e.target as HTMLElement).closest("[data-canvas-node]")) return
     setSelectedNodeId(null)
+    setSelectedEdge(null)
   }, [])
 
   // Handle showing node details (double-click)
@@ -5505,25 +5530,45 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                       ? { ...n, connections: n.connections.filter(c => c !== conn.to.id) }
                       : n
                   ))
+                  setSelectedEdge(null)
                   toast.info("Connection removed", {
                     description: `Disconnected ${conn.from.name} from ${conn.to.name}`
                   })
                 }
+                const isEdgeSelected =
+                  selectedEdge?.from === conn.from.id && selectedEdge?.to === conn.to.id
 
                 return (
-                  <g key={i} className={cn("connection-group group", isDimmedPath && "opacity-30")}>
-{/* Invisible wider hit area for clicking */}
+                  <g
+                    key={i}
+                    data-edge-selected={isEdgeSelected || undefined}
+                    className={cn("connection-group group", isDimmedPath && !isEdgeSelected && "opacity-30")}
+                  >
+{/* Invisible wider hit area: a click selects the edge, it never deletes. */}
   <path
   d={pathD}
   stroke="transparent"
   strokeWidth="20"
   fill="none"
   style={{ cursor: "pointer", pointerEvents: "all" }}
+  aria-label={`Select connection ${conn.from.name} to ${conn.to.name}`}
   onClick={(e) => {
     e.stopPropagation()
-    handleDisconnect()
+    setSelectedNodeId(null)
+    setSelectedEdge(isEdgeSelected ? null : { from: conn.from.id, to: conn.to.id })
   }}
   />
+                    {isEdgeSelected ? (
+                      <path
+                        d={pathD}
+                        stroke="var(--primary)"
+                        strokeWidth="6"
+                        fill="none"
+                        opacity="0.35"
+                        strokeLinecap="round"
+                        pointerEvents="none"
+                      />
+                    ) : null}
                     {/* Glow only while a real run or chosen decision path is active — idle edges stay still. */}
                     {(isActive || isChosenPath) && !isDimmedPath ? (
                     <path
@@ -5580,9 +5625,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                     <circle cx={fromX} cy={fromY} r="3" fill={dotColor} opacity={isDimmedPath ? "0.4" : "1"} />
                     <circle cx={toX} cy={toY} r="3" fill={dotColor} opacity={isDimmedPath ? "0.4" : "1"} />
                     
-{/* Disconnect affordance: appears on edge hover so idle edges read as flow, not delete buttons. */}
+{/* Disconnect affordance: only exists once the edge is selected, so removal is always a second step. */}
+  {isEdgeSelected ? (
   <g 
-    className="disconnect-btn opacity-0 transition-opacity duration-150 group-hover:opacity-100 [@media(hover:none)]:opacity-100" 
+    className="disconnect-btn"
+    role="button"
+    aria-label={`Disconnect ${conn.from.name} from ${conn.to.name}`}
     style={{ pointerEvents: "all", cursor: "pointer" }}
     onClick={(e) => {
       e.stopPropagation()
@@ -5618,10 +5666,11 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       strokeLinecap="round" 
     />
   </g>
+  ) : null}
 
   {/* Data label on connection - shown below disconnect button on hover */}
   {dataLabel && (
-  <g className="data-label opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+  <g className={cn("data-label transition-opacity duration-200", isEdgeSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
   <rect
   x={labelX - 50}
   y={labelY + 18}
