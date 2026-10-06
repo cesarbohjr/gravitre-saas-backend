@@ -127,16 +127,33 @@ export function NodeSelectionEdge() {
 
 type GlyphComponent = ComponentType<SVGProps<SVGSVGElement> & { strokeWidth?: number | string }>
 
-/** Header mark: vendor logo when the step is bound to a provider, else the internal Lucide glyph. */
-export function NodeMark({ vendor, icon: Icon }: { vendor?: string | null; icon: GlyphComponent }) {
+/** Header mark: vendor logo when the step is bound to a provider, else the internal Lucide glyph in its category colour. */
+export function NodeMark({ vendor, icon: Icon, tint }: { vendor?: string | null; icon: GlyphComponent; tint?: string }) {
   return (
     <span className="mt-px flex h-5 w-5 shrink-0 items-center justify-center">
       {vendor ? (
         <ProviderLogo provider={vendor} size="md" />
       ) : (
-        <Icon className="h-[18px] w-[18px] text-[color:var(--g-text-secondary)]" strokeWidth={1.75} aria-hidden />
+        <Icon
+          className="h-[18px] w-[18px] text-[color:var(--g-text-secondary)]"
+          style={tint ? { color: tint } : undefined}
+          strokeWidth={1.75}
+          aria-hidden
+        />
       )}
     </span>
+  )
+}
+
+/** Category colour bar along the top edge of a step card. */
+export function NodeCategoryBar({ color }: { color: string }) {
+  return (
+    <span
+      aria-hidden
+      data-node-category-bar
+      className="pointer-events-none absolute inset-x-3 top-0 h-[3px] rounded-b-full"
+      style={{ background: color }}
+    />
   )
 }
 
