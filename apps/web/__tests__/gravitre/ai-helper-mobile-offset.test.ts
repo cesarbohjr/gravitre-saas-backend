@@ -112,13 +112,14 @@ describe("GravitreAIHelper — mobile offset does not collide with MobileBottomN
     expect(76).toBeGreaterThan(36 + 24 + 1)
   })
 
-  it("docks centred on the workspace panel from md up, collapsed or expanded rail", async () => {
+  it("parks one compact corner card on workspace routes, the same size everywhere", async () => {
     await renderHelper()
     const button = container.querySelector("[data-gravitre-ai-helper]") as HTMLElement
     expect(button.getAttribute("data-gravitre-ai-dock")).toBe("workspace")
-    expect(button.className).toContain("md:left-[calc(50%+var(--np-sidebar-rail)/2)]")
-    expect(button.className).toContain("md:[:root:has([data-nav-expanded=true])_&]:left-[calc(50%+var(--np-sidebar)/2)]")
-    expect(button.className).toContain("md:-translate-x-1/2")
+    expect(button.className).toContain("right-5")
+    expect(button.className).toContain("sm:w-[244px]")
+    expect(button.className).toContain("sm:min-h-[60px]")
+    expect(button.className).not.toContain("-translate-x-1/2")
   })
 
   it("keeps the corner anchor clear of the rail on the Workflow Builder canvas", async () => {
@@ -144,22 +145,14 @@ describe("GravitreAIHelper — mobile offset does not collide with MobileBottomN
     expect(label.className).toContain("sm:flex")
   })
 
-  it("scrollable pages pad main so the launcher never covers the last content at scroll end", async () => {
+  it("reserves no band for the launcher on any page, so no empty bar shows behind it", async () => {
     const { readFileSync } = await import("node:fs")
     const { resolve } = await import("node:path")
     const shell = readFileSync(resolve(__dirname, "../../components/gravitre/app-shell.tsx"), "utf8")
-    // Launcher: md:bottom-5 (20px) + 52px pill = 72px < 96px; mobile: 56px nav + 12px gap + 44px = 112px < 128px.
-    expect(shell).toContain('"[:root:has([data-gravitre-ai-helper])_&]:pb-32"')
-    expect(shell).toContain('"md:[:root:has([data-gravitre-ai-helper])_&]:pb-24"')
-  })
-
-  it("drops the launcher band once the chat is open, so no empty bar shows beside the dock", async () => {
-    const { readFileSync } = await import("node:fs")
-    const { resolve } = await import("node:path")
-    const shell = readFileSync(resolve(__dirname, "../../components/gravitre/app-shell.tsx"), "utf8")
-    // Without the launcher mounted only the mobile bottom nav (56px) needs clearing.
+    // Only the mobile bottom nav (56px) is cleared, on scrolling and full-height pages alike.
     expect(shell).toContain('"pb-16 md:pb-0"')
-    expect(shell).not.toContain('"pb-32 md:pb-24"')
+    expect(shell).not.toContain("data-gravitre-ai-helper")
+    expect(shell).not.toContain("data-gravitre-ai-dock")
   })
 
   it("stacks above MobileBottomNav (z-30) but below modal sheets and dialogs (z-50)", async () => {

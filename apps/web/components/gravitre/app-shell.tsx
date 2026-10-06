@@ -479,27 +479,16 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
               locksDocumentScroll || fillViewport
                 ? cn(
                     "overflow-hidden",
-                    pathname.includes("/builder")
-                      ? "pb-0"
-                      : cn(
-                          "pb-16 md:pb-0",
-                          // Reserved dock band: panes end above the Ask Gravitre dock instead of running under it.
-                          "[:root:has([data-gravitre-ai-dock=workspace])_&]:pb-[calc(116px+env(safe-area-inset-bottom))]",
-                          "md:[:root:has([data-gravitre-ai-dock=workspace])_&]:pb-[68px]",
-                        ),
+                    // Only the mobile bottom nav is cleared. The Ask Gravitre launcher is a
+                    // corner card that floats over the panes; reserving a band for it
+                    // painted an empty bar across the bottom of every full-height page.
+                    pathname.includes("/builder") ? "pb-0" : "pb-16 md:pb-0",
                   )
                 : cn(
                     "overflow-y-auto overflow-x-hidden",
-                    // Clears the mobile bottom nav, plus the AI launcher only while it is
-                    // mounted. Once the chat is open (docked, floating, fullscreen) the
-                    // launcher is gone and a reserved band would paint as an empty bar.
-                    pathname.includes("/builder")
-                      ? "pb-4"
-                      : cn(
-                          "pb-16 md:pb-0",
-                          "[:root:has([data-gravitre-ai-helper])_&]:pb-32",
-                          "md:[:root:has([data-gravitre-ai-helper])_&]:pb-24",
-                        ),
+                    // Clears the mobile bottom nav only. No band is reserved for the AI
+                    // launcher, open or closed: it is a corner card over the page.
+                    pathname.includes("/builder") ? "pb-4" : "pb-16 md:pb-0",
                   ),
             )}
           >

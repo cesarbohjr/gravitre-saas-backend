@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { fetcher } from "@/lib/fetcher"
 import { apiFetch } from "@/lib/fetcher"
-import { TYPE } from "@/lib/design-system"
 import { CheckCircle2, ShieldCheck } from "lucide-react"
 
 type Mode = "OBSERVE" | "RECOMMEND" | "ACT WITH APPROVAL" | "ACT WITHIN POLICY"
@@ -60,17 +59,16 @@ export function PlaySetup({ playKey, playVersion, readiness }: { playKey: string
   }
 
   return (
-    <section className="border-y border-divide py-5">
+    <section className="rounded-[12px] border border-divide bg-[color:var(--g-surface-1)] p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className={TYPE.eyebrow}>Operating mode</p>
-          <h2 className="mt-1 text-base font-semibold">Choose how much authority this Play has</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Authority increases only when the required data, workflows, approvals, and policy controls are ready.</p>
+          <h2 className="text-[15px] font-semibold">Operating mode</h2>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">Authority increases only when the required data, workflows, approvals, and policy controls are ready.</p>
         </div>
-        {installation ? <Badge variant="outline"><CheckCircle2 className="mr-1 size-3" />Configured</Badge> : null}
+        {installation ? <Badge variant="outline" className="shrink-0"><CheckCircle2 className="mr-1 size-3 text-[color:var(--g-emerald)]" />Configured</Badge> : null}
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid gap-2">
         {modes.map((item) => {
           const enabled = availableModes.has(item.value)
           const selected = selectedMode === item.value
@@ -82,20 +80,23 @@ export function PlaySetup({ playKey, playVersion, readiness }: { playKey: string
               aria-pressed={selected}
               aria-label={`${item.title}${enabled ? "" : " — complete readiness requirements first"}`}
               onClick={() => setSelectedMode(item.value)}
-              className={`rounded-xl border p-4 text-left transition-colors ${selected ? "border-primary bg-primary/5" : "border-divide"} ${enabled ? "hover:bg-[color:var(--g-surface-2)]" : "cursor-not-allowed opacity-45"}`}
+              className={`rounded-[10px] border px-3 py-2.5 text-left transition-colors ${selected ? "border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-surface)]" : "border-divide"} ${enabled ? "hover:bg-[color:var(--g-surface-2)]" : "cursor-not-allowed opacity-45"}`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium">{item.title}</span>
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <span aria-hidden className={`size-3 rounded-full border-2 ${selected ? "border-[color:var(--g-emerald)] bg-[color:var(--g-emerald)] shadow-[inset_0_0_0_2px_var(--g-surface-1)]" : "border-[color:var(--g-border-default)]"}`} />
+                  {item.title}
+                </span>
                 {item.value.includes("ACT") ? <ShieldCheck className="size-4 text-muted-foreground" /> : null}
               </div>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">{item.description}</p>
-              {!enabled ? <p className="mt-2 text-xs font-medium text-warning">Complete readiness requirements first</p> : null}
+              <p className="mt-1 pl-5 text-xs leading-5 text-muted-foreground">{item.description}</p>
+              {!enabled ? <p className="mt-1 pl-5 text-xs font-medium text-warning">Complete readiness requirements first</p> : null}
             </button>
           )
         })}
       </div>
 
-      <div className="mt-5 border-t border-divide pt-5">
+      <div className="mt-4 border-t border-divide pt-4">
         <label htmlFor="play-goal" className="text-sm font-medium">Goal</label>
         <p className="mt-1 text-xs text-muted-foreground">Optional. Link this Play to the business objective it is intended to improve.</p>
         <select id="play-goal" value={goalId} onChange={(event) => setGoalId(event.target.value)} className="mt-3 h-11 w-full rounded-md border border-input bg-background px-3 text-sm">
@@ -104,7 +105,7 @@ export function PlaySetup({ playKey, playVersion, readiness }: { playKey: string
         </select>
       </div>
 
-      <div className="mt-5 flex items-center justify-between border-t border-divide pt-4">
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-divide pt-4">
         <p className="text-xs text-muted-foreground">{dirty ? "Unsaved setup changes" : "Setup saved"}</p>
         <Button onClick={save} disabled={saving || !dirty || !availableModes.has(selectedMode)}>{saving ? "Saving…" : "Save setup"}</Button>
       </div>
