@@ -18,7 +18,7 @@ from typing import Any
 from app.config import Settings
 from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.tier1_voice_service import VoiceProviderError, synthesize_speech_stream
-from app.services.voice_agent_profile import normalize_voice_profile
+from app.services.voice_agent_profile import normalize_voice_profile, resolve_session_voice
 from app.services.voice_turn_taking import (
     TurnTakingState,
     maybe_finalize_user_turn,
@@ -335,7 +335,8 @@ async def stream_voice_turn_events(
     from app.services.tier1_voice_service import normalize_elevenlabs_output_format
 
     profile = normalize_voice_profile((agent or {}).get("voice_profile"))
-    resolved_voice = voice_id or profile.get("voice_id") or profile.get("voice_key")
+    # Agent profile wins over the request voice (same precedence as Pipecat WS).
+    resolved_voice = resolve_session_voice(agent, voice_id)
     model = tts_model or profile.get("tts_model") or "eleven_flash_v2_5"
     from app.services.pipecat_voice.voice_latency_tuning import resolve_voice_tts_chunk_tuning
 

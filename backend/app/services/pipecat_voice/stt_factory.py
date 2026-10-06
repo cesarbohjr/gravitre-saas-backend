@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.core.logging import get_logger
-from app.services.pipecat_voice.voice_keyterm_service import resolve_flux_eot_settings
+from app.services.pipecat_voice.voice_keyterm_service import FLUX_TURN_PRESETS, resolve_flux_eot_settings
 
 logger = get_logger(__name__)
 
@@ -58,6 +58,37 @@ def stt_meta(provider: str, *, fallback_from: str | None = None, fallback_reason
     return out
 
 
+# Agent voice_profile.turn_sensitivity -> Flux turn preset. "normal" keeps the
+# deployment's configured thresholds (voice_flux_turn_mode / eager / eot).
+TURN_SENSITIVITY_TO_FLUX_PRESET: dict[str, str] = {
+    "eager": "fast",
+    "fast": "fast",
+    "patient": "patient",
+}
+
+
+def normalize_stt_language(language: str | None) -> str | None:
+    """Agent voice_profile.language -> Deepgram language code (None = provider default)."""
+    value = str(language or "").strip().lower().replace("_", "-")
+    if not value:
+        return None
+    return value[:8]
+
+
+def is_english_language(language: str | None) -> bool:
+    value = normalize_stt_language(language)
+    return value is None or value == "en" or value.startswith("en-")
+
+
+def _deepgram_language(value: str) -> Any:
+    try:
+        from pipecat.transcriptions.language import Language
+
+        return Language(value)
+    except Exception:  # noqa: BLE001
+        return value
+
+
 def build_pipecat_stt(
     settings: Any,
     *,
@@ -65,10 +96,22 @@ def build_pipecat_stt(
     fallback_from: str | None = None,
     fallback_reason: str | None = None,
     keyterms: list[str] | None = None,
+    language: str | None = None,
+    turn_sensitivity: str | None = None,
 ) -> tuple[Any, dict[str, Any]]:
-    """Construct an STT service + honest metadata for session.ready / status."""
+    """Construct an STT service + honest metadata for session.ready / status.
+
+    ``language`` / ``turn_sensitivity`` come from the agent's voice_profile.
+    Flux is English-only, so a non-English agent language uses Nova-3 with that
+    language instead. ``turn_sensitivity`` (eager/patient) picks a Flux turn preset.
+    """
     choice = resolve_pipecat_stt_provider(settings, override=provider)
     dg_key = (getattr(settings, "deepgram_api_key", None) or "").strip()
+    stt_language = normalize_stt_language(language)
+    language_fallback = False
+    if choice == STT_FLUX and not is_english_language(stt_language):
+        choice = STT_NOVA3
+        language_fallback = True
 
     if choice == STT_FLUX:
         if not dg_key:
@@ -76,6 +119,9 @@ def build_pipecat_stt(
         from pipecat.services.deepgram.flux.stt import DeepgramFluxSTTService
 
         eager, eot = resolve_flux_eot_settings(settings)
+        preset_key = TURN_SENSITIVITY_TO_FLUX_PRESET.get(str(turn_sensitivity or "").strip().lower())
+        if preset_key and preset_key in FLUX_TURN_PRESETS:
+            eager, eot = FLUX_TURN_PRESETS[preset_key]
         settings_kwargs: dict[str, Any] = {}
         if eager is not None:
             settings_kwargs["eager_eot_threshold"] = float(eager)
@@ -94,6 +140,8 @@ def build_pipecat_stt(
         )
         meta = stt_meta(STT_FLUX, fallback_from=fallback_from, fallback_reason=fallback_reason)
         meta["stt_turn_detection"] = "flux_native_eot"
+        if preset_key:
+            meta["stt_turn_sensitivity"] = preset_key
         if keyterms:
             meta["stt_keyterm_count"] = len(keyterms)
         return stt, meta
@@ -114,15 +162,19 @@ def build_pipecat_stt(
         raise RuntimeError("DEEPGRAM_API_KEY required for Nova-3 STT")
     from pipecat.services.deepgram.stt import DeepgramSTTService
 
+    nova_kwargs: dict[str, Any] = {"model": "nova-3-general", "interim_results": True}
+    if stt_language:
+        nova_kwargs["language"] = _deepgram_language(stt_language)
     stt = DeepgramSTTService(
         api_key=dg_key,
-        settings=DeepgramSTTService.Settings(
-            model="nova-3-general",
-            interim_results=True,
-        ),
+        settings=DeepgramSTTService.Settings(**nova_kwargs),
     )
     meta = stt_meta(STT_NOVA3, fallback_from=fallback_from, fallback_reason=fallback_reason)
     meta["stt_turn_detection"] = "aggregator_vad"
+    if stt_language:
+        meta["stt_language"] = stt_language
+    if language_fallback:
+        meta["stt_language_routed_from"] = STT_FLUX
     return stt, meta
 
 
