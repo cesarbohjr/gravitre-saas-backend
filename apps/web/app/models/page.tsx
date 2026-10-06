@@ -238,6 +238,7 @@ export default function ModelsPage() {
     <AppShell title={SURFACE_COPY.models.title}>
       <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6" data-composition="understand">
         <GravitrePageHeader
+          className="px-0 sm:px-0"
           title={SURFACE_COPY.models.title}
           description={SURFACE_COPY.models.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}

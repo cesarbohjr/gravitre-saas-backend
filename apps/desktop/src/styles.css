@@ -58,7 +58,7 @@
   --danger: var(--destructive);
   --warn: var(--warning);
 
-  font-family: "Inter Display", "Segoe UI", "SF Pro Text", system-ui, sans-serif;
+  font-family: "Inter Display", "Segoe UI", "SF Pro Text", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.4;
 }

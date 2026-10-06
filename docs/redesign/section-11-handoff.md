@@ -57,13 +57,14 @@ Disposition values: **Redesigned** (changed and visually reviewed), **Reviewed**
 | Activity | `/activity` | Reviewed | — | yes | — | — |
 | Approvals | `/approvals` | Redesigned (chip noise, dark tints) | yes | yes | type-check | — |
 | Notifications | `/notifications` | Redesigned (plain-language stats) | yes | yes | 10 tests | Native `<select>` for type filter not restyled |
-| Lite | `/lite/tasks` (Lite home; `/lite` redirects) | Redesigned (list rows, status text, shell padding aligned to header) | yes | yes (`/e2e/shots/lite-tasks`) | 6 `lite-operating-states` tests | Assign, Results and Deliverables now captured at 907×797 dark (`/e2e/shots/lite-assign`, `lite-results`, `lite-deliverables`). Assign: labelled fields, `aria-pressed` workflow choice, required-input hint, sentence-case button. Results and Deliverables reviewed, no change needed (success rate is a backend percentage; "(operational)" labels are intentional reporting-honesty copy). Real task submission and file download untested. |
+| Lite | `/lite/tasks` (Lite home; `/lite` redirects) | Redesigned (list rows, status text, shell padding aligned to header) | yes | yes (`/e2e/shots/lite-tasks`) | 6 `lite-operating-states` tests | Assign, Results and Deliverables now captured at 907×797 dark (`/e2e/shots/lite-assign`, `lite-results`, `lite-deliverables`). Assign: labelled fields, `aria-pressed` workflow choice, required-input hint, sentence-case button. Results and Deliverables reviewed, no change needed (success rate is a backend percentage; "(operational)" labels are intentional reporting-honesty copy). Browser actions against test data: submitting Assign reaches the post-success `router.push("/lite/tasks")` (which only runs after `assignWork` resolves); Deliverables Download creates a blob and saves it under the deliverable name with no error. Not exercised against the real backend. |
 | Meson | Builder Meson tab | Reviewed; empty-state copy corrected | yes | Initial panel at 907×797 dark | Browser: Open step → Data Validator inspector | Updated copy recaptured and confirmed ("No step suggestions available for this canvas."; no "Add nodes"). AI suggestions, saved-workflow edits and apply remain unverified. |
 | Onboarding | `/welcome` (`/onboarding` redirects) | Redesigned (floating Ask bar hidden so it no longer covers footer actions; step icon tint mixed into surface) | yes | yes, step 1 (`/e2e/shots/welcome`) | 24 tests (`ai-helper`, `ai-auth-gate`) | Steps 2–5 not captured. The test page lives under `/e2e/shots/`, so its capture still shows the Ask bar; the hide rule is covered by unit tests |
-| Browser extension | `apps/extension` popup, side panel and injected overlay | Readability, spacing, dark theme, focus indicators, live session announcements and sidebar copy updated | yes | Blocked: port 4174 popup request opened main-app login rather than extension | Manifest asset existence, popup JavaScript syntax and diff checks passed; plain-source extension has no build step | Unpacked-extension visual review, Chrome runtime messaging, enrichment, approval writes and live AI remain untested. |
-| Desktop | `apps/desktop/src/App.tsx` (Tauri companion) | Code review; dark theme, compact sign-in layout, readable text, focus states, section state and IME-safe composer updated | yes | Blocked: browser request to port 4173 loaded web marketing on port 3000, not Desktop | Frozen-lockfile install and `pnpm build` passed (TypeScript + Vite) | Visual/interaction verification incomplete. Native build, auth deep links, notifications, voice, approval writes and live AI untested. |
-| Public | `/`, `/pricing`, `/login`, `/about`, `/careers`, `/blog` | Reviewed (no change needed; marketing is intentionally light-only) | — | yes, 907px, no horizontal overflow or error | — | Feature/solution marketing pages not captured. Cookie banner covers the lower viewport until dismissed, by design |
-| Goals, Marketplace, Models, Training | — | **Not reviewed** this pass | — | — | existing journey tests | — |
+| Browser extension | `apps/extension` popup, side panel and injected overlay | Readability, spacing, dark theme, focus indicators, live session announcements and sidebar copy updated Redesigned; system-font stack fixed (was falling back to monospace) | yes | yes: popup 360×420 and side panel 400×760 dark via dev-only `/e2e/static/extension/*` with a Chrome stand-in | Manifest asset check, JS syntax; browser: Sign out → "Not connected" + "Connect Gravitre" | Injected overlay on a host page, real Chrome runtime messaging, enrichment, approval writes and live AI untested. |
+| Desktop | `apps/desktop/src/App.tsx` (Tauri companion) | Code review; dark theme, compact sign-in layout, readable text, focus states, section state and IME-safe composer updated ; system-font stack fixed | yes | yes: sign-in screen 907×797 dark via dev-only `/e2e/static/desktop/*` (built `dist`) | `pnpm build` passed; browser: "Paste auth link (dev)" opens its prompt | Signed-in views, native Tauri build, auth deep links, notifications, voice, approval writes and live AI untested. |
+| Public | `/`, `/pricing`, `/login`, `/about`, `/careers`, `/blog` , `/features`, `/features/extension`, `/features/marketplace`, `/features/technology` | Reviewed (no change needed; marketing is intentionally light-only) | — | yes, 907px, no horizontal overflow or error | — | Cookie banner covers the lower viewport until dismissed, by design |
+| Goals, Marketplace | `/goals`, `/marketplace` | Reviewed (no change needed) | — | yes, 907×797 dark | existing journey tests | — |
+| Models, Training | `/models`, `/training` | Redesigned: header doubled the container padding (title at 104px vs tabs at 88px); now aligned at 88px | — | yes, 907×797 dark | browser alignment check | — |
 
 This matrix covers the families the master prompt names. Section 11 asks for it to be regenerated from the repository, and that full per-route regeneration has **not** been done. Routes outside these families are unaccounted for.
 
@@ -97,15 +98,18 @@ All changes reuse existing components (`GravitrePageHeader`, `ExtrovertSummary`,
 
 **Remaining routes:**
 - Onboarding steps 2–5
-- Desktop and browser extension visual review (preview routing loads the web app instead)
-- Marketing pages beyond `/`, `/pricing`, `/login`
-- Goals, Marketplace, Models, Training
+- Desktop signed-in views and the extension's injected overlay
 - Full repository route regeneration
+
+**Unverified behavior (needs a real signed-in account and backend):**
+- Live AI: Meson suggestions, Ask Gravitre answers, extension enrichment, desktop chat and voice
+- Real backend writes: task submission, approval writes, file contents of downloads
 
 **Completed groups (with the gaps listed in §2):**
 - Knowledge, Sources and Connectors
 - Activity, Approvals and Notifications
-- Lite, Meson, Onboarding, Desktop, browser extension and Public pages (code complete; Desktop and extension lack visual evidence)
+- Lite, Meson, Onboarding, Desktop, browser extension and Public pages
+- Goals, Marketplace, Models and Training
 
 **Product decisions for the owner:**
 - Whether Builder connection delete needs undo.

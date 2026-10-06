@@ -46,7 +46,7 @@
 
 body {
   margin: 0;
-  font-family: "Inter Display", "Segoe UI", system-ui, sans-serif;
+  font-family: "Inter Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
   color: var(--g-text-primary);
   background: var(--g-canvas);
   width: 300px;

@@ -5,7 +5,7 @@
   right: 16px;
   z-index: 2147483646;
   width: min(340px, calc(100vw - 24px));
-  font-family: "Inter Display", "Segoe UI", system-ui, sans-serif;
+  font-family: "Inter Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
   color: var(--g-text-primary);
   /* P13 — compressed mineral system */
   --g-brand: #16a374;
