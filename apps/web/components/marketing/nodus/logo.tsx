@@ -34,7 +34,7 @@ export const Logo = () => {
       aria-label="Gravitre home"
       className="flex h-11 items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <GravitreMark className="h-7" title="Gravitre" />
+      <GravitreMark className="h-8" title="Gravitre" />
     </Link>
   )
 }
