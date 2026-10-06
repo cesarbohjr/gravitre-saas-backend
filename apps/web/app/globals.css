@@ -652,28 +652,28 @@
 
   --background: var(--porcelain-50);
   --foreground: var(--ink-950);
-  --card: #fbfbfa;
+  --card: #ffffff;
   --card-foreground: var(--ink-950);
-  --popover: #fdfdfc;
+  --popover: #ffffff;
   --popover-foreground: var(--ink-950);
   --primary: var(--ink-950);
   --primary-foreground: #fbfbfa;
   --secondary: var(--bone-100);
   --secondary-foreground: var(--ink-950);
   --muted: var(--bone-100);
-  --muted-foreground: #65716b;
-  --accent: #e9e9e4;
+  --muted-foreground: #59665f;
+  --accent: #efefeb;
   --accent-foreground: var(--ink-950);
   --border: #dcdcd6;
-  --input: #dcdcd6;
+  --input: #818a84;
   --ring: var(--ink-950);
   --success: #1b7a5c;
   --success-foreground: #fbfbfa;
-  --warning: #8a6116;
+  --warning: #855600;
   --warning-foreground: #fbfbfa;
   --info: #3a68b0;
   --info-foreground: #fbfbfa;
-  --destructive: #b3403f;
+  --destructive: #b42332;
   --destructive-foreground: #fbfbfa;
   --chart-1: var(--signal-600);
   --chart-2: var(--information-500);
@@ -736,24 +736,24 @@
   --g-signal-soft: color-mix(in srgb, var(--information-500) 10%, var(--card));
   --g-signal-surface: color-mix(in srgb, var(--information-500) 6%, var(--card));
   --g-approval: var(--attention-500);
-  --g-approval-bright: #8a6116;
+  --g-approval-bright: #855600;
   --g-approval-soft: color-mix(in srgb, var(--attention-500) 12%, var(--card));
   --g-approval-surface: color-mix(in srgb, var(--attention-500) 7%, var(--card));
   --g-danger: var(--failure-500);
   --g-success: var(--signal-600);
   --g-warning: var(--attention-500);
 
-  --g-canvas: var(--g-bone);
-  --g-background: var(--g-bone);
+  --g-canvas: var(--background);
+  --g-background: var(--background);
   --g-background-muted: #efefeb;
   --g-surface-1: #ffffff;
   --g-surface-2: #f2f2ef;
   --g-surface-3: var(--bone-100);
-  --g-surface-elevated: #fdfdfc;
-  --g-surface-active: color-mix(in srgb, var(--signal-500) 7%, var(--card));
+  --g-surface-elevated: #ffffff;
+  --g-surface-active: #eaf8f2;
   --g-text-primary: var(--ink-950);
-  --g-text-secondary: #3a3d41;
-  --g-text-muted: #65716b;
+  --g-text-secondary: #3f4b45;
+  --g-text-muted: #59665f;
   --g-icon-muted: #6f767e;
   --g-border-subtle: #e6e6e1;
   --g-border-default: #dcdcd6;
@@ -809,33 +809,70 @@
   --g-type-body-ui: 0.875rem;
   --g-type-meta: 0.75rem;
   --g-type-mono: 0.75rem;
+
+  /* Semantic roles: palette -> role -> component. Inputs consume --border-control,
+     dividers consume --border-subtle; text on brand emerald uses carbon ink (white is 3.06:1). */
+  --surface: var(--card);
+  --surface-raised: var(--popover);
+  --surface-hover: var(--accent);
+  --surface-selected: var(--g-surface-active);
+  --text-primary: var(--foreground);
+  --text-secondary: var(--g-text-secondary);
+  --text-muted: var(--muted-foreground);
+  --border-subtle: var(--border);
+  --border-control: var(--input);
+  --brand-text: #006f53;
+  --brand-foreground: var(--g-carbon);
+  --intelligence-text: #2448d8;
+  --warning-text: #855600;
+  --danger-text: #b42332;
+  --success-text: #17694f;
+
+  --status-running-bg: #eef2ff;
+  --status-running-text: var(--intelligence-text);
+  --status-running-border: color-mix(in srgb, #2448d8 30%, #ffffff);
+  --status-queued-bg: var(--bone-100);
+  --status-queued-text: var(--text-secondary);
+  --status-queued-border: #c3c4bd;
+  --status-approval-bg: #fdf3e1;
+  --status-approval-text: var(--warning-text);
+  --status-approval-border: color-mix(in srgb, #855600 30%, #ffffff);
+  --status-completed-bg: #e8f5ee;
+  --status-completed-text: var(--success-text);
+  --status-completed-border: color-mix(in srgb, #17694f 30%, #ffffff);
+  --status-verified-bg: #eaf8f2;
+  --status-verified-text: var(--brand-text);
+  --status-verified-border: color-mix(in srgb, #006f53 30%, #ffffff);
+  --status-failed-bg: #fdecee;
+  --status-failed-text: var(--danger-text);
+  --status-failed-border: color-mix(in srgb, #b42332 30%, #ffffff);
 }
 
 .dark {
-  --background: var(--carbon-950);
-  --foreground: #e8eaec;
-  --card: var(--carbon-900);
-  --card-foreground: #e8eaec;
-  --popover: var(--graphite-800);
-  --popover-foreground: #e8eaec;
-  --primary: #e8eaec;
+  --background: #101214;
+  --foreground: #f0f2f4;
+  --card: #181b1f;
+  --card-foreground: #f0f2f4;
+  --popover: #22262b;
+  --popover-foreground: #f0f2f4;
+  --primary: #f0f2f4;
   --primary-foreground: var(--carbon-950);
-  --secondary: var(--graphite-800);
-  --secondary-foreground: #e8eaec;
-  --muted: var(--graphite-800);
-  --muted-foreground: #b7bdc4;
-  --accent: var(--graphite-700);
-  --accent-foreground: #e8eaec;
-  --border: #262a2e;
-  --input: #2c3034;
-  --ring: #e8eaec;
+  --secondary: #22262b;
+  --secondary-foreground: #f0f2f4;
+  --muted: #22262b;
+  --muted-foreground: #a2adb6;
+  --accent: #2b3036;
+  --accent-foreground: #f0f2f4;
+  --border: #353a3f;
+  --input: #77828e;
+  --ring: #f0f2f4;
   --success: #4fcf9f;
   --success-foreground: var(--carbon-950);
-  --warning: #d9a548;
+  --warning: #f2c46d;
   --warning-foreground: var(--carbon-950);
   --info: #7aa3e3;
   --info-foreground: var(--carbon-950);
-  --destructive: #e07272;
+  --destructive: #ff9aa5;
   --destructive-foreground: var(--carbon-950);
   --chart-1: var(--signal-500);
   --chart-2: #7aa3e3;
@@ -851,13 +888,13 @@
   --workflow-line-active-mid: var(--signal-500);
   --workflow-line-dim: #363b40;
   --sidebar: var(--carbon-950);
-  --sidebar-foreground: #e8eaec;
-  --sidebar-primary: #e8eaec;
+  --sidebar-foreground: #f0f2f4;
+  --sidebar-primary: #f0f2f4;
   --sidebar-primary-foreground: var(--carbon-950);
   --sidebar-accent: var(--graphite-800);
-  --sidebar-accent-foreground: #e8eaec;
+  --sidebar-accent-foreground: #f0f2f4;
   --sidebar-border: #1f2326;
-  --sidebar-ring: #e8eaec;
+  --sidebar-ring: #f0f2f4;
   --status-pending: #d9a548;
   --status-approved: var(--signal-500);
   --status-rejected: #e07272;
@@ -889,33 +926,33 @@
   --g-signal-soft: color-mix(in srgb, var(--information-500) 16%, transparent);
   --g-signal-surface: color-mix(in srgb, var(--information-500) 8%, var(--card));
   --g-approval: #d9a548;
-  --g-approval-bright: #e2b560;
+  --g-approval-bright: #f2c46d;
   --g-approval-soft: color-mix(in srgb, var(--attention-500) 16%, transparent);
   --g-approval-surface: color-mix(in srgb, var(--attention-500) 8%, var(--card));
   --g-danger: #e07272;
   --g-success: var(--signal-500);
   --g-warning: #d9a548;
 
-  --g-canvas: var(--carbon-950);
+  --g-canvas: var(--background);
   --g-void: var(--carbon-950);
-  --g-background: var(--carbon-950);
-  --g-background-muted: var(--graphite-800);
-  --g-surface-1: var(--carbon-900);
-  --g-surface-2: #15181a;
-  --g-surface-3: var(--graphite-800);
-  --g-surface-elevated: var(--graphite-800);
-  --g-surface-active: color-mix(in srgb, var(--signal-500) 8%, var(--card));
-  --g-text-primary: #e8eaec;
-  --g-text-secondary: #cdd1d6;
-  --g-text-muted: #b7bdc4;
+  --g-background: var(--background);
+  --g-background-muted: #22262b;
+  --g-surface-1: #181b1f;
+  --g-surface-2: #1d2024;
+  --g-surface-3: #22262b;
+  --g-surface-elevated: #22262b;
+  --g-surface-active: #123a2d;
+  --g-text-primary: #f0f2f4;
+  --g-text-secondary: #cbd1d6;
+  --g-text-muted: #a2adb6;
   --g-icon-muted: #8b9198;
-  --g-border-subtle: #1e2124;
-  --g-border-default: #262a2e;
-  --g-border-strong: #353a3f;
-  --g-border-active: #e8eaec;
-  --divide: #262a2e;
-  --line: #262a2e;
-  --dots: #24282c;
+  --g-border-subtle: #2b3036;
+  --g-border-default: #353a3f;
+  --g-border-strong: #4a5057;
+  --g-border-active: #f0f2f4;
+  --divide: #353a3f;
+  --line: #353a3f;
+  --dots: #2b3036;
   --g-chrome: var(--carbon-950);
   --g-chrome-hover: var(--graphite-800);
   --g-frame: var(--carbon-950);
@@ -923,12 +960,12 @@
   --g-rail-bg: #0e1012;
   --g-workspace-shadow: 0 0 0 1px var(--border);
 
-  --color-charcoal-900: #e8eaec;
+  --color-charcoal-900: #f0f2f4;
   --color-charcoal-800: #cdd1d6;
   --color-charcoal-700: #b7bdc4;
-  --color-gray-100: var(--carbon-900);
-  --color-gray-200: var(--graphite-800);
-  --color-gray-300: var(--graphite-700);
+  --color-gray-100: #181b1f;
+  --color-gray-200: #22262b;
+  --color-gray-300: #2b3036;
   --color-gray-400: #353a3f;
   --color-gray-500: #50565c;
   --color-gray-600: #8b9198;
@@ -952,6 +989,41 @@
   --np-shadow: 0 0 0 1px var(--border);
   --shadow-aceternity: 0 0 0 1px var(--border);
   --g-graphic-glow: 0 0 #0000;
+
+  --brand-text: #63d6b3;
+  --intelligence-text: #a3b5ff;
+  --warning-text: #f2c46d;
+  --danger-text: #ff9aa5;
+  --success-text: #7ee0b8;
+
+  --status-running-bg: color-mix(in srgb, #315cff 18%, #181b1f);
+  --status-running-border: color-mix(in srgb, #a3b5ff 35%, transparent);
+  --status-queued-bg: #2b3036;
+  --status-queued-border: #4a5057;
+  --status-approval-bg: color-mix(in srgb, #f2c46d 14%, #181b1f);
+  --status-approval-border: color-mix(in srgb, #f2c46d 35%, transparent);
+  --status-completed-bg: color-mix(in srgb, #4fcf9f 14%, #181b1f);
+  --status-completed-border: color-mix(in srgb, #7ee0b8 35%, transparent);
+  --status-verified-bg: #123a2d;
+  --status-verified-border: color-mix(in srgb, #63d6b3 35%, transparent);
+  --status-failed-bg: color-mix(in srgb, #ff9aa5 14%, #181b1f);
+  --status-failed-border: color-mix(in srgb, #ff9aa5 35%, transparent);
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --muted-foreground: #3f4b45;
+    --g-text-muted: #3f4b45;
+    --border: #818a84;
+    --input: #59665f;
+  }
+
+  .dark {
+    --muted-foreground: #cbd1d6;
+    --g-text-muted: #cbd1d6;
+    --border: #77828e;
+    --input: #a2adb6;
+  }
 }
 
 @theme inline {
@@ -999,6 +1071,36 @@
   --color-status-verified: var(--status-verified);
   --color-status-estimate: var(--status-estimate);
   --color-status-idle: var(--status-idle);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-selected: var(--surface-selected);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-control: var(--border-control);
+  --color-brand-text: var(--brand-text);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-intelligence-text: var(--intelligence-text);
+  --color-warning-text: var(--warning-text);
+  --color-danger-text: var(--danger-text);
+  --color-success-text: var(--success-text);
+  --color-status-running-bg: var(--status-running-bg);
+  --color-status-running-text: var(--status-running-text);
+  --color-status-running-border: var(--status-running-border);
+  --color-status-queued-bg: var(--status-queued-bg);
+  --color-status-queued-text: var(--status-queued-text);
+  --color-status-queued-border: var(--status-queued-border);
+  --color-status-approval-bg: var(--status-approval-bg);
+  --color-status-approval-text: var(--status-approval-text);
+  --color-status-approval-border: var(--status-approval-border);
+  --color-status-completed-bg: var(--status-completed-bg);
+  --color-status-completed-text: var(--status-completed-text);
+  --color-status-completed-border: var(--status-completed-border);
+  --color-status-verified-bg: var(--status-verified-bg);
+  --color-status-verified-text: var(--status-verified-text);
+  --color-status-verified-border: var(--status-verified-border);
+  --color-status-failed-bg: var(--status-failed-bg);
+  --color-status-failed-text: var(--status-failed-text);
+  --color-status-failed-border: var(--status-failed-border);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);

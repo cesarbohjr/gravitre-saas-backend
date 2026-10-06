@@ -1423,7 +1423,7 @@ function AddConnectorModal({
                 </button>
                 {Object.entries(connectorCategories).map(([cat, data]) => {
                   const colorMap: Record<string, { active: string, inactive: string }> = {
-                    emerald: { active: "bg-emerald-500 text-white", inactive: "hover:bg-emerald-500/10 hover:text-emerald-800 dark:hover:text-emerald-400" },
+                    emerald: { active: "bg-emerald-500 text-brand-foreground", inactive: "hover:bg-emerald-500/10 hover:text-emerald-800 dark:hover:text-emerald-400" },
                     blue: { active: "bg-blue-500 text-white", inactive: "hover:bg-blue-500/10 hover:text-blue-800 dark:hover:text-blue-400" },
                     violet: { active: "bg-[color:var(--g-signal)] text-white", inactive: "hover:bg-[color:var(--g-signal-surface)] hover:text-[color:var(--g-signal)]" },
                     amber: { active: "bg-amber-500 text-white", inactive: "hover:bg-amber-500/10 hover:text-amber-800 dark:hover:text-amber-400" },

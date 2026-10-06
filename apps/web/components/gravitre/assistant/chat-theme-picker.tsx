@@ -103,7 +103,7 @@ export function ChatThemePicker({
                   </>
                 ) : null}
                 {isActive ? (
-                  <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
+                  <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-brand-foreground shadow-sm">
                     <Check className="h-2.5 w-2.5" strokeWidth={3} />
                   </span>
                 ) : null}
