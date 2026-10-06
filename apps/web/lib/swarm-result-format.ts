@@ -57,17 +57,15 @@ export function extractSwarmNextSteps(run: AgentSwarmRun): string[] {
     const single = record.recommendedAction ?? record.recommended_action
     if (typeof single === "string" && single.trim()) steps.add(formatSwarmReadableText(single, 200))
   }
-  const aggregate = run.aggregateResult
-  if (aggregate && typeof aggregate === "object") {
-    const finalRec = (aggregate as Record<string, unknown>).finalRecommendation
-    if (typeof finalRec === "string" && finalRec.trim()) {
-      steps.add(formatSwarmReadableText(finalRec, 200))
-    }
-  }
-  if (run.finalRecommendation?.trim()) {
-    steps.add(formatSwarmReadableText(run.finalRecommendation, 200))
-  }
-  return Array.from(steps).slice(0, 5)
+  // The final recommendation is already shown as the council summary, so it is
+  // excluded here; only distinct agent-proposed actions become next steps.
+  const summary = formatSwarmReadableText(run.finalRecommendation, 100000).toLowerCase()
+  return Array.from(steps)
+    .filter((step) => {
+      const normalized = step.replace(/…$/, "").toLowerCase()
+      return normalized.length > 0 && !summary.includes(normalized)
+    })
+    .slice(0, 5)
 }
 
 export interface CouncilRoundView {

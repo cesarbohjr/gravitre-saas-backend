@@ -393,7 +393,9 @@ export function SwarmRunDetailPanel({
               </section>
             ) : null}
 
-            {run.finalRecommendation ? (
+            {run.finalRecommendation &&
+            run.finalRecommendation.replace(/\s+/g, " ").trim() !==
+              executiveSummary ? (
               <details className="border-t border-border py-2">
                 <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium">
                   Full reported recommendation
