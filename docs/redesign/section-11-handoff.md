@@ -51,17 +51,18 @@ Disposition values: **Redesigned** (changed and visually reviewed), **Reviewed**
 | Multi-agent | `/multi-agent-run` | Redesigned | yes | yes (list, completed, failed) | 19 swarm tests | — |
 | Connectors | `/connectors` | Redesigned | yes | yes | type-check | — |
 | Connector detail | `/connectors/[id]` | Redesigned | yes | yes | 9 tests | — |
-| Sources | `/sources`, `/sources/[id]` | Redesigned (detail) | yes | yes | type-check | Knowledge has no standalone route; it lives inside Sources and Agents |
+| Sources | `/sources`, `/sources/[id]` | Redesigned (detail), Reviewed (list) | yes | yes | type-check | — |
+| Knowledge | No standalone route | Covered through Sources detail and agent knowledge panels | — | via Sources | — | A standalone Knowledge route is an owner decision (see §6) |
 | Settings / Billing / Audit | `/settings/*`, `/audit` | Redesigned (billing month), Reviewed | yes | yes | type-check | — |
 | Activity | `/activity` | Reviewed | — | yes | — | — |
 | Approvals | `/approvals` | Redesigned (chip noise, dark tints) | yes | yes | type-check | — |
 | Notifications | `/notifications` | Redesigned (plain-language stats) | yes | yes | 10 tests | Native `<select>` for type filter not restyled |
-| Lite | `/lite/*` | **Not reviewed** | — | — | existing `lite-operating-states` tests | `/lite` only redirects. Needs a test page for the real Lite home |
+| Lite | `/lite/tasks` (Lite home; `/lite` redirects) | Redesigned (list rows, status text, shell padding aligned to header) | yes | yes (`/e2e/shots/lite-tasks`) | 6 `lite-operating-states` tests | Assign, Results and Deliverables subroutes rendered only through shared shell, not captured individually |
 | Meson | Builder Meson tab | Reviewed; empty-state copy corrected | yes | Initial panel at 907×797 dark | Browser: Open step → Data Validator inspector | Updated copy could not be recaptured: preview returned 502 SANDBOX_NOT_LISTENING. AI suggestions, saved-workflow edits and apply remain unverified. |
-| Onboarding | `/welcome` (`/onboarding` redirects) | **Not reviewed** | — | — | — | Needs a test page for `/welcome` |
+| Onboarding | `/welcome` (`/onboarding` redirects) | Redesigned (floating Ask bar hidden so it no longer covers footer actions; step icon tint mixed into surface) | yes | yes, step 1 (`/e2e/shots/welcome`) | 24 tests (`ai-helper`, `ai-auth-gate`) | Steps 2–5 not captured. The test page lives under `/e2e/shots/`, so its capture still shows the Ask bar; the hide rule is covered by unit tests |
 | Browser extension | `apps/extension` popup, side panel and injected overlay | Readability, spacing, dark theme, focus indicators, live session announcements and sidebar copy updated | yes | Blocked: port 4174 popup request opened main-app login rather than extension | Manifest asset existence, popup JavaScript syntax and diff checks passed; plain-source extension has no build step | Unpacked-extension visual review, Chrome runtime messaging, enrichment, approval writes and live AI remain untested. |
 | Desktop | `apps/desktop/src/App.tsx` (Tauri companion) | Code review; dark theme, compact sign-in layout, readable text, focus states, section state and IME-safe composer updated | yes | Blocked: browser request to port 4173 loaded web marketing on port 3000, not Desktop | Frozen-lockfile install and `pnpm build` passed (TypeScript + Vite) | Visual/interaction verification incomplete. Native build, auth deep links, notifications, voice, approval writes and live AI untested. |
-| Public | `/`, `/pricing`, `/login`, marketing | **Not reviewed** | — | — | — | Dev server dropped during capture |
+| Public | `/`, `/pricing`, `/login` | Reviewed (no change needed; marketing is intentionally light-only) | — | yes, 907px, no horizontal overflow or error | — | Other marketing pages (About, Careers, Blog, feature pages) not captured. Cookie banner covers the lower viewport until dismissed, by design |
 | Goals, Marketplace, Models, Training | — | **Not reviewed** this pass | — | — | existing journey tests | — |
 
 This matrix covers the families the master prompt names. Section 11 asks for it to be regenerated from the repository, and that full per-route regeneration has **not** been done. Routes outside these families are unaccounted for.
@@ -95,13 +96,17 @@ All changes reuse existing components (`GravitrePageHeader`, `ExtrovertSummary`,
 ## 6. Remaining routes, decisions and unverified behavior
 
 **Remaining routes:**
-- Lite home
-- `/welcome` onboarding
-- Meson standalone
-- Desktop shell
-- Public / marketing pages
+- Lite subroutes other than Tasks (Assign, Results, Deliverables)
+- Onboarding steps 2–5
+- Desktop and browser extension visual review (preview routing loads the web app instead)
+- Marketing pages beyond `/`, `/pricing`, `/login`
 - Goals, Marketplace, Models, Training
 - Full repository route regeneration
+
+**Completed groups (with the gaps listed in §2):**
+- Knowledge, Sources and Connectors
+- Activity, Approvals and Notifications
+- Lite, Meson, Onboarding, Desktop, browser extension and Public pages (code complete; Desktop and extension lack visual evidence)
 
 **Product decisions for the owner:**
 - Whether Builder connection delete needs undo.
@@ -125,14 +130,20 @@ All changes reuse existing components (`GravitrePageHeader`, `ExtrovertSummary`,
 - `app/settings/billing/page.tsx`
 - `app/sources/[id]/page.tsx`, `app/approvals/page.tsx`, `components/marketing/creative/primitives/evidence-chip.tsx`
 - `app/notifications/page.tsx`
+- `app/lite/tasks/page.tsx`, `components/gravitre/lite-page-shell.tsx`
+- `app/welcome/page.tsx`, `components/gravitre/ai-helper.tsx` (Ask bar hidden on `/welcome` and `/onboarding`)
+- `components/workflows/meson-copilot-panel.tsx`
+- `apps/desktop/src/App.tsx`, `apps/desktop/src/styles.css`
+- `apps/extension/popup.html`, `popup.css`, `sidepanel.html`, `content/overlay.css`
 
 **Test-only additions:**
-- `app/e2e/shots/multi-agent-run`, `app/e2e/shots/notifications`
-- Swarm fixtures in `lib/e2e-shot-fixtures.ts`
+- `app/e2e/shots/multi-agent-run`, `notifications`, `lite-tasks`, `welcome`
+- Swarm and Lite task fixtures in `lib/e2e-shot-fixtures.ts`
 
 **Tests updated:**
 - `phase-5-contextual-ask` (page composer removed)
 - `notification-inbox` (stat label)
+- `ai-helper` (Ask bar hidden on onboarding routes)
 
 **Assumptions:**
 - The 907×797 dark preview is the primary review viewport.

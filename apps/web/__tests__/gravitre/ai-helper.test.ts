@@ -101,6 +101,9 @@ describe("shouldShowGravitreAIHelper", () => {
     expect(shouldShowGravitreAIHelper("/ai")).toBe(false)
     expect(shouldShowGravitreAIHelper("/ai/")).toBe(false)
     expect(shouldShowGravitreAIHelper("/ai/anything")).toBe(false)
+    expect(shouldShowGravitreAIHelper("/welcome")).toBe(false)
+    expect(shouldShowGravitreAIHelper("/onboarding")).toBe(false)
+    expect(shouldShowGravitreAIHelper("/welcome-back")).toBe(true)
   })
 
   it("shows on every other route", () => {
