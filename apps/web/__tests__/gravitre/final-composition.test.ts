@@ -14,17 +14,20 @@ describe("3.0 Plus final composition", () => {
     expect(src).not.toMatch(/overflow-y-auto/)
   })
 
-  it("outcome flow sits directly under the KPI strip, before secondary widgets", () => {
+  it("system outcomes are a collapsible preview in the AI Native view, linked to Activity", () => {
     const src = read("components/home/home-dashboard.tsx")
-    const sankey = src.indexOf("<OutcomeFlowSankey />")
-    const grid = src.indexOf("{/* Desktop / tablet grid */}")
-    expect(sankey).toBeGreaterThan(src.indexOf("</motion.dl>"))
-    expect(sankey).toBeLessThan(grid)
+    const ai = src.indexOf('data-dashboard-view="ai"')
+    const reports = src.indexOf('data-dashboard-view="reports"')
+    const outcomes = src.indexOf("<SystemOutcomes />")
+    expect(outcomes).toBeGreaterThan(ai)
+    expect(outcomes).toBeLessThan(reports)
+    const outcomesSrc = read("components/home/system-outcomes.tsx")
+    expect(outcomesSrc).toMatch(/aria-expanded=\{!collapsed\}/)
+    expect(outcomesSrc).toMatch(/href=\{APP_ROUTES\.activity\}/)
   })
 
-  it("outcome flow shows counts and backend pass rate only", () => {
-    const src = read("components/home/outcome-flow-sankey.tsx")
-    expect(src).toMatch(/counts, not value/)
+  it("system outcomes show counts and backend pass rate only", () => {
+    const src = read("components/home/system-outcomes.tsx")
     expect(src).toMatch(/row\.pass_rate != null/)
     expect(src).not.toMatch(/style:\s*["']currency["']|\bUSD\b|\bROI\b|savings/)
   })
