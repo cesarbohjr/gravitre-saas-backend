@@ -138,8 +138,8 @@ export function RelationshipToolbar({
           ) : null}
         </div>
       </div>
-      <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
-        <div className="min-w-0 flex-1 space-y-1.5">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-[220px] flex-1 space-y-1.5">
           <label htmlFor="rel-search" className="text-xs font-medium text-[color:var(--g-text-muted)]">
             Search
           </label>
@@ -210,6 +210,7 @@ export function RelationshipToolbar({
             </SelectContent>
           </Select>
         </div>
+        <div className="flex items-center gap-2">
         <Button
           type="button"
           variant={showArchived ? "secondary" : "outline"}
@@ -232,6 +233,7 @@ export function RelationshipToolbar({
         >
           {showTestData ? "Including test data" : "Show test data"}
         </Button>
+        </div>
       </div>
       {showTestData ? (
         <p
