@@ -17,6 +17,24 @@ const marketingOrigin =
   process.env.PLAYWRIGHT_BASE_URL ??
   "http://localhost:3000"
 
+// The cookie consent banner opens for every first-time visitor and its overlay
+// intercepts clicks on footer links. Seed a stored decision so the crawler
+// clicks the page itself.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      "gravitre_marketing_consent_v1",
+      JSON.stringify({
+        ad_storage: "denied",
+        ad_user_data: "denied",
+        ad_personalization: "denied",
+        analytics_storage: "denied",
+        decidedAt: new Date().toISOString(),
+      }),
+    )
+  })
+})
+
 test.describe("Marketing navigation — known regressions", () => {
   for (const spec of KNOWN_NAVIGATION_REGRESSIONS) {
     test(`${spec.id}: click from ${spec.sourcePath}`, async ({ page }) => {
