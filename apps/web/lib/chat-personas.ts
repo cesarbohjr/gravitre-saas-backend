@@ -7,15 +7,16 @@ export type ChatPersonaOption = {
 }
 
 export const CHAT_PERSONA_OPTIONS: ChatPersonaOption[] = [
-  { key: "friendly_assistant", label: "Friendly Assistant", tone: "warm", verbosity: "moderate" },
+  { key: "friendly_assistant", label: "Friendly Assistant", tone: "warm", verbosity: "adaptive" },
   { key: "executive_strategist", label: "Executive Strategist", tone: "authoritative", verbosity: "concise" },
   { key: "sales_advisor", label: "Sales Advisor", tone: "confident", verbosity: "moderate" },
   { key: "marketing_operator", label: "Marketing Operator", tone: "energetic", verbosity: "moderate" },
   { key: "operations_analyst", label: "Operations Analyst", tone: "precise", verbosity: "detailed" },
-  { key: "support_specialist", label: "Support Specialist", tone: "empathetic", verbosity: "moderate" },
-  { key: "finance_analyst", label: "Finance Analyst", tone: "analytical", verbosity: "detailed" },
-  { key: "engineering_copilot", label: "Engineering Copilot", tone: "technical", verbosity: "detailed" },
-  { key: "deep_research_analyst", label: "Deep Research Analyst", tone: "scholarly", verbosity: "detailed" },
+  { key: "support_specialist", label: "Support Specialist", tone: "empathetic", verbosity: "clear" },
+  { key: "finance_analyst", label: "Finance Analyst", tone: "measured", verbosity: "detailed" },
+  { key: "hr_advisor", label: "HR Advisor", tone: "supportive", verbosity: "clear" },
+  { key: "engineering_copilot", label: "Engineering Copilot", tone: "direct", verbosity: "technical" },
+  { key: "deep_research_analyst", label: "Deep Research Analyst", tone: "thorough", verbosity: "comprehensive" },
 ]
 
 export const DEFAULT_CHAT_PERSONA_KEY = "friendly_assistant"
