@@ -79,14 +79,14 @@ LLM_CATALOG: tuple[LlmModel, ...] = (
              "balanced", 2.0, 8.0, fine_tunable=True),
     LlmModel("gpt-4.1-mini", "openai", "GPT-4.1 Mini", "Cost-efficient fine-tunable OpenAI base",
              "fast", 0.40, 1.60, fine_tunable=True),
-    # Previous OpenAI lineup — kept routable for saved agents.
+    # Earlier OpenAI lineup — the router defaults (MODEL_TIERS) stay on the proven ids.
     LlmModel("gpt-5.5", "openai", "GPT-5.5", "Previous OpenAI flagship",
-             "flagship", 5.0, 30.0, cached_input_per_1m=0.50, deprecated=True),
+             "flagship", 5.0, 30.0, cached_input_per_1m=0.50),
     LlmModel("gpt-5.4-mini", "openai", "GPT-5.4 Mini", "Previous fast OpenAI model",
-             "fast", 0.75, 4.50, deprecated=True),
+             "fast", 0.75, 4.50),
     LlmModel("gpt-5.4-nano", "openai", "GPT-5.4 Nano", "Previous cheapest OpenAI model",
-             "fast", 0.20, 1.25, deprecated=True),
-    LlmModel("gpt-4o", "openai", "GPT-4o", "Legacy multimodal model", "balanced", deprecated=True),
+             "fast", 0.20, 1.25),
+    LlmModel("gpt-4o", "openai", "GPT-4o", "Multimodal model (default vision tier)", "balanced", 2.5, 10.0),
     LlmModel("gpt-4o-mini", "openai", "GPT-4o Mini", "Legacy small multimodal model", "fast", deprecated=True),
     LlmModel("o3-mini", "openai", "o3-mini", "Legacy reasoning model", "balanced", deprecated=True),
     LlmModel("o4-mini", "openai", "o4-mini", "Legacy compact reasoning model", "balanced", deprecated=True),
@@ -106,13 +106,13 @@ LLM_CATALOG: tuple[LlmModel, ...] = (
     LlmModel("claude-haiku-4-5", "anthropic", "Claude Haiku 4.5",
              "Fastest Claude for routing, triage, and high-QPS agents",
              "fast", 1.0, 5.0, cached_input_per_1m=0.10, context_window=200_000),
-    # Previous Claude ids — kept routable for saved agents.
+    # Earlier Claude ids — the router defaults stay on the proven ids.
     LlmModel("claude-sonnet-4-6", "anthropic", "Claude Sonnet 4.6", "Previous Claude Sonnet",
-             "balanced", 3.0, 15.0, deprecated=True),
+             "balanced", 3.0, 15.0),
     LlmModel("claude-opus-4-6", "anthropic", "Claude Opus 4.6", "Previous Claude Opus",
              "flagship", 5.0, 25.0, deprecated=True),
     LlmModel("claude-haiku-4-5-20251001", "anthropic", "Claude Haiku 4.5 (2025-10-01)",
-             "Dated Claude Haiku 4.5 snapshot", "fast", 1.0, 5.0, cached_input_per_1m=0.10, deprecated=True),
+             "Dated Claude Haiku 4.5 snapshot", "fast", 1.0, 5.0, cached_input_per_1m=0.10),
     LlmModel("claude-3-5-sonnet-20241022", "anthropic", "Claude 3.5 Sonnet", "Retired Claude model",
              "balanced", deprecated=True),
     # --- Google Gemini ------------------------------------------------------
@@ -131,11 +131,11 @@ LLM_CATALOG: tuple[LlmModel, ...] = (
              "fast", 0.30, 2.50),
     LlmModel("gemini-3.1-flash-lite", "gemini", "Gemini 3.1 Flash-Lite", "Cheapest Gemini for bulk work",
              "fast", 0.25, 1.50, cached_input_per_1m=0.025),
-    # Gemini 2.x is restricted to prior users — kept routable for them.
+    # Gemini 2.x is restricted to prior users (this workspace is one); router defaults use it.
     LlmModel("gemini-2.5-pro", "gemini", "Gemini 2.5 Pro", "Previous Gemini Pro",
-             "flagship", 1.25, 10.0, deprecated=True),
+             "flagship", 1.25, 10.0),
     LlmModel("gemini-2.5-flash", "gemini", "Gemini 2.5 Flash", "Previous Gemini Flash",
-             "fast", 0.0875, 0.35, deprecated=True),
+             "fast", 0.0875, 0.35),
     LlmModel("gemini-2.0-flash", "gemini", "Gemini 2.0 Flash", "Legacy Gemini Flash", "fast", deprecated=True),
 )
 

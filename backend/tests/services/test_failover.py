@@ -78,17 +78,17 @@ class StreamStubAdapter(StubAdapter):
 class TestBuildPriority:
     def test_auto_high_prefers_anthropic(self):
         assert build_priority("auto", "high") == [
-            ("anthropic", "claude-sonnet-5-5"),
-            ("openai", "gpt-6.1-sol"),
-            ("gemini", "gemini-3.8-flash"),
+            ("anthropic", "claude-sonnet-4-6"),
+            ("openai", "gpt-5.5"),
+            ("gemini", "gemini-2.5-pro"),
         ]
 
     def test_auto_low_prefers_openai(self):
-        assert build_priority("auto", "low")[0] == ("openai", "gpt-6-luna")
+        assert build_priority("auto", "low")[0] == ("openai", "gpt-5.4-mini")
 
     def test_preferred_anthropic_first(self):
         priority = build_priority("anthropic", "medium")
-        assert priority[0] == ("anthropic", "claude-sonnet-5-5")
+        assert priority[0] == ("anthropic", "claude-sonnet-4-6")
         assert [p for p, _ in priority] == ["anthropic", "openai", "gemini"]
 
     def test_preferred_gemini_first(self):

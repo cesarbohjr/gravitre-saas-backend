@@ -81,9 +81,16 @@ _MODEL_PRICING_PER_1K: dict[str, tuple[float, float, float]] = {
 }
 
 
-def _priority_for_override(model_override: str) -> list[tuple[str, str]]:
-    """Pin an explicit model to the provider that serves it, not always OpenAI."""
-    return [(resolve_provider_for_model(model_override), model_override)]
+def _priority_for_override(
+    model_override: str, fallback: list[tuple[str, str]] | None = None
+) -> list[tuple[str, str]]:
+    """Pin an explicit model to the provider that serves it, not always OpenAI.
+
+    ``fallback`` (the normal tier chain) follows the pinned model so a model the
+    provider key cannot serve fails over instead of failing the turn.
+    """
+    pinned = (resolve_provider_for_model(model_override), model_override)
+    return [pinned, *[entry for entry in (fallback or []) if entry != pinned]]
 
 
 class ModelResponse(BaseModel):
@@ -290,7 +297,12 @@ class ModelRouter:
 
         # Build the failover priority chain.
         if model_override:
-            priority = _priority_for_override(model_override)
+            fallback = (
+                build_priority(getattr(self.settings, "preferred_ai_provider", "openai"), complexity)
+                if getattr(self.settings, "ai_failover_enabled", True)
+                else None
+            )
+            priority = _priority_for_override(model_override, fallback)
         elif getattr(self.settings, "ai_failover_enabled", True):
             priority = build_priority(getattr(self.settings, "preferred_ai_provider", "openai"), complexity)
         else:
@@ -488,7 +500,12 @@ class ModelRouter:
         messages.append({"role": "user", "content": fence_untrusted(user_prompt)})
 
         if model_override:
-            priority = _priority_for_override(model_override)
+            fallback = (
+                build_priority(getattr(self.settings, "preferred_ai_provider", "openai"), complexity)
+                if getattr(self.settings, "ai_failover_enabled", True)
+                else None
+            )
+            priority = _priority_for_override(model_override, fallback)
         elif getattr(self.settings, "ai_failover_enabled", True):
             priority = build_priority(getattr(self.settings, "preferred_ai_provider", "openai"), complexity)
         else:

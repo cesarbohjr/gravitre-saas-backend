@@ -31,9 +31,9 @@ class TestModelRouter:
         return ModelRouter(settings=mock_settings)
 
     def test_task_model_resolution(self, router: ModelRouter):
-        # Tiered routing (OpenAI tier): low -> gpt-6-luna, high -> gpt-6.1-sol.
-        assert router._resolve_model(TaskType.CLASSIFICATION) == "gpt-6-luna"  # noqa: SLF001
-        assert router._resolve_model(TaskType.WORKFLOW_PLANNING) == "gpt-6.1-sol"  # noqa: SLF001
+        # Tiered routing (OpenAI tier): low -> gpt-5.4-mini, high -> gpt-5.5.
+        assert router._resolve_model(TaskType.CLASSIFICATION) == "gpt-5.4-mini"  # noqa: SLF001
+        assert router._resolve_model(TaskType.WORKFLOW_PLANNING) == "gpt-5.5"  # noqa: SLF001
 
     @pytest.mark.asyncio
     async def test_complete_openai(self, router: ModelRouter):
@@ -42,7 +42,7 @@ class TestModelRouter:
         with patch.object(router, "_log_model_call", AsyncMock()):
             response = await router.complete(task_type=TaskType.WORKFLOW_PLANNING, prompt="Plan this")
         assert response.provider == "openai"
-        assert response.model == "gpt-6.1-sol"
+        assert response.model == "gpt-5.5"
         assert response.content == "hello"
         assert response.cache_hit is False
 
@@ -147,9 +147,9 @@ def test_model_router_returns_updated_model_per_tier():
     assert router._resolve_model(TaskType.CLASSIFICATION) == MODEL_TIERS["low"]["openai"]  # noqa: SLF001
     assert router._resolve_model(TaskType.RAG_ANSWERING) == MODEL_TIERS["medium"]["openai"]  # noqa: SLF001
     assert router._resolve_model(TaskType.WORKFLOW_PLANNING) == MODEL_TIERS["high"]["openai"]  # noqa: SLF001
-    assert MODEL_TIERS["low"]["openai"] == "gpt-6-luna"
-    assert MODEL_TIERS["medium"]["openai"] == "gpt-6.1-sol"
-    assert MODEL_TIERS["high"]["openai"] == "gpt-6.1-sol"
+    assert MODEL_TIERS["low"]["openai"] == "gpt-5.4-mini"
+    assert MODEL_TIERS["medium"]["openai"] == "gpt-5.5"
+    assert MODEL_TIERS["high"]["openai"] == "gpt-5.5"
 
 
 def test_existing_tier_routing_logic_unchanged_in_structure():

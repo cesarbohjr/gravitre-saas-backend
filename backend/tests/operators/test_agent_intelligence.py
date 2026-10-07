@@ -315,7 +315,7 @@ def test_select_model_for_agent_complexity_hint():
             "short",
             parameters={"complexity": "high"},
         )
-    assert model == "gpt-6.1-sol"
+    assert model == "gpt-5.5"
 
 
 @pytest.mark.parametrize("saved_model", ["auto", "Auto", "", None, "default"])
