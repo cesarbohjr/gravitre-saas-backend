@@ -234,3 +234,48 @@ def persist_turn_summary(
         user_id=user_id,
         summary=complete.summary,
     )
+
+
+def persist_completed_turn(
+    settings: Any,
+    *,
+    org_id: str,
+    user_id: str,
+    conversation_id: str | None,
+    user_text: str,
+    assistant_text: str,
+    complete: Any,
+) -> tuple[str | None, str | None]:
+    """Save a finished turn to the same durable conversation store text chat uses.
+
+    Appends the user and assistant messages (creating the conversation when
+    there is none yet) and records the completed turn in memory. Returns
+    ``(conversation_id, assistant_message_id)``; ``(None, None)`` when nothing
+    was saved. Blocking: call it from a worker thread in async code.
+    """
+    if not assistant_text.strip():
+        return None, None
+    from app.routers.assistant import _persist_conversation_turn, _remember_completed_turn
+
+    tool_results = list(getattr(complete, "tool_results", None) or [])
+    persisted_id, assistant_id = _persist_conversation_turn(
+        settings,
+        org_id=org_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        user_text=user_text,
+        assistant_text=assistant_text,
+        tool_results=tool_results,
+        assistant_message_id=str(getattr(complete, "message_id", None) or "") or None,
+    )
+    if persisted_id:
+        _remember_completed_turn(
+            settings=settings,
+            org_id=org_id,
+            conversation_id=persisted_id,
+            user_text=user_text,
+            assistant_text=assistant_text,
+            tool_results=tool_results,
+            assistant_message_id=assistant_id,
+        )
+    return persisted_id, assistant_id

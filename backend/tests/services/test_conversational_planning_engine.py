@@ -72,7 +72,13 @@ def test_format_plan_section_includes_goal_and_risks():
             False,
         ),
         (
+            # A measurable business objective: the kernel's objective planner owns it.
             "How can we improve our outbound pipeline this quarter?",
+            {"requires_action": False, "intent": "research"},
+            False,
+        ),
+        (
+            "Draft a plan for our partner programme roadmap",
             {"requires_action": False, "intent": "research"},
             True,
         ),
@@ -98,3 +104,20 @@ def test_is_direct_connector_write_intent_list_create():
         "Create an Apollo contact list named exactly 'x'. Please plan the steps before executing."
     )
     assert not is_direct_connector_write_intent("How can we improve retention?")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "query",
+    [
+        "Help me generate 150 qualified leads per month.",
+        "Reduce SLA breaches and improve first-response performance.",
+        "Improve collections and reduce overdue receivables.",
+    ],
+)
+async def test_business_objectives_are_left_to_the_objective_planner(query):
+    """One plan per objective: the kernel's objective planner owns these turns."""
+    from app.services.conversational_planning_engine import ConversationalPlanningEngine
+
+    engine = ConversationalPlanningEngine.__new__(ConversationalPlanningEngine)
+    assert await engine.should_plan({"intent": "optimization", "requires_action": True}, query) is False

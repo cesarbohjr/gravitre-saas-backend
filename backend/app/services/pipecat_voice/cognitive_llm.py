@@ -33,9 +33,16 @@ from app.services.pipecat_voice.voice_latency_tuning import (
     resolve_voice_speculative_tuning,
     resolve_voice_tts_chunk_tuning,
 )
+from app.services.pipecat_voice.voice_silence_guard import (
+    SILENCE_TICK,
+    SlowToolNotices,
+    slow_tool_notice_seconds,
+    with_silence_ticks,
+)
 from app.services.pipecat_voice.voice_tool_narration import (
     narrate_tool_completed,
     narrate_tool_started,
+    narrate_tool_still_running,
     skip_spoken_tool_progress,
 )
 from app.services.voice_session_service import (
@@ -344,6 +351,11 @@ class GravitreCognitiveLLMService(LLMService):
                 mode=voice_mode,
                 **turn_inputs,
             )
+        # Dead-air guard: while one slow tool call keeps the stream silent, say
+        # (honestly) that it is still running instead of leaving the line quiet.
+        notice_interval_s = slow_tool_notice_seconds(self._app_settings)
+        slow_tool_notices = SlowToolNotices(notice_interval_s)
+        events_source = with_silence_ticks(events_source, interval_s=notice_interval_s)
         async for event in events_source:
             if guard_task is not None and await _guard_refused():
                 aclose = getattr(events_source, "aclose", None)
@@ -363,6 +375,24 @@ class GravitreCognitiveLLMService(LLMService):
                     self._conversation_id,
                 )
                 break
+            if event is SILENCE_TICK:
+                due = slow_tool_notices.due(
+                    tool_call_started_at,
+                    tool_names_by_call_id,
+                    now=time.perf_counter(),
+                    skip=skip_spoken_tool_progress,
+                )
+                if due is not None:
+                    tool_name, is_repeat = due
+                    logger.info(
+                        "pipecat_voice_slow_tool_notice org_id=%s tool=%s repeat=%s",
+                        self._org_id,
+                        tool_name,
+                        is_repeat,
+                    )
+                    await self._flush_client_text(client_text_filter)
+                    await self._speak_narration(narrate_tool_still_running(tool_name, repeat=is_repeat))
+                continue
             if isinstance(event, AssistantStreamComplete):
                 complete_event = event
                 continue
@@ -639,28 +669,17 @@ class GravitreCognitiveLLMService(LLMService):
         if not assistant_text.strip():
             return None, None
         try:
-            from app.routers.assistant import _persist_conversation_turn, _remember_completed_turn
+            from app.services.shared_turn_preparation import persist_completed_turn
 
-            persisted_id, assistant_id = _persist_conversation_turn(
+            persisted_id, assistant_id = persist_completed_turn(
                 self._app_settings,
                 org_id=self._org_id,
                 user_id=self._user_id,
                 conversation_id=self._conversation_id,
                 user_text=user_text,
                 assistant_text=assistant_text,
-                tool_results=list(getattr(complete_event, "tool_results", None) or []),
-                assistant_message_id=str(getattr(complete_event, "message_id", None) or "") or None,
+                complete=complete_event,
             )
-            if persisted_id:
-                _remember_completed_turn(
-                    settings=self._app_settings,
-                    org_id=self._org_id,
-                    conversation_id=persisted_id,
-                    user_text=user_text,
-                    assistant_text=assistant_text,
-                    tool_results=list(getattr(complete_event, "tool_results", None) or []),
-                    assistant_message_id=assistant_id,
-                )
             return persisted_id, assistant_id
         except Exception as exc:  # noqa: BLE001
             logger.warning(

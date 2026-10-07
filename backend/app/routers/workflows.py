@@ -2087,6 +2087,145 @@ def _drain_unstarted_assistant_chat_run(
     }
 
 
+def _evaluate_run_policy(
+    settings: Settings,
+    *,
+    org_id: str,
+    workflow_id: str,
+    definition: dict,
+    required_approvals: int,
+    approver_roles: list[str],
+    environment_name: str,
+):
+    """Org policy caps plus the write-approval floor, shared by every run trigger."""
+    allowed_envs = [e.strip() for e in (settings.policy_allowed_envs or "").split(",") if e.strip()]
+    max_steps = settings.policy_max_steps if settings.policy_max_steps > 0 else None
+    max_runtime = settings.policy_max_runtime_seconds if settings.policy_max_runtime_seconds > 0 else None
+    return evaluate_policy(
+        PolicyContext(
+            settings=settings,
+            org_id=org_id,
+            workflow_id=workflow_id,
+            definition=definition,
+            required_approvals=required_approvals,
+            approver_roles=approver_roles,
+            environment_name=environment_name,
+            max_steps=max_steps,
+            max_runtime_seconds=max_runtime,
+            allowed_envs=allowed_envs or None,
+            allowed_connector_types=None,
+        )
+    )
+
+
+def _open_pending_approval_run(
+    *,
+    client,
+    plan: dict,
+    org_id: str,
+    environment_name: str,
+    workflow_id: str,
+    definition: dict,
+    parameters: dict,
+    run_hash: str,
+    actor_id: str,
+    required_approvals: int,
+    approver_roles: list[str],
+    approval_floor_applied: bool,
+    trigger_type: str,
+    workflow_version_id: str | None = None,
+    schedule_id: str | None = None,
+    rollback_of_run_id: str | None = None,
+    start: float | None = None,
+) -> dict:
+    """Create a run that waits for approval: the one governed path every trigger uses.
+
+    Manual, scheduled, operator-action and event-triggered (webhook, HubSpot,
+    Salesforce, Segment, PagerDuty) runs all open their approval here, so the
+    approval record, audit events and the canvas write gate behave the same
+    whichever surface started the run.
+    """
+    start = start if start is not None else time.perf_counter()
+    try:
+        run = create_execute_run(
+            client=client,
+            org_id=org_id,
+            workflow_id=workflow_id,
+            triggered_by=actor_id,
+            definition_snapshot=definition,
+            parameters=parameters,
+            run_hash=run_hash,
+            status=RUN_STATUS_PENDING_APPROVAL,
+            approval_status="pending_approval",
+            required_approvals=required_approvals,
+            approver_roles=approver_roles,
+            environment_name=environment_name,
+            workflow_version_id=workflow_version_id,
+            trigger_type=trigger_type,
+            schedule_id=schedule_id,
+            rollback_of_run_id=rollback_of_run_id,
+        )
+    except Exception:
+        active_run_id = check_concurrency(client, org_id, workflow_id, environment_name=environment_name)
+        if active_run_id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=active_run_conflict_detail(active_run_id),
+            )
+        raise
+    run_id = str(run["id"])
+    _record_workflow_run_usage(client, org_id, environment_name, plan)
+    if approval_floor_applied:
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=actor_id,
+            action="policy.override.approval_floor_applied",
+            resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
+            resource_id=run_id,
+            metadata={"workflow_id": workflow_id, "forced_required_approvals": 1},
+        )
+    steps_def = definition.get("steps", [])
+    for idx, sdef in enumerate(steps_def):
+        create_step(
+            client=client,
+            run_id=run_id,
+            org_id=org_id,
+            step_id=sdef["id"],
+            step_index=idx,
+            step_name=sdef["name"],
+            step_type=sdef["type"],
+        )
+    emit_execute_created(client, org_id, actor_id, run_id, workflow_id)
+    emit_execute_pending_approval(client, org_id, actor_id, run_id, workflow_id)
+    from app.services.approval_record_service import sync_workflow_pending_approval
+
+    wf_name = definition.get("name") if isinstance(definition, dict) else None
+    sync_workflow_pending_approval(
+        client,
+        org_id=org_id,
+        run_id=run_id,
+        workflow_id=workflow_id,
+        workflow_name=str(wf_name or workflow_id),
+        requested_by=actor_id,
+        parameters=parameters if isinstance(parameters, dict) else None,
+        required_approvals=required_approvals,
+    )
+    latency_ms = int((time.perf_counter() - start) * 1000)
+    logger.info(
+        "workflow_execute_created request_id=%s org_id=%s workflow_id=%s run_id=%s latency_ms=%s status=pending_approval",
+        request_id_ctx.get(), org_id, workflow_id, run_id, latency_ms,
+    )
+    return {
+        "run_id": run_id,
+        "status": RUN_STATUS_PENDING_APPROVAL,
+        "approval_status": "pending_approval",
+        "approval_required": True,
+        "required_approvals": required_approvals,
+        "approvals_received": 0,
+    }
+
+
 def _execute_workflow_with_context(
     *,
     client,
@@ -2194,23 +2333,14 @@ def _execute_workflow_with_context(
             detail=active_run_conflict_detail(active_run_id, status=conflict_status),
         )
 
-    allowed_envs = [e.strip() for e in (settings.policy_allowed_envs or "").split(",") if e.strip()]
-    max_steps = settings.policy_max_steps if settings.policy_max_steps > 0 else None
-    max_runtime = settings.policy_max_runtime_seconds if settings.policy_max_runtime_seconds > 0 else None
-    decision = evaluate_policy(
-        PolicyContext(
-            settings=settings,
-            org_id=org_id,
-            workflow_id=workflow_id,
-            definition=definition,
-            required_approvals=required_approvals,
-            approver_roles=approver_roles,
-            environment_name=environment_name,
-            max_steps=max_steps,
-            max_runtime_seconds=max_runtime,
-            allowed_envs=allowed_envs or None,
-            allowed_connector_types=None,
-        )
+    decision = _evaluate_run_policy(
+        settings,
+        org_id=org_id,
+        workflow_id=workflow_id,
+        definition=definition,
+        required_approvals=required_approvals,
+        approver_roles=approver_roles,
+        environment_name=environment_name,
     )
     if not decision.allowed:
         raise HTTPException(
@@ -2223,84 +2353,25 @@ def _execute_workflow_with_context(
 
     approval_required = required_approvals > 0
     if approval_required:
-        try:
-            run = create_execute_run(
-                client=client,
-                org_id=org_id,
-                workflow_id=workflow_id,
-                triggered_by=actor_id,
-                definition_snapshot=definition,
-                parameters=parameters,
-                run_hash=run_hash,
-                status=RUN_STATUS_PENDING_APPROVAL,
-                approval_status="pending_approval",
-                required_approvals=required_approvals,
-                approver_roles=approver_roles,
-                environment_name=environment_name,
-                workflow_version_id=workflow_version_id,
-                trigger_type=trigger_type,
-                schedule_id=schedule_id,
-                rollback_of_run_id=rollback_of_run_id,
-            )
-        except Exception:
-            active_run_id = check_concurrency(client, org_id, workflow_id, environment_name=environment_name)
-            if active_run_id:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=active_run_conflict_detail(active_run_id),
-                )
-            raise
-        run_id = str(run["id"])
-        _record_workflow_run_usage(client, org_id, environment_name, plan)
-        if approval_floor_applied:
-            write_audit_event(
-                client,
-                org_id=org_id,
-                actor_id=actor_id,
-                action="policy.override.approval_floor_applied",
-                resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
-                resource_id=run_id,
-                metadata={"workflow_id": workflow_id, "forced_required_approvals": 1},
-            )
-        steps_def = definition.get("steps", [])
-        for idx, sdef in enumerate(steps_def):
-            create_step(
-                client=client,
-                run_id=run_id,
-                org_id=org_id,
-                step_id=sdef["id"],
-                step_index=idx,
-                step_name=sdef["name"],
-                step_type=sdef["type"],
-            )
-        emit_execute_created(client, org_id, actor_id, run_id, workflow_id)
-        emit_execute_pending_approval(client, org_id, actor_id, run_id, workflow_id)
-        from app.services.approval_record_service import sync_workflow_pending_approval
-
-        wf_name = definition.get("name") if isinstance(definition, dict) else None
-        sync_workflow_pending_approval(
-            client,
+        return _open_pending_approval_run(
+            client=client,
+            plan=plan,
             org_id=org_id,
-            run_id=run_id,
+            environment_name=environment_name,
             workflow_id=workflow_id,
-            workflow_name=str(wf_name or workflow_id),
-            requested_by=actor_id,
-            parameters=parameters if isinstance(parameters, dict) else None,
+            definition=definition,
+            parameters=parameters,
+            run_hash=run_hash,
+            actor_id=actor_id,
             required_approvals=required_approvals,
+            approver_roles=approver_roles,
+            approval_floor_applied=approval_floor_applied,
+            trigger_type=trigger_type,
+            workflow_version_id=workflow_version_id,
+            schedule_id=schedule_id,
+            rollback_of_run_id=rollback_of_run_id,
+            start=start,
         )
-        latency_ms = int((time.perf_counter() - start) * 1000)
-        logger.info(
-            "workflow_execute_created request_id=%s org_id=%s workflow_id=%s run_id=%s latency_ms=%s status=pending_approval",
-            request_id_ctx.get(), org_id, workflow_id, run_id, latency_ms,
-        )
-        return {
-            "run_id": run_id,
-            "status": RUN_STATUS_PENDING_APPROVAL,
-            "approval_status": "pending_approval",
-            "approval_required": True,
-            "required_approvals": required_approvals,
-            "approvals_received": 0,
-        }
     else:
         try:
             run = create_execute_run(
@@ -3546,6 +3617,30 @@ async def list_approvals_alias(
             chat_rows = chat_q.execute().data or []
         except Exception:  # noqa: BLE001
             chat_rows = []
+        # Browser-extension writes share this queue: approvable here or from the overlay.
+        try:
+            ext_q = (
+                client.table("approvals")
+                .select(
+                    "id, title, description, type, priority, status, requested_by, "
+                    "requested_at, reviewed_by, reviewed_at, context, run_id"
+                )
+                .eq("org_id", org_id)
+                .in_("type", ["extension_write", "extension_workflow"])
+                .order("requested_at", desc=True)
+                .limit(50)
+            )
+            if history_mode:
+                ext_q = ext_q.in_("status", ["approved", "rejected"])
+            elif not status or status in {RUN_STATUS_PENDING_APPROVAL, "pending"}:
+                ext_q = ext_q.eq("status", "pending")
+            else:
+                ext_q = ext_q.eq("status", status)
+            ext_rows = ext_q.execute().data
+            if isinstance(ext_rows, list) and isinstance(chat_rows, list):
+                chat_rows = chat_rows + ext_rows
+        except Exception:  # noqa: BLE001
+            pass
         chat_requesters = {
             str(row.get("requested_by"))
             for row in chat_rows
@@ -3610,9 +3705,10 @@ async def list_approvals_alias(
                     "reviewed_by_name": user_labels.get(reviewed_by) if reviewed_by else None,
                     "reviewed_at": row.get("reviewed_at"),
                     "context": {
-                        **ctx,
+                        # The extension's one-time confirm token never leaves the server.
+                        **{k: v for k, v in ctx.items() if k != "confirmation_token"},
                         "entity": ctx.get("entity") or ctx.get("integration") or "Connector",
-                        "action": ctx.get("action") or ctx.get("label") or "Execute write",
+                        "action": ctx.get("action") or ctx.get("invoke_action") or ctx.get("label") or "Execute write",
                         "approval_id": str(row["id"]),
                         "conversation_id": ctx.get("conversation_id"),
                         "run_id": run_link or ctx.get("run_id"),
@@ -3643,6 +3739,63 @@ async def list_approvals_alias(
     approvals.sort(key=lambda item: item["requested_at"] or "", reverse=True)
     approvals.sort(key=lambda item: 0 if item["priority"] == "high" else 1)
     return {"approvals": approvals}
+
+
+def _decide_extension_approval_or_none(
+    client,
+    settings: Settings,
+    *,
+    org_id: str,
+    approval_id: str,
+    current_user: dict,
+    environment_name: str,
+    approve: bool,
+) -> dict | None:
+    """Route a browser-extension approval through the shared queue; None when it is not one."""
+    from app.services.extension_bridge_service import EXTENSION_APPROVAL_TYPES, decide_extension_approval
+
+    try:
+        rows = (
+            client.table("approvals")
+            .select("id, type")
+            .eq("id", approval_id)
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:  # noqa: BLE001 — workflow-run mocks may not expose approvals table
+        return None
+    if not isinstance(rows, list) or not rows or str(rows[0].get("type") or "") not in EXTENSION_APPROVAL_TYPES:
+        return None
+    from app.auth.platform_admin import is_org_admin_role
+    from app.services.tool_types import ToolContext
+    from app.workflows.policy import PolicyResolutionError, get_user_role
+
+    reviewer_id = str(current_user.get("user_id") or "")
+    try:
+        is_admin = is_org_admin_role(get_user_role(client, org_id, reviewer_id))
+    except PolicyResolutionError:
+        is_admin = False
+    ctx = ToolContext(
+        settings=settings, client=client, org_id=org_id, actor_id=reviewer_id, environment_name=environment_name
+    )
+    try:
+        return decide_extension_approval(
+            ctx,
+            org_id=org_id,
+            approval_id=approval_id,
+            reviewer_id=reviewer_id,
+            reviewer_is_admin=is_admin,
+            approve=approve,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @approvals_router.post("/{run_id}/approve")
@@ -3741,6 +3894,17 @@ async def approve_run_alias(
             "execution_result": execution.__dict__,
             "message": execution.body if not execution.success else f"Approved and ran {execution.title}.",
         }
+    extension = _decide_extension_approval_or_none(
+        client,
+        settings,
+        org_id=org_id,
+        approval_id=str(run_id),
+        current_user=current_user,
+        environment_name=environment_name,
+        approve=True,
+    )
+    if extension is not None:
+        return extension
     return await approve_run(run_id, body, current_user, org_id, environment_name, settings)
 
 
@@ -3757,6 +3921,17 @@ async def reject_run_alias(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = get_supabase_client(settings)
     require_feature(get_plan_for_org(client, org_id), "approvals")
+    extension = _decide_extension_approval_or_none(
+        client,
+        settings,
+        org_id=org_id,
+        approval_id=str(run_id),
+        current_user=current_user,
+        environment_name=environment_name,
+        approve=False,
+    )
+    if extension is not None:
+        return extension
     return await reject_run(run_id, body, current_user, org_id, environment_name, settings)
 
 

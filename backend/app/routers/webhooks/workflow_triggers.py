@@ -15,8 +15,7 @@ from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.middleware.entitlements import resolve_entitlements
 from app.services.execution_service import ExecutionService, get_execution_service
-from app.workflows.repository import create_execute_run, get_supabase_client
-from app.workflows.schema import compute_run_hash
+from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/webhooks/triggers", tags=["webhook-triggers"])
@@ -136,61 +135,44 @@ async def trigger_workflow(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload") from exc
 
     org_id = str(workflow["org_id"])
-    run_id = str(uuid.uuid4())
     triggered_by = _resolve_triggered_by(settings, org_id)
     definition = workflow.get("definition") or {"schema_version": "v1", "steps": []}
     parameters = payload if isinstance(payload, dict) else {"payload": payload}
-    run_hash = compute_run_hash(definition, parameters, str(definition.get("schema_version") or "v1"))
-
     client = get_supabase_client(settings)
-    created_run = create_execute_run(
-        client=client,
+    from app.services.event_triggered_runs import start_event_triggered_run
+
+    # Same policy and approval floor as a manual run: a workflow with writes
+    # waits for approval instead of failing at the canvas write gate.
+    outcome = await start_event_triggered_run(
+        settings,
+        client,
         org_id=org_id,
         workflow_id=workflow_id,
-        triggered_by=triggered_by,
-        definition_snapshot=definition,
+        definition=definition,
         parameters=parameters,
-        run_hash=run_hash,
-        status="running",
-        approval_status="approved",
-        required_approvals=0,
-        approver_roles=[],
-        environment_name="production",
+        actor_id=triggered_by,
         trigger_type="webhook",
+        source="webhook_trigger",
+        execution_service=execution_service,
     )
-    run_id = str(created_run["id"])
-
-    try:
-        result = await execution_service.execute_workflow(
-            org_id=org_id,
-            workflow_id=workflow_id,
-            run_id=run_id,
-            parameters=parameters,
-            user_id=triggered_by,
-            definition=definition,
-            environment_name="production",
-        )
-        # Module A: execute_workflow_steps already finalized — do not re-write workflow_runs.
-        return WebhookTriggerResponse(
-            run_id=run_id,
-            workflow_id=workflow_id,
-            status=result.status,
-            message="Workflow triggered successfully",
-        )
-    except Exception as exc:  # noqa: BLE001
-        logger.error("webhook_execution_error workflow_id=%s run_id=%s error=%s", workflow_id, run_id, str(exc))
-        from app.services.trigger_run_finalize import finalize_trigger_exception
-
-        finalize_trigger_exception(
-            client,
-            org_id=org_id,
-            run_id=run_id,
-            actor_id=triggered_by,
-            workflow_id=workflow_id,
-            error=str(exc),
-            source="webhook_trigger",
-        )
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Workflow execution failed") from exc
+    run_status = str(outcome.get("status") or "")
+    if run_status == "failed":
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Workflow execution failed")
+    if run_status == "blocked":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(outcome.get("reason") or "Policy denied"))
+    if run_status == "skipped":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(outcome.get("reason") or "Run not started"))
+    message = (
+        "Workflow is waiting for approval before it runs"
+        if run_status == "pending_approval"
+        else "Workflow triggered successfully"
+    )
+    return WebhookTriggerResponse(
+        run_id=str(outcome.get("run_id") or ""),
+        workflow_id=workflow_id,
+        status=run_status,
+        message=message,
+    )
 
 
 @router.get("/{workflow_id}/config")

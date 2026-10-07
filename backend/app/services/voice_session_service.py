@@ -407,6 +407,50 @@ async def stream_voice_turn_events(
     spoken_streamed: bool | None = None
     unified_breakdown: dict[str, Any] = {}
     classify_done_ms: int | None = None
+    persist_task: asyncio.Task[tuple[str | None, str | None]] | None = None
+
+    async def _persist_turn(complete: AssistantStreamComplete, assistant_text: str) -> tuple[str | None, str | None]:
+        """Save the finished turn server-side, the same store and memory as text and Pipecat."""
+        from app.services.shared_turn_preparation import persist_completed_turn, persist_turn_summary
+
+        try:
+            persisted_id, assistant_id = await asyncio.to_thread(
+                persist_completed_turn,
+                settings,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=resolved_conversation_id,
+                user_text=text,
+                assistant_text=assistant_text,
+                complete=complete,
+            )
+            if persisted_id:
+                await asyncio.to_thread(
+                    persist_turn_summary,
+                    settings,
+                    conversation_id=persisted_id,
+                    org_id=org_id,
+                    user_id=user_id,
+                    complete=complete,
+                )
+            return persisted_id, assistant_id
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "voice_http_turn_persist_failed org_id=%s conversation_id=%s error=%s",
+                org_id,
+                resolved_conversation_id,
+                str(exc),
+            )
+            return None, None
+
+    async def _finish_persist() -> None:
+        nonlocal resolved_conversation_id, persist_task
+        if persist_task is None:
+            return
+        task, persist_task = persist_task, None
+        persisted_id, _ = await task
+        if persisted_id:
+            resolved_conversation_id = persisted_id
 
     async def _emit_tts(chunk: str) -> AsyncIterator[dict[str, Any]]:
         nonlocal first_audio_ms, agent_audio_started, cancelled, tts_failed, metric_a_recorded
@@ -820,6 +864,8 @@ async def stream_voice_turn_events(
                     "metric_b_ms": int((time.perf_counter() - t_start) * 1000),
                 },
         }
+        # Persist in the background so the remaining audio is not held up by the write.
+        persist_task = asyncio.create_task(_persist_turn(pending_complete, canonical.strip()))
         from app.services.pipecat_voice.voice_latency_metrics import record_voice_slo_metric
         from app.services.voice_slo import METRIC_B_ID, operator_task_for_metric_b
 
@@ -876,6 +922,7 @@ async def stream_voice_turn_events(
         async for audio_ev in _emit_tts(rem):
             yield audio_ev
         text_buffer = ""
+    await _finish_persist()
     if cancelled:
         spoken_partial = normalize_spoken_text("".join(full_text)) or "".join(full_text)
         yield {
