@@ -2,9 +2,10 @@
 
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { GravitreSurface } from "@/components/gravitre/nodus-product/metric"
+import { KnowledgeCard } from "@/components/intelligence/knowledge/knowledge-card"
 import { RELATIONSHIPS_GUIDE, RELATIONSHIPS_ONBOARDING } from "@/lib/learning-ui-copy"
 import { Plus } from "@phosphor-icons/react"
+import { cn } from "@/lib/utils"
 import { AddKnowledgeNodeSheet } from "./add-knowledge-node-sheet"
 import { RelationshipGraphCanvas } from "./relationship-graph-canvas"
 import { RelationshipInspector } from "./relationship-inspector"
@@ -12,17 +13,29 @@ import { RelationshipTableView } from "./relationship-table-view"
 import { RelationshipToolbar } from "./relationship-toolbar"
 import { useRelationshipsWorkspace } from "./use-relationships-workspace"
 import type { IntelligenceSnapshot } from "@/lib/api"
+import type { ViewMode } from "@/lib/relationships-graph/types"
 
 export function RelationshipsWorkspace({
   data,
   isLoading,
   enabled,
+  viewMode: controlledViewMode,
+  onViewModeChange,
 }: {
   data: IntelligenceSnapshot | undefined
   isLoading: boolean
   enabled: boolean
+  /** Controlled graph/table mode; the in-toolbar toggle hides when set. */
+  viewMode?: ViewMode
+  onViewModeChange?: (mode: ViewMode) => void
 }) {
-  const workspace = useRelationshipsWorkspace({ data, isLoading, enabled })
+  const workspace = useRelationshipsWorkspace({
+    data,
+    isLoading,
+    enabled,
+    viewMode: controlledViewMode,
+    onViewModeChange,
+  })
   const {
     loading,
     nodes,
@@ -40,47 +53,58 @@ export function RelationshipsWorkspace({
   const showOnboarding =
     nodes.length === 0 && relationships.filter((r) => !r.archived_at).length > 0 && !nodesLoading
 
+  const totalCount = relationships.length
+  const shownLabel =
+    filtered.length === totalCount
+      ? `${filtered.length} ${filtered.length === 1 ? "link" : "links"}`
+      : `${filtered.length} of ${totalCount} links`
+
   return (
     <div className="space-y-4">
-      <section
-        aria-labelledby="relationships-guide-heading"
-        className="border-b border-divide px-0 py-1"
+      <KnowledgeCard
+        id="relationships-guide-heading"
+        title={viewMode === "graph" ? RELATIONSHIPS_GUIDE.title : "How entities link"}
+        titleSize="lg"
+        lead={
+          viewMode === "graph"
+            ? RELATIONSHIPS_GUIDE.lead
+            : "Every link Gravitre learned between two entities, with its evidence and confidence. Select a row to see why it exists."
+        }
+        padded={false}
+        aside={
+          loading ? null : (
+            <span className="inline-flex items-center rounded-full bg-[color:var(--g-surface-2)] px-3 py-1.5 text-[13px] tabular-nums text-[color:var(--g-text-secondary)]">
+              {shownLabel}
+            </span>
+          )
+        }
       >
-        <div className="min-w-0 space-y-1">
-          <h2 id="relationships-guide-heading" className="text-sm font-semibold text-[color:var(--g-text-primary)]">
-            {RELATIONSHIPS_GUIDE.title}
-          </h2>
-          <p className="text-sm leading-relaxed text-[color:var(--g-text-muted)]">{RELATIONSHIPS_GUIDE.lead}</p>
-        </div>
-      </section>
-
-      {showOnboarding ? (
-        <div className="flex flex-col gap-3 rounded-[var(--np-radius-lg)] border border-[color:var(--g-brand)]/25 bg-[color:var(--g-brand-soft)]/30 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-[color:var(--g-text-primary)]">
-              {RELATIONSHIPS_ONBOARDING.title}
-            </p>
-            <p className="text-sm leading-relaxed text-[color:var(--g-text-secondary)]">
-              {RELATIONSHIPS_ONBOARDING.lead}
-            </p>
+        {showOnboarding ? (
+          <div className="mx-5 mb-4 flex flex-col gap-3 rounded-[14px] border border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)] px-4 py-4 sm:mx-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-[color:var(--g-text-primary)]">
+                {RELATIONSHIPS_ONBOARDING.title}
+              </p>
+              <p className="text-sm leading-relaxed text-[color:var(--g-text-secondary)]">
+                {RELATIONSHIPS_ONBOARDING.lead}
+              </p>
+            </div>
+            <Button type="button" size="sm" className="shrink-0 gap-1.5" onClick={() => openAddNode("first")}>
+              <Plus className="h-4 w-4" weight="bold" aria-hidden />
+              {RELATIONSHIPS_ONBOARDING.cta}
+            </Button>
           </div>
-          <Button type="button" size="sm" className="shrink-0 gap-1.5" onClick={() => openAddNode("first")}>
-            <Plus className="h-4 w-4" weight="bold" aria-hidden />
-            {RELATIONSHIPS_ONBOARDING.cta}
-          </Button>
-        </div>
-      ) : null}
+        ) : null}
 
-      <GravitreSurface padded={false} className="overflow-hidden">
-        <div className="border-b border-divide p-4">
+        <div className="border-b border-divide px-5 pb-4 sm:px-6">
           <RelationshipToolbar workspace={workspace} hideAddEntity={showOnboarding} />
         </div>
 
         {loading ? (
           <p className="p-6 text-sm text-[color:var(--g-text-muted)]">Loading relationships…</p>
         ) : (
-          <div className="flex min-h-[480px] flex-col lg:flex-row">
-            <div className="min-h-[420px] min-w-0 flex-1">
+          <div className={cn("flex flex-col lg:flex-row", viewMode === "graph" && "min-h-[480px]")}>
+            <div className={cn("min-w-0 flex-1", viewMode === "graph" && "min-h-[420px]")}>
               {viewMode === "graph" ? (
                 <RelationshipGraphCanvas workspace={workspace} />
               ) : (
@@ -88,7 +112,7 @@ export function RelationshipsWorkspace({
               )}
             </div>
             {selection ? (
-              <aside className="hidden min-h-[480px] w-full shrink-0 border-t border-divide lg:block lg:w-80 lg:border-l lg:border-t-0">
+              <aside className="hidden min-h-[420px] w-full shrink-0 border-t border-divide lg:block lg:w-80 lg:border-l lg:border-t-0">
                 <RelationshipInspector
                   workspace={workspace}
                   onClose={() => {
@@ -100,7 +124,7 @@ export function RelationshipsWorkspace({
             ) : null}
           </div>
         )}
-      </GravitreSurface>
+      </KnowledgeCard>
 
       {selection ? (
         <Sheet

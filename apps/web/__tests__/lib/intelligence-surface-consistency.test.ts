@@ -15,8 +15,17 @@ describe("Intelligence 3.0 surface consistency", () => {
   it("uses the canonical authenticated page gutters without legacy route width caps", () => {
     for (const page of pages) {
       const source = readFileSync(resolve(webRoot, page), "utf8")
-      expect(source).toContain("px-[var(--np-page-pad-sm)]")
-      expect(source).toContain("sm:px-[var(--np-page-pad)]")
+      // Reports and Impact (v2) use the shared PAGE_FRAME token, which carries the same gutters.
+      const usesPageFrame =
+        (page === "app/intelligence/reports/page.tsx" ||
+          page === "app/intelligence/performance/page.tsx" ||
+          page === "app/intelligence/predictive/page.tsx" ||
+          page === "app/models/page.tsx") &&
+        source.includes("className={PAGE_FRAME}")
+      if (!usesPageFrame) {
+        expect(source).toContain("px-[var(--np-page-pad-sm)]")
+        expect(source).toContain("sm:px-[var(--np-page-pad)]")
+      }
       expect(source).not.toContain("max-w-6xl")
       expect(source).not.toContain("mx-auto max-w")
     }

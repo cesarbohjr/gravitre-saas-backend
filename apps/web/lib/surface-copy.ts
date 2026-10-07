@@ -9,7 +9,7 @@ export const SURFACE_COPY = {
     title: "Intelligence",
     shortTitle: "Intelligence",
     description:
-      "What Gravitre has learned about your business, and the evidence behind it.",
+      "Watch Gravitre learn. Every interaction flows in, strengthens a connection, and comes back as a better prediction.",
     emptyTitle: "Collecting signals",
     emptyDescription:
       "Outcome events and confidence scores appear here as agents finish work with measurable results.",
@@ -23,14 +23,33 @@ export const SURFACE_COPY = {
     route: APP_ROUTES.learning,
     step: "Observe",
     stepSummary: "Watch queries, memory, and search quality improve over time.",
+    eyebrow: "Understand / Knowledge",
+    views: {
+      graph: {
+        title: "Knowledge",
+        description:
+          "What Gravitre has learned about your business from real work: how things relate and the insights it confirmed.",
+      },
+      entities: {
+        title: "Entities",
+        description: "Every business entity Gravitre knows about and how each one links to the others.",
+      },
+      memory: {
+        title: "Memory",
+        description:
+          "What Gravitre remembers for your whole organization, where each memory came from, and what is waiting for your review.",
+      },
+    },
+    addMemoryPrompt:
+      "I want Gravitre to remember this for my whole organization: ",
   },
   intelligenceData: {
     title: "Data",
+    eyebrow: "Build / Data",
     description:
-      "Everything Gravitre can learn from: your own datasets and public ones from Hugging Face and Kaggle.",
-    publicDescription:
-      "Search Hugging Face and Kaggle, check access, then choose which agent, model or Play each dataset is for. Gravitre reads metadata only until you start an import.",
-    yoursDescription: "Examples, documents and live chat feedback you added. Use them to train models and coach agents.",
+      "Everything Gravitre can learn from: your own datasets, plus public ones from Hugging Face and Kaggle.",
+    manageTitle: "Create and edit datasets",
+    manageDescription: "Add examples or documents to a dataset, then start a training run.",
   },
   trainingInstructions: {
     title: "Instructions",
@@ -52,7 +71,7 @@ export const SURFACE_COPY = {
   models: {
     title: "Models",
     shortTitle: "Models",
-    description: "The models behind forecasts and agents: what each one does, where it is used, and how it is doing. Create and train new ones in Model Studio.",
+    description: "The models behind forecasts and agents: what each one does, where it is used, and how well it is doing.",
     badge: "Your model registry",
     heroTitle: "Models ready for real work",
     heroDescription:
@@ -213,24 +232,14 @@ export const SURFACE_COPY = {
     },
     reports: {
       title: "Reports",
+      eyebrow: "Understand / Reports",
       description:
-        "Saved intelligence views — business, agent, prediction, and governance templates from live snapshot data.",
-      tabRoi: "ROI",
-      tabScorecards: "Department scorecards",
-      tabExecutive: "Executive scorecard",
-      tabCustomerSuccess: "Customer Success",
-      tabProspecting: "Prospecting",
-      tabMarketing: "Marketing",
-      tabRevOps: "RevOps",
-      tabAiSearch: "AI Search",
-      tabFinance: "Finance",
-      tabHrTalent: "HR & Talent",
-      tabPlatformHealth: "Platform Health",
+        "Saved views of your intelligence, built from live data. Save them, and trace any number back to its source.",
     },
     predictive: {
       title: "Forecasts",
       description:
-        "Risks and opportunities Gravitre expects next, with confidence and evidence. Nothing changes until you act on one.",
+        "Risks and opportunities Gravitre expects next, how sure it is, and why. Nothing changes until you act on one.",
     },
     assignments: {
       title: "Assignments",

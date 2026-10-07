@@ -1,14 +1,20 @@
 "use client"
 
-import { Suspense, useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { IntelligenceShell } from "@/components/intelligence/shell"
-import { BuiltInModelsPanel } from "@/components/intelligence/built-in-models-panel"
+import {
+  BuiltInModelsPanel,
+  trainableBuiltInSuggestions,
+  useBuiltInModelItems,
+} from "@/components/intelligence/built-in-models-panel"
+import { useModelsData } from "@/components/intelligence/models/use-models-data"
+import { PAGE_FRAME, TYPE } from "@/lib/design-system"
 import { TrainingWorkbench } from "@/components/training/training-workbench"
 import { ModelsStage } from "@/components/intelligence/pages/models-stage"
 import { studioIntentById } from "@/lib/intelligence/model-catalog-display"
@@ -54,16 +60,13 @@ import {
   templateForLayer,
   type MlStackLayerId,
 } from "@/lib/ml-registry-catalog"
-import {
-  Filter,
-  RefreshCw,
-  Layers3,
-} from "lucide-react"
+import { ChevronDown, RefreshCw, Layers3 } from "lucide-react"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 import { SURFACE_COPY } from "@/lib/surface-copy"
-import { describeStatus } from "@/lib/intelligence/status-language"
+
+const MORE_ANCHORS = ["built-in", "training", "fine-tunes"]
 
 function formatType(value: string): string {
   return value.replace(/_/g, " ")
@@ -87,19 +90,32 @@ export default function ModelsPage() {
     taskType: string
     preferredBaseModel: string
   } | null>(null)
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [typeFilter, setTypeFilter] = useState<string>("all")
   const linkedToBuiltIn = searchParams.get("tab") === "built-in"
+  const moreRef = useRef<HTMLDetailsElement>(null)
+  const [moreOpen, setMoreOpen] = useState(false)
+  // Links into the bottom disclosure (?tab=built-in, #built-in, #training, #fine-tunes) open it and scroll there.
   useEffect(() => {
-    if (linkedToBuiltIn) document.getElementById("built-in")?.scrollIntoView({ block: "start" })
+    function openFor(target: string | null) {
+      if (!target) return
+      setMoreOpen(true)
+      window.requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ block: "start" }))
+    }
+    const fromHash = () => {
+      const hash = window.location.hash.slice(1)
+      openFor(MORE_ANCHORS.includes(hash) ? hash : null)
+    }
+    openFor(linkedToBuiltIn ? "built-in" : null)
+    fromHash()
+    window.addEventListener("hashchange", fromHash)
+    return () => window.removeEventListener("hashchange", fromHash)
   }, [linkedToBuiltIn])
   const [selectedTemplateLayer, setSelectedTemplateLayer] = useState<MlStackLayerId | null>(null)
   const [isCreating, setIsCreating] = useState(false)
 
-  const { data, error, isLoading, mutate, isValidating } = useSWR(
-    user ? "ml-models-list" : null,
-    () => mlModelsApi.list()
-  )
+  const modelsData = useModelsData(Boolean(user))
+  const { models, error, isLoading, isValidating, refresh, mutateList: mutate } = modelsData
+  const builtIn = useBuiltInModelItems()
+  const builtInSuggestions = useMemo(() => trainableBuiltInSuggestions(builtIn.items), [builtIn.items])
 
   const { data: connectorData } = useSWR(user ? "connectors-for-ml" : null, () =>
     connectorsApi.list()
@@ -123,23 +139,6 @@ export default function ModelsPage() {
     () => resolveBaseModelOptions(modelType, connectedVendorKeys),
     [modelType, connectedVendorKeys]
   )
-
-  const models = data?.models ?? []
-
-  const stats = useMemo(() => {
-    const deployed = models.filter((m) => m.status === "deployed" || m.deployedVersion != null).length
-    const training = models.filter((m) => m.status === "training" || m.status === "validating").length
-    const ready = models.filter((m) => m.status === "ready").length
-    return { deployed, training, ready }
-  }, [models])
-
-  const filteredModels = useMemo(() => {
-    return models.filter((m) => {
-      if (statusFilter !== "all" && m.status !== statusFilter) return false
-      if (typeFilter !== "all" && m.modelType !== typeFilter) return false
-      return true
-    })
-  }, [models, statusFilter, typeFilter])
 
   useEffect(() => {
     if (!createOpen || selectedTemplateLayer) return
@@ -256,20 +255,24 @@ export default function ModelsPage() {
 
   return (
     <AppShell title={SURFACE_COPY.models.title}>
-      <div className="space-y-6 bg-[color:var(--g-canvas)] px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]" data-composition="understand">
+      <div className={PAGE_FRAME} data-composition="understand">
         <GravitrePageHeader
-          className="px-0 sm:px-0"
+          eyebrow="Build / Models"
+          titleScale="display"
           title={SURFACE_COPY.models.title}
           description={SURFACE_COPY.models.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <AskGravitreSummonButton />
-              <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>
-                <RefreshCw className={cn("mr-1 h-4 w-4", isValidating && "animate-spin")} />
+              <AskGravitreSummonButton
+                className="text-[13px]"
+                prompt="Look at our models: which ones are in production, which need attention, and what should we improve or retrain next? Use only real registry evidence."
+              />
+              <Button variant="outline" onClick={() => void refresh()} disabled={isValidating}>
+                <RefreshCw className={cn("h-4 w-4", isValidating && "animate-spin")} aria-hidden />
                 Refresh
               </Button>
-              <Button size="sm" asChild>
+              <Button asChild>
                 <Link href={APP_ROUTES.intelligenceModelStudio}>New model</Link>
               </Button>
             </div>
@@ -277,128 +280,93 @@ export default function ModelsPage() {
         />
 
         <IntelligenceShell activeTab="models" loadState={isLoading && models.length === 0 ? "LOADING" : "READY"}>
-
-        {/*
-          One level of navigation: the registry and the built-in catalog are two
-          sections of one page, not tabs inside the Models tab. ?tab=built-in
-          still deep-links by scrolling to the built-in section.
-        */}
-        <section aria-labelledby="models-yours-heading" className="space-y-6">
-          <div>
-            <h2 id="models-yours-heading" className="text-base font-semibold text-foreground">Your models</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Models your team registered or trained. Use New model to create one.
-            </p>
-          </div>
-
-
-        {models.length > 0 || isLoading ? (
-          <details className="text-sm">
-            <summary className="cursor-pointer text-xs text-muted-foreground">Totals</summary>
-            <section className="mt-3 grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
-              <GravitreMetric
-                label="Registered"
-                value={isLoading && models.length === 0 ? "—" : models.length}
-                hint={isLoading && models.length === 0 ? "Loading models…" : "Registry scope"}
-              />
-              <GravitreMetric
-                label="In production use"
-                value={isLoading && models.length === 0 ? "—" : stats.deployed}
-                hint="Deployed versions only"
-              />
-              <GravitreMetric
-                label="Ready to deploy"
-                value={isLoading && models.length === 0 ? "—" : stats.ready}
-              />
-              <GravitreMetric
-                label="Learning from data"
-                value={isLoading && models.length === 0 ? "—" : stats.training}
-                hint={describeStatus("training").phrase}
-              />
+          <div className="space-y-6 pt-2">
+            <section aria-labelledby="models-yours-heading" className="space-y-6">
+              <h2 id="models-yours-heading" className="sr-only">
+                Your models
+              </h2>
+              {error ? (
+                <WorkSectionErrorCard
+                  title="Could not load models"
+                  message={error instanceof Error ? error.message : "Unknown error"}
+                  error={error}
+                  onRetry={() => void refresh()}
+                />
+              ) : (
+                <ModelsStage
+                  data={modelsData}
+                  builtInSuggestions={builtInSuggestions}
+                  onRegister={() => router.push(APP_ROUTES.intelligenceModelStudio)}
+                />
+              )}
             </section>
-          </details>
-        ) : null}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="h-8 w-[160px] bg-secondary/50 text-xs">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              {MODEL_TYPE_CATALOG.map((t) => (
-                <SelectItem key={t.value} value={t.value}>
-                  {t.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-8 w-[140px] bg-secondary/50 text-xs">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All status</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="training">Training</SelectItem>
-              <SelectItem value="ready">Ready</SelectItem>
-              <SelectItem value="deployed">Deployed</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+            {/*
+              Not in the v2 design's main flow, but other pages link here
+              (?tab=built-in, #built-in, #training, #fine-tunes), so they live in
+              one disclosure at the bottom that opens when a link targets it.
+            */}
+            <details
+              ref={moreRef}
+              open={moreOpen}
+              onToggle={(e) => setMoreOpen((e.currentTarget as HTMLDetailsElement).open)}
+              className="group rounded-[var(--g-radius-panel)] border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]"
+            >
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 [&::-webkit-details-marker]:hidden">
+                <span className="flex flex-col">
+                  <span className="text-sm font-medium text-[color:var(--g-text-primary)]">
+                    Built-in models, training runs and fine-tunes
+                  </span>
+                  <span className={TYPE.meta}>Models Gravitre provides, and the fine-tuning jobs behind your own.</span>
+                </span>
+                <ChevronDown
+                  className="h-4 w-4 shrink-0 text-[color:var(--g-text-muted)] transition-transform group-open:rotate-180"
+                  aria-hidden
+                />
+              </summary>
+              {moreOpen ? (
+                <div className="space-y-10 border-t border-[color:var(--g-border-subtle)] px-5 py-6">
+                  <section id="built-in" aria-labelledby="models-built-in-heading" className="scroll-mt-24 space-y-4">
+                    <div>
+                      <h2 id="models-built-in-heading" className={TYPE.cardTitle}>
+                        Built-in models
+                      </h2>
+                      <p className={cn(TYPE.bodyMuted, "mt-0.5")}>
+                        Models Gravitre provides and trains on your organization&apos;s data.
+                      </p>
+                    </div>
+                    <BuiltInModelsPanel />
+                  </section>
 
-        {error ? (
-          <WorkSectionErrorCard
-            title="Could not load models"
-            message={error instanceof Error ? error.message : "Unknown error"}
-            error={error}
-            onRetry={() => mutate()}
-          />
-        ) : (
-          <ModelsStage
-            models={filteredModels}
-            isLoading={isLoading}
-            enabled={Boolean(user)}
-            onRegister={() => router.push(APP_ROUTES.intelligenceModelStudio)}
-          />
-        )}
-        </section>
+                  <section id="training" aria-labelledby="models-training-heading" className="scroll-mt-24 space-y-4">
+                    <div>
+                      <h2 id="models-training-heading" className={TYPE.cardTitle}>
+                        Training runs
+                      </h2>
+                      <p className={cn(TYPE.bodyMuted, "mt-0.5")}>
+                        Fine-tuning jobs and their progress. Datasets for them live in Intelligence › Data.
+                      </p>
+                    </div>
+                    <Suspense fallback={<p className={TYPE.bodyMuted}>Loading training runs…</p>}>
+                      <TrainingWorkbench embedded section="jobs" />
+                    </Suspense>
+                  </section>
 
-        <section id="built-in" aria-labelledby="models-built-in-heading" className="mt-10 space-y-4 scroll-mt-24">
-          <div>
-            <h2 id="models-built-in-heading" className="text-base font-semibold text-foreground">Built-in models</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Models Gravitre provides and trains on your organization&apos;s data.
-            </p>
+                  <section id="fine-tunes" aria-labelledby="models-fine-tunes-heading" className="scroll-mt-24 space-y-4">
+                    <div>
+                      <h2 id="models-fine-tunes-heading" className={TYPE.cardTitle}>
+                        Fine-tuned models
+                      </h2>
+                      <p className={cn(TYPE.bodyMuted, "mt-0.5")}>Finished fine-tunes and which agents use them.</p>
+                    </div>
+                    <Suspense fallback={<p className={TYPE.bodyMuted}>Loading fine-tuned models…</p>}>
+                      <TrainingWorkbench embedded section="models" />
+                    </Suspense>
+                  </section>
+                </div>
+              ) : null}
+            </details>
           </div>
-          <BuiltInModelsPanel />
-        </section>
-
-        <section id="training" aria-labelledby="models-training-heading" className="mt-10 space-y-4 scroll-mt-24">
-          <div>
-            <h2 id="models-training-heading" className="text-base font-semibold text-foreground">Training runs</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Fine-tuning jobs and their progress. Datasets for them live in Intelligence › Data.
-            </p>
-          </div>
-          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading training runs…</p>}>
-            <TrainingWorkbench embedded section="jobs" />
-          </Suspense>
-        </section>
-
-        <section id="fine-tunes" aria-labelledby="models-fine-tunes-heading" className="mt-10 space-y-4 scroll-mt-24">
-          <div>
-            <h2 id="models-fine-tunes-heading" className="text-base font-semibold text-foreground">Fine-tuned models</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Finished fine-tunes and which agents use them.
-            </p>
-          </div>
-          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading fine-tuned models…</p>}>
-            <TrainingWorkbench embedded section="models" />
-          </Suspense>
-        </section>
         </IntelligenceShell>
       </div>
 

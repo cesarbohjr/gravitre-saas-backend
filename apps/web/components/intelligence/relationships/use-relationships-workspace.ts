@@ -23,10 +23,15 @@ export function useRelationshipsWorkspace({
   data,
   isLoading,
   enabled,
+  viewMode: controlledViewMode,
+  onViewModeChange,
 }: {
   data: IntelligenceSnapshot | undefined
   isLoading: boolean
   enabled: boolean
+  /** When set, the page owns graph/table (Knowledge's Graph / Entities control). */
+  viewMode?: ViewMode
+  onViewModeChange?: (mode: ViewMode) => void
 }) {
   const [query, setQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
@@ -34,7 +39,13 @@ export function useRelationshipsWorkspace({
   const [page, setPage] = useState(0)
   const [showArchived, setShowArchived] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<ViewMode>("graph")
+  const [internalViewMode, setInternalViewMode] = useState<ViewMode>("graph")
+  const viewControlled = controlledViewMode !== undefined
+  const viewMode = controlledViewMode ?? internalViewMode
+  const setViewMode = (mode: ViewMode) => {
+    if (onViewModeChange) onViewModeChange(mode)
+    if (!viewControlled) setInternalViewMode(mode)
+  }
   const [selection, setSelection] = useState<Selection>(null)
   const [addNodeOpen, setAddNodeOpen] = useState(false)
   const [addNodeMode, setAddNodeMode] = useState<AddNodeMode>("entity")
@@ -46,11 +57,11 @@ export function useRelationshipsWorkspace({
   const [neighborhoodOn, setNeighborhoodOn] = useState(false)
 
   useEffect(() => {
-    if (typeof window === "undefined") return
+    if (viewControlled || typeof window === "undefined") return
     if (window.matchMedia("(max-width: 767px)").matches) {
-      setViewMode("table")
+      setInternalViewMode("table")
     }
-  }, [])
+  }, [viewControlled])
 
   useEffect(() => {
     if (selection) setInspectorOpen(true)
@@ -283,6 +294,7 @@ export function useRelationshipsWorkspace({
     busyId,
     viewMode,
     setViewMode,
+    viewControlled,
     selection,
     setSelection,
     addNodeOpen,

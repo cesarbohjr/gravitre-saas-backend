@@ -14,7 +14,7 @@ import { agentsApi, mlModelsApi, playsApi, trainingApi, workflowsApi } from "@/l
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 
-type ExternalDatasetPurpose =
+export type ExternalDatasetPurpose =
   | "reference"
   | "benchmark"
   | "runtime_retrieval"
@@ -26,7 +26,7 @@ type ExternalDatasetPurpose =
   | "synthetic"
   | "agent_benchmarking"
 
-type ExternalDatasetTargetType =
+export type ExternalDatasetTargetType =
   | "agent"
   | "model"
   | "department"
@@ -34,7 +34,7 @@ type ExternalDatasetTargetType =
   | "play"
   | "workflow"
 
-const EXTERNAL_DATASET_PURPOSES: Array<{ value: ExternalDatasetPurpose; label: string }> = [
+export const EXTERNAL_DATASET_PURPOSES: Array<{ value: ExternalDatasetPurpose; label: string }> = [
   { value: "reference", label: "Reference" },
   { value: "benchmark", label: "Benchmark" },
   { value: "runtime_retrieval", label: "Runtime retrieval" },

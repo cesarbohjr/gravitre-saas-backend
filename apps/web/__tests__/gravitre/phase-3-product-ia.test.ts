@@ -64,8 +64,10 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
 
   it("relationships map is not wrapped in a permanent evidence dashboard", () => {
     const src = readFileSync(resolve(webRoot, "app/intelligence/page.tsx"), "utf8")
-    expect(src).toMatch(/Attention, learnings, and impact/)
-    expect(src).toMatch(/<details className="[^"]*mx-auto max-w-\[1600px\]/)
+    // The overview is the v2 design: one core view (stats, flow map, activity, learnings), no evidence dashboard below it.
+    expect(src).toMatch(/<IntelligenceBrain/)
+    expect(src).not.toMatch(/Attention, learnings, and impact/)
+    expect(src).not.toMatch(/<details/)
     // Hub tabs carry navigation; the overview no longer repeats them as link groups.
     expect(src).not.toMatch(/ADVANCED_LINK_GROUPS/)
     expect(src).not.toMatch(/hover:border-\[color:var\(--g-brand-border\)\]/)
@@ -84,21 +86,27 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(toolbar).toMatch(/>\s*Focus\s*</)
   })
 
-  it("impact shows totals, then agents, then outcome stages, with no view switcher", () => {
+  it("impact reads spend to value, then by agent, then first result and latest outcome; period toggle lives in the header", () => {
     const src = readFileSync(
       resolve(webRoot, "components/intelligence/pages/performance-stage.tsx"),
       "utf8",
     )
-    const totals = src.indexOf("Totals across all agents")
-    const agents = src.indexOf("<AgentContributionRow")
-    const outcome = src.indexOf(">Outcome</p>")
-    const flow = src.lastIndexOf("<OutcomeAttributionFlow")
-    expect(totals).toBeGreaterThan(0)
-    expect(agents).toBeGreaterThan(totals)
-    expect(outcome).toBeGreaterThan(agents)
-    expect(flow).toBeGreaterThan(outcome)
+    const legend = src.indexOf("<CertaintyLegend")
+    const flow = src.indexOf("<SpendToValueFlow")
+    const agents = src.indexOf("<ByAgentTable")
+    const checklist = src.indexOf("<FirstResultChecklist")
+    const outcome = src.indexOf("<LatestOutcomeCard")
+    expect(legend).toBeGreaterThan(0)
+    expect(flow).toBeGreaterThan(legend)
+    expect(agents).toBeGreaterThan(flow)
+    expect(checklist).toBeGreaterThan(agents)
+    expect(outcome).toBeGreaterThan(checklist)
+    // No in-stage view switcher: the only segmented control is the 7/30/90 day period in the header.
     expect(src).not.toMatch(/SegmentedControl/)
     expect(src).not.toMatch(/AgentContributionCard/)
+    const page = readFileSync(resolve(webRoot, "app/intelligence/performance/page.tsx"), "utf8")
+    expect(page).toMatch(/ariaLabel="Period"/)
+    expect(page).toMatch(/getAgentRoi\(\{ periodDays: period \}\)/)
     const flowSrc = readFileSync(
       resolve(webRoot, "components/intelligence/outcome-attribution-flow.tsx"),
       "utf8",
@@ -259,22 +267,25 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(memory).toMatch(/selectedCandidate \?/)
   })
 
-  it("models catalog and studio are list plus inspector, not card grids", () => {
+  it("models v2 renders real registry cards with lineage, and studio stays list plus inspector", () => {
     const stage = readFileSync(
       resolve(webRoot, "components/intelligence/pages/models-stage.tsx"),
       "utf8",
     )
-    expect(stage).toMatch(/BusinessModelsList/)
-    expect(stage).not.toMatch(/md:grid-cols-2/)
+    // Models v2 design: stat strip, filter chips, "Where models are used" and model cards.
+    expect(stage).toMatch(/BusinessModelCard/)
+    expect(stage).toMatch(/ModelUsageTopology/)
+    expect(stage).toMatch(/data-review-surface="models-cards"/)
+    expect(stage).toMatch(/aria-pressed=\{active\}/)
+    expect(stage).toMatch(/Show technical details/)
 
     const list = readFileSync(
       resolve(webRoot, "components/intelligence/business-model-card.tsx"),
       "utf8",
     )
-    expect(list).toMatch(/data-review-surface="models-queue"/)
-    expect(list).toMatch(/data-review-surface="models-inspect"/)
-    expect(list).toMatch(/inspector stays closed until then/)
+    expect(list).toMatch(/data-review-surface="models-card"/)
     expect(list).toMatch(/data-review-cta="open-model"/)
+    expect(list).toMatch(/Path to production/)
     expect(list).not.toMatch(/from \"@\/components\/ui\/card\"/)
 
     const brain = readFileSync(

@@ -26,6 +26,7 @@ export function IntelligenceShell({
   className,
   bodyClassName,
   chrome = "full",
+  showFreshness = false,
 }: {
   activeTab?: IntelligenceHubTab
   children: ReactNode
@@ -39,6 +40,8 @@ export function IntelligenceShell({
   bodyClassName?: string
   /** "none" when the page header already carries hub tabs and freshness. */
   chrome?: "full" | "none"
+  /** Show the snapshot freshness line in the tab row. Off by default: the v2 designs put "Updated" in the page header where they show it at all. */
+  showFreshness?: boolean
 }) {
   const reduceMotion = useReducedMotion()
 
@@ -48,12 +51,14 @@ export function IntelligenceShell({
         <div className="flex flex-col gap-2 border-b border-[color:var(--g-border-subtle)] sm:flex-row sm:items-end sm:justify-between">
           <IntelligenceHubTabs active={activeTab} />
           <div className="flex flex-wrap items-center gap-2 pb-2">
-            <IntelligenceFreshnessBar
-              loadState={loadState}
-              generatedAt={generatedAt}
-              isValidating={isValidating}
-              onRefresh={onRefresh}
-            />
+            {showFreshness ? (
+              <IntelligenceFreshnessBar
+                loadState={loadState}
+                generatedAt={generatedAt}
+                isValidating={isValidating}
+                onRefresh={onRefresh}
+              />
+            ) : null}
             {filters}
           </div>
         </div>
