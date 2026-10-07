@@ -2,9 +2,9 @@
 
 /** "How a memory is earned": the four-stage funnel and the auto-promote rule. */
 import { ArrowDown, ArrowRight, SlidersHorizontal } from "@phosphor-icons/react"
-import { GravitreSurface } from "@/components/gravitre/nodus-product/metric"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
+import { KNOWLEDGE_STAT, KNOWLEDGE_TILE, KnowledgeCard } from "./knowledge-card"
 import type { MemoryPolicy } from "./use-org-memory"
 
 type StageTone = "neutral" | "review" | "done"
@@ -38,7 +38,7 @@ function Stage({
 }) {
   const t = STAGE_TONE[tone]
   return (
-    <div className={cn("flex min-w-0 flex-col gap-1.5 rounded-[var(--np-radius-md)] border p-4", t.box)} title={title}>
+    <div className={cn("flex min-w-0 flex-col gap-1.5 border p-4", KNOWLEDGE_TILE, t.box)} title={title}>
       <span className={cn("font-mono text-[11px] tracking-[0.06em]", t.label)}>
         {index} · {label}
       </span>
@@ -89,73 +89,68 @@ export function MemoryPipeline({
 }) {
   const policyTitle = "Set by Gravitre. There is no setting to change this yet."
   return (
-    <GravitreSurface className="space-y-5">
-      <section aria-labelledby="memory-pipeline-heading" className="space-y-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-1">
-            <h2 id="memory-pipeline-heading" className="text-lg font-semibold text-[color:var(--g-text-primary)]">
-              How a memory is earned
-            </h2>
-            <p className={TYPE.bodyMuted}>
-              Patterns that repeat across runs become candidates. You decide what the whole organization remembers.
-            </p>
-          </div>
-          {agentsLoaded ? (
+    <KnowledgeCard
+      id="memory-pipeline-heading"
+      title="How a memory is earned"
+      titleSize="lg"
+      lead="Patterns that repeat across runs become candidates. You decide what the whole organization remembers."
+      bodyClassName="mt-5 space-y-5"
+      aside={
+        agentsLoaded ? (
+          <span
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px]",
+              watchedAgents > 0
+                ? "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)]"
+                : "bg-[color:var(--g-surface-2)] text-[color:var(--g-text-muted)]",
+            )}
+          >
             <span
+              aria-hidden
               className={cn(
-                "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px]",
-                watchedAgents > 0
-                  ? "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)]"
-                  : "bg-[color:var(--g-surface-2)] text-[color:var(--g-text-muted)]",
+                "h-[7px] w-[7px] rounded-full",
+                watchedAgents > 0 ? "bg-[color:var(--g-brand)]" : "bg-[color:var(--g-text-disabled)]",
               )}
-            >
-              <span
-                aria-hidden
-                className={cn(
-                  "h-[7px] w-[7px] rounded-full",
-                  watchedAgents > 0 ? "bg-[color:var(--g-brand)]" : "bg-[color:var(--g-text-disabled)]",
-                )}
-              />
-              {watchedAgents > 0
-                ? `Watching ${watchedAgents} ${watchedAgents === 1 ? "agent" : "agents"}`
-                : "No agents to watch yet"}
-            </span>
-          ) : null}
-        </div>
+            />
+            {watchedAgents > 0
+              ? `Watching ${watchedAgents} ${watchedAgents === 1 ? "agent" : "agents"}`
+              : "No agents to watch yet"}
+          </span>
+        ) : null
+      }
+    >
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_24px_minmax(0,1fr)_24px_minmax(0,1fr)_24px_minmax(0,1fr)] lg:items-center lg:gap-0">
+        <Stage index="01" label="Observed" value={pipeline.observed} hint="Facts noticed during agent runs" tone="neutral" />
+        <StageArrow />
+        <Stage
+          index="02"
+          label="Repeating"
+          value={pipeline.repeating}
+          hint="Seen 2+ times, building confidence"
+          tone="neutral"
+          title={pipeline.repeatingIsPartial ? "Counted from the 200 most recent candidates" : undefined}
+        />
+        <StageArrow />
+        <Stage index="03" label="Needs review" value={pipeline.needsReview} hint="Candidates waiting for a person" tone="review" />
+        <StageArrow />
+        <Stage index="04" label="Org memory" value={pipeline.orgMemory} hint="Used by every agent and answer" tone="done" />
+      </div>
 
-        <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_24px_minmax(0,1fr)_24px_minmax(0,1fr)_24px_minmax(0,1fr)] lg:items-center lg:gap-0">
-          <Stage index="01" label="Observed" value={pipeline.observed} hint="Facts noticed during agent runs" tone="neutral" />
-          <StageArrow />
-          <Stage
-            index="02"
-            label="Repeating"
-            value={pipeline.repeating}
-            hint="Seen more than once, building confidence"
-            tone="neutral"
-            title={pipeline.repeatingIsPartial ? "Counted from the 200 most recent candidates" : undefined}
-          />
-          <StageArrow />
-          <Stage index="03" label="Needs review" value={pipeline.needsReview} hint="Candidates waiting for a person" tone="review" />
-          <StageArrow />
-          <Stage index="04" label="Org memory" value={pipeline.orgMemory} hint="Used by every agent and answer" tone="done" />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-2)] px-4 py-3 text-[13px] text-[color:var(--g-text-secondary)]">
-          <SlidersHorizontal className="h-4 w-4 text-[color:var(--g-text-muted)]" aria-hidden />
-          <span>Auto-promote when seen</span>
-          <PolicyChip title={policyTitle}>
-            {policy.minOccurrences != null ? `${policy.minOccurrences} times` : "—"}
-          </PolicyChip>
-          <span>across</span>
-          <PolicyChip title={policyTitle}>
-            {policy.minDepartments != null ? `${policy.minDepartments} teams` : "—"}
-          </PolicyChip>
-          <span>with confidence above</span>
-          <PolicyChip title="Gravitre does not use a confidence threshold for auto-promotion yet.">Not used</PolicyChip>
-          <span className="flex-1" />
-          <span className={TYPE.meta}>Everything else waits for review</span>
-        </div>
-      </section>
-    </GravitreSurface>
+      <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 bg-[color:var(--g-surface-2)] px-4 py-3 text-[13px] text-[color:var(--g-text-secondary)]", KNOWLEDGE_STAT)}>
+        <SlidersHorizontal className="h-4 w-4 text-[color:var(--g-text-muted)]" aria-hidden />
+        <span>Auto-promote when seen</span>
+        <PolicyChip title={policyTitle}>
+          {policy.minOccurrences != null ? `${policy.minOccurrences} times` : "—"}
+        </PolicyChip>
+        <span>from</span>
+        <PolicyChip title={policyTitle}>
+          {policy.minDepartments != null ? `${policy.minDepartments} teams` : "—"}
+        </PolicyChip>
+        <span>with confidence above</span>
+        <PolicyChip title="Gravitre does not use a confidence threshold for auto-promotion yet.">—</PolicyChip>
+        <span className="flex-1" />
+        <span className={TYPE.meta}>Everything else waits for review</span>
+      </div>
+    </KnowledgeCard>
   )
 }

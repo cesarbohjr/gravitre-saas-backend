@@ -69,7 +69,6 @@ function IntelligenceLearningInner() {
     activeLens: "learns",
     swrKeySuffix: "learning",
   })
-  const suggestedQuestions = pageContext?.suggestedQuestions ?? []
 
   if (!user) {
     return (
@@ -96,6 +95,7 @@ function IntelligenceLearningInner() {
       >
         <GravitrePageHeader
           eyebrow={copy.eyebrow}
+          titleScale="display"
           title={viewCopy.title}
           description={viewCopy.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}
@@ -132,7 +132,6 @@ function IntelligenceLearningInner() {
             pageContext={pageContext}
             loadState={loadState}
             enabled={Boolean(user)}
-            suggestedQuestions={suggestedQuestions}
             view={view}
             onViewChange={setView}
           />

@@ -12,7 +12,6 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { ArrowCounterClockwise, Brain, Sparkle } from "@phosphor-icons/react"
 import { ErrorState } from "@/components/gravitre/empty-state"
-import { GravitreSurface } from "@/components/gravitre/nodus-product/metric"
 import { Button } from "@/components/ui/button"
 import { ApiError } from "@/lib/fetcher"
 import { memoryPromotionApi } from "@/lib/api"
@@ -20,6 +19,11 @@ import { APP_ROUTES } from "@/lib/app-routes"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { MemoryPipeline } from "@/components/intelligence/knowledge/memory-pipeline"
+import {
+  KNOWLEDGE_CARD,
+  KNOWLEDGE_STAT,
+  KNOWLEDGE_TILE,
+} from "@/components/intelligence/knowledge/knowledge-card"
 import {
   EXAMPLE_MEMORY,
   memoryScopeLabel,
@@ -68,7 +72,8 @@ function QueueCard({ item, selected, onSelect }: { item: MemoryItem; selected: b
       aria-pressed={selected}
       onClick={onSelect}
       className={cn(
-        "flex w-full flex-col gap-2.5 rounded-[var(--np-radius-md)] border bg-[color:var(--g-surface-1)] p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
+        KNOWLEDGE_TILE,
+        "flex w-full flex-col gap-2.5 border bg-[color:var(--g-surface-1)] p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
         selected
           ? "border-[color:var(--g-brand-active)] ring-4 ring-[color:var(--g-brand-soft)]"
           : "border-divide hover:border-[color:var(--g-border-strong)]",
@@ -93,7 +98,7 @@ function QueueCard({ item, selected, onSelect }: { item: MemoryItem; selected: b
 function QueueEmpty({ filter, memory }: { filter: MemoryQueueFilter; memory: OrgMemory }) {
   if (filter !== "pending") {
     return (
-      <div className="rounded-[var(--np-radius-md)] border border-dashed border-[color:var(--g-border-default)] px-5 py-7 text-center">
+      <div className="rounded-[14px] border-[1.5px] border-dashed border-[color:var(--g-border-default)] px-5 py-7 text-center">
         <p className={TYPE.bodyMuted}>
           {filter === "auto"
             ? "Nothing was shared automatically in the last 30 days."
@@ -105,7 +110,7 @@ function QueueEmpty({ filter, memory }: { filter: MemoryQueueFilter; memory: Org
   const running = memory.runningAgents.length > 0
   const target = memory.watchedAgents.find((a) => a.status !== "processing") ?? memory.watchedAgents[0] ?? null
   return (
-    <div className="flex flex-col items-center gap-2.5 rounded-[var(--np-radius-md)] border border-dashed border-[color:var(--g-border-default)] px-5 py-7 text-center">
+    <div className="flex flex-col items-center gap-2.5 rounded-[14px] border-[1.5px] border-dashed border-[color:var(--g-border-default)] px-5 py-7 text-center">
       <span className="grid h-11 w-11 place-items-center rounded-[12px] bg-[color:var(--g-surface-2)]">
         <Brain className="h-5 w-5 text-[color:var(--g-text-secondary)]" aria-hidden />
       </span>
@@ -145,7 +150,7 @@ function QueueEmpty({ filter, memory }: { filter: MemoryQueueFilter; memory: Org
 
 function StatTile({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1 rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-2)] p-3">
+    <div className={cn("flex min-w-0 flex-col gap-1 bg-[color:var(--g-surface-2)] p-3", KNOWLEDGE_STAT)}>
       <span className={TYPE.meta}>{label}</span>
       <span
         className={cn(
@@ -211,7 +216,8 @@ export function OrgMemorySection({ memory, previewExample }: { memory: OrgMemory
 
   const realItems = memory.queues[filter]
   const items = previewExample && filter === "pending" ? [EXAMPLE_MEMORY, ...realItems] : realItems
-  const selectedCandidate = items.find((item) => item.key === selectedKey) ?? null
+  // Like the design, the inspector shows the first memory in the queue until another is picked.
+  const selectedCandidate = items.find((item) => item.key === selectedKey) ?? items[0] ?? null
   const isExample = selectedCandidate?.kind === "example"
 
   async function run(action: "approve" | "reject" | "rollback", item: MemoryItem) {
@@ -237,7 +243,7 @@ export function OrgMemorySection({ memory, previewExample }: { memory: OrgMemory
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <MemoryPipeline
         pipeline={memory.pipeline}
         policy={memory.policy}
@@ -246,174 +252,178 @@ export function OrgMemorySection({ memory, previewExample }: { memory: OrgMemory
       />
 
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-        <GravitreSurface className="space-y-4">
-          <section aria-labelledby="memory-queue-heading" className="space-y-4" data-review-surface="memory-queue">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 id="memory-queue-heading" className={TYPE.cardTitle}>
-                Review queue
-              </h2>
-              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter the review queue">
-                {FILTERS.map((f) => {
-                  const active = filter === f.id
-                  return (
-                    <button
-                      key={f.id}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => {
-                        setFilter(f.id)
-                        setSelectedKey(previewExample && f.id === "pending" ? EXAMPLE_MEMORY.key : null)
-                      }}
-                      className={cn(
-                        "min-h-8 rounded-full px-3 text-xs tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
-                        active
-                          ? "bg-foreground text-background"
-                          : "border border-divide bg-[color:var(--g-surface-2)] text-[color:var(--g-text-secondary)] hover:bg-[color:var(--g-surface-3)]",
-                      )}
-                    >
-                      {f.label} {memory.isLoading ? "—" : memory.queues[f.id].length}
-                    </button>
-                  )
-                })}
-              </div>
+        <section
+          aria-labelledby="memory-queue-heading"
+          className={cn(KNOWLEDGE_CARD, "space-y-4 p-5 sm:p-[22px]")}
+          data-review-surface="memory-queue"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="memory-queue-heading" className={TYPE.cardTitle}>
+              Review queue
+            </h2>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter the review queue">
+              {FILTERS.map((f) => {
+                const active = filter === f.id
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => {
+                      setFilter(f.id)
+                      setSelectedKey(previewExample && f.id === "pending" ? EXAMPLE_MEMORY.key : null)
+                    }}
+                    className={cn(
+                      "min-h-8 rounded-full px-3 text-xs tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
+                      active
+                        ? "bg-foreground text-background"
+                        : "border border-divide bg-[color:var(--g-surface-2)] text-[color:var(--g-text-secondary)] hover:bg-[color:var(--g-surface-3)]",
+                    )}
+                  >
+                    {f.label} {memory.isLoading ? "—" : memory.queues[f.id].length}
+                  </button>
+                )
+              })}
             </div>
+          </div>
 
-            {memory.isLoading && !previewExample ? (
-              <p className={TYPE.bodyMuted}>Loading memory candidates…</p>
-            ) : (
-              <ul className="flex flex-col gap-3">
-                {items.map((item) => (
-                  <li key={item.key}>
-                    <QueueCard
-                      item={item}
-                      selected={selectedKey === item.key}
-                      onSelect={() => setSelectedKey(item.key)}
-                    />
-                  </li>
-                ))}
-                {realItems.length === 0 && !memory.isLoading ? (
-                  <li>
-                    <QueueEmpty filter={filter} memory={memory} />
-                  </li>
-                ) : null}
-              </ul>
-            )}
-          </section>
-        </GravitreSurface>
-
-        <GravitreSurface className="space-y-4">
-          <section aria-labelledby="memory-inspector-heading" className="space-y-[18px]" data-review-surface="memory-inspect">
-            <div className="flex items-center justify-between gap-3">
-              <h2 id="memory-inspector-heading" className={TYPE.cardTitle}>
-                Inspector
-              </h2>
-              {selectedCandidate ? (
-                <span className={TYPE.meta}>
-                  {isExample
-                    ? "Example memory"
-                    : selectedCandidate.kind === "auto"
-                      ? "Shared automatically"
-                      : selectedCandidate.kind === "rejected"
-                        ? "Rejected"
-                        : "Waiting for review"}
-                </span>
-              ) : null}
-            </div>
-
-            {selectedCandidate ? (
-              <>
-                <blockquote className="text-lg font-medium leading-snug tracking-[-0.01em] text-[color:var(--g-text-primary)]">
-                  “{selectedCandidate.content}”
-                </blockquote>
-
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-                  <StatTile
-                    label="Confidence"
-                    value={selectedCandidate.confidence != null ? selectedCandidate.confidence.toFixed(2) : "Not scored yet"}
+          {memory.isLoading && !previewExample ? (
+            <p className={TYPE.bodyMuted}>Loading memory candidates…</p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {items.map((item) => (
+                <li key={item.key}>
+                  <QueueCard
+                    item={item}
+                    selected={selectedCandidate?.key === item.key}
+                    onSelect={() => setSelectedKey(item.key)}
                   />
-                  <StatTile label="Scope" value={memoryScopeLabel(selectedCandidate)} />
-                  <StatTile label="Links to" value={selectedCandidate.linksTo ?? "—"} accent={Boolean(selectedCandidate.linksTo)} />
-                </div>
+                </li>
+              ))}
+              {realItems.length === 0 && !memory.isLoading ? (
+                <li>
+                  <QueueEmpty filter={filter} memory={memory} />
+                </li>
+              ) : null}
+            </ul>
+          )}
+        </section>
 
-                <div className="space-y-2.5">
-                  <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-[color:var(--g-text-muted)]">
-                    Where it came from
-                  </span>
-                  <ol className="divide-y divide-divide">
-                    {selectedCandidate.sources.map((row, index) => (
-                      <li
-                        key={`${row.label}-${index}`}
-                        className="grid grid-cols-[20px_minmax(0,1fr)_auto] gap-3 py-2.5 text-[13px] text-[color:var(--g-text-primary)]"
-                      >
-                        <span aria-hidden className={cn("mt-[5px] ml-1.5 h-2 w-2 rounded-full", SOURCE_DOT[row.role])} />
-                        <span className="min-w-0">{row.label}</span>
-                        <span className="font-mono text-xs text-[color:var(--g-text-muted)]">{SOURCE_ROLE_LABEL[row.role]}</span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
+        <section
+          aria-labelledby="memory-inspector-heading"
+          className={cn(KNOWLEDGE_CARD, "space-y-[18px] p-5 sm:p-[22px]")}
+          data-review-surface="memory-inspect"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="memory-inspector-heading" className={TYPE.cardTitle}>
+              Inspector
+            </h2>
+            {selectedCandidate ? (
+              <span className={TYPE.meta}>
+                {isExample
+                  ? "Example memory"
+                  : selectedCandidate.kind === "auto"
+                    ? "Shared automatically"
+                    : selectedCandidate.kind === "rejected"
+                      ? "Rejected"
+                      : "Waiting for review"}
+              </span>
+            ) : null}
+          </div>
 
-                <div className="flex items-start gap-2.5 rounded-[var(--np-radius-md)] border border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)] px-3.5 py-3">
-                  <Sparkle className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--g-brand-active)]" aria-hidden />
-                  <span className="text-[13px] leading-relaxed text-[color:var(--g-text-primary)]">
-                    {impactNote(selectedCandidate)}
-                  </span>
-                </div>
+          {selectedCandidate ? (
+            <>
+              <blockquote className="text-lg font-medium leading-snug tracking-[-0.01em] text-[color:var(--g-text-primary)]">
+                “{selectedCandidate.content}”
+              </blockquote>
 
-                {selectedCandidate.kind === "auto" ? (
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      className="min-h-11 flex-1 basis-[140px]"
-                      data-review-cta="rollback"
-                      disabled={!selectedCandidate.memoryId || busy !== null}
-                      title={selectedCandidate.memoryId ? undefined : "This decision has no memory to roll back."}
-                      onClick={() => void run("rollback", selectedCandidate)}
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                <StatTile
+                  label="Confidence"
+                  value={selectedCandidate.confidence != null ? selectedCandidate.confidence.toFixed(2) : "Not scored yet"}
+                />
+                <StatTile label="Scope" value={memoryScopeLabel(selectedCandidate)} />
+                <StatTile label="Links to" value={selectedCandidate.linksTo ?? "—"} accent={Boolean(selectedCandidate.linksTo)} />
+              </div>
+
+              <div className="space-y-2.5">
+                <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-[color:var(--g-text-muted)]">
+                  Where it came from
+                </span>
+                <ol className="divide-y divide-divide">
+                  {selectedCandidate.sources.map((row, index) => (
+                    <li
+                      key={`${row.label}-${index}`}
+                      className="grid grid-cols-[20px_minmax(0,1fr)_auto] gap-3 py-2.5 text-[13px] text-[color:var(--g-text-primary)]"
                     >
-                      <ArrowCounterClockwise className="mr-2 h-4 w-4" aria-hidden />
-                      {busy === "rollback" ? "Rolling back…" : "Roll back"}
-                    </Button>
-                  </div>
-                ) : selectedCandidate.kind === "rejected" ? null : (
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="brand"
-                      className="min-h-11 flex-1 basis-[140px]"
-                      data-review-cta="approve"
-                      disabled={isExample || busy !== null}
-                      title={isExample ? "This is an example. There is nothing to approve." : undefined}
-                      onClick={() => void run("approve", selectedCandidate)}
-                    >
-                      {busy === "approve" ? "Approving…" : "Approve for org"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="min-h-11 flex-1 basis-[100px]"
-                      disabled
-                      title="Editing a memory before approval is not supported yet."
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="min-h-11 flex-1 basis-[100px] text-[color:var(--g-danger)]"
-                      data-review-cta="reject"
-                      disabled={isExample || busy !== null}
-                      title={isExample ? "This is an example. There is nothing to reject." : undefined}
-                      onClick={() => void run("reject", selectedCandidate)}
-                    >
-                      {busy === "reject" ? "Rejecting…" : "Reject"}
-                    </Button>
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className={TYPE.bodyMuted}>
-                Pick a memory from the review queue to see where it came from. The inspector stays closed until then.
-              </p>
-            )}
-          </section>
-        </GravitreSurface>
+                      <span aria-hidden className={cn("mt-[5px] ml-1.5 h-2 w-2 rounded-full", SOURCE_DOT[row.role])} />
+                      <span className="min-w-0">{row.label}</span>
+                      <span className="font-mono text-xs text-[color:var(--g-text-muted)]">{SOURCE_ROLE_LABEL[row.role]}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              <div className="flex items-start gap-2.5 rounded-[12px] border border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)] px-3.5 py-3">
+                <Sparkle className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--g-brand-active)]" aria-hidden />
+                <span className="text-[13px] leading-relaxed text-[color:var(--g-text-primary)]">
+                  {impactNote(selectedCandidate)}
+                </span>
+              </div>
+
+              {selectedCandidate.kind === "auto" ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    className="min-h-11 flex-1 basis-[140px]"
+                    data-review-cta="rollback"
+                    disabled={!selectedCandidate.memoryId || busy !== null}
+                    title={selectedCandidate.memoryId ? undefined : "This decision has no memory to roll back."}
+                    onClick={() => void run("rollback", selectedCandidate)}
+                  >
+                    <ArrowCounterClockwise className="mr-2 h-4 w-4" aria-hidden />
+                    {busy === "rollback" ? "Rolling back…" : "Roll back"}
+                  </Button>
+                </div>
+              ) : selectedCandidate.kind === "rejected" ? null : (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="brand"
+                    className="min-h-11 flex-1 basis-[140px]"
+                    data-review-cta="approve"
+                    disabled={isExample || busy !== null}
+                    title={isExample ? "This is an example. There is nothing to approve." : undefined}
+                    onClick={() => void run("approve", selectedCandidate)}
+                  >
+                    {busy === "approve" ? "Approving…" : "Approve for org"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="min-h-11 flex-1 basis-[100px]"
+                    disabled
+                    title="Editing a memory before approval is not supported yet."
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="min-h-11 flex-1 basis-[100px] text-[color:var(--g-danger)]"
+                    data-review-cta="reject"
+                    disabled={isExample || busy !== null}
+                    title={isExample ? "This is an example. There is nothing to reject." : undefined}
+                    onClick={() => void run("reject", selectedCandidate)}
+                  >
+                    {busy === "reject" ? "Rejecting…" : "Reject"}
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className={TYPE.bodyMuted}>
+              Pick a memory from the review queue to see where it came from. The inspector stays closed until then.
+            </p>
+          )}
+        </section>
       </div>
     </div>
   )

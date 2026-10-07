@@ -1,7 +1,12 @@
 "use client"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -13,7 +18,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { RELATIONSHIPS_SMOKE_DATA, relationshipTypeLabel } from "@/lib/learning-ui-copy"
 import type { SortKey, ViewMode } from "@/lib/relationships-graph/types"
-import { Graph, Plus, Table } from "@phosphor-icons/react"
+import { Graph, Plus, SlidersHorizontal, Table } from "@phosphor-icons/react"
 import { NucleoSearch } from "@/components/icons/nucleo/semantic"
 import { NUCLEO_SIZE } from "@/lib/design-system"
 import type { RelationshipsWorkspaceState } from "./use-relationships-workspace"
@@ -39,8 +44,6 @@ export function RelationshipToolbar({
     setViewMode,
     viewControlled,
     relationshipTypes,
-    filtered,
-    relationships,
     openAddNode,
     showTestData,
     setShowTestData,
@@ -55,10 +58,11 @@ export function RelationshipToolbar({
     nodes,
   } = workspace
 
+  const filterCount = (showArchived ? 1 : 0) + (showTestData ? 1 : 0)
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        {viewControlled ? <span aria-hidden className="hidden lg:block" /> : (
+      {viewControlled ? null : (
         <ToggleGroup
           type="single"
           variant="outline"
@@ -68,6 +72,7 @@ export function RelationshipToolbar({
             if (v === "graph" || v === "table") setViewMode(v as ViewMode)
           }}
           aria-label="View mode"
+          className="self-start"
         >
           <ToggleGroupItem value="graph" className="gap-1.5 px-3">
             <Graph className="h-4 w-4" weight="duotone" aria-hidden />
@@ -78,16 +83,117 @@ export function RelationshipToolbar({
             Table
           </ToggleGroupItem>
         </ToggleGroup>
-        )}
-        <div className="flex flex-wrap items-center gap-2">
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[200px] flex-1">
+          <NucleoSearch
+            size={NUCLEO_SIZE.row}
+            aria-hidden
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--g-text-muted)]"
+          />
+          <Input
+            id="rel-search"
+            aria-label="Search entities and links"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setPage(0)
+            }}
+            placeholder="Search names, types, or IDs…"
+            className="pl-9"
+          />
+        </div>
+        <Select
+          value={perspective}
+          onValueChange={(v) => {
+            setPerspective(v)
+            setPage(0)
+          }}
+        >
+          <SelectTrigger className="min-w-[140px] flex-1 sm:w-[170px] sm:flex-none" aria-label="Perspective">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All relationships</SelectItem>
+            <SelectItem value="organization">Organization</SelectItem>
+            <SelectItem value="customers">Customers</SelectItem>
+            <SelectItem value="agents">Agents</SelectItem>
+            <SelectItem value="knowledge">Knowledge terms</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={typeFilter}
+          onValueChange={(v) => {
+            setTypeFilter(v)
+            setPage(0)
+          }}
+        >
+          <SelectTrigger className="min-w-[140px] flex-1 sm:w-[170px] sm:flex-none" aria-label="Relationship type">
+            <SelectValue placeholder="All types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            {relationshipTypes.map((t) => (
+              <SelectItem key={t} value={t}>
+                {relationshipTypeLabel(t)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+          <SelectTrigger className="min-w-[140px] flex-1 sm:w-[150px] sm:flex-none" aria-label="Sort">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="recent">Most recent</SelectItem>
+            <SelectItem value="confidence">Confidence</SelectItem>
+            <SelectItem value="evidence">Evidence count</SelectItem>
+          </SelectContent>
+        </Select>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="outline" className="gap-1.5" aria-label="More filters">
+              <SlidersHorizontal className="h-4 w-4" aria-hidden />
+              {filterCount > 0 ? `Filters · ${filterCount}` : "Filters"}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuCheckboxItem
+              checked={showArchived}
+              onCheckedChange={(checked) => {
+                setShowArchived(Boolean(checked))
+                setPage(0)
+              }}
+            >
+              Show archived
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={showTestData}
+              onCheckedChange={(checked) => {
+                setShowTestData(Boolean(checked))
+                setPage(0)
+              }}
+            >
+              Show test data
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {!hideAddEntity ? (
+          <Button type="button" className="gap-1.5" onClick={() => openAddNode("entity")}>
+            <Plus className="h-4 w-4" weight="bold" aria-hidden />
+            Add entity
+          </Button>
+        ) : null}
+      </div>
+      {selection ? (
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Selected item">
+          <span className="text-xs text-[color:var(--g-text-muted)]">Selected</span>
           <Button
             type="button"
             size="sm"
             variant="outline"
             className="gap-1.5"
-            disabled={!selection}
             onClick={() => {
-              if (!selection) return
               setViewMode("graph")
               if (selection.kind === "node") {
                 const seeded = nodes.find((n) => `seed::${n.id}` === selection.nodeId)
@@ -104,140 +210,33 @@ export function RelationshipToolbar({
             <NucleoSearch size={NUCLEO_SIZE.row} aria-hidden />
             Focus
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={neighborhoodOn ? "secondary" : "outline"}
-            className="gap-1.5"
-            disabled={selection?.kind !== "node"}
-            aria-pressed={neighborhoodOn}
-            onClick={() => {
-              setViewMode("graph")
-              setNeighborhoodOn((on) => !on)
-            }}
-          >
-            Neighborhood
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={selection?.kind === "node" && pinnedIds.has(selection.nodeId) ? "secondary" : "outline"}
-            disabled={selection?.kind !== "node"}
-            onClick={() => {
-              if (selection?.kind === "node") togglePin(selection.nodeId)
-            }}
-          >
-            Pin
-          </Button>
-          <Badge variant="outline" className="font-normal tabular-nums">
-            {filtered.length} shown
-            {relationships.length !== filtered.length ? ` of ${relationships.length}` : ""}
-          </Badge>
-          {!hideAddEntity ? (
-            <Button type="button" size="sm" className="gap-1.5" onClick={() => openAddNode("entity")}>
-              <Plus className="h-4 w-4" weight="bold" aria-hidden />
-              Add entity
-            </Button>
+          {selection.kind === "node" ? (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant={neighborhoodOn ? "secondary" : "outline"}
+                aria-pressed={neighborhoodOn}
+                onClick={() => {
+                  setViewMode("graph")
+                  setNeighborhoodOn((on) => !on)
+                }}
+              >
+                Neighborhood
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={pinnedIds.has(selection.nodeId) ? "secondary" : "outline"}
+                aria-pressed={pinnedIds.has(selection.nodeId)}
+                onClick={() => togglePin(selection.nodeId)}
+              >
+                Pin
+              </Button>
+            </>
           ) : null}
         </div>
-      </div>
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[220px] flex-1 space-y-1.5">
-          <label htmlFor="rel-search" className="text-xs font-medium text-[color:var(--g-text-muted)]">
-            Search
-          </label>
-          <Input
-            id="rel-search"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value)
-              setPage(0)
-            }}
-            placeholder="Search names, types, or IDs…"
-            className="max-w-md"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <span className="text-xs font-medium text-[color:var(--g-text-muted)]">Perspective</span>
-          <Select
-            value={perspective}
-            onValueChange={(v) => {
-              setPerspective(v)
-              setPage(0)
-            }}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All relationships</SelectItem>
-              <SelectItem value="organization">Organization</SelectItem>
-              <SelectItem value="customers">Customers</SelectItem>
-              <SelectItem value="agents">Agents</SelectItem>
-              <SelectItem value="knowledge">Knowledge terms</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <span className="text-xs font-medium text-[color:var(--g-text-muted)]">Relationship type</span>
-          <Select
-            value={typeFilter}
-            onValueChange={(v) => {
-              setTypeFilter(v)
-              setPage(0)
-            }}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="All types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              {relationshipTypes.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {relationshipTypeLabel(t)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <span className="text-xs font-medium text-[color:var(--g-text-muted)]">Sort</span>
-          <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="recent">Most recent</SelectItem>
-              <SelectItem value="confidence">Confidence</SelectItem>
-              <SelectItem value="evidence">Evidence count</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant={showArchived ? "secondary" : "outline"}
-          size="sm"
-          onClick={() => {
-            setShowArchived((v) => !v)
-            setPage(0)
-          }}
-        >
-          {showArchived ? "Showing archived" : "Show archived"}
-        </Button>
-        <Button
-          type="button"
-          variant={showTestData ? "secondary" : "outline"}
-          size="sm"
-          onClick={() => {
-            setShowTestData((v) => !v)
-            setPage(0)
-          }}
-        >
-          {showTestData ? "Including test data" : "Show test data"}
-        </Button>
-        </div>
-      </div>
+      ) : null}
       {showTestData ? (
         <p
           className="rounded-md border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-[color:var(--g-text-secondary)]"

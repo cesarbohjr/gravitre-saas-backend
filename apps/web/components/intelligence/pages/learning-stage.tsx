@@ -13,13 +13,14 @@ import useSWR from "swr"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { LearningInsightsList } from "@/components/intelligence/learning-insight-card"
 import { RelationshipsWorkspace } from "@/components/intelligence/relationships/relationships-workspace"
-import { IntelligenceAskCommandSurface } from "@/components/intelligence/shell"
 import type { IntelligencePageContextResponse } from "@/lib/api"
 import { intelligenceApi } from "@/lib/api"
 import { OrgMemorySection } from "@/components/intelligence/org-memory-section"
 import { useOrgMemory } from "@/components/intelligence/knowledge/use-org-memory"
 import type { KnowledgeView } from "@/components/intelligence/knowledge/knowledge-view"
-import { GravitreMetric } from "@/components/gravitre/nodus-product"
+import { KnowledgeCard } from "@/components/intelligence/knowledge/knowledge-card"
+import { countKnownEntities } from "@/components/intelligence/knowledge/knowledge-entities"
+import type { RelationshipRow } from "@/lib/relationships-graph/types"
 import { readNumber } from "@/lib/intelligence/helpers"
 import { formatLearningInsights } from "@/lib/intelligence/learning-insight-display"
 import {
@@ -29,7 +30,6 @@ import {
   type LearningInsightFilters,
 } from "@/lib/intelligence/learning-filters"
 import { isSnapshotMetricsReady, type SnapshotLoadState } from "@/lib/intelligence/snapshot-state"
-import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 
 function LearningFilterRow({
@@ -48,7 +48,7 @@ function LearningFilterRow({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-end gap-3 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)]/40 px-3 py-2.5",
+        "flex flex-wrap items-end gap-3 rounded-[12px] bg-[color:var(--g-surface-2)] px-4 py-3",
         disabled && "pointer-events-none opacity-60",
       )}
       aria-hidden={disabled}
@@ -238,14 +238,12 @@ export function LearningStage({
   pageContext,
   loadState,
   enabled,
-  suggestedQuestions,
   view,
   onViewChange,
 }: {
   pageContext?: IntelligencePageContextResponse | null
   loadState: SnapshotLoadState
   enabled: boolean
-  suggestedQuestions?: string[]
   view: KnowledgeView
   onViewChange: (view: KnowledgeView) => void
 }) {
@@ -262,7 +260,7 @@ export function LearningStage({
   )
   const hasNoBusinessLearning = pageContext?.qualityFlags?.includes("NO_BUSINESS_LEARNING_YET") ?? false
   const learningMetrics = pageContext?.metrics.learning ?? pageContext?.snapshot.metrics.learning ?? {}
-  const outcomeMetrics = pageContext?.metrics.outcomes ?? pageContext?.snapshot.metrics.outcomes ?? {}
+  const recentCount = readNumber(learningMetrics.recentLearnings, insights.length)
 
   const { data: relationshipsSnapshot, isLoading: relationshipsSnapshotLoading } = useSWR(
     enabled && view !== "memory" ? "intelligence/learning/relationships-snapshot" : null,
@@ -273,7 +271,18 @@ export function LearningStage({
   const { data: nodesData } = useSWR(enabled ? ["admin/intelligence/knowledge-nodes"] : null, () =>
     intelligenceApi.knowledgeNodes({ limit: 100 }),
   )
-  const entityCount = nodesData ? nodesData.nodes.length : null
+  // Same key and fetcher as the relationships workspace's active list.
+  const { data: relationshipsList } = useSWR(
+    enabled ? ["admin/intelligence/relationships-list", "active"] : null,
+    () => intelligenceApi.relationships({ includeArchived: false, limit: 500 }),
+  )
+  const entityCount =
+    nodesData && relationshipsList
+      ? countKnownEntities(
+          nodesData.nodes as RelationshipRow[],
+          (relationshipsList.relationships as RelationshipRow[] | undefined) ?? [],
+        )
+      : null
 
   const memory = useOrgMemory(enabled && view === "memory")
   const previewExample = exampleChoice ?? (!memory.isLoading && !memory.error && !memory.hasRealCandidates)
@@ -295,28 +304,9 @@ export function LearningStage({
         ) : null}
       </div>
 
-      <div id="knowledge-view-panel" role="tabpanel" aria-labelledby={`knowledge-view-${view}`} className="space-y-10">
+      <div id="knowledge-view-panel" role="tabpanel" aria-labelledby={`knowledge-view-${view}`} className="space-y-6">
         {view === "graph" ? (
           <>
-            <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-3" aria-label="Knowledge at a glance">
-              <GravitreMetric
-                label="Recent learnings"
-                value={metricsReady ? readNumber(learningMetrics.recentLearnings, insights.length) : "—"}
-                hint={isLoading ? "Loading intelligence…" : "Validated business insights"}
-              />
-              <GravitreMetric
-                label="Relationships known"
-                value={metricsReady ? readNumber(learningMetrics.relationshipsLearned, 0) : "—"}
-                hint={isLoading ? "Loading intelligence…" : "Knowledge graph connections"}
-              />
-              <GravitreMetric
-                className="col-span-2 lg:col-span-1"
-                label="Measured outcomes"
-                value={metricsReady ? readNumber(outcomeMetrics.measuredOutcomes, 0) : "—"}
-                hint={isLoading ? "Loading intelligence…" : "Window attribution"}
-              />
-            </section>
-
             <section id="knowledge-relationships-heading" className="scroll-mt-24">
               <RelationshipsWorkspace
                 data={relationshipsSnapshot}
@@ -327,13 +317,18 @@ export function LearningStage({
               />
             </section>
 
-            <section aria-labelledby="knowledge-learnings-heading" className="space-y-3">
-              <div>
-                <h2 id="knowledge-learnings-heading" className={TYPE.sectionTitle}>Recent learnings</h2>
-                <p className={cn(TYPE.meta, "mt-0.5")}>
-                  Insights Gravitre confirmed from real work, newest first. Filter by evidence, confidence, or source.
-                </p>
-              </div>
+            <KnowledgeCard
+              id="knowledge-learnings-heading"
+              title="Recent learnings"
+              lead="Insights Gravitre confirmed from real work, newest first. Filter by evidence, confidence, or source."
+              aside={
+                metricsReady && recentCount > 0 ? (
+                  <span className="inline-flex items-center rounded-full bg-[color:var(--g-surface-2)] px-3 py-1.5 text-[13px] tabular-nums text-[color:var(--g-text-secondary)]">
+                    {recentCount} confirmed
+                  </span>
+                ) : null
+              }
+            >
               <LearnedRecentlyPanel
                 insights={insights}
                 isLoading={isLoading}
@@ -342,7 +337,7 @@ export function LearningStage({
                 onFiltersChange={setFilters}
                 onGoToMemory={() => onViewChange("memory")}
               />
-            </section>
+            </KnowledgeCard>
           </>
         ) : null}
 
@@ -365,7 +360,6 @@ export function LearningStage({
         ) : null}
       </div>
 
-      <IntelligenceAskCommandSurface enabled={enabled} pageSuggestedQuestions={suggestedQuestions} />
     </div>
   )
 }
