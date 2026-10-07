@@ -26,13 +26,13 @@ function wrap(image: React.ReactNode, href?: string) {
   )
 }
 
-export function GravitreMarketingLogo({ className, height = 40, href = "/" }: GravitreMarketingLogoProps) {
+export function GravitreMarketingLogo({ className, height = 20, href = "/" }: GravitreMarketingLogoProps) {
   return wrap(<Mark size={height} className={className} />, href)
 }
 
 export function GravitreMarketingLogoWhite({
   className,
-  height = 32,
+  height = 20,
   href = "/",
 }: Omit<GravitreMarketingLogoProps, "priority">) {
   return wrap(<Mark size={height} className={className} />, href)
