@@ -60,7 +60,7 @@ def _build_dashboard_overview(client: Client, org_id: str, settings: Settings, r
     total_runs = len(runs_rows)
     completed = len([r for r in runs_rows if r.get("status") == "completed"])
     failed = len([r for r in runs_rows if r.get("status") == "failed"])
-    success_rate = round((completed / (completed + failed)) * 100, 2) if (completed + failed) > 0 else 0
+    success_rate = round((completed / (completed + failed)) * 100, 2) if (completed + failed) > 0 else None
     durations = [float(r.get("duration_ms") or 0) for r in runs_rows if r.get("duration_ms") is not None]
     avg_duration = round(sum(durations) / len(durations), 2) if durations else 0
 
@@ -95,7 +95,7 @@ def _build_dashboard_overview(client: Client, org_id: str, settings: Settings, r
                     except (TypeError, ValueError):
                         pass
     series_assessment = assess_metric_series(
-        trend_rates or [success_rate],
+        trend_rates or ([success_rate] if success_rate is not None else []),
         metric_name="ops_success_rate",
         min_periods=3 if len(trend_rates) >= 3 else 1,
     )

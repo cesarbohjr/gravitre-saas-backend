@@ -3,6 +3,9 @@
 Templates describe outcome intent and dependency requirements only. They do not
 contain executable workflow steps and cannot execute actions. A tenant/runtime
 instance must bind to canonical workflow ids before execution is possible.
+
+Department Plays are not written here: they are derived from Outcome Pack
+manifests (``app.outcome_packs``), so there is one declaration per Play.
 """
 from __future__ import annotations
 
@@ -101,17 +104,6 @@ PROCESS_DRIFT_DETECTOR = PlayDefinition(
 )
 
 
-KNOWLEDGE_GAP_MINER = PlayDefinition(
-    key="knowledge-gap-miner",
-    name="Knowledge Gap Miner",
-    version="1",
-    objective="Turn repeated questions, failed retrievals, escalations, and unresolved cases into prioritized knowledge and SOP improvement opportunities.",
-    required_signals=("workflow_failed",),
-    optional_connectors=("zendesk", "intercom", "freshdesk", "front", "slack", "microsoft_teams"),
-    outcome_metrics=("knowledge_gap_rate", "escalation_rate", "repeat_issue_rate"),
-)
-
-
 EXECUTIVE_MORNING_COMMAND_BRIEF = PlayDefinition(
     key="executive-morning-command-brief",
     name="Executive Morning Command Brief",
@@ -136,106 +128,38 @@ AUTONOMOUS_EXCEPTION_MANAGER = PlayDefinition(
 )
 
 
-INTELLIGENT_TICKET_INTAKE = PlayDefinition(
-    key="intelligent-ticket-intake",
-    name="Intelligent Ticket Intake",
-    version="1",
-    objective="Classify, prioritize, enrich, and route new service tickets using client, user, asset, SLA, and sentiment context.",
-    required_connector_groups=(("halo_psa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"),),
-    optional_connectors=("microsoft_intune", "jumpcloud", "jamf_pro", "microsoft_365"),
-    outcome_metrics=("mtta", "sla_compliance", "automation_rate"),
-)
-
-
-RESOLUTION_COPILOT = PlayDefinition(
-    key="resolution-copilot",
-    name="Resolution Copilot",
-    version="1",
-    objective="Assemble ticket history, device context, runbooks, and prior resolutions into an evidence-backed remediation path.",
-    required_connector_groups=(("halo_psa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"),),
-    optional_connectors=("microsoft_intune", "jumpcloud", "jamf_pro", "huntress", "sentinelone", "crowdstrike"),
-    outcome_metrics=("mttr", "first_contact_resolution", "automation_rate"),
-)
-
-
-SLA_RESCUE = PlayDefinition(
-    key="sla-rescue",
-    name="SLA Rescue",
-    version="1",
-    objective="Detect service work approaching breach, identify why it is stalled, and coordinate a policy-safe intervention before the SLA is missed.",
-    required_connector_groups=(("halo_psa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"),),
-    optional_connectors=("slack", "microsoft_teams"),
-    outcome_metrics=("sla_compliance", "tickets_rescued", "mttr"),
-)
-
-
-STALE_TICKET_RECOVERY = PlayDefinition(
-    key="stale-ticket-recovery",
-    name="Stale Ticket Recovery",
-    version="1",
-    objective="Find tickets stalled on technicians, customers, vendors, approvals, or missing information and restart the correct next step.",
-    required_connector_groups=(("halo_psa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"),),
-    optional_connectors=("slack", "microsoft_teams", "microsoft_365"),
-    outcome_metrics=("backlog", "stale_ticket_rate", "mttr"),
-)
-
-
-RECURRING_PROBLEM_HUNTER = PlayDefinition(
-    key="recurring-problem-hunter",
-    name="Recurring Problem Hunter",
-    version="1",
-    objective="Cluster repeated incidents across clients, users, and assets to identify root recurring problems and preventive automation opportunities.",
-    required_connector_groups=(("halo_psa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"),),
-    optional_connectors=("microsoft_intune", "huntress", "sentinelone", "connectsecure"),
-    outcome_metrics=("repeat_issue_rate", "reopen_rate", "prevented_incidents"),
-)
-
-
-CLIENT_COMMUNICATION_MANAGER = PlayDefinition(
-    key="client-communication-manager",
-    name="Client Communication Manager",
-    version="1",
-    objective="Prepare timely, context-aware client updates from verified service status, SLA posture, sentiment, and business impact.",
-    required_connector_groups=(("halo_psa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"),),
-    optional_connectors=("slack", "microsoft_teams", "microsoft_365"),
-    outcome_metrics=("customer_update_latency", "csat", "sla_compliance"),
-)
-
-
-SERVICE_DESK_OPTIMIZATION_REVIEW = PlayDefinition(
-    key="service-desk-optimization-review",
-    name="Service Desk Optimization Review",
-    version="1",
-    objective="Review service desk performance, recurring bottlenecks, automation coverage, and technician workload to recommend measurable operating improvements.",
-    required_connector_groups=(("halo_psa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk"),),
-    optional_connectors=("slack", "microsoft_teams"),
-    outcome_metrics=("mtta", "mttr", "sla_compliance", "automation_rate", "reopen_rate", "backlog"),
-)
-
-
-PLATFORM_PLAY_TEMPLATES: tuple[PlayDefinition, ...] = (
+# Cross-department platform Plays that are not part of an Outcome Pack.
+STATIC_PLAY_TEMPLATES: tuple[PlayDefinition, ...] = (
     CUSTOMER_RESCUE,
     REVENUE_RECOVERY,
     MARKETING_PERFORMANCE,
     CLIENT_RISK_RADAR,
     REVENUE_LEAK_HUNTER,
     PROCESS_DRIFT_DETECTOR,
-    KNOWLEDGE_GAP_MINER,
     EXECUTIVE_MORNING_COMMAND_BRIEF,
     AUTONOMOUS_EXCEPTION_MANAGER,
-    INTELLIGENT_TICKET_INTAKE,
-    RESOLUTION_COPILOT,
-    SLA_RESCUE,
-    STALE_TICKET_RECOVERY,
-    RECURRING_PROBLEM_HUNTER,
-    CLIENT_COMMUNICATION_MANAGER,
-    SERVICE_DESK_OPTIMIZATION_REVIEW,
 )
+
+
+def platform_play_templates() -> tuple[PlayDefinition, ...]:
+    """Static platform Plays plus every Play declared by an Outcome Pack."""
+    from app.outcome_packs.registry import play_definitions
+
+    static_keys = {play.key for play in STATIC_PLAY_TEMPLATES}
+    derived = tuple(play for play in play_definitions() if play.key not in static_keys)
+    return STATIC_PLAY_TEMPLATES + derived
+
+
+def __getattr__(name: str):
+    # PLATFORM_PLAY_TEMPLATES is derived lazily so pack manifests load after imports settle.
+    if name == "PLATFORM_PLAY_TEMPLATES":
+        return platform_play_templates()
+    raise AttributeError(name)
 
 
 def get_platform_play(key: str) -> PlayDefinition | None:
     wanted = str(key or "").strip().lower()
-    for play in PLATFORM_PLAY_TEMPLATES:
+    for play in platform_play_templates():
         if play.key == wanted:
             return play
     return None

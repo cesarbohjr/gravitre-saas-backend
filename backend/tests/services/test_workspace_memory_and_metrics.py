@@ -31,7 +31,8 @@ def _chainable(data: list | None = None) -> MagicMock:
 def test_platform_defaults_include_mql_cac_arr():
     defaults = list_platform_defaults()
     keys = {d["metric_key"] for d in defaults}
-    assert keys == {"mql", "cac", "arr"}
+    # Legacy defaults stay; Outcome Packs add canonical department metrics.
+    assert {"mql", "cac", "arr", "qualified_leads", "organic_clicks", "mttr", "customers_retained"} <= keys
     assert PLATFORM_METRIC_DEFAULTS["mql"]["formula"] == "count(leads where marketing_qualified=true)"
     assert PLATFORM_METRIC_DEFAULTS["cac"]["formula"] == "(sales_spend + marketing_spend) / new_customers"
     assert PLATFORM_METRIC_DEFAULTS["arr"]["formula"] == "sum(mrr) * 12"

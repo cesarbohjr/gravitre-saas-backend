@@ -73,6 +73,9 @@ def _play(
     approvals: list[dict[str, Any]] | None = None,
     evidence_steps: list[dict[str, Any]] | None = None,
     action_steps_after: list[dict[str, Any]] | None = None,
+    capability_groups: list[list[str]] | None = None,
+    optional_connectors: list[str] | None = None,
+    write_actions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     workflow_steps = list(evidence_steps or [])
     workflow_steps.append(
@@ -112,7 +115,101 @@ def _play(
             "provider_acceptance_is_terminal": False,
         },
         "runtime_inputs": runtime_inputs,
+        "objective": description,
+        "capability_groups": capability_groups or [["support.ticket.read", "support.ticket.list"]],
+        "required_connector_groups": [list(_SERVICE_DESKS)],
+        "optional_connectors": optional_connectors or [],
+        "write_actions": write_actions or [],
     }
+
+
+# Service desks a Play can observe; verification is certified for Freshservice.
+_SERVICE_DESKS = ("halo_psa", "autotask", "connectwise", "syncro", "servicenow", "freshservice", "zendesk")
+
+_RESOLVED_AT = "current.ticket.stats.resolved_at"
+_DUE_BY = "current.ticket.due_by"
+_CREATED_AT = "current.ticket.created_at"
+
+# Metrics a service desk can verify per ticket from the source of record.
+_VERIFIED_KPI_SEMANTICS: dict[str, dict[str, Any]] = {
+    "mtta": {
+        "kind": "business", "aggregation": "avg", "source_system": "freshservice", "source_record_type": "ticket",
+        "verification_recipe": "freshservice-ticket-resolution",
+        "evidence_strategy": "Minutes from ticket creation to first response, read from the ticket's stats.",
+        "synonyms": ["response time", "time to acknowledge", "mtta", "first response time"],
+    },
+    "mttr": {
+        "kind": "business", "aggregation": "avg", "source_system": "freshservice", "source_record_type": "ticket",
+        "verification_recipe": "freshservice-ticket-resolution",
+        "evidence_strategy": "Minutes from ticket creation to resolution, read from the ticket's stats.",
+        "synonyms": ["resolution time", "time to resolve", "mttr", "ticket resolution time"],
+    },
+    "sla_compliance": {
+        "kind": "business", "aggregation": "ratio", "numerator": "tickets_resolved_within_sla",
+        "denominator": "tickets_resolved",
+        "evidence_strategy": "Share of verified resolved tickets whose resolution time met the due date.",
+        "synonyms": ["sla compliance", "sla", "sla attainment", "meet sla", "sla breaches"],
+    },
+    "tickets_rescued": {
+        "kind": "business", "aggregation": "count", "source_system": "freshservice", "source_record_type": "ticket",
+        "verification_recipe": "freshservice-ticket-resolution",
+        "evidence_strategy": "A rescued ticket was resolved at or before its SLA due time.",
+        "synonyms": ["tickets rescued", "sla saves", "breaches prevented"],
+    },
+}
+_OPERATIONAL_NOTE = "Operational estimate; not verified per ticket by a source-of-record recipe yet."
+
+
+def _msp_kpi(row: dict[str, Any]) -> dict[str, Any]:
+    out = {**row, "department": "msp", "departments": ["msp", "support"]}
+    semantics = _VERIFIED_KPI_SEMANTICS.get(row["key"])
+    if semantics:
+        out.update(semantics)
+    else:
+        out.update({"kind": "operational", "aggregation": "avg" if row["unit"] != "count" else "count",
+                    "evidence_strategy": _OPERATIONAL_NOTE})
+    out.setdefault("description", row["label"])
+    return out
+
+
+_MSP_RECIPES: list[dict[str, Any]] = [
+    {
+        "key": "freshservice-ticket-resolution",
+        "source_system": "freshservice",
+        "record_type": "ticket",
+        "match_actions": ["freshservice.tickets.update_status"],
+        "read_action": "freshservice.tickets.get",
+        "record_id_param": "ticket_id",
+        "record_id_fields": ["record_ids.ticket", "ticket_id", "entity_id", "id"],
+        "read_params": {"include": "stats"},
+        "verification_method": "service_desk_ticket_reread",
+        "measure_after_hours": 1,
+        "measure_window_days": 14,
+        "contributions": [
+            {"metric_key": "tickets_resolved", "when": {"field": _RESOLVED_AT, "op": "exists"}},
+            {
+                "metric_key": "tickets_resolved_within_sla",
+                "when": {"all": [{"field": _RESOLVED_AT, "op": "exists"}, {"field": _RESOLVED_AT, "op": "lte", "value_field": _DUE_BY}]},
+                "fail_when": {"field": _RESOLVED_AT, "op": "gt", "value_field": _DUE_BY},
+            },
+            {
+                "metric_key": "tickets_rescued",
+                "when": {"all": [{"field": _RESOLVED_AT, "op": "exists"}, {"field": _RESOLVED_AT, "op": "lte", "value_field": _DUE_BY}]},
+                "fail_when": {"field": _RESOLVED_AT, "op": "gt", "value_field": _DUE_BY},
+            },
+            {
+                "metric_key": "mttr",
+                "when": {"field": _RESOLVED_AT, "op": "exists"},
+                "value": {"duration_from": _CREATED_AT, "duration_to": _RESOLVED_AT, "duration_unit": "minutes"},
+            },
+            {
+                "metric_key": "mtta",
+                "when": {"field": "current.ticket.stats.first_responded_at", "op": "exists"},
+                "value": {"duration_from": _CREATED_AT, "duration_to": "current.ticket.stats.first_responded_at", "duration_unit": "minutes"},
+            },
+        ],
+    }
+]
 
 
 def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
@@ -217,6 +314,21 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
         },
     ]
 
+    kpis.extend(
+        [
+            {"key": "tickets_resolved", "label": "Tickets resolved", "unit": "count", "direction": "increase",
+             "source": "service_tickets", "description": "Tickets a Play acted on that the service desk shows as resolved."},
+            {"key": "tickets_resolved_within_sla", "label": "Tickets resolved within SLA", "unit": "count",
+             "direction": "increase", "source": "service_tickets",
+             "description": "Tickets a Play acted on that were resolved at or before their due time."},
+        ]
+    )
+    for row in kpis:
+        if row["key"] in {"tickets_resolved", "tickets_resolved_within_sla"}:
+            row.update({"kind": "funnel", "aggregation": "count", "source_system": "freshservice",
+                        "source_record_type": "ticket", "verification_recipe": "freshservice-ticket-resolution"})
+    kpis = [_msp_kpi(row) for row in kpis]
+
     plays = [
         _play(
             "intelligent-ticket-intake",
@@ -306,6 +418,8 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
                     "verification": "source_of_record_field_assert",
                 }
             ],
+            capability_groups=[["support.ticket.read"], ["support.ticket.update"]],
+            write_actions=[{"capability": "support.ticket.update", "approval": "always"}],
             action_steps_after=[
                 _tool_step(
                     "sla-approved-status-update",
@@ -428,6 +542,36 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
 
     return {
         "marketplace_version": "3.0",
+        "pack_id": "msp-service-desk",
+        "department": "msp",
+        "objectives": [
+            {"key": "improve-sla", "statement": "Improve SLA compliance", "kpi_keys": ["sla_compliance", "tickets_rescued"]},
+            {"key": "resolve-faster", "statement": "Resolve tickets faster", "kpi_keys": ["mttr", "mtta"]},
+        ],
+        "verification_recipes": _MSP_RECIPES,
+        "governance": {
+            "always_approve_actions": ["freshservice.tickets.update_status"],
+            "max_autonomy": "act_with_approval",
+        },
+        "certification": {
+            "minimum_plays": 6,
+            "fixtures": {
+                "freshservice-ticket-resolution": {
+                    "record_id": "4521",
+                    "current": {
+                        "ticket": {
+                            "id": 4521,
+                            "created_at": "2026-10-01T10:00:00Z",
+                            "due_by": "2026-10-01T18:00:00Z",
+                            "stats": {"first_responded_at": "2026-10-01T10:20:00Z", "resolved_at": "2026-10-01T16:30:00Z"},
+                        }
+                    },
+                }
+            },
+            "degraded_scenarios": [
+                {"capability": "support.ticket.read", "unavailable_vendor": "freshservice", "reason": "auth_expired"},
+            ],
+        },
         "outcome_contract": {
             "problem": (
                 "MSP service desks lose technician capacity to manual triage, stale work, repeated issues, "
@@ -551,6 +695,17 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
         },
         "dashboard": {
             "title": "MSP Service Desk Command Center",
+            "template_id": "msp-service-desk",
+            "department": "msp",
+            "sections": [
+                {"title": "SLA", "kpi_keys": ["sla_compliance", "tickets_rescued", "tickets_resolved_within_sla", "tickets_resolved"]},
+                {"title": "Speed", "kpi_keys": ["mtta", "mttr"]},
+                {"title": "Operational estimates", "kpi_keys": [
+                    "first_contact_resolution", "backlog", "reopen_rate", "automation_rate", "repeat_issue_rate",
+                    "knowledge_gap_rate", "customer_update_latency", "csat", "stale_ticket_rate", "prevented_incidents",
+                ]},
+            ],
+            "system_health_kpis": ["connector-health", "pending-approvals"],
             "refresh_mode": "event",
             "metrics": [
                 {

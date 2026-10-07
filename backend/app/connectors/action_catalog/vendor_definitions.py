@@ -78,6 +78,59 @@ VENDOR_DEFINITIONS: tuple = (
             action("hubspot", "pipelines.list", "List deal pipelines", tier="v1", kind="read", scope_suffix="pipelines:read", idempotent=True),
             action("hubspot", "contacts.list", "List recent contacts", tier="v1", kind="read", scope_suffix="contacts:read", idempotent=True),
             action("hubspot", "campaigns.list", "List marketing emails/campaigns", tier="v1", kind="read", scope_suffix="marketing-email:read", idempotent=True),
+            action(
+                "hubspot",
+                "meetings.search",
+                "Search meetings",
+                tier="v1",
+                kind="read",
+                scope_suffix="meetings:read",
+                idempotent=True,
+                description=(
+                    "Search HubSpot meeting engagements, optionally by associated contact_id, "
+                    "deal_id or company_id. Use when you need meetings booked as evidence."
+                ),
+            ),
+            action("hubspot", "meetings.get", "Get meeting", tier="v1", kind="read", scope_suffix="meetings:read", idempotent=True),
+            action(
+                "hubspot",
+                "contacts.outreach",
+                "Read contact outreach evidence",
+                tier="v1",
+                kind="read",
+                scope_suffix="emails:read",
+                idempotent=True,
+                description=(
+                    "Count delivered outreach emails and replies for one HubSpot contact since a "
+                    "date. Use when you need verified delivered/reply evidence for a contact."
+                ),
+            ),
+            action(
+                "hubspot",
+                "emails.search",
+                "Search contact email engagements",
+                tier="v1",
+                kind="read",
+                scope_suffix="emails:read",
+                idempotent=True,
+                description=(
+                    "List email engagements associated with a HubSpot contact (direction, "
+                    "timestamp, status). Use when you need outreach delivered/reply evidence."
+                ),
+            ),
+            action(
+                "hubspot",
+                "associations.list",
+                "List associations",
+                tier="v1",
+                kind="read",
+                scope_suffix="associations:read",
+                idempotent=True,
+                description=(
+                    "Read the CRM records associated to a HubSpot object (e.g. contacts of a "
+                    "company, meetings of a contact). Use when you need to verify associations."
+                ),
+            ),
         ),
         v2=(
             action(
@@ -126,6 +179,20 @@ VENDOR_DEFINITIONS: tuple = (
                 scope_suffix="companies:write",
                 destructive=True,
                 workflow_schema=HUBSPOT_COMPANIES_CREATE_SCHEMA,
+            ),
+            action(
+                "hubspot",
+                "companies.update",
+                "Update company",
+                tier="v2",
+                kind="write",
+                scope_suffix="companies:write",
+                destructive=True,
+                description=(
+                    "Update properties on an existing HubSpot company by company_id (e.g. "
+                    "gravitre_icp_fit, gravitre_qualified_at). Use when you need to write a "
+                    "qualification or field change to an account."
+                ),
             ),
         ),
         v3=(

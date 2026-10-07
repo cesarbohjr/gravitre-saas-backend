@@ -1,8 +1,8 @@
 {
   "generated_at": "2026-08-13T08:32:00.083626+00:00",
-  "catalog_action_count": 735,
+  "catalog_action_count": 741,
   "vendor_count": 86,
-  "enriched_action_count": 735,
+  "enriched_action_count": 741,
   "generator_model": "gpt-4o-mini",
   "taxonomy_version": 1,
   "actions": {
@@ -13635,6 +13635,116 @@
         "service-desk",
         "itsm",
         "approval"
+      ]
+    },
+    "hubspot.associations.list": {
+      "examples": [
+        "List the records associated with a HubSpot contact.",
+        "Which deals are linked to this company in HubSpot?",
+        "Show the contacts associated with this deal.",
+        "Get HubSpot associations for a record.",
+        "What companies is this contact associated with in HubSpot?"
+      ],
+      "tags": [
+        "hubspot",
+        "associations",
+        "read",
+        "crm",
+        "api",
+        "list",
+        "relationships"
+      ]
+    },
+    "hubspot.meetings.search": {
+      "examples": [
+        "Find meetings booked with this contact in HubSpot.",
+        "Search HubSpot meetings since last week.",
+        "Did this prospect book a meeting?",
+        "List HubSpot meeting engagements for a contact.",
+        "Show meetings scheduled from our outreach."
+      ],
+      "tags": [
+        "hubspot",
+        "meetings",
+        "read",
+        "crm",
+        "api",
+        "search",
+        "engagements"
+      ]
+    },
+    "hubspot.meetings.get": {
+      "examples": [
+        "Get the details of a HubSpot meeting.",
+        "Show this meeting in HubSpot.",
+        "What was the outcome of this HubSpot meeting?",
+        "Read a meeting engagement from HubSpot.",
+        "Open the HubSpot meeting record."
+      ],
+      "tags": [
+        "hubspot",
+        "meetings",
+        "read",
+        "crm",
+        "api",
+        "get",
+        "engagements"
+      ]
+    },
+    "hubspot.emails.search": {
+      "examples": [
+        "Find emails logged on this HubSpot contact.",
+        "Search HubSpot email engagements.",
+        "Did this contact reply to our emails?",
+        "List emails sent to a prospect in HubSpot.",
+        "Show email activity for this contact."
+      ],
+      "tags": [
+        "hubspot",
+        "emails",
+        "read",
+        "crm",
+        "api",
+        "search",
+        "engagements"
+      ]
+    },
+    "hubspot.companies.update": {
+      "examples": [
+        "Update a company in HubSpot.",
+        "Set the ICP fit score on this HubSpot company.",
+        "Change a company's properties in HubSpot.",
+        "Mark this account as qualified in HubSpot.",
+        "Edit company details in my HubSpot CRM."
+      ],
+      "tags": [
+        "hubspot",
+        "companies",
+        "write",
+        "crm",
+        "api",
+        "update",
+        "modify",
+        "mutate"
+      ]
+    },
+    "hubspot.contacts.outreach": {
+      "examples": [
+        "Has this contact received or replied to our outreach?",
+        "Check delivered emails and replies for a HubSpot contact.",
+        "Show outreach evidence for this prospect.",
+        "How many emails reached this contact since enrollment?",
+        "Did the sequence get a reply from this contact?"
+      ],
+      "tags": [
+        "hubspot",
+        "contacts",
+        "read",
+        "crm",
+        "api",
+        "outreach",
+        "engagements",
+        "evidence"
       ]
     }
   }

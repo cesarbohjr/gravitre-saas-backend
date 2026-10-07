@@ -64,15 +64,122 @@ def map_hubspot_event_to_crm_outcome(event: dict[str, Any], normalized: dict[str
     return None
 
 
+# Deal pipeline metadata cache (per org) — stage ids → isClosed/probability.
+PIPELINES_CACHE_TTL_SEC = 300.0
+_PIPELINES_CACHE: dict[str, tuple[float, Any]] = {}
+
+
+def _cached_deal_pipelines(org_id: str, access_token: str) -> Any:
+    """Return GET /crm/v3/pipelines/deals for the org, cached briefly. None when unreadable."""
+    import time as _time
+
+    from app.connectors.hubspot import list_deal_pipelines
+
+    now = _time.monotonic()
+    hit = _PIPELINES_CACHE.get(org_id)
+    if hit and hit[0] > now:
+        return hit[1]
+    try:
+        payload = list_deal_pipelines(access_token)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("hubspot_pipelines_read_failed org_id=%s err=%s", org_id, exc)
+        return None
+    _PIPELINES_CACHE[org_id] = (now + PIPELINES_CACHE_TTL_SEC, payload)
+    return payload
+
+
+def clear_pipelines_cache() -> None:
+    _PIPELINES_CACHE.clear()
+
+
+def is_dealstage_change_event(event: dict[str, Any]) -> bool:
+    subscription_type = str(event.get("subscriptionType") or event.get("eventType") or "")
+    property_name = str(event.get("propertyName") or "").strip().lower()
+    return subscription_type.startswith("deal.") and property_name in {"dealstage", "hs_deal_stage"}
+
+
+def resolve_hubspot_deal_outcome(
+    event: dict[str, Any],
+    normalized: dict[str, Any],
+    *,
+    org_id: str,
+    access_token: str | None,
+) -> dict[str, Any] | None:
+    """Resolve won/lost from pipeline stage metadata (custom pipelines use numeric ids).
+
+    Falls back to literal ``closedwon`` / ``closedlost`` only when no access token or
+    pipeline metadata is available. Returns the mapping plus deal evidence (amount,
+    currency, pipeline) or None when the stage is open / unknown.
+    """
+    if not is_dealstage_change_event(event):
+        return None
+    deal = normalized.get("deal") or {}
+    deal_id = str(deal.get("id") or event.get("objectId") or "").strip()
+    stage_id = str(event.get("propertyValue") or "").strip()
+    if not access_token or not deal_id:
+        return map_hubspot_event_to_crm_outcome(event, normalized)
+
+    from app.connectors.hubspot_evidence import fetch_deal_evidence, resolve_stage_outcome
+
+    pipelines = _cached_deal_pipelines(org_id, access_token)
+    evidence: dict[str, Any] | None = None
+    try:
+        evidence = fetch_deal_evidence(access_token, deal_id, pipelines=pipelines)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("hubspot_deal_evidence_failed org_id=%s deal_id=%s err=%s", org_id, deal_id, exc)
+    if pipelines is None and evidence is None:
+        return map_hubspot_event_to_crm_outcome(event, normalized)
+    pipeline_id = (evidence or {}).get("pipeline")
+    stage = stage_id or str((evidence or {}).get("dealstage") or "")
+    if pipelines is not None:
+        outcome = resolve_stage_outcome(pipelines, pipeline_id, stage)
+    else:
+        outcome = str((evidence or {}).get("stage_outcome") or "open")
+    if outcome not in {"won", "lost"}:
+        return None
+    return {
+        "outcome_type": outcome,
+        "external_record_id": deal_id,
+        "stage_resolution": "pipeline_metadata" if pipelines is not None else "deal_flags",
+        "deal_evidence": evidence,
+    }
+
+
+def _measure_deal_now(client: Any, org_id: str, deal_id: str, settings: Settings | None) -> int | None:
+    """Re-measure ACTIONED Play results referencing this deal. Never breaks webhook processing."""
+    try:
+        from app.services.play_outcome_measurement import measure_record_now
+    except Exception as exc:  # noqa: BLE001 — ImportError or partial deploy
+        logger.debug("play_outcome_measurement_unavailable err=%s", exc)
+        return None
+    try:
+        return int(
+            measure_record_now(
+                client,
+                org_id,
+                system="hubspot",
+                record_type="deal",
+                record_id=str(deal_id),
+                settings=settings,
+            )
+            or 0
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("play_outcome_measure_now_failed org_id=%s deal_id=%s err=%s", org_id, deal_id, exc)
+        return None
+
+
 def maybe_emit_crm_outcome_from_hubspot_event(
     client: Any,
     *,
     org_id: str,
     event: dict[str, Any],
     normalized: dict[str, Any],
+    access_token: str | None = None,
+    settings: Settings | None = None,
 ) -> dict[str, Any] | None:
     """First production caller for ingest_crm_recommendation_outcome (Phase 5 precondition)."""
-    mapped = map_hubspot_event_to_crm_outcome(event, normalized)
+    mapped = resolve_hubspot_deal_outcome(event, normalized, org_id=org_id, access_token=access_token)
     if not mapped:
         return None
     ext_id = str(mapped.get("external_record_id") or "").strip()
@@ -81,24 +188,35 @@ def maybe_emit_crm_outcome_from_hubspot_event(
         return None
     from app.services.crm_outcome_capture_service import ingest_crm_recommendation_outcome
 
+    evidence = mapped.get("deal_evidence") or {}
+    metadata: dict[str, Any] = {
+        "source": "hubspot_webhook",
+        "subscriptionType": event.get("subscriptionType") or event.get("eventType"),
+        "propertyName": event.get("propertyName"),
+        "propertyValue": event.get("propertyValue"),
+        "portalId": event.get("portalId"),
+        "stage_resolution": mapped.get("stage_resolution") or "literal_stage_id",
+        "amount": evidence.get("amount"),
+        "currency": evidence.get("currency"),
+        "pipeline": evidence.get("pipeline"),
+        "closedate": evidence.get("closedate"),
+    }
     try:
-        return ingest_crm_recommendation_outcome(
+        result = ingest_crm_recommendation_outcome(
             client,
             org_id=org_id,
             outcome_type=str(mapped["outcome_type"]),
             connector_type="hubspot",
             external_record_id=ext_id,
-            metadata={
-                "source": "hubspot_webhook",
-                "subscriptionType": event.get("subscriptionType") or event.get("eventType"),
-                "propertyName": event.get("propertyName"),
-                "propertyValue": event.get("propertyValue"),
-                "portalId": event.get("portalId"),
-            },
+            metadata=metadata,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("hubspot_crm_outcome_emit_failed org_id=%s err=%s", org_id, exc)
         return None
+    measured = _measure_deal_now(client, org_id, ext_id, settings)
+    if measured is not None and isinstance(result, dict):
+        result = {**result, "measuredVerifiedResults": measured}
+    return result
 
 
 def _resolve_triggered_by(client: Any, org_id: str) -> str:
@@ -317,13 +435,41 @@ async def process_hubspot_event_batch(
         ]
 
         normalized = normalize_hubspot_event(event)
+        access_token: str | None = None
+        token_err: str | None = None
+        token_loaded = False
+
+        def _load_token() -> tuple[str | None, str | None]:
+            try:
+                return ensure_hubspot_access_token(
+                    client,
+                    org_id,
+                    connector_id,
+                    settings,
+                    environment_name=connector.get("environment"),
+                    validate_remote=False,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("hubspot_trigger_token_failed org_id=%s err=%s", org_id, exc)
+                return None, str(exc)
+
+        if is_dealstage_change_event(event):
+            access_token, token_err = _load_token()
+            token_loaded = True
         # Phase 5 precondition: emit CRM outcomes even when no workflow triggers match
         crm_emit = maybe_emit_crm_outcome_from_hubspot_event(
             client,
             org_id=org_id,
             event=event,
             normalized=normalized,
+            access_token=access_token,
+            settings=settings,
         )
+        if not crm_emit and is_dealstage_change_event(event):
+            # Open-stage moves still change pipeline evidence for Play results.
+            deal_id = str((normalized.get("deal") or {}).get("id") or event.get("objectId") or "").strip()
+            if deal_id:
+                _measure_deal_now(client, org_id, deal_id, settings)
         if crm_emit:
             logger.info(
                 "hubspot_crm_outcome_emitted org_id=%s outcome=%s id=%s",
@@ -342,14 +488,8 @@ async def process_hubspot_event_batch(
         if not matching:
             continue
 
-        access_token, token_err = ensure_hubspot_access_token(
-            client,
-            org_id,
-            connector_id,
-            settings,
-            environment_name=connector.get("environment"),
-            validate_remote=False,
-        )
+        if not token_loaded:
+            access_token, token_err = _load_token()
         if access_token:
             _enrich_normalized_record(
                 normalized,

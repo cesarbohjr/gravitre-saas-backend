@@ -149,6 +149,17 @@ def _invoke_canvas_registered_tool(
     from app.services.canvas_write_gate import bind_f1_write_hmac_context
     from app.services.sealed_read_execution import bind_read_preflight
 
+    if str(action).startswith("capability.") or (context.config or {}).get("capability_id"):
+        # Capability steps (Plays, objective plans) may fall back across providers;
+        # the plan's chosen provider for this capability is tried first.
+        invoke_params = dict(invoke_params)
+        invoke_params.setdefault("_capability_fallback", True)
+        cap_id = str((context.config or {}).get("capability_id") or str(action).removeprefix("capability."))
+        params = context.parameters if isinstance(context.parameters, dict) else {}
+        plan = params.get("play") if isinstance(params.get("play"), dict) else {}
+        vendors = plan.get("capability_vendors") if isinstance(plan.get("capability_vendors"), dict) else {}
+        if vendors.get(cap_id) and not invoke_params.get("preferred_vendor"):
+            invoke_params["preferred_vendor"] = vendors[cap_id]
     tool_ctx, bound = bind_f1_write_hmac_context(
         tool_ctx=tool_context_from_step(context),
         action=action,
@@ -293,10 +304,12 @@ class InvokeToolHandler(StepHandler):
 
         from app.services.connector_output_refs import enrich_invoke_tool_snapshot
 
+        concrete_action = str(getattr(result, "action", "") or "")
         snapshot = enrich_invoke_tool_snapshot(
-            action=resolved_action,
+            action=concrete_action if concrete_action and not concrete_action.startswith("capability.") else resolved_action,
             data=result.to_step_output(),
             success=True,
+            params=invoke_params,
         )
         return _truncate_output_snapshot(
             _attach_step_verification(context, str(resolved_action), invoke_params, result, snapshot)

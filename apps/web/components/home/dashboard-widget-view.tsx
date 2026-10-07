@@ -22,7 +22,10 @@ import {
 import { GravitreEmpty } from "@/components/gravitre/nodus-product/empty"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
-import { KPI_BY_ID } from "@/lib/dashboard/kpi-registry"
+import { KPI_BY_ID, getKpiDefinition } from "@/lib/dashboard/kpi-registry"
+import { businessMetricKeyFromId } from "@/lib/dashboard/business-kpis"
+import type { DashboardRange } from "@/lib/dashboard/types"
+import { BusinessMetricWidget } from "@/components/home/business-metric-widget"
 import type { PlacedWidget } from "@/lib/dashboard/place-widgets"
 import type { HomeDashboardData } from "@/hooks/use-home-dashboard-data"
 import { formatModelLabel } from "@/hooks/use-home-dashboard-data"
@@ -606,10 +609,23 @@ function ListWidget({
 export function DashboardWidgetView({
   widget,
   data,
+  range,
 }: {
   widget: PlacedWidget
   data: HomeDashboardData
+  range?: DashboardRange
 }) {
+  const businessKey = businessMetricKeyFromId(widget.metricId)
+  if (businessKey) {
+    const businessDef = getKpiDefinition(widget.metricId)
+    return (
+      <BusinessMetricWidget
+        metricKey={businessKey}
+        title={widget.title ?? businessDef?.name ?? businessKey}
+        range={range}
+      />
+    )
+  }
   const def = KPI_BY_ID[widget.metricId]
   const title = widget.title ?? def?.name ?? widget.metricId
 

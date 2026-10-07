@@ -52,8 +52,11 @@ def query_search_analytics(
     dimensions: list[str] | None = None,
     row_limit: int = 25,
     start_row: int = 0,
+    page_url: str | None = None,
 ) -> dict[str, Any]:
     """POST searchAnalytics.query for a verified site.
+
+    ``page_url`` restricts rows to one page (dimension filter ``page equals``).
 
     Prefer dimensions=['page'] for pack aggregates. dimensions including 'query'
     return raw query strings — those must not enter Memory/KG (governance stop-line).
@@ -85,6 +88,10 @@ def query_search_analytics(
         "rowLimit": max(1, min(int(row_limit), 25000)),
         "startRow": max(0, int(start_row)),
     }
+    if page_url:
+        body["dimensionFilterGroups"] = [
+            {"filters": [{"dimension": "page", "operator": "equals", "expression": str(page_url)}]}
+        ]
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",

@@ -125,7 +125,7 @@ def test_play_impact_is_org_scoped():
     ) as summary:
         response = client.get("/api/plays/impact")
     assert response.status_code == 200
-    summary.assert_called_once_with("client", "org-tenant-b")
+    summary.assert_called_once_with("client", "org-tenant-b", range_key=None)
     assert "VERIFIED SUCCESS" in response.json()["truthRule"]
 
 

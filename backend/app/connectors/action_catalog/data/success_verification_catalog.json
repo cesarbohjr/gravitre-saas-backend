@@ -697,6 +697,12 @@
       "read_action": "hubspot.companies.get",
       "reason": "Sibling GET must return the written entity id/field"
     },
+    "hubspot.companies.update": {
+      "assert_field": "id",
+      "mode": "follow_up_entity_get",
+      "read_action": "hubspot.companies.get",
+      "reason": "Sibling GET must return the written entity id/field"
+    },
     "hubspot.contacts.create": {
       "assert_field": "id",
       "mode": "follow_up_entity_get",
@@ -1616,6 +1622,6 @@
     }
   },
   "generated_by": "write_success_verification.generate_success_verification_catalog",
-  "mutating_action_count": 363,
+  "mutating_action_count": 364,
   "version": 1
 }

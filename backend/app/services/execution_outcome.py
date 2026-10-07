@@ -29,13 +29,14 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from app.core.logging import get_logger
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.workflows.constants import (
     RUN_STATUS_CANCELLED,
     RUN_STATUS_COMPLETED,
     RUN_STATUS_FAILED,
     RUN_STATUS_FLAGGED_FOR_REVIEW,
-    RUN_STATUS_VERIFICATION_INCONCLUSIVE,
     RUN_STATUS_PARTIAL_SUCCESS,
+    RUN_STATUS_VERIFICATION_INCONCLUSIVE,
 )
 
 logger = get_logger(__name__)
@@ -572,16 +573,54 @@ def _enqueue_failure_alert_correlation(client: Any, event: ExecutionOutcomeEvent
 
 
 
+def _play_writes(event: ExecutionOutcomeEvent) -> list[dict[str, Any]]:
+    """Consequential writes this run performed: one agent/tool action or every workflow write step."""
+    from app.outcome_packs.registry import recipes_for_action
+    from app.services.connector_outcome_effects import is_mutating_action
+
+    meta = dict(event.metadata or {})
+    single = str(meta.get("invoke_action") or meta.get("action_type") or meta.get("tool_name") or "").strip()
+    if single:
+        output: dict[str, Any] = {}
+        if event.verified_output and event.verified_output.entity_id:
+            output["entity_id"] = event.verified_output.entity_id
+        if isinstance(meta.get("result_data"), dict):
+            output.update(meta["result_data"])
+        params = meta.get("tool_params") if isinstance(meta.get("tool_params"), dict) else {}
+        return [{"action": single, "output": output, "params": params}]
+    writes = []
+    for ref in meta.get("connector_output_refs") or []:
+        if not isinstance(ref, dict) or not ref.get("success"):
+            continue
+        action = str(ref.get("invoke_action") or "").strip()
+        if not action or action.startswith("capability."):
+            continue
+        if not (is_mutating_action(action) or recipes_for_action(action)):
+            continue
+        writes.append({"action": action, "output": ref, "params": safe_normalize_stored_dict(ref, key="params_ids")})
+    return writes
+
+
+def _uuid_or_none(value: Any) -> str | None:
+    from uuid import UUID
+
+    try:
+        return str(UUID(str(value))) if value else None
+    except (TypeError, ValueError):
+        return None
+
+
 def _record_play_actioned_result(
     client: Any,
     event: ExecutionOutcomeEvent,
     status: TerminalStatus,
     ts: str,
 ) -> bool:
-    """Bridge a Play-bound canonical workflow action into the Play ledger.
+    """Bridge a Play-bound run's consequential writes into the Play ledger.
 
-    This records ACTIONED only. A completed workflow or provider-accepted write
-    is never promoted here to VERIFIED SUCCESS.
+    Records ACTIONED only (one row per write), with the source records an
+    Outcome Pack recipe can later re-read. A completed workflow or a
+    provider-accepted write is never promoted here to VERIFIED SUCCESS.
     """
     if status not in {"completed", "partial_success", "flagged_for_review"}:
         return False
@@ -605,14 +644,8 @@ def _record_play_actioned_result(
         if not play_key:
             return False
 
-        meta = dict(event.metadata or {})
-        action_tool = str(
-            meta.get("invoke_action")
-            or meta.get("action_type")
-            or meta.get("tool_name")
-            or ""
-        ).strip()
-        if not action_tool:
+        writes = _play_writes(event)
+        if not writes:
             # A Play-bound read-only or analysis workflow finishing is not an
             # external action and must not be recorded as ACTIONED.
             return False
@@ -623,45 +656,64 @@ def _record_play_actioned_result(
             PlayBusinessResult,
             record_play_business_result,
         )
+        from app.services.play_outcome_measurement import (
+            record_key,
+            source_record_candidates,
+        )
 
+        meta = dict(event.metadata or {})
         evidence_ids: list[str] = []
         work_object_id = str(meta.get("work_object_id") or "").strip()
         if work_object_id:
             evidence_ids.append(work_object_id)
+        verification = meta.get("verification") if isinstance(meta.get("verification"), dict) else {}
 
-        result = PlayBusinessResult(
-            org_id=event.org_id,
-            play_key=play_key,
-            play_version=str(play.get("version") or "1"),
-            play_instance_id=str(event.run_id),
-            outcome_type="action_execution",
-            status=BusinessResultStatus.ACTIONED,
-            workflow_id=str(event.workflow_id or "") or None,
-            workflow_run_id=str(event.run_id),
-            entity_type=(
-                event.verified_output.entity_type
-                if event.verified_output and event.verified_output.entity_type
-                else None
-            ),
-            entity_id=(
-                event.verified_output.entity_id
-                if event.verified_output and event.verified_output.entity_id
-                else None
-            ),
-            connector_id=str(meta.get("connector_id") or "").strip() or None,
-            action_tools=(action_tool,),
-            evidence_ids=tuple(evidence_ids),
-            attribution_type=AttributionType.NONE,
-            verification_method=None,
-            occurred_at=ts,
-            metadata={
-                "execution_terminal_status": status,
-                "source": event.source,
-                "provider_acceptance_is_business_verification": False,
-            },
-        )
-        record_play_business_result(client, result)
-        return True
+        recorded = 0
+        for write in writes:
+            action_tool = write["action"]
+            candidates = source_record_candidates(action_tool, output=write["output"], params=write["params"])
+            first = candidates[0] if candidates else {}
+            entity_id = (
+                first.get("record_id")
+                or str((write["output"] or {}).get("entity_id") or "")
+                or (event.verified_output.entity_id if event.verified_output else None)
+            )
+            entity_type = first.get("record_type") or (
+                event.verified_output.entity_type if event.verified_output and event.verified_output.entity_type else None
+            )
+            result = PlayBusinessResult(
+                org_id=event.org_id,
+                play_key=play_key,
+                play_version=str(play.get("version") or "1"),
+                play_instance_id=str(event.run_id),
+                outcome_type="action_execution",
+                status=BusinessResultStatus.ACTIONED,
+                workflow_id=str(event.workflow_id or "") or None,
+                workflow_run_id=str(event.run_id),
+                entity_type=entity_type,
+                entity_id=entity_id or None,
+                agent_id=_uuid_or_none(meta.get("agent_id") or params.get("agent_id")),
+                connector_id=_uuid_or_none(meta.get("connector_id")),
+                action_tools=(action_tool,),
+                evidence_ids=tuple(evidence_ids),
+                attribution_type=AttributionType.NONE,
+                verification_method=None,
+                occurred_at=ts,
+                metadata={
+                    "execution_terminal_status": status,
+                    "source": event.source,
+                    "provider_acceptance_is_business_verification": False,
+                    "write_verified": bool(verification.get("verified")) if verification else None,
+                    "source_record_candidates": candidates,
+                    "source_record_keys": sorted(
+                        {record_key(c["system"], c["record_type"], c["record_id"]) for c in candidates}
+                    ),
+                    "objective_id": play.get("objective_id"),
+                },
+            )
+            record_play_business_result(client, result)
+            recorded += 1
+        return recorded > 0
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "play_actioned_result_skipped org_id=%s run_id=%s error=%s",

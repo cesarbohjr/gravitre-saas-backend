@@ -138,13 +138,169 @@ class DepartmentPackAssetConfig(BaseModel):
         return self
 
 
+MetricKind = Literal["business", "funnel", "operational"]
+MetricAggregation = Literal["count", "sum", "avg", "ratio"]
+
+
 class OutcomeKpiConfig(BaseModel):
+    """One canonical metric declared by an Outcome Pack.
+
+    The optional semantic fields make the declaration the single source of
+    truth for the platform metric catalog (``org_metric_definitions`` defaults),
+    dashboards, objective planning, verification and learning. Older packs that
+    only declare key/label/unit/direction stay valid.
+    """
+
     key: str = Field(min_length=1, max_length=80)
     label: str = Field(min_length=1, max_length=160)
     unit: str = Field(default="count", max_length=40)
     direction: Literal["increase", "decrease", "maintain"] = "increase"
     target: float | int | str | None = None
     source: str = Field(default="", max_length=160)
+    description: str = Field(default="", max_length=800)
+    department: str | None = Field(default=None, max_length=80)
+    departments: list[str] = Field(default_factory=list)
+    kind: MetricKind = "business"
+    aggregation: MetricAggregation = "count"
+    numerator: str | None = Field(default=None, max_length=80)
+    denominator: str | None = Field(default=None, max_length=80)
+    formula: str = Field(default="", max_length=1000)
+    source_system: str | None = Field(default=None, max_length=80)
+    source_record_type: str | None = Field(default=None, max_length=80)
+    verification_recipe: str | None = Field(default=None, max_length=120)
+    evidence_strategy: str = Field(default="", max_length=800)
+    # Words users use for this outcome ("qualified leads", "organic clicks").
+    # Objective planning matches user language against these, never hard-coded
+    # objective types.
+    synonyms: list[str] = Field(default_factory=list)
+    # What "counts" for this metric when a user has not defined it yet. The
+    # objective planner proposes it and asks for confirmation.
+    definition_prompt: str = Field(default="", max_length=800)
+    learning: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_ratio(self) -> "OutcomeKpiConfig":
+        if self.aggregation == "ratio" and not (self.numerator and self.denominator):
+            raise ValueError(f"ratio metric {self.key} requires numerator and denominator")
+        return self
+
+
+class PredicateConfig(BaseModel):
+    """Generic predicate over a normalized evidence record.
+
+    Exactly one of ``all`` / ``any`` / ``field`` is set.
+    """
+
+    all: list["PredicateConfig"] | None = None
+    any: list["PredicateConfig"] | None = None
+    field: str | None = Field(default=None, max_length=120)
+    op: Literal["eq", "ne", "in", "nin", "gt", "gte", "lt", "lte", "exists", "missing"] = "exists"
+    value: Any = None
+    # Compare against another field of the same evidence record instead of a
+    # literal (for example ``resolved_at lte due_by``).
+    value_field: str | None = Field(default=None, max_length=120)
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> "PredicateConfig":
+        set_count = sum(1 for item in (self.all, self.any, self.field) if item is not None)
+        if set_count != 1:
+            raise ValueError("a predicate needs exactly one of all, any or field")
+        return self
+
+
+class ValueExpressionConfig(BaseModel):
+    """How a verified record contributes a value: a constant, a field, or a duration."""
+
+    const: float | int | None = None
+    field: str | None = Field(default=None, max_length=120)
+    duration_from: str | None = Field(default=None, max_length=120)
+    duration_to: str | None = Field(default=None, max_length=120)
+    duration_unit: Literal["minutes", "hours", "days"] = "minutes"
+    # Used when the field is absent (for example a new page with no prior
+    # search rows has a baseline of 0). Never applied to ``const``.
+    default: float | None = None
+    # Multiplier applied to the result (for example 0.01 for amounts in cents).
+    scale: float = 1.0
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> "ValueExpressionConfig":
+        kinds = [
+            self.const is not None,
+            self.field is not None,
+            self.duration_from is not None or self.duration_to is not None,
+        ]
+        if sum(kinds) != 1:
+            raise ValueError("a value expression needs exactly one of const, field or duration_from/duration_to")
+        if (self.duration_from is None) != (self.duration_to is None):
+            raise ValueError("duration values need both duration_from and duration_to")
+        return self
+
+
+class RecipeContributionConfig(BaseModel):
+    metric_key: str = Field(min_length=1, max_length=80)
+    when: PredicateConfig | None = None
+    fail_when: PredicateConfig | None = None
+    value: ValueExpressionConfig = Field(default_factory=lambda: ValueExpressionConfig(const=1))
+    baseline: ValueExpressionConfig = Field(default_factory=lambda: ValueExpressionConfig(const=0))
+    currency_field: str | None = Field(default=None, max_length=120)
+
+
+class VerificationRecipeConfig(BaseModel):
+    """Declarative source-of-record verification for one record type.
+
+    The generic measurement engine reads ``read_action`` (a catalog action) for
+    each record a Play wrote with one of ``match_actions``, evaluates the
+    contributions, and records VERIFIED results through the one verified writer.
+    """
+
+    key: str = Field(min_length=1, max_length=120)
+    source_system: str = Field(min_length=1, max_length=80)
+    record_type: str = Field(min_length=1, max_length=80)
+    match_actions: list[str] = Field(min_length=1)
+    read_action: str = Field(min_length=1, max_length=160)
+    record_id_param: str = Field(default="id", max_length=80)
+    # Where the written record's id appears in a matching action's output or
+    # parameters (first non-empty wins).
+    record_id_fields: list[str] = Field(default_factory=lambda: ["entity_id", "id"])
+    # Extra read parameters. String values may use {record_id},
+    # {window_start}, {window_end}, {baseline_start}, {baseline_end}.
+    read_params: dict[str, Any] = Field(default_factory=dict)
+    # When true the engine performs a second read over the baseline window and
+    # exposes it to contributions as ``baseline.*`` (``current.*`` is the
+    # post-action read). Without it baseline expressions read ``current.*``.
+    baseline_read: bool = False
+    verification_method: str = Field(min_length=1, max_length=160)
+    measure_after_hours: float = Field(default=0, ge=0)
+    measure_window_days: float = Field(default=30, gt=0)
+    contributions: list[RecipeContributionConfig] = Field(min_length=1)
+
+
+class ObjectiveConfig(BaseModel):
+    key: str = Field(min_length=1, max_length=120)
+    statement: str = Field(min_length=1, max_length=800)
+    kpi_keys: list[str] = Field(min_length=1)
+
+
+class AttributionConfig(BaseModel):
+    claim_key: list[str] = Field(
+        default_factory=lambda: ["metric_key", "system", "record_type", "record_id"],
+    )
+    primary: Literal["first_verified"] = "first_verified"
+    assisted_counted_in_total: bool = False
+
+
+class GovernanceConfig(BaseModel):
+    always_approve_actions: list[str] = Field(default_factory=list)
+    max_autonomy: Literal["observe", "recommend", "act_with_approval", "act_within_policy"] = "act_with_approval"
+
+
+class CertificationConfig(BaseModel):
+    minimum_plays: int = Field(default=6, ge=1)
+    # Fixture evidence keyed by recipe key, used by the generic certification
+    # harness to prove VERIFIED results can be produced end to end.
+    fixtures: dict[str, Any] = Field(default_factory=dict)
+    # Simulated degraded capabilities: {"capability": "...", "unavailable_action": "..."}
+    degraded_scenarios: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class OutcomeContractConfig(BaseModel):
@@ -168,6 +324,15 @@ class PlayAssetConfig(BaseModel):
     approvals: list[dict[str, Any]] = Field(default_factory=list)
     verification: dict[str, Any] = Field(default_factory=dict)
     runtime_inputs: list[str] = Field(default_factory=list)
+    # Declarative capability requirements (OR groups). Each group may list
+    # ontology capabilities or catalog actions; any one satisfies the group.
+    objective: str = Field(default="", max_length=800)
+    capability_groups: list[list[str]] = Field(default_factory=list)
+    required_connector_groups: list[list[str]] = Field(default_factory=list)
+    optional_connectors: list[str] = Field(default_factory=list)
+    read_action_groups: list[list[str]] = Field(default_factory=list)
+    write_action_groups: list[list[str]] = Field(default_factory=list)
+    write_actions: list[dict[str, Any]] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_play_workflow(self) -> "PlayAssetConfig":
@@ -207,10 +372,20 @@ class DashboardMetricConfig(BaseModel):
     description: str = Field(default="", max_length=500)
 
 
+class DashboardSectionConfig(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    kpi_keys: list[str] = Field(min_length=1)
+
+
 class DashboardPackAssetConfig(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     metrics: list[DashboardMetricConfig] = Field(min_length=1)
     refresh_mode: Literal["event", "scheduled", "manual"] = "event"
+    template_id: str | None = Field(default=None, max_length=120)
+    department: str | None = Field(default=None, max_length=80)
+    sections: list[DashboardSectionConfig] = Field(default_factory=list)
+    # Operational web widgets shown under "System health" (never business KPIs).
+    system_health_kpis: list[str] = Field(default_factory=list)
 
 
 class OutcomeRuntimeProfileConfig(BaseModel):
@@ -232,10 +407,52 @@ class OutcomePackAssetConfig(BaseModel):
     skill_bindings: dict[str, str] = Field(default_factory=dict)
     runtime_profiles: list[OutcomeRuntimeProfileConfig] = Field(default_factory=list)
     connector_alternatives: list[list[str]] = Field(default_factory=list)
+    # Universal Outcome Pack contract (optional so older packs stay valid;
+    # certification decides whether a pack is complete).
+    pack_id: str | None = Field(default=None, max_length=120)
+    department: str | None = Field(default=None, max_length=80)
+    objectives: list[ObjectiveConfig] = Field(default_factory=list)
+    verification_recipes: list[VerificationRecipeConfig] = Field(default_factory=list)
+    attribution: AttributionConfig = Field(default_factory=AttributionConfig)
+    governance: GovernanceConfig = Field(default_factory=GovernanceConfig)
+    certification: CertificationConfig = Field(default_factory=CertificationConfig)
 
     @model_validator(mode="after")
     def validate_outcome_pack(self) -> "OutcomePackAssetConfig":
         declared_kpis = {item.key for item in self.outcome_contract.kpis}
+        recipe_keys = [recipe.key for recipe in self.verification_recipes]
+        if len(recipe_keys) != len(set(recipe_keys)):
+            raise ValueError("outcome packs must not contain duplicate verification recipe keys")
+        recipe_metrics = {
+            recipe.key: {c.metric_key for c in recipe.contributions} for recipe in self.verification_recipes
+        }
+        for kpi in self.outcome_contract.kpis:
+            if kpi.verification_recipe and kpi.verification_recipe not in recipe_keys:
+                raise ValueError(
+                    f"KPI {kpi.key} references undeclared verification recipe {kpi.verification_recipe}"
+                )
+            if kpi.verification_recipe and kpi.key not in recipe_metrics[kpi.verification_recipe]:
+                raise ValueError(
+                    f"KPI {kpi.key} names recipe {kpi.verification_recipe}, which does not contribute to it"
+                )
+        for recipe in self.verification_recipes:
+            for contribution in recipe.contributions:
+                if contribution.metric_key not in declared_kpis:
+                    raise ValueError(
+                        f"recipe {recipe.key} contributes to undeclared KPI {contribution.metric_key}"
+                    )
+        for objective in self.objectives:
+            missing = sorted(set(objective.kpi_keys) - declared_kpis)
+            if missing:
+                raise ValueError(
+                    f"objective {objective.key} references undeclared KPI keys: {', '.join(missing)}"
+                )
+        for section in self.dashboard.sections:
+            missing = sorted(set(section.kpi_keys) - declared_kpis)
+            if missing:
+                raise ValueError(
+                    f"dashboard section {section.title} references undeclared KPI keys: {', '.join(missing)}"
+                )
         dashboard_kpis = {item.kpi_key for item in self.dashboard.metrics}
         if not dashboard_kpis.issubset(declared_kpis):
             missing = sorted(dashboard_kpis - declared_kpis)

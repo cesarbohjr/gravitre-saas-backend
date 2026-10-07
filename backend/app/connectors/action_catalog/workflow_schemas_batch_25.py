@@ -6,6 +6,7 @@ from app.connectors.action_catalog.models import ActionWorkflowSchema, WorkflowF
 BATCH_25_ACTION_KEYS: tuple[str, ...] = (
     "hubspot.deals.create",
     "hubspot.deals.update",
+    "hubspot.companies.update",
     "hubspot.contacts.update",
     "hubspot.notes.create",
     "jira.issues.create",
@@ -59,6 +60,13 @@ WORKFLOW_SCHEMAS_BATCH_25: dict[str, ActionWorkflowSchema] = {
         intent_label="Update HubSpot deal",
         required_fields=(
             _req("deal id", "deal_id"),
+            _req("update properties", "properties", validator="hubspot_properties_payload"),
+        ),
+    ),
+    "hubspot.companies.update": ActionWorkflowSchema(
+        intent_label="Update HubSpot company",
+        required_fields=(
+            _req("company id", "company_id"),
             _req("update properties", "properties", validator="hubspot_properties_payload"),
         ),
     ),

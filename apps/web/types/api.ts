@@ -890,7 +890,8 @@ export interface MetricsOverview {
   totalWorkflows?: number
   activeWorkflows?: number
   totalRuns?: number
-  successRate?: number
+  /** Null when no runs completed or failed in the range (unknown, not 0%). */
+  successRate?: number | null
   avgDuration?: number
   avgLatency?: number
   recordsProcessed?: number
@@ -900,7 +901,7 @@ export interface MetricsOverview {
   connectorHealthLatencyP95Ms?: number
   changes?: {
     totalRuns?: number
-    successRate?: number
+    successRate?: number | null
     recordsProcessed?: number
     avgLatency?: number
   }

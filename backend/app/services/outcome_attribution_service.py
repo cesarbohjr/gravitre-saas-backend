@@ -203,7 +203,30 @@ class OutcomeAttributionService:
             updated = {**row, "metric_value_after": float(after_value), "measured_at": now.isoformat()}
             self._mirror_outcome_to_clickhouse(updated, after=True)
             measured += 1
+        measured += await self._measure_play_results_due(client, org_id)
         return measured
+
+    async def _measure_play_results_due(self, client: Any, org_id: str) -> int:
+        """Same delayed-measurement tick also re-reads Play results via Outcome Pack recipes."""
+        try:
+            from app.services.play_outcome_measurement import measure_pending_play_results
+
+            summary = await asyncio.to_thread(
+                measure_pending_play_results, client, org_id=org_id, settings=self.settings
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("play_results_measurement_failed org_id=%s error=%s", org_id, exc)
+            return 0
+        logger.info("play_results_measured org_id=%s summary=%s", org_id, {k: v for k, v in summary.items() if k != "exceptions"})
+        try:
+            # Measure, then replan: active objectives whose plan is stale or whose
+            # providers became unavailable get a new plan revision.
+            from app.services.objective_capability_composer import replan_due_objectives
+
+            await asyncio.to_thread(replan_due_objectives, client, settings=self.settings, org_id=org_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("objective_replan_tick_failed org_id=%s error=%s", org_id, exc)
+        return int(summary.get("verified") or 0)
 
     def _mirror_outcome_to_clickhouse(self, row: dict[str, Any], *, after: bool) -> None:
         """Fire-and-forget analytics replica — never blocks Postgres writes."""

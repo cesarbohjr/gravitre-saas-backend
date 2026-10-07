@@ -21,6 +21,21 @@ F1_WRITE_CATALOG_ACTIONS: frozenset[str] = frozenset(
     }
 )
 
+# Outreach / bulk-CRM writes that must always be human-approved, even for an
+# autonomous agent with an ``auto_run`` override, until outreach trust is earned:
+# - hubspot.sequences.enroll / apollo.sequences.add send real email to prospects.
+# - clay.crm.sync bulk-creates CRM contacts (the bulk form of hubspot.contacts.create,
+#   which is already always-approve via F1_WRITE_CATALOG_ACTIONS).
+# These are not F1 governed-send compile actions (no HMAC overlay); they only
+# join the always-approve decision.
+ALWAYS_APPROVE_WRITE_ACTIONS: frozenset[str] = frozenset(
+    {
+        "hubspot.sequences.enroll",
+        "apollo.sequences.add",
+        "clay.crm.sync",
+    }
+)
+
 # Never auto-approve these classes (2.0-F).
 NON_AUTO_APPROVE_RISK_CLASSES: frozenset[str] = frozenset(
     {
@@ -265,8 +280,25 @@ def write_overlay_for(action_id: str) -> dict[str, Any] | None:
     return dict(overlay) if overlay else None
 
 
+def is_always_approve_write_action(action_key: str) -> bool:
+    catalog = catalog_action_key(action_key)
+    raw = str(action_key or "").strip()
+    if catalog in ALWAYS_APPROVE_WRITE_ACTIONS or raw in ALWAYS_APPROVE_WRITE_ACTIONS:
+        return True
+    # Outcome Packs declare their own always-approve writes (governance.always_approve_actions).
+    try:
+        from app.outcome_packs.registry import always_approve_actions
+
+        declared = always_approve_actions()
+    except Exception:  # noqa: BLE001 - governance lookups never break write classification
+        return False
+    return catalog in declared or raw in declared
+
+
 def requires_write_approval_always(action_key: str, *, risk_class: str | None = None) -> bool:
     if is_f1_write_action(action_key):
+        return True
+    if is_always_approve_write_action(action_key):
         return True
     return str(risk_class or "") in NON_AUTO_APPROVE_RISK_CLASSES
 

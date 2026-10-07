@@ -778,3 +778,281 @@ def update_marketing_email(
         access_token,
         json_body=properties,
     )
+
+
+# ---------------------------------------------------------------------------
+# Evidence reads (paginated search, meetings, email engagements, associations)
+# ---------------------------------------------------------------------------
+
+_OBJECT_ALIASES = {
+    "contact": "contacts",
+    "company": "companies",
+    "deal": "deals",
+    "ticket": "tickets",
+    "note": "notes",
+    "meeting": "meetings",
+    "email": "emails",
+}
+
+MEETING_PROPERTIES = [
+    "hs_meeting_title",
+    "hs_meeting_start_time",
+    "hs_meeting_end_time",
+    "hs_meeting_outcome",
+    "hs_timestamp",
+    "hs_createdate",
+    "hubspot_owner_id",
+]
+
+EMAIL_ENGAGEMENT_PROPERTIES = [
+    "hs_email_direction",
+    "hs_timestamp",
+    "hs_email_status",
+    "hs_email_subject",
+    "hs_createdate",
+]
+
+
+def _object_plural(object_type: str) -> str:
+    key = str(object_type or "").strip().lower()
+    return _OBJECT_ALIASES.get(key, key)
+
+
+def search_crm_objects_page(
+    access_token: str,
+    object_type: str,
+    *,
+    filter_groups: list[dict[str, Any]] | None = None,
+    properties: list[str] | None = None,
+    sorts: list[dict[str, Any]] | None = None,
+    limit: int = 100,
+    after: str | None = None,
+) -> dict[str, Any]:
+    """One page of POST /crm/v3/objects/{type}/search, returning the raw payload (incl. ``paging``)."""
+    if not object_type:
+        raise HubSpotAPIError("object_type is required")
+    body: dict[str, Any] = {"limit": min(max(int(limit), 1), 100)}
+    if filter_groups:
+        body["filterGroups"] = filter_groups
+    if properties:
+        body["properties"] = properties
+    if sorts:
+        body["sorts"] = sorts
+    if after:
+        body["after"] = str(after)
+    return _request(
+        "POST",
+        f"/crm/v3/objects/{_object_plural(object_type)}/search",
+        access_token,
+        json_body=body,
+    )
+
+
+def search_crm_objects_all(
+    access_token: str,
+    object_type: str,
+    *,
+    filter_groups: list[dict[str, Any]] | None = None,
+    properties: list[str] | None = None,
+    sorts: list[dict[str, Any]] | None = None,
+    max_records: int = 2000,
+    page_size: int = 100,
+) -> dict[str, Any]:
+    """Follow the ``paging.next.after`` cursor until exhausted or ``max_records`` is reached.
+
+    Returns ``{"results": [...], "total": int|None, "pages": int, "truncated": bool}``.
+    ``truncated`` is True only when more rows exist beyond ``max_records``.
+    """
+    cap = max(int(max_records), 1)
+    results: list[dict[str, Any]] = []
+    total: int | None = None
+    after: str | None = None
+    pages = 0
+    truncated = False
+    while True:
+        page = search_crm_objects_page(
+            access_token,
+            object_type,
+            filter_groups=filter_groups,
+            properties=properties,
+            sorts=sorts,
+            limit=min(page_size, cap - len(results)) or 1,
+            after=after,
+        )
+        pages += 1
+        if total is None and isinstance(page.get("total"), int):
+            total = int(page["total"])
+        for row in page.get("results") or []:
+            if isinstance(row, dict):
+                results.append(dict(row))
+        nxt = ((page.get("paging") or {}).get("next") or {}).get("after")
+        if not nxt:
+            break
+        if len(results) >= cap:
+            truncated = True
+            break
+        after = str(nxt)
+    if len(results) > cap:
+        results = results[:cap]
+        truncated = True
+    return {"results": results, "total": total, "pages": pages, "truncated": truncated}
+
+
+def get_crm_object(
+    access_token: str,
+    object_type: str,
+    object_id: str,
+    *,
+    properties: list[str] | None = None,
+    associations: list[str] | None = None,
+) -> dict[str, Any]:
+    """GET /crm/v3/objects/{type}/{id} with optional properties and associations."""
+    if not object_id:
+        raise HubSpotAPIError("object_id is required")
+    params: dict[str, Any] = {}
+    if properties:
+        params["properties"] = ",".join(properties)
+    if associations:
+        params["associations"] = ",".join(_object_plural(a) for a in associations)
+    return _request(
+        "GET",
+        f"/crm/v3/objects/{_object_plural(object_type)}/{object_id}",
+        access_token,
+        params=params or None,
+    )
+
+
+def list_associations(
+    access_token: str,
+    *,
+    from_type: str,
+    from_id: str,
+    to_type: str,
+    limit: int = 500,
+) -> dict[str, Any]:
+    """Read associations — GET /crm/v4/objects/{from}/{id}/associations/{to} (follows paging)."""
+    if not from_type or not from_id or not to_type:
+        raise HubSpotAPIError("from_type, from_id and to_type are required")
+    ft = _object_plural(from_type)
+    tt = _object_plural(to_type)
+    results: list[dict[str, Any]] = []
+    after: str | None = None
+    while True:
+        params: dict[str, Any] = {"limit": min(max(int(limit), 1), 500)}
+        if after:
+            params["after"] = after
+        page = _request(
+            "GET",
+            f"/crm/v4/objects/{ft}/{from_id}/associations/{tt}",
+            access_token,
+            params=params,
+        )
+        for row in page.get("results") or []:
+            if isinstance(row, dict):
+                results.append(dict(row))
+        nxt = ((page.get("paging") or {}).get("next") or {}).get("after")
+        if not nxt or len(results) >= 5000:
+            break
+        after = str(nxt)
+    ids = [str(r.get("toObjectId")) for r in results if r.get("toObjectId") is not None]
+    return {"results": results, "ids": ids}
+
+
+def search_meetings(
+    access_token: str,
+    *,
+    filter_groups: list[dict[str, Any]] | None = None,
+    properties: list[str] | None = None,
+    max_records: int = 200,
+) -> dict[str, Any]:
+    """Search meeting engagements — POST /crm/v3/objects/meetings/search (paginated)."""
+    return search_crm_objects_all(
+        access_token,
+        "meetings",
+        filter_groups=filter_groups,
+        properties=properties or MEETING_PROPERTIES,
+        sorts=[{"propertyName": "hs_meeting_start_time", "direction": "DESCENDING"}],
+        max_records=max_records,
+    )
+
+
+def get_meeting(
+    access_token: str,
+    meeting_id: str,
+    *,
+    properties: list[str] | None = None,
+) -> dict[str, Any]:
+    """Get a meeting with contact/deal/company associations."""
+    return get_crm_object(
+        access_token,
+        "meetings",
+        meeting_id,
+        properties=properties or MEETING_PROPERTIES,
+        associations=["contacts", "deals", "companies"],
+    )
+
+
+def association_filter_group(to_object_type: str, object_id: str) -> dict[str, Any]:
+    """Filter group matching engagements associated to a CRM record (``associations.contact``)."""
+    singular = {v: k for k, v in _OBJECT_ALIASES.items()}.get(
+        _object_plural(to_object_type), str(to_object_type).rstrip("s")
+    )
+    return {
+        "filters": [
+            {"propertyName": f"associations.{singular}", "operator": "EQ", "value": str(object_id)}
+        ]
+    }
+
+
+def search_contact_emails(
+    access_token: str,
+    contact_id: str,
+    *,
+    since_ms: int | None = None,
+    max_records: int = 500,
+) -> dict[str, Any]:
+    """Email engagements associated to a contact (direction, timestamp, status)."""
+    if not contact_id:
+        raise HubSpotAPIError("contact_id is required")
+    group = association_filter_group("contacts", contact_id)
+    if since_ms is not None:
+        group["filters"].append(
+            {"propertyName": "hs_timestamp", "operator": "GTE", "value": str(int(since_ms))}
+        )
+    return search_crm_objects_all(
+        access_token,
+        "emails",
+        filter_groups=[group],
+        properties=EMAIL_ENGAGEMENT_PROPERTIES,
+        sorts=[{"propertyName": "hs_timestamp", "direction": "ASCENDING"}],
+        max_records=max_records,
+    )
+
+
+def update_company(access_token: str, company_id: str, properties: dict[str, Any]) -> dict[str, Any]:
+    """Update a company — PATCH /crm/v3/objects/companies/{id}."""
+    if not company_id:
+        raise HubSpotAPIError("company_id is required")
+    if not properties:
+        raise HubSpotAPIError("properties are required")
+    return _request(
+        "PATCH",
+        f"/crm/v3/objects/companies/{company_id}",
+        access_token,
+        json_body={"properties": {str(k): str(v) for k, v in properties.items()}},
+    )
+
+
+def list_sequence_enrollments(access_token: str, contact_id: str) -> dict[str, Any]:
+    """Sequence enrollment status for a contact — GET /automation/v4/sequences/enrollments/contact/{id}.
+
+    Requires the ``automation.sequences.enrollments.read`` scope; callers should treat
+    a 403/404 as "source could not tell" rather than "not enrolled".
+    """
+    if not contact_id:
+        raise HubSpotAPIError("contact_id is required")
+    return _request(
+        "GET",
+        f"/automation/v4/sequences/enrollments/contact/{contact_id}",
+        access_token,
+    )

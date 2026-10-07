@@ -64,6 +64,7 @@ from app.routers import (
     extension,
     feedback_mode,
     metrics,
+    business_metrics,
     reporting_honesty,
     memory_promotion,
     notifications,
@@ -642,6 +643,7 @@ app.include_router(plays.router)
 app.include_router(connected_files.router)
 app.include_router(connector_oauth.router)
 app.include_router(managed_connector_auth.router)
+app.include_router(business_metrics.router)
 app.include_router(marketplace.router)
 app.include_router(rag.router)
 app.include_router(rag_admin.router)

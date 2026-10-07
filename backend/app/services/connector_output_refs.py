@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.core.safe_dict import safe_normalize_stored_dict
 
 _URL_KEYS = (
     "external_url",
@@ -121,7 +122,49 @@ def extract_step_output_ref(step: dict[str, Any]) -> dict[str, Any] | None:
         ref["entity_ids"] = entity_ids
     if contact_id:
         ref["contact_id"] = contact_id
+    record_ids = _record_ids(snap, nested)
+    if record_ids:
+        ref["record_ids"] = record_ids
+    params_ids = safe_normalize_stored_dict(snap, key="params_ids")
+    if params_ids:
+        ref["params_ids"] = params_ids
     return ref
+
+
+def _param_record_ids(params: dict[str, Any] | None) -> dict[str, str]:
+    """Record identifiers a step was invoked with (``contact_id``, ``page_url`` ...)."""
+    out: dict[str, str] = {}
+    for key, value in (params or {}).items():
+        name = str(key)
+        if not (name.endswith("_id") or name in {"id", "page_url", "url"}):
+            continue
+        if isinstance(value, (str, int)) and not isinstance(value, bool) and str(value).strip():
+            out[name] = str(value).strip()[:500]
+    return out
+
+
+# Record kinds whose ids let Outcome Pack recipes re-read what a step wrote.
+_RECORD_KINDS = (
+    "contact", "company", "deal", "opportunity", "lead", "ticket", "subscription",
+    "meeting", "page", "person", "account", "invoice",
+)
+
+
+def _record_ids(snap: dict[str, Any], nested: dict[str, Any]) -> dict[str, str]:
+    """``{kind: id}`` for records a step returned (``{"deal": {"id": ...}}`` or ``deal_id``)."""
+    out: dict[str, str] = {}
+    for kind in _RECORD_KINDS:
+        for source in (snap, nested):
+            obj = source.get(kind)
+            value = obj.get("id") if isinstance(obj, dict) else None
+            value = value or source.get(f"{kind}_id")
+            if kind == "page":
+                value = value or source.get("page_url")
+            text = str(value).strip() if value not in (None, "") else ""
+            if text:
+                out[kind] = text
+                break
+    return out
 
 
 def collect_connector_output_refs(steps: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
@@ -148,11 +191,15 @@ def enrich_invoke_tool_snapshot(
     action: str,
     data: dict[str, Any],
     success: bool = True,
+    params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Stamp outcome_effect + deep links onto invoke_tool step snapshots."""
     from app.services.connector_outcome_effects import classify_write_effect
 
     payload = dict(data or {})
+    ids = _param_record_ids(params)
+    if ids:
+        payload["params_ids"] = ids
     nested = payload.get("data") if isinstance(payload.get("data"), dict) else {}
     external = _first_http_url(
         payload.get("external_url"),

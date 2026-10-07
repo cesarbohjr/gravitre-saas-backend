@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from app.auth.dependencies import get_environment_context, require_admin, require_org_member
 from app.capabilities.registry import connected_vendors
 from app.config import Settings, get_settings
-from app.plays.catalog import PLATFORM_PLAY_TEMPLATES, get_platform_play
+from app.plays.catalog import get_platform_play, platform_play_templates
 from app.plays.customer_rescue import observe_customer_rescue
 from app.plays.evidence import build_play_evidence_chain
 from app.plays.marketing_performance import list_marketing_performance_signals
@@ -38,6 +38,10 @@ router = APIRouter(prefix="/api/plays", tags=["plays"])
 
 class RunPlayRequest(BaseModel):
     installation_id: str = Field(..., alias="installationId", min_length=1)
+    # Set when the run serves an objective plan: results are attributed to the
+    # objective, and capability steps try the plan's chosen provider first.
+    objective_id: str | None = Field(default=None, alias="objectiveId", max_length=64)
+    capability_vendors: dict[str, str] = Field(default_factory=dict, alias="capabilityVendors")
 
     model_config = {"populate_by_name": True}
 
@@ -162,7 +166,7 @@ async def list_plays(
     client = get_supabase_client(settings)
     connected = connected_vendors(client, org_id, environment_name)
     items = []
-    for play in PLATFORM_PLAY_TEMPLATES:
+    for play in platform_play_templates():
         readiness = resolve_play_readiness(
             play,
             connected_vendors=connected,
@@ -194,10 +198,11 @@ async def list_plays(
 async def get_play_impact(
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
+    range: Annotated[str | None, Query(pattern="^(7d|30d|90d|365d|all)$")] = None,
 ) -> dict[str, Any]:
     org_id = _member_org(member)
     client = get_supabase_client(settings)
-    return play_impact_summary(client, org_id)
+    return play_impact_summary(client, org_id, range_key=range)
 
 
 @router.get("/{play_key}/installation")
@@ -528,6 +533,8 @@ async def run_play(
                             "run_id": play_run_id,
                             "operating_mode": mode,
                             "execution_authority": "canonical_workflow_runtime",
+                            "objective_id": body.objective_id,
+                            "capability_vendors": dict(body.capability_vendors or {}),
                         }
                     },
                 ),

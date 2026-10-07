@@ -289,6 +289,47 @@ class CognitiveTurnKernel:
             except Exception as exc:  # noqa: BLE001
                 logger.debug("cognitive_metrics_resolve_skipped error=%s", exc)
 
+        # Outcome Ownership: a business objective ("150 qualified leads per month")
+        # becomes an objective contract plus this org's capability resources, so the
+        # planner's composer below runs on real providers, not on caller hints.
+        objective_brief: dict[str, Any] | None = None
+        planner_state = request.task_state
+        if not conversational and client is not None:
+            try:
+                from app.services.objective_capability_composer import (
+                    capability_resources_for_planner,
+                    looks_like_objective,
+                    plan_objective,
+                )
+
+                state_in = request.task_state if isinstance(request.task_state, dict) else {}
+                if not state_in.get("objective_contract") and looks_like_objective(request.message or ""):
+                    objective_brief = plan_objective(
+                        client,
+                        request.org_id,
+                        request.message or "",
+                        environment_name=request.environment_name or "production",
+                        settings=self.settings,
+                    )
+                    if objective_brief.get("plan"):
+                        planner_state = {**state_in, **capability_resources_for_planner(objective_brief)}
+                        if isinstance(ctx.knowledge_pack, dict):
+                            ctx.knowledge_pack = dict(ctx.knowledge_pack)
+                            section = str(ctx.knowledge_pack.get("prompt_section") or "")
+                            block = (
+                                "<objective_plan>\n"
+                                + str(objective_brief.get("summary") or "")
+                                + "\nAnswer objective-first in plain language: confirm how a result counts, "
+                                "state the baseline and gap (unknown when not verified), the recommended plan "
+                                "and its constraints, and that the target is not a promise. Ask the person to "
+                                "confirm the definition and approve the plan before anything runs. Do not name "
+                                "internal Plays, packs, workflows or tools.\n</objective_plan>"
+                            )
+                            ctx.knowledge_pack["prompt_section"] = f"{section}\n\n{block}".strip() if section else block
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("cognitive_objective_plan_skipped error=%s", exc)
+                objective_brief = None
+
         # 4 PLAN
         t0 = time.perf_counter()
         try:
@@ -322,7 +363,7 @@ class CognitiveTurnKernel:
 
             plan = CognitivePlanner().plan(
                 request.message or "",
-                request.task_state,
+                planner_state,
                 ctx.memory_pack,
                 ctx.knowledge_pack,
                 connected_integrations=connected_integrations or None,
@@ -334,6 +375,14 @@ class CognitiveTurnKernel:
             if metric_hits:
                 plan = dict(plan)
                 plan["org_metrics"] = metric_hits
+            if objective_brief and objective_brief.get("plan"):
+                plan = dict(plan)
+                plan["objective"] = {
+                    "contract": objective_brief.get("contract"),
+                    "feasibility": objective_brief.get("feasibility"),
+                    "plan": objective_brief.get("plan"),
+                    "summary": objective_brief.get("summary"),
+                }
             # Honest what-if (item 16) — product path into existing heuristic simulator
             if not conversational and _looks_like_what_if(request.message or ""):
                 plan = dict(plan)

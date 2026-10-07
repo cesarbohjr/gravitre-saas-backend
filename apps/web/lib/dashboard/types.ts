@@ -21,6 +21,7 @@ export type VizType =
 export type WidgetSize = "1x1" | "2x1" | "2x2" | "4x1" | "4x2"
 
 export type KpiCategory =
+  | "business"
   | "agents"
   | "workflows"
   | "runs"
@@ -33,6 +34,33 @@ export type KpiCategory =
   | "governance"
   | "usage"
   | "system"
+
+/** Business outcomes are confirmed in a source system; operational KPIs are system health. */
+export type KpiKind = "business" | "operational"
+
+/** Department ids shared with GET /api/metrics/business/catalog. */
+export type BusinessDepartmentId =
+  | "growth"
+  | "marketing"
+  | "sales"
+  | "customer_success"
+  | "support"
+  | "operations"
+  | "finance"
+  | "msp"
+  | "executive"
+
+export type BusinessMetricUnit =
+  | "count"
+  | "currency"
+  | "ratio"
+  | "percent"
+  | "minutes"
+  | "hours"
+  | "days"
+  | "position"
+  | "score"
+  | "credits"
 
 export type KpiAvailability = "available" | "derivable" | "requires_telemetry"
 

@@ -379,7 +379,7 @@ export function HomeDashboard({
                     dragId === widget.id && "opacity-60",
                   )}
                 >
-                  <DashboardWidgetView widget={widget} data={data} />
+                  <DashboardWidgetView widget={widget} data={data} range={globalRange} />
                 </div>
               </div>
             )
@@ -438,7 +438,7 @@ export function HomeDashboard({
                   </div>
                 </div>
               ) : null}
-              <DashboardWidgetView widget={widget} data={data} />
+              <DashboardWidgetView widget={widget} data={data} range={globalRange} />
             </div>
           ))}
         </motion.div>

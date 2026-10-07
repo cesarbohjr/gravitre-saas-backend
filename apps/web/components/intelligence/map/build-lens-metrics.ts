@@ -54,7 +54,7 @@ export function buildLensMetrics({
   modelCatalog: { orgTrainingStatus?: Record<string, { artifact_loaded?: boolean }> } | null | undefined
   coreState: { core?: { activeAgentRuns?: number } } | null | undefined
   businessImpact:
-    | { businessImpactScore?: number; scoreLabel?: string; avgOutcomeWinRate?: number | null }
+    | { businessImpactScore?: number | null; scoreLabel?: string; avgOutcomeWinRate?: number | null }
     | null
     | undefined
   outcomesByEvent: Record<string, number> | null | undefined
