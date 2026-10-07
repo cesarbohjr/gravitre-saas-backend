@@ -37,6 +37,7 @@ export function RelationshipToolbar({
     setShowArchived,
     viewMode,
     setViewMode,
+    viewControlled,
     relationshipTypes,
     filtered,
     relationships,
@@ -57,6 +58,7 @@ export function RelationshipToolbar({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        {viewControlled ? <span aria-hidden className="hidden lg:block" /> : (
         <ToggleGroup
           type="single"
           variant="outline"
@@ -76,6 +78,7 @@ export function RelationshipToolbar({
             Table
           </ToggleGroupItem>
         </ToggleGroup>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"

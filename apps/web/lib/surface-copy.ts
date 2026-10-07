@@ -23,6 +23,25 @@ export const SURFACE_COPY = {
     route: APP_ROUTES.learning,
     step: "Observe",
     stepSummary: "Watch queries, memory, and search quality improve over time.",
+    eyebrow: "Understand / Knowledge",
+    views: {
+      graph: {
+        title: "Knowledge",
+        description:
+          "What Gravitre has learned about your business from real work: how things relate and the insights it confirmed.",
+      },
+      entities: {
+        title: "Entities",
+        description: "Every business entity Gravitre knows about and how each one links to the others.",
+      },
+      memory: {
+        title: "Memory",
+        description:
+          "What Gravitre remembers for your whole organization, where each memory came from, and what is waiting for your review.",
+      },
+    },
+    addMemoryPrompt:
+      "I want Gravitre to remember this for my whole organization: ",
   },
   intelligenceData: {
     title: "Data",

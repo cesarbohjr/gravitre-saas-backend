@@ -12,17 +12,29 @@ import { RelationshipTableView } from "./relationship-table-view"
 import { RelationshipToolbar } from "./relationship-toolbar"
 import { useRelationshipsWorkspace } from "./use-relationships-workspace"
 import type { IntelligenceSnapshot } from "@/lib/api"
+import type { ViewMode } from "@/lib/relationships-graph/types"
 
 export function RelationshipsWorkspace({
   data,
   isLoading,
   enabled,
+  viewMode: controlledViewMode,
+  onViewModeChange,
 }: {
   data: IntelligenceSnapshot | undefined
   isLoading: boolean
   enabled: boolean
+  /** Controlled graph/table mode; the in-toolbar toggle hides when set. */
+  viewMode?: ViewMode
+  onViewModeChange?: (mode: ViewMode) => void
 }) {
-  const workspace = useRelationshipsWorkspace({ data, isLoading, enabled })
+  const workspace = useRelationshipsWorkspace({
+    data,
+    isLoading,
+    enabled,
+    viewMode: controlledViewMode,
+    onViewModeChange,
+  })
   const {
     loading,
     nodes,

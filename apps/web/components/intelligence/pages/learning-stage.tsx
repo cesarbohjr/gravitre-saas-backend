@@ -1,8 +1,11 @@
 "use client"
 
 /**
- * Knowledge (route /intelligence/learning): one scrolling page, no inner tabs.
- * Learnings first, then how things relate, then what Gravitre remembers.
+ * Knowledge (route /intelligence/learning) has three in-page views, chosen by
+ * the Graph / Entities / Memory control and kept in the URL (?view=, #memory):
+ * - Graph: the knowledge graph and recent learnings.
+ * - Entities: the same workspace as a table of how entities link.
+ * - Memory: how a memory is earned, the review queue and the inspector.
  * Models live on the Models tab only, so this page never repeats them.
  */
 import { useMemo, useState } from "react"
@@ -14,6 +17,10 @@ import { IntelligenceAskCommandSurface } from "@/components/intelligence/shell"
 import type { IntelligencePageContextResponse } from "@/lib/api"
 import { intelligenceApi } from "@/lib/api"
 import { OrgMemorySection } from "@/components/intelligence/org-memory-section"
+import { useOrgMemory } from "@/components/intelligence/knowledge/use-org-memory"
+import type { KnowledgeView } from "@/components/intelligence/knowledge/knowledge-view"
+import { GravitreMetric } from "@/components/gravitre/nodus-product"
+import { readNumber } from "@/lib/intelligence/helpers"
 import { formatLearningInsights } from "@/lib/intelligence/learning-insight-display"
 import {
   collectInsightFilterOptions,
@@ -21,7 +28,7 @@ import {
   filterLearningInsights,
   type LearningInsightFilters,
 } from "@/lib/intelligence/learning-filters"
-import { type SnapshotLoadState } from "@/lib/intelligence/snapshot-state"
+import { isSnapshotMetricsReady, type SnapshotLoadState } from "@/lib/intelligence/snapshot-state"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 
@@ -128,12 +135,14 @@ function LearnedRecentlyPanel({
   hasNoBusinessLearning,
   filters,
   onFiltersChange,
+  onGoToMemory,
 }: {
   insights: ReturnType<typeof formatLearningInsights>
   isLoading: boolean
   hasNoBusinessLearning: boolean
   filters: LearningInsightFilters
   onFiltersChange: (next: LearningInsightFilters) => void
+  onGoToMemory: () => void
 }) {
   const { confidenceOptions, sourceOptions } = useMemo(
     () => collectInsightFilterOptions(insights),
@@ -160,9 +169,7 @@ function LearnedRecentlyPanel({
           description="Insights appear here when Gravitre records durable business understanding from real work — not deployment health or training readiness."
           action={{
             label: "Go to memory",
-            onClick: () => {
-              document.getElementById("memory")?.scrollIntoView({ behavior: "smooth", block: "start" })
-            },
+            onClick: onGoToMemory,
             variant: "outline",
           }}
         />
@@ -178,68 +185,185 @@ function LearnedRecentlyPanel({
   )
 }
 
+const VIEW_LABELS: Record<KnowledgeView, string> = {
+  graph: "Graph",
+  entities: "Entities",
+  memory: "Memory",
+}
+
+function KnowledgeViewSwitch({
+  view,
+  onViewChange,
+  entityCount,
+}: {
+  view: KnowledgeView
+  onViewChange: (view: KnowledgeView) => void
+  entityCount: number | null
+}) {
+  const views: KnowledgeView[] = ["graph", "entities", "memory"]
+  return (
+    <div
+      role="tablist"
+      aria-label="Knowledge views"
+      className="inline-flex rounded-[10px] bg-[color:var(--g-surface-2)] p-[3px]"
+    >
+      {views.map((id) => {
+        const active = view === id
+        return (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`knowledge-view-${id}`}
+            aria-selected={active}
+            aria-controls="knowledge-view-panel"
+            onClick={() => onViewChange(id)}
+            className={cn(
+              "min-h-9 rounded-[8px] px-3.5 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
+              active
+                ? "bg-[color:var(--g-surface-1)] font-medium text-[color:var(--g-text-primary)] shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
+                : "text-[color:var(--g-text-secondary)] hover:text-[color:var(--g-text-primary)]",
+            )}
+          >
+            {VIEW_LABELS[id]}
+            {id === "entities" && entityCount != null ? ` · ${entityCount}` : ""}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export function LearningStage({
   pageContext,
   loadState,
   enabled,
   suggestedQuestions,
+  view,
+  onViewChange,
 }: {
   pageContext?: IntelligencePageContextResponse | null
   loadState: SnapshotLoadState
   enabled: boolean
   suggestedQuestions?: string[]
+  view: KnowledgeView
+  onViewChange: (view: KnowledgeView) => void
 }) {
   const [filters, setFilters] = useState<LearningInsightFilters>(DEFAULT_LEARNING_FILTERS)
+  /** null = follow the default (on only while there are no real candidates). */
+  const [exampleChoice, setExampleChoice] = useState<boolean | null>(null)
 
   const isLoading = loadState === "LOADING" || loadState === "UNINITIALIZED"
+  const metricsReady = isSnapshotMetricsReady(loadState)
 
   const insights = useMemo(
     () => formatLearningInsights(pageContext?.snapshot.learnings as Record<string, unknown>[] | undefined),
     [pageContext?.snapshot.learnings],
   )
   const hasNoBusinessLearning = pageContext?.qualityFlags?.includes("NO_BUSINESS_LEARNING_YET") ?? false
+  const learningMetrics = pageContext?.metrics.learning ?? pageContext?.snapshot.metrics.learning ?? {}
+  const outcomeMetrics = pageContext?.metrics.outcomes ?? pageContext?.snapshot.metrics.outcomes ?? {}
 
   const { data: relationshipsSnapshot, isLoading: relationshipsSnapshotLoading } = useSWR(
-    enabled ? "intelligence/learning/relationships-snapshot" : null,
+    enabled && view !== "memory" ? "intelligence/learning/relationships-snapshot" : null,
     () => intelligenceApi.snapshot(),
     { revalidateOnFocus: false },
   )
+  // Same key and fetcher as the relationships workspace, so SWR shares one request.
+  const { data: nodesData } = useSWR(enabled ? ["admin/intelligence/knowledge-nodes"] : null, () =>
+    intelligenceApi.knowledgeNodes({ limit: 100 }),
+  )
+  const entityCount = nodesData ? nodesData.nodes.length : null
+
+  const memory = useOrgMemory(enabled && view === "memory")
+  const previewExample = exampleChoice ?? (!memory.isLoading && !memory.error && !memory.hasRealCandidates)
 
   return (
-    <div className="space-y-10 pt-6">
-      <section aria-labelledby="knowledge-learnings-heading" className="space-y-3">
-        <div>
-          <h2 id="knowledge-learnings-heading" className={TYPE.sectionTitle}>Recent learnings</h2>
-          <p className={cn(TYPE.meta, "mt-0.5")}>
-            Insights Gravitre confirmed from real work, newest first. Filter by evidence, confidence, or source.
-          </p>
-        </div>
-        <LearnedRecentlyPanel
-          insights={insights}
-          isLoading={isLoading}
-          hasNoBusinessLearning={hasNoBusinessLearning}
-          filters={filters}
-          onFiltersChange={setFilters}
-        />
-      </section>
+    <div className="space-y-6 pt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <KnowledgeViewSwitch view={view} onViewChange={onViewChange} entityCount={entityCount} />
+        {view === "memory" ? (
+          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-[13px] text-[color:var(--g-text-secondary)]">
+            <input
+              type="checkbox"
+              className="h-[18px] w-[18px] accent-[color:var(--g-brand-active)]"
+              checked={previewExample}
+              onChange={(e) => setExampleChoice(e.target.checked)}
+            />
+            Preview with an example memory
+          </label>
+        ) : null}
+      </div>
 
-      <section id="knowledge-relationships-heading" className="scroll-mt-24">
-        <RelationshipsWorkspace
-          data={relationshipsSnapshot}
-          isLoading={relationshipsSnapshotLoading}
-          enabled={enabled}
-        />
-      </section>
+      <div id="knowledge-view-panel" role="tabpanel" aria-labelledby={`knowledge-view-${view}`} className="space-y-10">
+        {view === "graph" ? (
+          <>
+            <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-3" aria-label="Knowledge at a glance">
+              <GravitreMetric
+                label="Recent learnings"
+                value={metricsReady ? readNumber(learningMetrics.recentLearnings, insights.length) : "—"}
+                hint={isLoading ? "Loading intelligence…" : "Validated business insights"}
+              />
+              <GravitreMetric
+                label="Relationships known"
+                value={metricsReady ? readNumber(learningMetrics.relationshipsLearned, 0) : "—"}
+                hint={isLoading ? "Loading intelligence…" : "Knowledge graph connections"}
+              />
+              <GravitreMetric
+                className="col-span-2 lg:col-span-1"
+                label="Measured outcomes"
+                value={metricsReady ? readNumber(outcomeMetrics.measuredOutcomes, 0) : "—"}
+                hint={isLoading ? "Loading intelligence…" : "Window attribution"}
+              />
+            </section>
 
-      <section id="memory" aria-labelledby="knowledge-memory-heading" className="scroll-mt-24 space-y-3">
-        <div>
-          <h2 id="knowledge-memory-heading" className={TYPE.sectionTitle}>Memory</h2>
-          <p className={cn(TYPE.meta, "mt-0.5")}>
-            What Gravitre remembers for your whole organization, where each memory came from, and what is waiting for review.
-          </p>
-        </div>
-        <OrgMemorySection enabled={enabled} />
-      </section>
+            <section id="knowledge-relationships-heading" className="scroll-mt-24">
+              <RelationshipsWorkspace
+                data={relationshipsSnapshot}
+                isLoading={relationshipsSnapshotLoading}
+                enabled={enabled}
+                viewMode="graph"
+                onViewModeChange={(mode) => onViewChange(mode === "table" ? "entities" : "graph")}
+              />
+            </section>
+
+            <section aria-labelledby="knowledge-learnings-heading" className="space-y-3">
+              <div>
+                <h2 id="knowledge-learnings-heading" className={TYPE.sectionTitle}>Recent learnings</h2>
+                <p className={cn(TYPE.meta, "mt-0.5")}>
+                  Insights Gravitre confirmed from real work, newest first. Filter by evidence, confidence, or source.
+                </p>
+              </div>
+              <LearnedRecentlyPanel
+                insights={insights}
+                isLoading={isLoading}
+                hasNoBusinessLearning={hasNoBusinessLearning}
+                filters={filters}
+                onFiltersChange={setFilters}
+                onGoToMemory={() => onViewChange("memory")}
+              />
+            </section>
+          </>
+        ) : null}
+
+        {view === "entities" ? (
+          <section id="knowledge-relationships-heading" className="scroll-mt-24">
+            <RelationshipsWorkspace
+              data={relationshipsSnapshot}
+              isLoading={relationshipsSnapshotLoading}
+              enabled={enabled}
+              viewMode="table"
+              onViewModeChange={(mode) => onViewChange(mode === "table" ? "entities" : "graph")}
+            />
+          </section>
+        ) : null}
+
+        {view === "memory" ? (
+          <section id="memory" aria-label="Memory" className="scroll-mt-24">
+            <OrgMemorySection memory={memory} previewExample={previewExample} />
+          </section>
+        ) : null}
+      </div>
 
       <IntelligenceAskCommandSurface enabled={enabled} pageSuggestedQuestions={suggestedQuestions} />
     </div>
