@@ -204,6 +204,19 @@ function truncate(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 1).trimEnd()}…` : value
 }
 
+/** Short card title for a pattern: its own title when recorded, else its memory category, else its lead words. */
+function learningTitle(c: { metadata?: Record<string, unknown> | null; memory_category?: string | null }, content: string): string {
+  const meta = c.metadata ?? {}
+  for (const key of ["title", "label", "name"]) {
+    const v = meta[key]
+    if (typeof v === "string" && v.trim()) return v.trim()
+  }
+  if (c.memory_category && c.memory_category.trim()) return humanize(c.memory_category)
+  if (content.length <= 48) return content
+  const cut = content.slice(0, 48)
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 24)).trimEnd()}…`
+}
+
 function plural(n: number, one: string, many = `${one}s`): string {
   return `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`
 }
@@ -433,7 +446,7 @@ export function buildLiveFlowModel(input: LiveFlowInput): FlowModel {
     learnings.push({
       id: c.id,
       nodeId,
-      label: truncate(content, 60),
+      label: learningTitle(c, content),
       desc: content,
       reinforced: freq,
       confidence: candidateConfidence(c),
@@ -578,9 +591,9 @@ export function buildLiveFlowModel(input: LiveFlowInput): FlowModel {
 
   const stats: FlowStats = {
     signalsToday,
-    signalsSub: `Every sync, run and click that reached the core in the last ${windowHours === 24 ? "24 hours" : `${windowHours} hours`}`,
+    signalsSub: "Every sync, run and click that reached the core",
     connections: relationships,
-    connectionsSub: "Links between your records that Gravitre has confirmed",
+    connectionsSub: "Links that got more certain as Gravitre learned",
     outcomesFed: best,
     outcomesTarget: target,
     forecastValue,
@@ -624,7 +637,7 @@ export function buildLiveFlowModel(input: LiveFlowInput): FlowModel {
       connectors.length === 0
         ? "No sources are connected yet, so nothing is flowing. Connect one to bring this map to life, or watch it with example data."
         : lastSync
-          ? `${connectors.length === 1 ? "Your only source" : `All ${connectors.length} sources`} last synced ${plural(days, "day")} ago, so nothing new is flowing. Resync to bring this map to life, or watch it with example data.`
+          ? `${connectors.length === 1 ? "Your only source" : `All ${connectors.length} sources`} stopped syncing ${plural(days, "day")} ago, so nothing new is flowing. Resync to bring this map to life, or watch it with example data.`
           : `${connectors.length === 1 ? "Your source has" : `Your ${connectors.length} sources have`} not synced yet, so nothing is flowing. Resync to bring this map to life, or watch it with example data.`
     quiet = {
       since: lastSignalAt ? `No signal since ${shortDate(lastSignalAt)}` : "No signal yet",

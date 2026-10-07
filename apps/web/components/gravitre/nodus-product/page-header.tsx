@@ -27,6 +27,7 @@ export function GravitrePageHeader({
   eyebrow,
   status,
   family,
+  titleScale = "default",
 }: {
   title: string
   description?: string
@@ -38,6 +39,8 @@ export function GravitrePageHeader({
   /** Live state line under the title (operating) or beside it (expert). */
   status?: ReactNode
   family?: PageHeaderFamily
+  /** "display": the larger title and lead the Intelligence v2 designs use. */
+  titleScale?: "default" | "display"
 }) {
   const pathname = usePathname() ?? ""
   const routeFamily = resolvePageFamily(pathname)
@@ -85,6 +88,7 @@ export function GravitrePageHeader({
   }
 
   const operating = resolved === "operating"
+  const display = titleScale === "display"
   return (
     <div
       data-page-header-family={resolved}
@@ -99,8 +103,25 @@ export function GravitrePageHeader({
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <div className="min-w-0 space-y-1.5">
             {eyebrow ? <p className={TYPE.eyebrow}>{eyebrow}</p> : null}
-            <h1 className={TYPE.pageTitle}>{title}</h1>
-            {description ? <p className={cn(TYPE.pageLead, "max-w-2xl")}>{description}</p> : null}
+            <h1
+              className={cn(
+                TYPE.pageTitle,
+                display && "sm:text-[34px] sm:leading-[1.1] sm:tracking-[-0.025em]",
+              )}
+            >
+              {title}
+            </h1>
+            {description ? (
+              <p
+                className={cn(
+                  TYPE.pageLead,
+                  "max-w-2xl",
+                  display && "sm:text-[15px] sm:leading-relaxed sm:text-[color:var(--g-text-secondary)]",
+                )}
+              >
+                {description}
+              </p>
+            ) : null}
             {status ? <div className="pt-0.5 text-[13px] text-[color:var(--g-text-muted)]">{status}</div> : null}
           </div>
         </div>

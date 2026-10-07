@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  OUTCOME_PATH_STEP_COUNT,
   agentStatusLine,
   firstResultSteps,
   formatHours,
@@ -116,5 +117,13 @@ describe("impact model", () => {
     expect(csv).toContain("From spend to value,Spent (USD),0.06,Measured")
     expect(csv).toContain("From spend to value,Revenue influenced (USD),,No evidence yet")
     expect(csv.trim().split("\n").at(-1)).toBe("Unassigned,0,0,,0.06")
+  })
+})
+
+describe("latest outcome empty trail", () => {
+  it("draws one empty segment per backend outcome path step kind", () => {
+    // backend/app/services/intelligence_outcome_path.py OUTCOME_PATH_STEP_KINDS
+    expect(OUTCOME_PATH_STEP_COUNT).toBe(8)
+    expect(outcomeProgress(null)).toBeNull()
   })
 })

@@ -26,7 +26,7 @@ export function IntelligenceShell({
   className,
   bodyClassName,
   chrome = "full",
-  showFreshness = true,
+  showFreshness = false,
 }: {
   activeTab?: IntelligenceHubTab
   children: ReactNode
@@ -40,7 +40,7 @@ export function IntelligenceShell({
   bodyClassName?: string
   /** "none" when the page header already carries hub tabs and freshness. */
   chrome?: "full" | "none"
-  /** False when the page header already shows its own "Updated" line. */
+  /** Show the snapshot freshness line in the tab row. Off by default: the v2 designs put "Updated" in the page header where they show it at all. */
   showFreshness?: boolean
 }) {
   const reduceMotion = useReducedMotion()

@@ -259,6 +259,7 @@ export function ForecastOutcomeCard({
   return (
     <section
       aria-labelledby="forecast-outcome-heading"
+      aria-describedby={forecast ? "forecast-outcome-target" : undefined}
       className="rounded-[var(--np-radius-lg)] bg-foreground p-5 text-background shadow-[var(--np-shadow)]"
     >
       <h2 id="forecast-outcome-heading" className="flex items-center gap-2 text-base font-semibold">
@@ -269,7 +270,9 @@ export function ForecastOutcomeCard({
         Telling Gravitre how a forecast turned out is the fastest way to make the next one sharper.
       </p>
       {forecast ? (
-        <p className="mt-2 truncate text-xs text-background/60">For: {forecast.title}</p>
+        <p id="forecast-outcome-target" className="sr-only">
+          For: {forecast.title}
+        </p>
       ) : null}
       <div className="mt-4 grid grid-cols-2 gap-2">
         <button
@@ -277,7 +280,7 @@ export function ForecastOutcomeCard({
           disabled={disabled}
           aria-pressed={recorded === "happened"}
           onClick={() => onRecord("happened")}
-          className="min-h-10 rounded-[var(--np-radius-md)] bg-[color:var(--g-brand-active)] px-3 text-sm font-medium text-white transition-colors hover:bg-[color:var(--g-brand-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-10 rounded-[var(--np-radius-md)] bg-[color:var(--g-brand)] px-3 text-sm font-semibold text-brand-foreground transition-colors hover:bg-[color:var(--g-brand-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
         >
           It happened
         </button>

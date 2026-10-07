@@ -104,6 +104,7 @@ export default function IntelligencePerformancePage() {
       <div className={PAGE_FRAME} data-composition="understand">
         <GravitrePageHeader
           eyebrow={copy.eyebrow}
+          titleScale="display"
           title={copy.title}
           description={copy.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}

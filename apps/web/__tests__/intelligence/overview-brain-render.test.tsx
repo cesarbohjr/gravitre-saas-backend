@@ -86,7 +86,7 @@ it("switches to badged example data on request", () => {
   act(() => root.render(<IntelligenceBrain pageContext={pageContext} />))
   act(() => button("Example data").click())
   expect(container.querySelector('[data-example="true"]')).not.toBeNull()
-  expect(container.textContent).toContain("Example")
+  expect(container.textContent).toMatch(/example data · \d+ signals? in flight/)
   expect(container.textContent).toContain("Cold-chain routing")
   act(() => button("Pause").click())
   expect(button("Play").getAttribute("aria-pressed")).toBe("true")

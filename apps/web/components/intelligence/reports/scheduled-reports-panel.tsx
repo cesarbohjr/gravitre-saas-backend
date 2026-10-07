@@ -51,7 +51,6 @@ export function ScheduledReportsPanel({ templateLabel }: { templateLabel: string
         <Button variant="brand" size="sm" className="mt-4" disabled title={SCHEDULE_UNAVAILABLE_REASON}>
           Turn on
         </Button>
-        <p className={cn(TYPE.meta, "mt-2")}>{SCHEDULE_UNAVAILABLE_REASON}</p>
       </div>
     </section>
   )

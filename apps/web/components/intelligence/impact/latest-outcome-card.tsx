@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import type { OutcomeAttributionPath } from "@/lib/api"
-import { outcomeProgress } from "@/components/intelligence/impact/impact-model"
+import { OUTCOME_PATH_STEP_COUNT, outcomeProgress } from "@/components/intelligence/impact/impact-model"
 import { outcomeHeadline } from "@/lib/intelligence/performance-display"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { IMPACT_MICRO_LABEL } from "@/components/intelligence/impact/certainty"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 
@@ -21,21 +22,25 @@ export function LatestOutcomeCard({
   return (
     <section
       aria-labelledby="impact-outcome-heading"
-      className="rounded-[var(--np-radius-lg)] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-5"
+      className="rounded-[18px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-5"
     >
-      <p className={cn(TYPE.eyebrow, "tracking-[0.08em]")}>Latest outcome</p>
-      <h2 id="impact-outcome-heading" className={cn(TYPE.cardTitle, "mt-2 text-pretty")}>
+      <p className={IMPACT_MICRO_LABEL}>Latest outcome</p>
+      <h2 id="impact-outcome-heading" className={cn(TYPE.cardTitle, "mt-3 text-[15px] leading-[1.4] text-pretty")}>
         {loading ? "Loading outcome…" : headline ?? "No outcome recorded in this period"}
       </h2>
 
-      {progress ? (
+      {!loading ? (
         <>
           <div
-            className="mt-4 flex gap-1"
+            className="mt-3 flex gap-1"
             role="img"
-            aria-label={`${progress.present} of ${progress.total} steps have evidence`}
+            aria-label={
+              progress
+                ? `${progress.present} of ${progress.total} steps have evidence`
+                : "No steps have evidence yet"
+            }
           >
-            {progress.segments.map((present, i) => (
+            {(progress?.segments ?? Array<boolean>(OUTCOME_PATH_STEP_COUNT).fill(false)).map((present, i) => (
               <span
                 key={i}
                 className={cn(
@@ -45,12 +50,12 @@ export function LatestOutcomeCard({
               />
             ))}
           </div>
-          <p className={cn(TYPE.meta, "mt-3")}>{progress.summary}</p>
+          <p className="mt-3 text-[12.5px] text-[color:var(--g-text-secondary)]">
+            {progress
+              ? progress.summary
+              : "No steps have evidence yet. The trail fills in once a signal, an agent action and a result are linked."}
+          </p>
         </>
-      ) : !loading ? (
-        <p className={cn(TYPE.meta, "mt-2")}>
-          The trail fills in once a signal, an agent action and a result are linked.
-        </p>
       ) : null}
 
       <Link

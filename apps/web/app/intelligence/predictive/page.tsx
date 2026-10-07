@@ -91,6 +91,7 @@ export default function PredictiveOpsPage() {
       <div className={PAGE_FRAME}>
         <GravitrePageHeader
           eyebrow="Understand / Forecasts"
+          titleScale="display"
           title={copy.title}
           description={copy.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}
@@ -114,7 +115,6 @@ export default function PredictiveOpsPage() {
           loadState={loadState}
           generatedAt={generatedAt}
           isValidating={isValidating}
-          showFreshness={false}
         >
           {error ? (
             <p role="status" className="mb-4 text-sm text-muted-foreground">

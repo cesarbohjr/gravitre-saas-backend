@@ -1,5 +1,4 @@
 import { CERTAINTY_LABEL, type Certainty } from "@/components/intelligence/impact/impact-model"
-import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 
 /** Filled dot = measured, ring = estimated, dash = no evidence yet. */
@@ -23,14 +22,17 @@ export function CertaintyMarker({ certainty, className }: { certainty: Certainty
   )
 }
 
+/** Small mono label used above Impact groups (sentence case, per the micro-label rule). */
+export const IMPACT_MICRO_LABEL = "font-mono text-[10.5px] font-medium tracking-[0.08em] text-[color:var(--g-text-muted)]"
+
 export function CertaintyLegend() {
   return (
     <div
-      className="flex flex-wrap items-center gap-x-5 gap-y-2"
+      className="flex flex-wrap items-center gap-x-[18px] gap-y-2"
       role="group"
       aria-label="How sure is each number"
     >
-      <span className={cn(TYPE.eyebrow, "tracking-[0.08em]")}>How sure is each number</span>
+      <span className={IMPACT_MICRO_LABEL}>How sure is each number</span>
       {(["measured", "estimated", "none"] as const).map((c) => (
         <span key={c} className="inline-flex items-center gap-1.5 text-[13px] text-[color:var(--g-text-primary)]">
           <CertaintyMarker certainty={c} />

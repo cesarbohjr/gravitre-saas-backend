@@ -44,9 +44,9 @@ export function ByAgentTable({
   return (
     <section
       aria-labelledby="impact-agents-heading"
-      className="min-w-0 overflow-hidden rounded-[var(--np-radius-lg)] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]"
+      className="min-w-0 overflow-hidden rounded-[18px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]"
     >
-      <div className="flex items-center justify-between gap-3 border-b border-[color:var(--g-border-subtle)] px-5 py-4">
+      <div className="flex items-center justify-between gap-3 border-b border-[color:var(--g-border-subtle)] px-5 py-[18px]">
         <h2 id="impact-agents-heading" className={TYPE.cardTitle}>
           By agent
         </h2>

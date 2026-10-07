@@ -228,6 +228,9 @@ export type OutcomeProgress = {
 
 const AGENT_STEP_KINDS = new Set(["agent_workflow", "action"])
 
+/** Steps in every outcome path (backend OUTCOME_PATH_STEP_KINDS). Drives the empty trail bar. */
+export const OUTCOME_PATH_STEP_COUNT = 8
+
 export function outcomeProgress(path: OutcomeAttributionPath | null | undefined): OutcomeProgress | null {
   if (!path || path.steps.length === 0) return null
   const segments = path.steps.map((s) => s.present)

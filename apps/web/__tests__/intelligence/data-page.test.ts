@@ -73,6 +73,10 @@ describe("Intelligence › Data page wiring", () => {
     expect(find).toMatch(/Only metadata is read until you import/)
     expect(find).toMatch(/aria-pressed=\{on\}/)
     expect(find).toMatch(/Request access/)
+    expect(find).toMatch(/`Import to train \$\{target\.label\}`/)
+    expect(find).toMatch(/How it maps to your knowledge/)
+    expect(find).toMatch(/fields=\{ownFields\(dataset\)\}/)
+    expect(find).not.toMatch(/Checks before training/)
 
     const yours = read("components/intelligence/data/your-datasets-section.tsx")
     expect(yours).toMatch(/trainingApi\.importFeedback/)

@@ -71,10 +71,25 @@ describe("overview flow model (live)", () => {
     expect(model.nodes.find((n) => n.id === "fc:p1")?.scored).toBe(false)
     expect(model.events[0].text).toBe("A workflow ran in sales")
     expect(model.events[0].path).toEqual(["src:platform", "kn:deal"])
-    expect(model.learnings[0]).toMatchObject({ reinforced: 7, confidence: null })
+    expect(model.learnings[0]).toMatchObject({
+      reinforced: 7,
+      confidence: null,
+      label: "Deals with a technical call close faster",
+      desc: "Deals with a technical call close faster",
+    })
     expect(model.stats).toMatchObject({ signalsToday: 1, outcomesFed: 4, outcomesTarget: 15, forecastValue: "Calibrating" })
     expect(model.stats.forecastNote).toBe("11 outcomes until scoring starts")
     expect(model.quiet).toBeNull()
+  })
+
+  it("titles a learning card by its category so the body is not repeated", () => {
+    const model = buildLiveFlowModel({
+      pageContext: ctx({}),
+      candidates: [
+        { id: "m2", content: "Refrigerated freight only ships from the Reno and Tacoma depots.", memory_category: "cold_chain", status: "candidate", frequency: 2 },
+      ],
+    })
+    expect(model.learnings[0]).toMatchObject({ label: "Cold chain", desc: "Refrigerated freight only ships from the Reno and Tacoma depots." })
   })
 
   it("says the core is quiet when nothing reached it in the window", () => {
@@ -83,7 +98,7 @@ describe("overview flow model (live)", () => {
       pageContext: ctx(),
       connectors: [{ id: "c1", name: "HubSpot", vendor: "hubspot", status: "active", last_sync_at: old }],
     })
-    expect(model.quiet?.body).toMatch(/last synced 10 days ago/)
+    expect(model.quiet?.body).toMatch(/stopped syncing 10 days ago/)
     expect(model.quiet?.resyncIds).toEqual(["c1"])
     expect(model.coreState.label).toBe("Idle")
   })

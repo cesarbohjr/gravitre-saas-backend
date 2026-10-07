@@ -146,7 +146,7 @@ export function PredictionRiskOpportunityTopology({
                             f.confidence == null ? "confidence not scored" : `${Math.round(f.confidence * 100)} percent confident`
                           }, ${f.whenLabel}`}
                           className={cn(
-                            "absolute flex max-w-[11rem] -translate-y-1/2 items-center gap-2 rounded-full border bg-[color:var(--g-surface-1)] py-1 pl-1.5 pr-2.5 text-[13px] transition-[opacity,box-shadow,border-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            "absolute flex max-w-[15rem] -translate-y-1/2 items-center gap-2 rounded-full border bg-[color:var(--g-surface-1)] py-1 pl-1.5 pr-2.5 text-[13px] transition-[opacity,box-shadow,border-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                             on
                               ? "z-10 border-foreground shadow-[var(--g-shadow-elevated)]"
                               : "border-divide hover:border-foreground",
@@ -168,7 +168,7 @@ export function PredictionRiskOpportunityTopology({
                               background: forecastDotColor(f),
                             }}
                           />
-                          <span className="truncate font-medium text-foreground">{f.title}</span>
+                          <span className="truncate font-medium text-foreground" title={f.title}>{f.title}</span>
                           <span className={cn(TYPE.mono, "shrink-0 text-[11px]")}>{formatPct(f.confidence)}</span>
                         </button>
                       </li>

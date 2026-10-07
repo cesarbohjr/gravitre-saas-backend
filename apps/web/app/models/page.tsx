@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -60,11 +60,13 @@ import {
   templateForLayer,
   type MlStackLayerId,
 } from "@/lib/ml-registry-catalog"
-import { RefreshCw, Layers3 } from "lucide-react"
+import { ChevronDown, RefreshCw, Layers3 } from "lucide-react"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { cn } from "@/lib/utils"
 import { SURFACE_COPY } from "@/lib/surface-copy"
+
+const MORE_ANCHORS = ["built-in", "training", "fine-tunes"]
 
 function formatType(value: string): string {
   return value.replace(/_/g, " ")
@@ -89,8 +91,23 @@ export default function ModelsPage() {
     preferredBaseModel: string
   } | null>(null)
   const linkedToBuiltIn = searchParams.get("tab") === "built-in"
+  const moreRef = useRef<HTMLDetailsElement>(null)
+  const [moreOpen, setMoreOpen] = useState(false)
+  // Links into the bottom disclosure (?tab=built-in, #built-in, #training, #fine-tunes) open it and scroll there.
   useEffect(() => {
-    if (linkedToBuiltIn) document.getElementById("built-in")?.scrollIntoView({ block: "start" })
+    function openFor(target: string | null) {
+      if (!target) return
+      setMoreOpen(true)
+      window.requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ block: "start" }))
+    }
+    const fromHash = () => {
+      const hash = window.location.hash.slice(1)
+      openFor(MORE_ANCHORS.includes(hash) ? hash : null)
+    }
+    openFor(linkedToBuiltIn ? "built-in" : null)
+    fromHash()
+    window.addEventListener("hashchange", fromHash)
+    return () => window.removeEventListener("hashchange", fromHash)
   }, [linkedToBuiltIn])
   const [selectedTemplateLayer, setSelectedTemplateLayer] = useState<MlStackLayerId | null>(null)
   const [isCreating, setIsCreating] = useState(false)
@@ -241,6 +258,7 @@ export default function ModelsPage() {
       <div className={PAGE_FRAME} data-composition="understand">
         <GravitrePageHeader
           eyebrow="Build / Models"
+          titleScale="display"
           title={SURFACE_COPY.models.title}
           description={SURFACE_COPY.models.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}
@@ -262,12 +280,7 @@ export default function ModelsPage() {
         />
 
         <IntelligenceShell activeTab="models" loadState={isLoading && models.length === 0 ? "LOADING" : "READY"}>
-          <div className="space-y-10 pt-6">
-            {/*
-              One level of navigation: your models, the built-in catalog, training
-              runs and fine-tunes are sections of one page. ?tab=built-in scrolls
-              to the built-in section; #training and #fine-tunes are anchors.
-            */}
+          <div className="space-y-6 pt-2">
             <section aria-labelledby="models-yours-heading" className="space-y-6">
               <h2 id="models-yours-heading" className="sr-only">
                 Your models
@@ -282,50 +295,77 @@ export default function ModelsPage() {
               ) : (
                 <ModelsStage
                   data={modelsData}
-                  builtInItems={builtIn.items}
                   builtInSuggestions={builtInSuggestions}
                   onRegister={() => router.push(APP_ROUTES.intelligenceModelStudio)}
                 />
               )}
             </section>
 
-            <section id="built-in" aria-labelledby="models-built-in-heading" className="scroll-mt-24 space-y-4">
-              <div>
-                <h2 id="models-built-in-heading" className={TYPE.cardTitle}>
-                  Built-in models
-                </h2>
-                <p className={cn(TYPE.bodyMuted, "mt-0.5")}>
-                  Models Gravitre provides and trains on your organization&apos;s data.
-                </p>
-              </div>
-              <BuiltInModelsPanel />
-            </section>
+            {/*
+              Not in the v2 design's main flow, but other pages link here
+              (?tab=built-in, #built-in, #training, #fine-tunes), so they live in
+              one disclosure at the bottom that opens when a link targets it.
+            */}
+            <details
+              ref={moreRef}
+              open={moreOpen}
+              onToggle={(e) => setMoreOpen((e.currentTarget as HTMLDetailsElement).open)}
+              className="group rounded-[var(--g-radius-panel)] border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]"
+            >
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-5 py-3 [&::-webkit-details-marker]:hidden">
+                <span className="flex flex-col">
+                  <span className="text-sm font-medium text-[color:var(--g-text-primary)]">
+                    Built-in models, training runs and fine-tunes
+                  </span>
+                  <span className={TYPE.meta}>Models Gravitre provides, and the fine-tuning jobs behind your own.</span>
+                </span>
+                <ChevronDown
+                  className="h-4 w-4 shrink-0 text-[color:var(--g-text-muted)] transition-transform group-open:rotate-180"
+                  aria-hidden
+                />
+              </summary>
+              {moreOpen ? (
+                <div className="space-y-10 border-t border-[color:var(--g-border-subtle)] px-5 py-6">
+                  <section id="built-in" aria-labelledby="models-built-in-heading" className="scroll-mt-24 space-y-4">
+                    <div>
+                      <h2 id="models-built-in-heading" className={TYPE.cardTitle}>
+                        Built-in models
+                      </h2>
+                      <p className={cn(TYPE.bodyMuted, "mt-0.5")}>
+                        Models Gravitre provides and trains on your organization&apos;s data.
+                      </p>
+                    </div>
+                    <BuiltInModelsPanel />
+                  </section>
 
-            <section id="training" aria-labelledby="models-training-heading" className="scroll-mt-24 space-y-4">
-              <div>
-                <h2 id="models-training-heading" className={TYPE.cardTitle}>
-                  Training runs
-                </h2>
-                <p className={cn(TYPE.bodyMuted, "mt-0.5")}>
-                  Fine-tuning jobs and their progress. Datasets for them live in Intelligence › Data.
-                </p>
-              </div>
-              <Suspense fallback={<p className={TYPE.bodyMuted}>Loading training runs…</p>}>
-                <TrainingWorkbench embedded section="jobs" />
-              </Suspense>
-            </section>
+                  <section id="training" aria-labelledby="models-training-heading" className="scroll-mt-24 space-y-4">
+                    <div>
+                      <h2 id="models-training-heading" className={TYPE.cardTitle}>
+                        Training runs
+                      </h2>
+                      <p className={cn(TYPE.bodyMuted, "mt-0.5")}>
+                        Fine-tuning jobs and their progress. Datasets for them live in Intelligence › Data.
+                      </p>
+                    </div>
+                    <Suspense fallback={<p className={TYPE.bodyMuted}>Loading training runs…</p>}>
+                      <TrainingWorkbench embedded section="jobs" />
+                    </Suspense>
+                  </section>
 
-            <section id="fine-tunes" aria-labelledby="models-fine-tunes-heading" className="scroll-mt-24 space-y-4">
-              <div>
-                <h2 id="models-fine-tunes-heading" className={TYPE.cardTitle}>
-                  Fine-tuned models
-                </h2>
-                <p className={cn(TYPE.bodyMuted, "mt-0.5")}>Finished fine-tunes and which agents use them.</p>
-              </div>
-              <Suspense fallback={<p className={TYPE.bodyMuted}>Loading fine-tuned models…</p>}>
-                <TrainingWorkbench embedded section="models" />
-              </Suspense>
-            </section>
+                  <section id="fine-tunes" aria-labelledby="models-fine-tunes-heading" className="scroll-mt-24 space-y-4">
+                    <div>
+                      <h2 id="models-fine-tunes-heading" className={TYPE.cardTitle}>
+                        Fine-tuned models
+                      </h2>
+                      <p className={cn(TYPE.bodyMuted, "mt-0.5")}>Finished fine-tunes and which agents use them.</p>
+                    </div>
+                    <Suspense fallback={<p className={TYPE.bodyMuted}>Loading fine-tuned models…</p>}>
+                      <TrainingWorkbench embedded section="models" />
+                    </Suspense>
+                  </section>
+                </div>
+              ) : null}
+            </details>
           </div>
         </IntelligenceShell>
       </div>

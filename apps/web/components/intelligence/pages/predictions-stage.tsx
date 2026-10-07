@@ -205,7 +205,7 @@ export function PredictionsStage({
           </Button>
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:items-start">
           {selected ? (
             <ForecastDetail
               key={selected.key}

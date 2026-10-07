@@ -84,14 +84,14 @@ export function YourDatasetsSection({
       </div>
       <div className="grid gap-3 md:grid-cols-3">
         <ActionCard
-          icon={<Upload aria-hidden className="h-4 w-4" />}
+          icon={<Upload aria-hidden className="h-5 w-5" />}
           title="Upload a file"
-          body="CSV, JSON or documents. Gravitre checks every row before anything is imported."
+          body="CSV, JSON or documents. Gravitre checks every row as it reads."
           onClick={onUpload}
           disabled={!datasetsReady}
         />
         <ActionCard
-          icon={<MessageSquare aria-hidden className="h-4 w-4" />}
+          icon={<MessageSquare aria-hidden className="h-5 w-5" />}
           title={pending === "feedback" ? "Saving chat feedback…" : "Save chat feedback"}
           body="Turn thumbs up and corrections from Ask Gravitre into training examples."
           onClick={() => void saveFeedback()}
@@ -99,9 +99,9 @@ export function YourDatasetsSection({
         />
         <ActionCard
           tone="brand"
-          icon={<Sparkles aria-hidden className="h-4 w-4" />}
+          icon={<Sparkles aria-hidden className="h-5 w-5" />}
           title={pending === "starter" ? "Loading starter examples…" : starterId ? "Retry starter examples" : "Load starter examples"}
-          body="A small labelled set of example requests and answers, so you can try training right away."
+          body="A small labelled set of example requests and answers. Ready in a few seconds."
           onClick={() => void loadStarter()}
           disabled={!datasetsReady || pending !== null}
         />
@@ -131,10 +131,10 @@ function ActionCard({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "flex min-h-11 flex-col items-start gap-3 rounded-[var(--g-radius-card)] border border-dashed p-5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
+        "flex min-h-11 flex-col items-start gap-2.5 rounded-[var(--g-radius-card)] border-[1.5px] p-5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
         tone === "brand"
-          ? "border-[color:var(--g-brand)]/30 bg-[color:var(--g-brand-surface)] hover:border-[color:var(--g-brand)]/60"
-          : "border-[color:var(--g-border-default)] bg-card hover:border-[color:var(--g-border-strong)]",
+          ? "border-solid border-[color:var(--g-brand)]/25 bg-[color:var(--g-brand-surface)] hover:border-[color:var(--g-brand)]/60"
+          : "border-dashed border-[color:var(--g-border-default)] bg-card hover:border-[color:var(--g-border-strong)]",
       )}
     >
       <span
@@ -149,7 +149,7 @@ function ActionCard({
       </span>
       <span className="space-y-1.5">
         <span className={cn(TYPE.cardTitle, "block")}>{title}</span>
-        <span className={cn(TYPE.meta, "block text-[13px] leading-relaxed", tone === "brand" && "text-[color:var(--g-brand-active)]")}>{body}</span>
+        <span className={cn(TYPE.meta, "block text-[13px] leading-relaxed", tone === "brand" && "text-[color:var(--g-text-secondary)]")}>{body}</span>
       </span>
     </button>
   )

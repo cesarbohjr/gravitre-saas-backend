@@ -18,6 +18,7 @@ import {
 } from "@/components/intelligence/reports/report-model"
 import { SavedViewsPanel } from "@/components/intelligence/reports/saved-views-panel"
 import { ScheduledReportsPanel } from "@/components/intelligence/reports/scheduled-reports-panel"
+import { IntelligenceFreshnessBar } from "@/components/intelligence/shell/intelligence-freshness-bar"
 import { auditApi, connectorsApi, enterpriseApi, type IntelligencePageContextResponse } from "@/lib/api"
 import { RADIUS, TYPE } from "@/lib/design-system"
 import {
@@ -46,6 +47,9 @@ const EVIDENCE_TAG: Record<KpiEvidence, { label: string; className: string }> = 
 export function ReportsStage({
   pageContext,
   loadState,
+  generatedAt,
+  isValidating,
+  onRefresh,
   enabled,
   template,
   onTemplateChange,
@@ -59,6 +63,9 @@ export function ReportsStage({
 }: {
   pageContext?: IntelligencePageContextResponse | null
   loadState: SnapshotLoadState
+  generatedAt?: string | null
+  isValidating?: boolean
+  onRefresh?: () => void
   enabled: boolean
   template: ReportTemplateId
   onTemplateChange: (id: ReportTemplateId) => void
@@ -129,6 +136,10 @@ export function ReportsStage({
   const snapshotHours = pageContext?.snapshot.timeWindowHours ?? null
   const snapshotDays = snapshotHours ? Math.max(1, Math.round(snapshotHours / 24)) : null
   const snapshotShorter = snapshotDays != null && snapshotDays < periodDays
+  // The design has no room for a caveat line, so the window note rides on the period control.
+  const periodNote = snapshotShorter
+    ? `Snapshot figures cover the last ${snapshotDays === 1 ? "day" : `${snapshotDays} days`}. Agent and audit figures use the full period.`
+    : undefined
 
   return (
     <div className="space-y-6 pt-2">
@@ -163,6 +174,7 @@ export function ReportsStage({
           Period
           <select
             value={periodDays}
+            title={periodNote}
             onChange={(e) => onPeriodChange(Number(e.target.value) as ReportPeriodDays)}
             className="h-11 rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] px-3 text-sm text-foreground sm:h-9"
           >
@@ -173,11 +185,13 @@ export function ReportsStage({
             ))}
           </select>
         </label>
-        {snapshotShorter ? (
-          <span className={TYPE.meta}>
-            Snapshot figures cover the last {snapshotDays === 1 ? "day" : `${snapshotDays} days`}. Agent and audit figures use the full period.
-          </span>
-        ) : null}
+        <IntelligenceFreshnessBar
+          className="sm:ml-auto"
+          loadState={loadState}
+          generatedAt={generatedAt}
+          isValidating={isValidating}
+          onRefresh={onRefresh}
+        />
       </div>
 
       <section aria-label={`${templateLabel} summary`} className="space-y-3">

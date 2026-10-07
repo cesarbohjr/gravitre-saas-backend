@@ -119,6 +119,7 @@ export default function IntelligenceReportsPage() {
       <div className={PAGE_FRAME}>
         <GravitrePageHeader
           eyebrow={copy.eyebrow}
+          titleScale="display"
           title={copy.title}
           description={copy.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}
@@ -146,6 +147,9 @@ export default function IntelligenceReportsPage() {
           <ReportsStage
             pageContext={pageContext}
             loadState={loadState}
+            generatedAt={generatedAt}
+            isValidating={isValidating}
+            onRefresh={() => mutate()}
             enabled={Boolean(user)}
             template={template}
             onTemplateChange={setTemplate}

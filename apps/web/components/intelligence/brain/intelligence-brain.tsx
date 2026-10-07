@@ -59,7 +59,7 @@ function StatCard({
   return (
     <div className={cn(panel, "flex min-w-0 flex-col gap-1.5 px-[18px] py-4")}>
       <span className="text-[13px] text-[color:var(--g-text-secondary)]">{label}</span>
-      <span className={cn("truncate text-[28px] font-semibold leading-tight tracking-[-0.02em] tabular-nums text-foreground", valueClass)}>
+      <span className={cn("truncate text-[22px] font-semibold leading-tight sm:text-[28px] tracking-[-0.02em] tabular-nums text-foreground", valueClass)}>
         {value}
       </span>
       {sub ? <span className="text-xs text-[color:var(--g-text-muted)]">{sub}</span> : null}
@@ -295,11 +295,6 @@ export function IntelligenceBrain({
         >
           {chip.label}
         </span>
-        {example ? (
-          <span className="rounded-full bg-[color:var(--g-approval-soft)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--g-approval)]">
-            Example
-          </span>
-        ) : null}
         <span className="font-mono text-xs text-[color:var(--g-text-muted)]" aria-live="polite">
           {note}
         </span>
@@ -358,17 +353,17 @@ export function IntelligenceBrain({
         <StatCard
           label="Signals processed today"
           value={formatCount(example ? playback.exampleSignals : stats.signalsToday)}
-          sub={example ? "Every sync, run and click that reached the core" : stats.signalsSub}
+          sub={stats.signalsSub}
         />
         <StatCard
           label="Connections strengthened"
           value={formatCount(example ? playback.exampleStrength : stats.connections)}
-          sub={stats.connectionsSub}
+          sub={example ? "Links that got more certain this session" : stats.connectionsSub}
           valueClass="text-[color:var(--g-intelligence)]"
         />
         <StatCard
           label="Outcomes fed back"
-          value={fed == null && target == null ? "—" : `${formatCount(fed)} / ${formatCount(target)}`}
+          value={`${formatCount(fed)} / ${formatCount(target)}`}
           valueClass="text-[color:var(--g-approval)]"
         >
           <span
@@ -490,8 +485,8 @@ export function IntelligenceBrain({
             streamMeta={
               quiet
                 ? liveModel.lastSignalAt
-                  ? `quiet since ${shortDate(liveModel.lastSignalAt)}`
-                  : "quiet"
+                  ? `paused since ${shortDate(liveModel.lastSignalAt)}`
+                  : "no signal yet"
                 : `${inFlight} in flight`
             }
             live={!quiet && !paused}

@@ -23,7 +23,9 @@ export function SavedViewsPanel({
   onLoad: (view: SavedIntelligenceView) => void
   onRemove: (id: string) => void
 }) {
-  const saveTitle = canSave ? undefined : "Pick an organization first. Views are saved per organization."
+  const saveTitle = canSave
+    ? "Views are kept on this device."
+    : "Pick an organization first. Views are saved per organization."
   return (
     <section
       aria-labelledby="reports-saved-heading"
@@ -36,7 +38,7 @@ export function SavedViewsPanel({
         <div className={cn(RADIUS.card, "mt-4 border border-dashed border-[color:var(--g-border-default)] p-4 sm:p-5")}>
           <p className="text-sm font-semibold text-[color:var(--g-text-primary)]">Nothing saved yet</p>
           <p className={cn(TYPE.bodyMuted, "mt-1.5")}>
-            Save the template and period you&apos;re looking at to come back to it. Views are kept on this device.
+            Save the template and period you&apos;re looking at to come back to it.
           </p>
           <Button className="mt-3" size="sm" onClick={onSave} disabled={!canSave} title={saveTitle}>
             Save {currentLabel}

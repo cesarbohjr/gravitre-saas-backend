@@ -66,19 +66,19 @@ export function PerformanceStage({
   const roiPending = roiLoading && !roi
 
   return (
-    <div className="space-y-6 pt-2">
+    <div className="space-y-[22px] pt-2">
       <CertaintyLegend />
 
       <SpendToValueFlow totals={totals} loading={roiPending} runningNow={runningNow} />
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <ByAgentTable
           rows={roi?.agents ?? []}
           snapshotAgents={pageContext?.snapshot.agents ?? []}
           period={period}
           loading={roiPending}
         />
-        <div className="space-y-6">
+        <div className="space-y-4">
           <FirstResultChecklist steps={steps} loading={roiPending || (connectorsLoading && !connectors)} />
           <LatestOutcomeCard path={latestPath} loading={snapshotLoading} />
         </div>

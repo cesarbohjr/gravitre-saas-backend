@@ -1572,9 +1572,9 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   "/api/workflows": { workflows },
   "/api/ml/models": {
     models: [
-      { id: "mdl_churn", name: "Churn risk scorer", description: "Flags accounts likely to churn in the next 60 days.", model_type: "classifier", status: "deployed", current_version: 3, deployed_version: 3, base_model: "gradient-boosted-trees", created_at: "2026-03-02T15:00:00Z", updated_at: "2026-05-08T09:30:00Z" },
-      { id: "mdl_lead_score", name: "Lead fit score", description: "Ranks inbound leads by fit with closed-won accounts.", model_type: "regressor", status: "training", current_version: 2, deployed_version: 1, created_at: "2026-04-11T12:00:00Z", updated_at: "2026-05-09T18:10:00Z" },
-      { id: "mdl_ticket_route", name: "Ticket router", description: null, model_type: "classifier", status: "draft", current_version: 0, created_at: "2026-05-07T10:00:00Z" },
+      { id: "mdl_churn", name: "Churn risk scorer", description: "Flags accounts likely to churn in the next 60 days.", model_type: "classifier", status: "deployed", current_version: 3, deployed_version: 3, base_model: "gradient-boosted-trees", dataset_id: "ds_churn", created_at: "2026-03-02T15:00:00Z", updated_at: "2026-05-08T09:30:00Z" },
+      { id: "mdl_lead_score", name: "Lead fit score", description: "Ranks inbound leads by fit with closed-won accounts.", model_type: "regressor", status: "deployed", current_version: 2, deployed_version: 1, created_at: "2026-04-11T12:00:00Z", updated_at: "2026-05-09T18:10:00Z" },
+      { id: "mdl_ticket_route", name: "Ticket router", description: null, model_type: "classifier", status: "draft", current_version: 0, dataset_id: "ds_tickets", created_at: "2026-05-07T10:00:00Z" },
     ],
   },
   "/api/ml/models/mdl_churn": {
@@ -1593,6 +1593,41 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       { version: 3, metrics: { accuracy: 0.91, f1: 0.87, auc: 0.94 }, artifact_size_bytes: 4820000, created_at: "2026-05-08T09:30:00Z" },
       { version: 2, metrics: { accuracy: 0.88, f1: 0.83, auc: 0.91 }, artifact_size_bytes: 4610000, created_at: "2026-04-15T14:00:00Z" },
       { version: 1, metrics: { accuracy: 0.84, f1: 0.79 }, artifact_size_bytes: 4100000, created_at: "2026-03-02T15:00:00Z" },
+    ],
+  },
+  // Built-in catalog: SLA breach predictor runs on rules but has enough examples, so Models shows it as a suggestion.
+  "/api/intelligence/models/catalog": {
+    catalog: {
+      sla_breach_predictor: { status: "HEURISTIC", use_cases: ["ticket_sla", "support_queue"] },
+      revenue_forecaster: { status: "TRAINED", use_cases: ["pipeline_forecast"] },
+      graph_neural_network: { status: "PLANNED", use_cases: [] },
+    },
+    orgTrainingStatus: {
+      sla_breach_predictor: { runtime_status: "HEURISTIC" },
+      revenue_forecaster: { runtime_status: "TRAINED" },
+    },
+    outcomeScores: { revenue_forecaster: 0.82 },
+  },
+  "/api/intelligence/training-readiness": {
+    by_model: {
+      sla_breach_predictor: { signals_available: 640, min_required: 500 },
+      revenue_forecaster: { signals_available: 1200, min_required: 300, last_trained_at: "2026-05-02T08:00:00Z" },
+    },
+  },
+  // Lead fit score's accuracy slipped between versions, so its card shows the needs-attention state.
+  "/api/ml/models/mdl_lead_score": {
+    id: "mdl_lead_score",
+    name: "Lead fit score",
+    description: "Ranks inbound leads by fit with closed-won accounts.",
+    model_type: "regressor",
+    status: "deployed",
+    current_version: 2,
+    deployed_version: 2,
+    created_at: "2026-04-11T12:00:00Z",
+    updated_at: "2026-05-09T18:10:00Z",
+    versions: [
+      { version: 2, metrics: { accuracy: 0.74 }, created_at: "2026-03-12T10:00:00Z" },
+      { version: 1, metrics: { accuracy: 0.8 }, created_at: "2026-02-01T10:00:00Z" },
     ],
   },
   // Shape must match ScheduledItem in types/api.ts; one item per schedule phase.

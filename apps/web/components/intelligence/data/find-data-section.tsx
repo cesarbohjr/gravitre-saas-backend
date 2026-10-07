@@ -37,6 +37,9 @@ import { UseForDialog } from "./use-for-dialog"
 import { formatShortDate } from "./format"
 
 const YOUR_DATA = "yours"
+/** Field names of the org's own material: example and feedback records (TrainingRecord) or uploaded documents. */
+const ownFields = (dataset: TrainingDataset) =>
+  dataset.type === "documents" ? ["title", "content"] : ["input", "expected_output"]
 
 type Match =
   | {
@@ -264,7 +267,8 @@ export function FindDataSection({
                 value={target?.value ?? ""}
                 onChange={(event) => setTargetValue(event.target.value)}
                 disabled={targets.length === 0}
-                className="max-w-[12rem] truncate rounded-[var(--g-radius-control)] border border-transparent bg-transparent py-1 pr-1 text-xs font-semibold text-[color:var(--g-text-primary)] outline-none hover:border-[color:var(--g-border-subtle)] focus:border-[color:var(--g-brand)]"
+                title="Choose which model or agent to rank datasets for"
+                className="max-w-[12rem] cursor-pointer appearance-none truncate rounded-[var(--g-radius-control)] border-0 bg-transparent p-0 text-xs font-medium text-[color:var(--g-text-primary)] underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)] disabled:cursor-default disabled:no-underline"
               >
                 {targets.length === 0 ? (
                   <option value="">{targetsLoading ? "Loading…" : "No models or agents yet"}</option>
@@ -462,9 +466,13 @@ function PreviewPanel({
         <h2 id="data-preview-heading" className="mt-1 break-all font-mono text-[15px] font-medium text-[color:var(--g-text-primary)]">
           {dataset.name}
         </h2>
-        <p className={cn(TYPE.bodyMuted, "mt-2")}>{dataset.description || meta.summary}</p>
+        <KnowledgeMapping
+          fields={ownFields(dataset)}
+          entityTypes={entityTypes}
+          noFieldsNote=""
+        />
         <div className="mt-5 space-y-2">
-          <p className="text-[13px] font-semibold text-[color:var(--g-text-primary)]">Checks before training</p>
+          <p className="text-[13px] font-semibold text-[color:var(--g-text-primary)]">Checks before import</p>
           <ul className="space-y-1.5">
             <CheckRow ok>Already in Gravitre as a {meta.label.toLowerCase()} dataset</CheckRow>
             <CheckRow ok={dataset.record_count > 0}>
@@ -496,8 +504,7 @@ function PreviewPanel({
 
   const details = inspect.data?.dataset
   const fields = reportedFields(details?.cardData)
-  const mapped = fields.map((field) => ({ field, entity: mapFieldToEntity(field, entityTypes) }))
-  const mappedCount = mapped.filter((m) => m.entity).length
+  const mappedCount = fields.filter((field) => mapFieldToEntity(field, entityTypes)).length
   const license = reportedLicense(details as unknown as Record<string, unknown> | undefined)
   const isPublic = details ? !details.private && !details.gated : !match.restricted
 
@@ -543,36 +550,11 @@ function PreviewPanel({
         <p role="status" className={cn(TYPE.bodyMuted, "mt-4")}>Reading provider metadata…</p>
       ) : (
         <>
-          <div className="mt-5 space-y-2">
-            <p className="text-[13px] font-semibold text-[color:var(--g-text-primary)]">How it maps to your knowledge</p>
-            {fields.length === 0 ? (
-              <p className={TYPE.meta}>{external!.providerLabel} doesn&apos;t report field names for this dataset, so fields are mapped after import.</p>
-            ) : entityTypes.length === 0 ? (
-              <p className={TYPE.meta}>
-                No knowledge entities yet, so there&apos;s nothing to map to.{" "}
-                <Link href={APP_ROUTES.learning} className="font-medium text-[color:var(--g-brand-active)] hover:underline">
-                  See it in Knowledge
-                </Link>
-              </p>
-            ) : null}
-            {fields.length > 0 ? (
-              <ul className="space-y-1.5">
-                {mapped.map(({ field, entity }) => (
-                  <li key={field} className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-                    <span className="truncate rounded-[6px] bg-[color:var(--g-surface-2)] px-2.5 py-1.5 font-mono text-xs text-[color:var(--g-text-primary)]">{field}</span>
-                    <span aria-hidden className="text-xs text-[color:var(--g-text-muted)]">→</span>
-                    {entity ? (
-                      <span className="truncate rounded-[6px] border border-[color:var(--g-intelligence)]/25 bg-[color:var(--g-intelligence-surface)] px-2.5 py-1.5 text-xs text-[color:var(--g-intelligence)]">
-                        <span className="sr-only">maps to </span>{entityLabel(entity)}
-                      </span>
-                    ) : (
-                      <span className="truncate rounded-[6px] border border-dashed border-[color:var(--g-border-default)] px-2.5 py-1.5 text-xs text-[color:var(--g-text-muted)]">Not mapped</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
+          <KnowledgeMapping
+            fields={fields}
+            entityTypes={entityTypes}
+            noFieldsNote={`${external!.providerLabel} doesn't report field names for this dataset, so fields are mapped after import.`}
+          />
 
           <div className="mt-5 space-y-2">
             <p className="text-[13px] font-semibold text-[color:var(--g-text-primary)]">Checks before import</p>
@@ -604,7 +586,7 @@ function PreviewPanel({
           title={!target ? "Create a model or agent first, then save data to train it." : "Saves this dataset as training data for the selected model or agent. Only metadata is read until training starts."}
           onClick={() => void importForTarget()}
         >
-          {saving ? "Saving…" : target ? `Save to train ${target.label}` : "Save for training"}
+          {saving ? "Importing…" : target ? `Import to train ${target.label}` : "Import for training"}
         </Button>
         <Button variant="outline" className="min-h-11" disabled={saving} onClick={() => setUseForOpen(true)}>
           Use for…
@@ -648,3 +630,49 @@ function CheckRow({ ok, children }: { ok: boolean; children: React.ReactNode }) 
   )
 }
 
+/** "How it maps to your knowledge": each dataset field and the knowledge entity type it matches by name. */
+function KnowledgeMapping({
+  fields,
+  entityTypes,
+  noFieldsNote,
+}: {
+  fields: string[]
+  entityTypes: string[]
+  noFieldsNote: string
+}) {
+  return (
+    <div className="mt-5 space-y-2">
+      <p className="text-[13px] font-semibold text-[color:var(--g-text-primary)]">How it maps to your knowledge</p>
+      {fields.length === 0 ? (
+        <p className={TYPE.meta}>{noFieldsNote}</p>
+      ) : entityTypes.length === 0 ? (
+        <p className={TYPE.meta}>
+          No knowledge entities yet, so there&apos;s nothing to map to.{" "}
+          <Link href={APP_ROUTES.learning} className="font-medium text-[color:var(--g-brand-active)] hover:underline">
+            See it in Knowledge
+          </Link>
+        </p>
+      ) : null}
+      {fields.length > 0 ? (
+        <ul className="space-y-2">
+          {fields.map((field) => {
+            const entity = mapFieldToEntity(field, entityTypes)
+            return (
+              <li key={field} className="grid grid-cols-[minmax(0,1fr)_20px_minmax(0,1fr)] items-center gap-2">
+                <span className="truncate rounded-[7px] bg-[color:var(--g-surface-2)] px-2.5 py-1.5 font-mono text-xs text-[color:var(--g-text-primary)]">{field}</span>
+                <span aria-hidden className="text-center text-xs text-[color:var(--g-text-muted)]">→</span>
+                {entity ? (
+                  <span className="truncate rounded-[7px] border border-[color:var(--g-intelligence)]/25 bg-[color:var(--g-intelligence-surface)] px-2.5 py-1.5 text-[13px] text-[color:var(--g-intelligence)]">
+                    <span className="sr-only">maps to </span>{entityLabel(entity)}
+                  </span>
+                ) : (
+                  <span className="truncate rounded-[7px] border border-dashed border-[color:var(--g-border-default)] px-2.5 py-1.5 text-[13px] text-[color:var(--g-text-muted)]">Not mapped</span>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+    </div>
+  )
+}

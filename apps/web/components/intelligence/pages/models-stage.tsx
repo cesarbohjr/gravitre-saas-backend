@@ -7,7 +7,6 @@
  * datasets) and the built-in catalog; nothing is sample data.
  */
 import { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/gravitre/empty-state"
@@ -84,12 +83,10 @@ function FilterChip({
 
 export function ModelsStage({
   data,
-  builtInItems,
   builtInSuggestions,
   onRegister,
 }: {
   data: ReturnType<typeof useModelsData>
-  builtInItems: BuiltInModelListItem[]
   builtInSuggestions: BuiltInModelListItem[]
   onRegister?: () => void
 }) {
@@ -222,14 +219,6 @@ export function ModelsStage({
           <FilterChip active={filter === "registered"} onClick={() => setFilter("registered")}>
             Registered · {counts.registered}
           </FilterChip>
-          {builtInItems.length > 0 ? (
-            <Link
-              href="#built-in"
-              className="inline-flex min-h-9 items-center rounded-full border border-dashed border-[color:var(--g-border-default)] px-3.5 text-[13px] text-[color:var(--g-text-secondary)] hover:border-[color:var(--g-border-strong)] hover:text-[color:var(--g-text-primary)]"
-            >
-              Built-in · {builtInItems.length}
-            </Link>
-          ) : null}
         </div>
         <span className="hidden flex-1 sm:block" aria-hidden />
         <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-[13px] text-[color:var(--g-text-secondary)] md:min-h-0">

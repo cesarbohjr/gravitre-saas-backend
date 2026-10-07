@@ -15,10 +15,10 @@ export function FirstResultChecklist({ steps, loading }: { steps: FirstResultSte
   return (
     <section
       aria-labelledby="impact-first-result-heading"
-      className="rounded-[var(--np-radius-lg)] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-5"
+      className="rounded-[18px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-5"
     >
       <div className="flex items-center justify-between gap-3">
-        <h2 id="impact-first-result-heading" className={TYPE.cardTitle}>
+        <h2 id="impact-first-result-heading" className={cn(TYPE.cardTitle, "text-[15px]")}>
           Your first measured result
         </h2>
         <span className={TYPE.mono} aria-label={`${done} of ${steps.length} done`}>
@@ -26,15 +26,15 @@ export function FirstResultChecklist({ steps, loading }: { steps: FirstResultSte
         </span>
       </div>
 
-      <ol className="mt-4 space-y-3.5">
+      <ol className="mt-3.5 space-y-2.5">
         {steps.map((step, i) => {
           const isNext = i === firstPending
           return (
-            <li key={step.id} className="flex items-start gap-3">
+            <li key={step.id} className="flex items-start gap-2.5">
               <span
                 aria-hidden
                 className={cn(
-                  "flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border text-xs font-medium",
+                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-[1.5px] text-xs font-semibold",
                   step.done
                     ? "border-[color:var(--g-brand)] bg-[color:var(--g-brand)] text-white"
                     : isNext
@@ -48,7 +48,7 @@ export function FirstResultChecklist({ steps, loading }: { steps: FirstResultSte
                 <Link
                   href={step.href}
                   className={cn(
-                    "block text-sm font-medium hover:underline",
+                    "block text-[13.5px] font-medium hover:underline",
                     step.done ? "text-[color:var(--g-text-muted)] line-through" : "text-[color:var(--g-text-primary)]",
                   )}
                 >
@@ -63,11 +63,11 @@ export function FirstResultChecklist({ steps, loading }: { steps: FirstResultSte
       </ol>
 
       {next ? (
-        <Button asChild className="mt-5 h-10 w-full">
+        <Button asChild variant="brand" className="mt-3.5 h-10 w-full rounded-[10px] text-[13.5px]">
           <Link href={next.href}>Start with step {firstPending + 1}</Link>
         </Button>
       ) : !loading ? (
-        <p className={cn(TYPE.bodyMuted, "mt-5")}>All three are done. Measured results now fill in as agents work.</p>
+        <p className={cn(TYPE.bodyMuted, "mt-3.5")}>All three are done. Measured results now fill in as agents work.</p>
       ) : null}
     </section>
   )

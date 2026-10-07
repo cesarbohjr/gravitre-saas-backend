@@ -162,6 +162,7 @@ function IntelligenceCenterInner() {
         <IntelligenceSectionRedirect />
         <GravitrePageHeader
           eyebrow="Understand / Evidence before answers"
+          titleScale="display"
           title={copy.title}
           description={copy.description}
           actions={
