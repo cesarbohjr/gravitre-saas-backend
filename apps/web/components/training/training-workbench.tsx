@@ -51,6 +51,7 @@ import {
 } from "@/lib/training-ui-copy"
 import { RefreshCw } from "lucide-react"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
+import { STARTER_DATASET, STARTER_EXAMPLES } from "@/components/training/starter-examples"
 
 function statusClasses(status: string): string {
   if (status === "ready" || status === "completed") {
@@ -79,19 +80,6 @@ function formatTrainingError(error: unknown): string {
   return "Training is unavailable right now. Your edits are retained; try again."
 }
 
-const STARTER_EXAMPLES = [
-  {
-    input:
-      "Monitor overdue invoices and notify finance when totals exceed $10k",
-    expected_output:
-      "Set weekly AR review, alert finance when overdue total exceeds threshold, and log actions in CRM.",
-  },
-  {
-    input: "Customer asks why sync-customers failed at step 3",
-    expected_output:
-      "Identify timeout at transformation step, recommend retry with 60s timeout and off-peak schedule.",
-  },
-] as const
 
 export type TrainingSection = "datasets" | "jobs" | "instructions" | "models"
 
@@ -103,9 +91,12 @@ export type TrainingSection = "datasets" | "jobs" | "instructions" | "models"
 export function TrainingWorkbench({
   embedded = false,
   section,
+  focusDataset,
 }: {
   embedded?: boolean
   section?: TrainingSection
+  /** Open this dataset's editor (Intelligence › Data rows and "Train with this dataset"). */
+  focusDataset?: { id: string; nonce: number } | null
 } = {}) {
   const reduced = useReducedMotion()
   const mutationRef = useRef(false)
@@ -198,6 +189,15 @@ export function TrainingWorkbench({
     setDocumentTitle(draft?.title ?? "")
     setDocumentBody(draft?.body ?? "")
   }
+
+  const focusNonce = focusDataset?.nonce
+  useEffect(() => {
+    if (!focusDataset?.id) return
+    setTrainingTab("datasets")
+    chooseMaterial(focusDataset.id)
+    // Only a new request (nonce) should move the editor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusNonce])
 
   useEffect(() => {
     let cancelled = false
@@ -439,12 +439,7 @@ export function TrainingWorkbench({
         throw new Error("Workspace membership required")
       const created = starterDatasetId
         ? { id: starterDatasetId }
-        : await trainingApi.createDataset({
-            name: "Agent persona starter examples",
-            type: "examples",
-            description:
-              "Seed examples for revenue ops and sync troubleshooting personas.",
-          })
+        : await trainingApi.createDataset({ ...STARTER_DATASET })
       setStarterDatasetId(created.id)
       const result = await trainingApi.uploadRecords(created.id, [
         ...STARTER_EXAMPLES,
@@ -1045,7 +1040,9 @@ export function TrainingWorkbench({
                   className="space-y-4 border-b border-divide pb-6"
                 >
                   <div className="space-y-1">
-                    <h2 className={TYPE.sectionTitle}>Training datasets</h2>
+                    <h2 className={TYPE.sectionTitle}>
+                      {section === "datasets" ? "Create and edit datasets" : "Training datasets"}
+                    </h2>
                     <p className="text-sm text-muted-foreground">
                       Pick a type, add teaching material, then run a job when
                       you have enough records.

@@ -45,11 +45,11 @@ export const SURFACE_COPY = {
   },
   intelligenceData: {
     title: "Data",
+    eyebrow: "Build / Data",
     description:
-      "Everything Gravitre can learn from: your own datasets and public ones from Hugging Face and Kaggle.",
-    publicDescription:
-      "Search Hugging Face and Kaggle, check access, then choose which agent, model or Play each dataset is for. Gravitre reads metadata only until you start an import.",
-    yoursDescription: "Examples, documents and live chat feedback you added. Use them to train models and coach agents.",
+      "Everything Gravitre can learn from: your own datasets, plus public ones from Hugging Face and Kaggle.",
+    manageTitle: "Create and edit datasets",
+    manageDescription: "Add examples or documents to a dataset, then start a training run.",
   },
   trainingInstructions: {
     title: "Instructions",
