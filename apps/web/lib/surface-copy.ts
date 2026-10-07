@@ -71,7 +71,7 @@ export const SURFACE_COPY = {
   models: {
     title: "Models",
     shortTitle: "Models",
-    description: "The models behind forecasts and agents: what each one does, where it is used, and how it is doing. Create and train new ones in Model Studio.",
+    description: "The models behind forecasts and agents: what each one does, where it is used, and how well it is doing.",
     badge: "Your model registry",
     heroTitle: "Models ready for real work",
     heroDescription:

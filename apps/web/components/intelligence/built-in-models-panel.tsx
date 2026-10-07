@@ -50,10 +50,14 @@ function dataSufficiencyProgress(
  * the redesign brief's "fold Built-in Models into Models" instruction. No
  * capability was removed or duplicated in logic — this is the same component.
  */
-export function BuiltInModelsPanel() {
+/**
+ * Real built-in catalog rows (`GET /api/intelligence/models/catalog` +
+ * `GET /api/intelligence/training-readiness`). Shared by the panel and the
+ * Models page (filter count, "Suggested by Gravitre" card); same SWR keys, so
+ * one request each.
+ */
+export function useBuiltInModelItems() {
   const { user } = useAuth()
-  const copy = SURFACE_COPY.builtInModels
-  const [filter, setFilter] = useState<FilterKey>("all")
   const { data, error, isLoading, mutate } = useSWR(
     user ? "intelligence/models/catalog" : null,
     () => intelligenceApi.modelCatalog(),
@@ -91,6 +95,29 @@ export function BuiltInModelsPanel() {
         } satisfies BuiltInModelListItem
       })
   }, [data, readiness])
+
+  return { items, data, error: error as unknown, isLoading, mutate }
+}
+
+/**
+ * Built-in models that are running on rules today but already have the
+ * minimum examples to train for real — the only "Suggested by Gravitre"
+ * candidates the Models page shows (no invented suggestions).
+ */
+export function trainableBuiltInSuggestions(items: BuiltInModelListItem[]): BuiltInModelListItem[] {
+  return items.filter(
+    (item) =>
+      statusTone(item.status) === "learning" &&
+      item.sufficiency.required > 0 &&
+      item.sufficiency.available >= item.sufficiency.required,
+  )
+}
+
+export function BuiltInModelsPanel() {
+  const { user } = useAuth()
+  const copy = SURFACE_COPY.builtInModels
+  const [filter, setFilter] = useState<FilterKey>("all")
+  const { items, data, error, isLoading, mutate } = useBuiltInModelItems()
 
   const metrics = useMemo(() => {
     let active = 0
@@ -132,7 +159,7 @@ export function BuiltInModelsPanel() {
 
   return (
     <div className="space-y-2">
-      <div className="space-y-5 px-[var(--np-page-pad-sm)] pb-8 sm:px-[var(--np-page-pad)]">
+      <div className="space-y-5 pb-2">
         {isLoading && !data ? (
           <p className="text-sm text-muted-foreground">Loading your org ML brain…</p>
         ) : items.length === 0 ? (
