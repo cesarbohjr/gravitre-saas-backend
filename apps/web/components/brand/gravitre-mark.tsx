@@ -16,7 +16,7 @@ export function GravitreMark({
       fill="currentColor"
       role="img"
       aria-label={title}
-      className={cn("h-6 w-auto shrink-0 text-[color:var(--brand)]", className)}
+      className={cn("h-5 w-auto shrink-0 text-[color:var(--brand)]", className)}
       {...props}
     >
       <path d={BAR} />

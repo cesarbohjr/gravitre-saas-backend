@@ -214,7 +214,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                 </div>
               </>
             ) : (
-              <GravitreMark className="h-8" />
+              <GravitreMark />
             )}
           </Link>
           <Button
