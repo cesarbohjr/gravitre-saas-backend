@@ -213,19 +213,9 @@ export const SURFACE_COPY = {
     },
     reports: {
       title: "Reports",
+      eyebrow: "Understand / Reports",
       description:
-        "Saved intelligence views — business, agent, prediction, and governance templates from live snapshot data.",
-      tabRoi: "ROI",
-      tabScorecards: "Department scorecards",
-      tabExecutive: "Executive scorecard",
-      tabCustomerSuccess: "Customer Success",
-      tabProspecting: "Prospecting",
-      tabMarketing: "Marketing",
-      tabRevOps: "RevOps",
-      tabAiSearch: "AI Search",
-      tabFinance: "Finance",
-      tabHrTalent: "HR & Talent",
-      tabPlatformHealth: "Platform Health",
+        "Saved views of your intelligence, built from live data. Save them, and trace any number back to its source.",
     },
     predictive: {
       title: "Forecasts",
