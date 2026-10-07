@@ -81,8 +81,8 @@ export function TrainingReadinessStrip({
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link href={APP_ROUTES.training}>
-              Training
+            <Link href={APP_ROUTES.intelligenceData}>
+              Data
               <ArrowRight className="ml-1 h-3.5 w-3.5" aria-hidden />
             </Link>
           </Button>

@@ -93,8 +93,8 @@ export function ModelRegistryOverview({
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
               Version models, connect datasets from{" "}
-              <Link href={APP_ROUTES.training} className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
-                {SURFACE_COPY.training.title}
+              <Link href={APP_ROUTES.intelligenceData} className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
+                {SURFACE_COPY.intelligenceData.title}
               </Link>
               , and use them in workflows. For org-wide learning signals, open{" "}
               <Link href={APP_ROUTES.learning} className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">

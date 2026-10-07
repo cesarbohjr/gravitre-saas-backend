@@ -10,7 +10,7 @@ export type AgentsHubTab = "roster" | "multi-agent" | "training"
 const LINKS: Array<{ id: AgentsHubTab; label: string; href: string }> = [
   { id: "roster", label: "Roster", href: "/agents" },
   { id: "multi-agent", label: "Multi-agent", href: "/multi-agent-run" },
-  { id: "training", label: "Training", href: "/training" },
+  { id: "training", label: "Instructions", href: "/training" },
 ]
 
 export function resolveAgentsHubTab(pathname: string, tabParam: string | null): AgentsHubTab {

@@ -183,10 +183,10 @@ export function IntelligenceMapContextPanel({
       {node.sublabel ? <p className={cn(TYPE.bodyMuted, "mt-1 capitalize")}>{node.sublabel}</p> : null}
       {node.kind === "model" ? (
         <Link
-          href={APP_ROUTES.training}
+          href={`${APP_ROUTES.models}#training`}
           className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
         >
-          Open training
+          Open training runs
           <ArrowRight className="h-3 w-3" aria-hidden />
         </Link>
       ) : null}

@@ -267,7 +267,7 @@ export default function ModelProfilePage() {
                       <Link href={APP_ROUTES.models}>Add custom models</Link>
                     </Button>
                     <Button className="min-h-11" size="sm" variant="ghost" asChild>
-                      <Link href={APP_ROUTES.training}>Training</Link>
+                      <Link href={`${APP_ROUTES.models}#training`}>Training runs</Link>
                     </Button>
                   </div>
                 </div>

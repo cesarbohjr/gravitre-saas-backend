@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -8,7 +8,8 @@ import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { IntelligenceShell } from "@/components/intelligence/shell"
-import { BuiltInModelsPanel } from "@/app/intelligence/models/page"
+import { BuiltInModelsPanel } from "@/components/intelligence/built-in-models-panel"
+import { TrainingWorkbench } from "@/components/training/training-workbench"
 import { ModelsStage } from "@/components/intelligence/pages/models-stage"
 import { studioIntentById } from "@/lib/intelligence/model-catalog-display"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -255,7 +256,7 @@ export default function ModelsPage() {
 
   return (
     <AppShell title={SURFACE_COPY.models.title}>
-      <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6" data-composition="understand">
+      <div className="space-y-6 bg-[color:var(--g-canvas)] px-[var(--np-page-pad-sm)] py-6 sm:px-[var(--np-page-pad)]" data-composition="understand">
         <GravitrePageHeader
           className="px-0 sm:px-0"
           title={SURFACE_COPY.models.title}
@@ -269,7 +270,7 @@ export default function ModelsPage() {
                 Refresh
               </Button>
               <Button size="sm" asChild>
-                <Link href={APP_ROUTES.intelligenceModelStudio}>Create in studio</Link>
+                <Link href={APP_ROUTES.intelligenceModelStudio}>New model</Link>
               </Button>
             </div>
           }
@@ -286,7 +287,7 @@ export default function ModelsPage() {
           <div>
             <h2 id="models-yours-heading" className="text-base font-semibold text-foreground">Your models</h2>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Models your team registered or trained. Create a new one in Model Studio.
+              Models your team registered or trained. Use New model to create one.
             </p>
           </div>
 
@@ -373,6 +374,30 @@ export default function ModelsPage() {
             </p>
           </div>
           <BuiltInModelsPanel />
+        </section>
+
+        <section id="training" aria-labelledby="models-training-heading" className="mt-10 space-y-4 scroll-mt-24">
+          <div>
+            <h2 id="models-training-heading" className="text-base font-semibold text-foreground">Training runs</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Fine-tuning jobs and their progress. Datasets for them live in Intelligence › Data.
+            </p>
+          </div>
+          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading training runs…</p>}>
+            <TrainingWorkbench embedded section="jobs" />
+          </Suspense>
+        </section>
+
+        <section id="fine-tunes" aria-labelledby="models-fine-tunes-heading" className="mt-10 space-y-4 scroll-mt-24">
+          <div>
+            <h2 id="models-fine-tunes-heading" className="text-base font-semibold text-foreground">Fine-tuned models</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Finished fine-tunes and which agents use them.
+            </p>
+          </div>
+          <Suspense fallback={<p className="text-sm text-muted-foreground">Loading fine-tuned models…</p>}>
+            <TrainingWorkbench embedded section="models" />
+          </Suspense>
         </section>
         </IntelligenceShell>
       </div>

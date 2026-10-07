@@ -20,7 +20,7 @@ describe("surface action UX regressions", () => {
   it("uses intent-based Model Studio destinations instead of workspace jargon", () => {
     const studio = readFileSync(resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"), "utf8")
     expect(studio).toMatch(/Create or upload dataset/)
-    expect(studio).toMatch(/Manage datasets and training runs/)
+    expect(studio).toMatch(/Manage your datasets in Data/)
     expect(studio).not.toMatch(/Open training workspace/)
     expect(studio).not.toMatch(/Open full training workspace/)
   })

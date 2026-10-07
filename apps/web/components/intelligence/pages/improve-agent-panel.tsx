@@ -314,8 +314,8 @@ export function ImproveAgentPanel({
                   <p className="text-sm font-medium text-muted-foreground">Attach a fine-tuned model</p>
                   <p className={TYPE.meta}>
                     {fineTunesError ? "Fine-tuned models could not be loaded." : "No ready fine-tuned models yet."}{" "}
-                    <Link href={APP_ROUTES.training} className="font-medium text-[color:var(--g-brand-active)] hover:underline">
-                      Open training
+                    <Link href={`${APP_ROUTES.models}#fine-tunes`} className="font-medium text-[color:var(--g-brand-active)] hover:underline">
+                      Open fine-tuned models
                     </Link>
                   </p>
                 </li>

@@ -3,6 +3,16 @@ import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
 const webRoot = resolve(__dirname, "../..")
+// The dataset picker is one component mounted on Intelligence › Data and in Model Studio's Train step.
+const readDatasetSurfaces = () =>
+  [
+    "components/intelligence/external-datasets-section.tsx",
+    "components/intelligence/pages/model-studio-stage.tsx",
+    "app/intelligence/data/page.tsx",
+    "lib/surface-copy.ts",
+  ]
+    .map((file) => readFileSync(resolve(webRoot, file), "utf8"))
+    .join("\n")
 
 describe("Model Studio external dataset connectors", () => {
   it("uses the training provider API without auto-materialization", () => {
@@ -13,10 +23,7 @@ describe("Model Studio external dataset connectors", () => {
   })
 
   it("labels discovered datasets as reference-only", () => {
-    const studio = readFileSync(
-      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
-      "utf8",
-    )
+    const studio = readDatasetSurfaces()
     expect(studio).toMatch(/Search provider metadata, review access and purpose, then choose where to use it/)
     expect(studio).toMatch(/PREVIEW/)
     expect(studio).toMatch(/Hugging Face/)
@@ -24,10 +31,7 @@ describe("Model Studio external dataset connectors", () => {
   })
 
   it("selects providers from the canonical registry instead of hardcoding one adapter", () => {
-    const studio = readFileSync(
-      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
-      "utf8",
-    )
+    const studio = readDatasetSurfaces()
     expect(studio).toMatch(/externalProviderId/)
     expect(studio).toMatch(/trainingApi\.searchExternalDatasets\(externalProviderId/)
     expect(studio).toMatch(/Dataset provider/)
@@ -39,20 +43,14 @@ describe("Model Studio external dataset connectors", () => {
 
 describe("Model Studio external dataset reference binding", () => {
   it("inspects provider metadata before creating a reference", () => {
-    const studio = readFileSync(
-      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
-      "utf8",
-    )
+    const studio = readDatasetSurfaces()
     expect(studio).toMatch(/trainingApi\.inspectExternalDataset\(externalProviderId, selectedExternalDatasetId\)/)
     expect(studio).toMatch(/data-review-surface="external-dataset-inspect"/)
     expect(studio).toMatch(/Provider files are only imported when a supported materialization step is explicitly started/)
   })
 
   it("uses the existing admin-protected reference API with explicit purpose and target", () => {
-    const studio = readFileSync(
-      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
-      "utf8",
-    )
+    const studio = readDatasetSurfaces()
     expect(studio).toMatch(/trainingApi\.createExternalDatasetReference/)
     expect(studio).toMatch(/purpose: externalPurpose/)
     expect(studio).toMatch(/targetType: externalTargetType/)
@@ -61,20 +59,14 @@ describe("Model Studio external dataset reference binding", () => {
   })
 
   it("does not imply that adding a reference downloads or trains on provider content", () => {
-    const studio = readFileSync(
-      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
-      "utf8",
-    )
+    const studio = readDatasetSurfaces()
     expect(studio).toMatch(/Provider files are only imported when a supported materialization step is explicitly started/)
     expect(studio).not.toMatch(/materializeExternalDataset/)
     expect(studio).not.toMatch(/downloadExternalDataset/)
   })
 
   it("keeps restricted datasets non-selectable", () => {
-    const studio = readFileSync(
-      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
-      "utf8",
-    )
+    const studio = readDatasetSurfaces()
     expect(studio).toMatch(/disabled=\{restricted \|\| externalReferenceSaving\}/)
     expect(studio).toMatch(/RESTRICTED/)
   })
@@ -83,10 +75,7 @@ describe("Model Studio external dataset reference binding", () => {
 
 describe("Model Studio canonical dataset targets", () => {
   it("loads canonical agents, models, Plays and workflows for reference targets", () => {
-    const studio = readFileSync(
-      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
-      "utf8",
-    )
+    const studio = readDatasetSurfaces()
     expect(studio).toMatch(/agentsApi\.list\(\)/)
     expect(studio).toMatch(/mlModelsApi\.list\(\)/)
     expect(studio).toMatch(/playsApi\.list\(\)/)
@@ -94,10 +83,7 @@ describe("Model Studio canonical dataset targets", () => {
   })
 
   it("uses existing target selectors instead of arbitrary ids where canonical lists exist", () => {
-    const studio = readFileSync(
-      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
-      "utf8",
-    )
+    const studio = readDatasetSurfaces()
     expect(studio).toMatch(/aria-label="Dataset target"/)
     expect(studio).toMatch(/Select an existing target/)
     expect(studio).toMatch(/externalTargetType === "evaluation"/)
@@ -105,10 +91,7 @@ describe("Model Studio canonical dataset targets", () => {
   })
 
   it("resets a stale target when the target type changes", () => {
-    const studio = readFileSync(
-      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
-      "utf8",
-    )
+    const studio = readDatasetSurfaces()
     expect(studio).toMatch(/setExternalTargetType/)
     expect(studio).toMatch(/setExternalTargetId\(""\)/)
   })
@@ -117,10 +100,7 @@ describe("Model Studio canonical dataset targets", () => {
 
 describe("Model Studio user-first dataset picker", () => {
   it("uses task language instead of connector/reference language for primary actions", () => {
-    const studio = readFileSync(
-      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
-      "utf8",
-    )
+    const studio = readDatasetSurfaces()
     expect(studio).toMatch(/Search provider metadata, review access and purpose, then choose where to use it/)
     expect(studio).toMatch(/Search datasets/)
     expect(studio).toMatch(/Save dataset reference/)
@@ -128,10 +108,7 @@ describe("Model Studio user-first dataset picker", () => {
   })
 
   it("defaults Model Studio dataset use to training with a model target", () => {
-    const studio = readFileSync(
-      resolve(webRoot, "components/intelligence/pages/model-studio-stage.tsx"),
-      "utf8",
-    )
+    const studio = readDatasetSurfaces()
     expect(studio).toMatch(/useState<ExternalDatasetPurpose>\("training"\)/)
     expect(studio).toMatch(/useState<ExternalDatasetTargetType>\("model"\)/)
   })

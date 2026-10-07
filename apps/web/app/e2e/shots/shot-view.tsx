@@ -10,7 +10,6 @@ import IntelligencePerformancePage from "@/app/intelligence/performance/page"
 import IntelligencePredictivePage from "@/app/intelligence/predictive/page"
 import IntelligenceReportsPage from "@/app/intelligence/reports/page"
 import IntelligenceLearningPage from "@/app/intelligence/learning/page"
-import IntelligenceMemoryPage from "@/app/intelligence/memory/page"
 import MarketplaceAssetsPage from "@/app/marketplace/assets/page"
 import MarketplaceInstalledPage from "@/app/marketplace/installed/page"
 import SourcesPage from "@/app/sources/page"
@@ -19,6 +18,8 @@ import WorkflowsPage from "@/app/workflows/page"
 import SchedulesPage from "@/app/schedules/page"
 import ModelsPage from "@/app/models/page"
 import TrainingPage from "@/app/training/page"
+import IntelligenceDataPage from "@/app/intelligence/data/page"
+import ModelStudioPage from "@/app/intelligence/model-studio/page"
 import GoalsPage from "@/app/goals/page"
 import PlaysPage from "@/app/plays/page"
 import SettingsPage from "@/app/settings/page"
@@ -56,7 +57,8 @@ export const SHOT_SURFACES = {
   "intelligence-predictive": IntelligencePredictivePage,
   "intelligence-reports": IntelligenceReportsPage,
   "intelligence-learning": IntelligenceLearningPage,
-  "intelligence-memory": IntelligenceMemoryPage,
+  // Memory is a section of Knowledge now; the old surface name still captures it.
+  "intelligence-memory": IntelligenceLearningPage,
   marketplace: MarketplaceAssetsPage,
   "marketplace-installed": MarketplaceInstalledPage,
   workflows: WorkflowsPage,
@@ -67,6 +69,8 @@ export const SHOT_SURFACES = {
   settings: SettingsPage,
   audit: AuditPage,
   training: TrainingPage,
+  "intelligence-data": IntelligenceDataPage,
+  "model-studio": ModelStudioPage,
   sources: SourcesPage,
   metrics: MetricsPage,
   proof: AiWorkspaceProofPage,

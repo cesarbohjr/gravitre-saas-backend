@@ -250,7 +250,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(list).toMatch(/data-review-cta="view-on-map"/)
     expect(list).not.toMatch(/from \"@\/components\/ui\/card\"/)
 
-    const memory = readFileSync(resolve(webRoot, "app/intelligence/memory/page.tsx"), "utf8")
+    const memory = readFileSync(resolve(webRoot, "components/intelligence/org-memory-section.tsx"), "utf8")
     expect(memory).not.toMatch(/TabsList/)
     expect(memory).not.toMatch(/from \"@\/components\/ui\/tabs\"/)
     expect(memory).toMatch(/data-review-surface="memory-queue"/)

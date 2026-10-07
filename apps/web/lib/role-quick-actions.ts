@@ -24,8 +24,8 @@ export const ROLE_QUICK_ACTIONS: Record<WelcomeRoleId, RoleQuickAction[]> = {
     { label: "Process health", href: `${APP_ROUTES.orgLearning}#process-mining` },
   ],
   hr: [
-    { label: "Agent training", href: APP_ROUTES.training },
-    { label: "Memory explorer", href: APP_ROUTES.intelligenceMemory },
+    { label: "Agent instructions", href: APP_ROUTES.training },
+    { label: "Memory", href: APP_ROUTES.intelligenceMemory },
   ],
   finance: [
     { label: "Revenue risk radar", href: APP_ROUTES.revenueRisk },

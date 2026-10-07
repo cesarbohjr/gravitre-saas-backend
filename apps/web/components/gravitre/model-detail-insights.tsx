@@ -185,9 +185,9 @@ export function ModelDetailInsights({
           </div>
           <div className="flex flex-wrap gap-2">
             <Button className="min-h-11" variant="outline" size="sm" asChild>
-              <Link href="/training">
+              <Link href="/models#training">
                 <FlaskConical className="mr-1 h-4 w-4" />
-                Training
+                Training runs
               </Link>
             </Button>
             <Button className="min-h-11" size="sm" disabled={!canDeploy || isDeploying} onClick={onDeploy}>
@@ -372,7 +372,7 @@ export function ModelDetailInsights({
             {model.datasetId ? (
               <div className="flex justify-between gap-2">
                 <span className="text-muted-foreground">Dataset</span>
-                <Link href="/training" className="truncate text-primary underline-offset-4 hover:underline">
+                <Link href="/intelligence/data" className="truncate text-primary underline-offset-4 hover:underline">
                   {model.datasetId}
                 </Link>
               </div>
@@ -432,8 +432,8 @@ export function ModelDetailInsights({
           {!hasVersions ? (
             <p className="text-sm text-muted-foreground">
               No trained versions yet. Start a training job from{" "}
-              <Link href="/training" className="text-primary underline-offset-4 hover:underline">
-                Training
+              <Link href="/models#training" className="text-primary underline-offset-4 hover:underline">
+                Training runs
               </Link>{" "}
               and link it to this registry entry.
             </p>
