@@ -1,5 +1,5 @@
 import Link from "next/link"
-import Image from "next/image"
+import { GravitreMark } from "@/components/brand/gravitre-mark"
 import type { SVGProps } from "react"
 import { cn } from "@/lib/utils"
 
@@ -29,15 +29,12 @@ export function LogoSVG({ className, ...props }: SVGProps<SVGSVGElement>) {
 
 export const Logo = () => {
   return (
-    <Link href="/" className="flex items-center gap-2">
-      <Image
-        src="/images/gravitre-logo-black.png"
-        alt="Gravitre"
-        width={140}
-        height={40}
-        className="h-8 w-auto"
-        priority
-      />
+    <Link
+      href="/"
+      aria-label="Gravitre home"
+      className="flex h-11 items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <GravitreMark className="h-8" title="Gravitre" />
     </Link>
   )
 }

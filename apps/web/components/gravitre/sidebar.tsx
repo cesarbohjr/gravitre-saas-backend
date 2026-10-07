@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { GravitreMark } from "@/components/brand/gravitre-mark"
 import { Button } from "@/components/ui/button"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Icon } from "@/lib/icons"
@@ -213,27 +214,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                 </div>
               </>
             ) : (
-              <>
-                <div
-                  className={cn(
-                    "hidden items-center justify-center md:flex",
-                    navExpanded && "md:hidden",
-                  )}
-                >
-                  <img
-                    src="/images/gravitre-icon-black.png"
-                    alt="Gravitre"
-                    className="h-7 w-7 object-contain dark:invert"
-                  />
-                </div>
-                <div className={cn("min-w-0", navExpanded ? "md:block" : "md:hidden")}>
-                  <img
-                    src="/images/gravitre-logo-black.png"
-                    alt="Gravitre"
-                    className="h-7 w-auto max-w-[148px] object-contain object-left dark:invert"
-                  />
-                </div>
-              </>
+              <GravitreMark className="h-8" />
             )}
           </Link>
           <Button

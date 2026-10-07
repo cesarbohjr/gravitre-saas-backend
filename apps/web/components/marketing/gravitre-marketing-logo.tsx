@@ -1,5 +1,5 @@
-import Image from "next/image"
 import Link from "next/link"
+import { GravitreMark } from "@/components/brand/gravitre-mark"
 import { cn } from "@/lib/utils"
 
 type GravitreMarketingLogoProps = {
@@ -9,42 +9,25 @@ type GravitreMarketingLogoProps = {
   priority?: boolean
 }
 
-export function GravitreMarketingLogo({
-  className,
-  height = 40,
-  href = "/",
-  priority = false,
-}: GravitreMarketingLogoProps) {
-  const width = Math.round(height * 4.5)
+function Mark({ className, size }: { className?: string; size: number }) {
+  return <GravitreMark className={cn("w-auto", className)} style={{ height: size }} />
+}
 
-  const image = (
-    <>
-      <Image
-        src="/images/gravitre-logo-black.png"
-        alt="Gravitre"
-        width={width}
-        height={height}
-        priority={priority}
-        className={cn("h-auto w-auto dark:hidden", className)}
-      />
-      <Image
-        src="/images/gravitre-logo-white.png"
-        alt="Gravitre"
-        width={width}
-        height={height}
-        priority={priority}
-        className={cn("hidden h-auto w-auto dark:block", className)}
-      />
-    </>
-  )
-
+function wrap(image: React.ReactNode, href?: string) {
   if (!href) return <span className="inline-flex items-center">{image}</span>
-
   return (
-    <Link href={href} className="inline-flex items-center">
+    <Link
+      href={href}
+      aria-label="Gravitre home"
+      className="inline-flex items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
       {image}
     </Link>
   )
+}
+
+export function GravitreMarketingLogo({ className, height = 40, href = "/" }: GravitreMarketingLogoProps) {
+  return wrap(<Mark size={height} className={className} />, href)
 }
 
 export function GravitreMarketingLogoWhite({
@@ -52,22 +35,5 @@ export function GravitreMarketingLogoWhite({
   height = 32,
   href = "/",
 }: Omit<GravitreMarketingLogoProps, "priority">) {
-  const width = Math.round(height * 4.5)
-  const image = (
-    <Image
-      src="/logo-white.svg"
-      alt="Gravitre"
-      width={width}
-      height={height}
-      className={cn("h-auto w-auto", className)}
-    />
-  )
-
-  if (!href) return <span className="inline-flex items-center">{image}</span>
-
-  return (
-    <Link href={href} className="inline-flex items-center">
-      {image}
-    </Link>
-  )
+  return wrap(<Mark size={height} className={className} />, href)
 }

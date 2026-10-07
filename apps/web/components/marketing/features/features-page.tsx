@@ -138,7 +138,7 @@ function ProductSurfaces() {
   const surfaces = MARKETING_COPY.homeFeatures
 
   return (
-    <Container className="border-divide border-x">
+    <Container className="border-divide md:border-x">
       <div className="flex flex-col items-center py-16">
         <GravitreReveal>
           <Badge text="Surfaces" />
@@ -176,7 +176,7 @@ function AuthorizedUseCases() {
   const [active, setActive] = useState<number | null>(null)
 
   return (
-    <Container className="border-divide relative overflow-hidden border-x px-4 md:px-8">
+    <Container className="border-divide relative overflow-hidden md:border-x px-4 md:px-8">
       <div className="relative flex flex-col items-center py-20">
         <GravitreReveal>
           <Badge text={copy.badge} />
@@ -235,7 +235,7 @@ function HonestReporting() {
   const copy = MARKETING_COPY.transparencyMetrics
 
   return (
-    <Container className="border-divide border-x">
+    <Container className="border-divide md:border-x">
       <div className="flex flex-col items-center px-4 py-16 md:px-8">
         <GravitreReveal>
           <Badge text={copy.badge} />

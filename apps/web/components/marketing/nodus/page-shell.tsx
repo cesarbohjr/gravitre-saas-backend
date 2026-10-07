@@ -25,7 +25,7 @@ export function MarketingPageHero({
   const centered = align === "center"
   return (
     <Container
-      className={`border-divide flex flex-col border-x px-4 pt-10 pb-10 md:px-8 md:pt-20 md:pb-12 ${
+      className={`border-divide flex flex-col md:border-x px-4 pt-10 pb-10 md:px-8 md:pt-20 md:pb-12 ${
         centered ? "items-center" : "items-start"
       }`}
     >
@@ -52,7 +52,7 @@ export function MarketingRails({
   className?: string
 }) {
   return (
-    <Container className={`border-divide border-x px-4 py-12 md:px-8 md:py-16 ${className}`}>
+    <Container className={`border-divide md:border-x px-4 py-12 md:px-8 md:py-16 ${className}`}>
       {children}
     </Container>
   )

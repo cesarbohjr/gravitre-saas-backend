@@ -62,7 +62,7 @@ export const HowItWorks = () => {
     return () => clearInterval(interval);
   }, [activeTab]);
   return (
-    <Container className="border-divide overflow-x-hidden border-x">
+    <Container className="border-divide overflow-x-hidden md:border-x">
       <div className="flex flex-col items-center px-4 pt-16 md:px-0">
         <Badge text="How it works" />
         <SectionHeading className="mt-4 px-2">Integrates easily</SectionHeading>

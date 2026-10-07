@@ -7,17 +7,22 @@ import { CloseIcon, HamburgerIcon } from "@/components/marketing/nodus-icons/gen
 import { Logo } from "./logo"
 import { Button } from "./button"
 
+const MENU_BUTTON =
+  "flex size-11 items-center justify-center rounded-lg text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-neutral-200 dark:hover:bg-neutral-800"
+
 export function MobileNav({ items }: { items: ReadonlyArray<{ title: string; href: string }> }) {
   const [isOpen, setIsOpen] = useState(false)
   return (
     <div className="relative flex items-center justify-between p-2 md:hidden">
       <Logo />
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="shadow-aceternity flex size-6 flex-col items-center justify-center rounded-md"
-        aria-label="Toggle menu"
+        className={MENU_BUTTON}
+        aria-label="Open menu"
+        aria-expanded={isOpen}
       >
-        <HamburgerIcon className="size-4 shrink-0 text-gray-600" />
+        <HamburgerIcon className="size-5 shrink-0" />
       </button>
 
       <AnimatePresence>
@@ -32,11 +37,12 @@ export function MobileNav({ items }: { items: ReadonlyArray<{ title: string; hre
             <div className="flex items-center justify-between p-2">
               <Logo />
               <button
+                type="button"
                 onClick={() => setIsOpen(false)}
-                className="shadow-aceternity flex size-6 flex-col items-center justify-center rounded-md"
+                className={MENU_BUTTON}
                 aria-label="Close menu"
               >
-                <CloseIcon className="size-4 shrink-0 text-gray-600" />
+                <CloseIcon className="size-5 shrink-0" />
               </button>
             </div>
             <div className="divide-divide border-divide mt-6 flex flex-col divide-y border-t">

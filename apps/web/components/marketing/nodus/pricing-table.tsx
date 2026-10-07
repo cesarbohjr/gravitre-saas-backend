@@ -75,7 +75,7 @@ export function PricingTable() {
 
   return (
     <section>
-      <Container className="border-divide border-x px-4 py-10 md:px-8">
+      <Container className="border-divide md:border-x px-4 py-10 md:px-8">
         <p className="text-brand text-center text-sm font-normal">Compare plans</p>
         <h2 className="text-charcoal-700 mt-2 text-center text-2xl font-medium tracking-tight md:text-3xl dark:text-neutral-100">
           Compare all features
@@ -85,7 +85,7 @@ export function PricingTable() {
         </p>
       </Container>
 
-      <Container className="border-divide border-x">
+      <Container className="border-divide md:border-x">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-left">
             <thead>
