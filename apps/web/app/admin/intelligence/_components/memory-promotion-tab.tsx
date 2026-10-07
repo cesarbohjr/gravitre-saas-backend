@@ -83,7 +83,7 @@ export function MemoryPromotionTab({ enabled }: { enabled: boolean }) {
     mutate,
   } = useSWR(
     enabled ? ["admin/memory-promotion/candidates"] : null,
-    () => memoryPromotionApi.candidates({ status: "pending", limit: 100 }),
+    () => memoryPromotionApi.candidates({ status: "pending_approval", limit: 100 }),
     { revalidateOnFocus: false },
   )
   const { data: recentData, mutate: mutateRecent } = useSWR(
