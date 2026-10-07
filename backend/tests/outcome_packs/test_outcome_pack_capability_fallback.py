@@ -41,7 +41,11 @@ def test_falls_back_to_next_provider_and_records_refusal():
     assert calls[0].startswith("apollo.") and len(calls) == 2
     assert result.data["capability_fallback"]["skipped"][0]["state"] == "plan_limit"
     blocks = ca.load_blocks(store, ORG)
-    assert blocks and blocks[0].vendor == "apollo" and blocks[0].action == "*"
+    # A plan limit is an entitlement on the refused action, not on the vendor:
+    # Apollo enrichment can still run while Apollo people search cannot.
+    assert blocks and blocks[0].vendor == "apollo" and blocks[0].action == "apollo.people.search"
+    usable, _ = ca.ordered_alternatives("prospect.enrichment", connected=["apollo"], blocks=blocks)
+    assert usable and usable[0][0] == "apollo"
 
     # The next call routes around the blocked provider without trying it.
     calls.clear()

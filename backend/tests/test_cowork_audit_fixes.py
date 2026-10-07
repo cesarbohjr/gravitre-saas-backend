@@ -41,3 +41,31 @@ def test_weekly_workflow_totals_buckets():
     totals = _weekly_workflow_totals(client, "org-1", "2026-07-01T00:00:00+00:00")
     assert totals[0] == 10
     assert totals[1] == 5
+
+
+def test_operator_action_workflow_uses_the_canonical_run_path():
+    """A suggested action is a UI entry surface: it must start the same governed run
+    (policy, approvals, queue) a manual run does, never a bare workflow_runs insert."""
+    from app.services import operator_execute_action_service as svc
+
+    client = MagicMock()
+    with patch.object(svc, "_pick_workflow_id", return_value="wf-1"), patch(
+        "app.routers.workflows._execute_workflow_with_context",
+        return_value={"run_id": "run-9", "status": "pending_approval"},
+    ) as canonical:
+        result = execute_operator_action(
+            client=client,
+            org_id="org-1",
+            user_id="user-1",
+            environment="production",
+            payload={"action_type": "immediate", "title": "Run weekly sync", "description": "workflow"},
+            settings=MagicMock(),
+        )
+
+    canonical.assert_called_once()
+    kwargs = canonical.call_args.kwargs
+    assert kwargs["trigger_type"] == "manual" and kwargs["workflow_id"] == "wf-1" and kwargs["actor_id"] == "user-1"
+    client.table.assert_not_called()
+    assert result["entityId"] == "run-9"
+    assert result["status"] == "pending_approval"
+    assert "approval" in result["message"]

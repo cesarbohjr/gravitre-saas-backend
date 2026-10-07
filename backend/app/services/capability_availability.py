@@ -122,7 +122,10 @@ def record_unavailable(
         return
     now = now or _now()
     vendor = vendor_of(action)
-    scope_all = whole_vendor if whole_vendor is not None else state in {"auth_expired", "plan_limit", "unhealthy"}
+    # Auth and outages affect every action of a vendor. A plan limit is an
+    # entitlement on one action (an Apollo plan can allow enrichment but not
+    # people search), so it blocks only the refused action.
+    scope_all = whole_vendor if whole_vendor is not None else state in {"auth_expired", "unhealthy"}
     key_action = "*" if scope_all else action
     payload = {
         "state": state,
@@ -319,6 +322,73 @@ def ordered_alternatives(
     return usable, skipped
 
 
+# Readiness ladder, evaluated in order. A provider is EXECUTABLE only when every
+# earlier rung holds; the first rung that fails names why it cannot run.
+PROVIDER_STATE_LADDER = ("supported", "connected", "authorized", "entitled", "healthy", "executable")
+_BLOCK_RUNG = {
+    "auth_expired": "authorized",
+    "permission_denied": "authorized",
+    "plan_limit": "entitled",
+    "rate_limited": "healthy",
+    "unhealthy": "healthy",
+}
+
+
+def provider_states(
+    capability_id: str,
+    *,
+    connected: list[str],
+    blocks: list[Block],
+    web_research: bool = False,
+) -> list[dict[str, Any]]:
+    """Every provider bound to a capability with its readiness ladder, in preference order.
+
+    Planning sees the whole capability universe: a supported provider that is not
+    connected still informs the plan (as an optional improvement), but only an
+    ``executable`` provider may be run. Authentication, entitlement and health
+    are kept apart so "Apollo is connected but its plan does not include people
+    search" never reads as "Apollo is disconnected".
+    """
+    from app.capability_ontology.registry import get_capability
+    from app.connectors.action_catalog.tool_aliases import catalog_tool_is_implemented
+    from app.services.tool_service import list_registered_actions
+
+    definition = get_capability(capability_id)
+    if definition is None:
+        return []
+    registered = set(list_registered_actions())
+    connected_set = {c.strip().lower() for c in connected if c}
+    out: list[dict[str, Any]] = []
+    for binding in definition.bindings:
+        vendor = binding.vendor.strip().lower()
+        builtin = binding.action_key == WEB_RESEARCH_ACTION
+        rungs = {
+            "supported": builtin or catalog_tool_is_implemented(binding.action_key, registered),
+            "connected": web_research if builtin else vendor in connected_set,
+            "authorized": True,
+            "entitled": True,
+            "healthy": True,
+        }
+        block = None if builtin else blocked_reason(blocks, binding.action_key)
+        if block is not None:
+            rungs[_BLOCK_RUNG.get(block.state, "healthy")] = False
+        rungs["executable"] = all(rungs.values())
+        state = next((f"not_{r}" for r in PROVIDER_STATE_LADDER if not rungs[r]), "executable")
+        out.append(
+            {
+                "vendor": vendor,
+                "action": binding.action_key,
+                "label": binding.label,
+                "builtin": builtin,
+                **rungs,
+                "state": state,
+                "reason": block.reason if block is not None else None,
+                "blockedState": block.state if block is not None else None,
+            }
+        )
+    return out
+
+
 def invoke_capability_with_fallback(
     ctx: Any,
     action: str,
@@ -337,7 +407,19 @@ def invoke_capability_with_fallback(
     connected = _connected_hint(ctx, params)
     query = str(params.pop("_capability_query", "") or "")
     classification = params.pop("_capability_classification", None)
-    allow_fallback = bool(params.pop("_capability_fallback", False))
+    from app.capability_ontology.registry import get_capability
+
+    # Reads fall back in-turn by default: retrying a read on another provider
+    # cannot double-apply anything, so a plan-limited or failing provider is
+    # replanned around in the same turn on every surface (chat, voice, Plays).
+    # Writes still need an explicit opt-in (Play/objective steps set it).
+    definition = get_capability(capability_id)
+    fallback_flag = params.pop("_capability_fallback", None)
+    allow_fallback = (
+        bool(fallback_flag)
+        if fallback_flag is not None
+        else bool(definition is not None and definition.kind == "read")
+    )
     blocks = load_blocks(getattr(ctx, "client", None), getattr(ctx, "org_id", None) or "")
     blocked_vendors = {b.vendor for b in blocks if b.action == "*"}
 

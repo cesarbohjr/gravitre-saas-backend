@@ -59,7 +59,6 @@ from app.routers import (
     decisions,
     departments,
     department_pipelines,
-    execution,
     entitlements,
     extension,
     feedback_mode,
@@ -696,7 +695,6 @@ app.include_router(agent_collaboration.router)
 app.include_router(agent_swarm.router)
 app.include_router(department_subagents.router)
 app.include_router(watcher_agents.router)
-app.include_router(execution.router)
 app.include_router(rag_enhanced.router)
 app.include_router(optimization.router)
 app.include_router(goals.router)

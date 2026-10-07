@@ -37,7 +37,6 @@ BILLING_GATE_BLOCKED_PREFIXES: tuple[str, ...] = (
     "/api/chat",
     "/api/connectors/oauth/",
     "/api/conversations",
-    "/api/execution",
     "/api/lite",
     "/api/marketplace/",
     "/api/meson",

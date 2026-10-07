@@ -2,14 +2,11 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
 from typing import Any
 
 from supabase import Client
 
 from app.core.supabase_response import response_error
-from app.workflows.execute import execute_workflow_steps
-from app.workers.workflow_dispatch import try_enqueue_workflow_run_sync
 
 
 def _pick_workflow_id(client: Client, org_id: str, title: str, description: str) -> str | None:
@@ -64,52 +61,44 @@ def _run_workflow(
     environment: str,
     workflow_id: str,
     parameters: dict[str, Any] | None = None,
+    *,
+    settings: Any = None,
 ) -> dict[str, Any]:
-    now_iso = datetime.now(timezone.utc).isoformat()
-    insert_payload = {
-        "org_id": org_id,
-        "workflow_id": workflow_id,
-        "status": "running",
-        "environment": environment,
-        "triggered_by": user_id,
-        "parameters": parameters or {},
-        "created_at": now_iso,
-    }
-    # Bug fix (2026-09-12): two stacked bugs here.
-    # (1) postgrest-py's SyncQueryRequestBuilder (returned by .insert()) has
-    #     no .select()/.single() method — chaining them raised an uncaught
-    #     AttributeError on every call. .insert() already returns the full
-    #     row by default (returning=representation); take the first row in
-    #     place of the (non-functional) .single().
-    # (2) postgrest-py v2's APIResponse has no `.error` attribute (v1 had
-    #     one) — reading it directly also raises AttributeError. Use the
-    #     project's response_error() helper (app/core/supabase_response.py),
-    #     which getattr()s safely, matching the rest of the codebase.
-    insert_resp = client.table("workflow_runs").insert(insert_payload).execute()
-    insert_error = response_error(insert_resp)
-    if insert_error or not insert_resp.data:
-        raise ValueError(str(insert_error or "Could not start workflow run"))
-    run_id = str(insert_resp.data[0].get("id"))
-    queued = try_enqueue_workflow_run_sync(
-        client=client,
-        org_id=org_id,
-        environment=environment,
-        workflow_id=workflow_id,
-        run_id=run_id,
-    )
-    if not queued:
-        execute_workflow_steps(
+    """Start the workflow through the canonical run path (policy, approvals, queue).
+
+    This used to insert a bare ``workflow_runs`` row and call the step runner
+    directly, which skipped ``resolve_policy`` and the approval decision (and
+    raised TypeError on both calls). An operator suggestion is a UI entry
+    surface, not its own execution engine, so it now starts the same run a
+    manual, scheduled or Play-triggered execution would.
+    """
+    from fastapi import HTTPException
+
+    from app.config import get_settings
+    from app.routers.workflows import _execute_workflow_with_context
+
+    try:
+        result = _execute_workflow_with_context(
             client=client,
+            settings=settings or get_settings(),
             org_id=org_id,
-            environment=environment,
+            environment_name=environment,
             workflow_id=workflow_id,
-            run_id=run_id,
+            parameters=parameters or {},
+            actor_id=user_id,
+            trigger_type="manual",
         )
+    except HTTPException as exc:
+        raise ValueError(str(exc.detail)) from exc
+    run_id = str(result.get("run_id") or "")
+    run_status = str(result.get("status") or "")
+    pending = run_status == "pending_approval"
     return {
         "success": True,
-        "message": "Workflow run started.",
+        "message": "Workflow run is waiting for approval." if pending else "Workflow run started.",
         "entityType": "workflow_run",
         "entityId": run_id,
+        "status": run_status,
         "url": f"/workflows/runs/{run_id}",
     }
 
@@ -121,6 +110,7 @@ def execute_operator_action(
     user_id: str,
     environment: str,
     payload: dict[str, Any],
+    settings: Any = None,
 ) -> dict[str, Any]:
     action_type = str(payload.get("action_type") or "immediate").lower()
     title = str(payload.get("title") or "Suggested action")
@@ -140,6 +130,7 @@ def execute_operator_action(
                 environment,
                 workflow_id,
                 {"source": "operator_execute_action", "action_title": title},
+                settings=settings,
             )
 
     if action_type == "scheduled" or "schedule" in combined.lower():

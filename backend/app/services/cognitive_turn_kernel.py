@@ -120,6 +120,27 @@ class CognitiveTurnKernel:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
 
+    async def _persist_active_objective(self, request: CognitiveTurnRequest, record: dict[str, Any]) -> None:
+        """Save the objective on the conversation so every surface continues the same one."""
+        if not request.conversation_id:
+            return
+        try:
+            from app.services.conversation_state_service import get_conversation_state_service
+
+            await get_conversation_state_service(self.settings).update_task_state(
+                request.conversation_id,
+                request.org_id,
+                {"active_objective": record},
+                client=request.client,
+            )
+        except Exception as exc:  # noqa: BLE001 - the plan still answers this turn
+            logger.warning(
+                "cognitive_active_objective_persist_failed org_id=%s conversation_id=%s err=%s",
+                request.org_id,
+                request.conversation_id,
+                exc,
+            )
+
     async def run_pre_act(self, request: CognitiveTurnRequest) -> CognitiveTurnContext:
         turn_id = str(uuid4())
         if not getattr(self.settings, "cognitive_turn_kernel_enabled", True):
@@ -298,34 +319,73 @@ class CognitiveTurnKernel:
             try:
                 from app.services.objective_capability_composer import (
                     capability_resources_for_planner,
+                    is_objective_revision,
                     looks_like_objective,
+                    objective_state,
                     plan_objective,
+                    revise_objective,
                 )
 
                 state_in = request.task_state if isinstance(request.task_state, dict) else {}
-                if not state_in.get("objective_contract") and looks_like_objective(request.message or ""):
-                    objective_brief = plan_objective(
-                        client,
-                        request.org_id,
-                        request.message or "",
-                        environment_name=request.environment_name or "production",
-                        settings=self.settings,
+                active = state_in.get("active_objective") if isinstance(state_in.get("active_objective"), dict) else None
+                message = request.message or ""
+                if not state_in.get("objective_contract"):
+                    if active and is_objective_revision(message, active):
+                        # A correction ("actually, make that Canadian MSPs with 20–100
+                        # employees") revises the active objective; everything it does
+                        # not name (metric, definition, verification, target) is kept.
+                        objective_brief = revise_objective(
+                            client,
+                            request.org_id,
+                            active,
+                            message,
+                            environment_name=request.environment_name or "production",
+                            settings=self.settings,
+                        )
+                    elif looks_like_objective(message):
+                        objective_brief = plan_objective(
+                            client,
+                            request.org_id,
+                            message,
+                            environment_name=request.environment_name or "production",
+                            settings=self.settings,
+                        )
+                if objective_brief and objective_brief.get("plan"):
+                    revision = objective_brief.get("revision") if isinstance(objective_brief.get("revision"), dict) else None
+                    record = objective_state(
+                        objective_brief,
+                        prior=active if revision else None,
+                        change=(revision or {}).get("change"),
                     )
-                    if objective_brief.get("plan"):
-                        planner_state = {**state_in, **capability_resources_for_planner(objective_brief)}
-                        if isinstance(ctx.knowledge_pack, dict):
-                            ctx.knowledge_pack = dict(ctx.knowledge_pack)
-                            section = str(ctx.knowledge_pack.get("prompt_section") or "")
-                            block = (
-                                "<objective_plan>\n"
-                                + str(objective_brief.get("summary") or "")
-                                + "\nAnswer objective-first in plain language: confirm how a result counts, "
-                                "state the baseline and gap (unknown when not verified), the recommended plan "
-                                "and its constraints, and that the target is not a promise. Ask the person to "
-                                "confirm the definition and approve the plan before anything runs. Do not name "
-                                "internal Plays, packs, workflows or tools.\n</objective_plan>"
-                            )
-                            ctx.knowledge_pack["prompt_section"] = f"{section}\n\n{block}".strip() if section else block
+                    objective_brief["state"] = record
+                    planner_state = {
+                        **state_in,
+                        **capability_resources_for_planner(objective_brief),
+                        "active_objective": record,
+                    }
+                    await self._persist_active_objective(request, record)
+                    if isinstance(ctx.knowledge_pack, dict):
+                        ctx.knowledge_pack = dict(ctx.knowledge_pack)
+                        section = str(ctx.knowledge_pack.get("prompt_section") or "")
+                        lead = (
+                            f"The person just revised their objective: {revision['change']}. Keep the rest of "
+                            "the objective as it was, say in one or two sentences what changed and how the plan "
+                            "changes, and do not restate the whole plan.\n"
+                            if revision
+                            else ""
+                        )
+                        block = (
+                            "<objective_plan>\n"
+                            + lead
+                            + str(objective_brief.get("summary") or "")
+                            + "\nAnswer objective-first in plain language: confirm how a result counts, "
+                            "state the baseline and gap (unknown when not verified), the recommended plan "
+                            "and its constraints, which providers are used, unavailable or optional, and that "
+                            "the target is not a promise. Ask the person to confirm the definition and approve "
+                            "the plan before anything runs. Do not name internal Plays, packs, workflows or "
+                            "tools.\n</objective_plan>"
+                        )
+                        ctx.knowledge_pack["prompt_section"] = f"{section}\n\n{block}".strip() if section else block
             except Exception as exc:  # noqa: BLE001
                 logger.debug("cognitive_objective_plan_skipped error=%s", exc)
                 objective_brief = None
@@ -378,6 +438,8 @@ class CognitiveTurnKernel:
             if objective_brief and objective_brief.get("plan"):
                 plan = dict(plan)
                 plan["objective"] = {
+                    "state": objective_brief.get("state"),
+                    "revision": objective_brief.get("revision"),
                     "contract": objective_brief.get("contract"),
                     "feasibility": objective_brief.get("feasibility"),
                     "plan": objective_brief.get("plan"),
