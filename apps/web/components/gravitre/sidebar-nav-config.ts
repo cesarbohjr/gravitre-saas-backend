@@ -138,7 +138,7 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavGroup[] = [
         href: APP_ROUTES.intelligence,
         icon: "sparkles",
         badge: "Explain",
-        hint: "Operational health, ROI, learning, models, and memory",
+        hint: "Understand what is changing; build with data and models",
       },
       {
         name: "Results",

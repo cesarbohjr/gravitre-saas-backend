@@ -8,7 +8,7 @@ const pages = [
   "app/intelligence/performance/page.tsx",
   "app/intelligence/predictive/page.tsx",
   "app/intelligence/reports/page.tsx",
-  "app/intelligence/models/page.tsx",
+  "app/models/page.tsx",
 ]
 
 describe("Intelligence 3.0 surface consistency", () => {

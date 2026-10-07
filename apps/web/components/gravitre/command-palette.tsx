@@ -201,9 +201,13 @@ export function CommandPalette({
             <Cpu className="mr-2 h-4 w-4 text-teal-700 dark:text-teal-400" />
             <span>{SURFACE_COPY.builtInModels.title}</span>
           </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.intelligenceData))}>
+            <Layers3 className="mr-2 h-4 w-4 text-[color:var(--g-emerald-deep)]" />
+            <span>{SURFACE_COPY.intelligenceData.title}</span>
+          </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.training))}>
             <Layers3 className="mr-2 h-4 w-4 text-[color:var(--g-emerald-deep)]" />
-            <span>{SURFACE_COPY.training.title}</span>
+            <span>{SURFACE_COPY.trainingInstructions.title}</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.models))}>
             <Layers3 className="mr-2 h-4 w-4 text-muted-foreground" />

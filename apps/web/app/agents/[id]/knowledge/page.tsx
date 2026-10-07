@@ -217,7 +217,7 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
                 <p className="text-sm text-muted-foreground">
                   No custom instructions yet.{" "}
                   <Link href="/training" className="underline underline-offset-2">
-                    Add instructions in Training
+                    Add instructions
                   </Link>
                   .
                 </p>

@@ -105,7 +105,7 @@ export function IntelligencePillars({
               : "No training signals yet"
           }
           icon={<PottedPlant className="h-4 w-4" weight="duotone" aria-hidden />}
-          href={APP_ROUTES.training}
+          href={`${APP_ROUTES.models}#training`}
         />
         <GravitreMetric
           label="Predicts"

@@ -39,7 +39,7 @@ import {
 import { OverviewLivingMap } from "@/components/intelligence/pages/overview-living-map"
 import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
 import { IntelligenceFreshnessBar } from "@/components/intelligence/shell/intelligence-freshness-bar"
-import { EvidenceRail, InsightRail, IntelligenceJourney } from "@/components/intelligence/journey-rails"
+import { EvidenceRail, InsightRail } from "@/components/intelligence/journey-rails"
 import { buildLensMetrics } from "@/components/intelligence/map/build-lens-metrics"
 import type { IntelligenceMapLens } from "@/components/intelligence/map/intelligence-map-lens"
 import {
@@ -400,7 +400,6 @@ function IntelligenceCenterInner() {
   const summary = (outcomes?.summary as Record<string, unknown> | undefined) ?? {}
   const totalEvents = reportedNumber(summary.total_events)
   const avgConfidence = trust?.avg_confidence as number | null | undefined
-  const journeyStep: 0 | 1 | 2 = !askSelected ? 0 : askSelected.kind === "relationship" ? 2 : 1
   return (
     <AppShell title={copy.title}>
       <div className="relative bg-[color:var(--g-canvas)]" data-composition="understand">
@@ -411,7 +410,7 @@ function IntelligenceCenterInner() {
           <h1 className="mt-2 font-sans text-xl font-medium leading-tight text-foreground sm:text-2xl">{copy.title}</h1>
           <p className="mt-2 pb-5 text-sm text-muted-foreground">What is changing across the business?</p>
         </header>
-        {/* Investigation tools retain freshness, lenses, journey, and evidence. */}
+        {/* One row: the hub tabs and freshness. No second menu here (the old Insight › Evidence stepper read as one). */}
         <div
           data-investigation-toolbar=""
           className="flex flex-wrap items-end gap-x-6 gap-y-1 border-b border-[color:var(--g-border-default)] bg-[color:var(--g-rail-bg)] px-4 pt-3 md:px-5"
@@ -425,7 +424,6 @@ function IntelligenceCenterInner() {
               onRefresh={() => mutateSnapshot()}
               className="justify-start"
             />
-            <IntelligenceJourney step={journeyStep} className="hidden xl:flex" />
           </div>
         </div>
 

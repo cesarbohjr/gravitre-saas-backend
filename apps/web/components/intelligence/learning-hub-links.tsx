@@ -20,7 +20,7 @@ const LINKS = [
     icon: ChartLineUp,
   },
   {
-    href: APP_ROUTES.training,
+    href: `${APP_ROUTES.models}#training`,
     title: "Model training",
     description: "Improve models from real usage — separate from business learning claims.",
     icon: Cpu,

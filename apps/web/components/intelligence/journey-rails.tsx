@@ -13,35 +13,6 @@ import { cn } from "@/lib/utils"
 type SignalRow = Record<string, unknown>
 type Learning = { id: string; statement: string; learnedAt?: string }
 
-const JOURNEY = ["Insight", "Evidence", "Relationship", "Expert graph"] as const
-
-/** Where the operator is in Insight → Evidence → Relationship → Expert graph (G-STRUCT A5). */
-export function IntelligenceJourney({ step, className }: { step: 0 | 1 | 2 | 3; className?: string }) {
-  return (
-    <ol className={cn("flex items-center gap-1 text-[11.5px]", className)} aria-label="Intelligence journey">
-      {JOURNEY.map((label, index) => (
-        <li key={label} className="flex items-center gap-1">
-          <span
-            aria-current={index === step ? "step" : undefined}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5",
-              index === step
-                ? "bg-[color:var(--g-intelligence-soft)] font-semibold text-[color:var(--g-intelligence-bright)]"
-                : index < step
-                  ? "text-foreground"
-                  : "text-muted-foreground",
-            )}
-          >
-            <span className="tabular-nums">{index + 1}</span>
-            {label}
-          </span>
-          {index < JOURNEY.length - 1 ? <span className="text-muted-foreground/50" aria-hidden>›</span> : null}
-        </li>
-      ))}
-    </ol>
-  )
-}
-
 function RailHeading({ children, id }: { children: string; id: string }) {
   return (
     <h2 id={id} className="text-[12.5px] font-semibold text-foreground">

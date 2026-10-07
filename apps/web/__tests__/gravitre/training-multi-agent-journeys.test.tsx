@@ -2,7 +2,7 @@
 import React, { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { beforeEach, afterEach, expect, it, vi } from "vitest"
-import TrainingPage from "@/app/training/page"
+import { TrainingWorkbench as TrainingPage } from "@/components/training/training-workbench"
 import { StartSwarmDialog } from "@/components/agent-swarm/start-swarm-dialog"
 import { SwarmRunDetailPanel } from "@/components/agent-swarm/swarm-run-detail-panel"
 import {

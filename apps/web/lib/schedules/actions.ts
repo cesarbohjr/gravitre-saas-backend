@@ -82,7 +82,7 @@ export function scheduleEditHref(
     return `/runs/${ids.runId}`
   }
   if (item.kind === "job") {
-    return ids.jobId ? `/training?job=${ids.jobId}` : "/training"
+    return "/models#training"
   }
   return null
 }

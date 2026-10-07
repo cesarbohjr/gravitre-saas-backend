@@ -532,6 +532,27 @@ const swarmChurnAudit = {
 }
 
 export const SHOT_FIXTURES: Record<string, unknown> = {
+  // Intelligence › Data: public dataset providers and a search result page.
+  "/api/training/external-datasets/providers": {
+    providers: [
+      { id: "huggingface", label: "Hugging Face", capabilities: ["search", "inspect"], auth: "optional_token", materialization: "explicit_only", notes: "" },
+      { id: "kaggle", label: "Kaggle", capabilities: ["search", "inspect"], auth: "optional_token", materialization: "explicit_only", notes: "" },
+    ],
+    count: 2,
+    mutation: false,
+    materialization: "explicit_only",
+  },
+  "/api/training/external-datasets/search": {
+    provider: "huggingface",
+    query: "support",
+    count: 3,
+    mutation: false,
+    datasets: [
+      { provider: "huggingface", dataset_id: "bitext/customer-support-intents", name: "customer-support-intents", author: "bitext", description: "Customer support utterances labelled by intent.", tags: ["text-classification"], downloads: null, likes: null, private: false, gated: false, reference_url: "https://huggingface.co/datasets/bitext/customer-support-intents" },
+      { provider: "huggingface", dataset_id: "example/support-tickets", name: "support-tickets", author: "example", description: "Service desk tickets with priority and category.", tags: ["tabular"], downloads: null, likes: null, private: false, gated: false, reference_url: "https://huggingface.co/datasets/example/support-tickets" },
+      { provider: "huggingface", dataset_id: "example/crm-deal-outcomes", name: "crm-deal-outcomes", author: "example", description: "Deal stages with win and loss outcomes.", tags: ["tabular"], downloads: null, likes: null, private: false, gated: true, reference_url: "https://huggingface.co/datasets/example/crm-deal-outcomes" },
+    ],
+  },
   "/api/agent-swarm/swr_renewal_risk": swarmRenewalRisk,
   "/api/agent-swarm/swr_churn_audit": swarmChurnAudit,
   __supabaseUser: supabaseUser,

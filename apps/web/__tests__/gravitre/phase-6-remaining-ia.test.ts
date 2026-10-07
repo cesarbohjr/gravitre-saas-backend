@@ -67,7 +67,7 @@ describe("UX Reset Phase 6 — remaining hub IA flatten", () => {
     expect(overview).not.toMatch(/rounded-2xl/)
     expect(overview).not.toMatch(/bg-gradient-to-br/)
 
-    const training = readFileSync(resolve(webRoot, "app/training/page.tsx"), "utf8")
+    const training = readFileSync(resolve(webRoot, "components/training/training-workbench.tsx"), "utf8")
     expect(training).toMatch(/aria-label="Training sections"/)
     expect(training).toMatch(/AskGravitreSummonButton/)
     expect(training).not.toMatch(/TabsList/)

@@ -26,12 +26,15 @@ export const APP_ROUTES = {
   /** @deprecated use builtInModels */
   intelligenceModels: "/models/built-in",
   intelligencePredictive: "/intelligence/predictive",
-  intelligenceMemory: "/intelligence/memory",
+  /** Memory is a section of Knowledge; /intelligence/memory redirects here. */
+  intelligenceMemory: "/intelligence/learning#memory",
   intelligenceReports: "/intelligence/reports",
   /** Phase 1 (2026-09-11): real, measured business-outcome metrics — new primary destination. */
   intelligencePerformance: "/intelligence/performance",
   /** Phase 1 (2026-09-11): Model Studio landing — real entry points into existing model/training capability. */
   intelligenceModelStudio: "/intelligence/model-studio",
+  /** Intelligence › Data: your datasets plus public ones (Hugging Face, Kaggle). */
+  intelligenceData: "/intelligence/data",
   marketplace: "/marketplace/assets",
   connectors: "/connectors",
   workflows: "/workflows",

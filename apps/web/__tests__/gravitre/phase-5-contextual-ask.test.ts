@@ -26,7 +26,7 @@ describe("UX Reset Phase 5 — contextual Ask Gravitre", () => {
       "app/agents/[id]/page.tsx",
       "app/workflows/[id]/page.tsx",
       "app/connectors/[id]/page.tsx",
-      "app/training/page.tsx",
+      "components/training/training-workbench.tsx",
       "app/models/page.tsx",
       "app/intelligence/model-studio/page.tsx",
     ]
