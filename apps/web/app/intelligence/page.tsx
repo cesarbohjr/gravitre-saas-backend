@@ -1,65 +1,28 @@
 "use client"
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
-import Link from "next/link"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
-import { Button } from "@/components/ui/button"
-import { useAuth } from "@/lib/auth-context"
-import { APP_ROUTES } from "@/lib/app-routes"
-import { intelligenceApi } from "@/lib/api"
-import { canonicalAgentsToMapAgents } from "@/lib/intelligence/canonical-agents"
-import { ApiError } from "@/lib/fetcher"
-import { ensureSelectedOrg } from "@/lib/org-context"
-import { reportedNumber } from "@/lib/source-evidence"
-import { SURFACE_COPY } from "@/lib/surface-copy"
-import { SimulationCard } from "@/components/intelligence/simulation-card"
-import { IntelligenceHealthGrid } from "@/components/intelligence/intelligence-health-grid"
-import { useWhatMattersNow } from "@/components/intelligence/what-matters-now"
-import {
-  canonicalLearningsForDisplay,
-  canonicalPredictionsToAttentionSignals,
-} from "@/lib/intelligence/canonical-attention"
-import { useIntelligencePillarsData } from "@/components/intelligence/intelligence-pillars"
-import { WhyGravitrePanel, useWhyGravitreEvidence } from "@/components/intelligence/why-gravitre-panel"
+import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
-import {
-  IntelligenceAskCommandSurface,
-  IntelligenceShell,
-} from "@/components/intelligence/shell"
-import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
-import { isSnapshotMetricsReady } from "@/lib/intelligence/snapshot-state"
-import type { IntelligenceMapSelection } from "@/components/intelligence/map/intelligence-map"
 import {
   usePublishGravitreAISelection,
   type GravitreAISelectedEntity,
 } from "@/components/gravitre/ai-workspace-provider"
-import { OverviewLivingMap } from "@/components/intelligence/pages/overview-living-map"
-import { IntelligenceHubTabs } from "@/components/intelligence/intelligence-hub-tabs"
-import { IntelligenceFreshnessBar } from "@/components/intelligence/shell/intelligence-freshness-bar"
-import { EvidenceRail, InsightRail } from "@/components/intelligence/journey-rails"
-import { buildLensMetrics } from "@/components/intelligence/map/build-lens-metrics"
-import type { IntelligenceMapLens } from "@/components/intelligence/map/intelligence-map-lens"
-import {
-  BusinessImpactCompact,
-  WhatGravitreLearnedSection,
-  WhatNeedsAttentionCompact,
-} from "@/components/intelligence/map/intelligence-support-sections"
-import {
-  applyAssistantVisualizationToMapState,
-  type AssistantVisualization,
-} from "@/lib/intelligence/assistant-visualization"
-import {
-  resolveCanonicalGraphMapNode,
-  type CanonicalGraphNode,
-} from "@/lib/intelligence/canonical-graph-topology"
-import { parseIntelligenceMapDeepLink } from "@/lib/intelligence/learning-map-focus"
-import { relationsForSelection, selectionForMapNode } from "@/lib/intelligence/selection-relations"
-import { TYPE } from "@/lib/design-system"
-import { cn } from "@/lib/utils"
+import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
+import { IntelligenceShell } from "@/components/intelligence/shell"
 import { IntelligenceBrain } from "@/components/intelligence/brain/intelligence-brain"
+import type { OutcomeAttribution } from "@/components/intelligence/overview/flow-model"
+import { useAuth } from "@/lib/auth-context"
+import { APP_ROUTES } from "@/lib/app-routes"
+import { connectorsApi, intelligenceApi, memoryPromotionApi } from "@/lib/api"
+import { ApiError } from "@/lib/fetcher"
+import { ensureSelectedOrg } from "@/lib/org-context"
+import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
+import { PAGE_FRAME } from "@/lib/design-system"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 
 function IntelligenceSectionRedirect() {
   const router = useRouter()
@@ -93,64 +56,12 @@ function IntelligenceSectionRedirect() {
   return null
 }
 
-function selectedEntityFromMapSelection(selection: IntelligenceMapSelection): GravitreAISelectedEntity | null {
-  if (!selection) return null
-  if (selection.kind === "agent") {
-    return { kind: "agent", id: selection.agent.id, label: selection.agent.name }
-  }
-  if (selection.kind === "department") {
-    return {
-      kind: "department",
-      id: selection.department.id,
-      label: selection.department.id,
-    }
-  }
-  if (selection.kind === "signal") {
-    const id = String(selection.signal.id ?? selection.signal.title ?? "")
-    const label = String(selection.signal.title ?? selection.signal.id ?? "signal")
-    return { kind: "signal", id, label }
-  }
-  if (selection.kind === "satellite") {
-    return { kind: selection.node.kind || "entity", id: selection.node.id, label: selection.node.label }
-  }
-  return { kind: "relationship", id: selection.edgeId, label: selection.label }
-}
-
-function useMinWidth(px: number): boolean {
-  const [matches, setMatches] = useState(false)
-  useEffect(() => {
-    const query = window.matchMedia(`(min-width: ${px}px)`)
-    const update = () => setMatches(query.matches)
-    update()
-    query.addEventListener("change", update)
-    return () => query.removeEventListener("change", update)
-  }, [px])
-  return matches
-}
-
 function IntelligenceCenterInner() {
   const { user } = useAuth()
-  const searchParams = useSearchParams()
   const copy = SURFACE_COPY.insights
-  const deepLink = useMemo(
-    () => parseIntelligenceMapDeepLink(searchParams),
-    [searchParams],
-  )
-  const [activeLens, setActiveLens] = useState<IntelligenceMapLens>(
-    deepLink.lens ?? "knows",
-  )
-  const [mapSelection, setMapSelection] = useState<IntelligenceMapSelection>(null)
-  const [mapHighlightIds, setMapHighlightIds] = useState<string[]>([])
-  const [mapDimIds, setMapDimIds] = useState<string[]>([])
-  const [mapFocusIds, setMapFocusIds] = useState<string[]>([])
-  const [composerPendingQuestion, setComposerPendingQuestion] = useState<string | null>(null)
   const [orgReady, setOrgReady] = useState(false)
-  const askSelected = useMemo(() => selectedEntityFromMapSelection(mapSelection), [mapSelection])
-  usePublishGravitreAISelection(askSelected)
-  // At xl the evidence rail sits beside the field, so it inspects the selection; the drawer opens on request.
-  const railInspects = useMinWidth(1280)
-  const [inspectorOpen, setInspectorOpen] = useState(false)
-  useEffect(() => setInspectorOpen(false), [mapSelection])
+  const [selected, setSelected] = useState<GravitreAISelectedEntity | null>(null)
+  usePublishGravitreAISelection(selected)
 
   useEffect(() => {
     if (!user) {
@@ -166,197 +77,42 @@ function IntelligenceCenterInner() {
     }
   }, [user])
 
-  const { data: outcomes, error, mutate } = useSWR(
-    user && orgReady ? ["intelligence/outcomes", 7] : null,
+  const enabled = Boolean(user) && orgReady
+
+  const {
+    data: pageContext,
+    loadState,
+    generatedAt,
+    isValidating,
+    mutate: mutateSnapshot,
+    error,
+  } = useIntelligenceSnapshot({ enabled, windowHours: 24 })
+
+  // Outcome attribution: measured outcomes per agent and how many scoring needs.
+  const { data: outcomes } = useSWR(
+    enabled ? ["intelligence/outcomes", 7] : null,
     () => intelligenceApi.outcomes({ periodDays: 7 }),
     { revalidateOnFocus: false },
   )
-  const { data: trust } = useSWR(
-    user && orgReady ? "intelligence/trust-summary" : null,
-    () => intelligenceApi.trustSummary({ periodDays: 7 }),
+  const { data: trust } = useSWR(enabled ? "intelligence/trust-summary" : null, () =>
+    intelligenceApi.trustSummary({ periodDays: 7 }),
   )
-  const { data: simulations } = useSWR(
-    user && orgReady ? "intelligence/simulations" : null,
-    () => intelligenceApi.simulations(),
+  const { data: connectorsData, mutate: mutateConnectors } = useSWR(
+    enabled ? "/api/connectors" : null,
+    () => connectorsApi.list(),
+    { revalidateOnFocus: false },
   )
-  const {
-    data: pageContext,
-    loadState: snapshotLoadState,
-    generatedAt,
-    isValidating: snapshotValidating,
-    mutate: mutateSnapshot,
-  } = useIntelligenceSnapshot({
-    enabled: Boolean(user) && orgReady,
-    activeLens,
-    windowHours: 24,
-  })
-
-  const { data: businessSignals, isLoading: legacySignalsLoading } = useWhatMattersNow(
-    Boolean(user) && orgReady && !pageContext,
-  )
-  const { coreState, businessImpact } = useIntelligencePillarsData(
-    Boolean(user) && orgReady && !isSnapshotMetricsReady(snapshotLoadState),
-  )
-  const { data: whyEvidence, isLoading: whyEvidenceLoading } = useWhyGravitreEvidence(
-    Boolean(user) && orgReady,
-  )
-
-  const mapAgents = useMemo(
-    () => canonicalAgentsToMapAgents(pageContext?.snapshot.agents),
-    [pageContext?.snapshot.agents],
-  )
-
-  const canonicalMetrics = pageContext?.metrics ?? pageContext?.snapshot.metrics
-
-  const lensMetrics = useMemo(
-    () =>
-      buildLensMetrics({
-        knowledgeGraph: null,
-        readiness: null,
-        modelCatalog: null,
-        coreState: coreState.data,
-        businessImpact: businessImpact.data,
-        outcomesByEvent: (outcomes?.by_event_type as Record<string, number> | undefined) ?? {},
-        canonicalMetrics,
-        loadState: snapshotLoadState,
-      }),
-    [coreState.data, businessImpact.data, outcomes, canonicalMetrics, snapshotLoadState],
-  )
-
-  const canonicalAttentionSignals = useMemo(
-    () =>
-      canonicalPredictionsToAttentionSignals(
-        pageContext?.snapshot.predictions as Parameters<
-          typeof canonicalPredictionsToAttentionSignals
-        >[0],
-      ),
-    [pageContext?.snapshot.predictions],
-  )
-
-  const signals = useMemo(() => {
-    if (canonicalAttentionSignals.length > 0) return canonicalAttentionSignals
-    return (businessSignals?.signals as Record<string, unknown>[] | undefined) ?? []
-  }, [canonicalAttentionSignals, businessSignals?.signals])
-
-  const signalsLoading = pageContext ? false : legacySignalsLoading
-
-  const displayLearnings = useMemo(
-    () =>
-      canonicalLearningsForDisplay(
-        pageContext?.snapshot.learnings as Parameters<typeof canonicalLearningsForDisplay>[0],
-      ),
-    [pageContext?.snapshot.learnings],
-  )
-
-  const graphNodeIds = useMemo(() => {
-    const ids = new Set<string>()
-    for (const node of pageContext?.graph?.nodes ?? []) {
-      const id = typeof node.id === "string" ? node.id : null
-      if (id) ids.add(id)
-    }
-    return ids
-  }, [pageContext?.graph?.nodes])
-
-  const applyMapVisualization = useCallback(
-    (state: ReturnType<typeof applyAssistantVisualizationToMapState>) => {
-      if (state.lens) setActiveLens(state.lens)
-      setMapHighlightIds(state.highlightNodeIds)
-      setMapDimIds(state.dimNodeIds)
-      setMapFocusIds(state.focusNodeIds)
-      if (state.selection) setMapSelection(state.selection)
-      window.scrollTo({ top: 0, behavior: "smooth" })
-    },
-    [],
-  )
-
-  const handleAssistantVisualization = useCallback(
-    (visualization: AssistantVisualization) => {
-      const state = applyAssistantVisualizationToMapState(visualization, {
-        graphNodeIds: graphNodeIds.size > 0 ? graphNodeIds : undefined,
-        agents: mapAgents,
-        departments: coreState.data?.departments ?? [],
-        signals: signals ?? [],
-      })
-      applyMapVisualization(state)
-    },
-    [
-      applyMapVisualization,
-      graphNodeIds,
-      mapAgents,
-      coreState.data?.departments,
-      signals,
-    ],
-  )
-
-  useEffect(() => {
-    if (mapHighlightIds.length === 0 && mapDimIds.length === 0) return
-    const timer = window.setTimeout(() => {
-      setMapHighlightIds([])
-      setMapDimIds([])
-      setMapFocusIds([])
-    }, 12_000)
-    return () => window.clearTimeout(timer)
-  }, [mapHighlightIds, mapDimIds])
-
-  useEffect(() => {
-    const { focusNodeId, lens } = deepLink
-    if (!focusNodeId || !pageContext?.graph?.nodes?.length) return
-    if (lens) setActiveLens(lens)
-    const viz: AssistantVisualization = {
-      lens: lens ?? undefined,
-      focusNodeIds: [focusNodeId],
-      highlightNodeIds: [focusNodeId],
-    }
-    const state = applyAssistantVisualizationToMapState(viz, {
-      graphNodeIds: graphNodeIds.size > 0 ? graphNodeIds : undefined,
-      agents: mapAgents,
-      departments: coreState.data?.departments ?? [],
-      signals: signals ?? [],
-    })
-    applyMapVisualization(state)
-    const mapNode = resolveCanonicalGraphMapNode(
-      focusNodeId,
-      {
-        nodes: pageContext.graph.nodes as CanonicalGraphNode[],
-      },
-      mapAgents,
-    )
-    if (mapNode) {
-      setMapSelection({ kind: "satellite", node: mapNode })
-    }
-  }, [
-    deepLink,
-    pageContext?.graph,
-    graphNodeIds,
-    mapAgents,
-    coreState.data?.departments,
-    signals,
-    applyMapVisualization,
-  ])
-
-  const selectionRelations = useMemo(
-    () => relationsForSelection(mapSelection, pageContext?.graph),
-    [mapSelection, pageContext?.graph],
-  )
-
-  const selectRelatedNode = useCallback(
-    (nodeId: string) => {
-      const mapNode = resolveCanonicalGraphMapNode(
-        nodeId,
-        { nodes: (pageContext?.graph?.nodes ?? []) as CanonicalGraphNode[] },
-        mapAgents,
-      )
-      if (!mapNode) return
-      setMapSelection(selectionForMapNode(mapNode))
-      setMapHighlightIds([nodeId])
-    },
-    [pageContext?.graph?.nodes, mapAgents],
+  // Patterns still being reinforced (any status; open ones are picked out downstream).
+  const { data: candidatesData } = useSWR(
+    enabled ? "intelligence/overview/memory-candidates" : null,
+    () => memoryPromotionApi.candidates({ limit: 50 }),
+    { revalidateOnFocus: false },
   )
 
   if (!user) {
     return (
       <AppShell title={copy.title}>
-        <EmptyState title="Sign in required" description="Log in to view insights." />
+        <EmptyState title="Sign in required" description="Log in to view intelligence." />
       </AppShell>
     )
   }
@@ -369,7 +125,7 @@ function IntelligenceCenterInner() {
     )
   }
 
-  if (error) {
+  if (error && !pageContext) {
     const isOrgDenied =
       error instanceof ApiError &&
       error.status === 403 &&
@@ -377,7 +133,7 @@ function IntelligenceCenterInner() {
     return (
       <AppShell title={copy.title}>
         <ErrorState
-          title="Unable to load insights"
+          title="Unable to load intelligence"
           description={
             isOrgDenied
               ? "Your saved workspace no longer matches membership. We cleared it — try again, or pick an organization in Settings."
@@ -387,239 +143,57 @@ function IntelligenceCenterInner() {
           }
           onRetry={() => {
             if (isOrgDenied) {
-              void ensureSelectedOrg(true).then(() => mutate())
+              void ensureSelectedOrg(true).then(() => mutateSnapshot())
               return
             }
-            mutate()
+            mutateSnapshot()
           }}
         />
       </AppShell>
     )
   }
 
-  const summary = (outcomes?.summary as Record<string, unknown> | undefined) ?? {}
-  const totalEvents = reportedNumber(summary.total_events)
-  const avgConfidence = trust?.avg_confidence as number | null | undefined
+  const attribution = (outcomes?.v8_outcome_attribution as OutcomeAttribution | undefined) ?? null
+  const avgConfidence = typeof trust?.avg_confidence === "number" ? trust.avg_confidence : null
+
   return (
     <AppShell title={copy.title}>
-      <div className="relative bg-[color:var(--g-canvas)]" data-composition="understand">
+      <div className={PAGE_FRAME} data-composition="understand">
         <IntelligenceSectionRedirect />
-
-        <header className="px-4 pt-6 md:px-5">
-          <p className={TYPE.eyebrow}>Understand / Evidence before answers</p>
-          <h1 className="mt-2 font-sans text-xl font-medium leading-tight text-foreground sm:text-2xl">{copy.title}</h1>
-          <p className="mt-2 pb-5 text-sm text-muted-foreground">What is changing across the business?</p>
-        </header>
-        {/* One row: the hub tabs and freshness. No second menu here (the old Insight › Evidence stepper read as one). */}
-        <div
-          data-investigation-toolbar=""
-          className="flex flex-wrap items-end gap-x-6 gap-y-1 border-b border-[color:var(--g-border-default)] bg-[color:var(--g-rail-bg)] px-4 pt-3 md:px-5"
-        >
-          <IntelligenceHubTabs active="overview" className="min-w-0 flex-1" />
-          <div className="flex items-center gap-4 pb-2">
-            <IntelligenceFreshnessBar
-              loadState={snapshotLoadState}
-              generatedAt={generatedAt}
-              isValidating={snapshotValidating}
-              onRefresh={() => mutateSnapshot()}
-              className="justify-start"
+        <GravitrePageHeader
+          eyebrow="Understand / Evidence before answers"
+          title={copy.title}
+          description={copy.description}
+          actions={
+            <AskGravitreSummonButton
+              label="Ask about this page"
+              selected={selected}
+              prompt="Walk me through what Gravitre is learning right now: what signal came in today, which connections got stronger, and how close forecasts are to being scored."
+              className="inline-flex items-center rounded-[10px] bg-foreground px-3.5 text-[13px] text-background hover:no-underline hover:opacity-90 dark:text-background"
             />
-          </div>
-        </div>
-
-        {/* The overview: the org as a layered network with its live metrics around it. */}
-        <div className="px-4 py-5 md:px-5">
+          }
+        />
+        <IntelligenceShell
+          activeTab="overview"
+          loadState={loadState}
+          generatedAt={generatedAt}
+          isValidating={isValidating}
+          onRefresh={() => mutateSnapshot()}
+        >
           <IntelligenceBrain
             pageContext={pageContext}
-            loading={!pageContext && (snapshotLoadState === "LOADING" || snapshotLoadState === "UNINITIALIZED")}
-          />
-        </div>
-
-        {/* Explore: the field map with insight and evidence rails for drilling into specific connections */}
-        <div className="border-t border-[color:var(--g-border-default)] px-4 pb-3 pt-6 md:px-5">
-          <h2 className={TYPE.sectionTitle}>Explore connections</h2>
-          <p className={cn(TYPE.bodyMuted, "mt-1")}>
-            Pick a lens, then select anything on the map to see the evidence behind it.
-          </p>
-        </div>
-        <section className="relative border-b border-divide">
-          <div className="relative z-10 grid md:grid-cols-2 xl:min-h-[680px] xl:grid-cols-[272px_minmax(0,1fr)_296px]">
-            <aside
-              aria-label="Insight"
-              className="order-3 min-w-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-4 py-4 md:border-r xl:order-1 xl:overflow-y-auto xl:border-t-0"
-            >
-              <details open={railInspects || undefined}>
-                <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium xl:hidden">Signals and learnings</summary>
-              <InsightRail
-                signals={signals}
-                signalsLoading={signalsLoading}
-                learnings={displayLearnings}
-                onSelectSignal={(signal) => {
-                  setMapSelection({ kind: "signal", signal })
-                  setActiveLens("predicts")
-                }}
-              />
-              </details>
-            </aside>
-            <div className="order-1 min-w-0 px-3 py-3 md:col-span-2 md:px-4 xl:order-2 xl:col-span-1 xl:overflow-y-auto">
-            <IntelligenceShell
-              chrome="none"
-              activeTab="overview"
-              loadState={snapshotLoadState}
-              generatedAt={generatedAt}
-              isValidating={snapshotValidating}
-              onRefresh={() => mutateSnapshot()}
-              commandBar={
-                <IntelligenceAskCommandSurface
-                  enabled={Boolean(user)}
-                  pageSuggestedQuestions={pageContext?.suggestedQuestions}
-                  onVisualization={handleAssistantVisualization}
-                  pendingQuestion={composerPendingQuestion}
-                  onPendingQuestionConsumed={() => setComposerPendingQuestion(null)}
-                  selected={askSelected}
-                />
-              }
-            >
-              <OverviewLivingMap
-                activeLens={activeLens}
-                onLensChange={(lens) => {
-                  setActiveLens(lens)
-                  setMapSelection(null)
-                  setMapHighlightIds([])
-                  setMapDimIds([])
-                  setMapFocusIds([])
-                }}
-                lensMetrics={lensMetrics}
-                snapshotLoadState={snapshotLoadState}
-                pageContext={pageContext}
-                mapAgents={mapAgents}
-                signals={signals}
-                entityCount={canonicalMetrics?.knowledge?.knownEntities ?? null}
-                relationshipCount={canonicalMetrics?.knowledge?.knownRelationships ?? null}
-                selection={mapSelection}
-                onSelectionChange={setMapSelection}
-                highlightNodeIds={mapHighlightIds}
-                dimNodeIds={mapDimIds}
-                focusNodeIds={mapFocusIds}
-                whyEvidence={whyEvidence}
-                onAskAbout={(question) => {
-                  setComposerPendingQuestion(question)
-                  window.scrollTo({ top: 0, behavior: "smooth" })
-                }}
-                cacheKey={`overview:${activeLens}`}
-                inspectorOpen={!railInspects || inspectorOpen}
-                onInspectorClose={railInspects ? () => setInspectorOpen(false) : undefined}
-              />
-            </IntelligenceShell>
-            </div>
-            <aside
-              aria-label="Evidence"
-              className="order-2 min-w-0 border-t border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-4 py-4 xl:order-3 xl:overflow-y-auto xl:border-l xl:border-t-0"
-            >
-              <details open={railInspects || undefined}>
-                <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium xl:hidden">{askSelected ? `Evidence for ${askSelected.label}` : "Inspect evidence and measured outcomes"}</summary>
-              <EvidenceRail
-                selected={askSelected}
-                relations={selectionRelations}
-                onSelectRelated={selectRelatedNode}
-                onOpenDetails={() => setInspectorOpen(true)}
-                onClear={() => setMapSelection(null)}
-                totalEvents={totalEvents}
-                avgConfidence={avgConfidence}
-                entityCount={canonicalMetrics?.knowledge?.knownEntities ?? null}
-                relationshipCount={canonicalMetrics?.knowledge?.knownRelationships ?? null}
-              />
-              </details>
-            </aside>
-          </div>
-        </section>
-
-        {/* Contextual support — closed until asked; map stays the product */}
-        <details className="group/evidence mx-auto max-w-[1600px] px-4 py-6 md:px-6">
-          <summary className="cursor-pointer list-none rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-            <div className="flex items-center justify-between gap-3 border-b border-[color:var(--g-border-subtle)] pb-3">
-              <div>
-                <h2 className={TYPE.sectionTitle}>Attention, learnings, and impact</h2>
-                <p className={cn(TYPE.bodyMuted, "mt-1")}>
-                  What needs attention, what Gravitre learned, and the evidence behind it.
-                </p>
-              </div>
-              <span className="text-xs font-medium text-muted-foreground">
-                <span className="group-open/evidence:hidden">Show</span>
-                <span className="hidden group-open/evidence:inline">Hide</span>
-              </span>
-            </div>
-          </summary>
-          <div className="space-y-8 pt-6">
-          <WhatNeedsAttentionCompact
-            signals={signals}
-            isLoading={signalsLoading}
-            onSelectSignal={(signal) => {
-              setMapSelection({ kind: "signal", signal })
-              setActiveLens("predicts")
-              window.scrollTo({ top: 0, behavior: "smooth" })
+            connectors={connectorsData?.connectors ?? null}
+            candidates={candidatesData?.items ?? null}
+            attribution={attribution}
+            avgConfidence={avgConfidence}
+            loading={loadState === "LOADING" || loadState === "UNINITIALIZED"}
+            onSelectionChange={setSelected}
+            onResynced={() => {
+              void mutateConnectors()
+              mutateSnapshot()
             }}
           />
-
-          <WhatGravitreLearnedSection learnings={displayLearnings} />
-
-          <BusinessImpactCompact totalEvents={totalEvents} avgConfidence={avgConfidence} />
-
-          <WhyGravitrePanel className="relative" data={whyEvidence} isLoading={whyEvidenceLoading} />
-
-          <details className="group/advanced">
-            <summary className="cursor-pointer list-none rounded-[4px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-              <div className="flex items-center justify-between gap-3 border-b border-[color:var(--g-border-subtle)] pb-3">
-                <div>
-                  <h2 className={TYPE.sectionTitle}>Models, training, and routing</h2>
-                  <p className={cn(TYPE.bodyMuted, "mt-1")}>
-                    Model health and the latest simulation. Each area has its own tab above.
-                  </p>
-                </div>
-                <span className="text-xs font-medium text-muted-foreground">
-                  <span className="group-open/advanced:hidden">Show</span>
-                  <span className="hidden group-open/advanced:inline">Hide</span>
-                </span>
-              </div>
-            </summary>
-            <div className="space-y-6 pt-6">
-              <IntelligenceHealthGrid orgScopedKey={user ? "intelligence-center" : null} />
-
-              <div className="space-y-6">
-                <section>
-                  <h3 className={TYPE.sectionTitle}>{SURFACE_COPY.sections.routingTrace}</h3>
-                  <p className={cn(TYPE.bodyMuted, "mt-1")}>
-                    {SURFACE_COPY.sections.routingTraceHint}
-                  </p>
-                  <p className={cn(TYPE.meta, "mt-3 border-b border-divide py-3")}>
-                    Routing traces appear on each conversation, next to the reply they explain.
-                  </p>
-                </section>
-                <section>
-                  <h3 className={TYPE.sectionTitle}>{SURFACE_COPY.sections.latestSimulation}</h3>
-                  <p className={cn(TYPE.bodyMuted, "mt-1")}>
-                    {SURFACE_COPY.sections.latestSimulationHint}
-                  </p>
-                  <div className="mt-4">
-                    <SimulationCard
-                      simulation={(simulations as Record<string, unknown> | undefined) ?? null}
-                    />
-                  </div>
-                </section>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href={`${APP_ROUTES.learning}#revenue-risk`}>Revenue risk</Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href={APP_ROUTES.agents}>AI team</Link>
-                </Button>
-              </div>
-            </div>
-          </details>
-          </div>
-        </details>
+        </IntelligenceShell>
       </div>
     </AppShell>
   )

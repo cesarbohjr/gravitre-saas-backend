@@ -35,7 +35,8 @@ describe("UX Reset Phase 2 — visual simplification", () => {
       "app/agents/page.tsx",
       "app/workflows/page.tsx",
       "app/connectors/page.tsx",
-      "app/intelligence/performance/page.tsx",
+      // Impact summons Ask Gravitre from its "How these numbers are worked out" disclosure.
+      "components/intelligence/impact/by-agent-table.tsx",
       "app/approvals/page.tsx",
     ]
     for (const rel of pages) {

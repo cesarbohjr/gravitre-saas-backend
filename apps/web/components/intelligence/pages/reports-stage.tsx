@@ -192,7 +192,7 @@ export function ReportsStage({
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className={TYPE.metricLabel}>{kpi.label}</span>
-                  <span className={cn(RADIUS.tag, "shrink-0 px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase", tag.className)}>
+                  <span className={cn(RADIUS.tag, "shrink-0 px-1.5 py-0.5 font-mono text-[10px] font-medium", tag.className)}>
                     {tag.label}
                   </span>
                 </div>

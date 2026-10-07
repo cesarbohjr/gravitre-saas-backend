@@ -121,7 +121,7 @@ export function EvidenceTrail({
                         )}
                       />
                     </span>
-                    <span className={cn(TYPE.meta, "font-mono uppercase tracking-wide")}>
+                    <span className={cn(TYPE.meta, "font-mono tracking-wide")}>
                       {TRAIL_STEP_LABEL[step.kind]}
                     </span>
                     <span
@@ -142,7 +142,7 @@ export function EvidenceTrail({
           <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
             <div className={cn(RADIUS.card, "bg-[color:var(--g-surface-2)] p-4 sm:p-5")} aria-live="polite">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={cn(TYPE.meta, "font-mono uppercase tracking-wide")}>Step {current.n}</span>
+                <span className={cn(TYPE.meta, "font-mono tracking-wide")}>Step {current.n}</span>
                 <span
                   className={cn(
                     RADIUS.tag,
@@ -162,7 +162,7 @@ export function EvidenceTrail({
               {current.present ? (
                 current.proof.length ? (
                   <div className="mt-4">
-                    <p className={cn(TYPE.meta, "font-mono uppercase tracking-wide")}>Proof</p>
+                    <p className={cn(TYPE.meta, "font-mono tracking-wide")}>Proof</p>
                     <blockquote className="mt-1.5 space-y-1 rounded-[var(--np-radius-md)] border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] px-4 py-3 text-sm text-[color:var(--g-text-primary)]">
                       {current.proof.map((line) => (
                         <p key={line}>{line}</p>
@@ -181,7 +181,7 @@ export function EvidenceTrail({
             </div>
 
             <div className={cn(RADIUS.card, "border border-[color:var(--g-border-subtle)] p-4 sm:p-5")}>
-              <p className={cn(TYPE.meta, "font-mono uppercase tracking-wide")}>Source record</p>
+              <p className={cn(TYPE.meta, "font-mono tracking-wide")}>Source record</p>
               <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
                 <code className="min-w-0 break-all rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-2)] px-2 py-1 font-mono text-xs text-[color:var(--g-text-primary)]">
                   {current.sourceRecordId ?? "None yet"}

@@ -551,7 +551,7 @@ function PreviewPanel({
               <p className={TYPE.meta}>
                 No knowledge entities yet, so there&apos;s nothing to map to.{" "}
                 <Link href={APP_ROUTES.learning} className="font-medium text-[color:var(--g-brand-active)] hover:underline">
-                  Open Knowledge
+                  See it in Knowledge
                 </Link>
               </p>
             ) : null}

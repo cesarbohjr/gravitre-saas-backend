@@ -123,7 +123,7 @@ export function PredictionRiskOpportunityTopology({
                   />
                 ) : null}
                 <div aria-hidden className="absolute inset-y-0 left-0 w-0.5 bg-foreground" />
-                <span aria-hidden className={cn(TYPE.mono, "absolute left-1.5 top-0 text-[10px] uppercase")}>
+                <span aria-hidden className={cn(TYPE.mono, "absolute left-1.5 top-0 text-[10px]")}>
                   Now
                 </span>
                 <div aria-hidden className="absolute inset-x-0 top-1/2 h-px bg-[color:var(--g-border-default)]" />

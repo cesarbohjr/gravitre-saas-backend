@@ -30,7 +30,7 @@ export function CertaintyLegend() {
       role="group"
       aria-label="How sure is each number"
     >
-      <span className={cn(TYPE.eyebrow, "uppercase tracking-[0.08em]")}>How sure is each number</span>
+      <span className={cn(TYPE.eyebrow, "tracking-[0.08em]")}>How sure is each number</span>
       {(["measured", "estimated", "none"] as const).map((c) => (
         <span key={c} className="inline-flex items-center gap-1.5 text-[13px] text-[color:var(--g-text-primary)]">
           <CertaintyMarker certainty={c} />

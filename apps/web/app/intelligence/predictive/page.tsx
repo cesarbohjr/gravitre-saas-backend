@@ -114,6 +114,7 @@ export default function PredictiveOpsPage() {
           loadState={loadState}
           generatedAt={generatedAt}
           isValidating={isValidating}
+          showFreshness={false}
         >
           {error ? (
             <p role="status" className="mb-4 text-sm text-muted-foreground">

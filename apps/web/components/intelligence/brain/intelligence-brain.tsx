@@ -1,492 +1,524 @@
 "use client"
 
-import { useId, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { motion, useReducedMotion } from "framer-motion"
-import { ArrowRight, Pause, Play } from "lucide-react"
+import { useReducedMotion } from "framer-motion"
+import { Pause, Play } from "lucide-react"
+import { toast } from "sonner"
+import { connectorsApi, type IntelligencePageContextResponse, type PromotionCandidate } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
-import type { IntelligencePageContextResponse } from "@/lib/api"
+import type { Connector } from "@/types/api"
+import type { GravitreAISelectedEntity } from "@/components/gravitre/ai-workspace-provider"
 import {
-  buildBrainModel,
-  buildExampleBrainModel,
-  type BrainCurvePoint,
-  type BrainLogEntry,
-  type BrainMetric,
-  type BrainModel,
-  type BrainTone,
-} from "@/lib/intelligence/brain-model"
-import { BrainNetworkCanvas, brainLayerX } from "@/components/intelligence/brain/brain-network-canvas"
+  buildLiveFlowModel,
+  edgeKey,
+  shortDate,
+  type FlowEvent,
+  type FlowLayerId,
+  type FlowModel,
+  type OutcomeAttribution,
+} from "@/components/intelligence/overview/flow-model"
+import { buildExampleFlowModel, EXAMPLE_START } from "@/components/intelligence/overview/example-flow"
+import { useFlowPlayback } from "@/components/intelligence/overview/use-flow-playback"
+import { FlowMap, TONE_VAR, placeNodes, type PlacedNode } from "@/components/intelligence/overview/flow-map"
+import { FlowInspector, type InspectorSelection } from "@/components/intelligence/overview/flow-inspector"
+import { LearningCards } from "@/components/intelligence/overview/learning-cards"
 import { cn } from "@/lib/utils"
 
-const TONE_TEXT: Record<BrainTone, string> = {
-  neutral: "text-[color:var(--g-text-primary)]",
-  intelligence: "text-[color:var(--g-intelligence)]",
-  brand: "text-[color:var(--g-brand-active,var(--g-brand))] dark:text-[color:var(--g-brand)]",
-  approval: "text-[color:var(--g-approval)]",
-  danger: "text-[color:var(--g-danger)]",
-}
-
-const TONE_VAR: Record<BrainTone, string> = {
-  neutral: "var(--g-text-muted)",
-  intelligence: "var(--g-intelligence)",
-  brand: "var(--g-brand)",
-  approval: "var(--g-approval)",
-  danger: "var(--g-danger)",
-}
-
-const CONFIDENCE_TONES: BrainTone[] = ["brand", "intelligence", "approval", "neutral"]
-
-const LOG_LABEL: Record<BrainLogEntry["tag"], string> = {
-  LEARNED: "Learned",
-  FORECAST: "Forecast",
-  OUTCOME: "Outcome",
-  INFO: "Update",
-}
-
-const LOG_TONE: Record<BrainLogEntry["tag"], BrainTone> = {
-  LEARNED: "approval",
-  FORECAST: "intelligence",
-  OUTCOME: "brand",
-  INFO: "neutral",
-}
-
-const CORE_STATE_LABEL: Record<string, { label: string; tone: BrainTone }> = {
-  active: { label: "Active", tone: "brand" },
-  learning: { label: "Learning", tone: "approval" },
-  running: { label: "Running", tone: "brand" },
-  idle: { label: "Idle", tone: "neutral" },
-  degraded: { label: "Degraded", tone: "danger" },
-}
-
-const SPEEDS = [
-  { value: 0.5, label: "0.5×" },
-  { value: 1, label: "1×" },
-  { value: 2, label: "2×" },
-]
-
+const SPEEDS = [0.5, 1, 2]
 const panel = "rounded-[var(--np-radius-md)] border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)]"
-const panelTitle = "text-xs font-medium text-[color:var(--g-text-secondary)]"
+const segment = "flex rounded-[10px] bg-[color:var(--g-surface-2)] p-[3px]"
+const segmentButton =
+  "min-h-9 rounded-[8px] px-3 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
 
-function relativeTime(at: string | null, now: number): string {
-  const ms = Date.parse(at ?? "")
-  if (!Number.isFinite(ms)) return "—"
-  const minutes = Math.max(0, Math.round((now - ms) / 60_000))
-  if (minutes < 1) return "now"
-  if (minutes < 60) return `${minutes}m`
-  const hours = Math.round(minutes / 60)
-  if (hours < 48) return `${hours}h`
-  return `${Math.round(hours / 24)}d`
+const NODE_KIND: Record<FlowLayerId, string> = {
+  sources: "source",
+  knowledge: "entity",
+  learning: "learning",
+  models: "model",
+  forecasts: "prediction",
 }
 
-function updatedLabel(at: string | null): string {
-  const ago = relativeTime(at, Date.now())
-  if (ago === "—") return "not updated yet"
-  return ago === "now" ? "updated just now" : `updated ${ago} ago`
+function formatCount(value: number | null): string {
+  return value == null ? "—" : value.toLocaleString("en-US")
 }
 
-function Sparkline({ series, tone }: { series: number[]; tone: BrainTone }) {
-  const gradientId = useId()
-  if (series.length < 2) {
-    return <div className="h-6 border-b border-dashed border-[color:var(--g-border-subtle)]" aria-hidden />
+function StatCard({
+  label,
+  value,
+  sub,
+  valueClass,
+  children,
+}: {
+  label: string
+  value: string
+  sub?: string
+  valueClass?: string
+  children?: React.ReactNode
+}) {
+  return (
+    <div className={cn(panel, "flex min-w-0 flex-col gap-1.5 px-[18px] py-4")}>
+      <span className="text-[13px] text-[color:var(--g-text-secondary)]">{label}</span>
+      <span className={cn("truncate text-[28px] font-semibold leading-tight tracking-[-0.02em] tabular-nums text-foreground", valueClass)}>
+        {value}
+      </span>
+      {sub ? <span className="text-xs text-[color:var(--g-text-muted)]">{sub}</span> : null}
+      {children}
+    </div>
+  )
+}
+
+/** Nodes upstream and downstream of `id` along recorded links, plus its direct neighbours. */
+function lineage(model: FlowModel, id: string): { nodes: Set<string>; edges: Set<string> } {
+  const evidence = model.edges.filter((e) => e.evidence)
+  const nodes = new Set<string>([id])
+  const walk = (dir: "up" | "down") => {
+    const stack = [id]
+    const seen = new Set<string>()
+    while (stack.length) {
+      const cur = stack.pop()!
+      if (seen.has(cur)) continue
+      seen.add(cur)
+      for (const e of evidence) {
+        const next = dir === "down" ? (e.a === cur ? e.b : null) : e.b === cur ? e.a : null
+        if (next) {
+          nodes.add(next)
+          stack.push(next)
+        }
+      }
+    }
   }
-  const min = Math.min(...series)
-  const max = Math.max(...series)
-  const range = max - min || 1
-  const pts = series.map((v, i) => [(i / (series.length - 1)) * 100, 22 - ((v - min) / range) * 18] as const)
-  const line = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(2)},${y.toFixed(2)}`).join(" ")
-  return (
-    <svg viewBox="0 0 100 24" preserveAspectRatio="none" className="h-6 w-full" aria-hidden>
-      <defs>
-        <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" style={{ stopColor: TONE_VAR[tone], stopOpacity: 0.22 }} />
-          <stop offset="1" style={{ stopColor: TONE_VAR[tone], stopOpacity: 0 }} />
-        </linearGradient>
-      </defs>
-      <path d={`${line} L100,24 L0,24 Z`} fill={`url(#${gradientId})`} />
-      <path d={line} fill="none" style={{ stroke: TONE_VAR[tone] }} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
-    </svg>
-  )
-}
-
-function MetricCard({ metric }: { metric: BrainMetric }) {
-  return (
-    <div className="border-b border-[color:var(--g-border-subtle)] px-4 py-3 last:border-b-0">
-      <p className={panelTitle}>{metric.label}</p>
-      <p className={cn("mt-1 font-mono text-xl font-semibold tabular-nums leading-tight", TONE_TEXT[metric.tone])}>
-        {metric.value}
-      </p>
-      <p className="mt-0.5 truncate text-[11px] text-[color:var(--g-text-muted)]">{metric.sub}</p>
-      <div className="mt-2">
-        <Sparkline series={metric.series} tone={metric.tone} />
-      </div>
-    </div>
-  )
-}
-
-function LayerBars({ model }: { model: BrainModel }) {
-  const max = Math.max(1, ...model.layers.map((l) => l.count ?? 0))
-  return (
-    <div className="px-4 py-3">
-      <p className={panelTitle}>Signal per layer</p>
-      <ul className="mt-2 space-y-1.5">
-        {model.layers.map((layer) => {
-          const share = layer.count ? Math.max(0.04, Math.log(layer.count + 1) / Math.log(max + 1)) : 0
-          return (
-            <li key={layer.id} className="grid grid-cols-[4.5rem_1fr_2.75rem] items-center gap-2 text-[11px]">
-              <span className="truncate text-[color:var(--g-text-secondary)]">{layer.label}</span>
-              <span className="h-1.5 overflow-hidden rounded-full bg-[color:var(--g-surface-2)]">
-                <motion.span
-                  className="block h-full rounded-full"
-                  style={{ background: TONE_VAR[layer.tone] }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${share * 100}%` }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                />
-              </span>
-              <span className="text-right font-mono tabular-nums text-[color:var(--g-text-muted)]">
-                {layer.count == null ? "—" : layer.count.toLocaleString("en-US")}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-    </div>
-  )
-}
-
-function ConfidencePanel({ model }: { model: BrainModel }) {
-  return (
-    <div className="px-4 py-3">
-      <div className="flex items-center justify-between">
-        <p className={panelTitle}>Forecast confidence</p>
-        <Link
-          href={APP_ROUTES.intelligencePredictive}
-          className="text-[11px] font-medium text-[color:var(--g-text-muted)] hover:text-foreground"
-        >
-          All
-        </Link>
-      </div>
-      {model.confidence.length === 0 ? (
-        <p className="mt-2 text-xs text-[color:var(--g-text-muted)]">
-          No scored forecasts yet. They appear once a model has enough outcomes to predict from.
-        </p>
-      ) : (
-        <ul className="mt-2 space-y-2.5">
-          {model.confidence.map((item, i) => {
-            const tone = CONFIDENCE_TONES[i % CONFIDENCE_TONES.length]
-            return (
-              <li key={item.id}>
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="line-clamp-1 text-xs text-[color:var(--g-text-primary)]" title={item.label}>
-                    {item.label}
-                  </span>
-                  <span className={cn("font-mono text-[11px] tabular-nums", TONE_TEXT[tone])}>
-                    {(item.confidence * 100).toFixed(1)}%
-                  </span>
-                </div>
-                <span className="mt-1 block h-1 overflow-hidden rounded-full bg-[color:var(--g-surface-2)]">
-                  <motion.span
-                    className="block h-full rounded-full"
-                    style={{ background: TONE_VAR[tone] }}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${item.confidence * 100}%` }}
-                    transition={{ duration: 0.8, ease: "easeOut", delay: i * 0.08 }}
-                  />
-                </span>
-                {item.detail ? (
-                  <span className="mt-0.5 block text-[10px] text-[color:var(--g-text-muted)]">{item.detail}</span>
-                ) : null}
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-function LearningLog({ model, now }: { model: BrainModel; now: number }) {
-  return (
-    <div className="flex min-h-0 flex-1 flex-col px-4 py-3">
-      <div className="flex items-center justify-between">
-        <p className={panelTitle}>Learning log</p>
-        <Link
-          href={APP_ROUTES.learning}
-          className="text-[11px] font-medium text-[color:var(--g-text-muted)] hover:text-foreground"
-        >
-          All
-        </Link>
-      </div>
-      {model.log.length === 0 ? (
-        <p className="mt-2 text-xs text-[color:var(--g-text-muted)]">
-          Nothing new in this window. Learnings, forecasts, and outcomes show up here as they happen.
-        </p>
-      ) : (
-        <ol className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1" aria-label="Recent changes">
-          {model.log.map((entry, i) => (
-            <motion.li
-              key={entry.id}
-              className="grid grid-cols-[2.25rem_3.75rem_1fr] gap-1.5 text-[11px] leading-snug"
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, delay: Math.min(i, 8) * 0.05 }}
-            >
-              <span className="font-mono tabular-nums text-[color:var(--g-text-muted)]">{relativeTime(entry.at, now)}</span>
-              <span className={cn("font-medium", TONE_TEXT[LOG_TONE[entry.tag]])}>{LOG_LABEL[entry.tag]}</span>
-              <span className="line-clamp-2 text-[color:var(--g-text-secondary)]">{entry.message}</span>
-            </motion.li>
-          ))}
-        </ol>
-      )}
-    </div>
-  )
-}
-
-function OutcomeCurve({ points, reduced }: { points: BrainCurvePoint[]; reduced: boolean }) {
-  const strokeId = useId()
-  const fillId = useId()
-  const clipId = useId()
-  if (points.length < 2) {
-    return (
-      <div className="flex h-[88px] items-center justify-center rounded-[var(--np-radius-sm,4px)] border border-dashed border-[color:var(--g-border-subtle)] text-xs text-[color:var(--g-text-muted)]">
-        The curve starts once two or more outcomes carry a confidence score.
-      </div>
-    )
+  walk("up")
+  walk("down")
+  const edges = new Set<string>()
+  for (const e of model.edges) {
+    if (e.a === id || e.b === id) {
+      nodes.add(e.a)
+      nodes.add(e.b)
+      edges.add(e.key)
+    } else if (e.evidence && nodes.has(e.a) && nodes.has(e.b)) {
+      edges.add(e.key)
+    }
   }
-  const values = points.map((p) => p.value)
-  const min = Math.max(0, Math.min(...values) - 0.05)
-  const max = Math.min(1, Math.max(...values) + 0.05)
-  const range = max - min || 1
-  const t0 = Date.parse(points[0].at)
-  const t1 = Date.parse(points[points.length - 1].at)
-  const span = t1 - t0 || 1
-  const pts = points.map((p) => [((Date.parse(p.at) - t0) / span) * 100, 34 - ((p.value - min) / range) * 30] as const)
-  const line = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(2)},${y.toFixed(2)}`).join(" ")
-  const [hx, hy] = pts[pts.length - 1]
-  const last = values[values.length - 1]
-  return (
-    <div className="relative">
-      <svg viewBox="0 0 100 36" preserveAspectRatio="none" className="h-[88px] w-full overflow-visible" role="img" aria-label={`Outcome confidence moved from ${(values[0] * 100).toFixed(0)}% to ${(last * 100).toFixed(0)}% across ${points.length} outcomes`}>
-        <defs>
-          <linearGradient id={strokeId} x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0" style={{ stopColor: "var(--g-danger)", stopOpacity: 0.6 }} />
-            <stop offset="0.5" style={{ stopColor: "var(--g-approval)", stopOpacity: 0.8 }} />
-            <stop offset="1" style={{ stopColor: "var(--g-brand)" }} />
-          </linearGradient>
-          <linearGradient id={fillId} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0" style={{ stopColor: "var(--g-intelligence)", stopOpacity: 0.14 }} />
-            <stop offset="1" style={{ stopColor: "var(--g-intelligence)", stopOpacity: 0 }} />
-          </linearGradient>
-          <clipPath id={clipId}>
-            <motion.rect
-              x="0"
-              y="-4"
-              height="44"
-              initial={reduced ? false : { width: 0 }}
-              animate={{ width: 100 }}
-              transition={{ duration: 1.4, ease: "easeOut" }}
-            />
-          </clipPath>
-        </defs>
-        {[9, 18, 27].map((y) => (
-          <line key={y} x1="0" x2="100" y1={y} y2={y} style={{ stroke: "var(--g-border-subtle)" }} strokeWidth={0.5} vectorEffect="non-scaling-stroke" />
-        ))}
-        <g clipPath={`url(#${clipId})`}>
-          <path d={`${line} L${hx},36 L0,36 Z`} fill={`url(#${fillId})`} />
-          <path d={line} fill="none" stroke={`url(#${strokeId})`} strokeWidth={2} vectorEffect="non-scaling-stroke" />
-        </g>
-      </svg>
-      <span
-        className="pointer-events-none absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:var(--g-brand)] shadow-[0_0_8px_var(--g-brand)]"
-        style={{ left: `${hx}%`, top: `${(hy / 36) * 100}%` }}
-        aria-hidden
-      />
-    </div>
-  )
+  return { nodes, edges }
 }
 
 /**
- * Intelligence overview: the org drawn as a layered network with its live
- * metrics around it. Real data by default; example data only on request and
- * always badged.
+ * Intelligence overview: the core status bar, four headline numbers, the
+ * "connecting the dots" flow map with its live activity, and what Gravitre is
+ * learning. Live data by default; example data only when picked, always badged.
  */
 export function IntelligenceBrain({
   pageContext,
+  connectors,
+  candidates,
+  attribution,
+  avgConfidence,
   loading,
+  onSelectionChange,
+  onResynced,
   className,
 }: {
   pageContext?: IntelligencePageContextResponse | null
+  connectors?: Connector[] | null
+  candidates?: PromotionCandidate[] | null
+  attribution?: OutcomeAttribution
+  avgConfidence?: number | null
   loading?: boolean
+  onSelectionChange?: (entity: GravitreAISelectedEntity | null) => void
+  onResynced?: () => void
   className?: string
 }) {
   const prefersReduced = useReducedMotion() ?? false
+  const [mode, setMode] = useState<"live" | "example">("live")
   const [paused, setPaused] = useState(false)
   const [speed, setSpeed] = useState(1)
-  const [example, setExample] = useState<BrainModel | null>(null)
-  const real = useMemo(() => buildBrainModel(pageContext), [pageContext])
-  const model = example ?? real
-  const now = Date.parse(model.generatedAt ?? "") || Date.now()
-  const state = CORE_STATE_LABEL[model.coreState] ?? { label: loading ? "Loading" : "Unknown", tone: "neutral" as BrainTone }
-  const totalNodes = model.layers.reduce((sum, l) => sum + l.nodes, 0)
+  const [selection, setSelection] = useState<InspectorSelection>(null)
+  const [hover, setHover] = useState<string | null>(null)
+  const [trace, setTrace] = useState<FlowEvent | null>(null)
+  const [resyncing, setResyncing] = useState(false)
+  const mapRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (prefersReduced) setPaused(true)
+  }, [prefersReduced])
+
+  const liveModel = useMemo(
+    () => buildLiveFlowModel({ pageContext, connectors, candidates, attribution, avgConfidence, loading }),
+    [pageContext, connectors, candidates, attribution, avgConfidence, loading],
+  )
+  const exampleModel = useMemo(() => buildExampleFlowModel(), [])
+  const example = mode === "example"
+  const model = example ? exampleModel : liveModel
+  const placed = useMemo(() => placeNodes(model), [model])
+  const playback = useFlowPlayback(model, { paused, speed })
+
+  const switchMode = (next: "live" | "example") => {
+    setMode(next)
+    setSelection(null)
+    setTrace(null)
+    setHover(null)
+  }
+
+  const selectedNodeId = selection?.kind === "node" ? selection.id : null
+  const selectedLayer = selection?.kind === "layer" ? selection.id : null
+
+  useEffect(() => {
+    if (!onSelectionChange) return
+    const node = !example && selectedNodeId ? placed.get(selectedNodeId) : null
+    onSelectionChange(node && !node.placeholder ? { kind: NODE_KIND[node.layer], id: node.id, label: node.label } : null)
+  }, [example, selectedNodeId, placed, onSelectionChange])
+
+  const highlight = useMemo(() => {
+    if (trace) {
+      const nodes = new Set(trace.path)
+      const edges = new Set<string>()
+      trace.path.forEach((id, i) => {
+        if (i === 0) return
+        edges.add(edgeKey(trace.path[i - 1], id))
+        edges.add(edgeKey(id, trace.path[i - 1]))
+      })
+      return { nodes, edges }
+    }
+    const focus = hover ?? selectedNodeId
+    if (focus) return lineage(model, focus)
+    if (selectedLayer) {
+      const nodes = new Set<string>()
+      const edges = new Set<string>()
+      for (const n of model.nodes) if (n.layer === selectedLayer) nodes.add(n.id)
+      for (const e of model.edges) {
+        const a = placed.get(e.a)
+        const b = placed.get(e.b)
+        if (a?.layer === selectedLayer || b?.layer === selectedLayer) {
+          edges.add(e.key)
+          nodes.add(e.a)
+          nodes.add(e.b)
+        }
+      }
+      return { nodes, edges }
+    }
+    return null
+  }, [trace, hover, selectedNodeId, selectedLayer, model, placed])
+
+  const nodeSignals = useCallback(
+    (id: string) => (example ? (playback.exampleNodeSignals[id] ?? 0) : (placed.get(id)?.signals ?? null)),
+    [example, playback.exampleNodeSignals, placed],
+  )
+  const nodeStrength = (id: string) => {
+    const ws = model.edges
+      .filter((e) => (e.a === id || e.b === id) && e.evidence)
+      .map((e) => e.weight + (playback.boost[e.key] ?? 0))
+    return ws.length ? Math.min(1, ws.reduce((a, b) => a + b, 0) / ws.length / 6) : null
+  }
+  const nodeSub = (n: PlacedNode) => {
+    if (!example) return n.sub
+    if (n.layer === "forecasts") return playback.exampleOutcomes >= EXAMPLE_START.target ? "scored" : "not scored"
+    return `${nodeSignals(n.id) ?? 0} signals`
+  }
+
+  const selectNode = (id: string) => {
+    setSelection({ kind: "node", id })
+    setTrace(null)
+    setHover(null)
+  }
+
+  const traceLearning = (nodeId: string) => {
+    selectNode(nodeId)
+    mapRef.current?.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth", block: "start" })
+  }
+
+  const resync = async () => {
+    const ids = liveModel.quiet?.resyncIds ?? []
+    if (!ids.length) return
+    setResyncing(true)
+    const results = await Promise.allSettled(ids.map((id) => connectorsApi.sync(id)))
+    setResyncing(false)
+    const failed = results.filter((r) => r.status === "rejected").length
+    if (failed === 0) toast.success(ids.length === 1 ? "Resync started" : `Resync started for ${ids.length} sources`)
+    else if (failed < ids.length) toast.warning(`Resync started for ${ids.length - failed} of ${ids.length} sources`)
+    else toast.error("Could not start a resync. Check the source on Connections.")
+    onResynced?.()
+  }
+
+  // Header bar.
+  const inFlight = playback.inFlight
+  const quiet = !example ? liveModel.quiet : null
+  const chip = paused ? { label: "Paused", tone: "neutral" as const } : model.coreState
+  const note = example
+    ? `example data · ${inFlight} ${inFlight === 1 ? "signal" : "signals"} in flight`
+    : quiet
+      ? liveModel.lastSignalAt
+        ? `last signal ${shortDate(liveModel.lastSignalAt)}`
+        : "no signal yet"
+      : `live data · ${inFlight} ${inFlight === 1 ? "signal" : "signals"} in flight`
+
+  // Stats.
+  const stats = model.stats
+  const fed = example ? playback.exampleOutcomes : stats.outcomesFed
+  const target = stats.outcomesTarget
+  const unlocked = example && playback.exampleOutcomes >= EXAMPLE_START.target
+  const confPct = Math.round(40 + ((playback.exampleOutcomes - EXAMPLE_START.outcomes) / (EXAMPLE_START.target - EXAMPLE_START.outcomes)) * 42)
+  const forecastValue = example ? (unlocked ? `${confPct}%` : "Calibrating") : stats.forecastValue
+  const forecastNote = example
+    ? unlocked
+      ? `Scored against ${EXAMPLE_START.target} outcomes`
+      : `${EXAMPLE_START.target - playback.exampleOutcomes} outcomes until scoring starts`
+    : stats.forecastNote
+
+  const events = example ? playback.exampleEvents : model.events
+  const showLoading = !example && loading && !pageContext
 
   return (
     <section
-      aria-labelledby="intelligence-brain-heading"
+      aria-labelledby="intelligence-core-heading"
       data-testid="intelligence-brain"
-      data-example={model.example ? "true" : "false"}
-      className={cn("space-y-3", className)}
+      data-example={example ? "true" : "false"}
+      className={cn("flex flex-col gap-4", className)}
     >
-      <div className={cn(panel, "flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5")}>
-        <h2 id="intelligence-brain-heading" className="flex items-center gap-2 text-sm font-semibold text-foreground">
+      {/* Intelligence core control bar */}
+      <div className={cn(panel, "flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5")}>
+        <h2 id="intelligence-core-heading" className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
           <span className="relative flex h-2 w-2" aria-hidden>
-            {!paused && !prefersReduced ? (
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ background: TONE_VAR[state.tone] }} />
+            {!paused && !quiet && !prefersReduced ? (
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-50" style={{ background: TONE_VAR[chip.tone] }} />
             ) : null}
-            <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: TONE_VAR[state.tone] }} />
+            <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: TONE_VAR[chip.tone] }} />
           </span>
           Intelligence core
         </h2>
         <span
-          className={cn("rounded-full border px-2 py-0.5 text-[11px] font-medium", TONE_TEXT[state.tone])}
-          style={{ borderColor: `color-mix(in srgb, ${TONE_VAR[state.tone]} 40%, transparent)` }}
+          className="rounded-full px-2.5 py-0.5 text-xs font-medium"
+          style={{
+            color: TONE_VAR[chip.tone],
+            background: `color-mix(in srgb, ${TONE_VAR[chip.tone]} 14%, transparent)`,
+          }}
         >
-          {state.label}
+          {chip.label}
         </span>
-        <span className="font-mono text-[11px] text-[color:var(--g-text-muted)]">
-          Last {model.windowHours ?? "—"}h · {updatedLabel(model.generatedAt)}
-        </span>
-        {model.example ? (
-          <span className="rounded-full bg-[color:var(--g-approval)]/15 px-2 py-0.5 text-[11px] font-medium text-[color:var(--g-approval)]">
-            Example data
+        {example ? (
+          <span className="rounded-full bg-[color:var(--g-approval-soft)] px-2 py-0.5 text-[11px] font-medium text-[color:var(--g-approval)]">
+            Example
           </span>
         ) : null}
-
+        <span className="font-mono text-xs text-[color:var(--g-text-muted)]" aria-live="polite">
+          {note}
+        </span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          {model.example ? (
-            <button
-              type="button"
-              onClick={() => setExample(null)}
-              className="h-7 rounded-md px-2 text-[11px] font-medium text-[color:var(--g-text-secondary)] hover:bg-[color:var(--g-surface-2)] hover:text-foreground"
-            >
-              Show my data
-            </button>
-          ) : real.sparse && !loading ? (
-            <button
-              type="button"
-              onClick={() => setExample(buildExampleBrainModel())}
-              className="h-7 rounded-md px-2 text-[11px] font-medium text-[color:var(--g-text-secondary)] hover:bg-[color:var(--g-surface-2)] hover:text-foreground"
-            >
-              Preview with example data
-            </button>
-          ) : null}
-          <div className="flex items-center overflow-hidden rounded-md border border-[color:var(--g-border-subtle)]" role="group" aria-label="Animation speed">
-            {SPEEDS.map((s) => (
+          <div role="group" aria-label="Data shown" className={segment}>
+            {(["example", "live"] as const).map((m) => (
               <button
-                key={s.value}
+                key={m}
                 type="button"
-                aria-pressed={speed === s.value}
-                disabled={prefersReduced}
-                onClick={() => setSpeed(s.value)}
+                aria-pressed={mode === m}
+                onClick={() => switchMode(m)}
                 className={cn(
-                  "h-7 px-2 font-mono text-[11px] transition-colors disabled:opacity-40",
-                  speed === s.value
-                    ? "bg-[color:var(--g-surface-2)] text-foreground"
-                    : "text-[color:var(--g-text-muted)] hover:text-foreground",
+                  segmentButton,
+                  mode === m
+                    ? "bg-[color:var(--g-surface-1)] text-foreground shadow-sm"
+                    : "text-[color:var(--g-text-secondary)] hover:text-foreground",
                 )}
               >
-                {s.label}
+                {m === "example" ? "Example data" : "Live data"}
+              </button>
+            ))}
+          </div>
+          <div role="group" aria-label="Playback speed" className={segment}>
+            {SPEEDS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={speed === s}
+                onClick={() => setSpeed(s)}
+                className={cn(
+                  segmentButton,
+                  "px-2.5 font-mono text-xs",
+                  speed === s
+                    ? "bg-[color:var(--g-surface-1)] text-foreground shadow-sm"
+                    : "text-[color:var(--g-text-secondary)] hover:text-foreground",
+                )}
+              >
+                {s}×
               </button>
             ))}
           </div>
           <button
             type="button"
             onClick={() => setPaused((p) => !p)}
-            disabled={prefersReduced}
             aria-pressed={paused}
-            className="inline-flex h-7 items-center gap-1 rounded-md border border-[color:var(--g-border-subtle)] px-2 text-[11px] font-medium text-[color:var(--g-text-secondary)] hover:text-foreground disabled:opacity-40"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-[10px] bg-foreground px-3.5 text-[13px] font-medium text-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {paused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
-            {paused ? "Resume" : "Pause"}
+            {paused ? <Play className="h-3.5 w-3.5" fill="currentColor" aria-hidden /> : <Pause className="h-3.5 w-3.5" fill="currentColor" aria-hidden />}
+            {paused ? "Play" : "Pause"}
           </button>
         </div>
       </div>
 
-      {model.example ? (
-        <p className="rounded-[var(--np-radius-md)] border border-[color:var(--g-approval)]/30 bg-[color:var(--g-approval)]/10 px-4 py-2 text-xs text-[color:var(--g-text-secondary)]">
-          This is example data to show what the overview looks like. Your own numbers fill in as Gravitre connects sources, learns, and records outcomes.
-        </p>
-      ) : null}
+      {/* Headline numbers */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard
+          label="Signals processed today"
+          value={formatCount(example ? playback.exampleSignals : stats.signalsToday)}
+          sub={example ? "Every sync, run and click that reached the core" : stats.signalsSub}
+        />
+        <StatCard
+          label="Connections strengthened"
+          value={formatCount(example ? playback.exampleStrength : stats.connections)}
+          sub={stats.connectionsSub}
+          valueClass="text-[color:var(--g-intelligence)]"
+        />
+        <StatCard
+          label="Outcomes fed back"
+          value={fed == null && target == null ? "—" : `${formatCount(fed)} / ${formatCount(target)}`}
+          valueClass="text-[color:var(--g-approval)]"
+        >
+          <span
+            className="mt-1 block h-1.5 overflow-hidden rounded-full bg-[color:var(--g-approval-soft)]"
+            role="progressbar"
+            aria-label="Outcomes until scoring starts"
+            aria-valuemin={0}
+            aria-valuemax={target ?? 0}
+            aria-valuenow={fed ?? 0}
+            title={example ? undefined : "Measured outcomes for your best-measured agent, against the number scoring needs"}
+          >
+            <span
+              className="block h-full rounded-full bg-[color:var(--g-approval)] transition-[width] duration-500"
+              style={{ width: `${target ? Math.min(100, Math.round(((fed ?? 0) / target) * 100)) : 0}%` }}
+            />
+          </span>
+        </StatCard>
+        <StatCard
+          label="Forecast confidence"
+          value={forecastValue}
+          sub={forecastNote}
+          valueClass={example || stats.forecastScored || forecastValue === "Calibrating" ? "text-[color:var(--g-brand-active,var(--g-brand))] dark:text-[color:var(--g-brand)]" : undefined}
+        />
+      </div>
 
-      <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[232px_minmax(0,1fr)_264px]">
-        <aside aria-label="Core metrics" className={cn(panel, "order-2 grid sm:grid-cols-2 lg:order-1 lg:block")}>
-          {model.metrics.map((metric) => (
-            <MetricCard key={metric.id} metric={metric} />
-          ))}
-          <div className="border-t border-[color:var(--g-border-subtle)] sm:col-span-2">
-            <LayerBars model={model} />
+      {/* Map + activity */}
+      <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <section
+          ref={mapRef}
+          aria-labelledby="overview-map-heading"
+          className={cn(panel, "relative flex min-w-0 scroll-mt-24 flex-col gap-3 p-4 sm:p-5")}
+          style={{
+            backgroundImage: "radial-gradient(var(--g-border-subtle) 1px, transparent 1px)",
+            backgroundSize: "20px 20px",
+          }}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="overview-map-heading" className="text-[17px] font-semibold text-foreground">
+              How Gravitre is connecting the dots
+            </h2>
+            <span className="text-xs text-[color:var(--g-text-muted)]">Hover to follow a path. Click to drill in.</span>
           </div>
-        </aside>
-
-        <div className={cn(panel, "relative order-1 min-h-[420px] overflow-hidden bg-[color:var(--g-surface-2)]/40 lg:order-2 lg:min-h-[460px]")}>
-          <BrainNetworkCanvas
-            layers={model.layers}
-            activity={model.activity}
-            paused={paused}
-            speed={speed}
-            reducedMotion={prefersReduced}
-            className="absolute inset-0"
+          <FlowMap
+            model={model}
+            placed={placed}
+            playback={playback}
+            highlightNodes={highlight?.nodes ?? null}
+            highlightEdges={highlight?.edges ?? null}
+            selectedNodeId={selectedNodeId}
+            selectedLayer={selectedLayer}
+            nodeSub={nodeSub}
+            onHover={setHover}
+            onSelectNode={selectNode}
+            onSelectLayer={(id) => {
+              setSelection({ kind: "layer", id })
+              setTrace(null)
+            }}
+            notice={
+              unlocked ? (
+                <p role="status" className="flex items-center gap-2 text-[13px] text-[color:var(--g-brand-active,var(--g-brand))]">
+                  <span className="h-2 w-2 rounded-full bg-[color:var(--g-brand)]" aria-hidden />
+                  Forecasts unlocked. {EXAMPLE_START.target} outcomes captured, scoring has started.
+                </p>
+              ) : null
+            }
+            overlay={
+              showLoading ? (
+                <div className="absolute inset-0 grid place-items-center">
+                  <span className={cn(panel, "px-4 py-2 text-[13px] text-[color:var(--g-text-secondary)]")}>Loading what Gravitre knows…</span>
+                </div>
+              ) : quiet ? (
+                <div className="pointer-events-none absolute inset-0 grid place-items-center px-6 pb-16 pt-24">
+                  <div className="pointer-events-auto flex max-w-[420px] flex-col items-center gap-3 rounded-2xl border border-[color:var(--g-approval)]/30 bg-[color:var(--g-surface-1)] px-6 py-5 text-center shadow-lg">
+                    <span className="rounded-md bg-[color:var(--g-approval-soft)] px-2 py-0.5 font-mono text-[11px] text-[color:var(--g-approval)]">
+                      {quiet.since}
+                    </span>
+                    <strong className="text-base font-semibold text-foreground">The core is quiet</strong>
+                    <span className="text-[13px] leading-relaxed text-[color:var(--g-text-secondary)]">{quiet.body}</span>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {quiet.resyncIds.length ? (
+                        <button
+                          type="button"
+                          onClick={() => void resync()}
+                          disabled={resyncing}
+                          className="min-h-9 rounded-[8px] bg-foreground px-3 text-[13px] font-medium text-background hover:opacity-90 disabled:opacity-50"
+                        >
+                          {resyncing ? "Resyncing…" : "Resync sources"}
+                        </button>
+                      ) : (
+                        <Link
+                          href={APP_ROUTES.connectors}
+                          className="inline-flex min-h-9 items-center rounded-[8px] bg-foreground px-3 text-[13px] font-medium text-background hover:opacity-90"
+                        >
+                          Connect a source
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => switchMode("example")}
+                        className="min-h-9 rounded-[8px] border border-[color:var(--g-border-default)] px-3 text-[13px] font-medium text-foreground hover:bg-[color:var(--g-surface-2)]"
+                      >
+                        Watch example data
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null
+            }
           />
-          <nav aria-label="Intelligence layers" className="pointer-events-none absolute inset-x-0 top-3">
-            {model.layers.map((layer, i) => (
-              <Link
-                key={layer.id}
-                href={layer.href}
-                className="pointer-events-auto absolute w-[18%] -translate-x-1/2 rounded-md px-1 py-1 text-center transition-colors hover:bg-[color:var(--g-surface-1)]/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]"
-                style={{ left: `${brainLayerX(i, model.layers.length)}%` }}
-                title={`Open ${layer.label}`}
-              >
-                <span className={cn("block truncate text-[11px] font-semibold sm:text-xs", TONE_TEXT[layer.tone])}>
-                  {layer.label}
-                </span>
-                <span className="mt-0.5 hidden truncate font-mono text-[10px] text-[color:var(--g-text-muted)] sm:block">
-                  {layer.detail}
-                </span>
-              </Link>
-            ))}
-          </nav>
-          <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-wrap items-end justify-between gap-2">
-            <ul className="flex flex-wrap gap-x-3 gap-y-1 rounded-md bg-[color:var(--g-surface-1)]/85 px-2.5 py-1.5 text-[10px] text-[color:var(--g-text-secondary)] backdrop-blur-sm" aria-label="Legend">
-              <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[color:var(--g-brand)]" aria-hidden />Signal flowing in</li>
-              <li className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[color:var(--g-intelligence)]" aria-hidden />Feedback from outcomes</li>
-              <li className="flex items-center gap-1.5"><span className="h-0.5 w-3 rounded-full bg-[color:var(--g-approval)]" aria-hidden />Learning applied</li>
-            </ul>
-            <span className="hidden rounded-md bg-[color:var(--g-surface-1)]/85 px-2.5 py-1.5 font-mono text-[10px] text-[color:var(--g-text-muted)] backdrop-blur-sm sm:inline">
-              {model.layers.length} layers · {totalNodes} nodes{paused ? " · paused" : ""}
-            </span>
-          </div>
-          <p className="sr-only">
-            {model.layers.map((l) => `${l.label}: ${l.detail}.`).join(" ")}
-          </p>
-        </div>
+        </section>
 
-        <aside aria-label="Forecasts and learning log" className={cn(panel, "order-3 flex flex-col divide-y divide-[color:var(--g-border-subtle)] lg:col-span-2 lg:grid lg:grid-cols-2 lg:divide-x lg:divide-y-0 xl:col-span-1 xl:flex xl:max-h-[520px] xl:divide-x-0 xl:divide-y")}>
-          <ConfidencePanel model={model} />
-          <LearningLog model={model} now={now} />
+        <aside aria-label="Inspector" className={cn(panel, "flex min-w-0 flex-col gap-3 p-4 sm:p-5")}>
+          <FlowInspector
+            model={model}
+            placed={placed}
+            selection={selection}
+            events={events}
+            streamTitle={quiet ? "Recent activity" : "Live activity"}
+            streamMeta={
+              quiet
+                ? liveModel.lastSignalAt
+                  ? `quiet since ${shortDate(liveModel.lastSignalAt)}`
+                  : "quiet"
+                : `${inFlight} in flight`
+            }
+            live={!quiet && !paused}
+            now={playback.now}
+            traceId={trace?.id ?? null}
+            onTrace={(e) => {
+              setTrace((cur) => (cur?.id === e.id ? null : e))
+              setSelection(null)
+            }}
+            onBack={() => {
+              setSelection(null)
+              setTrace(null)
+            }}
+            onSelectNode={selectNode}
+            onSelectLayer={(id) => setSelection({ kind: "layer", id })}
+            nodeSignals={nodeSignals}
+            nodeStrength={nodeStrength}
+          />
         </aside>
       </div>
 
-      <div className={cn(panel, "px-4 py-3")}>
-        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-          <p className={panelTitle}>Outcome confidence over time</p>
-          <div className="flex items-center gap-3 font-mono text-[10px] text-[color:var(--g-text-muted)]">
-            <span>{model.curve.length} outcomes scored</span>
-            <Link href={APP_ROUTES.intelligencePerformance} className="inline-flex items-center gap-1 font-sans text-[11px] font-medium text-[color:var(--g-text-secondary)] hover:text-foreground">
-              See impact <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-        </div>
-        <OutcomeCurve points={model.curve} reduced={prefersReduced} />
-      </div>
+      <LearningCards
+        learnings={model.learnings}
+        example={example}
+        reinforced={playback.exampleReinforced}
+        onTrace={traceLearning}
+      />
     </section>
   )
 }

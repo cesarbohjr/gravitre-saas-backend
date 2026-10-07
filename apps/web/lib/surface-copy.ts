@@ -9,7 +9,7 @@ export const SURFACE_COPY = {
     title: "Intelligence",
     shortTitle: "Intelligence",
     description:
-      "What Gravitre has learned about your business, and the evidence behind it.",
+      "Watch Gravitre learn. Every interaction flows in, strengthens a connection, and comes back as a better prediction.",
     emptyTitle: "Collecting signals",
     emptyDescription:
       "Outcome events and confidence scores appear here as agents finish work with measurable results.",
@@ -239,7 +239,7 @@ export const SURFACE_COPY = {
     predictive: {
       title: "Forecasts",
       description:
-        "Risks and opportunities Gravitre expects next, with confidence and evidence. Nothing changes until you act on one.",
+        "Risks and opportunities Gravitre expects next, how sure it is, and why. Nothing changes until you act on one.",
     },
     assignments: {
       title: "Assignments",

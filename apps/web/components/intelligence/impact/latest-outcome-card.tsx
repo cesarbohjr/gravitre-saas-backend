@@ -23,7 +23,7 @@ export function LatestOutcomeCard({
       aria-labelledby="impact-outcome-heading"
       className="rounded-[var(--np-radius-lg)] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-5"
     >
-      <p className={cn(TYPE.eyebrow, "uppercase tracking-[0.08em]")}>Latest outcome</p>
+      <p className={cn(TYPE.eyebrow, "tracking-[0.08em]")}>Latest outcome</p>
       <h2 id="impact-outcome-heading" className={cn(TYPE.cardTitle, "mt-2 text-pretty")}>
         {loading ? "Loading outcome…" : headline ?? "No outcome recorded in this period"}
       </h2>
