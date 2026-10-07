@@ -89,8 +89,8 @@ export function PredictionsStage({
   useEffect(() => {
     if (area && !areas.includes(area)) setArea(null)
   }, [area, areas])
-  const selected =
-    visible.find((row) => row.key === selectedKey) ?? forecasts.find((row) => row.key === selectedKey) ?? visible[0] ?? null
+  // Only the filtered list can be selected, so changing area never leaves another area's detail open.
+  const selected = visible.find((row) => row.key === selectedKey) ?? visible[0] ?? null
 
   const reject = async (forecast: Forecast) => {
     setRejectingKey(forecast.key)

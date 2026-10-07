@@ -261,13 +261,13 @@ export function FindDataSection({
               {term ? (searching ? "Searching…" : `${matches.length} match${matches.length === 1 ? "" : "es"}`) : "Matches"}
             </h2>
             <label className="flex items-center gap-1.5 text-xs text-[color:var(--g-text-muted)]">
-              Ranked by fit for
+              Import to train
               <select
-                aria-label="Train for"
+                aria-label="Import to train"
                 value={target?.value ?? ""}
                 onChange={(event) => setTargetValue(event.target.value)}
                 disabled={targets.length === 0}
-                title="Choose which model or agent to rank datasets for"
+                title="Choose which model or agent an imported dataset trains"
                 className="max-w-[12rem] cursor-pointer appearance-none truncate rounded-[var(--g-radius-control)] border-0 bg-transparent p-0 text-xs font-medium text-[color:var(--g-text-primary)] underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)] disabled:cursor-default disabled:no-underline"
               >
                 {targets.length === 0 ? (

@@ -629,9 +629,11 @@ export function buildLiveFlowModel(input: LiveFlowInput): FlowModel {
   )
   const lastSignalAt = events.find((e) => e.at)?.at ?? null
   let quiet: FlowQuiet | null = null
-  if (ctx && !input.loading && !recent && !(signalsToday ?? 0)) {
-    const syncTimes = connectors.map((c) => timeMs(c.last_sync_at)).filter(Boolean)
-    const lastSync = syncTimes.length ? Math.max(...syncTimes) : 0
+  const syncTimes = connectors.map((c) => timeMs(c.last_sync_at)).filter(Boolean)
+  const lastSync = syncTimes.length ? Math.max(...syncTimes) : 0
+  // A source that synced in the last day is still flowing, even before any outcome or learning lands.
+  const syncedRecently = lastSync > 0 && Date.now() - lastSync < 86_400_000
+  if (ctx && !input.loading && !recent && !(signalsToday ?? 0) && !syncedRecently) {
     const days = lastSync ? Math.max(1, Math.round((Date.now() - lastSync) / 86_400_000)) : 0
     const body =
       connectors.length === 0

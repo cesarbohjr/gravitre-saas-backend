@@ -3,6 +3,7 @@
  * design's stat cards and evidence trail. Nothing here invents a value:
  * when a source has no data the card says so ("—" / No evidence).
  */
+import { connectorNeedsSignIn } from "@/components/intelligence/impact/impact-model"
 import type { IntelligencePageContextResponse, OutcomeAttributionPath, OutcomePathStep } from "@/lib/api"
 import type { ReportTemplateId } from "@/lib/intelligence/saved-intelligence-views"
 import { readNumber } from "@/lib/intelligence/helpers"
@@ -193,10 +194,8 @@ export function formatRecordedAt(value: string | null, now: Date = new Date()): 
   return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
 }
 
-const SIGN_IN_STATUSES = new Set(["pending", "pending_auth", "needs_connection", "auth_expired"])
-
 export function connectorsNeedingSignIn(connectors: Connector[] | null | undefined): Connector[] {
-  return (connectors ?? []).filter((c) => SIGN_IN_STATUSES.has(String(c.status ?? "").toLowerCase()))
+  return (connectors ?? []).filter(connectorNeedsSignIn)
 }
 
 export type ReportSources = {

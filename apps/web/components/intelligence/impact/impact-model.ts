@@ -103,7 +103,7 @@ export function impactTotals(report: AgentRoiReport | null | undefined): ImpactT
 /** Why Return has no value yet, in the design's words. */
 export function returnMissingReason(totals: ImpactTotals): string {
   if (!totals.tasks) return "Needs one finished task"
-  if (!totals.spent) return "Needs measured spend"
+  if (totals.spent == null) return "Needs measured spend"
   return "Needs time saved"
 }
 
@@ -135,7 +135,8 @@ export function agentStatusLine(row: AgentRoiRow, agent: SnapshotAgent | undefin
   return { text: tasks > 0 ? "Ran this period" : "No runs this period", tone: "muted" }
 }
 
-const NEEDS_SIGN_IN = new Set(["error", "pending_auth", "auth_expired", "misconfigured"])
+/** Connector statuses that need someone to sign in or fix the connection. Shared with Reports. */
+const NEEDS_SIGN_IN = new Set(["pending", "pending_auth", "needs_connection", "auth_expired", "error", "misconfigured"])
 const CONNECTED = new Set(["active", "healthy", "connected", "syncing"])
 
 export function connectorNeedsSignIn(c: Connector): boolean {

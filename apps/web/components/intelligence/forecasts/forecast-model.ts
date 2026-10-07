@@ -116,6 +116,12 @@ export function formatWhen(horizonDays: number | null, origin: ForecastOrigin): 
   return `In ${Math.round(days / 30)} months`
 }
 
+function formatExpiry(hours: number): string {
+  if (hours < 1) return "Within the hour"
+  if (hours < 36) return `In ${Math.round(hours)} hours`
+  return formatWhen(hours / 24, "prediction")
+}
+
 export function confidenceLabel(confidence: number | null): string {
   if (confidence == null) return "Not scored"
   if (confidence < 0.6) return "Low"
@@ -152,6 +158,7 @@ export function forecastFromFailureAlert(alert: FailureAlertWithEvidence): Forec
   const confidence = normalizeConfidence(alert.confidence)
   const severity = alert.severity
   const needsYouNow = severity === "critical" || severity === "high"
+  let expiryHours: number | null = null
   let title = alert.title
   let summary = alert.message
   let drivers: string[] = []
@@ -174,6 +181,7 @@ export function forecastFromFailureAlert(alert: FailureAlertWithEvidence): Forec
     case "auth_expiry": {
       const vendor = vendorFromAlert(alert)
       const hours = Number(evidence.hoursUntilExpiry)
+      if (Number.isFinite(hours)) expiryHours = Math.max(0, hours)
       title = `${vendor} sign-in expiring`
       drivers = [
         Number.isFinite(hours)
@@ -230,8 +238,9 @@ export function forecastFromFailureAlert(alert: FailureAlertWithEvidence): Forec
     summary,
     area: WORKFLOWS_AREA,
     confidence,
-    horizonDays: 0,
-    whenLabel: "Next run",
+    // Sign-in expiry has a real date; every other workflow alert is about the next run.
+    horizonDays: expiryHours != null ? expiryHours / 24 : 0,
+    whenLabel: expiryHours != null ? formatExpiry(expiryHours) : "Next run",
     drivers,
     evidence: alert.message ? [alert.message] : [],
     needsYouNow,
