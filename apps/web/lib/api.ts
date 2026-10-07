@@ -2658,7 +2658,96 @@ export type PlayListItem = {
 
 export type PlayImpactMetric = { metricKey: string; value: number; unit?: string | null; currency?: string | null }
 export type PlayImpactItem = { playKey: string; verifiedSuccessCount: number; verifiedFailureCount: number; pendingVerificationCount: number; actionedCount: number; verifiedMetrics: PlayImpactMetric[]; latestResultAt?: string | null }
-export type PlayImpactSummary = { plays: PlayImpactItem[]; verifiedResultCount: number; pendingVerificationCount: number; verifiedMetrics: PlayImpactMetric[]; truthRule: string }
+export type PlayImpactSummary = { plays: PlayImpactItem[]; verifiedResultCount: number; pendingVerificationCount: number; verifiedMetrics: PlayImpactMetric[]; truthRule: string; range?: string | null }
+
+/** Ranges the business metric and Play impact endpoints accept. */
+export type BusinessMetricRange = "7d" | "30d" | "90d" | "365d" | "all"
+
+export type BusinessMetricDefinition = {
+  metricKey: string
+  label: string
+  description: string
+  department: string
+  departments: string[]
+  kind: "business" | "funnel" | "operational"
+  unit: "count" | "currency" | "ratio" | "percent" | "minutes" | "hours" | "days" | "position" | "score" | "credits"
+  direction: "up" | "down"
+  sourceSystem: string | null
+  sourceRecordType: string | null
+  verificationMethod: string | null
+  aggregation: "count" | "sum" | "ratio" | "avg"
+  numerator: string | null
+  denominator: string | null
+  owner: "platform" | "org"
+  packs: string[]
+  verifiable: boolean
+}
+
+export type BusinessMetricCatalog = {
+  metrics: BusinessMetricDefinition[]
+  departments: Array<{ id: string; label: string }>
+}
+
+export type BusinessMetricStatus = "verified" | "no_verified_evidence" | "not_defined" | "insufficient_data"
+
+export type BusinessMetricValue = {
+  metricKey: string
+  value: number | null
+  unit: BusinessMetricDefinition["unit"]
+  currency: string | null
+  status: BusinessMetricStatus
+  reason: string | null
+  verifiedResultCount: number
+  assistedResultCount: number
+  latestVerifiedAt: string | null
+}
+
+export type BusinessMetricValues = {
+  range: BusinessMetricRange
+  metrics: BusinessMetricValue[]
+  truthRule: string
+}
+
+export type BusinessMetricContribution = {
+  outcomeId: string
+  playKey: string
+  value: number | null
+  unit: BusinessMetricDefinition["unit"] | null
+  currency: string | null
+  attributionType: string | null
+  attributionWeight: number | null
+  countedInTotal: boolean
+  sourceRecords: Array<{ system?: string; record_type?: string; record_id?: string }>
+  verificationMethod: string | null
+  verifiedAt: string | null
+  evidenceHref: string | null
+}
+
+export type BusinessMetricEvidence = BusinessMetricValue & {
+  range: BusinessMetricRange
+  contributions: BusinessMetricContribution[]
+  exceptions: Array<{ outcomeId: string | null; kind: string; message: string; playKey?: string }>
+}
+
+export type InstalledDashboardPack = {
+  installationId: string
+  assetId: string | null
+  templateId: string | null
+  title: string | null
+  department: string | null
+  installedAt: string | null
+}
+
+/** Dashboard templates published by Outcome Packs (GET /api/dashboard-templates). */
+export type DashboardTemplate = {
+  templateId: string
+  name: string
+  department: string
+  packId: string
+  sections: Array<{ title: string; kpiKeys: string[] }>
+  systemHealthKpis: string[]
+  installed: boolean
+}
 
 export const playsApi = {
   list: () =>
@@ -2668,8 +2757,57 @@ export const playsApi = {
       executionAuthority: string
       policyNote: string
     }>(apiUrl("/api/plays")),
-  impact: () => fetcher<PlayImpactSummary>(apiUrl("/api/plays/impact")),
+  impact: (range?: BusinessMetricRange) =>
+    fetcher<PlayImpactSummary>(apiUrl(`/api/plays/impact${range ? `?range=${range}` : ""}`)),
   outcomes: (playKey: string) => fetcher<{ playKey: string; outcomes: Array<Record<string, unknown>>; count: number; truthRule: string }>(apiUrl(`/api/plays/${encodeURIComponent(playKey)}/outcomes`)),
+}
+
+// ============ Objectives (objective-first plans on verified metrics) ============
+export type ObjectiveProgress = {
+  objectiveId: string
+  statement: string
+  status: string
+  metricKey: string
+  target: number | null
+  period: string
+  current: number | null
+  currentStatus: BusinessMetricStatus | null
+  remaining: number | null
+  metrics: BusinessMetricValue[]
+  attributedToObjective: Record<string, number>
+  actionsAwaitingVerification: number
+  plan: Array<{ playKey: string; name: string; why: string; status: string; movesPrimary: boolean }>
+  planHistory: Array<{ revision: number | null; reason: string | null }>
+  truthRule: string
+}
+
+export const objectivesApi = {
+  progress: (objectiveId: string) =>
+    fetcher<ObjectiveProgress>(apiUrl(`/api/goals/objectives/${encodeURIComponent(objectiveId)}/progress`)),
+}
+
+// ============ Business metrics (verified outcomes from source systems) ============
+export const businessMetricsApi = {
+  catalog: () => fetcher<BusinessMetricCatalog>(apiUrl("/api/metrics/business/catalog")),
+  values: (range: BusinessMetricRange, metricKeys?: string[]) => {
+    const query = new URLSearchParams({ range })
+    if (metricKeys && metricKeys.length > 0) query.set("metric_keys", metricKeys.join(","))
+    return fetcher<BusinessMetricValues>(apiUrl(`/api/metrics/business?${query.toString()}`))
+  },
+  evidence: (metricKey: string, range: BusinessMetricRange, limit = 100) =>
+    fetcher<BusinessMetricEvidence>(
+      apiUrl(
+        `/api/metrics/business/${encodeURIComponent(metricKey)}/evidence?range=${range}&limit=${limit}`,
+      ),
+    ),
+}
+
+export const dashboardPacksApi = {
+  installed: () =>
+    fetcher<{ dashboardPacks: InstalledDashboardPack[] }>(
+      apiUrl("/api/marketplace/dashboard-packs/installed"),
+    ),
+  templates: () => fetcher<{ templates: DashboardTemplate[] }>(apiUrl("/api/dashboard-templates")),
 }
 
 // ============ Metrics ============
@@ -2771,22 +2909,6 @@ export type IntelligenceEvaluationsResponse = {
     offset: number
     hasMore: boolean
   }
-}
-
-export const intelligencePacksApi = {
-  packKpis: (packId: string) =>
-    fetcher<{
-      packId: string
-      installed: boolean
-      installId?: string | null
-      agentCount?: number
-      workflowCount?: number
-      signalsCount?: number
-      entitiesCount?: number
-      cacheTouches?: number
-      assignmentsCount?: number
-      vendors?: Record<string, { signals?: number; entities?: number }>
-    }>(apiUrl(`/api/intelligence-packs/${encodeURIComponent(packId)}/kpis`)),
 }
 
 export type KnowledgeFabricPackQuality = {
@@ -3030,7 +3152,8 @@ export const intelligenceApi = {
   businessImpact: () =>
     fetcher<{
       scopeNote: string
-      businessImpactScore: number
+      /** Null when there is no outcome data yet (scoreLabel is then "insufficient_data"). */
+      businessImpactScore: number | null
       scoreLabel: string
       pendingReviewCount: number
       pendingBusinessSignals: number

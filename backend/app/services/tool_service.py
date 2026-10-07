@@ -62,10 +62,16 @@ from app.connectors.hubspot import (
     # later, so the bare name would silently resolve to Zendesk's.
     list_tickets as hubspot_list_tickets,
     list_owners,
+    list_associations as hubspot_list_associations,
+    get_meeting as hubspot_get_meeting,
     search_companies,
+    search_contact_emails as hubspot_search_contact_emails,
     search_contacts,
+    search_crm_objects_all as hubspot_search_crm_objects_all,
     search_deals,
+    search_meetings as hubspot_search_meetings,
     search_tickets,
+    update_company as hubspot_update_company,
     update_contact,
     update_deal,
     update_deal_stage,
@@ -451,6 +457,49 @@ def _handle_hubspot_error(exc: HubSpotAPIError) -> ToolError:
     return ToolError(str(exc))
 
 
+def _hubspot_evidence(record_type: str, token: str, record_id: str) -> dict[str, Any] | None:
+    """Normalized source-of-record evidence (stage outcome, amounts, lifecycle) for verification."""
+    from app.connectors import hubspot_evidence
+
+    readers = {
+        "contact": hubspot_evidence.fetch_contact_evidence,
+        "deal": hubspot_evidence.fetch_deal_evidence,
+        "company": hubspot_evidence.fetch_company_evidence,
+        "meeting": hubspot_evidence.fetch_meeting_evidence,
+    }
+    try:
+        return readers[record_type](token, record_id)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+
+
+def _exec_hubspot_contacts_outreach(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Delivered/reply evidence for one contact. Unknown counts stay None, never 0."""
+    from app.connectors.hubspot_evidence import fetch_contact_outreach_evidence
+
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    contact_id = str(params.get("contact_id") or params.get("contactId") or "").strip()
+    if not contact_id:
+        raise ToolValidationError("hubspot.contacts.outreach requires contact_id")
+    since = params.get("since") or params.get("since_iso")
+    try:
+        evidence = fetch_contact_outreach_evidence(token, contact_id, since_iso=str(since) if since else None)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    delivered = evidence.get("delivered_count")
+    replies = evidence.get("reply_count")
+    evidence["summary"] = (
+        f"Contact {contact_id}: delivered={'unknown' if delivered is None else delivered}, "
+        f"replies={'unknown' if replies is None else replies}"
+    )
+    return NormalizedResult(
+        success=True,
+        action="hubspot.contacts.outreach",
+        connector_id=cid,
+        data={"evidence": evidence, "id": contact_id, "summary": evidence["summary"]},
+    )
+
+
 def _exec_hubspot_contacts_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _hubspot_connector_and_token(ctx, params)
     try:
@@ -462,11 +511,15 @@ def _exec_hubspot_contacts_get(ctx: ToolContext, params: dict[str, Any]) -> Norm
         )
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
+    payload: dict[str, Any] = {"contact": data}
+    contact_id = str(params.get("contact_id") or params.get("contactId") or (data or {}).get("id") or "").strip()
+    if params.get("include_evidence") and contact_id:
+        payload["evidence"] = _hubspot_evidence("contact", token, contact_id)
     return NormalizedResult(
         success=True,
         action="hubspot.contacts.get",
         connector_id=cid,
-        data={"contact": data},
+        data=payload,
     )
 
 
@@ -765,11 +818,14 @@ def _exec_hubspot_deals_get(ctx: ToolContext, params: dict[str, Any]) -> Normali
         data = get_deal(token, str(deal_id), properties=params.get("properties"))
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
+    payload: dict[str, Any] = {"deal": data}
+    if params.get("include_evidence"):
+        payload["evidence"] = _hubspot_evidence("deal", token, str(deal_id))
     return NormalizedResult(
         success=True,
         action="hubspot.deals.get",
         connector_id=cid,
-        data={"deal": data},
+        data=payload,
     )
 
 
@@ -1077,10 +1133,48 @@ def _exec_hubspot_tickets_create(ctx: ToolContext, params: dict[str, Any]) -> No
     )
 
 
+def _hubspot_max_records(params: dict[str, Any], *, cap: int = 10000) -> int | None:
+    raw = params.get("max_records") if params.get("max_records") is not None else params.get("maxRecords")
+    if raw is None or raw == "":
+        return None
+    try:
+        return min(max(int(raw), 1), cap)
+    except (TypeError, ValueError):
+        raise ToolValidationError("max_records must be an integer") from None
+
+
 def _exec_hubspot_deals_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _hubspot_connector_and_token(ctx, params)
     limit = int(params.get("limit") or 25)
     filter_groups = _resolve_hubspot_search("deals", params)
+    max_records = _hubspot_max_records(params)
+    if max_records is not None:
+        # Paginated census: follow the ``after`` cursor until exhausted or capped.
+        try:
+            page = hubspot_search_crm_objects_all(
+                token,
+                "deals",
+                filter_groups=filter_groups,
+                properties=params.get("properties")
+                or ["dealname", "dealstage", "amount", "closedate", "pipeline", "createdate", "deal_currency_code"],
+                max_records=max_records,
+            )
+        except HubSpotAPIError as exc:
+            raise _handle_hubspot_error(exc) from exc
+        results = list(page.get("results") or [])
+        data = {
+            "results": results,
+            "total": page.get("total"),
+            "pages": page.get("pages"),
+            "truncated": bool(page.get("truncated")),
+            "coverage": {
+                "returned": len(results),
+                "total_reported": page.get("total"),
+                "complete": not bool(page.get("truncated")),
+                "max_records": max_records,
+            },
+        }
+        return NormalizedResult(success=True, action="hubspot.deals.search", connector_id=cid, data=data)
     try:
         if filter_groups is None:
             data = list_deals(token, properties=params.get("properties"), limit=limit)
@@ -1098,8 +1192,31 @@ def _exec_hubspot_deals_search(ctx: ToolContext, params: dict[str, Any]) -> Norm
 
 def _exec_hubspot_deals_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid, token = _hubspot_connector_and_token(ctx, params)
+    max_records = _hubspot_max_records(params)
     try:
-        data = list_deals(token, limit=int(params.get("limit") or 25))
+        if max_records is not None:
+            # Paginated census (unfiltered search follows the ``after`` cursor).
+            page = hubspot_search_crm_objects_all(
+                token,
+                "deals",
+                properties=["dealname", "dealstage", "amount", "closedate", "pipeline", "createdate", "deal_currency_code"],
+                max_records=max_records,
+            )
+            results_all = list(page.get("results") or [])
+            data = {
+                "results": results_all,
+                "total": page.get("total") if isinstance(page.get("total"), int) else len(results_all),
+                "pages": page.get("pages"),
+                "truncated": bool(page.get("truncated")),
+                "coverage": {
+                    "returned": len(results_all),
+                    "total_reported": page.get("total"),
+                    "complete": not bool(page.get("truncated")),
+                    "max_records": max_records,
+                },
+            }
+        else:
+            data = list_deals(token, limit=int(params.get("limit") or 25))
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
     from app.services.hubspot_urls import resolve_search_or_list_result_url
@@ -1144,7 +1261,11 @@ def _exec_hubspot_companies_get(ctx: ToolContext, params: dict[str, Any]) -> Nor
         )
     except HubSpotAPIError as exc:
         raise _handle_hubspot_error(exc) from exc
-    return NormalizedResult(success=True, action="hubspot.companies.get", connector_id=cid, data={"company": data})
+    payload: dict[str, Any] = {"company": data}
+    company_id = str(params.get("company_id") or (data or {}).get("id") or "").strip()
+    if params.get("include_evidence") and company_id:
+        payload["evidence"] = _hubspot_evidence("company", token, company_id)
+    return NormalizedResult(success=True, action="hubspot.companies.get", connector_id=cid, data=payload)
 
 
 def _exec_hubspot_tickets_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
@@ -1192,6 +1313,162 @@ def _exec_hubspot_companies_create(ctx: ToolContext, params: dict[str, Any]) -> 
         action="hubspot.companies.create",
         connector_id=cid,
         data=company_payload,
+    )
+
+
+def _exec_hubspot_companies_update(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Update a company (PATCH /crm/v3/objects/companies/{id})."""
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    company_id = str(params.get("company_id") or params.get("companyId") or params.get("id") or "").strip()
+    if not company_id:
+        raise ToolValidationError("hubspot.companies.update requires company_id")
+    properties = params.get("properties")
+    if not isinstance(properties, dict) or not properties:
+        raise ToolValidationError("hubspot.companies.update requires properties object")
+    try:
+        data = hubspot_update_company(token, company_id, properties)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    from app.services.hubspot_urls import record_url
+
+    result_url = record_url(_hubspot_hub_id(ctx, cid), object_type="companies", record_id=company_id)
+    payload: dict[str, Any] = {
+        "company": data,
+        "company_id": company_id,
+        "id": str((data or {}).get("id") or company_id),
+        "updated_properties": sorted(str(k) for k in properties),
+        "summary": f"Updated HubSpot company {company_id}",
+    }
+    if result_url:
+        payload["result_url"] = result_url
+    return NormalizedResult(success=True, action="hubspot.companies.update", connector_id=cid, data=payload)
+
+
+def _exec_hubspot_meetings_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Search meeting engagements (optionally by associated contact/deal/company)."""
+    from app.connectors.hubspot import association_filter_group
+
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    filter_groups = params.get("filter_groups") or params.get("filterGroups")
+    if not (isinstance(filter_groups, list) and filter_groups):
+        filter_groups = None
+        for key, obj in (("contact_id", "contacts"), ("deal_id", "deals"), ("company_id", "companies")):
+            if params.get(key):
+                filter_groups = [association_filter_group(obj, str(params[key]))]
+                break
+    since_ms = params.get("since_ms")
+    if since_ms is not None:
+        try:
+            since_filter = {"propertyName": "hs_meeting_start_time", "operator": "GTE", "value": str(int(since_ms))}
+        except (TypeError, ValueError):
+            raise ToolValidationError("since_ms must be epoch milliseconds") from None
+        if filter_groups:
+            filter_groups = [{"filters": list(g.get("filters") or []) + [since_filter]} for g in filter_groups]
+        else:
+            filter_groups = [{"filters": [since_filter]}]
+    max_records = _hubspot_max_records(params, cap=2000) or int(params.get("limit") or 100)
+    try:
+        page = hubspot_search_meetings(token, filter_groups=filter_groups, max_records=max_records)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    meetings = [
+        {"id": row.get("id"), "properties": row.get("properties") or {}}
+        for row in (page.get("results") or [])
+        if isinstance(row, dict)
+    ]
+    data = {
+        "meetings": meetings,
+        "results": meetings,
+        "total": page.get("total"),
+        "truncated": bool(page.get("truncated")),
+        "summary": f"Found {len(meetings)} HubSpot meeting(s)",
+    }
+    return NormalizedResult(success=True, action="hubspot.meetings.search", connector_id=cid, data=data)
+
+
+def _exec_hubspot_meetings_get(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    meeting_id = str(params.get("meeting_id") or params.get("meetingId") or params.get("id") or "").strip()
+    if not meeting_id:
+        raise ToolValidationError("hubspot.meetings.get requires meeting_id")
+    try:
+        data = hubspot_get_meeting(token, meeting_id)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    return NormalizedResult(
+        success=True,
+        action="hubspot.meetings.get",
+        connector_id=cid,
+        data={"meeting": data, "id": str((data or {}).get("id") or meeting_id)},
+    )
+
+
+def _exec_hubspot_emails_search(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Email engagements for a contact (direction, timestamp, status)."""
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    contact_id = str(params.get("contact_id") or params.get("contactId") or "").strip()
+    if not contact_id:
+        raise ToolValidationError("hubspot.emails.search requires contact_id")
+    since_ms = params.get("since_ms")
+    try:
+        since_val = int(since_ms) if since_ms not in (None, "") else None
+    except (TypeError, ValueError):
+        raise ToolValidationError("since_ms must be epoch milliseconds") from None
+    max_records = _hubspot_max_records(params, cap=2000) or 500
+    try:
+        page = hubspot_search_contact_emails(token, contact_id, since_ms=since_val, max_records=max_records)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    emails = []
+    for row in page.get("results") or []:
+        if not isinstance(row, dict):
+            continue
+        props = row.get("properties") or {}
+        emails.append(
+            {
+                "id": row.get("id"),
+                "direction": props.get("hs_email_direction"),
+                "timestamp": props.get("hs_timestamp"),
+                "status": props.get("hs_email_status"),
+                "subject": props.get("hs_email_subject"),
+            }
+        )
+    data = {
+        "contact_id": contact_id,
+        "emails": emails,
+        "total": page.get("total"),
+        "truncated": bool(page.get("truncated")),
+        "summary": f"Found {len(emails)} email engagement(s) for contact {contact_id}",
+    }
+    return NormalizedResult(success=True, action="hubspot.emails.search", connector_id=cid, data=data)
+
+
+def _exec_hubspot_associations_list(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    """Read associations — GET /crm/v4/objects/{from}/{id}/associations/{to}."""
+    cid, token = _hubspot_connector_and_token(ctx, params)
+    from_type = str(params.get("from_type") or params.get("fromType") or "").strip()
+    from_id = str(params.get("from_id") or params.get("fromId") or "").strip()
+    to_type = str(params.get("to_type") or params.get("toType") or "").strip()
+    if not from_type or not from_id or not to_type:
+        raise ToolValidationError("hubspot.associations.list requires from_type, from_id, to_type")
+    try:
+        data = hubspot_list_associations(token, from_type=from_type, from_id=from_id, to_type=to_type)
+    except HubSpotAPIError as exc:
+        raise _handle_hubspot_error(exc) from exc
+    ids = list(data.get("ids") or [])
+    return NormalizedResult(
+        success=True,
+        action="hubspot.associations.list",
+        connector_id=cid,
+        data={
+            "from_type": from_type,
+            "from_id": from_id,
+            "to_type": to_type,
+            "ids": ids,
+            "results": data.get("results") or [],
+            "total": len(ids),
+            "summary": f"{len(ids)} {to_type} associated with {from_type} {from_id}",
+        },
     )
 
 
@@ -3496,6 +3773,7 @@ def _exec_searchconsole_search_analytics_query(ctx: ToolContext, params: dict[st
             end_date=end_date,
             dimensions=dimensions,
             row_limit=row_limit,
+            page_url=str(params.get("page_url") or params.get("page") or "") or None,
         )
     except GoogleSearchConsoleAPIError as exc:
         raise _vendor_api_error(exc, "google_search_console") from exc
@@ -4406,6 +4684,12 @@ _TOOL_REGISTRY: dict[str, ToolExecutor] = {
     "hubspot.lists.get": _exec_hubspot_lists_get,
     "hubspot.companies.search": _exec_hubspot_companies_search,
     "hubspot.companies.create": _exec_hubspot_companies_create,
+    "hubspot.companies.update": _exec_hubspot_companies_update,
+    "hubspot.meetings.search": _exec_hubspot_meetings_search,
+    "hubspot.meetings.get": _exec_hubspot_meetings_get,
+    "hubspot.emails.search": _exec_hubspot_emails_search,
+    "hubspot.contacts.outreach": _exec_hubspot_contacts_outreach,
+    "hubspot.associations.list": _exec_hubspot_associations_list,
     "hubspot.pipelines.list": _exec_hubspot_pipelines_list,
     "hubspot.tickets.create": _exec_hubspot_tickets_create,
     "hubspot.tickets.get": _exec_hubspot_tickets_get,
@@ -4662,6 +4946,14 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     from app.services.write_preflight import enforce_invoke_write_preflight
 
     f1_write = is_f1_write_action(action)
+    if not f1_write and not params.get("_capability_resolved_from"):
+        from app.services.capability_availability import invoke_capability_with_fallback, is_capability_action
+
+        if is_capability_action(action):
+            # Capabilities resolve to a connected provider here, skipping providers that
+            # recently refused work and (for Play/objective steps) falling back to the
+            # next alternative on a plan, auth or rate-limit refusal.
+            return invoke_capability_with_fallback(ctx, action, params, invoke=invoke_tool)
     if f1_write:
         params = enforce_invoke_write_preflight(ctx, action, params)
 

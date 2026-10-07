@@ -1,7 +1,8 @@
 """Org metric definitions SoT helpers for CognitiveTurnKernel Phase 5.
 
 Platform defaults (Cesar-authorized Gravitre standard formulas — not SKU prices):
-- MQL, CAC, ARR. Org rows in org_metric_definitions win over defaults.
+- MQL, CAC, ARR, plus every canonical metric declared by an Outcome Pack
+  (``app.outcome_packs``). Org rows in org_metric_definitions win over defaults.
 """
 from __future__ import annotations
 
@@ -39,15 +40,65 @@ PLATFORM_METRIC_DEFAULTS: dict[str, dict[str, Any]] = {
 }
 
 
+def _pack_metric_defaults() -> dict[str, dict[str, Any]]:
+    """Canonical metrics declared by Outcome Packs (the semantic source for departments)."""
+    try:
+        from app.outcome_packs.registry import metric_definitions
+    except Exception as exc:  # noqa: BLE001 — never break metric resolution on a bad manifest
+        logger.warning("outcome_pack_metric_defaults_unavailable error=%s", exc)
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for row in metric_definitions():
+        key = str(row.get("metric_key") or "").strip().lower()
+        if key:
+            out[key] = {**row, "source_system": row.get("source_system") or "outcome_pack"}
+    return out
+
+
+def _all_platform_defaults() -> dict[str, dict[str, Any]]:
+    merged = {key: dict(row) for key, row in _pack_metric_defaults().items()}
+    for key, legacy in PLATFORM_METRIC_DEFAULTS.items():
+        # Legacy formula text stays authoritative for its keys; packs add semantics.
+        merged[key] = {**merged.get(key, {}), **legacy}
+    return merged
+
+
 def list_platform_defaults() -> list[dict[str, Any]]:
-    """Return Cesar-authorized platform default metric definitions."""
-    return [dict(v) for v in PLATFORM_METRIC_DEFAULTS.values()]
+    """Platform default metric definitions: legacy defaults plus Outcome Pack metrics."""
+    return [dict(v) for _, v in sorted(_all_platform_defaults().items())]
 
 
 def get_platform_default(metric_key: str) -> dict[str, Any] | None:
     key = (metric_key or "").strip().lower()
-    row = PLATFORM_METRIC_DEFAULTS.get(key)
+    row = _all_platform_defaults().get(key)
     return dict(row) if row else None
+
+
+def get_org_metric_semantics(client: Any, org_id: str, metric_key: str) -> dict[str, Any]:
+    """Org-specific semantic overrides (``org_metric_definitions.definition``), or ``{}``.
+
+    Lets an org redefine what counts (for example its own qualified-lead
+    lifecycle stages) without code: keys mirror the pack metric fields, plus
+    optional ``qualifying_values`` that replace a recipe's ``in`` list.
+    """
+    if client is None or not org_id or not metric_key:
+        return {}
+    try:
+        rows = (
+            client.table("org_metric_definitions")
+            .select("metric_key, definition")
+            .eq("org_id", org_id)
+            .eq("metric_key", metric_key.strip().lower())
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+    except Exception as exc:  # noqa: BLE001 — column may not exist before migration
+        logger.debug("cognitive_metrics_semantics_skipped error=%s", exc)
+        return {}
+    definition = rows[0].get("definition") if rows and isinstance(rows[0], dict) else None
+    return dict(definition) if isinstance(definition, dict) else {}
 
 
 def list_metric_definitions(

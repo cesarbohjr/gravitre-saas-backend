@@ -37,8 +37,10 @@ def ingest_crm_recommendation_outcome(
 ) -> dict[str, Any]:
     """Persist one labeled CRM outcome. Raises ValueError on invalid type.
 
-    Soft-dedupes on (org_id, connector_type, external_record_id, outcome_type) when
-    external_record_id is present — select-before-insert, no schema change.
+    Dedupes on (org_id, connector_type, external_record_id, outcome_type) when
+    external_record_id is present: select-before-insert, and a unique-violation on
+    insert (concurrent webhook retry, once a unique index exists) is treated as
+    already captured rather than an error.
     """
     outcome = str(outcome_type or "").strip().lower()
     if outcome not in CRM_OUTCOME_TYPES:
@@ -84,6 +86,21 @@ def ingest_crm_recommendation_outcome(
     try:
         client.table("crm_recommendation_outcomes").insert(row).execute()
     except Exception as exc:  # noqa: BLE001
+        if ext_id and ctype and is_unique_violation(exc):
+            # A concurrent delivery (webhook retry) won the race: already captured.
+            logger.info(
+                "crm_outcome_deduped_on_insert org_id=%s connector=%s record=%s outcome=%s",
+                org_id,
+                ctype,
+                ext_id,
+                outcome,
+            )
+            return {
+                "stored": False,
+                "deduped": True,
+                "id": _existing_outcome_id(client, org_id, ctype, ext_id, outcome),
+                "outcomeType": outcome,
+            }
         logger.warning("crm_outcome_ingest_failed org_id=%s err=%s", org_id, exc)
         raise
 
@@ -100,6 +117,39 @@ def ingest_crm_recommendation_outcome(
     )
 
     return {"stored": True, "deduped": False, "id": row["id"], "outcomeType": outcome}
+
+
+def is_unique_violation(exc: BaseException) -> bool:
+    """True when a Postgres/PostgREST error is a unique-constraint violation (23505)."""
+    code = getattr(exc, "code", None)
+    if str(code or "") == "23505":
+        return True
+    details = getattr(exc, "args", None) or ()
+    for item in details:
+        if isinstance(item, dict) and str(item.get("code") or "") == "23505":
+            return True
+    text = str(exc).lower()
+    return "23505" in text or "duplicate key value" in text or "unique constraint" in text
+
+
+def _existing_outcome_id(client: Any, org_id: str, ctype: str, ext_id: str, outcome: str) -> str | None:
+    try:
+        existing = (
+            client.table("crm_recommendation_outcomes")
+            .select("id")
+            .eq("org_id", org_id)
+            .eq("connector_type", ctype)
+            .eq("external_record_id", ext_id)
+            .eq("outcome_type", outcome)
+            .limit(1)
+            .execute()
+        )
+        rows = getattr(existing, "data", None)
+        if isinstance(rows, list) and rows:
+            return str(rows[0].get("id"))
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("crm_outcome_existing_lookup_skipped err=%s", exc)
+    return None
 
 
 def _mirror_to_intelligence_outcome_events(

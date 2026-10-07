@@ -88,6 +88,8 @@ def inject_capability_tools(
 
     injected: list[dict[str, Any]] = []
     for cap_id, definition in CAPABILITY_REGISTRY.items():
+        if not definition.chat_tool:
+            continue
         tool_def = build_capability_tool_definition(definition, connected_integrations=connected)
         if not tool_def:
             continue

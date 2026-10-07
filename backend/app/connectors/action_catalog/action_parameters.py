@@ -27,6 +27,7 @@ _HUBSPOT_PROPERTIES = {
 ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
         "type": "object",
         "properties": {
+            "include_evidence": {"type": "boolean", "description": "Also return normalized source-of-record evidence used for outcome verification."},
             "contact_id": {"type": "string", "description": "HubSpot contact id."},
             "email": {"type": "string", "description": "Lookup by email when id is unknown."},
             "connector_id": _CONNECTOR_ID,
@@ -124,6 +125,7 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
     "hubspot.deals.get": {
         "type": "object",
         "properties": {
+            "include_evidence": {"type": "boolean", "description": "Also return normalized source-of-record evidence used for outcome verification."},
             "deal_id": {"type": "string"},
             "connector_id": _CONNECTOR_ID,
         },
@@ -135,9 +137,76 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
             "query": {"type": "string", "description": "Optional keywords to build a dealname CONTAINS filter."},
             "filter_groups": {"type": "array", "items": {"type": "object"}},
             "limit": {"type": "integer", "default": 25},
+            "max_records": {
+                "type": "integer",
+                "description": (
+                    "When set, follow HubSpot paging (after cursor) and return up to this many deals "
+                    "with a coverage block (complete/truncated). Use for pipeline totals."
+                ),
+            },
+            "properties": {"type": "array", "items": {"type": "string"}},
             "connector_id": _CONNECTOR_ID,
         },
         "required": [],
+    },
+    "hubspot.companies.update": {
+        "type": "object",
+        "properties": {
+            "company_id": {"type": "string", "description": "HubSpot company id."},
+            "properties": _HUBSPOT_PROPERTIES,
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["company_id", "properties"],
+    },
+    "hubspot.meetings.search": {
+        "type": "object",
+        "properties": {
+            "contact_id": {"type": "string", "description": "Only meetings associated with this contact."},
+            "deal_id": {"type": "string", "description": "Only meetings associated with this deal."},
+            "company_id": {"type": "string", "description": "Only meetings associated with this company."},
+            "since_ms": {"type": "integer", "description": "Only meetings starting at/after this epoch ms."},
+            "filter_groups": {"type": "array", "items": {"type": "object"}},
+            "max_records": {"type": "integer", "default": 100},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": [],
+    },
+    "hubspot.meetings.get": {
+        "type": "object",
+        "properties": {
+            "meeting_id": {"type": "string", "description": "HubSpot meeting engagement id."},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["meeting_id"],
+    },
+    "hubspot.contacts.outreach": {
+        "type": "object",
+        "properties": {
+            "contact_id": {"type": "string", "description": "HubSpot contact id."},
+            "since": {"type": "string", "description": "Only count emails at/after this ISO time."},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["contact_id"],
+    },
+    "hubspot.emails.search": {
+        "type": "object",
+        "properties": {
+            "contact_id": {"type": "string", "description": "HubSpot contact id."},
+            "since_ms": {"type": "integer", "description": "Only emails at/after this epoch ms."},
+            "max_records": {"type": "integer", "default": 500},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["contact_id"],
+    },
+    "hubspot.associations.list": {
+        "type": "object",
+        "properties": {
+            "from_type": {"type": "string", "description": "Source object type (contacts, companies, deals, meetings)."},
+            "from_id": {"type": "string", "description": "Source record id."},
+            "to_type": {"type": "string", "description": "Associated object type to list."},
+            "connector_id": _CONNECTOR_ID,
+        },
+        "required": ["from_type", "from_id", "to_type"],
     },
     "hubspot.deals.list": {
         "type": "object",
@@ -150,6 +219,7 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
     "hubspot.companies.get": {
         "type": "object",
         "properties": {
+            "include_evidence": {"type": "boolean", "description": "Also return normalized source-of-record evidence used for outcome verification."},
             "company_id": {"type": "string"},
             "domain": {"type": "string"},
             "connector_id": _CONNECTOR_ID,
@@ -883,6 +953,7 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
             "end_date": {"type": "string"},
             "dimensions": {"type": "array", "items": {"type": "string"}},
             "row_limit": {"type": "integer", "default": 25},
+            "page_url": {"type": "string", "description": "Only rows for this exact page URL."},
             "connector_id": _CONNECTOR_ID,
         },
         "required": [],
@@ -895,6 +966,7 @@ ACTION_PARAMETERS: dict[str, dict[str, Any]] = {    "hubspot.contacts.get": {
             "end_date": {"type": "string"},
             "dimensions": {"type": "array", "items": {"type": "string"}},
             "row_limit": {"type": "integer", "default": 25},
+            "page_url": {"type": "string", "description": "Only rows for this exact page URL."},
             "connector_id": _CONNECTOR_ID,
         },
         "required": [],

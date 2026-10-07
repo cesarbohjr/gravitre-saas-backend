@@ -53,7 +53,7 @@ export function IntelligencePillars({
     | undefined
   coreState: { core?: { activeAgentRuns?: number } } | null | undefined
   businessImpact:
-    | { businessImpactScore?: number; scoreLabel?: string; avgOutcomeWinRate?: number | null }
+    | { businessImpactScore?: number | null; scoreLabel?: string; avgOutcomeWinRate?: number | null }
     | null
     | undefined
   className?: string

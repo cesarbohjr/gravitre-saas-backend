@@ -86,8 +86,14 @@ def record_source_verified_play_result(
     success: bool,
     attribution_type: AttributionType = AttributionType.DIRECT,
     attribution_weight: float | None = 1.0,
+    extra_metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Append a verified result only from an existing ACTIONED Play event."""
+    """Append a verified result only from an existing ACTIONED Play event.
+
+    ``extra_metadata`` carries measurement bookkeeping (claim key, recipe,
+    whether the result counts in totals); it can never override the
+    verification fields this bridge sets.
+    """
     evidence.validate()
     actioned = _actioned_event(client, org_id, actioned_outcome_id)
     if actioned is None:
@@ -147,9 +153,53 @@ def record_source_verified_play_result(
         verification_method=evidence.method,
         occurred_at=evidence.observed_at,
         metadata={
+            **dict(extra_metadata or {}),
             "verified_from_actioned_outcome_id": actioned_outcome_id,
             "provider_acceptance_is_business_verification": False,
             "source_of_record_verified": True,
+        },
+    )
+    return record_play_business_result(client, result)
+
+
+def record_inconclusive_play_result(
+    client: Any,
+    *,
+    org_id: str,
+    actioned_outcome_id: str,
+    metric_key: str,
+    reason: str,
+    observed_at: str,
+    source_record: SourceRecordRef | None = None,
+    extra_metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Append INCONCLUSIVE when the measurement window closed without decisive evidence."""
+    actioned = _actioned_event(client, org_id, actioned_outcome_id)
+    if actioned is None:
+        raise ValueError("inconclusive results require an org-scoped ACTIONED Play result")
+    metadata = actioned.get("metadata") if isinstance(actioned.get("metadata"), dict) else {}
+    result = PlayBusinessResult(
+        org_id=org_id,
+        play_key=str(metadata.get("play_key") or ""),
+        play_version=str(metadata.get("play_version") or "1"),
+        play_instance_id=metadata.get("play_instance_id"),
+        outcome_type="business_metric",
+        status=BusinessResultStatus.INCONCLUSIVE,
+        metric_key=metric_key,
+        workflow_id=actioned.get("workflow_id"),
+        workflow_run_id=actioned.get("workflow_run_id"),
+        entity_type=actioned.get("entity_type"),
+        entity_id=actioned.get("entity_id"),
+        agent_id=actioned.get("agent_id"),
+        connector_id=actioned.get("connector_id"),
+        source_records=(source_record,) if source_record else (),
+        action_tools=tuple(str(v) for v in (metadata.get("action_tools") or []) if v),
+        occurred_at=observed_at,
+        metadata={
+            **dict(extra_metadata or {}),
+            "verified_from_actioned_outcome_id": actioned_outcome_id,
+            "inconclusive_reason": reason,
+            "source_of_record_verified": False,
         },
     )
     return record_play_business_result(client, result)

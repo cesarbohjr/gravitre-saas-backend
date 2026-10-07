@@ -140,8 +140,11 @@ async def load_business_impact_snapshot(
         if outcome_health_scores
         else None
     )
-    business_impact_score = max(0, min(100, 100 - penalty))
-    if business_impact_score >= 80:
+    has_evidence = bool(pending) or bool(outcome_health_scores)
+    business_impact_score: int | None = max(0, min(100, 100 - penalty)) if has_evidence else None
+    if business_impact_score is None:
+        score_label = "insufficient_data"
+    elif business_impact_score >= 80:
         score_label = "healthy"
     elif business_impact_score >= 60:
         score_label = "moderate"

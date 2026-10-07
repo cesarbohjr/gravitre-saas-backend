@@ -1,11 +1,24 @@
+import type { BusinessMetricDefinition, DashboardTemplate } from "@/lib/api"
 import type {
+  BusinessMetricUnit,
   DashboardLayout,
   DashboardWidget,
   KpiAvailability,
   KpiCategory,
+  KpiKind,
   VizType,
   WidgetSize,
 } from "./types"
+import {
+  BUSINESS_DEPARTMENTS,
+  CANONICAL_BUSINESS_METRICS,
+  businessEvidenceHref,
+  businessKpiId,
+  businessMetricKeyFromId,
+  definitionDepartments,
+  humanizeMetricKey,
+  type StaticBusinessMetric,
+} from "./business-kpis"
 
 export type KpiDefinition = {
   id: string
@@ -21,6 +34,17 @@ export type KpiDefinition = {
   allowedSizes: WidgetSize[]
   href?: string
   recommended?: boolean
+  /** "business" KPIs resolve from GET /api/metrics/business; everything else is system health. */
+  kind?: KpiKind
+  /** Canonical metric key (business KPIs only). */
+  metricKey?: string
+  unit?: BusinessMetricUnit
+  departments?: string[]
+  /** Catalog kind: funnel metrics are activity, not outcomes. */
+  businessKind?: "business" | "funnel" | "operational"
+  direction?: "up" | "down"
+  /** Installed dashboard packs that recommend this KPI. */
+  packNames?: string[]
 }
 
 /**
@@ -418,11 +442,119 @@ export const KPI_REGISTRY: KpiDefinition[] = [
   },
 ]
 
-export const KPI_BY_ID = Object.fromEntries(KPI_REGISTRY.map((k) => [k.id, k])) as Record<
-  string,
-  KpiDefinition
->
+const BUSINESS_VIZ: VizType[] = ["number", "number_trend"]
+const BUSINESS_SIZES: WidgetSize[] = ["1x1", "2x1"]
 
+function businessKpiBase(metricKey: string): Omit<KpiDefinition, "name" | "description"> {
+  return {
+    id: businessKpiId(metricKey),
+    category: "business",
+    kind: "business",
+    metricKey,
+    availability: "available",
+    dataSource: "Verified Play results confirmed in the source system",
+    defaultViz: "number",
+    allowedViz: BUSINESS_VIZ,
+    defaultSize: "1x1",
+    allowedSizes: BUSINESS_SIZES,
+    href: businessEvidenceHref(metricKey),
+  }
+}
+
+function businessKpiFromStatic(def: StaticBusinessMetric): KpiDefinition {
+  return {
+    ...businessKpiBase(def.metricKey),
+    name: def.label,
+    description:
+      def.kind === "funnel"
+        ? `${def.label}. Activity that leads to an outcome, not an outcome by itself.`
+        : `${def.label}, counted only from results confirmed in the source system.`,
+    unit: def.unit,
+    departments: def.departments,
+    businessKind: def.kind,
+    direction: def.direction,
+  }
+}
+
+/** Build a picker definition from a catalog entry (GET /api/metrics/business/catalog). */
+export function businessKpiFromDefinition(def: BusinessMetricDefinition): KpiDefinition {
+  const fallback = STATIC_BUSINESS_BY_KEY[def.metricKey]
+  const source = [def.sourceSystem, def.sourceRecordType].filter(Boolean).join(" ")
+  return {
+    ...businessKpiBase(def.metricKey),
+    name: def.label?.trim() || fallback?.name || humanizeMetricKey(def.metricKey),
+    description: def.description?.trim() || fallback?.description || humanizeMetricKey(def.metricKey),
+    dataSource: source ? `Confirmed in ${source} records` : "Verified Play results confirmed in the source system",
+    unit: def.unit,
+    departments: definitionDepartments(def),
+    businessKind: def.kind,
+    direction: def.direction,
+  }
+}
+
+/** Static fallback so saved layouts and templates have labels before the catalog loads. */
+export const STATIC_BUSINESS_KPIS: KpiDefinition[] = CANONICAL_BUSINESS_METRICS.map(businessKpiFromStatic)
+
+const STATIC_BUSINESS_BY_KEY = Object.fromEntries(
+  STATIC_BUSINESS_KPIS.map((k) => [k.metricKey as string, k]),
+) as Record<string, KpiDefinition>
+
+export const KPI_BY_ID = Object.fromEntries(
+  [...KPI_REGISTRY, ...STATIC_BUSINESS_KPIS].map((k) => [k.id, k]),
+) as Record<string, KpiDefinition>
+
+export function isBusinessKpi(def: Pick<KpiDefinition, "kind"> | null | undefined): boolean {
+  return def?.kind === "business"
+}
+
+/**
+ * Resolve any widget metric id. Catalog definitions win, then the static registry; an unknown
+ * business key still renders (as unknown) so a saved layout never breaks.
+ */
+export function getKpiDefinition(
+  metricId: string,
+  runtime?: Record<string, KpiDefinition>,
+): KpiDefinition | undefined {
+  const fromRuntime = runtime?.[metricId]
+  if (fromRuntime) return fromRuntime
+  const known = KPI_BY_ID[metricId]
+  if (known) return known
+  const metricKey = businessMetricKeyFromId(metricId)
+  if (!metricKey) return undefined
+  return {
+    ...businessKpiBase(metricKey),
+    name: humanizeMetricKey(metricKey),
+    description: "Business metric from your workspace catalog",
+  }
+}
+
+/** Merge catalog definitions over the static business fallback, keyed by KPI id. */
+export function buildBusinessKpiIndex(
+  catalog: BusinessMetricDefinition[] | null | undefined,
+  /** Installed Outcome Pack dashboard templates; their KPIs are marked recommended. */
+  templates?: DashboardTemplate[] | null,
+): Record<string, KpiDefinition> {
+  const index: Record<string, KpiDefinition> = {}
+  for (const def of STATIC_BUSINESS_KPIS) index[def.id] = def
+  for (const def of catalog ?? []) {
+    if (!def?.metricKey) continue
+    const kpi = businessKpiFromDefinition(def)
+    index[kpi.id] = kpi
+  }
+  for (const template of templates ?? []) {
+    if (!template.installed) continue
+    for (const key of template.sections.flatMap((section) => section.kpiKeys)) {
+      const id = businessKpiId(key)
+      const base = index[id] ?? getKpiDefinition(id)
+      if (!base) continue
+      const packNames = [...new Set([...(base.packNames ?? []), template.name])]
+      index[id] = { ...base, packNames, recommended: true }
+    }
+  }
+  return index
+}
+
+/** Operational categories, grouped under "System health" in the picker and templates. */
 export const KPI_CATEGORIES: { id: KpiCategory; label: string }[] = [
   { id: "agents", label: "Agents" },
   { id: "workflows", label: "Workflows" },
@@ -435,11 +567,23 @@ export const KPI_CATEGORIES: { id: KpiCategory; label: string }[] = [
   { id: "voice", label: "Voice" },
   { id: "governance", label: "Governance" },
   { id: "usage", label: "Usage" },
-  { id: "system", label: "System Health" },
+  { id: "system", label: "Platform" },
 ]
 
-export function pickableKpis(): KpiDefinition[] {
-  return KPI_REGISTRY.filter((k) => k.availability === "available" || k.availability === "derivable")
+export const SYSTEM_HEALTH_LABEL = "System health"
+
+export { BUSINESS_DEPARTMENTS }
+
+/**
+ * KPIs offered in the picker: business KPIs (catalog merged over the static fallback) first,
+ * then operational system health KPIs. Telemetry-only entries are never offered.
+ */
+export function pickableKpis(business?: Record<string, KpiDefinition>): KpiDefinition[] {
+  const businessDefs = Object.values(business ?? buildBusinessKpiIndex(null))
+  const operational = KPI_REGISTRY.filter(
+    (k) => k.availability === "available" || k.availability === "derivable",
+  )
+  return [...businessDefs, ...operational]
 }
 
 function widget(

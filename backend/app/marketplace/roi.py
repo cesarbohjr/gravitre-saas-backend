@@ -82,4 +82,11 @@ def marketplace_roi_summary(client: Any, org_id: str, *, limit: int = 15) -> dic
         "totalRealizedHoursSaved": round(total_realized, 1),
         "realizationRate": round((total_realized / total_estimated) * 100, 1) if total_estimated else 0.0,
         "byAsset": roi_rows[:limit],
+        # Hours here are catalog estimates scaled by usage, not measured time saved.
+        # Verified business results live on /api/metrics/business.
+        "valueBasis": "estimate",
+        "estimateNote": (
+            "Hours saved are estimates from each asset's declared time savings and its usage. "
+            "They are not measured. Verified business results are reported separately."
+        ),
     }

@@ -163,6 +163,8 @@ def list_play_business_results(
     *,
     play_key: str | None = None,
     limit: int = 50,
+    since: str | None = None,
+    max_limit: int = 200,
 ) -> list[dict[str, Any]]:
     """Read Play results only; all queries are explicitly org-scoped."""
     q = (
@@ -174,9 +176,10 @@ def list_play_business_results(
         )
         .eq("org_id", org_id)
         .eq("outcome_event", PLAY_BUSINESS_RESULT_EVENT)
-        .order("created_at", desc=True)
-        .limit(max(1, min(int(limit), 200)))
     )
+    if since:
+        q = q.gte("created_at", since)
+    q = q.order("created_at", desc=True).limit(max(1, min(int(limit), int(max_limit))))
     rows = list(q.execute().data or [])
     if play_key:
         wanted = play_key.strip().lower()

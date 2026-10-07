@@ -134,6 +134,30 @@ def extract_revenue_amount(metadata: Any) -> float | None:
     return None
 
 
+def _row_revenue(row: dict[str, Any]) -> float | None:
+    """Monetary amount a row may contribute.
+
+    Play outcome ledger rows count only once verified against the source of
+    record and counted in totals (assisted results never add); their verified
+    delta is used for USD currency metrics. Other outcome rows keep the
+    explicit monetary-field rule.
+    """
+    meta = row.get("metadata") if isinstance(row.get("metadata"), dict) else None
+    if str(row.get("outcome_event") or "") == "play_business_result":
+        meta = meta or {}
+        if str(meta.get("verification_state") or "").upper() != "VERIFIED SUCCESS":
+            return None
+        if meta.get("counted_in_total") is False:
+            return None
+        if str(meta.get("unit") or "") != "currency" or str(meta.get("currency") or "").upper() not in {"", "USD"}:
+            return None
+        delta = meta.get("delta_value")
+        if isinstance(delta, (int, float)) and not isinstance(delta, bool) and delta > 0:
+            return round(float(delta), 4)
+        return None
+    return extract_revenue_amount(meta or row.get("payload"))
+
+
 def _metric(
     *,
     value: Any,
@@ -201,7 +225,7 @@ def build_agent_roi_report(
             "action_executed",
         }:
             actions_by_agent[aid] += 1
-        amount = extract_revenue_amount(row.get("metadata") or row.get("payload"))
+        amount = _row_revenue(row)
         if amount is not None:
             revenue_by_agent[aid] += amount
             revenue_events_by_agent[aid] += 1

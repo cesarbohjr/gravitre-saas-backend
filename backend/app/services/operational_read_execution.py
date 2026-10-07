@@ -183,6 +183,41 @@ def _parse_amount(raw: Any) -> float | None:
         return None
 
 
+# Pipeline census reads follow HubSpot paging up to this many deals.
+PIPELINE_CENSUS_MAX_RECORDS = 2000
+
+
+def _operational_proposed_args(action_key: str) -> dict[str, Any]:
+    if action_key in {"hubspot.deals.list", "hubspot.deals.search"}:
+        return {"limit": 100, "max_records": PIPELINE_CENSUS_MAX_RECORDS}
+    return {"limit": 25}
+
+
+def _pipeline_coverage_line(data: Any, returned: int) -> str:
+    """State truthfully how much of the pipeline this read covers."""
+    payload = data if isinstance(data, dict) else {}
+    coverage = payload.get("coverage") if isinstance(payload.get("coverage"), dict) else None
+    total = payload.get("total")
+    total_n = int(total) if isinstance(total, (int, float)) else None
+    if coverage is not None:
+        if coverage.get("complete"):
+            return f"This read paged through HubSpot and covers all {returned} deal(s) returned by the search."
+        reported = coverage.get("total_reported")
+        of_bit = f" of {int(reported)}" if isinstance(reported, (int, float)) else ""
+        return (
+            f"This read paged through HubSpot but stopped at {returned}{of_bit} deal(s) "
+            f"(cap {coverage.get('max_records')}); totals cover only those rows."
+        )
+    paging_next = ((payload.get("paging") or {}).get("next") or {}) if isinstance(payload.get("paging"), dict) else {}
+    if paging_next.get("after") or (total_n is not None and total_n > returned):
+        of_bit = f" of {total_n}" if total_n is not None and total_n > returned else ""
+        return (
+            f"This read is a single HubSpot page ({returned}{of_bit} deal(s)); more deals exist, "
+            "so totals are not a complete census."
+        )
+    return f"This read returned {returned} deal(s) with no further HubSpot pages reported."
+
+
 def _synthesize_pipeline(data: Any, *, pending_auth: str = "") -> str:
     """Grounded CRM synthesis — never invent traffic or missing amounts."""
     rows = _deal_rows(data)
@@ -223,9 +258,7 @@ def _synthesize_pipeline(data: Any, *, pending_auth: str = "") -> str:
         else "No numeric amounts were present on these rows, so I am not stating a pipeline value."
     )
     examples = ", ".join(named[:3]) if named else "none named"
-    missing_bits = [
-        "This read is HubSpot's first-page deal list (limit 25), not a guaranteed complete census.",
-    ]
+    missing_bits = [_pipeline_coverage_line(data, len(rows) or n)]
     if missing_amount:
         missing_bits.append(f"{missing_amount} deal(s) have no usable amount.")
     if missing_stage:
@@ -497,7 +530,7 @@ async def try_operational_read_short_circuit_turn(
             connected_integrations=connected,
             plan=plan,
             step=step,
-            proposed_args={"limit": 25},
+            proposed_args=_operational_proposed_args(action_key),
             capability_id=plan.capability_id,
         )
     except ToolValidationError as exc:

@@ -240,6 +240,8 @@ VERIFIED_OUTPUT_BATCH_09: frozenset[str] = frozenset(
         "googleads.campaigns.pause",
         "googleads.campaigns.resume",
         "googleads.structure.create",
+        # Outcome Pack lifecycle writes (lead status updates on companies).
+        "hubspot.companies.update",
     }
 )
 

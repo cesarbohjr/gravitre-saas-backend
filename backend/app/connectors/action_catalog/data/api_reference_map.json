@@ -6405,6 +6405,74 @@
       "base_url": null,
       "vendor_validated": false,
       "note": "Documented Okta tenant-specific REST endpoint executed through the managed Nango proxy; live tenant verification is required."
+    },
+    "hubspot.associations.list": {
+      "api_reference": "GET /crm/v4/objects/{from_object_type}/{object_id}/associations/{to_object_type}",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/hubspot.py:925",
+      "style": "rest",
+      "base_url": "https://api.hubapi.com",
+      "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
+      "vendor_contract_type": "openapi",
+      "vendor_validated": false
+    },
+    "hubspot.meetings.search": {
+      "api_reference": "POST /crm/v3/objects/meetings/search",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/hubspot.py:961",
+      "style": "rest",
+      "base_url": "https://api.hubapi.com",
+      "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
+      "vendor_contract_type": "openapi",
+      "vendor_validated": false
+    },
+    "hubspot.meetings.get": {
+      "api_reference": "GET /crm/v3/objects/meetings/{meeting_id}",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/hubspot.py:979",
+      "style": "rest",
+      "base_url": "https://api.hubapi.com",
+      "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
+      "vendor_contract_type": "openapi",
+      "vendor_validated": false
+    },
+    "hubspot.emails.search": {
+      "api_reference": "POST /crm/v3/objects/emails/search",
+      "provenance": "dedicated",
+      "source": "backend/app/connectors/hubspot.py:1007",
+      "style": "rest",
+      "base_url": "https://api.hubapi.com",
+      "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
+      "vendor_contract_type": "openapi",
+      "vendor_validated": false
+    },
+    "hubspot.companies.update": {
+      "api_reference": "PATCH /crm/v3/objects/companies/{company_id}",
+      "provenance": "dedicated_multi",
+      "source": "backend/app/connectors/hubspot.py:1032",
+      "style": "rest",
+      "base_url": "https://api.hubapi.com",
+      "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
+      "vendor_contract_type": "openapi",
+      "vendor_validated": false,
+      "endpoints": [
+        "PATCH /crm/v3/objects/companies/{company_id}",
+        "GET /crm/v3/objects/companies/{company_id}"
+      ]
+    },
+    "hubspot.contacts.outreach": {
+      "api_reference": "POST /crm/v3/objects/emails/search",
+      "provenance": "dedicated_multi",
+      "source": "backend/app/connectors/hubspot_evidence.py:341",
+      "style": "rest",
+      "base_url": "https://api.hubapi.com",
+      "vendor_contract": "https://api.hubspot.com/public/api/spec/v1/specs",
+      "vendor_contract_type": "openapi",
+      "vendor_validated": false,
+      "endpoints": [
+        "POST /crm/v3/objects/emails/search",
+        "GET /crm/v4/objects/contacts/{contact_id}/associations/emails"
+      ]
     }
   }
 }
