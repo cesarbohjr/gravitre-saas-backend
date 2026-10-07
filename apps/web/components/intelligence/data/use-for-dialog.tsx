@@ -3,7 +3,7 @@
 /**
  * "Use for…": save a public dataset for any purpose (evaluation, RAG,
  * benchmarking…) on an existing model, agent, department or workflow. Uses the
- * same reference endpoint as "Import to train"; only metadata is stored.
+ * same reference endpoint as "Save to train"; only metadata is stored.
  */
 import { useMemo, useRef, useState } from "react"
 import useSWR from "swr"

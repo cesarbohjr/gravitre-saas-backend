@@ -601,10 +601,10 @@ function PreviewPanel({
           variant="brand"
           className="min-h-11 flex-1"
           disabled={!target || saving || Boolean(inspect.error) || inspect.isLoading || !isPublic}
-          title={!target ? "Create a model or agent first, then import data to train it." : "Saves this dataset as training data for the selected model or agent. Only metadata is read until training starts."}
+          title={!target ? "Create a model or agent first, then save data to train it." : "Saves this dataset as training data for the selected model or agent. Only metadata is read until training starts."}
           onClick={() => void importForTarget()}
         >
-          {saving ? "Importing…" : target ? `Import to train ${target.label}` : "Import to train"}
+          {saving ? "Saving…" : target ? `Save to train ${target.label}` : "Save for training"}
         </Button>
         <Button variant="outline" className="min-h-11" disabled={saving} onClick={() => setUseForOpen(true)}>
           Use for…
