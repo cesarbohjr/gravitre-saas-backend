@@ -135,8 +135,10 @@ export function agentStatusLine(row: AgentRoiRow, agent: SnapshotAgent | undefin
   return { text: tasks > 0 ? "Ran this period" : "No runs this period", tone: "muted" }
 }
 
-/** Connector statuses that need someone to sign in or fix the connection. Shared with Reports. */
-const NEEDS_SIGN_IN = new Set(["pending", "pending_auth", "needs_connection", "auth_expired", "error", "misconfigured"])
+/** Connector statuses that need someone to sign in. Shared with Reports' governance count. */
+const NEEDS_SIGN_IN = new Set(["pending", "pending_auth", "needs_connection", "auth_expired"])
+/** Sign-in problems plus broken connections; the first-result checklist offers a reconnect for either. */
+const NEEDS_RECONNECT = new Set([...NEEDS_SIGN_IN, "error", "misconfigured"])
 const CONNECTED = new Set(["active", "healthy", "connected", "syncing"])
 
 export function connectorNeedsSignIn(c: Connector): boolean {
@@ -162,7 +164,7 @@ export function firstResultSteps({
   routes: { connectors: string; plays: string; agents: string }
 }): FirstResultStep[] {
   const list = connectors ?? []
-  const broken = list.find(connectorNeedsSignIn)
+  const broken = list.find((c) => NEEDS_RECONNECT.has(String(c.status ?? "").toLowerCase()))
   const connected = list.filter((c) => CONNECTED.has(String(c.status ?? "").toLowerCase()))
 
   const connect: FirstResultStep = broken

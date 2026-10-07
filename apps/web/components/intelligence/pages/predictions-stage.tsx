@@ -91,6 +91,11 @@ export function PredictionsStage({
   }, [area, areas])
   // Only the filtered list can be selected, so changing area never leaves another area's detail open.
   const selected = visible.find((row) => row.key === selectedKey) ?? visible[0] ?? null
+  // Picking a dimmed, out-of-area forecast on the timeline clears the filter so the pick shows.
+  const selectForecast = (key: string) => {
+    if (area && !visible.some((row) => row.key === key)) setArea(null)
+    setSelectedKey(key)
+  }
 
   const reject = async (forecast: Forecast) => {
     setRejectingKey(forecast.key)
@@ -188,7 +193,7 @@ export function PredictionsStage({
         area={area}
         onAreaChange={setArea}
         selectedKey={selected?.key ?? null}
-        onSelect={setSelectedKey}
+        onSelect={selectForecast}
       />
 
       {isLoading ? (
