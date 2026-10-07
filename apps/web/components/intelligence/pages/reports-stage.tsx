@@ -175,7 +175,7 @@ export function ReportsStage({
         </label>
         {snapshotShorter ? (
           <span className={TYPE.meta}>
-            Snapshot figures cover the last {snapshotDays} days. Agent and audit figures use the full period.
+            Snapshot figures cover the last {snapshotDays === 1 ? "day" : `${snapshotDays} days`}. Agent and audit figures use the full period.
           </span>
         ) : null}
       </div>

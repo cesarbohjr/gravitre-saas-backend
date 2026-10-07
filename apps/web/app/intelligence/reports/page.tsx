@@ -57,11 +57,22 @@ export default function IntelligenceReportsPage() {
     swrKeySuffix: "reports",
   })
 
+  /** The org can resolve after mount, so read it again when the user acts. */
+  function resolveOrgId(): string | null {
+    const id = orgId ?? getSelectedOrgFromStorage()?.id ?? null
+    if (id && id !== orgId) setOrgId(id)
+    return id
+  }
+
   function saveView() {
-    if (!orgId) return
+    const id = resolveOrgId()
+    if (!id) {
+      toast.error("Pick an organization first. Views are saved per organization.")
+      return
+    }
     const label = `${REPORT_TEMPLATES.find((t) => t.id === template)?.label ?? "Report"} · ${periodDays} days`
     try {
-      setSavedViews(saveIntelligenceView(orgId, { label, templateId: template, periodDays }))
+      setSavedViews(saveIntelligenceView(id, { label, templateId: template, periodDays }))
       toast.success(`Saved ${label}`)
     } catch {
       toast.error("Could not save this view in this browser.")
@@ -73,10 +84,11 @@ export default function IntelligenceReportsPage() {
     setPeriodDays(view.periodDays)
   }
 
-  function removeView(id: string) {
-    if (!orgId) return
+  function removeView(viewId: string) {
+    const id = resolveOrgId()
+    if (!id) return
     try {
-      setSavedViews(deleteSavedIntelligenceView(orgId, id))
+      setSavedViews(deleteSavedIntelligenceView(id, viewId))
     } catch {
       toast.error("Could not remove this view.")
     }
@@ -118,8 +130,6 @@ export default function IntelligenceReportsPage() {
               <Button
                 size="sm"
                 onClick={saveView}
-                disabled={!orgId}
-                title={orgId ? undefined : "Pick an organization first. Views are saved per organization."}
               >
                 Save this view
               </Button>
@@ -142,7 +152,7 @@ export default function IntelligenceReportsPage() {
             periodDays={periodDays}
             onPeriodChange={setPeriodDays}
             savedViews={savedViews}
-            canSave={Boolean(orgId)}
+            canSave={Boolean(user)}
             onSaveView={saveView}
             onLoadView={loadView}
             onRemoveView={removeView}

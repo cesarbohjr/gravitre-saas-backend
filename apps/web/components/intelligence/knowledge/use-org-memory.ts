@@ -89,8 +89,8 @@ export function useOrgMemory(enabled: boolean) {
     return {
       observed: all.data ? readNumber(all.data.total, allItems.length) : null,
       repeating: all.data ? allItems.filter((c) => readNumber(c.frequency, 0) >= 2).length : null,
-      needsReview: pending.data ? readNumber(pending.data.total, pending.data.items.length) : null,
-      orgMemory: written.data ? readNumber(written.data.total, written.data.items.length) : null,
+      needsReview: pending.data ? readNumber(pending.data.total, pending.data.items?.length ?? 0) : null,
+      orgMemory: written.data ? readNumber(written.data.total, written.data.items?.length ?? 0) : null,
       repeatingIsPartial: Boolean(all.data && readNumber(all.data.total, 0) > allItems.length),
     }
   }, [all.data, pending.data, written.data])

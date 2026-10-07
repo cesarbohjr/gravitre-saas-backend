@@ -108,7 +108,8 @@ export function returnMissingReason(totals: ImpactTotals): string {
 }
 
 /** Known agents first (as the API orders them), the Unassigned row last. */
-export function orderAgentRows(rows: AgentRoiRow[]): AgentRoiRow[] {
+export function orderAgentRows(rows: AgentRoiRow[] | undefined): AgentRoiRow[] {
+  rows = rows ?? []
   return [
     ...rows.filter((r) => r.agentId !== UNASSIGNED_AGENT_ID),
     ...rows.filter((r) => r.agentId === UNASSIGNED_AGENT_ID),

@@ -223,7 +223,7 @@ export function buildTemplateKpis(template: ReportTemplateId, src: ReportSources
     const measured = src.metricsReady ? readNumber(outcomes.measuredOutcomes, null) : null
     const steps = toTrailSteps(pickTrailPath(ctx?.outcomePaths))
     const present = steps.filter((s) => s.present).length
-    const revenue = src.roi?.orgTotals.revenueInfluencedUsd
+    const revenue = src.roi?.orgTotals?.revenueInfluencedUsd
     return [
       src.metricsReady
         ? {
@@ -253,7 +253,7 @@ export function buildTemplateKpis(template: ReportTemplateId, src: ReportSources
 
   if (template === "agent") {
     if (src.roiLoading && !src.roi) return [pending("Runs"), pending("Time saved"), pending("Cost")]
-    if (src.roiError || !src.roi) {
+    if (src.roiError || !src.roi?.orgTotals) {
       const note = src.roiError ? "Could not load agent data" : "No agent data yet"
       return [
         { label: "Runs", value: "—", note, evidence: "none" },
@@ -263,7 +263,7 @@ export function buildTemplateKpis(template: ReportTemplateId, src: ReportSources
     }
     const totals = src.roi.orgTotals
     const actions = readNumber(totals.actionsExecuted?.value, null)
-    const agentCount = src.roi.agents.length
+    const agentCount = src.roi.agents?.length ?? 0
     return [
       roiKpi(
         "Runs",

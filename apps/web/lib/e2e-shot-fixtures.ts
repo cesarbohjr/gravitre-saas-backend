@@ -2104,5 +2104,93 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     suggestedQuestions: [],
   },
 
+  // FIXTURE: agent ROI (shape of GET /api/enterprise/agent-roi). Impact and Reports.
+  "/api/enterprise/agent-roi": (() => {
+    const m = (value: number | null, provenance: string, unit: string | null = null) => ({ label: "", value, unit, provenance })
+    const row = (agentId: string, agentName: string, tasks: number, cost: number, hours: number) => ({
+      agentId,
+      agentName,
+      tasksCompleted: m(tasks, "operational"),
+      actionsExecuted: m(tasks * 3, "operational"),
+      agentCostUsd: m(cost, "measured", "usd"),
+      modelCallCount: tasks * 6,
+      estimatedHoursSaved: m(hours, "estimate", "hours"),
+      estimatedLaborValueUsd: m(hours * 55, "estimate", "usd"),
+      revenueInfluencedUsd: m(null, "not_configured", "usd"),
+      roiMultiple: m(null, "insufficient_data"),
+    })
+    return {
+      orgId: DEMO_ORG_ID,
+      periodDays: 30,
+      periodStart: T(43200),
+      periodEnd: T(0),
+      methodology: "Measured model cost and task counts; time saved is estimated from task type.",
+      laborUsdPerHour: { value: 55, source: "org_settings", provenance: "org_settings" },
+      orgTotals: {
+        tasksCompleted: m(41, "operational"),
+        actionsExecuted: m(123, "operational"),
+        agentCostUsd: m(18.42, "measured", "usd"),
+        estimatedHoursSaved: m(23.5, "estimate", "hours"),
+        estimatedLaborValueUsd: m(1292.5, "estimate", "usd"),
+        revenueInfluencedUsd: m(null, "not_configured", "usd"),
+        roiMultiple: m(null, "insufficient_data"),
+      },
+      agents: [
+        row("agt_lead_triage", agents[0].name, 29, 11.9, 16),
+        row("agt_deal_desk", agents[1].name, 12, 5.8, 7.5),
+        row("unassigned", "Unassigned", 0, 0.72, 0),
+      ],
+      honesty: {
+        measuredFields: ["agentCostUsd"],
+        operationalFields: ["tasksCompleted", "actionsExecuted"],
+        estimateFields: ["estimatedHoursSaved", "estimatedLaborValueUsd"],
+        notConfiguredUnlessEvidence: ["revenueInfluencedUsd", "roiMultiple"],
+        moduleC: true,
+        sta286: true,
+      },
+    }
+  })(),
+  // FIXTURE: memory promotion candidates (shape of GET /api/admin/memory-promotion/candidates).
+  // The harness matches on path only, so every status filter gets this list.
+  "/api/admin/memory-promotion/candidates": {
+    items: [
+      {
+        id: "mpc_cold_chain",
+        candidate_type: "pattern",
+        content: "Refrigerated freight only ships from the Reno and Tacoma depots.",
+        memory_category: "operations",
+        status: "pending_approval",
+        source_table: "agent_memories",
+        frequency: 4,
+        department_count: 2,
+        metadata: { confidence: 0.86, term: "Depot" },
+        updated_at: T(90),
+        thresholdComparison: { frequency: 4, departmentCount: 2, autoPromoteMinOccurrences: 20, autoPromoteMinDepartments: 2, meetsAutoThreshold: false, canAutoPromote: false },
+      },
+      {
+        id: "mpc_support_churn",
+        candidate_type: "pattern",
+        content: "Accounts whose ticket volume rises for three weeks renew less often.",
+        memory_category: "customer_success",
+        status: "pending_approval",
+        source_table: "agent_memories",
+        frequency: 3,
+        department_count: 1,
+        metadata: {},
+        updated_at: T(240),
+        thresholdComparison: { frequency: 3, departmentCount: 1, autoPromoteMinOccurrences: 20, autoPromoteMinDepartments: 2, meetsAutoThreshold: false, canAutoPromote: false },
+      },
+    ],
+    total: 2,
+    limit: 200,
+    offset: 0,
+  },
+  // FIXTURE: training datasets (shape of GET /api/training/datasets).
+  "/api/training/datasets": {
+    datasets: [
+      { id: "ds_churn", name: "churn-training", description: "Renewals and support history", type: "examples", status: "ready", record_count: 1840, created_by: supabaseUser.id, created_at: T(43000), updated_at: T(2000) },
+      { id: "ds_tickets", name: "ticket-routing", description: "Labelled support tickets", type: "examples", status: "ready", record_count: 620, created_by: supabaseUser.id, created_at: T(30000), updated_at: T(9000) },
+    ],
+  },
   ...MARKETPLACE_SHOT_FIXTURES,
 }
