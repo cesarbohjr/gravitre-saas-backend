@@ -19,6 +19,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.core.logging import get_logger
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -142,6 +143,120 @@ def _now() -> datetime:
 # --------------------------------------------------------------------------- understand
 
 
+_GEO_TERMS: dict[str, str] = {
+    "canada": "Canada", "canadian": "Canada",
+    "united states": "United States", "usa": "United States", "u.s.": "United States", "us-based": "United States",
+    "american": "United States",
+    "united kingdom": "United Kingdom", "uk": "United Kingdom", "british": "United Kingdom",
+    "australia": "Australia", "australian": "Australia", "new zealand": "New Zealand",
+    "germany": "Germany", "german": "Germany", "france": "France", "french": "France",
+    "ireland": "Ireland", "irish": "Ireland", "netherlands": "Netherlands", "dutch": "Netherlands",
+    "europe": "Europe", "european": "Europe", "emea": "EMEA", "apac": "APAC",
+    "north america": "North America", "north american": "North America",
+    "latin america": "Latin America", "latam": "Latin America",
+}
+_GEO_RE = re.compile(
+    r"\b(" + "|".join(sorted((re.escape(k) for k in _GEO_TERMS), key=len, reverse=True)) + r")(?![\w])",
+    re.I,
+)
+_US_TOKEN_RE = re.compile(r"(?<![\w.])US(?![\w.])")
+_SIZE_NOUN = r"(?:employees?|staff|people|persons?|headcount|ftes?|seats?)"
+_EMP_RANGE_RE = re.compile(r"(\d{1,6})\s*(?:-|–|—|to)\s*(\d{1,6})\s*" + _SIZE_NOUN, re.I)
+_EMP_MIN_RE = re.compile(r"(?:over|more than|at least|above|minimum of)\s+(\d{1,6})\s*" + _SIZE_NOUN + r"|(\d{1,6})\s*\+\s*" + _SIZE_NOUN, re.I)
+_EMP_MAX_RE = re.compile(r"(?:under|fewer than|less than|below|up to|at most)\s+(\d{1,6})\s*" + _SIZE_NOUN, re.I)
+_GENERIC_SEGMENT = frozenset(
+    {"companies", "company", "businesses", "business", "firms", "accounts", "organizations", "organisations",
+     "orgs", "leads", "prospects", "customers", "ones", "them", "those", "people", "contacts", "a", "an", "the",
+     "and", "or"}
+)
+_SEGMENT_STOP = r"(?:with|in|that|who|having|from|based|of|and|only|instead|please|per|each|every|$)"
+_SEGMENT_AFTER_GEO_RE = re.compile(
+    r"(?:" + "|".join(sorted((re.escape(k) for k in _GEO_TERMS), key=len, reverse=True)) + r")\s+"
+    r"([A-Za-z][\w&/-]*(?:\s+[A-Za-z][\w&/-]*){0,2}?)\s*(?=\b" + _SEGMENT_STOP + r"\b|[,.;!?]|$)",
+    re.I,
+)
+_SEGMENT_LEAD_RE = re.compile(
+    r"(?:make (?:that|it)|only|target|focus on|just|switch to|change (?:it|that) to)\s+(?:to\s+)?"
+    r"([A-Za-z][\w&/-]*(?:\s+[A-Za-z][\w&/-]*){0,2}?)\s*(?=\b" + _SEGMENT_STOP + r"\b|[,.;!?]|$)",
+    re.I,
+)
+
+
+def _constraint_spans(text: str) -> list[tuple[int, int]]:
+    return [m.span() for r in (_EMP_RANGE_RE, _EMP_MIN_RE, _EMP_MAX_RE) for m in r.finditer(text)]
+
+
+def extract_constraints(text: str) -> dict[str, Any]:
+    """Audience constraints stated in plain language: geography, segment and company size.
+
+    Deterministic and vendor-neutral. The result is merged into the objective
+    contract so a correction changes only the constraints it names.
+    """
+    raw = str(text or "")
+    out: dict[str, Any] = {}
+    geos = []
+    for m in _GEO_RE.finditer(raw):
+        if m.group(1).lower() == "us" or (m.group(1).lower() == "uk" and not m.group(1).isupper()):
+            continue
+        geo = _GEO_TERMS[m.group(1).lower()]
+        if geo not in geos:
+            geos.append(geo)
+    # "US" only as an uppercase token, so the pronoun in "help us" is never a country.
+    if _US_TOKEN_RE.search(raw) and "United States" not in geos:
+        geos.append("United States")
+    if geos:
+        out["geography"] = geos
+    employees: dict[str, int] = {}
+    m = _EMP_RANGE_RE.search(raw)
+    if m:
+        lo, hi = sorted((int(m.group(1)), int(m.group(2))))
+        employees = {"min": lo, "max": hi}
+    else:
+        m = _EMP_MIN_RE.search(raw)
+        if m:
+            employees["min"] = int(m.group(1) or m.group(2))
+        m = _EMP_MAX_RE.search(raw)
+        if m:
+            employees["max"] = int(m.group(1))
+    if employees:
+        out["employees"] = employees
+    segment = None
+    for pattern in (_SEGMENT_AFTER_GEO_RE, _SEGMENT_LEAD_RE):
+        for m in pattern.finditer(raw):
+            words = [
+                w for w in m.group(1).split()
+                if len(w) > 1 and w.lower() not in _GENERIC_SEGMENT and not _GEO_RE.fullmatch(w) and w != "US"
+            ]
+            if words and not any(w.isdigit() for w in words):
+                segment = " ".join(words)
+                break
+        if segment:
+            break
+    if segment:
+        out["segment"] = segment
+    return out
+
+
+def describe_constraints(constraints: dict[str, Any] | None) -> str:
+    """'Canadian MSPs with 20–100 employees' style phrase, or '' when there are none."""
+    c = constraints or {}
+    parts: list[str] = []
+    if c.get("segment"):
+        parts.append(str(c["segment"]))
+    else:
+        parts.append("companies")
+    if c.get("geography"):
+        parts.append("in " + " or ".join(c["geography"]))
+    emp = c.get("employees") or {}
+    if emp.get("min") is not None and emp.get("max") is not None:
+        parts.append(f"with {emp['min']}–{emp['max']} employees")
+    elif emp.get("min") is not None:
+        parts.append(f"with at least {emp['min']} employees")
+    elif emp.get("max") is not None:
+        parts.append(f"with up to {emp['max']} employees")
+    return " ".join(parts) if (c.get("segment") or c.get("geography") or emp) else ""
+
+
 def parse_objective(text: str) -> dict[str, Any]:
     """Extract target, period, direction and candidate canonical metrics from plain language."""
     from app.outcome_packs.registry import match_metrics, metric_definition
@@ -151,7 +266,10 @@ def parse_objective(text: str) -> dict[str, Any]:
     target_value: float | None = None
     relative = False
     time_unit = None
-    match = _NUMBER.search(lowered)
+    target_text = lowered
+    for start, end in sorted(_constraint_spans(lowered), reverse=True):
+        target_text = target_text[:start] + " " * (end - start) + target_text[end:]
+    match = _NUMBER.search(target_text)
     if match:
         number = float(match.group(1).replace(",", ""))
         suffix = (match.group(2) or "").lower()
@@ -161,7 +279,7 @@ def parse_objective(text: str) -> dict[str, Any]:
             number *= 1_000_000
         relative = suffix in {"%", "percent"}
         target_value = number
-        after = lowered[match.end():match.end() + 12].strip()
+        after = target_text[match.end():match.end() + 12].strip()
         time_unit = next((u for u in _TIME_UNITS if after.startswith(u)), None)
     period = next((p for pattern, p in _PERIOD_PATTERNS if re.search(pattern, lowered)), None)
     direction_hint = "decrease" if any(w in lowered for w in _DECREASE_WORDS) else None
@@ -178,6 +296,7 @@ def parse_objective(text: str) -> dict[str, Any]:
         "directionHint": direction_hint,
         "timeUnit": time_unit,
         "candidates": candidates,
+        "constraints": extract_constraints(raw),
     }
 
 
@@ -250,6 +369,7 @@ def build_objective_contract(
     metric_key: str | None = None,
     target: float | None = None,
     period: str | None = None,
+    constraints: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     parsed = parse_objective(statement)
     key = (metric_key or (parsed["candidates"][0]["metricKey"] if parsed["candidates"] else "")).strip().lower()
@@ -309,6 +429,9 @@ def build_objective_contract(
         "gap": gap,
         "successMetrics": [key, *_supporting_metrics(key)],
         "alternatives": [c for c in parsed["candidates"] if c["metricKey"] != key],
+        # Who the objective is about (ICP filters). Execution steps receive them
+        # as parameters; they never change which metric or verification applies.
+        "constraints": constraints if constraints is not None else parsed["constraints"],
     }
 
 
@@ -356,48 +479,96 @@ def org_context(client: Any, org_id: str, *, environment_name: str = "production
     }
 
 
+def _readable_vendor(vendor: str) -> str:
+    names = {
+        "pdl": "People Data Labs", "gravitre": "web research", "hubspot": "HubSpot", "linkedin": "LinkedIn",
+        "google_search_console": "Google Search Console", "google_analytics": "Google Analytics",
+        "quickbooks": "QuickBooks", "zendesk": "Zendesk", "freshservice": "Freshservice", "netsuite": "NetSuite",
+        "salesforce": "Salesforce", "pagerduty": "PagerDuty", "connectwise": "ConnectWise",
+    }
+    return names.get(vendor, vendor.replace("_", " ").title())
+
+
+def _join_names(vendors: list[str]) -> str:
+    names = [_readable_vendor(v) for v in vendors]
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " or " + names[-1]
+
+
 def _group_resolution(
     group: list[str],
     *,
     context: dict[str, Any],
 ) -> dict[str, Any]:
-    """Resolve one OR group of capabilities to the best available provider."""
+    """Resolve one OR group of capabilities to the best available provider.
+
+    Every provider the capability supports is evaluated on the readiness ladder
+    (supported, connected, authorized, entitled, healthy, executable). Only an
+    executable provider is selected; better-ranked providers that are supported
+    but not connected become optional improvements the plan can mention, and
+    connected providers refused by plan, auth or health stay visible as skipped
+    so the plan can say why they were not used.
+    """
     from app.capability_ontology.registry import get_capability
-    from app.services.capability_availability import _binds_web_research, ordered_alternatives
+    from app.services.capability_availability import provider_states
 
     skipped: list[dict[str, Any]] = []
     connect_options: list[str] = []
+    providers: list[dict[str, Any]] = []
     for capability_id in group:
         definition = get_capability(capability_id)
         if definition is None:
             continue
-        usable, blocked = ordered_alternatives(capability_id, connected=context["connected"], blocks=context["blocks"])
-        skipped.extend({**b, "capability": capability_id} for b in blocked)
-        if usable:
-            vendor, action = usable[0]
+        states = provider_states(
+            capability_id,
+            connected=context["connected"],
+            blocks=context["blocks"],
+            web_research=bool(context.get("webResearch")),
+        )
+        providers.extend({**p, "capability": capability_id} for p in states)
+        skipped.extend(
+            {"vendor": p["vendor"], "action": p["action"], "state": p["blockedState"], "reason": p["reason"], "capability": capability_id}
+            for p in states
+            if p["supported"] and p["connected"] and not p["executable"] and p["blockedState"]
+        )
+        executable = [p for p in states if p["executable"] and not p["builtin"]]
+        improvements: list[str] = []
+        for p in states:
+            if executable and p is executable[0]:
+                break
+            if p["supported"] and not p["builtin"] and p["state"] == "not_connected" and p["vendor"] not in improvements:
+                improvements.append(p["vendor"])
+        if executable:
+            chosen = executable[0]
             return {
                 "group": list(group),
                 "status": "ready",
                 "capability": capability_id,
-                "vendor": vendor,
-                "action": action,
-                "alternatives": [v for v, _ in usable[1:]],
+                "vendor": chosen["vendor"],
+                "action": chosen["action"],
+                "alternatives": [p["vendor"] for p in executable[1:]],
                 "skipped": skipped,
+                "improvements": improvements,
+                "providers": providers,
                 "writable": definition.kind == "write",
             }
         connect_options.extend(
-            b.vendor for b in definition.bindings if b.vendor not in connect_options and b.vendor != "gravitre"
+            p["vendor"] for p in states if p["supported"] and not p["builtin"] and p["vendor"] not in connect_options
         )
     for capability_id in group:
-        if _binds_web_research(capability_id) and context.get("webResearch"):
+        research = next(
+            (p for p in providers if p["capability"] == capability_id and p["builtin"] and p["executable"]), None
+        )
+        if research is not None:
             return {
                 "group": list(group),
                 "status": "research",
                 "capability": capability_id,
                 "vendor": "gravitre",
-                "action": "gravitre.web.research",
+                "action": research["action"],
                 "alternatives": [],
                 "skipped": skipped,
+                "improvements": [v for v in connect_options if v not in {s["vendor"] for s in skipped}][:6],
+                "providers": providers,
                 "writable": False,
             }
     return {
@@ -408,6 +579,8 @@ def _group_resolution(
         "action": None,
         "alternatives": [],
         "skipped": skipped,
+        "improvements": [],
+        "providers": providers,
         "connectOptions": connect_options[:6],
         "writable": False,
     }
@@ -586,17 +759,17 @@ def assess_feasibility(contract: dict[str, Any], resources: list[dict[str, Any]]
     for resource in blocked:
         for group in resource["capabilities"]:
             if group["status"] == "blocked":
-                reasons = ", ".join(f"{s['vendor']} ({s['state'].replace('_', ' ')})" for s in group["skipped"])
+                reasons = ", ".join(f"{_readable_vendor(s['vendor'])} ({s['state'].replace('_', ' ')})" for s in group["skipped"])
                 constraints.append({"kind": "provider_unavailable", "play": resource["playKey"], "message": f"{resource['name']}: {reasons}."})
             elif group["status"] == "missing":
-                options = ", ".join(group.get("connectOptions") or [])
+                options = _join_names(list(group.get("connectOptions") or [])) if group.get("connectOptions") else "a supported system"
                 constraints.append(
-                    {"kind": "connect", "play": resource["playKey"], "message": f"{resource['name']} needs one of: {options}."}
+                    {"kind": "connect", "play": resource["playKey"], "message": f"{resource['name']} needs {options} connected."}
                 )
         for group in resource["connectorGroups"]:
             if not group["connected"]:
                 constraints.append(
-                    {"kind": "connect", "play": resource["playKey"], "message": f"{resource['name']} needs one of: {', '.join(group['anyOf'])}."}
+                    {"kind": "connect", "play": resource["playKey"], "message": f"{resource['name']} needs {_join_names(list(group['anyOf']))} connected."}
                 )
     degraded = [r for r in resources if r["status"] == "degraded"]
     if degraded:
@@ -647,6 +820,7 @@ def recommend_plan(contract: dict[str, Any], resources: list[dict[str, Any]]) ->
     unlocks = []
     for resource in ranked:
         vendors = {g["capability"]: g["vendor"] for g in resource["capabilities"] if g.get("vendor")}
+        actions = {g["capability"]: g["action"] for g in resource["capabilities"] if g.get("action")}
         if resource["status"] == "blocked":
             unlocks.append({"playKey": resource["playKey"], "name": resource["name"]})
             continue
@@ -658,6 +832,7 @@ def recommend_plan(contract: dict[str, Any], resources: list[dict[str, Any]]) ->
                 "movesPrimary": resource["movesPrimary"],
                 "status": resource["status"],
                 "capabilityVendors": vendors,
+                "capabilityActions": actions,
                 "approvals": resource["approvals"],
                 "measurement": resource["measurement"],
             }
@@ -665,6 +840,7 @@ def recommend_plan(contract: dict[str, Any], resources: list[dict[str, Any]]) ->
     return {
         "steps": steps,
         "unlocks": unlocks,
+        "capabilityLedger": capability_ledger(resources),
         "cadence": {"measure": "daily", "replanEveryDays": REPLAN_EVERY.days},
         "requiresApproval": any(a["approval"] == "always" for s in steps for a in s["approvals"]),
     }
@@ -680,8 +856,11 @@ def plan_objective(
     period: str | None = None,
     environment_name: str = "production",
     settings: Any = None,
+    constraints: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    contract = build_objective_contract(client, org_id, statement, metric_key=metric_key, target=target, period=period)
+    contract = build_objective_contract(
+        client, org_id, statement, metric_key=metric_key, target=target, period=period, constraints=constraints
+    )
     if contract.get("status") == "needs_metric":
         return {"contract": contract, "resources": [], "feasibility": None, "plan": None, "summary": contract["question"]}
     context = org_context(client, org_id, environment_name=environment_name, settings=settings)
@@ -689,6 +868,7 @@ def plan_objective(
     composition = compose(resources, context)
     feasibility = assess_feasibility(contract, resources, composition)
     plan = recommend_plan(contract, resources)
+    plan["audience"] = safe_normalize_stored_dict(contract.get("constraints"))
     return {
         "_context": context,
         "contract": contract,
@@ -705,6 +885,115 @@ def plan_objective(
         "plan": plan,
         "summary": summarize(contract, feasibility, plan),
     }
+
+
+# --------------------------------------------------------------------------- conversation objective
+
+_REVISION_MARKERS = (
+    "actually", "make that", "make it", "instead", "only ", "change ", "switch", "rather", "wait",
+    "limit ", "focus on", "just ", "no,", "no ", "narrow", "target ", "update ", "let's do", "lets do",
+)
+
+
+def objective_state(brief: dict[str, Any], *, prior: dict[str, Any] | None = None, change: str | None = None) -> dict[str, Any]:
+    """Compact, surface-neutral record of the conversation's objective for task_state.
+
+    Text, voice and agent turns all write and read this same record, so a follow-up
+    on any surface revises one objective rather than creating a parallel one.
+    """
+    contract = brief.get("contract") or {}
+    plan = brief.get("plan") or {}
+    revision = int((prior or {}).get("revision") or 0) + 1
+    history = list((prior or {}).get("history") or [])[-5:]
+    history.append({"revision": revision, "change": change or "created", "at": _now().isoformat()})
+    return {
+        "statement": contract.get("statement"),
+        "metricKey": contract.get("metricKey"),
+        "metricLabel": contract.get("metricLabel"),
+        "target": contract.get("target"),
+        "constraints": contract.get("constraints") or {},
+        "definition": contract.get("definition"),
+        "verificationRecipe": contract.get("verificationRecipe"),
+        "sourceSystem": contract.get("sourceSystem"),
+        "baseline": contract.get("baseline"),
+        "feasibility": (brief.get("feasibility") or {}).get("verdict"),
+        "planSteps": [s.get("playKey") for s in plan.get("steps") or []],
+        "unlocks": [u.get("playKey") for u in plan.get("unlocks") or []],
+        "capabilityLedger": plan.get("capabilityLedger") or {},
+        "requiresApproval": bool(plan.get("requiresApproval")),
+        "objectiveId": (prior or {}).get("objectiveId") or brief.get("objectiveId"),
+        "revision": revision,
+        "history": history,
+    }
+
+
+def is_objective_revision(text: str, active: dict[str, Any] | None) -> bool:
+    """A follow-up that changes the active objective's audience, target or period.
+
+    A sentence that states a different business metric is a new objective, not a
+    revision. A question or chit-chat is neither.
+    """
+    if not isinstance(active, dict) or not active.get("metricKey"):
+        return False
+    lowered = f" {str(text or '').lower().strip()} "
+    parsed = parse_objective(text)
+    if parsed["candidates"] and looks_like_objective(text):
+        top = parsed["candidates"][0]
+        if top["metricKey"] != active.get("metricKey") and top["score"] >= 1.5:
+            return False
+    if not any(marker in lowered for marker in _REVISION_MARKERS):
+        return False
+    return bool(parsed["constraints"] or parsed["target"] is not None or parsed["period"])
+
+
+def _describe_change(before: dict[str, Any], after: dict[str, Any]) -> str:
+    parts: list[str] = []
+    if (before.get("constraints") or {}) != (after.get("constraints") or {}):
+        who = describe_constraints(after.get("constraints"))
+        parts.append(f"audience is now {who}" if who else "audience constraints were cleared")
+    if (before.get("target") or {}).get("value") != (after.get("target") or {}).get("value"):
+        parts.append(f"target is now {_fmt((after.get('target') or {}).get('value'), after.get('unit'))}")
+    if (before.get("target") or {}).get("period") != (after.get("target") or {}).get("period"):
+        parts.append(f"period is now per {(after.get('target') or {}).get('period')}")
+    return "; ".join(parts) or "no material change"
+
+
+def revise_objective(
+    client: Any,
+    org_id: str,
+    active: dict[str, Any],
+    text: str,
+    *,
+    environment_name: str = "production",
+    settings: Any = None,
+) -> dict[str, Any]:
+    """Apply a correction to the active objective, preserving everything it does not name."""
+    parsed = parse_objective(text)
+    prior_constraints = safe_normalize_stored_dict(active.get("constraints"))
+    merged = {**prior_constraints, **parsed["constraints"]}
+    prior_target = active.get("target") or {}
+    if parsed["target"] is not None:
+        target = parsed["target"]
+    else:
+        target = prior_target.get("requested") if prior_target.get("relative") else prior_target.get("value")
+    brief = plan_objective(
+        client,
+        org_id,
+        str(active.get("statement") or ""),
+        metric_key=active.get("metricKey"),
+        target=target,
+        period=parsed["period"] or prior_target.get("period"),
+        environment_name=environment_name,
+        settings=settings,
+        constraints=merged,
+    )
+    before = {"constraints": prior_constraints, "target": prior_target}
+    change = _describe_change(before, brief.get("contract") or {})
+    brief["revision"] = {"change": change, "text": str(text or "")[:300], "preserved": sorted(
+        k for k in ("metricKey", "definition", "verificationRecipe", "sourceSystem")
+        if (brief.get("contract") or {}).get(k) == active.get(k)
+    )}
+    return brief
 
 
 def public_brief(brief: dict[str, Any]) -> dict[str, Any]:
@@ -726,6 +1015,78 @@ def _fmt(value: Any, unit: str | None) -> str:
     return text
 
 
+_REFUSAL_WORDS = {
+    "plan_limit": "its current plan does not include this action",
+    "auth_expired": "its connection needs to be re-authorized",
+    "permission_denied": "it is missing a required permission",
+    "rate_limited": "it is rate limited right now",
+    "unhealthy": "it is not responding right now",
+}
+
+
+def capability_ledger(resources: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """One row per capability the plan needs: chosen provider, refused, fallbacks, optional improvements.
+
+    This is the modality-neutral record of capability reasoning that text, voice,
+    Plays and scheduled replans all read, so the same tenant state yields the
+    same provider decisions on every surface.
+    """
+    ledger: dict[str, dict[str, Any]] = {}
+    for resource in resources:
+        for group in resource.get("capabilities") or []:
+            cap = group.get("capability")
+            if not cap or cap in ledger:
+                continue
+            ledger[cap] = {
+                "status": group.get("status"),
+                "selected": group.get("vendor"),
+                "alternatives": list(group.get("alternatives") or []),
+                "refused": sorted({f"{s['vendor']}:{s['state']}" for s in group.get("skipped") or []}),
+                "improvements": list(group.get("improvements") or []),
+                "connectOptions": list(group.get("connectOptions") or []),
+                "states": {
+                    p["vendor"]: p["state"] for p in group.get("providers") or [] if p.get("capability") == cap
+                },
+            }
+    return ledger
+
+
+def provider_notes(plan: dict[str, Any]) -> list[str]:
+    """Plain-language notes on refused providers and optional improvements (no ids, no action keys)."""
+    from app.capability_ontology.registry import get_capability
+
+    notes: list[str] = []
+    seen: set[str] = set()
+    for item in plan.get("capabilityLedger", {}).items() if isinstance(plan.get("capabilityLedger"), dict) else []:
+        cap, row = item
+        definition = get_capability(cap)
+        label = (definition.label if definition else cap).lower()
+        for refused in row.get("refused") or []:
+            vendor, _, state = refused.partition(":")
+            key = f"refused:{vendor}:{state}"
+            if key in seen:
+                continue
+            seen.add(key)
+            instead = row.get("selected")
+            tail = (
+                f", so I'm using {_readable_vendor(instead)} to {label} instead."
+                if instead
+                else f", and nothing else can {label} right now."
+            )
+            notes.append(f"{_readable_vendor(vendor)} is connected, but {_REFUSAL_WORDS.get(state, 'it is unavailable')}{tail}")
+        improvements = list(row.get("improvements") or [])[:3]
+        if improvements and row.get("status") in {"research", "ready"}:
+            key = f"improve:{','.join(improvements)}:{row.get('selected')}"
+            if key in seen:
+                continue
+            seen.add(key)
+            notes.append(
+                f"Optional: connecting {_join_names(improvements)} would give stronger results than "
+                f"{_readable_vendor(row.get('selected') or '')} to {label}."
+            )
+    return notes[:4]
+
+
 def summarize(contract: dict[str, Any], feasibility: dict[str, Any], plan: dict[str, Any]) -> str:
     """Plain-language brief for the chat answer (no ids, no tool names)."""
     label = str(contract.get("metricLabel") or "the result").lower()
@@ -734,7 +1095,7 @@ def summarize(contract: dict[str, Any], feasibility: dict[str, Any], plan: dict[
     period = (contract.get("target") or {}).get("period") or "month"
     baseline = (contract.get("baseline") or {}).get("value")
     tgt = contract.get("target") or {}
-    aggregation = "avg" if unit in {"minutes", "hours", "days", "position", "percent", "score"} else "sum"
+    aggregation = "avg" if unit in {"minutes", "hours", "days", "position", "percent", "score", "ratio"} else "sum"
     more = "lower" if contract.get("direction") == "decrease" else "more"
     if target is not None and aggregation == "avg":
         lines = [f"Goal: {label} of {_fmt(target, unit)}, measured over each {period}."]
@@ -742,8 +1103,14 @@ def summarize(contract: dict[str, Any], feasibility: dict[str, Any], plan: dict[
         lines = [f"Goal: {_fmt(target, unit)} {label} per {period}."]
     elif tgt.get("relative") and tgt.get("requested") is not None:
         lines = [f"Goal: {_fmt(tgt['requested'], None)}% {more} {label} per {period}, set against the baseline once it is verified."]
+    elif aggregation == "avg":
+        better = "lower" if contract.get("direction") == "decrease" else "higher"
+        lines = [f"Goal: a {better} {label}, measured over each {period}."]
     else:
         lines = [f"Goal: {more} {label} per {period}."]
+    who = describe_constraints(contract.get("constraints"))
+    if who:
+        lines.append(f"Who: {who}.")
     lines.append(f"How it counts: {contract.get('definition')}")
     if baseline is None:
         lines.append("Baseline: unknown, because nothing has been verified in the source system yet.")
@@ -756,6 +1123,7 @@ def summarize(contract: dict[str, Any], feasibility: dict[str, Any], plan: dict[
     for c in feasibility["constraints"][:3]:
         if c["kind"] in {"provider_unavailable", "connect", "degraded"}:
             lines.append(c["message"])
+    lines.extend(provider_notes(plan))
     lines.append(feasibility["explanation"])
     if plan.get("requiresApproval"):
         lines.append("Every write to your systems waits for your approval.")
@@ -914,6 +1282,7 @@ def replan_objective(
         period=target.get("period"),
         environment_name=environment_name,
         settings=settings,
+        constraints=contract.get("constraints"),
     )
     new_steps = (brief.get("plan") or {}).get("steps") or []
     before = {s["playKey"]: s.get("capabilityVendors") for s in previous}
@@ -959,8 +1328,14 @@ def replan_due_objectives(
             plan = (current or {}).get("plan") or {}
             planned_at = str(((plan.get("estimated_impact") or {}).get("planned_at")) or "")
             stale = not planned_at or planned_at < (now - REPLAN_EVERY).isoformat()
-            blocked = {b.vendor for b in load_blocks(client, goal_org, now=now) if b.action == "*"}
-            uses_blocked = any(v in blocked for s in plan.get("proposed_steps") or [] for v in (s.get("capabilityVendors") or {}).values())
+            active_blocks = load_blocks(client, goal_org, now=now)
+            blocked = {b.vendor for b in active_blocks if b.action == "*"}
+            blocked_actions = {b.action for b in active_blocks if b.action != "*"}
+            uses_blocked = any(
+                v in blocked for s in plan.get("proposed_steps") or [] for v in (s.get("capabilityVendors") or {}).values()
+            ) or any(
+                a in blocked_actions for s in plan.get("proposed_steps") or [] for a in (s.get("capabilityActions") or {}).values()
+            )
             if stale or uses_blocked:
                 result = replan_objective(client, goal_org, str(goal["id"]), settings=settings, reason="provider_unavailable" if uses_blocked else "scheduled", force=stale)
                 replanned += 1 if result and (result["changed"] or stale) else 0

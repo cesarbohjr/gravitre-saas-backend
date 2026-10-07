@@ -246,3 +246,79 @@ async def test_voice_cancel_near_approval_emits_cancelled(monkeypatch, mock_sett
     assert any(e.get("type") == "voice.turn.cancelled" for e in events) or any(
         e.get("type") == "voice.turn.complete" for e in events
     )
+
+
+@pytest.mark.asyncio
+async def test_legacy_http_voice_turn_is_saved_server_side(monkeypatch, mock_settings):
+    """The HTTP Talk path saves turns to the same conversation store as text and Pipecat."""
+    monkeypatch.setattr(
+        "app.operators.agent_intelligence.get_agent_intelligence",
+        lambda: _FakeIntelligence(["Pipeline is up twelve percent."]),
+    )
+    monkeypatch.setattr(
+        voice_session_service, "synthesize_speech_stream", lambda *_, **__: iter((b"x",))
+    )
+    saved: list[dict[str, Any]] = []
+    summaries: list[str | None] = []
+
+    def _fake_persist(_settings: Any, **kwargs: Any) -> tuple[str, str]:
+        saved.append(kwargs)
+        return "conv-new", "msg-voice-1"
+
+    monkeypatch.setattr(
+        "app.services.shared_turn_preparation.persist_completed_turn", _fake_persist
+    )
+    monkeypatch.setattr(
+        "app.services.shared_turn_preparation.persist_turn_summary",
+        lambda _s, **kw: summaries.append(kw.get("conversation_id")),
+    )
+    events = [
+        event
+        async for event in voice_session_service.stream_voice_turn_events(
+            settings=_settings_with_voice(mock_settings),
+            org_id="org-1",
+            user_id="user-1",
+            text="How is pipeline doing?",
+            agent={"id": "agent-1"},
+            conversation_id=None,
+        )
+    ]
+    assert len(saved) == 1
+    assert saved[0]["user_text"] == "How is pipeline doing?"
+    assert saved[0]["assistant_text"] == "Pipeline is up twelve percent."
+    assert saved[0]["conversation_id"] is None
+    assert summaries == ["conv-new"]
+    ended = next(e for e in events if e.get("type") == "voice.session.ended")
+    # A first turn creates the conversation; the client learns its id from the stream.
+    assert ended["conversation_id"] == "conv-new"
+
+
+@pytest.mark.asyncio
+async def test_legacy_http_voice_turn_persist_failure_does_not_break_the_turn(
+    monkeypatch, mock_settings
+):
+    monkeypatch.setattr(
+        "app.operators.agent_intelligence.get_agent_intelligence",
+        lambda: _FakeIntelligence(["Done."]),
+    )
+    monkeypatch.setattr(
+        voice_session_service, "synthesize_speech_stream", lambda *_, **__: iter((b"x",))
+    )
+
+    def _boom(*_: Any, **__: Any) -> None:
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr("app.services.shared_turn_preparation.persist_completed_turn", _boom)
+    events = [
+        event
+        async for event in voice_session_service.stream_voice_turn_events(
+            settings=_settings_with_voice(mock_settings),
+            org_id="org-1",
+            user_id="user-1",
+            text="Do it",
+            agent={"id": "agent-1"},
+            conversation_id="conv-1",
+        )
+    ]
+    ended = next(e for e in events if e.get("type") == "voice.session.ended")
+    assert ended["cancelled"] is False and ended["conversation_id"] == "conv-1"

@@ -16,6 +16,7 @@ from collections.abc import AsyncIterator, Callable
 from typing import Any
 
 from app.config import Settings
+from app.core.logging import get_logger
 from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.tier1_voice_service import VoiceProviderError, synthesize_speech_stream
 from app.services.voice_agent_profile import normalize_voice_profile, resolve_session_voice
@@ -29,6 +30,8 @@ from app.services.voice_turn_taking import (
     parse_sensitivity,
     snapshot,
 )
+
+logger = get_logger(__name__)
 
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 _MARKDOWN_LINK = re.compile(r"\[([^\]]+)\]\([^)]+\)")
@@ -404,6 +407,50 @@ async def stream_voice_turn_events(
     spoken_streamed: bool | None = None
     unified_breakdown: dict[str, Any] = {}
     classify_done_ms: int | None = None
+    persist_task: asyncio.Task[tuple[str | None, str | None]] | None = None
+
+    async def _persist_turn(complete: AssistantStreamComplete, assistant_text: str) -> tuple[str | None, str | None]:
+        """Save the finished turn server-side, the same store and memory as text and Pipecat."""
+        from app.services.shared_turn_preparation import persist_completed_turn, persist_turn_summary
+
+        try:
+            persisted_id, assistant_id = await asyncio.to_thread(
+                persist_completed_turn,
+                settings,
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=resolved_conversation_id,
+                user_text=text,
+                assistant_text=assistant_text,
+                complete=complete,
+            )
+            if persisted_id:
+                await asyncio.to_thread(
+                    persist_turn_summary,
+                    settings,
+                    conversation_id=persisted_id,
+                    org_id=org_id,
+                    user_id=user_id,
+                    complete=complete,
+                )
+            return persisted_id, assistant_id
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "voice_http_turn_persist_failed org_id=%s conversation_id=%s error=%s",
+                org_id,
+                resolved_conversation_id,
+                str(exc),
+            )
+            return None, None
+
+    async def _finish_persist() -> None:
+        nonlocal resolved_conversation_id, persist_task
+        if persist_task is None:
+            return
+        task, persist_task = persist_task, None
+        persisted_id, _ = await task
+        if persisted_id:
+            resolved_conversation_id = persisted_id
 
     async def _emit_tts(chunk: str) -> AsyncIterator[dict[str, Any]]:
         nonlocal first_audio_ms, agent_audio_started, cancelled, tts_failed, metric_a_recorded
@@ -561,6 +608,60 @@ async def stream_voice_turn_events(
                     yield audio_ev
 
     from app.operators.agent_intelligence import get_agent_intelligence
+    from app.services.shared_turn_preparation import (
+        TurnGuardrailBlocked,
+        build_turn_system_prompt,
+        guard_spoken_turn,
+        harden_against_injection,
+    )
+
+    # Same prompt and guardrails as text chat; only the refusal's presentation differs.
+    voice_mode = resolve_voice_session_intelligence_mode(text)
+    try:
+        base_prompt: str | None = await asyncio.to_thread(
+            build_turn_system_prompt,
+            settings,
+            org_id,
+            user_id=user_id,
+            agent_id=str((agent or {}).get("id") or "") or None,
+            query=text,
+        )
+    except Exception as exc:  # noqa: BLE001 - never make Talk unavailable
+        logger.warning("voice_http_base_prompt_build_failed org_id=%s err=%s", org_id, exc)
+        base_prompt = None
+    if base_prompt:
+        base_prompt = await harden_against_injection(
+            settings,
+            org_id=org_id,
+            conversation_id=resolved_conversation_id,
+            system_prompt=base_prompt,
+            user_text=text,
+            surface="voice",
+        )
+    try:
+        await guard_spoken_turn(
+            settings,
+            org_id=org_id,
+            user_text=text,
+            system_prompt=base_prompt or "",
+            history=conversation_history,
+            mode=voice_mode,
+        )
+    except TurnGuardrailBlocked as blocked:
+        yield {"type": "voice.text.delta", "delta": blocked.spoken, "turn_id": resolved_turn_id}
+        async for audio_ev in _emit_tts(blocked.spoken):
+            yield audio_ev
+        yield {
+            "type": "voice.turn.complete",
+            "message_id": None,
+            "model": f"guardrail:{blocked.kind}",
+            "text": blocked.spoken,
+            "turn_id": resolved_turn_id,
+            "conversation_id": resolved_conversation_id,
+            "originating_modality": "voice",
+            "cancelled": False,
+        }
+        return
 
     intelligence = get_agent_intelligence()
     async for event in intelligence.execute_task_streaming(
@@ -572,7 +673,8 @@ async def stream_voice_turn_events(
         conversation_history=conversation_history,
         conversation_id=resolved_conversation_id,
         spoken_mode=True,
-        mode=resolve_voice_session_intelligence_mode(text),
+        mode=voice_mode,
+        assistant_base_prompt=base_prompt,
     ):
         if _cancelled():
             cancelled = True
@@ -762,6 +864,8 @@ async def stream_voice_turn_events(
                     "metric_b_ms": int((time.perf_counter() - t_start) * 1000),
                 },
         }
+        # Persist in the background so the remaining audio is not held up by the write.
+        persist_task = asyncio.create_task(_persist_turn(pending_complete, canonical.strip()))
         from app.services.pipecat_voice.voice_latency_metrics import record_voice_slo_metric
         from app.services.voice_slo import METRIC_B_ID, operator_task_for_metric_b
 
@@ -818,6 +922,7 @@ async def stream_voice_turn_events(
         async for audio_ev in _emit_tts(rem):
             yield audio_ev
         text_buffer = ""
+    await _finish_persist()
     if cancelled:
         spoken_partial = normalize_spoken_text("".join(full_text)) or "".join(full_text)
         yield {

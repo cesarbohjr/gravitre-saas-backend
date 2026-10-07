@@ -14,9 +14,8 @@ from app.connectors.hubspot_webhooks import (
     event_matches_trigger,
     normalize_hubspot_event,
 )
-from app.services.execution_service import ExecutionService, get_execution_service
-from app.workflows.repository import create_execute_run, get_supabase_client
-from app.workflows.schema import compute_run_hash
+from app.services.execution_service import ExecutionService
+from app.workflows.repository import get_supabase_client
 from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = logging.getLogger(__name__)
@@ -335,68 +334,21 @@ async def start_workflow_from_hubspot(
 
     definition = workflow.get("definition") or {"schema_version": "v1", "steps": []}
     triggered_by = _resolve_triggered_by(client, org_id)
-    run_hash = compute_run_hash(definition, parameters, str(definition.get("schema_version") or "v1"))
+    from app.services.event_triggered_runs import start_event_triggered_run
 
-    created_run = create_execute_run(
-        client=client,
+    outcome = await start_event_triggered_run(
+        settings,
+        client,
         org_id=org_id,
         workflow_id=workflow_id,
-        triggered_by=triggered_by,
-        definition_snapshot=definition,
+        definition=definition,
         parameters=parameters,
-        run_hash=run_hash,
-        status="running",
-        approval_status="approved",
-        required_approvals=0,
-        approver_roles=[],
-        environment_name="production",
+        actor_id=triggered_by,
         trigger_type="hubspot",
+        source="hubspot_trigger",
+        execution_service=execution_service,
     )
-    run_id = str(created_run["id"])
-    svc = execution_service or get_execution_service()
-
-    try:
-        result = await svc.execute_workflow(
-            org_id=org_id,
-            workflow_id=workflow_id,
-            run_id=run_id,
-            parameters=parameters,
-            user_id=triggered_by,
-            definition=definition,
-            environment_name="production",
-        )
-        # Module A: execute_workflow_steps already finalized — do not re-write workflow_runs.
-        return {
-            "workflow_id": workflow_id,
-            "run_id": run_id,
-            "status": result.status,
-            "connector_id": connector_id,
-        }
-    except Exception as exc:  # noqa: BLE001
-        logger.error(
-            "hubspot_workflow_execution_failed workflow_id=%s run_id=%s error=%s",
-            workflow_id,
-            run_id,
-            exc,
-        )
-        from app.services.trigger_run_finalize import finalize_trigger_exception
-
-        finalize_trigger_exception(
-            client,
-            org_id=org_id,
-            run_id=run_id,
-            actor_id=triggered_by,
-            workflow_id=workflow_id,
-            error=str(exc),
-            source="hubspot_trigger",
-        )
-        return {
-            "workflow_id": workflow_id,
-            "run_id": run_id,
-            "status": "failed",
-            "connector_id": connector_id,
-            "error": str(exc),
-        }
+    return {**outcome, "connector_id": connector_id}
 
 
 async def process_hubspot_event_batch(

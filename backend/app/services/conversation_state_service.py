@@ -76,6 +76,11 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "cognitive_resolution_needs": None,
     # READ-only Chromium visits must survive get_task_state normalize.
     "computer_browser_evidence": None,
+    # Objective-first: the conversation's current business objective (contract,
+    # constraints, plan digest, revision). Written by the cognitive kernel on
+    # every surface (text, voice, agents) so "actually, make that Canadian MSPs"
+    # revises the same objective instead of starting over.
+    "active_objective": None,
 }
 
 

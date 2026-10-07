@@ -187,6 +187,9 @@ CAPABILITY_REGISTRY: dict[str, CapabilityDefinition] = {
                 "QuickBooks invoices",
                 kind="read",
             ),
+            VendorCapabilityBinding("xero", "xero.invoices.list", "Xero invoices", kind="read"),
+            VendorCapabilityBinding("netsuite", "netsuite.invoices.list", "NetSuite invoices", kind="read"),
+            VendorCapabilityBinding("stripe", "stripe.invoices.list", "Stripe invoices", kind="read"),
         ),
     ),
     "support.tickets.read": CapabilityDefinition(

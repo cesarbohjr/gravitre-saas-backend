@@ -90,6 +90,14 @@ class ConversationalPlanningEngine:
         # Shape (b): do not detour governed writes into advisory scaffolding.
         if is_direct_connector_write_intent(query):
             return False
+        # Business objectives ("reduce SLA breaches", "150 qualified leads a month")
+        # are planned once, by the kernel's objective planner, and persisted as the
+        # conversation's active objective. Staging a second advisory current_plan for
+        # the same turn would give the user two plans for one objective.
+        from app.services.objective_capability_composer import looks_like_objective
+
+        if looks_like_objective(query):
+            return False
         # Plan-first / advisory language stages current_plan when paired with a strategic goal.
         if is_advisory_plan_first(query):
             lowered = query.lower()

@@ -97,6 +97,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
         llm_context: Any | None = None,
         speculative_coordinator: SpeculativeGenerationCoordinator | None = None,
         durable_context_provider: Any | None = None,
+        turn_inputs_provider: Any | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -115,6 +116,9 @@ class SpeculativePrefetchProcessor(FrameProcessor):
         self._llm_context = llm_context
         self._speculative_coordinator = speculative_coordinator
         self._durable_context_provider = durable_context_provider
+        # Same prompt inputs as the confirmed turn (GravitreCognitiveLLMService.shared_turn_inputs),
+        # so adopting a speculative answer never changes which prompt produced it.
+        self._turn_inputs_provider = turn_inputs_provider
         self._last_speculative_text = ""
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
@@ -183,6 +187,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                 durable, history_summary, provider_conversation_id = await self._durable_context_provider()
                 history = (list(durable or []) + list(socket_history or []))[-48:]
                 conversation_id = provider_conversation_id or conversation_id
+            turn_inputs = await self._turn_inputs_provider(query) if self._turn_inputs_provider is not None else {}
             stream = intelligence.execute_task_streaming(
                 settings=self._app_settings,
                 org_id=self._org_id,
@@ -194,6 +199,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                 conversation_id=conversation_id,
                 spoken_mode=True,
                 mode=resolve_voice_session_intelligence_mode(query),
+                **turn_inputs,
             )
             async for event in stream:
                 yield event

@@ -709,6 +709,11 @@ def _load_extension_pending_confirm(
             "Propose the action again from the overlay, then approve."
         )
     row = dict(rows[0])
+    return row, _pending_from_extension_row(row)
+
+
+def _pending_from_extension_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Validate a staged extension approval row and return what it will execute."""
     context = row.get("context") if isinstance(row.get("context"), dict) else {}
     gate = str(context.get("gate_type") or "")
     if gate not in {EXTENSION_GATE_TYPE, EXTENSION_WORKFLOW_GATE_TYPE}:
@@ -717,7 +722,7 @@ def _load_extension_pending_confirm(
         raise ValueError("This write confirmation is no longer awaiting confirm.")
     pending_type = str(context.get("type") or "")
     if pending_type == "execute_workflow":
-        return row, {
+        return {
             "pending_type": "execute_workflow",
             "workflow_id": str(context.get("workflow_id") or ""),
             "workflow_name": context.get("workflow_name"),
@@ -728,7 +733,7 @@ def _load_extension_pending_confirm(
         }
     action = assert_extension_action(str(context.get("invoke_action") or ""))
     args = context.get("args") if isinstance(context.get("args"), dict) else {}
-    return row, {
+    return {
         "pending_type": "connector_action",
         "invoke_action": action,
         "args": dict(args),
@@ -744,6 +749,7 @@ def _consume_extension_pending_confirm(
     approval_id: str,
     user_id: str,
     prior_context: dict[str, Any],
+    reviewer_id: str | None = None,
 ) -> None:
     from datetime import datetime, timezone
 
@@ -758,7 +764,7 @@ def _consume_extension_pending_confirm(
         .update(
             {
                 "status": "approved",
-                "reviewed_by": user_id,
+                "reviewed_by": reviewer_id or user_id,
                 "reviewed_at": now,
                 "context": merged,
             }
@@ -1071,6 +1077,101 @@ def _run_confirmed_extension_action(
     }
 
 
+def _execute_approved_extension_row(
+    ctx: ToolContext,
+    *,
+    row: dict[str, Any],
+    pending: dict[str, Any],
+    org_id: str,
+    requester_id: str,
+    reviewer_id: str,
+    page_url: str | None = None,
+) -> dict[str, Any]:
+    """Consume the staged approval once, then run it as the person who proposed it."""
+    prior_context = row.get("context") if isinstance(row.get("context"), dict) else {}
+    _consume_extension_pending_confirm(
+        ctx.client,
+        org_id=org_id,
+        approval_id=str(row["id"]),
+        user_id=requester_id,
+        prior_context=prior_context,
+        reviewer_id=reviewer_id,
+    )
+    if pending.get("pending_type") == "execute_workflow":
+        return _run_confirmed_extension_workflow(
+            ctx,
+            org_id=org_id,
+            user_id=requester_id,
+            workflow_id=str(pending.get("workflow_id") or ""),
+            parameters=safe_normalize_stored_dict(pending, key='args'),
+            page_url=pending.get("page_url") or page_url,
+            approval_id=str(pending["approval_id"]),
+            progress_steps=list(pending.get("progress_steps") or []),
+        )
+    return _run_confirmed_extension_action(
+        ctx,
+        org_id=org_id,
+        user_id=requester_id,
+        action=str(pending["invoke_action"]),
+        params=safe_normalize_stored_dict(pending, key="args"),
+        page_url=pending.get("page_url") or page_url,
+        approval_id=str(pending["approval_id"]),
+    )
+
+
+EXTENSION_APPROVAL_TYPES = frozenset({EXTENSION_APPROVAL_TYPE, EXTENSION_WORKFLOW_APPROVAL_TYPE})
+
+
+def decide_extension_approval(
+    ctx: ToolContext,
+    *,
+    org_id: str,
+    approval_id: str,
+    reviewer_id: str,
+    reviewer_is_admin: bool,
+    approve: bool,
+) -> dict[str, Any]:
+    """Approve or reject a browser-extension write from the shared Approvals queue.
+
+    The extension's one-click confirm and the in-app Approvals page are two
+    views of the same approval row: both end here (or in the token confirm,
+    which calls the same executor), so a write proposed in the extension can
+    be approved or rejected wherever the person is. The proposer or an org
+    admin may decide; the write always runs as the proposer.
+    """
+    from datetime import datetime, timezone
+
+    rows = (
+        ctx.client.table("approvals")
+        .select("id, org_id, status, requested_by, type, context")
+        .eq("id", approval_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    ).data or []
+    if not rows or str(rows[0].get("type") or "") not in EXTENSION_APPROVAL_TYPES:
+        raise LookupError("Extension approval not found")
+    row = dict(rows[0])
+    if str(row.get("status") or "") != "pending":
+        raise ValueError("Approval already resolved")
+    requester_id = str(row.get("requested_by") or "")
+    if reviewer_id != requester_id and not reviewer_is_admin:
+        raise PermissionError("Only the person who proposed this write or an admin can decide it")
+    pending = _pending_from_extension_row(row)
+    if approve:
+        return _execute_approved_extension_row(
+            ctx, row=row, pending=pending, org_id=org_id, requester_id=requester_id, reviewer_id=reviewer_id
+        )
+    context = safe_normalize_stored_dict(row, key="context")
+    context["status"] = "rejected"
+    context.pop("confirmation_token", None)
+    now = datetime.now(timezone.utc).isoformat()
+    ctx.client.table("approvals").update(
+        {"status": "rejected", "reviewed_by": reviewer_id, "reviewed_at": now, "context": context}
+    ).eq("id", approval_id).eq("org_id", org_id).eq("status", "pending").execute()
+    return {"success": True, "status": "rejected", "approvalId": approval_id, "message": "Rejected. Nothing was run."}
+
+
 def execute_extension_action(
     ctx: ToolContext,
     *,
@@ -1117,33 +1218,8 @@ def execute_extension_action(
             user_id=user_id,
             confirmation_token=token,
         )
-        prior_context = row.get("context") if isinstance(row.get("context"), dict) else {}
-        _consume_extension_pending_confirm(
-            ctx.client,
-            org_id=org_id,
-            approval_id=str(row["id"]),
-            user_id=user_id,
-            prior_context=prior_context,
-        )
-        if pending.get("pending_type") == "execute_workflow":
-            return _run_confirmed_extension_workflow(
-                ctx,
-                org_id=org_id,
-                user_id=user_id,
-                workflow_id=str(pending.get("workflow_id") or ""),
-                parameters=safe_normalize_stored_dict(pending, key='args'),
-                page_url=pending.get("page_url") or page_url,
-                approval_id=str(pending["approval_id"]),
-                progress_steps=list(pending.get("progress_steps") or []),
-            )
-        return _run_confirmed_extension_action(
-            ctx,
-            org_id=org_id,
-            user_id=user_id,
-            action=str(pending["invoke_action"]),
-            params=safe_normalize_stored_dict(pending, key="args"),
-            page_url=pending.get("page_url") or page_url,
-            approval_id=str(pending["approval_id"]),
+        return _execute_approved_extension_row(
+            ctx, row=row, pending=pending, org_id=org_id, requester_id=user_id, reviewer_id=user_id, page_url=page_url
         )
 
     if not action:

@@ -110,7 +110,10 @@ KPIS: list[dict[str, Any]] = [
         "numerator": "deals_won",
         "denominator": "opportunities_created",
         "department": "sales",
-        "synonyms": ["win rate", "close rate", "conversion to won"],
+        "synonyms": [
+            "win rate", "close rate", "conversion to won", "conversion to closed-won", "to closed-won",
+            "to closed won", "opportunity to close", "opportunity-to-close", "win percentage",
+        ],
     },
 ]
 

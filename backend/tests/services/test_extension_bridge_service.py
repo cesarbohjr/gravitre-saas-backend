@@ -312,3 +312,84 @@ def test_confirm_without_token_row_raises():
             page_url=None,
             confirmation_token="forged-token",
         )
+
+
+# --------------------------------------------------------------------------- shared approvals queue
+
+
+def _staged_row(**over):
+    row = {
+        "id": "appr-1",
+        "org_id": "org-1",
+        "status": "pending",
+        "requested_by": "user-1",
+        "type": "extension_write",
+        "context": {
+            "type": "connector_action",
+            "status": "awaiting_confirm",
+            "gate_type": "browser_extension_write",
+            "confirmation_token": "tok",
+            "invoke_action": "hubspot.contacts.create",
+            "args": {"email": "a@b.co"},
+        },
+    }
+    row.update(over)
+    return row
+
+
+def _ctx_with(row):
+    ctx = MagicMock()
+    ctx.client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = [row]
+    return ctx
+
+
+@patch("app.services.extension_bridge_service._run_confirmed_extension_action", return_value={"success": True})
+@patch("app.services.extension_bridge_service._consume_extension_pending_confirm")
+def test_admin_can_approve_extension_write_from_shared_queue(mock_consume, mock_run):
+    from app.services.extension_bridge_service import decide_extension_approval
+
+    out = decide_extension_approval(
+        _ctx_with(_staged_row()), org_id="org-1", approval_id="appr-1",
+        reviewer_id="admin-9", reviewer_is_admin=True, approve=True,
+    )
+    assert out == {"success": True}
+    assert mock_consume.call_args.kwargs["reviewer_id"] == "admin-9"
+    run_kwargs = mock_run.call_args.kwargs
+    assert run_kwargs["user_id"] == "user-1"  # runs as the proposer, with server-staged args
+    assert run_kwargs["params"] == {"email": "a@b.co"}
+
+
+@patch("app.services.extension_bridge_service._run_confirmed_extension_action")
+def test_non_admin_other_member_cannot_decide(mock_run):
+    from app.services.extension_bridge_service import decide_extension_approval
+
+    with pytest.raises(PermissionError):
+        decide_extension_approval(
+            _ctx_with(_staged_row()), org_id="org-1", approval_id="appr-1",
+            reviewer_id="someone-else", reviewer_is_admin=False, approve=True,
+        )
+    mock_run.assert_not_called()
+
+
+@patch("app.services.extension_bridge_service._run_confirmed_extension_action")
+def test_reject_from_shared_queue_runs_nothing_and_drops_token(mock_run):
+    from app.services.extension_bridge_service import decide_extension_approval
+
+    ctx = _ctx_with(_staged_row())
+    out = decide_extension_approval(
+        ctx, org_id="org-1", approval_id="appr-1", reviewer_id="user-1", reviewer_is_admin=False, approve=False
+    )
+    assert out["status"] == "rejected"
+    mock_run.assert_not_called()
+    update = ctx.client.table.return_value.update.call_args.args[0]
+    assert update["status"] == "rejected" and "confirmation_token" not in update["context"]
+
+
+def test_already_resolved_extension_approval_is_refused():
+    from app.services.extension_bridge_service import decide_extension_approval
+
+    with pytest.raises(ValueError):
+        decide_extension_approval(
+            _ctx_with(_staged_row(status="approved")), org_id="org-1", approval_id="appr-1",
+            reviewer_id="user-1", reviewer_is_admin=False, approve=True,
+        )

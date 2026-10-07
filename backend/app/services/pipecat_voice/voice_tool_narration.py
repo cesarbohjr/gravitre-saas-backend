@@ -191,6 +191,20 @@ def narrate_tool_started(tool_name: str) -> str:
     return f"Let me check {_humanize_tool_name(tool_name)}."
 
 
+def narrate_tool_still_running(tool_name: str, *, repeat: bool = False) -> str:
+    """Short, honest line for a real tool call that is still open after a long silence.
+
+    Only ever spoken while the call genuinely has no ``tool-output-available``
+    yet, so it states real state ("still running"), never invented progress,
+    a percentage, or an outcome.
+    """
+    if repeat:
+        return "That's still running."
+    if is_write_shaped_tool_name(tool_name):
+        return f"Still {_gerund_phrase(tool_name)}."
+    return f"Still checking {_humanize_tool_name(tool_name)}."
+
+
 def narrate_tool_completed(tool_name: str, output: Any) -> str | None:
     """Short, honest, spoken sentence derived from the REAL tool output.
 

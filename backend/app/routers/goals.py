@@ -27,7 +27,16 @@ async def generate_plan(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
+    environment_name: Annotated[str, Depends(get_environment_context)] = "production",
 ) -> dict[str, Any]:
+    """Plan a goal with the same objective planner chat, voice and Plays use.
+
+    A measurable goal ("150 qualified leads per month") gets the objective
+    plan: Plays as steps, capability-resolved connectors, approvals and an
+    honest feasibility estimate. Only a goal that is not measurable falls back
+    to drafting a workflow resource for it, which is a resource generator, not
+    a second planner.
+    """
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
 
@@ -44,6 +53,12 @@ async def generate_plan(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found")
 
     goal_text = (body.objective or "").strip() or "Define measurable goal outcome"
+    objective_plan = _goal_plan_from_objective(
+        client, org_id, goal_text, environment_name=environment_name, settings=settings, body=body
+    )
+    if objective_plan is not None:
+        return _save_goal_plan(client, org_id, goal_id, objective_plan)
+
     goal_service = get_goal_service()
     generated = await goal_service.generate_workflow(
         goal=goal_text,
@@ -77,6 +92,86 @@ async def generate_plan(
     approval_gates = [
         {"phase": "pre-launch", "required": generated.requires_approval, "approverRole": "owner"},
     ]
+    return _save_goal_plan(
+        client,
+        org_id,
+        goal_id,
+        {
+            "proposed_steps": proposed_steps,
+            "required_connectors": generated.required_connectors or [],
+            "approval_gates": approval_gates,
+            "estimated_impact": estimated_impact,
+        },
+    )
+
+
+def _goal_plan_from_objective(
+    client: Any,
+    org_id: str,
+    goal_text: str,
+    *,
+    environment_name: str,
+    settings: Settings,
+    body: GeneratePlanRequest,
+) -> dict[str, Any] | None:
+    from app.services.objective_capability_composer import looks_like_objective, plan_objective
+
+    if not looks_like_objective(goal_text):
+        return None
+    try:
+        brief = plan_objective(client, org_id, goal_text, environment_name=environment_name, settings=settings)
+    except Exception:  # noqa: BLE001 — fall back to the workflow draft rather than failing the request
+        return None
+    if not isinstance(brief, dict) or not (brief.get("plan") or {}).get("steps"):
+        return None
+    plan = brief["plan"]
+    contract = brief.get("contract") or {}
+    feasibility = brief.get("feasibility") or {}
+    department = next(
+        (str(r.get("department") or "") for r in brief.get("resources") or [] if r.get("movesPrimary")), ""
+    )
+    proposed_steps = [
+        {
+            "id": str(step.get("playKey") or f"step-{idx + 1}"),
+            "title": str(step.get("name") or step.get("playKey") or "Step"),
+            "owner": department or None,
+            "status": "planned" if step.get("status") == "ready" else str(step.get("status") or "planned"),
+            "why": step.get("why"),
+        }
+        for idx, step in enumerate(plan["steps"])
+    ]
+    connectors: list[str] = []
+    for row in (plan.get("capabilityLedger") or {}).values():
+        vendor = str((row or {}).get("selected") or "")
+        if vendor and vendor != "gravitre" and vendor not in connectors:
+            connectors.append(vendor)
+    return {
+        "proposed_steps": proposed_steps,
+        "required_connectors": connectors,
+        "approval_gates": [
+            {"phase": "pre-launch", "required": bool(plan.get("requiresApproval", True)), "approverRole": "owner"}
+        ],
+        "estimated_impact": {
+            # A target is not a forecast: no confidence number is invented here.
+            "verdict": feasibility.get("verdict"),
+            "targetIsNotAPromise": True,
+            "expectedLift": None,
+            "contextSummary": brief.get("summary") or body.context or "Planned by the objective planner.",
+            "constraints": body.constraints,
+            "objectiveContract": {
+                "metricKey": contract.get("metricKey"),
+                "target": contract.get("target"),
+                "period": contract.get("period"),
+            },
+        },
+    }
+
+
+def _save_goal_plan(client: Any, org_id: str, goal_id: str, plan: dict[str, Any]) -> dict[str, Any]:
+    proposed_steps = plan["proposed_steps"]
+    required_connectors = plan["required_connectors"]
+    approval_gates = plan["approval_gates"]
+    estimated_impact = plan["estimated_impact"]
     inserted = (
         client.table("goal_plans")
         .insert(
@@ -84,7 +179,7 @@ async def generate_plan(
                 "org_id": org_id,
                 "goal_id": goal_id,
                 "proposed_steps": proposed_steps,
-                "required_connectors": generated.required_connectors or [],
+                "required_connectors": required_connectors,
                 "required_agents": [],
                 "approval_gates": approval_gates,
                 "estimated_impact": estimated_impact,
@@ -105,13 +200,13 @@ async def generate_plan(
             "id": plan_id,
             "goalId": goal_id,
             "proposedSteps": proposed_steps,
-            "requiredConnectors": generated.required_connectors,
+            "requiredConnectors": required_connectors,
             "requiredAgents": [],
             "approvalGates": approval_gates,
             "estimatedImpact": estimated_impact,
         },
         "proposedSteps": proposed_steps,
-        "requiredConnectors": generated.required_connectors,
+        "requiredConnectors": required_connectors,
         "requiredAgents": [],
         "approvalGates": approval_gates,
         "estimatedImpact": estimated_impact,

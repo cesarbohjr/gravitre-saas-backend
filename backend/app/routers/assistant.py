@@ -36,16 +36,11 @@ from app.services.ai_guardrails import (
     AIContentFlaggedError,
     AIRateLimitError,
     AIServiceDisabledError,
-    detect_prompt_injection,
     fence_untrusted,
-    injection_hardening_note,
 )
 from app.services.chat_performance import ChatPerfTimer
 from app.services.intent_gateway import _RESPONSE_CACHE  # noqa: F401
-from app.services.conversation_context_service import (
-    load_conversation_summary,
-    persist_conversation_summary,
-)
+from app.services.conversation_context_service import load_conversation_summary
 from app.services.conversation_state_service import get_conversation_state_service
 from app.services.assistant_mode import resolve_assistant_model
 from app.schemas.workspace_focus import WorkspaceFocus
@@ -1064,20 +1059,11 @@ def _build_stream(
                 rag_quality_score=((complete.confidence or {}) if complete else {}).get("rag_quality_score"),
             )
         )
-        if (
-            complete is not None
-            and complete.summary_updated
-            and conversation_id
-            and user_id
-            and complete.summary
-        ):
-            persist_conversation_summary(
-                get_supabase_client(settings),
-                conversation_id=conversation_id,
-                org_id=org_id,
-                user_id=user_id,
-                summary=complete.summary,
-            )
+        from app.services.shared_turn_preparation import persist_turn_summary
+
+        persist_turn_summary(
+            settings, conversation_id=conversation_id, org_id=org_id, user_id=user_id, complete=complete
+        )
 
     return generator()  # serial A/B contextvar is scoped inside generator()
 
@@ -1253,19 +1239,9 @@ async def assistant_chat(
             "state above for agent status, predictions, and learning claims. "
             "Do not say data is unavailable when canonical state lists it."
         )
-    if cross_department:
-        system_prompt = (
-            f"{system_prompt}\n\nOperator scope: cross-department cowork. "
-            f"Primary department: {department_scope or 'all'}. "
-            "Coordinate handoffs across teams. Do not put this scope label into "
-            "tool arguments or outbound message bodies."
-        )
-    elif department_scope:
-        system_prompt = (
-            f"{system_prompt}\n\nOperator department context: {department_scope}. "
-            "Use this for prioritization and handoffs only — never copy this label "
-            "into tool arguments or outbound message bodies."
-        )
+    from app.services.shared_turn_preparation import apply_department_scope
+
+    system_prompt = apply_department_scope(system_prompt, department_scope, cross_department)
 
     user_id = str(current_user.get("user_id") or "")
     conversation_id = (body.conversation_id or "").strip() or None
@@ -1394,40 +1370,31 @@ async def assistant_chat(
         )
         preferred_persona = (prefs.get("preferred_persona") or "").strip() or None
 
-    if getattr(settings, "prompt_injection_detection_enabled", True):
-        detected, injection_reason = detect_prompt_injection(last_user)
-        if detected:
-            system_prompt = f"{system_prompt}\n\n{injection_hardening_note(injection_reason)}"
-            await _log_assistant_guardrail_event(
-                settings,
-                org_id,
-                "prompt_injection.detected",
-                {
-                    "reason": injection_reason,
-                    "conversation_id": conversation_id,
-                },
-            )
+    from app.services.shared_turn_preparation import enforce_turn_guardrails, harden_against_injection
 
-    router_ = get_model_router()
+    system_prompt = await harden_against_injection(
+        settings,
+        org_id=org_id,
+        conversation_id=conversation_id,
+        system_prompt=system_prompt,
+        user_text=last_user,
+        surface="text",
+    )
+
     try:
-        if _computer_compiled_ingress:
-            # Computer Use READ already has a deterministic public-browser path.
-            # OpenAI input moderation here delayed first SSE ~4s past server work.
-            if getattr(settings, "disable_ai", False):
-                raise AIServiceDisabledError()
-            from app.services.ai_guardrails import enforce_budget, enforce_rate_limit
-
-            enforce_rate_limit(org_id, settings)
-            enforce_budget(org_id, settings)
-        else:
-            await router_.prepare_stream(
-                task_type=task_type,
-                prompt=last_user,
-                system_prompt=system_prompt,
-                context=history_messages,
-                org_id=org_id,
-                model_override=model_override,
-            )
+        # Computer Use READ already has a deterministic public-browser path.
+        # OpenAI input moderation there delayed first SSE ~4s past server work.
+        await enforce_turn_guardrails(
+            settings,
+            org_id=org_id,
+            user_text=last_user,
+            system_prompt=system_prompt,
+            history=history_messages,
+            task_type=task_type,
+            model_override=model_override,
+            light=bool(_computer_compiled_ingress),
+            router=get_model_router(),
+        )
     except AIServiceDisabledError:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI assistant is temporarily disabled")
     except AIRateLimitError as exc:

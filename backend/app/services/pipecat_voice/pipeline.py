@@ -229,6 +229,7 @@ def build_pipecat_voice_task(
         llm_context=context,
         speculative_coordinator=speculative_coordinator,
         durable_context_provider=llm.speculative_durable_context,
+        turn_inputs_provider=llm.shared_turn_inputs,
     )
     tts = tts_service if tts_service is not None else ElevenLabsTTSService(
         api_key=el_key,

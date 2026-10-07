@@ -2513,6 +2513,7 @@ async def execute_operator_action_route(
             user_id=str(current_user.get("user_id") or ""),
             environment=environment,
             payload=body.model_dump(),
+            settings=settings,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

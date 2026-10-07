@@ -71,6 +71,10 @@ async def test_process_salesforce_event_batch_starts_workflow():
     settings = SimpleNamespace(
         supabase_url="http://x",
         supabase_service_role_key="k",
+        policy_allowed_envs="",
+        policy_max_steps=0,
+        policy_max_runtime_seconds=0,
+        disable_connectors=False,
     )
     connector = {
         "id": "conn-sf",
@@ -122,13 +126,15 @@ async def test_process_salesforce_event_batch_starts_workflow():
         return_value=SimpleNamespace(status="completed", results=[])
     )
 
-    with patch("app.services.salesforce_trigger_service.get_supabase_client", return_value=mock_client):
+    with patch("app.services.salesforce_trigger_service.get_supabase_client", return_value=mock_client), patch(
+        "app.workflows.policy.resolve_policy", return_value=(0, [])
+    ):
         with patch(
             "app.services.salesforce_trigger_service.ensure_salesforce_session",
             return_value=(None, None, "no token"),
         ):
             with patch(
-                "app.services.salesforce_trigger_service.get_execution_service",
+                "app.services.event_triggered_runs.get_execution_service",
                 return_value=mock_execution,
             ):
                 results = await process_salesforce_event_batch(
