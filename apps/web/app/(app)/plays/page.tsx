@@ -71,7 +71,13 @@ export default function PlaysPage() {
           status={plays.length ? <LiveStatus tone={readyCount ? "live" : "idle"}>{readyCount} of {plays.length} ready to observe</LiveStatus> : undefined}
         />
 
-        {error ? (
+        {error && data ? (
+          <p role="status" className="mb-3 text-sm text-muted-foreground">
+            Couldn&apos;t refresh plays just now. Showing the last update.
+          </p>
+        ) : null}
+
+        {error && !data ? (
           <div className="space-y-4">
             <Illustration name="moment-error" width={160} />
             <WorkSectionErrorCard
