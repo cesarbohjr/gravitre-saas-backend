@@ -36,7 +36,7 @@ export function FirstResultChecklist({ steps, loading }: { steps: FirstResultSte
                 className={cn(
                   "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-[1.5px] text-xs font-semibold",
                   step.done
-                    ? "border-[color:var(--g-brand)] bg-[color:var(--g-brand)] text-white"
+                    ? "border-[color:var(--g-brand)] bg-[color:var(--g-brand)] text-primary-foreground"
                     : isNext
                       ? "border-[color:var(--g-danger)] text-[color:var(--g-danger)]"
                       : "border-[color:var(--g-border-strong)] text-[color:var(--g-text-secondary)]",

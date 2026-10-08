@@ -2676,7 +2676,7 @@ export function AiWorkspace({
                 href="/ai/help/control"
                 className={cn(
                   TOUCH_ICON_BUTTON,
-                  "hidden items-center justify-center rounded-full border border-[color:var(--chat-surface-border)] text-[color:var(--chat-surface-muted)] hover:bg-black/[0.03] hover:text-foreground sm:inline-flex dark:hover:bg-white/[0.04]",
+                  "hidden items-center justify-center rounded-full border border-[color:var(--chat-surface-border)] text-[color:var(--chat-surface-muted)] hover:bg-foreground/[0.04] hover:text-foreground sm:inline-flex",
                 )}
                 title="How Gravitre keeps you in control"
                 aria-label="How Gravitre keeps you in control"
@@ -2908,7 +2908,7 @@ export function AiWorkspace({
             ) : null}
 
             {!showLanding && !conversationLoading && threadRestoreStale ? (
-              <div className="rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 px-4 py-8 text-center text-sm text-muted-foreground">
+              <div className="rounded-xl border border-dashed border-warning/30 bg-warning/5 px-4 py-8 text-center text-sm text-muted-foreground">
                 <p className="font-medium text-foreground">Messages could not be restored</p>
                 <p className="mt-1 text-xs">
                   This thread has history metadata but no retrievable messages. Send a new message to continue, or start fresh.
@@ -3109,7 +3109,7 @@ export function AiWorkspace({
       <>
         {/* Mobile/tablet scrim — tap to dismiss the overlay drawer. */}
         <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm xl:hidden"
+          className="fixed inset-0 z-40 bg-[color:var(--overlay)] backdrop-blur-sm xl:hidden"
           onClick={() => setActivityRailOpen(false)}
           aria-hidden
         />

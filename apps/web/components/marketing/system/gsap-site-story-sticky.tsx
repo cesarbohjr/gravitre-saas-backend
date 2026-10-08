@@ -123,7 +123,7 @@ export function GsapSiteStorySticky({ className }: { className?: string }) {
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {SITE_STORY_STAGES.map((stage) => (
-            <div key={stage.id} className="rounded-xl border border-divide bg-gray-50 p-5">
+            <div key={stage.id} className="rounded-xl border border-divide bg-[color:var(--g-marketing-surface)] p-5">
               <p className="text-sm font-medium text-brand">{stage.label}</p>
               <p className="mt-2 text-sm text-muted-foreground">{stage.blurb}</p>
             </div>
@@ -150,7 +150,7 @@ export function GsapSiteStorySticky({ className }: { className?: string }) {
               ref={(el) => {
                 pillRefs.current[i] = el
               }}
-              className="flex items-center gap-3 rounded-lg border border-divide bg-white px-4 py-2.5 text-left"
+              className="flex items-center gap-3 rounded-lg border border-divide bg-card px-4 py-2.5 text-left"
             >
               <span
                 className={`h-2 w-2 shrink-0 rounded-full ${

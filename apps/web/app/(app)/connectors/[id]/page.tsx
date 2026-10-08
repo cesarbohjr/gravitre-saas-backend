@@ -7,6 +7,7 @@ import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { Illustration } from "@/components/gravitre/illustration"
 import { ConnectorLinkage } from "@/components/connectors/connector-linkage"
 import { KnowledgeSyncButton } from "@/components/connectors/knowledge-sync-button"
 import { NucleoConnector } from "@/components/icons/nucleo/semantic"
@@ -25,7 +26,6 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { TYPE } from "@/lib/design-system"
 import {
-  XCircle,
   RefreshCw,
   Settings,
   Trash2,
@@ -146,7 +146,7 @@ export default function ConnectorDetailPage() {
             </>
           ) : (
             <>
-              <XCircle className="h-10 w-10 text-destructive mb-4" />
+              <Illustration name="moment-error" width={190} className="mb-4" />
               <h2 className="text-base font-medium text-foreground mb-1">Connector not found</h2>
               <p className="text-sm text-muted-foreground mb-4">
                 {connectorError instanceof Error ? connectorError.message : "This connector may have been removed."}

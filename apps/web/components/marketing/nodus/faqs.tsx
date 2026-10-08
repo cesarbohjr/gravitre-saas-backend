@@ -103,7 +103,7 @@ const AccordionItem = ({
       >
         <span className="text-charcoal-700 text-base font-medium">{question}</span>
         <motion.span
-          className="text-charcoal-700 shadow-aceternity inline-flex size-6 items-center justify-center rounded-md bg-white"
+          className="text-charcoal-700 shadow-aceternity inline-flex size-6 items-center justify-center rounded-md bg-card"
           initial={false}
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.25 }}

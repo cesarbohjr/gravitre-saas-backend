@@ -57,17 +57,17 @@ function PulsingOrb() {
   return (
     <div className="relative flex items-center justify-center">
       <motion.div
-        className="absolute h-10 w-10 rounded-full bg-blue-500/20"
+        className="absolute h-10 w-10 rounded-full bg-info/20"
         animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
         transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
       />
       <motion.div
-        className="absolute h-8 w-8 rounded-full bg-blue-500/30"
+        className="absolute h-8 w-8 rounded-full bg-info/30"
         animate={{ scale: [1, 1.3, 1], opacity: [0.6, 0.2, 0.6] }}
         transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut", delay: 0.2 }}
       />
-      <div className="relative flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-blue-600 shadow-lg shadow-blue-500/30">
-        <Sparkles className="h-3 w-3 text-white" />
+      <div className="relative flex h-6 w-6 items-center justify-center rounded-full bg-info shadow-lg shadow-info/30">
+        <Sparkles className="h-3 w-3 text-info-foreground" />
       </div>
     </div>
   )
@@ -174,15 +174,15 @@ export function AIProcessingStatus({ isProcessing, onComplete }: AIProcessingSta
             key={currentStep?.id}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            className="mb-4 flex items-center gap-3 rounded-lg bg-blue-500/10 border border-blue-500/20 px-4 py-3"
+            className="mb-4 flex items-center gap-3 rounded-lg bg-info/10 border border-info/20 px-4 py-3"
           >
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             >
-              <Loader2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <Loader2 className="h-4 w-4 text-info" />
             </motion.div>
-            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+            <span className="text-sm font-medium text-info">
               {currentStep?.label}
             </span>
           </motion.div>
@@ -202,7 +202,7 @@ export function AIProcessingStatus({ isProcessing, onComplete }: AIProcessingSta
                   transition={{ delay: index * 0.05, duration: 0.2 }}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
                     isCompleted
-                      ? "bg-emerald-500/5"
+                      ? "bg-success/5"
                       : isCurrent
                         ? "bg-secondary/50"
                         : ""
@@ -211,9 +211,9 @@ export function AIProcessingStatus({ isProcessing, onComplete }: AIProcessingSta
                   <div
                     className={`flex h-6 w-6 items-center justify-center rounded-full transition-all ${
                       isCompleted
-                        ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400"
+                        ? "bg-success/20 text-success-text"
                         : isCurrent
-                          ? "bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                          ? "bg-info/20 text-info"
                           : "bg-muted text-muted-foreground"
                     }`}
                   >
@@ -232,7 +232,7 @@ export function AIProcessingStatus({ isProcessing, onComplete }: AIProcessingSta
                   <span
                     className={`text-xs transition-colors ${
                       isCompleted
-                        ? "text-emerald-700 dark:text-emerald-400"
+                        ? "text-success-text"
                         : isCurrent
                           ? "text-foreground"
                           : "text-muted-foreground"
@@ -244,7 +244,7 @@ export function AIProcessingStatus({ isProcessing, onComplete }: AIProcessingSta
                     <motion.span
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="ml-auto text-[10px] text-emerald-700/70 dark:text-emerald-400/70"
+                      className="ml-auto text-[10px] text-success-text/70"
                     >
                       Done
                     </motion.span>
@@ -266,7 +266,7 @@ export function AIProcessingStatus({ isProcessing, onComplete }: AIProcessingSta
             </div>
             <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
               <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-emerald-500"
+                className="h-full rounded-full bg-gradient-to-r from-info to-success"
                 initial={{ width: 0 }}
                 animate={{
                   width: `${((currentStepIndex + (completedSteps.includes(processingSteps[currentStepIndex]?.id) ? 1 : 0.5)) / processingSteps.length) * 100}%`,
@@ -309,7 +309,7 @@ export function AIProcessingInline({ isProcessing }: { isProcessing: boolean }) 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400"
+      className="flex items-center gap-2 text-xs text-info"
     >
       <motion.div
         animate={{ rotate: 360 }}

@@ -117,7 +117,7 @@ export function VoiceInputButton({
             className={cn(
               "inline-flex h-8 items-center gap-1.5 rounded-lg border px-2 transition-colors",
               isListening
-                ? "border-[#16a374]/50 bg-[#16a374]/10 text-[#16a374]"
+                ? "border-brand/50 bg-brand/10 text-brand-text"
                 : "border-border/70 bg-background text-muted-foreground hover:text-foreground",
               disabled && "opacity-40",
               className,

@@ -10,6 +10,7 @@ import { MarketplaceDecisionDialog } from "@/components/marketplace/marketplace-
 import { marketplaceApi } from "@/lib/api"
 import { Star } from "lucide-react"
 import { toast } from "sonner"
+import { Illustration } from "@/components/gravitre/illustration"
 
 type Props = {
   assetRef: string
@@ -232,7 +233,10 @@ function ReviewSession({
           ))}
         </ul>
       ) : data ? (
-        <p className="text-sm text-muted-foreground">No reviews returned.</p>
+        <div className="py-4 text-center">
+          <Illustration name="moment-focus-time" width={140} className="mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">No reviews returned.</p>
+        </div>
       ) : null}
       {removeOpen ? (
         <MarketplaceDecisionDialog

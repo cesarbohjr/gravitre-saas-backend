@@ -41,6 +41,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import type { MarketplaceAssetSummary } from "@/types/api"
+import { Illustration } from "@/components/gravitre/illustration"
 
 function formatAssetType(assetType: string) {
   return assetType.replace(/_/g, " ")
@@ -501,6 +502,7 @@ export default function MarketplacePlatformAdminPage() {
             <div className="h-32 animate-pulse rounded-xl border bg-muted/40" />
           ) : !data ? null : pending.length === 0 ? (
             <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+              <Illustration name="moment-all-clear" width={170} className="mx-auto mb-4" />
               No public assets awaiting review.
             </div>
           ) : (
@@ -569,6 +571,7 @@ export default function MarketplacePlatformAdminPage() {
               <div className="h-32 animate-pulse rounded-xl border bg-muted/40" />
             ) : !catalogData ? null : catalogAssets.length === 0 ? (
               <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+                <Illustration name="moment-focus-time" width={160} className="mx-auto mb-4" />
                 No published public assets match this filter.
               </div>
             ) : (

@@ -33,9 +33,9 @@ import { cn } from "@/lib/utils"
 import { SixQuestionsPanel, type SixQuestionsAnswer } from "@/components/intelligence/six-questions-panel"
 
 const availabilityBadge: Record<string, string> = {
-  platform: "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/25",
-  connected: "bg-emerald-500/10 text-[color:var(--g-emerald-deep)] border-emerald-500/25",
-  requires_connection: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/25",
+  platform: "bg-info/10 text-info border-info/25",
+  connected: "bg-success/10 text-[color:var(--g-emerald-deep)] border-success/25",
+  requires_connection: "bg-warning/10 text-warning-text border-warning/25",
 }
 
 function formatMetricKey(key: string): string {
@@ -266,7 +266,7 @@ export function ModelDetailInsights({
               {layer.highlights.map((h) => (
                 <li
                   key={h}
-                  className="text-[11px] text-muted-foreground before:mr-1.5 before:text-emerald-400 before:content-['•']"
+                  className="text-[11px] text-muted-foreground before:mr-1.5 before:text-success before:content-['•']"
                 >
                   {h}
                 </li>
@@ -301,7 +301,7 @@ export function ModelDetailInsights({
                         </Badge>
                       ) : null}
                       {baseModelOption.fineTunable ? (
-                        <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-[color:var(--g-emerald-deep)]">
+                        <Badge variant="outline" className="text-[10px] border-success/30 text-[color:var(--g-emerald-deep)]">
                           Fine-tunable
                         </Badge>
                       ) : null}
@@ -393,10 +393,10 @@ export function ModelDetailInsights({
         </Card>
       </div>
 
-      <Card className="border-emerald-500/20 bg-emerald-500/[0.03]">
+      <Card className="border-success/20 bg-success/[0.03]">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Beaker className="h-4 w-4 text-emerald-500" />
+            <Beaker className="h-4 w-4 text-success" />
             Training guidance
           </CardTitle>
         </CardHeader>
@@ -451,14 +451,14 @@ export function ModelDetailInsights({
                     transition={{ delay: index * 0.04 }}
                     className={cn(
                       "rounded-lg border px-3 py-3 text-sm",
-                      isLive ? "border-emerald-500/30 bg-emerald-500/5" : "border-border/70"
+                      isLive ? "border-success/30 bg-success/5" : "border-border/70"
                     )}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">v{version.version}</span>
                         {isLive ? (
-                          <Badge variant="outline" className="border-emerald-500/30 text-[color:var(--g-emerald-deep)] text-[10px]">
+                          <Badge variant="outline" className="border-success/30 text-[color:var(--g-emerald-deep)] text-[10px]">
                             Live
                           </Badge>
                         ) : null}
@@ -485,10 +485,10 @@ export function ModelDetailInsights({
         </CardContent>
       </Card>
 
-      <Card className="border-teal-500/20 bg-teal-500/[0.03]">
+      <Card className="border-success/20 bg-success/[0.03]">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Activity className="h-4 w-4 text-teal-500" />
+            <Activity className="h-4 w-4 text-success" />
             Inference smoke test
           </CardTitle>
         </CardHeader>
@@ -524,7 +524,7 @@ export function ModelDetailInsights({
                 </div>
               ) : null}
               {predictResult ? (
-                <pre className="max-h-48 overflow-auto rounded-lg border border-border/70 bg-background/80 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+                <pre className="max-h-48 overflow-auto rounded-lg border border-border/70 bg-background/80 p-3 text-xs text-success-text">
                   {predictResult}
                 </pre>
               ) : null}

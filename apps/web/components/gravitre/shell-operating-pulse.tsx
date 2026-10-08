@@ -84,7 +84,7 @@ export function ShellOperatingPulse({
           href={segment.href}
           data-pulse={segment.id}
           className={cn(
-            "h-6 items-center gap-1.5 rounded-[2px] px-2 text-xs font-medium tabular-nums text-muted-foreground transition-colors hover:bg-white/[0.08] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "h-6 items-center gap-1.5 rounded-[2px] px-2 text-xs font-medium tabular-nums text-muted-foreground transition-colors hover:bg-foreground/[0.08] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             segment.wideOnly ? "hidden 2xl:inline-flex" : "inline-flex",
           )}
         >
@@ -95,7 +95,7 @@ export function ShellOperatingPulse({
               segment.tone === "live" && "bg-[color:var(--g-brand)]",
               segment.tone === "attention" && "bg-warning",
               segment.tone === "fault" && "bg-destructive",
-              segment.tone === "quiet" && "bg-white/25",
+              segment.tone === "quiet" && "bg-muted-foreground/40",
             )}
           />
           <span className={cn(segment.tone !== "quiet" && "text-foreground")}>{segment.label}</span>

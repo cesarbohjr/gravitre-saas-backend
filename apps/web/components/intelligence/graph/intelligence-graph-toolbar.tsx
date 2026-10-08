@@ -201,19 +201,19 @@ export function IntelligenceGraphViewControls({
   canZoomOut: boolean
 }) {
   const button =
-    "flex h-8 w-8 items-center justify-center text-[color:var(--g-text-secondary)] transition-colors hover:bg-white/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)] disabled:pointer-events-none disabled:opacity-40"
+    "flex h-8 w-8 items-center justify-center text-[color:var(--g-text-secondary)] transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)] disabled:pointer-events-none disabled:opacity-40"
   return (
     <div
       className="absolute bottom-3 right-3 z-30 flex flex-col items-end gap-2"
       onPointerDown={(e) => e.stopPropagation()}
       data-testid="intelligence-graph-view-controls"
     >
-      <div className="flex flex-col overflow-hidden rounded-md border border-white/10 bg-[color:var(--g-surface-1)]/95 shadow-sm">
+      <div className="flex flex-col overflow-hidden rounded-md border border-border bg-[color:var(--g-surface-1)]/95 shadow-sm">
         <button type="button" className={button} onClick={onZoomIn} disabled={!canZoomIn} aria-label="Zoom in" title="Zoom in (+)">
           <Plus className="h-4 w-4" />
         </button>
         <span
-          className="flex h-6 w-8 items-center justify-center border-y border-white/10 text-[10px] font-medium tabular-nums text-muted-foreground"
+          className="flex h-6 w-8 items-center justify-center border-y border-border text-[10px] font-medium tabular-nums text-muted-foreground"
           aria-live="polite"
           aria-label={`Zoom ${Math.round(scale * 100)} percent`}
         >
@@ -223,13 +223,13 @@ export function IntelligenceGraphViewControls({
           <Minus className="h-4 w-4" />
         </button>
       </div>
-      <div className="flex flex-col overflow-hidden rounded-md border border-white/10 bg-[color:var(--g-surface-1)]/95 shadow-sm">
+      <div className="flex flex-col overflow-hidden rounded-md border border-border bg-[color:var(--g-surface-1)]/95 shadow-sm">
         <button type="button" className={button} onClick={onFit} aria-label="Fit to view" title="Fit everything (0)">
           <Scan className="h-4 w-4" />
         </button>
         <button
           type="button"
-          className={cn(button, "border-t border-white/10")}
+          className={cn(button, "border-t border-border")}
           onClick={onFocusSelected}
           disabled={!hasSelection}
           aria-label="Focus selected node"
@@ -239,7 +239,7 @@ export function IntelligenceGraphViewControls({
         </button>
         <button
           type="button"
-          className={cn(button, "border-t border-white/10")}
+          className={cn(button, "border-t border-border")}
           onClick={onReset}
           aria-label="Reset layout"
           title="Reset layout and zoom"

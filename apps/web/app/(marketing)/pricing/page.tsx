@@ -37,7 +37,7 @@ import { OutcomesPositioningField } from "@/components/marketing/creative"
 export default function PricingPage() {
   return (
     <PricingAnnualProvider>
-      <div className="relative overflow-hidden bg-[color:var(--g-marketing-canvas)] dark:bg-neutral-950">
+      <div className="relative overflow-hidden bg-[color:var(--g-marketing-canvas)]">
         <Pricing />
 
         <DivideX />
@@ -81,7 +81,7 @@ export default function PricingPage() {
         <Container className="border-divide border-x px-4 py-12 md:px-8 md:py-16">
           <div className="mb-8 flex items-center gap-2">
             <Users className="h-5 w-5 text-gray-500" />
-            <h3 className="text-charcoal-700 text-lg font-medium dark:text-neutral-100">
+            <h3 className="text-charcoal-700 text-lg font-medium">
               How teams use Gravitre
             </h3>
           </div>
@@ -112,11 +112,11 @@ export default function PricingPage() {
                     <role.icon className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-charcoal-700 font-medium dark:text-neutral-100">{role.title}</p>
+                    <p className="text-charcoal-700 font-medium">{role.title}</p>
                     <p className="text-xs text-gray-500">{role.eyebrow}</p>
                   </div>
                 </div>
-                <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-neutral-400">{role.body}</p>
+                <p className="mt-3 text-sm leading-relaxed text-gray-600">{role.body}</p>
               </GravitreFlow>
             ))}
           </div>
@@ -126,27 +126,27 @@ export default function PricingPage() {
 
         {/* Add-ons */}
         <Container className="border-divide border-x px-4 py-12 md:px-8 md:py-16">
-          <h3 className="text-charcoal-700 text-lg font-medium dark:text-neutral-100">Need more?</h3>
+          <h3 className="text-charcoal-700 text-lg font-medium">Need more?</h3>
           <div className="divide-divide mt-6 grid grid-cols-1 divide-y sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
             {addOns.map((addon) => {
               const AddonIcon = addon.icon
               return (
                 <div key={addon.name} className="p-4 md:p-6">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-neutral-300">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
                     <AddonIcon className="h-4 w-4" />
                   </div>
-                  <p className="text-charcoal-700 mt-3 font-medium dark:text-neutral-100">{addon.name}</p>
+                  <p className="text-charcoal-700 mt-3 font-medium">{addon.name}</p>
                   <p className="text-brand mt-1 text-sm font-medium">{addon.price}</p>
-                  <p className="mt-2 text-sm text-gray-600 dark:text-neutral-400">{addon.description}</p>
+                  <p className="mt-2 text-sm text-gray-600">{addon.description}</p>
                 </div>
               )
             })}
           </div>
           <div className="border-divide mt-10 border-t pt-10 text-center">
-            <h3 className="text-charcoal-700 text-xl font-medium dark:text-neutral-100">
+            <h3 className="text-charcoal-700 text-xl font-medium">
               Need enterprise scale?
             </h3>
-            <p className="mx-auto mt-2 max-w-lg text-sm text-gray-600 dark:text-neutral-400">
+            <p className="mx-auto mt-2 max-w-lg text-sm text-gray-600">
               Custom agent counts, SLAs, dedicated infrastructure, and white-glove onboarding.
             </p>
             <Button as={Link} href="/contact" variant="secondary" className="mt-6">
@@ -162,17 +162,17 @@ export default function PricingPage() {
           <div className="mx-auto max-w-3xl text-center">
             <Badge text="System Builder" />
             <SectionHeading className="mt-4">Build your system with Meson</SectionHeading>
-            <p className="mt-3 text-base text-gray-600 dark:text-neutral-400">
+            <p className="mt-3 text-base text-gray-600">
               Meson creates agents, training, and workflows from a single request.
             </p>
           </div>
           <div className="divide-divide mt-10 grid grid-cols-1 divide-y md:grid-cols-2 md:divide-x md:divide-y-0">
             <div className="p-6 text-center md:p-8">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-neutral-800">
-                <FileText className="h-5 w-5 text-gray-600 dark:text-neutral-300" />
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100">
+                <FileText className="h-5 w-5 text-gray-600" />
               </div>
-              <h3 className="text-charcoal-700 font-medium dark:text-neutral-100">Describe what you need</h3>
-              <p className="mt-2 text-sm text-gray-600 dark:text-neutral-400">
+              <h3 className="text-charcoal-700 font-medium">Describe what you need</h3>
+              <p className="mt-2 text-sm text-gray-600">
                 {'"Create a marketing agent for SaaS onboarding campaigns"'}
               </p>
             </div>
@@ -180,8 +180,8 @@ export default function PricingPage() {
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-brand/10">
                 <Check className="h-5 w-5 text-brand" />
               </div>
-              <h3 className="text-charcoal-700 font-medium dark:text-neutral-100">Meson generates</h3>
-              <p className="mt-2 text-sm text-gray-600 dark:text-neutral-400">
+              <h3 className="text-charcoal-700 font-medium">Meson generates</h3>
+              <p className="mt-2 text-sm text-gray-600">
                 Agent config, training structure, workflows, sample outputs
               </p>
             </div>
@@ -220,8 +220,8 @@ export default function PricingPage() {
               },
             ].map((item) => (
               <div key={item.title} className="p-4 md:p-6">
-                <h3 className="text-charcoal-700 font-medium dark:text-neutral-100">{item.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-gray-600 dark:text-neutral-400">
+                <h3 className="text-charcoal-700 font-medium">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-gray-600">
                   {item.description}
                 </p>
               </div>
@@ -241,13 +241,13 @@ export default function PricingPage() {
             {howItWorks.map((item, i) => (
               <GravitreFlow key={item.step} delay={i * 0.08} className="p-4 md:p-6">
                 <div className="mb-3 flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 dark:bg-neutral-800">
-                    <item.icon className="h-4 w-4 text-gray-600 dark:text-neutral-300" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100">
+                    <item.icon className="h-4 w-4 text-gray-600" />
                   </div>
                   <span className="text-xs font-mono text-gray-500">{item.step}</span>
                 </div>
-                <h3 className="text-charcoal-700 font-medium dark:text-neutral-100">{item.title}</h3>
-                <p className="mt-2 text-sm text-gray-600 dark:text-neutral-400">{item.description}</p>
+                <h3 className="text-charcoal-700 font-medium">{item.title}</h3>
+                <p className="mt-2 text-sm text-gray-600">{item.description}</p>
               </GravitreFlow>
             ))}
           </div>
@@ -271,7 +271,7 @@ export default function PricingPage() {
               <div key={item.title} className="flex items-start gap-3 p-4 md:p-6">
                 <CheckIcon className="mt-0.5 h-4 w-4 shrink-0" />
                 <div>
-                  <p className="text-charcoal-700 text-sm font-medium dark:text-neutral-100">{item.title}</p>
+                  <p className="text-charcoal-700 text-sm font-medium">{item.title}</p>
                   <p className="text-xs text-gray-500">{item.description}</p>
                 </div>
               </div>
@@ -297,7 +297,7 @@ export default function PricingPage() {
         {/* Final CTA — Nodus end CTA */}
         <Container className="border-divide flex flex-col items-center border-x px-4 py-16 text-center md:px-8 md:py-24">
           <SectionHeading>{MARKETING_COPY.pricing.cta.title}</SectionHeading>
-          <p className="mt-4 max-w-xl text-base text-gray-600 dark:text-neutral-400">
+          <p className="mt-4 max-w-xl text-base text-gray-600">
             {MARKETING_COPY.pricing.cta.subtitle}
           </p>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">

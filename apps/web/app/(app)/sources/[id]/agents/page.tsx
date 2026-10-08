@@ -14,6 +14,7 @@ import { agentKnowledgeApi, sourcesApi } from "@/lib/api"
 import { buildOrgSourceAssignmentPayload } from "@/lib/agent-knowledge-assign"
 import { ArrowLeft, Check, Plus } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
+import { Illustration } from "@/components/gravitre/illustration"
 
 type AgentAssignmentRow = {
   agentId: string
@@ -88,7 +89,10 @@ export default function SourceAgentAssignmentsPage() {
             <Spinner size="lg" />
           </div>
         ) : agents.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No agents in this organization yet.</p>
+          <div className="py-8 text-center">
+            <Illustration name="moment-welcome" width={160} className="mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">No agents in this organization yet.</p>
+          </div>
         ) : (
           <ul className="divide-y divide-border rounded-xl border border-border/70">
             {agents.map((row) => (
@@ -104,7 +108,7 @@ export default function SourceAgentAssignmentsPage() {
                   size="sm"
                   variant={row.assigned ? "secondary" : "outline"}
                   disabled={busyAgentId === row.agentId}
-                  className={cn("gap-1.5 shrink-0", row.assigned && "border-emerald-500/30")}
+                  className={cn("gap-1.5 shrink-0", row.assigned && "border-success/30")}
                   onClick={() => void toggleAgent(row)}
                 >
                   {row.assigned ? (

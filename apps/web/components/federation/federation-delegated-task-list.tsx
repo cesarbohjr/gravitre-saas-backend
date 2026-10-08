@@ -9,10 +9,10 @@ import { cn } from "@/lib/utils"
 import type { FederationDelegatedTask } from "@/types/api"
 
 const STATUS_CLASS: Record<string, string> = {
-  pending: "border-amber-500/30 text-amber-600",
+  pending: "border-warning/30 text-warning",
   accepted: "border-primary/30 text-primary",
   in_progress: "border-chart-2/30 text-chart-2",
-  completed: "border-emerald-500/30 text-emerald-600",
+  completed: "border-success/30 text-success",
   rejected: "border-border text-muted-foreground",
   failed: "border-destructive/30 text-destructive",
   cancelled: "border-border text-muted-foreground",

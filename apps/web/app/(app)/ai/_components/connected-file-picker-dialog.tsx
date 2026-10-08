@@ -267,7 +267,7 @@ export function ConnectedFilePickerDialog({ open, onOpenChange, selected, onConf
                               type="button"
                               className={cn(
                                 "flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-muted/60",
-                                selectedFile && "bg-emerald-500/10",
+                                selectedFile && "bg-success/10",
                               )}
                               onClick={() => {
                                 if (entry.kind === "folder") openFolder(entry)
@@ -275,7 +275,7 @@ export function ConnectedFilePickerDialog({ open, onOpenChange, selected, onConf
                               }}
                             >
                               {entry.kind === "folder" ? (
-                                <Folder className="h-4 w-4 shrink-0 text-amber-600" />
+                                <Folder className="h-4 w-4 shrink-0 text-warning" />
                               ) : (
                                 <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                               )}

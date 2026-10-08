@@ -82,9 +82,9 @@ function AgentsScreen() {
       <div className="border-b border-border bg-muted/50 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-red-400" />
-            <div className="h-3 w-3 rounded-full bg-amber-400" />
-            <div className="h-3 w-3 rounded-full bg-emerald-400" />
+            <div className="h-3 w-3 rounded-full bg-destructive/70" />
+            <div className="h-3 w-3 rounded-full bg-warning/70" />
+            <div className="h-3 w-3 rounded-full bg-brand/70" />
           </div>
           <span className="text-xs font-medium text-muted-foreground ml-2">Agents</span>
         </div>
@@ -108,17 +108,17 @@ function AgentsScreen() {
           >
             <div className={`h-10 w-10 rounded-lg flex items-center justify-center relative ${
               agent.color === 'emerald' ? 'bg-primary/15' :
-              agent.color === 'blue' ? 'bg-blue-100' :
-              agent.color === 'purple' ? 'bg-[color:var(--g-electric)]/10' : 'bg-amber-100'
+              agent.color === 'blue' ? 'bg-info/15' :
+              agent.color === 'purple' ? 'bg-[color:var(--g-electric)]/10' : 'bg-warning/15'
             }`}>
               <agent.icon className={`h-5 w-5 ${
                 agent.color === 'emerald' ? 'text-primary' :
-                agent.color === 'blue' ? 'text-blue-600' :
-                agent.color === 'purple' ? 'text-[color:var(--g-electric)]' : 'text-amber-600'
+                agent.color === 'blue' ? 'text-info' :
+                agent.color === 'purple' ? 'text-[color:var(--g-electric)]' : 'text-warning-text'
               }`} />
               {agent.status === "active" && (
                 <motion.div
-                  className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary/100 ring-2 ring-white"
+                  className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary/100 ring-2 ring-card"
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
                 />
@@ -160,9 +160,9 @@ function AssignmentsScreen() {
       <div className="border-b border-border bg-muted/50 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-red-400" />
-            <div className="h-3 w-3 rounded-full bg-amber-400" />
-            <div className="h-3 w-3 rounded-full bg-emerald-400" />
+            <div className="h-3 w-3 rounded-full bg-destructive/70" />
+            <div className="h-3 w-3 rounded-full bg-warning/70" />
+            <div className="h-3 w-3 rounded-full bg-brand/70" />
           </div>
           <span className="text-xs font-medium text-muted-foreground ml-2">Assignments</span>
         </div>
@@ -187,15 +187,15 @@ function AssignmentsScreen() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-foreground">{task.title}</span>
                   <span className={`h-1.5 w-1.5 rounded-full ${
-                    task.priority === 'high' ? 'bg-red-500' :
-                    task.priority === 'medium' ? 'bg-amber-500' : 'bg-muted-foreground'
+                    task.priority === 'high' ? 'bg-destructive' :
+                    task.priority === 'medium' ? 'bg-warning' : 'bg-muted-foreground'
                   }`} />
                 </div>
                 <span className="text-[10px] text-muted-foreground">Assigned to {task.agent}</span>
               </div>
               <span className={`text-[10px] px-1.5 py-0.5 rounded ${
                 task.status === 'completed' ? 'bg-primary/15 text-primary' :
-                task.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'bg-muted text-muted-foreground'
+                task.status === 'in_progress' ? 'bg-info/15 text-info' : 'bg-muted text-muted-foreground'
               }`}>
                 {task.status === 'in_progress' ? 'In Progress' : task.status === 'completed' ? 'Completed' : 'Pending'}
               </span>
@@ -204,7 +204,7 @@ function AssignmentsScreen() {
               <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                 <motion.div 
                   className={`h-full rounded-full ${
-                    task.status === 'completed' ? 'bg-primary/100' : 'bg-blue-500'
+                    task.status === 'completed' ? 'bg-primary/100' : 'bg-info'
                   }`}
                   initial={{ width: 0 }}
                   whileInView={{ width: `${task.progress}%` }}
@@ -228,14 +228,14 @@ function WorkflowBuilderScreen() {
       <div className="border-b border-border bg-muted/50 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-red-400" />
-            <div className="h-3 w-3 rounded-full bg-amber-400" />
-            <div className="h-3 w-3 rounded-full bg-emerald-400" />
+            <div className="h-3 w-3 rounded-full bg-destructive/70" />
+            <div className="h-3 w-3 rounded-full bg-warning/70" />
+            <div className="h-3 w-3 rounded-full bg-brand/70" />
           </div>
           <span className="text-xs font-medium text-muted-foreground ml-2">Create Workflow</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-6 px-2 rounded bg-primary text-white text-[10px] font-medium flex items-center">
+          <div className="h-6 px-2 rounded bg-primary text-primary-foreground text-[10px] font-medium flex items-center">
             Save
           </div>
         </div>
@@ -245,7 +245,7 @@ function WorkflowBuilderScreen() {
       <div className="p-6 bg-muted/50/50 min-h-[280px] relative">
         {/* Grid pattern */}
         <div className="absolute inset-0 opacity-30" style={{
-          backgroundImage: 'radial-gradient(circle, #d4d4d8 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(circle, var(--border) 1px, transparent 1px)',
           backgroundSize: '20px 20px'
         }} />
         
@@ -270,7 +270,7 @@ function WorkflowBuilderScreen() {
             whileInView={{ width: 40 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            className="h-0.5 bg-gradient-to-r from-emerald-400 to-blue-400"
+            className="h-0.5 bg-gradient-to-r from-brand/70 to-info/70"
           />
           
           {/* Process */}
@@ -281,8 +281,8 @@ function WorkflowBuilderScreen() {
             transition={{ delay: 0.3 }}
             className="flex flex-col items-center"
           >
-            <div className="h-14 w-14 rounded-xl border border-blue-200 bg-blue-50 flex items-center justify-center shadow-sm">
-              <Bot className="h-6 w-6 text-blue-600" />
+            <div className="h-14 w-14 rounded-xl border border-info/30 bg-info/10 flex items-center justify-center shadow-sm">
+              <Bot className="h-6 w-6 text-info" />
             </div>
             <span className="text-[10px] text-muted-foreground mt-1.5 font-medium">AI Agent</span>
           </motion.div>
@@ -327,8 +327,8 @@ function WorkflowBuilderScreen() {
             transition={{ delay: 0.7 }}
             className="flex flex-col items-center"
           >
-            <div className="h-14 w-14 rounded-xl border border-amber-200 bg-amber-50 flex items-center justify-center shadow-sm">
-              <Bell className="h-6 w-6 text-amber-600" />
+            <div className="h-14 w-14 rounded-xl border border-warning/30 bg-warning/10 flex items-center justify-center shadow-sm">
+              <Bell className="h-6 w-6 text-warning-text" />
             </div>
             <span className="text-[10px] text-muted-foreground mt-1.5 font-medium">Notify</span>
           </motion.div>
@@ -419,9 +419,9 @@ function AIOperatorScreen() {
       <div className="border-b border-border bg-muted/50 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-red-400" />
-            <div className="h-3 w-3 rounded-full bg-amber-400" />
-            <div className="h-3 w-3 rounded-full bg-emerald-400" />
+            <div className="h-3 w-3 rounded-full bg-destructive/70" />
+            <div className="h-3 w-3 rounded-full bg-warning/70" />
+            <div className="h-3 w-3 rounded-full bg-brand/70" />
           </div>
           <span className="text-xs font-medium text-muted-foreground ml-2">Gravitre AI</span>
         </div>
@@ -465,15 +465,15 @@ function AIOperatorScreen() {
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 >
-                  <div className="flex-1 rounded-2xl rounded-tr-sm bg-gradient-to-br from-primary/10 to-emerald-100/80 border border-primary/20 p-3">
+                  <div className="flex-1 rounded-2xl rounded-tr-sm bg-gradient-to-br from-primary/10 to-brand/10 border border-primary/20 p-3">
                     <div className="flex items-center gap-2 mb-1.5">
                       <Sparkles className="h-3 w-3 text-primary" />
                       <span className="text-[10px] font-medium text-primary">via {msg.agent}</span>
                     </div>
                     <p className="text-sm text-primary">{msg.message}</p>
                   </div>
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/100 to-emerald-600 flex items-center justify-center shrink-0 shadow-md">
-                    <Sparkles className="h-4 w-4 text-white" />
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/100 to-[color:var(--g-brand-hover)] flex items-center justify-center shrink-0 shadow-md">
+                    <Sparkles className="h-4 w-4 text-primary-foreground" />
                   </div>
                 </motion.div>
               )
@@ -494,7 +494,7 @@ function AIOperatorScreen() {
                 {[0, 1, 2].map((i) => (
                   <motion.div
                     key={i}
-                    className="h-1.5 w-1.5 rounded-full bg-emerald-400"
+                    className="h-1.5 w-1.5 rounded-full bg-brand/70"
                     animate={{ y: [0, -4, 0] }}
                     transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
                   />
@@ -516,7 +516,7 @@ function AIOperatorScreen() {
             readOnly
           />
           <div className="h-7 w-7 rounded-lg bg-primary/100 flex items-center justify-center cursor-pointer hover:bg-primary transition-colors">
-            <ArrowRight className="h-3.5 w-3.5 text-white" />
+            <ArrowRight className="h-3.5 w-3.5 text-primary-foreground" />
           </div>
         </div>
       </div>
@@ -544,7 +544,7 @@ function FeatureVisual({ type }: { type: string }) {
             className="flex items-center justify-between rounded-xl border border-border bg-card p-4 shadow-sm"
           >
             <div className="flex items-center gap-3">
-              <item.icon className="h-4 w-4 text-amber-500" />
+              <item.icon className="h-4 w-4 text-warning" />
               <span className="text-sm text-foreground">{item.label}</span>
             </div>
             <div className="h-6 w-6 rounded-full bg-primary/15 flex items-center justify-center">
@@ -583,7 +583,7 @@ export function FeaturesLegacyContent({
     return ids.includes(active) && !excluded.has(active)
   }
   return (
-    <div className="relative overflow-hidden bg-white">
+    <div className="relative overflow-hidden bg-[color:var(--g-marketing-canvas)]">
       {showHero && section === "all" ? (
       <>
       {/* Hero */}
@@ -601,7 +601,7 @@ export function FeaturesLegacyContent({
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
         />
         <motion.div 
-          className="absolute top-20 -left-32 w-[400px] h-[400px] bg-blue-100 rounded-full blur-3xl"
+          className="absolute top-20 -left-32 w-[400px] h-[400px] bg-info/15 rounded-full blur-3xl"
           animate={{ 
             x: [0, 50, 0],
             opacity: [0.2, 0.3, 0.2],
@@ -626,7 +626,7 @@ export function FeaturesLegacyContent({
               y1="0%"
               x2={`${25 + i * 10}%`}
               y2="100%"
-              stroke="#10b981"
+              stroke="var(--brand)"
               strokeWidth="1"
               initial={{ pathLength: 0 }}
               animate={{ pathLength: [0, 1, 0] }}
@@ -708,7 +708,7 @@ export function FeaturesLegacyContent({
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-                className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent"
+                className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight bg-gradient-to-r from-[color:var(--g-brand-hover)] to-brand bg-clip-text text-transparent"
               >
                 {MARKETING_COPY.featuresHero.headline[1]}
               </motion.h1>
@@ -782,9 +782,9 @@ export function FeaturesLegacyContent({
             className="relative"
           >
             {/* Background pattern */}
-            <div className="absolute inset-0 bg-gradient-to-b from-muted/50 to-white rounded-3xl" />
+            <div className="absolute inset-0 bg-gradient-to-b from-muted/50 to-[color:var(--g-marketing-canvas)] rounded-3xl" />
             <div className="absolute inset-0 opacity-[0.03]" style={{
-              backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)',
+              backgroundImage: 'radial-gradient(circle, var(--foreground) 1px, transparent 1px)',
               backgroundSize: '24px 24px'
             }} />
             
@@ -804,7 +804,7 @@ export function FeaturesLegacyContent({
                       <Users className="h-10 w-10 text-muted-foreground" />
                     </div>
                     <motion.div 
-                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary/100 border-2 border-white"
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary/100 border-2 border-card"
                       animate={{ scale: [1, 1.2, 1] }}
                       transition={{ duration: 2, repeat: Infinity }}
                     />
@@ -844,20 +844,20 @@ export function FeaturesLegacyContent({
                 >
                   {/* Pulse rings */}
                   <motion.div
-                    className="absolute inset-0 rounded-3xl bg-emerald-400"
+                    className="absolute inset-0 rounded-3xl bg-brand/70"
                     animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0, 0.3] }}
                     transition={{ duration: 3, repeat: Infinity }}
                   />
                   <motion.div
-                    className="absolute inset-0 rounded-3xl bg-emerald-400"
+                    className="absolute inset-0 rounded-3xl bg-brand/70"
                     animate={{ scale: [1, 1.25, 1], opacity: [0.2, 0, 0.2] }}
                     transition={{ duration: 3, repeat: Infinity, delay: 0.5 }}
                   />
                   
-                  <div className="relative h-32 w-32 lg:h-40 lg:w-40 rounded-3xl bg-gradient-to-br from-primary/100 to-emerald-600 flex flex-col items-center justify-center shadow-xl shadow-emerald-500/20">
-                    <Sparkles className="h-12 w-12 text-white mb-2" />
-                    <span className="text-sm font-bold text-white">Gravitre AI</span>
-                    <span className="text-[10px] text-emerald-100">Intelligence + execution</span>
+                  <div className="relative h-32 w-32 lg:h-40 lg:w-40 rounded-3xl bg-gradient-to-br from-primary/100 to-[color:var(--g-brand-hover)] flex flex-col items-center justify-center shadow-xl shadow-brand/20">
+                    <Sparkles className="h-12 w-12 text-primary-foreground mb-2" />
+                    <span className="text-sm font-bold text-primary-foreground">Gravitre AI</span>
+                    <span className="text-[10px] text-primary-foreground/80">Intelligence + execution</span>
                   </div>
                 </motion.div>
 
@@ -869,8 +869,8 @@ export function FeaturesLegacyContent({
                   transition={{ delay: 0.4 }}
                   className="hidden lg:flex items-center"
                 >
-                  <div className="w-16 h-0.5 bg-gradient-to-r from-emerald-400 to-blue-400" />
-                  <ArrowRight className="h-5 w-5 text-blue-500 -ml-1" />
+                  <div className="w-16 h-0.5 bg-gradient-to-r from-brand/70 to-info/70" />
+                  <ArrowRight className="h-5 w-5 text-info -ml-1" />
                 </motion.div>
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -879,7 +879,7 @@ export function FeaturesLegacyContent({
                   transition={{ delay: 0.4 }}
                   className="lg:hidden flex flex-col items-center"
                 >
-                  <div className="w-0.5 h-8 bg-gradient-to-b from-emerald-400 to-blue-400" />
+                  <div className="w-0.5 h-8 bg-gradient-to-b from-brand/70 to-info/70" />
                 </motion.div>
 
                 {/* AI Agents */}
@@ -903,15 +903,15 @@ export function FeaturesLegacyContent({
                         viewport={{ once: true }}
                         transition={{ delay: 0.5 + i * 0.1 }}
                         className={`h-16 w-16 rounded-xl border flex items-center justify-center shadow-sm ${
-                          agent.color === 'blue' ? 'bg-blue-50 border-blue-200' :
+                          agent.color === 'blue' ? 'bg-info/10 border-info/30' :
                           agent.color === 'purple' ? 'bg-[color:var(--g-electric)]/10 border-[color:var(--g-electric)]/20' :
-                          'bg-amber-50 border-amber-200'
+                          'bg-warning/10 border-warning/30'
                         }`}
                       >
                         <agent.icon className={`h-7 w-7 ${
-                          agent.color === 'blue' ? 'text-blue-500' :
+                          agent.color === 'blue' ? 'text-info' :
                           agent.color === 'purple' ? 'text-[color:var(--g-electric)]' :
-                          'text-amber-500'
+                          'text-warning'
                         }`} />
                       </motion.div>
                     ))}
@@ -928,8 +928,8 @@ export function FeaturesLegacyContent({
                   transition={{ delay: 0.6 }}
                   className="hidden lg:flex items-center"
                 >
-                  <div className="w-16 h-0.5 bg-gradient-to-r from-blue-400 to-rose-400" />
-                  <ArrowRight className="h-5 w-5 text-rose-500 -ml-1" />
+                  <div className="w-16 h-0.5 bg-gradient-to-r from-info/70 to-destructive/70" />
+                  <ArrowRight className="h-5 w-5 text-destructive -ml-1" />
                 </motion.div>
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -938,7 +938,7 @@ export function FeaturesLegacyContent({
                   transition={{ delay: 0.6 }}
                   className="lg:hidden flex flex-col items-center"
                 >
-                  <div className="w-0.5 h-8 bg-gradient-to-b from-blue-400 to-rose-400" />
+                  <div className="w-0.5 h-8 bg-gradient-to-b from-info/70 to-destructive/70" />
                 </motion.div>
 
                 {/* Your Tools */}
@@ -1040,11 +1040,11 @@ export function FeaturesLegacyContent({
               >
                 <div className={`h-14 w-14 mx-auto rounded-2xl flex items-center justify-center mb-4 ${
                   item.color === 'emerald' ? 'bg-primary/15' :
-                  item.color === 'blue' ? 'bg-blue-100' : 'bg-[color:var(--g-electric)]/10'
+                  item.color === 'blue' ? 'bg-info/15' : 'bg-[color:var(--g-electric)]/10'
                 }`}>
                   <item.icon className={`h-7 w-7 ${
                     item.color === 'emerald' ? 'text-primary' :
-                    item.color === 'blue' ? 'text-blue-600' : 'text-[color:var(--g-electric)]'
+                    item.color === 'blue' ? 'text-info' : 'text-[color:var(--g-electric)]'
                   }`} />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">{item.title}</h3>
@@ -1110,7 +1110,7 @@ export function FeaturesLegacyContent({
                 src="/product/app-ai.png"
                 alt="Gravitre AI workspace with the conversation history panel open, showing three past threads and the ask box with org-specific suggestion chips."
                 chromeLabel="Gravitre AI"
-                glowClassName="bg-gradient-to-r from-emerald-100/60 to-teal-100/60"
+                glowClassName="bg-gradient-to-r from-brand/10 to-brand/10"
               />
             </motion.div>
             ) : null}
@@ -1124,9 +1124,9 @@ export function FeaturesLegacyContent({
               className="grid lg:grid-cols-2 gap-12 items-center"
             >
               <div className="lg:order-2">
-                <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 border border-blue-200 px-3 py-1 mb-4">
-                  <Bot className="h-3.5 w-3.5 text-blue-600" />
-                  <span className="text-xs font-medium text-blue-700">Smart Agents</span>
+                <div className="inline-flex items-center gap-2 rounded-full bg-info/10 border border-info/30 px-3 py-1 mb-4">
+                  <Bot className="h-3.5 w-3.5 text-info" />
+                  <span className="text-xs font-medium text-info">Smart Agents</span>
                 </div>
                 <h3 className="text-3xl font-bold text-foreground mb-4">Specialized agents. Shared intelligence.</h3>
                 <p className="text-muted-foreground mb-6 leading-relaxed text-lg">
@@ -1136,8 +1136,8 @@ export function FeaturesLegacyContent({
                 <ul className="space-y-3">
                   {['Department and role agents', 'Capability and knowledge packs', 'Org-scoped learning when data gates pass', 'Role-based permissions'].map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <div className="h-5 w-5 rounded-full bg-blue-100 flex items-center justify-center">
-                        <Check className="h-3 w-3 text-blue-600" />
+                      <div className="h-5 w-5 rounded-full bg-info/15 flex items-center justify-center">
+                        <Check className="h-3 w-3 text-info" />
                       </div>
                       {item}
                     </li>
@@ -1148,7 +1148,7 @@ export function FeaturesLegacyContent({
                 src="/product/app-agents.png"
                 alt="Agents roster showing four configured agents with their department, status, tasks today, and success rate."
                 chromeLabel="Agents"
-                glowClassName="bg-gradient-to-r from-blue-100/60 to-indigo-100/60"
+                glowClassName="bg-gradient-to-r from-info/10 to-info/10"
                 className="lg:order-1"
               />
             </motion.div>
@@ -1201,9 +1201,9 @@ export function FeaturesLegacyContent({
               className="grid lg:grid-cols-2 gap-12 items-center"
             >
               <div className="lg:order-2">
-                <div className="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 mb-4">
-                  <Zap className="h-3.5 w-3.5 text-amber-600" />
-                  <span className="text-xs font-medium text-amber-700">Integrations</span>
+                <div className="inline-flex items-center gap-2 rounded-full bg-warning/10 border border-warning/30 px-3 py-1 mb-4">
+                  <Zap className="h-3.5 w-3.5 text-warning-text" />
+                  <span className="text-xs font-medium text-warning-text">Integrations</span>
                 </div>
                 <h3 className="text-3xl font-bold text-foreground mb-4">50+ integrations when configured</h3>
                 <p className="text-muted-foreground mb-6 leading-relaxed text-lg">
@@ -1213,8 +1213,8 @@ export function FeaturesLegacyContent({
                 <ul className="space-y-3">
                   {['Pre-built connectors', 'OAuth authentication', 'Sync when connected', 'Custom API support'].map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <div className="h-5 w-5 rounded-full bg-amber-100 flex items-center justify-center">
-                        <Check className="h-3 w-3 text-amber-600" />
+                      <div className="h-5 w-5 rounded-full bg-warning/15 flex items-center justify-center">
+                        <Check className="h-3 w-3 text-warning-text" />
                       </div>
                       {item}
                     </li>
@@ -1225,7 +1225,7 @@ export function FeaturesLegacyContent({
                 src="/product/app-connectors.png"
                 alt="Connectors page showing connected and available integrations with their sync status."
                 chromeLabel="Connectors"
-                glowClassName="bg-gradient-to-r from-amber-100/60 to-orange-100/60"
+                glowClassName="bg-gradient-to-r from-warning/10 to-warning/10"
                 className="lg:order-1"
               />
             </motion.div>
@@ -1240,9 +1240,9 @@ export function FeaturesLegacyContent({
               className="grid lg:grid-cols-2 gap-12 items-center"
             >
               <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-rose-50 border border-rose-200 px-3 py-1 mb-4">
-                  <Shield className="h-3.5 w-3.5 text-rose-600" />
-                  <span className="text-xs font-medium text-rose-700">Enterprise Security</span>
+                <div className="inline-flex items-center gap-2 rounded-full bg-destructive/10 border border-destructive/30 px-3 py-1 mb-4">
+                  <Shield className="h-3.5 w-3.5 text-danger-text" />
+                  <span className="text-xs font-medium text-danger-text">Enterprise Security</span>
                 </div>
                 <h3 className="text-3xl font-bold text-foreground mb-4">Security you can trust</h3>
                 <p className="text-muted-foreground mb-6 leading-relaxed text-lg">
@@ -1252,8 +1252,8 @@ export function FeaturesLegacyContent({
                 <ul className="space-y-3">
                   {['Role-based access control', 'Complete audit trails', 'End-to-end encryption', 'Human-in-the-loop approvals'].map((item) => (
                     <li key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <div className="h-5 w-5 rounded-full bg-rose-100 flex items-center justify-center">
-                        <Check className="h-3 w-3 text-rose-600" />
+                      <div className="h-5 w-5 rounded-full bg-destructive/15 flex items-center justify-center">
+                        <Check className="h-3 w-3 text-danger-text" />
                       </div>
                       {item}
                     </li>
@@ -1268,7 +1268,7 @@ export function FeaturesLegacyContent({
                 src="/product/app-approvals.png"
                 alt="Approvals queue with a pending write request awaiting human review, showing the requesting agent, target system, and the diff to be applied."
                 chromeLabel="Approvals"
-                glowClassName="bg-gradient-to-r from-rose-100/60 to-red-100/60"
+                glowClassName="bg-gradient-to-r from-destructive/10 to-destructive/10"
               />
             </motion.div>
             ) : null}
@@ -1312,9 +1312,9 @@ export function FeaturesLegacyContent({
                 <div className="relative rounded-xl border border-border bg-card shadow-2xl overflow-hidden">
                   <div className="flex items-center gap-2 px-4 py-3 bg-muted/50 border-b border-border">
                     <div className="flex gap-1.5">
-                      <div className="h-3 w-3 rounded-full bg-red-400" />
-                      <div className="h-3 w-3 rounded-full bg-amber-400" />
-                      <div className="h-3 w-3 rounded-full bg-emerald-400" />
+                      <div className="h-3 w-3 rounded-full bg-destructive/70" />
+                      <div className="h-3 w-3 rounded-full bg-warning/70" />
+                      <div className="h-3 w-3 rounded-full bg-brand/70" />
                     </div>
                     <div className="flex-1 flex justify-center">
                       <div className="px-3 py-1 rounded-md bg-[color:var(--g-electric)]/10 text-[10px] text-[color:var(--g-electric)] font-medium">Meson Builder</div>
@@ -1355,12 +1355,12 @@ export function FeaturesLegacyContent({
                           <div className="flex items-center gap-3">
                             <div className={`h-9 w-9 rounded-lg flex items-center justify-center ${
                               item.color === 'emerald' ? 'bg-primary/10' :
-                              item.color === 'blue' ? 'bg-blue-50' :
+                              item.color === 'blue' ? 'bg-info/10' :
                               item.color === 'purple' ? 'bg-[color:var(--g-electric)]/10' : 'bg-[color:var(--g-electric)]/8'
                             }`}>
                               <item.icon className={`h-4 w-4 ${
                                 item.color === 'emerald' ? 'text-primary' :
-                                item.color === 'blue' ? 'text-blue-500' :
+                                item.color === 'blue' ? 'text-info' :
                                 item.color === 'purple' ? 'text-[color:var(--g-electric)]' : 'text-[color:var(--g-electric)]'
                               }`} />
                             </div>
@@ -1372,12 +1372,12 @@ export function FeaturesLegacyContent({
                           <div className="flex items-center gap-2">
                             <div className={`h-2 w-2 rounded-full ${
                               item.color === 'emerald' ? 'bg-primary/100' :
-                              item.color === 'blue' ? 'bg-blue-500' :
+                              item.color === 'blue' ? 'bg-info' :
                               item.color === 'purple' ? 'bg-[color:var(--g-electric)]' : 'bg-[color:var(--g-electric)]'
                             }`} />
                             <span className={`text-[10px] capitalize ${
                               item.color === 'emerald' ? 'text-primary' :
-                              item.color === 'blue' ? 'text-blue-600' :
+                              item.color === 'blue' ? 'text-info' :
                               item.color === 'purple' ? 'text-[color:var(--g-electric)]' : 'text-[color:var(--g-electric)]'
                             }`}>{item.status}</span>
                           </div>
@@ -1524,7 +1524,7 @@ export function FeaturesLegacyContent({
             <div className="mt-10 flex items-center justify-center gap-4 flex-wrap">
               <Link
                 href="/get-started"
-                className="group inline-flex items-center gap-2 rounded-full bg-foreground px-8 py-4 text-base font-semibold text-white transition-all hover:bg-foreground/90"
+                className="group inline-flex items-center gap-2 rounded-full bg-foreground px-8 py-4 text-base font-semibold text-background transition-all hover:bg-foreground/90"
               >
                 Start free trial
                 <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />

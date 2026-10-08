@@ -17,12 +17,12 @@ export function Step({ title, children }: { title?: string; children: ReactNode 
   return (
     <div className="relative grid grid-cols-[2rem_1fr] gap-4 [counter-increment:step]">
       <div className="flex flex-col items-center">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-sm font-semibold text-emerald-700 before:content-[counter(step)]" />
-        <div className="mt-2 w-px flex-1 bg-zinc-200" />
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-brand/30 bg-brand-soft text-sm font-semibold text-brand-text before:content-[counter(step)]" />
+        <div className="mt-2 w-px flex-1 bg-border" />
       </div>
       <div className="min-w-0 pb-2">
-        {title ? <p className="mb-1 font-semibold text-zinc-900">{title}</p> : null}
-        <div className="text-sm leading-relaxed text-zinc-600 [&>:first-child]:mt-0">{children}</div>
+        {title ? <p className="mb-1 font-semibold text-foreground">{title}</p> : null}
+        <div className="text-sm leading-relaxed text-muted-foreground [&>:first-child]:mt-0">{children}</div>
       </div>
     </div>
   )
@@ -47,18 +47,18 @@ export function Card({
 }) {
   const inner = (
     <>
-      <p className="flex items-center justify-between font-medium text-zinc-900">
+      <p className="flex items-center justify-between font-medium text-foreground">
         {title}
         {href ? (
-          <ArrowRight className="h-4 w-4 text-zinc-400 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-600" />
+          <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-brand-text" />
         ) : null}
       </p>
-      {children ? <div className="mt-1 text-sm leading-relaxed text-zinc-500">{children}</div> : null}
+      {children ? <div className="mt-1 text-sm leading-relaxed text-muted-foreground">{children}</div> : null}
     </>
   )
 
   const className =
-    "group block rounded-xl border border-zinc-200 bg-white p-4 transition-all hover:border-emerald-300 hover:shadow-sm"
+    "group block rounded-xl border border-border bg-card p-4 transition-all hover:border-brand/40 hover:shadow-sm"
 
   if (href) {
     return (
@@ -111,7 +111,7 @@ export function Screenshot({
 }) {
   return (
     <figure className="my-6">
-      <div className="overflow-hidden rounded-xl border border-zinc-200 shadow-lg shadow-zinc-900/5">
+      <div className="overflow-hidden rounded-xl border border-border shadow-lg shadow-foreground/5">
         <ChromeBar label={route} />
         <div className="relative bg-[#0B0F14]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -119,7 +119,7 @@ export function Screenshot({
           {pins?.map((pin) => (
             <span
               key={pin.n}
-              className="absolute flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-emerald-600 text-xs font-bold text-white shadow-md"
+              className="absolute flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-background bg-brand text-xs font-bold text-brand-foreground shadow-md"
               style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
             >
               {pin.n}
@@ -128,7 +128,7 @@ export function Screenshot({
         </div>
       </div>
       {caption ? (
-        <figcaption className="mt-2 text-center text-sm text-zinc-500">{caption}</figcaption>
+        <figcaption className="mt-2 text-center text-sm text-muted-foreground">{caption}</figcaption>
       ) : null}
     </figure>
   )
@@ -143,7 +143,7 @@ export function ScreenshotPlaceholder({
 }) {
   return (
     <figure className="my-6">
-      <div className="overflow-hidden rounded-xl border border-zinc-200 shadow-lg shadow-zinc-900/5">
+      <div className="overflow-hidden rounded-xl border border-border shadow-lg shadow-foreground/5">
         <ChromeBar label={route} />
         <div className="flex aspect-[16/10] flex-col items-center justify-center gap-2 bg-[#0B0F14] bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.06)_1px,transparent_0)] [background-size:20px_20px]">
           <span className="rounded-md border border-white/10 bg-white/5 px-3 py-1 font-mono text-xs text-zinc-400">
@@ -170,17 +170,17 @@ export function Diagram({
   children: ReactNode
 }) {
   return (
-    <figure className="my-6 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50">
+    <figure className="my-6 overflow-hidden rounded-xl border border-border bg-muted">
       {title ? (
-        <div className="border-b border-zinc-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+        <div className="border-b border-border px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {title}
         </div>
       ) : null}
-      <pre className="overflow-x-auto p-4 font-mono text-xs leading-relaxed text-zinc-700">
+      <pre className="overflow-x-auto p-4 font-mono text-xs leading-relaxed text-foreground">
         {children}
       </pre>
       {legend ? (
-        <figcaption className="border-t border-zinc-200 px-4 py-2 text-xs text-zinc-500">
+        <figcaption className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
           {legend}
         </figcaption>
       ) : null}
@@ -200,15 +200,15 @@ export function TierCallout({
   children?: ReactNode
 }) {
   return (
-    <div className="my-5 flex items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+    <div className="my-5 flex items-start gap-3 rounded-xl border border-border bg-muted p-4">
       <PlanBadge tier={tier} />
-      <p className="text-sm leading-relaxed text-zinc-600">
+      <p className="text-sm leading-relaxed text-muted-foreground">
         {children ?? (
           <>
             This feature requires the <strong>{tier}</strong> plan or higher.
           </>
         )}{" "}
-        <Link href="/docs/billing/plans" className="font-medium text-emerald-700 hover:underline">
+        <Link href="/docs/billing/plans" className="font-medium text-brand-text hover:underline">
           View plans
         </Link>
       </p>
@@ -243,7 +243,7 @@ export function VendorLogo({
   }
   return (
     <span
-      className="flex items-center justify-center rounded-lg border border-zinc-200 bg-white font-semibold text-zinc-700"
+      className="flex items-center justify-center rounded-lg border border-border bg-card font-semibold text-foreground"
       style={{ width: size, height: size }}
       aria-label={`${name} logo`}
     >
@@ -258,12 +258,12 @@ export function VendorLogo({
 
 export function FAQItem({ question, children }: { question: string; children: ReactNode }) {
   return (
-    <details className="group border-b border-zinc-200 py-3">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium text-zinc-900">
+    <details className="group border-b border-border py-3">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium text-foreground">
         {question}
-        <span className="text-zinc-400 transition-transform group-open:rotate-45">+</span>
+        <span className="text-muted-foreground transition-transform group-open:rotate-45">+</span>
       </summary>
-      <div className="mt-2 text-sm leading-relaxed text-zinc-600">{children}</div>
+      <div className="mt-2 text-sm leading-relaxed text-muted-foreground">{children}</div>
     </details>
   )
 }
@@ -282,19 +282,19 @@ export function CompareTable({
   rightHeader?: string
 }) {
   return (
-    <div className="my-6 overflow-hidden rounded-xl border border-zinc-200">
+    <div className="my-6 overflow-hidden rounded-xl border border-border">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-zinc-200 bg-zinc-50 text-left">
-            <th className="px-4 py-2.5 font-medium text-zinc-700">{leftHeader}</th>
-            <th className="px-4 py-2.5 font-medium text-zinc-700">{rightHeader}</th>
+          <tr className="border-b border-border bg-muted text-left">
+            <th className="px-4 py-2.5 font-medium text-foreground">{leftHeader}</th>
+            <th className="px-4 py-2.5 font-medium text-foreground">{rightHeader}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.left} className="border-b border-zinc-100 last:border-0">
-              <td className="px-4 py-2.5 font-medium text-zinc-900">{row.left}</td>
-              <td className="px-4 py-2.5 text-zinc-500">{row.right}</td>
+            <tr key={row.left} className="border-b border-border-subtle last:border-0">
+              <td className="px-4 py-2.5 font-medium text-foreground">{row.left}</td>
+              <td className="px-4 py-2.5 text-muted-foreground">{row.right}</td>
             </tr>
           ))}
         </tbody>
@@ -309,12 +309,12 @@ export function CompareTable({
 
 export function Prerequisites({ items }: { items: string[] }) {
   return (
-    <div className="my-5 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-      <p className="mb-3 text-sm font-semibold text-zinc-900">Prerequisites</p>
+    <div className="my-5 rounded-xl border border-border bg-muted p-4">
+      <p className="mb-3 text-sm font-semibold text-foreground">Prerequisites</p>
       <ul className="space-y-2">
         {items.map((item) => (
-          <li key={item} className="flex items-start gap-2 text-sm text-zinc-600">
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+          <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+            <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
             {item}
           </li>
         ))}

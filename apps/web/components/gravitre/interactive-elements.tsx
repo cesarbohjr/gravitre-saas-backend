@@ -35,7 +35,7 @@ export function ThinkingIndicator({ text = "Thinking", className }: ThinkingIndi
         {[0, 1, 2].map((i) => (
           <motion.div
             key={i}
-            className="h-1.5 w-1.5 rounded-full bg-emerald-500"
+            className="h-1.5 w-1.5 rounded-full bg-success"
             animate={{ y: [0, -4, 0] }}
             transition={{ 
               duration: 0.6, 
@@ -88,8 +88,8 @@ export function ThinkingSteps({ steps, className }: ThinkingStepsProps) {
           >
             <div className={cn(
               "h-5 w-5 rounded-full flex items-center justify-center transition-colors",
-              step.status === "completed" && "bg-emerald-500",
-              step.status === "active" && "bg-blue-500",
+              step.status === "completed" && "bg-success",
+              step.status === "active" && "bg-info",
               step.status === "pending" && "bg-secondary"
             )}>
               {step.status === "completed" && (
@@ -98,7 +98,7 @@ export function ThinkingSteps({ steps, className }: ThinkingStepsProps) {
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 400, damping: 15 }}
                 >
-                  <Check className="h-3 w-3 text-white" />
+                  <Check className="h-3 w-3 text-success-foreground" />
                 </motion.div>
               )}
               {step.status === "active" && (
@@ -106,7 +106,7 @@ export function ThinkingSteps({ steps, className }: ThinkingStepsProps) {
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 1, repeat: Infinity }}
                 >
-                  <Sparkles className="h-3 w-3 text-white" />
+                  <Sparkles className="h-3 w-3 text-info-foreground" />
                 </motion.div>
               )}
             </div>
@@ -148,7 +148,7 @@ export function Skeleton({ className, variant = "rectangular", width, height }: 
       style={{ width, height }}
     >
       <motion.div
-        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+        className="absolute inset-0 bg-gradient-to-r from-transparent via-foreground/[0.06] to-transparent"
         animate={{ x: ["-100%", "100%"] }}
         transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
       />
@@ -184,7 +184,7 @@ export const InteractiveButton = React.forwardRef<HTMLButtonElement, Interactive
           "relative inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           variant === "default" && "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-          variant === "primary" && "bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/20",
+          variant === "primary" && "bg-success text-success-foreground hover:bg-success/90 shadow-lg shadow-success/20",
           variant === "ghost" && "hover:bg-secondary/50",
           (disabled || isLoading) && "opacity-50 cursor-not-allowed",
           className
@@ -210,7 +210,7 @@ export const InteractiveButton = React.forwardRef<HTMLButtonElement, Interactive
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
-              className="flex items-center gap-2 text-emerald-500"
+              className="flex items-center gap-2 text-success"
             >
               <Check className="h-4 w-4" />
               {successText || "Done!"}
@@ -255,8 +255,8 @@ export function InteractiveCard({ children, className, onClick, isSelected, disa
         "relative rounded-xl border bg-card p-4 transition-all duration-150",
         onClick && !disabled && "cursor-pointer",
         isSelected 
-          ? "border-emerald-500/50 ring-2 ring-emerald-500/20 shadow-lg shadow-emerald-500/10" 
-          : "border-border hover:border-muted-foreground/30 hover:shadow-lg hover:shadow-black/5",
+          ? "border-success/50 ring-2 ring-success/20 shadow-lg shadow-success/10" 
+          : "border-border hover:border-muted-foreground/30 hover:shadow-lg hover:shadow-foreground/5",
         disabled && "opacity-50 cursor-not-allowed",
         className
       )}
@@ -322,11 +322,11 @@ export function StatusBeacon({ status, size = "md", pulse = true, className }: S
   }
 
   const colorClasses = {
-    active: "bg-emerald-500",
-    processing: "bg-blue-500",
-    idle: "bg-zinc-400",
-    error: "bg-red-500",
-    success: "bg-emerald-500"
+    active: "bg-success",
+    processing: "bg-info",
+    idle: "bg-status-idle",
+    error: "bg-destructive",
+    success: "bg-success"
   }
 
   return (
@@ -366,7 +366,7 @@ export function ProgressRing({
   size = 40, 
   strokeWidth = 3, 
   className,
-  color = "stroke-emerald-500"
+  color = "stroke-success"
 }: ProgressRingProps) {
   const radius = (size - strokeWidth) / 2
   const circumference = radius * 2 * Math.PI
@@ -492,9 +492,9 @@ export function AnimatedToast({ children, variant = "default", className }: Anim
       className={cn(
         "rounded-lg border px-4 py-3 shadow-lg backdrop-blur-sm",
         variant === "default" && "bg-card border-border",
-        variant === "success" && "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400",
-        variant === "error" && "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400",
-        variant === "warning" && "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400",
+        variant === "success" && "bg-success/10 border-success/30 text-success-text",
+        variant === "error" && "bg-destructive/10 border-destructive/30 text-danger-text",
+        variant === "warning" && "bg-warning/10 border-warning/30 text-warning-text",
         className
       )}
     >

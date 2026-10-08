@@ -207,8 +207,8 @@ export function EvaluationTab({ enabled }: { enabled: boolean }) {
                                 variant="secondary"
                                 className={
                                   s.userFeedback === "helpful"
-                                    ? "border-emerald-300 bg-emerald-500/10 text-emerald-700 dark:border-emerald-500/40 dark:text-emerald-300"
-                                    : "border-rose-300 bg-rose-500/10 text-rose-700 dark:border-rose-500/40 dark:text-rose-300"
+                                    ? "border-success/30 bg-success/10 text-success"
+                                    : "border-destructive/30 bg-destructive/10 text-destructive"
                                 }
                               >
                                 {s.userFeedback === "helpful" ? "Rated helpful" : "Rated not helpful"}

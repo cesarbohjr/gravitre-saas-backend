@@ -65,26 +65,26 @@ export function ModelRegistryOverview({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: "easeOut" }}
-      className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card/80 via-card/40 to-emerald-500/5 p-5 sm:p-6"
+      className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card/80 via-card/40 to-brand/5 p-5 sm:p-6"
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-500/10 blur-3xl"
+        className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand/10 blur-3xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-teal-500/10 blur-3xl"
+        className="pointer-events-none absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-success/10 blur-3xl"
       />
 
       <div className="relative flex flex-col gap-6">
         {/* Intro row */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-300">
+            <div className="inline-flex items-center gap-2 rounded-full border border-brand/25 bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand-text">
               <motion.span
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 2.4, repeat: Infinity }}
-                className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"
+                className="inline-block h-1.5 w-1.5 rounded-full bg-brand"
               />
               {SURFACE_COPY.models.badge}
             </div>
@@ -93,11 +93,11 @@ export function ModelRegistryOverview({
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
               Version models, connect datasets from{" "}
-              <Link href={APP_ROUTES.intelligenceData} className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
+              <Link href={APP_ROUTES.intelligenceData} className="text-brand-text underline-offset-4 hover:underline">
                 {SURFACE_COPY.intelligenceData.title}
               </Link>
               , and use them in workflows. For org-wide learning signals, open{" "}
-              <Link href={APP_ROUTES.learning} className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-300">
+              <Link href={APP_ROUTES.learning} className="text-brand-text underline-offset-4 hover:underline">
                 {SURFACE_COPY.learning.title}
               </Link>
               .
@@ -106,21 +106,21 @@ export function ModelRegistryOverview({
 
           {/* Stat pills */}
           <div className="flex flex-wrap gap-2 text-xs lg:justify-end">
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1.5 font-medium text-emerald-600 dark:text-emerald-300">
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand/20 bg-brand/5 px-2.5 py-1.5 font-medium text-brand-text">
               <Brain className="h-3.5 w-3.5" />
               {totalModels} registered
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1.5 font-medium text-emerald-600 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand/20 bg-brand/5 px-2.5 py-1.5 font-medium text-brand-text">
               <Rocket className="h-3.5 w-3.5" />
               {deployedCount} deployed
             </span>
             {trainingCount > 0 ? (
-              <span className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/5 px-2.5 py-1.5 font-medium text-blue-600 dark:text-blue-400">
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-info/20 bg-info/5 px-2.5 py-1.5 font-medium text-info">
                 <Sparkles className="h-3.5 w-3.5" />
                 {trainingCount} training
               </span>
             ) : null}
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-teal-500/20 bg-teal-500/5 px-2.5 py-1.5 font-medium text-teal-600 dark:text-teal-400">
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-success/20 bg-success/5 px-2.5 py-1.5 font-medium text-success-text">
               <Cable className="h-3.5 w-3.5" />
               {connectedDataSources.length > 0
                 ? `${connectedDataSources.length} data source${connectedDataSources.length === 1 ? "" : "s"}`
@@ -164,8 +164,8 @@ export function ModelRegistryOverview({
                     "group relative overflow-hidden rounded-xl border bg-background/50 p-4 text-left ring-1 backdrop-blur-sm transition-shadow",
                     layer.accent,
                     interactive &&
-                      "cursor-pointer hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
-                    isSelected && "ring-2 ring-emerald-500/60 shadow-md",
+                      "cursor-pointer hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50",
+                    isSelected && "ring-2 ring-brand/60 shadow-md",
                     !interactive && "cursor-default",
                   )}
                 >
@@ -186,7 +186,7 @@ export function ModelRegistryOverview({
                         <p className="text-sm font-semibold text-foreground">{layer.title}</p>
                       </div>
                       {interactive ? (
-                        <span className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-300">
+                        <span className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-brand-text">
                           Use
                           <ArrowRight className="h-3 w-3 transition-transform duration-300 group-hover:translate-x-0.5" />
                         </span>

@@ -52,7 +52,7 @@ function TraceThreads({ clustered }: { clustered: boolean }) {
           key={i}
           d={clustered ? "M 20 50 Q 80 50 140 50" : p.d}
           fill="none"
-          stroke="#16a374"
+          stroke="var(--brand)"
           strokeWidth="2"
           strokeLinecap="round"
           opacity={0.55 + i * 0.12}
@@ -102,11 +102,11 @@ function OutcomesPositioningFieldImpl({ className }: { className?: string }) {
       }
     >
       {reduced ? (
-        <div className="rounded-2xl border border-divide bg-white p-5" data-testid="outcomes-reduced">
+        <div className="rounded-2xl border border-divide bg-card p-5" data-testid="outcomes-reduced">
           <ReducedModel />
         </div>
       ) : (
-        <div className="rounded-2xl border border-divide bg-white p-4 md:p-6" data-testid="outcomes-desktop">
+        <div className="rounded-2xl border border-divide bg-card p-4 md:p-6" data-testid="outcomes-desktop">
           <p className="text-center text-sm text-[color:var(--g-text-secondary)]">{ILLUSTRATIVE_CONTEXT}</p>
 
           {traces ? (
@@ -123,7 +123,7 @@ function OutcomesPositioningFieldImpl({ className }: { className?: string }) {
               {OUTCOME_CATEGORIES.map((cat) => (
                 <div
                   key={cat.id}
-                  className="min-w-[5.5rem] rounded-xl border border-[color:var(--color-brand,#16a374)] px-3 py-2.5 text-center"
+                  className="min-w-[5.5rem] rounded-xl border border-brand px-3 py-2.5 text-center"
                   data-testid={`outcomes-cat-${cat.id}`}
                 >
                   <p className="text-[11px] font-semibold text-[color:var(--g-text-secondary)]">{cat.label}</p>

@@ -141,8 +141,8 @@ export function OperatorDemo() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30 shrink-0">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-white" />
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-brand/70 to-info flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-primary-foreground" />
           </div>
           <div>
             <span className="font-medium text-sm text-foreground">Gravitre AI</span>
@@ -163,7 +163,7 @@ export function OperatorDemo() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <Lightbulb className="h-8 w-8 text-amber-500 mb-3" />
+            <Lightbulb className="h-8 w-8 text-warning mb-3" />
             <h3 className="font-medium text-foreground mb-1">Ask me anything</h3>
             <p className="text-sm text-muted-foreground mb-4">
               I can help with workflows, data, and insights
@@ -191,14 +191,14 @@ export function OperatorDemo() {
                 className={`flex gap-3 ${message.role === "user" ? "justify-end" : ""}`}
               >
                 {message.role === "assistant" && (
-                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center shrink-0">
-                    <Bot className="h-3.5 w-3.5 text-white" />
+                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-brand/70 to-info flex items-center justify-center shrink-0">
+                    <Bot className="h-3.5 w-3.5 text-primary-foreground" />
                   </div>
                 )}
                 <div
                   className={`max-w-[80%] rounded-lg px-3 py-2 ${
                     message.role === "user"
-                      ? "bg-primary text-white"
+                      ? "bg-primary text-primary-foreground"
                       : "bg-muted"
                   }`}
                 >
@@ -253,7 +253,7 @@ export function OperatorDemo() {
           <button
             onClick={() => handleSend()}
             disabled={!input.trim() || isTyping}
-            className="p-2 rounded-lg bg-primary text-white hover:bg-primary/100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Send className="h-4 w-4" />
           </button>

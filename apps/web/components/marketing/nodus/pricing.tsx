@@ -36,14 +36,14 @@ export function Pricing() {
           {MARKETING_COPY.pricing.headline[0]}{" "}
           <span className="text-brand">{MARKETING_COPY.pricing.headline[1]}</span>
         </SectionHeading>
-        <p className="mt-4 max-w-2xl text-center text-base font-medium tracking-tight text-gray-600 md:text-lg dark:text-neutral-400">
+        <p className="mt-4 max-w-2xl text-center text-base font-medium tracking-tight text-gray-600 md:text-lg">
           {MARKETING_COPY.pricing.subhead}
         </p>
-        <p className="mt-2 text-center text-sm text-gray-600 dark:text-neutral-500">
+        <p className="mt-2 text-center text-sm text-gray-600">
           {MARKETING_COPY.pricing.subheadNote}
         </p>
 
-        <div className="relative mt-8 flex items-center gap-4 rounded-xl bg-gray-50 p-2 dark:bg-neutral-800">
+        <div className="relative mt-8 flex items-center gap-4 rounded-xl bg-[color:var(--g-marketing-surface)] p-2">
           <Scale className="opacity-50" />
           {tabs.map((tab) => (
             <button
@@ -55,7 +55,7 @@ export function Pricing() {
               {cycle === tab.value && (
                 <motion.div
                   layoutId="pricing-active-span"
-                  className="shadow-aceternity absolute inset-0 h-full w-full rounded-md bg-white dark:bg-neutral-950"
+                  className="shadow-aceternity absolute inset-0 h-full w-full rounded-md bg-card"
                 />
               )}
               <span className="relative z-20 flex items-center gap-2 text-sm sm:text-base">
@@ -69,7 +69,7 @@ export function Pricing() {
             </button>
           ))}
         </div>
-        <p className="mt-3 text-xs text-gray-500 dark:text-neutral-500">
+        <p className="mt-3 text-xs text-gray-500">
           {isAnnual
             ? "Annual billing — per-month equivalent shown (billed yearly)"
             : "Prices in USD · billed monthly"}
@@ -122,19 +122,19 @@ function TierMeta({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean }) 
   return (
     <div className="p-4 md:p-8">
       <div className="flex items-center gap-2">
-        <h3 className="text-charcoal-700 text-xl font-medium dark:text-neutral-100">{tier.name}</h3>
+        <h3 className="text-charcoal-700 text-xl font-medium">{tier.name}</h3>
         {"badge" in tier && tier.badge ? (
           <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 text-xs font-medium">
             {tier.badge}
           </span>
         ) : null}
       </div>
-      <p className="mt-1 text-base text-gray-600 dark:text-neutral-400">{tier.tagline}</p>
-      <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-neutral-500">{tier.description}</p>
+      <p className="mt-1 text-base text-gray-600">{tier.tagline}</p>
+      <p className="mt-3 text-sm leading-relaxed text-gray-500">{tier.description}</p>
 
-      <span className="mt-6 flex items-baseline text-2xl font-medium dark:text-white">
+      <span className="mt-6 flex items-baseline text-2xl font-medium">
         $<SlidingNumber value={price} />
-        <span className="ml-2 text-sm font-normal text-gray-600 dark:text-neutral-400">/month</span>
+        <span className="ml-2 text-sm font-normal text-gray-600">/month</span>
       </span>
       {isAnnual ? (
         <p className="mt-1 text-xs text-brand">
@@ -162,7 +162,7 @@ function TierMeta({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean }) 
 
 function Step({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-charcoal-700 flex items-start gap-2 text-sm dark:text-neutral-100">
+    <div className="text-charcoal-700 flex items-start gap-2 text-sm">
       <CheckIcon className="mt-0.5 h-4 w-4 shrink-0" />
       <span>{children}</span>
     </div>

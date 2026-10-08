@@ -64,7 +64,7 @@ function PagePlaceholder() {
     <div aria-hidden="true" className="h-full w-full bg-muted/50 select-none">
       <div className="h-[22%] w-full bg-gradient-to-r from-muted via-muted to-muted" />
       <div className="px-[6%]">
-        <div className="-mt-[7%] h-[14%] w-[14%] rounded-full border-4 border-white bg-muted" />
+        <div className="-mt-[7%] h-[14%] w-[14%] rounded-full border-4 border-card bg-muted" />
         <div className="mt-[3%] flex flex-col gap-2">
           <div className="h-3 w-[38%] rounded-full bg-muted" />
           <div className="h-2 w-[52%] rounded-full bg-muted" />
@@ -209,7 +209,7 @@ export function BrowserFrame({
         </div>
       </div>
       {caption ? (
-        <figcaption className="text-[10px] uppercase tracking-wide text-amber-600">
+        <figcaption className="text-[10px] uppercase tracking-wide text-warning-text">
           {caption}
         </figcaption>
       ) : null}

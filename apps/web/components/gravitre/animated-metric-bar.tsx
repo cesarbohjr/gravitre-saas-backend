@@ -34,7 +34,7 @@ export function AnimatedMetricBar({
     <li
       className={cn(
         "-mx-1.5 flex cursor-default items-center gap-3 rounded-md px-1.5 py-1.5 transition-colors hover:bg-muted/50",
-        highlighted && "bg-emerald-500/10 ring-1 ring-emerald-500/25",
+        highlighted && "bg-brand/10 ring-1 ring-brand/25",
         className,
       )}
       onMouseEnter={onHighlight}

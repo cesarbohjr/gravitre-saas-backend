@@ -321,7 +321,7 @@ function WorkflowMonitor({ data }: { data: HomeDashboardData }) {
                       <span
                         className={cn(
                           "h-1.5 w-1.5 rounded-full",
-                          tone === "warning" && "bg-amber-500",
+                          tone === "warning" && "bg-warning",
                           tone === "success" && "bg-[color:var(--brand)]",
                           tone === "idle" && "bg-muted-foreground/40",
                         )}

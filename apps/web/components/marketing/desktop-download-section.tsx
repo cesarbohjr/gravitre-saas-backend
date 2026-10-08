@@ -147,7 +147,7 @@ export function DesktopDownloadSection({
                 className={[
                   "relative flex h-full flex-col rounded-[1.35rem] border bg-card/95 p-6 shadow-[0_18px_50px_-28px_rgba(24,24,27,0.35)] backdrop-blur-sm transition-transform duration-300 hover:-translate-y-0.5",
                   highlighted
-                    ? "border-primary/30 ring-2 ring-emerald-400/35"
+                    ? "border-primary/30 ring-2 ring-brand/20"
                     : "border-border/80",
                 ].join(" ")}
               >

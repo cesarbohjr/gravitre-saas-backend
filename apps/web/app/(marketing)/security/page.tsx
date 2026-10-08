@@ -130,7 +130,7 @@ export default function SecurityPage() {
               <GravitreFlow
                 key={cert.name}
                 delay={i * 0.08}
-                className="rounded-xl border border-divide bg-gray-50 p-4 text-center"
+                className="rounded-xl border border-divide bg-[color:var(--g-marketing-surface)] p-4 text-center"
               >
                 <div className="mb-1 text-sm font-medium text-foreground">{cert.name}</div>
                 <div className="text-xs text-muted-foreground">{cert.description}</div>
@@ -153,7 +153,7 @@ export default function SecurityPage() {
                 <GravitreFlow
                   key={feature.title}
                   delay={i * 0.08}
-                  className="rounded-xl border border-divide bg-gray-50 p-6"
+                  className="rounded-xl border border-divide bg-[color:var(--g-marketing-surface)] p-6"
                 >
                   <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15">
                     <Icon className="h-5 w-5 text-primary" />

@@ -52,7 +52,7 @@ function MetricCell({ metric }: { metric: AgentRoiMetric }) {
         </span>
         {kind ? <MetricProvenanceBadge kind={kind} /> : null}
         {muted ? (
-          <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+          <span className="text-xs text-warning font-medium">
             {metric.provenance}
           </span>
         ) : null}

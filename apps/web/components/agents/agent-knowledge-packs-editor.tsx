@@ -69,7 +69,7 @@ export function AgentKnowledgePacksEditor({ value, onChange, department, classNa
           on
             ? "border-foreground bg-muted/60"
             : pack.recommended
-              ? "border-emerald-500/40 bg-emerald-500/5 hover:border-emerald-500/60"
+              ? "border-success/40 bg-success/5 hover:border-success/60"
               : "border-border hover:border-foreground/40",
         )}
       >
@@ -78,7 +78,7 @@ export function AgentKnowledgePacksEditor({ value, onChange, department, classNa
           {pack.recommended ? (
             <Badge
               variant="outline"
-              className="border-emerald-500/30 bg-emerald-500/10 font-normal text-emerald-700 dark:text-emerald-300"
+              className="border-success/30 bg-success/10 font-normal text-success"
             >
               Recommended for {pack.recommended_for_department || dept}
             </Badge>
@@ -86,7 +86,7 @@ export function AgentKnowledgePacksEditor({ value, onChange, department, classNa
         </div>
         <div className="text-xs text-muted-foreground capitalize">{pack.department}</div>
         {pack.hold ? (
-          <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">
+          <div className="mt-1 text-[11px] text-warning">
             Content sourcing on hold
           </div>
         ) : null}

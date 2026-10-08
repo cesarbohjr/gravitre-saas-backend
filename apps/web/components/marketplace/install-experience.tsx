@@ -43,6 +43,7 @@ import {
   Workflow,
 } from "lucide-react"
 import { toast } from "sonner"
+import { Illustration } from "@/components/gravitre/illustration"
 
 type InstallStep = "check" | "confirm" | "installing" | "done"
 
@@ -440,6 +441,7 @@ function InstallStepperSession({
               role="alert"
               className="space-y-3 rounded-[10px] border border-destructive/30 bg-[color:var(--g-surface-1)] p-4"
             >
+              <Illustration name="moment-error" width={120} />
               <p className="text-sm">
                 Could not check install requirements. Installation is
                 unavailable until the check succeeds.

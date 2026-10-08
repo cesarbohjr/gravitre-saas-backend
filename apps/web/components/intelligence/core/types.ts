@@ -20,12 +20,12 @@ export const CORE_STATE_LABEL: Record<IntelligenceCoreVisualState, string> = {
 }
 
 export const CORE_STATE_ACCENT: Record<IntelligenceCoreVisualState, string> = {
-  idle: "var(--color-line, #eaedf1)",
-  "flow-inward": "var(--color-blue-500)",
-  trace: "var(--color-brand, #16a374)",
-  "pending-approval": "#d97706",
-  resolved: "var(--color-brand, #16a374)",
-  "low-confidence": "#94a3b8",
+  idle: "var(--line)",
+  "flow-inward": "var(--info)",
+  trace: "var(--brand)",
+  "pending-approval": "var(--warning)",
+  resolved: "var(--brand)",
+  "low-confidence": "var(--muted-foreground)",
 }
 
 /** Title-cases a raw department id from the backend (e.g. "customer_success" -> "Customer Success"). */

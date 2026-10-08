@@ -8,6 +8,7 @@ import { GravitrePageHeader, LiveStatus } from "@/components/gravitre/nodus-prod
 import { OperatingEmpty, PhaseBand } from "@/components/gravitre/operating/operating-primitives"
 import { WorkflowCard, WorkflowGrid } from "@/components/gravitre/workflow-card"
 import { ErrorState, NoResultsState } from "@/components/gravitre/empty-state"
+import { Illustration } from "@/components/gravitre/illustration"
 import { CardSkeleton } from "@/components/gravitre/loading-state"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { DataTable } from "@/components/gravitre/data-table"
@@ -432,6 +433,8 @@ export default function WorkflowsPage() {
           )}
 
           {!isLoading && !error && workflows.length === 0 && (
+            <div className="py-4">
+            <Illustration name="moment-welcome" width={180} className="mb-2" />
             <OperatingEmpty
               className="px-0 py-4 sm:px-0"
               title="No workflows yet"
@@ -449,6 +452,7 @@ export default function WorkflowsPage() {
                 </>
               }
             />
+            </div>
           )}
 
           {workflows.length > 0 && (

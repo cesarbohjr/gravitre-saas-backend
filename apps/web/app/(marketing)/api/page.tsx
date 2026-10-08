@@ -140,7 +140,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button onClick={copy} className="rounded-lg p-2 transition-colors hover:bg-muted">
       {copied ? (
-        <Check className="h-4 w-4 text-emerald-400" />
+        <Check className="h-4 w-4 text-brand" />
       ) : (
         <Copy className="h-4 w-4 text-muted-foreground" />
       )}
@@ -165,7 +165,7 @@ export default function APIPage() {
         <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
             href="/docs/api/quickstart"
-            className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-foreground/90"
+            className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-colors hover:bg-foreground/90"
           >
             Get Started
             <NucleoArrowRight className="h-4 w-4" />
@@ -210,7 +210,7 @@ export default function APIPage() {
               <GravitreFlow
                 key={feature.title}
                 delay={i * 0.08}
-                className="flex items-start gap-4 rounded-xl border border-divide bg-gray-50 p-5"
+                className="flex items-start gap-4 rounded-xl border border-divide bg-[color:var(--g-marketing-surface)] p-5"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15">
                   <Icon className="h-5 w-5 text-primary" />
@@ -241,8 +241,8 @@ export default function APIPage() {
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="flex items-center gap-2">
                 <div className="flex gap-1.5">
-                  <div className="h-3 w-3 rounded-full bg-red-500/80" />
-                  <div className="h-3 w-3 rounded-full bg-amber-500/80" />
+                  <div className="h-3 w-3 rounded-full bg-destructive/80" />
+                  <div className="h-3 w-3 rounded-full bg-warning/80" />
                   <div className="h-3 w-3 rounded-full bg-primary/80" />
                 </div>
                 <span className="ml-2 text-xs text-muted-foreground">example.sh</span>
@@ -303,19 +303,19 @@ export default function APIPage() {
               <GravitreFlow
                 key={endpoint.path}
                 delay={i * 0.04}
-                className="group flex cursor-pointer items-center gap-4 rounded-xl border border-divide bg-gray-50 p-4 transition-colors hover:border-primary/50"
+                className="group flex cursor-pointer items-center gap-4 rounded-xl border border-divide bg-[color:var(--g-marketing-surface)] p-4 transition-colors hover:border-primary/50"
               >
                 <span
                   className={`
                   shrink-0 rounded px-2 py-1 font-mono text-xs font-semibold
-                  ${endpoint.method === "GET" ? "bg-blue-100 text-blue-600" : "bg-primary/15 text-primary"}
+                  ${endpoint.method === "GET" ? "bg-info/15 text-info" : "bg-primary/15 text-primary"}
                 `}
                 >
                   {endpoint.method}
                 </span>
                 <code className="font-mono text-sm text-foreground">{endpoint.path}</code>
                 {endpoint.badge && (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                  <span className="rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning-text">
                     {endpoint.badge}
                   </span>
                 )}
@@ -333,8 +333,8 @@ export default function APIPage() {
       <MarketingRails>
         <div className="mx-auto max-w-5xl">
           <div className="grid gap-8 lg:grid-cols-2">
-            <GravitreFlow className="rounded-2xl border border-divide bg-gray-50 p-8">
-              <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl border border-divide bg-white">
+            <GravitreFlow className="rounded-2xl border border-divide bg-[color:var(--g-marketing-surface)] p-8">
+              <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl border border-divide bg-card">
                 <Webhook className="h-6 w-6 text-charcoal-700" />
               </div>
               <h3 className="mb-3 text-xl font-bold text-foreground">Webhooks</h3>
@@ -351,8 +351,8 @@ export default function APIPage() {
               </Link>
             </GravitreFlow>
 
-            <GravitreFlow delay={0.08} className="rounded-2xl border border-divide bg-gray-50 p-8">
-              <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl border border-divide bg-white">
+            <GravitreFlow delay={0.08} className="rounded-2xl border border-divide bg-[color:var(--g-marketing-surface)] p-8">
+              <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl border border-divide bg-card">
                 <Key className="h-6 w-6 text-charcoal-700" />
               </div>
               <h3 className="mb-3 text-xl font-bold text-foreground">Authentication</h3>
@@ -384,7 +384,7 @@ export default function APIPage() {
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link
                 href="/get-started"
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 Get API Key
                 <NucleoArrowRight className="h-4 w-4" />

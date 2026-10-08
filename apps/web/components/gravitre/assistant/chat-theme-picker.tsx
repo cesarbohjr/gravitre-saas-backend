@@ -71,8 +71,8 @@ export function ChatThemePicker({
                 className={cn(
                   "group relative flex aspect-square items-end justify-start overflow-hidden rounded-lg border bg-background p-1.5 text-left transition-all",
                   isActive
-                    ? "border-emerald-500 ring-2 ring-emerald-500/30"
-                    : "border-border hover:border-emerald-500/40",
+                    ? "border-brand ring-2 ring-brand/30"
+                    : "border-border hover:border-brand/40",
                 )}
                 aria-label={theme.label}
                 aria-pressed={isActive}
@@ -103,7 +103,7 @@ export function ChatThemePicker({
                   </>
                 ) : null}
                 {isActive ? (
-                  <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-brand-foreground shadow-sm">
+                  <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-sm">
                     <Check className="h-2.5 w-2.5" strokeWidth={3} />
                   </span>
                 ) : null}

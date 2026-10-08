@@ -77,7 +77,7 @@ export default function ContactPage() {
             </SubHeading>
 
             {isSubmitted ? (
-              <GravitreResolve className="mt-8 rounded-2xl border border-divide bg-gray-50 p-6">
+              <GravitreResolve className="mt-8 rounded-2xl border border-divide bg-[color:var(--g-marketing-surface)] p-6">
                 <p className="text-charcoal-700 font-medium">Thanks — your mail client should open next.</p>
                 <p className="mt-2 text-sm text-gray-600">
                   If it did not, email{" "}
@@ -135,14 +135,14 @@ export default function ContactPage() {
             <GravitreAmbientMotion className="mb-2 flex justify-center md:justify-end">
               <SignalFieldVisual />
             </GravitreAmbientMotion>
-            <p className="font-mono text-xs tracking-tight text-neutral-500 uppercase">
+            <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
               Direct lines
             </p>
             {contactOptions.map((option) => (
               <a
                 key={option.title}
                 href={option.href}
-                className="rounded-2xl border border-divide bg-gray-50 p-5 transition hover:bg-gray-100"
+                className="rounded-2xl border border-divide bg-[color:var(--g-marketing-surface)] p-5 transition hover:bg-gray-100"
               >
                 <h3 className="text-charcoal-700 text-lg font-medium">{option.title}</h3>
                 <p className="mt-1 text-sm text-gray-600">{option.description}</p>

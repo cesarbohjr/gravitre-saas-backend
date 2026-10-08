@@ -245,8 +245,8 @@ export function AiExecuteResults({
                 <div
                   className={cn(
                     "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                    step.status === "completed" && "bg-success text-white",
-                    step.status === "current" && "bg-info text-white ring-4 ring-info/20",
+                    step.status === "completed" && "bg-success text-success-foreground",
+                    step.status === "current" && "bg-info text-info-foreground ring-4 ring-info/20",
                     step.status === "pending" && "bg-muted text-muted-foreground",
                   )}
                 >

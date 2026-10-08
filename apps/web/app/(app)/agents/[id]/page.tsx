@@ -14,6 +14,7 @@ import {
   GravitrePageHeader,
 } from "@/components/gravitre/nodus-product"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Illustration } from "@/components/gravitre/illustration"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
 import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
@@ -232,6 +233,7 @@ export default function AgentProfilePage({
     return (
       <AppShell title="Agent">
         <div className="flex h-full flex-col items-center justify-center gap-3 text-center px-6">
+          <Illustration name={error ? "moment-error" : "moment-focus-time"} width={160} />
           {error ? <WorkSectionErrorCard title="Could not load agent" error={error} onRetry={() => void mutateAgent()} /> : null}
           <p className="text-sm text-muted-foreground">Agent not found or you don&apos;t have access.</p>
           <Button asChild variant="outline" size="sm">
@@ -509,7 +511,7 @@ export default function AgentProfilePage({
                     ))
                   ) : (
                     <GravitreEmpty
-                      icon={<Icon name="history" size="sm" />}
+                      illustration="moment-focus-time"
                       title="No recent work recorded yet"
                       hint="Work history appears here after this agent completes tasks."
                     />

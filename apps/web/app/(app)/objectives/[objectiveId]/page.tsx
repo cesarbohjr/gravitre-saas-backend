@@ -7,6 +7,7 @@ import { Target } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Illustration } from "@/components/gravitre/illustration"
 import { TYPE } from "@/lib/design-system"
 import { objectivesApi } from "@/lib/api"
 import { businessEvidenceHref, describeBusinessValue, formatBusinessValue, humanizeMetricKey } from "@/lib/dashboard/business-kpis"
@@ -27,7 +28,10 @@ export default function ObjectiveProgressPage() {
         <GravitrePageHeader eyebrow="Objective" title={data?.statement ?? "Objective"} icon={<Target className="h-5 w-5" />} />
         <div className="space-y-5 px-[var(--np-page-pad-sm)] sm:px-[var(--np-page-pad)]">
           {error ? (
-            <WorkSectionErrorCard title="Could not load this objective" message={error instanceof Error ? error.message : "Unknown error"} onRetry={() => void mutate()} />
+            <div className="space-y-4">
+              <Illustration name="moment-error" width={160} />
+              <WorkSectionErrorCard title="Could not load this objective" message={error instanceof Error ? error.message : "Unknown error"} onRetry={() => void mutate()} />
+            </div>
           ) : data ? (
             <>
               <section className="grid gap-4 border-y border-divide py-5 sm:grid-cols-3">

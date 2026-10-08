@@ -4,10 +4,10 @@ import { useId, useMemo, useRef, useState } from "react"
 import useSWR from "swr"
 import { motion, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { NoResultsState } from "@/components/gravitre/empty-state"
+import { EmptyState, NoResultsState } from "@/components/gravitre/empty-state"
+import { Illustration } from "@/components/gravitre/illustration"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import {
-  GravitreEmpty,
   GravitrePageHeader,
 } from "@/components/gravitre/nodus-product"
 import { HubFilterBar, HubFilterField } from "@/components/gravitre/hub-filter-bar"
@@ -367,7 +367,9 @@ export default function AuditPage() {
               ))}
             </div>
           ) : filteredLogs.length === 0 ? (
-            !error && (hasActiveFilters ? (
+            error ? (
+              <Illustration name="moment-error" width={170} className="mx-auto mt-8" />
+            ) : (hasActiveFilters ? (
               <NoResultsState
                 onClear={() => {
                   setSearchQuery("")
@@ -376,10 +378,10 @@ export default function AuditPage() {
                 }}
               />
             ) : (
-              <GravitreEmpty
-                icon={<NucleoSearch className="h-5 w-5" />}
+              <EmptyState
+                illustration="moment-focus-time"
                 title="No audit events yet"
-                hint="No events were reported for the selected date range."
+                description="No events were reported for the selected date range."
               />
             ))
           ) : (

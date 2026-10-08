@@ -46,7 +46,7 @@ export function SignalEdge({
         y1={y1}
         x2={x2}
         y2={y2}
-        stroke="var(--color-line, #eaedf1)"
+        stroke="var(--line)"
         strokeWidth={1.25}
         strokeDasharray={lowConfidence ? "4 4" : undefined}
         strokeLinecap="round"
@@ -66,9 +66,9 @@ export function SignalEdge({
           <defs>
             {reduced || !routing ? (
               <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1={x1} y1={y1} x2={x2} y2={y2}>
-                <stop stopColor="var(--color-line, #EAEDF1)" />
+                <stop stopColor="var(--line)" />
                 <stop offset="0.5" stopColor={mid} />
-                <stop offset="1" stopColor="var(--color-line, #EAEDF1)" />
+                <stop offset="1" stopColor="var(--line)" />
               </linearGradient>
             ) : (
               <motion.linearGradient
@@ -78,9 +78,9 @@ export function SignalEdge({
                 animate={{ x1: x2, y1: y2, x2, y2 }}
                 transition={{ duration: 1.6, repeat: Infinity, repeatType: "loop", ease: "easeInOut", repeatDelay: 0.4 }}
               >
-                <stop stopColor="var(--color-line, #EAEDF1)" />
+                <stop stopColor="var(--line)" />
                 <stop offset="0.5" stopColor={mid} />
-                <stop offset="1" stopColor="var(--color-line, #EAEDF1)" />
+                <stop offset="1" stopColor="var(--line)" />
               </motion.linearGradient>
             )}
           </defs>

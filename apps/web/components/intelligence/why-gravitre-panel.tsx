@@ -132,7 +132,7 @@ function priorityBandTone(band: string | undefined): string {
     case "high":
       return "text-[color:var(--g-brand)]"
     case "medium":
-      return "text-amber-600 dark:text-amber-400"
+      return "text-warning"
     default:
       return "text-[color:var(--g-text-muted)]"
   }

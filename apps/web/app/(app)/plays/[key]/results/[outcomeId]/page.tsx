@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { fetcher } from "@/lib/fetcher"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Illustration } from "@/components/gravitre/illustration"
 import { TYPE } from "@/lib/design-system"
 import { ArrowLeft, CheckCircle2 } from "lucide-react"
 
@@ -31,7 +32,7 @@ export default function PlayResultEvidencePage() {
   return <AppShell title="Result evidence"><div className="mx-auto max-w-4xl">
     <GravitrePageHeader eyebrow="Play result" title="Evidence" description="Trace this business result from measured change back through execution, governance, and its source of record." actions={<Button variant="ghost" size="sm" asChild><Link href={`/plays/${params.key}`}><ArrowLeft className="size-4" />Back to play</Link></Button>} />
     <div className="space-y-4 px-[var(--np-page-pad-sm)] pb-8 sm:px-[var(--np-page-pad)]">
-      {error ? <WorkSectionErrorCard title="Could not load result evidence" message="The evidence endpoint did not return this outcome." /> : !e ? <p className="text-sm text-muted-foreground">Loading evidence…</p> : <>
+      {error ? <div className="space-y-4 pt-2"><Illustration name="moment-error" width={160} /><WorkSectionErrorCard title="Could not load result evidence" message="The evidence endpoint did not return this outcome." /></div> : !e ? <p className="text-sm text-muted-foreground">Loading evidence…</p> : <>
         <section className="border-b border-divide py-5">
           <div className="flex items-center gap-2"><CheckCircle2 className={`size-5 ${e.verification?.verified ? "text-success" : "text-muted-foreground"}`} /><h2 className="font-semibold">{e.verification?.state ?? "Unverified"}</h2></div>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">

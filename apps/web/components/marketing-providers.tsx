@@ -79,7 +79,7 @@ function OperatorRouteGuard({ children }: { children: ReactNode }) {
       <div
         role="status"
         aria-live="polite"
-        className="flex min-h-screen items-center justify-center px-6 text-center text-sm text-neutral-500"
+        className="flex min-h-screen items-center justify-center px-6 text-center text-sm text-muted-foreground"
       >
         Loading…
       </div>

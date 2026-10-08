@@ -111,6 +111,7 @@ export default function FederatedConnectorsPage() {
             </div>
           ) : !data ? null : assets.length === 0 ? (
             <GravitreEmpty
+              illustration="moment-focus-time"
               title={
                 debouncedSearch
                   ? "No partner connectors match your search"

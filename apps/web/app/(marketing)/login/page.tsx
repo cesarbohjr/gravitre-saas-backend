@@ -245,7 +245,7 @@ function LoginPageContent() {
 
   // Don't block render - show form immediately, redirect happens via useEffect if logged in
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[color:var(--g-marketing-canvas)]">
       <Container className="border-divide min-h-screen border-x py-10 md:py-16">
         <div className="grid grid-cols-1 gap-10 px-4 md:grid-cols-2 md:px-8 lg:gap-16">
           <div className="hidden md:block">
@@ -259,7 +259,7 @@ function LoginPageContent() {
             transition={{ duration: 0.5 }}
             className="w-full max-w-[440px]"
           >
-            <div className="shadow-aceternity rounded-2xl border border-divide bg-white p-6 sm:p-8 lg:p-10">
+            <div className="shadow-aceternity rounded-2xl border border-divide bg-card p-6 sm:p-8 lg:p-10">
               <div className="mb-8 text-left">
                 <div className="mb-6 md:hidden">
                   <GravitreMarketingLogo height={40} className="h-10" />
@@ -270,7 +270,7 @@ function LoginPageContent() {
                 </SubHeading>
                 {displayedAuthError && (
                   <div className="mt-3 space-y-2">
-                    <p className="text-sm text-red-600">{displayedAuthError}</p>
+                    <p className="text-sm text-danger-text">{displayedAuthError}</p>
                     {canResendVerification && (
                       <button
                         type="button"
@@ -385,7 +385,7 @@ function LoginPageContent() {
                   disabled={isLoading || loadingProvider !== null}
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 min-h-[48px] text-sm font-semibold text-white transition-all hover:bg-foreground/90 disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 min-h-[48px] text-sm font-semibold text-background transition-all hover:bg-foreground/90 disabled:opacity-50"
                 >
                   {isLoading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />

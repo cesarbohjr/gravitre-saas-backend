@@ -18,6 +18,7 @@ import { sourcesApi } from "@/lib/api"
 import type { CreateSourceRequest } from "@/types/api"
 import { AddDataSourceModal } from "@/components/gravitre/add-data-source-modal"
 import { NoResultsState } from "@/components/gravitre/empty-state"
+import { Illustration } from "@/components/gravitre/illustration"
 import { OperatingEmpty, PhaseBand } from "@/components/gravitre/operating/operating-primitives"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { toast } from "sonner"
@@ -252,6 +253,8 @@ export default function SourcesPage() {
             ) : null}
 
             {!isLoading && !error && sources.length === 0 ? (
+              <div>
+              <Illustration name="moment-welcome" width={180} className="mb-2" />
               <OperatingEmpty
                 className="px-0 sm:px-0"
                 title="No data sources yet"
@@ -264,6 +267,7 @@ export default function SourcesPage() {
                   </Button>
                 }
               />
+              </div>
             ) : null}
 
             {!isLoading &&

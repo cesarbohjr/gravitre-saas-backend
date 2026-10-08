@@ -94,10 +94,10 @@ const categoryIcons = {
 }
 
 const badgeStyles = {
-  fast: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-  "best-reasoning": "bg-violet-500/10 text-violet-500 border-violet-500/20",
-  "low-cost": "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-  "long-context": "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  fast: "bg-warning/10 text-warning-text border-warning/20",
+  "best-reasoning": "bg-status-running-bg text-intelligence-text border-status-running-border",
+  "low-cost": "bg-success/10 text-success-text border-success/20",
+  "long-context": "bg-info/10 text-info border-info/20",
   recommended: "bg-info/10 text-info border-info/20",
 }
 
@@ -176,7 +176,7 @@ export function ModelSelector({
           "flex items-center justify-center rounded-md transition-all",
           size === "sm" ? "h-5 w-5" : "h-6 w-6",
           value === "auto" 
-            ? "bg-gradient-to-br from-info/20 to-violet-500/20 text-info" 
+            ? "bg-gradient-to-br from-info/20 to-chart-4/20 text-info" 
             : "bg-secondary text-muted-foreground group-hover:text-foreground"
         )}>
           {value === "auto" ? (
@@ -219,7 +219,7 @@ export function ModelSelector({
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.15 }}
             className={cn(
-              "absolute left-0 z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-popover shadow-xl shadow-black/20",
+              "absolute left-0 z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-popover shadow-[var(--elevation-3)]",
               "overflow-hidden"
             )}
           >
@@ -263,7 +263,7 @@ export function ModelSelector({
                     <div className={cn(
                       "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all",
                       model.id === "auto"
-                        ? "bg-gradient-to-br from-info/20 to-violet-500/20 text-info"
+                        ? "bg-gradient-to-br from-info/20 to-chart-4/20 text-info"
                         : isSelected
                           ? "bg-info/20 text-info"
                           : "bg-secondary text-muted-foreground group-hover:text-foreground"

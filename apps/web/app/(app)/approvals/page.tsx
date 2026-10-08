@@ -10,6 +10,7 @@ import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { formatStatusLabel } from "@/components/gravitre/status-badge"
 import { StatusChip } from "@/components/gravitre/visual"
 import { GravitrePageHeader, GravitreEmpty, LiveStatus } from "@/components/gravitre/nodus-product"
+import { Illustration } from "@/components/gravitre/illustration"
 import {
   OperatingEmpty,
   PhaseBand,
@@ -977,8 +978,16 @@ function ApprovalsContent() {
             </AnimatePresence>
 
             {visibleApprovals.length === 0 && (
+              <div>
+              {phase === "pending" || phase === "breached" || historyApprovals ? (
+                <Illustration
+                  name={phase === "pending" || phase === "breached" ? "moment-all-clear" : "moment-focus-time"}
+                  width={160}
+                  className="ml-2 mt-6"
+                />
+              ) : null}
               <OperatingEmpty
-                className="px-2 sm:px-2"
+                className="px-2 pt-4 sm:px-2"
                 title={
                   phase === "pending"
                     ? "Nothing is waiting on you"
@@ -995,6 +1004,7 @@ function ApprovalsContent() {
                 }
                 path={phase === "pending" ? ["Agent proposes an action", "You decide", "Execution continues", "Recorded here"] : undefined}
               />
+              </div>
             )}
           </div>
         </div>

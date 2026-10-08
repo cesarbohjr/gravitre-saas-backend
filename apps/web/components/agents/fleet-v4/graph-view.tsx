@@ -10,6 +10,7 @@ import { DepartmentDropZone } from "./department-drop-zone"
 import { FLEET_DEPARTMENT_ORDER } from "./fleet-department-dnd"
 import { GravitreAgentNode } from "./gravitre-agent-node"
 import type { AgentDepartmentId, FleetAgent, FleetEdge, FleetGraphExtraNode } from "./types"
+import { Illustration } from "@/components/gravitre/illustration"
 
 const NODE_W = 188
 const NODE_H = 56
@@ -35,7 +36,7 @@ function FleetEdgePath({
       <path
         d={d}
         fill="none"
-        stroke="var(--color-line, #eaedf1)"
+        stroke="var(--line)"
         strokeWidth={active ? 2 : 1.5}
         strokeDasharray={dashed ? "5 4" : undefined}
         strokeLinecap="round"
@@ -63,12 +64,12 @@ function FleetEdgePath({
                 repeatDelay: active ? 0.4 : 1,
               }}
             >
-              <stop stopColor="var(--color-line, #EAEDF1)" />
+              <stop stopColor="var(--line)" />
               <stop
                 offset="0.5"
-                stopColor={active ? "var(--color-blue-500, #3b82f6)" : "var(--color-brand, #2563eb)"}
+                stopColor={active ? "var(--info)" : "var(--brand)"}
               />
-              <stop offset="1" stopColor="var(--color-line, #EAEDF1)" />
+              <stop offset="1" stopColor="var(--line)" />
             </motion.linearGradient>
           </defs>
         </>
@@ -242,10 +243,11 @@ export function GraphView({
     return (
       <div
         className={cn(
-          "relative flex min-h-[280px] items-center justify-center overflow-hidden rounded-[var(--np-radius-lg)] border border-divide",
+          "relative flex min-h-[280px] flex-col items-center justify-center overflow-hidden rounded-[var(--np-radius-lg)] border border-divide",
           className,
         )}
       >
+        <Illustration name="moment-focus-time" width={140} className="relative z-10 mb-3" />
         <p className="relative z-10 text-sm text-[color:var(--g-text-muted)]">
           {emptyHint ?? "No agents to graph."}
         </p>
@@ -353,7 +355,7 @@ export function GraphView({
                 className="absolute flex w-[160px] items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-card px-3 py-2 shadow-[var(--np-shadow)]"
                 style={{ left: pos.x, top: pos.y }}
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-md border border-cyan-300 bg-cyan-100 text-cyan-700 dark:border-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-200">
+                <span className="flex h-7 w-7 items-center justify-center rounded-md border border-info/30 bg-info/10 text-info">
                   <Icon className="h-4 w-4" />
                 </span>
                 <div className="min-w-0">

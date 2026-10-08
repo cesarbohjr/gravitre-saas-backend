@@ -10,7 +10,7 @@ import type { MarketplaceAssetDetail } from "@/types/api"
 export function MarketplaceAssetOverview({ asset, needsPurchase, isAdmin, actions }: { asset: MarketplaceAssetDetail; needsPurchase: boolean; isAdmin: boolean; actions?: ReactNode }) {
   return (
     <header className="grid overflow-hidden rounded-[10px] lg:grid-cols-[minmax(0,1.5fr)_minmax(260px,1fr)]" data-testid="marketplace-asset-overview">
-      <div className="min-w-0 bg-[color:var(--g-emerald-deep)] p-5 text-white sm:p-6">
+      <div className="min-w-0 bg-[color:var(--g-emerald-deep)] p-5 text-[color:var(--g-bone)] sm:p-6">
         <p className="text-xs font-semibold text-[color:var(--g-emerald-mint)]">Explore / {asset.department || asset.assetType.replace(/_/g, " ")}</p>
         <h1 className="mt-3 break-words font-sans text-xl font-medium leading-tight sm:text-2xl">{asset.title}</h1>
         {asset.businessOutcome ? <p className="mt-4 text-base leading-7">{asset.businessOutcome}</p> : null}

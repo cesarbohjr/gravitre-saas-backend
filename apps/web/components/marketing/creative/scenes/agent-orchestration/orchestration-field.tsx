@@ -74,13 +74,13 @@ function MiniTopology({ phase }: { phase: OrchestrationPhase }) {
             y1={pa.y}
             x2={pb.x}
             y2={pb.y}
-            stroke="color-mix(in srgb, var(--g-intelligence) 40%, #c5c9d0)"
+            stroke="color-mix(in srgb, var(--g-intelligence) 40%, var(--g-border-strong))"
             strokeWidth={1.1}
           />
         )
       })}
       {layout.nodes.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r={i === 0 ? 4.5 : 2.4} fill={i === 0 ? "#16a374" : "#8b93a0"} />
+        <circle key={i} cx={p.x} cy={p.y} r={i === 0 ? 4.5 : 2.4} fill={i === 0 ? "var(--brand)" : "var(--muted-foreground)"} />
       ))}
     </svg>
   )
@@ -103,7 +103,7 @@ function ReducedModel() {
       <p>{TOOLS.join(" · ")}</p>
       <p className="font-medium">Verification</p>
       <GravitreEvidenceMark label="Sources + run outcome" />
-      <p className="pt-1 font-medium text-[color:var(--color-brand,#16a374)]">
+      <p className="pt-1 font-medium text-brand">
         Outcome: at-risk accounts identified; follow-up prepared after approval.
       </p>
     </div>
@@ -172,13 +172,13 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
       data-creative-frozen={frozenPhase ? "1" : "0"}
     >
       {reduced ? (
-        <div className="rounded-2xl border border-divide bg-white p-5" data-testid="orchestration-reduced">
+        <div className="rounded-2xl border border-divide bg-card p-5" data-testid="orchestration-reduced">
           <ReducedModel />
         </div>
       ) : (
         <>
           <div
-            className="hidden rounded-2xl border border-divide bg-white p-4 md:block md:p-6"
+            className="hidden rounded-2xl border border-divide bg-card p-4 md:block md:p-6"
             data-testid="orchestration-desktop"
           >
             <div className="grid grid-cols-[1.1fr_1.4fr_1fr] gap-4">
@@ -201,7 +201,7 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--g-text-muted)]">Outcome</p>
                 {phase === "outcome" || phase === "learned" || phase === "verify" ? (
-                  <p className="mt-2 text-sm font-medium text-[color:var(--color-brand,#16a374)]">
+                  <p className="mt-2 text-sm font-medium text-brand">
                     Follow-up prepared for at-risk accounts.
                   </p>
                 ) : (
@@ -264,7 +264,7 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
           </div>
 
           <div
-            className="space-y-3 rounded-2xl border border-divide bg-white p-4 md:hidden"
+            className="space-y-3 rounded-2xl border border-divide bg-card p-4 md:hidden"
             data-testid="orchestration-mobile"
           >
             <p className="text-sm font-medium">{ILLUSTRATIVE_REQUEST}</p>
@@ -348,7 +348,7 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
         </button>
         <button
           type="button"
-          className={cn("rounded-md border px-2 py-1 text-[11px]", mode === "failure" ? "border-red-400 text-red-700" : "border-divide")}
+          className={cn("rounded-md border px-2 py-1 text-[11px]", mode === "failure" ? "border-destructive/60 text-danger-text" : "border-divide")}
           onClick={() => {
             setMode("failure")
             setPhase(frozenPhase ?? "parallel")

@@ -50,20 +50,20 @@ export function AIPresence({ isProcessing = false, isListening = false, classNam
             animate={{
               boxShadow: isProcessing
                 ? [
-                    "0 0 20px rgba(59, 130, 246, 0.3)",
-                    "0 0 40px rgba(59, 130, 246, 0.5)",
-                    "0 0 20px rgba(59, 130, 246, 0.3)",
+                    "0 0 20px color-mix(in srgb, var(--g-intelligence) 30%, transparent)",
+                    "0 0 40px color-mix(in srgb, var(--g-intelligence) 50%, transparent)",
+                    "0 0 20px color-mix(in srgb, var(--g-intelligence) 30%, transparent)",
                   ]
                 : isListening
                   ? [
-                      "0 0 15px rgba(139, 92, 246, 0.2)",
-                      "0 0 25px rgba(139, 92, 246, 0.4)",
-                      "0 0 15px rgba(139, 92, 246, 0.2)",
+                      "0 0 15px color-mix(in srgb, var(--g-electric) 20%, transparent)",
+                      "0 0 25px color-mix(in srgb, var(--g-electric) 40%, transparent)",
+                      "0 0 15px color-mix(in srgb, var(--g-electric) 20%, transparent)",
                     ]
                   : [
-                      "0 0 10px rgba(59, 130, 246, 0.1)",
-                      "0 0 20px rgba(59, 130, 246, 0.2)",
-                      "0 0 10px rgba(59, 130, 246, 0.1)",
+                      "0 0 10px color-mix(in srgb, var(--g-intelligence) 10%, transparent)",
+                      "0 0 20px color-mix(in srgb, var(--g-intelligence) 20%, transparent)",
+                      "0 0 10px color-mix(in srgb, var(--g-intelligence) 10%, transparent)",
                     ],
             }}
             transition={{
@@ -78,10 +78,10 @@ export function AIPresence({ isProcessing = false, isListening = false, classNam
             className={`
               relative flex h-10 w-10 items-center justify-center rounded-xl
               ${isProcessing 
-                ? "bg-gradient-to-br from-blue-500 to-blue-600" 
+                ? "bg-[color:var(--g-intelligence)]" 
                 : isListening
                   ? "bg-[color:var(--g-electric)]"
-                  : "bg-gradient-to-br from-blue-500/20 to-blue-600/10 ring-1 ring-blue-500/20"
+                  : "bg-gradient-to-br from-[color:var(--g-intelligence)]/20 to-[color:var(--g-intelligence)]/10 ring-1 ring-[color:var(--g-intelligence)]/20"
               }
             `}
             animate={isProcessing ? { scale: [1, 1.05, 1] } : {}}
@@ -95,7 +95,7 @@ export function AIPresence({ isProcessing = false, isListening = false, classNam
                 name="ai" 
                 size="lg" 
                 emphasis 
-                className={isProcessing || isListening ? "text-white" : "text-blue-600 dark:text-blue-400"} 
+                className={isProcessing || isListening ? "text-primary-foreground" : "text-intelligence-text"} 
               />
             </motion.div>
 
@@ -105,7 +105,7 @@ export function AIPresence({ isProcessing = false, isListening = false, classNam
                 {[0, 1, 2].map((i) => (
                   <motion.div
                     key={i}
-                    className="h-1 w-1 rounded-full bg-blue-300"
+                    className="h-1 w-1 rounded-full bg-primary-foreground/80"
                     animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1, 0.8] }}
                     transition={{
                       duration: 0.6,
@@ -136,7 +136,7 @@ export function AIPresence({ isProcessing = false, isListening = false, classNam
               <motion.span
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400"
+                className="rounded-full bg-[color:var(--g-intelligence)]/20 px-2 py-0.5 text-[9px] font-medium text-intelligence-text"
               >
                 Working
               </motion.span>
@@ -163,7 +163,7 @@ export function AIPresence({ isProcessing = false, isListening = false, classNam
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400"
+                  className="flex items-center gap-1.5 text-xs text-intelligence-text"
                 >
                   <Icon name="activity" size="xs" />
                   <span>Processing your request</span>
@@ -171,7 +171,7 @@ export function AIPresence({ isProcessing = false, isListening = false, classNam
                     {[0, 1, 2].map((i) => (
                       <motion.span
                         key={i}
-                        className="inline-block h-1 w-1 rounded-full bg-blue-400"
+                        className="inline-block h-1 w-1 rounded-full bg-[color:var(--g-intelligence)]"
                         animate={{ opacity: [0.3, 1, 0.3] }}
                         transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.2 }}
                       />
@@ -198,7 +198,7 @@ export function AIFloatingIndicator({ isActive = false }: { isActive?: boolean }
     >
       <div className="relative">
         <motion.div
-          className="absolute inset-0 rounded-full bg-blue-500/30 blur-xl"
+          className="absolute inset-0 rounded-full bg-[color:var(--g-intelligence)]/30 blur-xl"
           animate={{
             scale: isActive ? [1, 1.5, 1] : [1, 1.2, 1],
             opacity: isActive ? [0.5, 0.8, 0.5] : [0.3, 0.5, 0.3],
@@ -209,17 +209,17 @@ export function AIFloatingIndicator({ isActive = false }: { isActive?: boolean }
           className={`
             relative flex h-12 w-12 items-center justify-center rounded-full shadow-lg
             ${isActive 
-              ? "bg-gradient-to-br from-blue-500 to-blue-600" 
+              ? "bg-[color:var(--g-intelligence)]" 
               : "bg-card border border-border"
             }
           `}
         >
-          <Icon name="ai" size="lg" emphasis className={isActive ? "text-white" : "text-muted-foreground"} />
+          <Icon name="ai" size="lg" emphasis className={isActive ? "text-primary-foreground" : "text-muted-foreground"} />
         </div>
         {isActive && (
           <span className="absolute -top-1 -right-1 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[color:var(--g-intelligence)] opacity-75" />
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-[color:var(--g-intelligence)]" />
           </span>
         )}
       </div>
@@ -231,14 +231,14 @@ export function AIFloatingIndicator({ isActive = false }: { isActive?: boolean }
 export function AITypingIndicator() {
   return (
     <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50">
-      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20">
-        <Icon name="ai" size="sm" emphasis className="text-blue-600 dark:text-blue-400" />
+      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--g-intelligence)]/20">
+        <Icon name="ai" size="sm" emphasis className="text-intelligence-text" />
       </div>
       <div className="flex gap-1">
         {[0, 1, 2].map((i) => (
           <motion.div
             key={i}
-            className="h-2 w-2 rounded-full bg-blue-400"
+            className="h-2 w-2 rounded-full bg-[color:var(--g-intelligence)]"
             animate={{
               y: [0, -6, 0],
               opacity: [0.5, 1, 0.5],

@@ -310,8 +310,8 @@ export default function ProfilePage() {
                   >
                     <UserAccountAvatar useCurrentUser className="h-24 w-24 text-2xl" fallbackClassName="text-2xl" />
                     {/* Hover overlay */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Camera className="h-6 w-6 text-white" />
+                    <div className="absolute inset-0 bg-[color:var(--overlay)] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Camera className="h-6 w-6 text-[color:var(--g-bone)]" />
                     </div>
                   </button>
                   <button 

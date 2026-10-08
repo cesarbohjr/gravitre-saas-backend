@@ -198,6 +198,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
+import { Illustration } from "@/components/gravitre/illustration"
 
 let generatedNodeIdCounter = 0
 function nextGeneratedNodeId() {
@@ -1150,7 +1151,7 @@ function DecisionSummaryToast({
           <div className="flex items-center gap-2 mt-2">
             <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
               <div 
-                className="h-full bg-emerald-500"
+                className="h-full bg-success"
                 style={{ width: `${confidence}%` }}
               />
             </div>
@@ -1586,7 +1587,7 @@ function DebateViewDialog({
                   <div key={contribution.agentId} className="p-4 rounded-lg bg-secondary/30 border border-border">
                     <div className="flex items-start gap-3">
                       <div className={cn(
-                        "h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-white",
+                        "h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold text-background",
                         getAgentColor(idx)
                       )}>
                         {agent.name.charAt(0)}
@@ -1999,7 +2000,7 @@ function ConfigPanel({
                 <div className="flex items-center gap-1.5">
                   <Zap className="h-3.5 w-3.5 text-[color:var(--info)]" />
                   <span className="text-xs font-medium text-foreground">Runs as</span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-500/10 text-[color:var(--info)]">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-info/10 text-[color:var(--info)]">
                     invoke_tool
                   </span>
                 </div>
@@ -2581,9 +2582,9 @@ function ConfigPanel({
           <div key={path.id} className="flex items-center gap-2 p-2 rounded-lg bg-secondary/30 border border-border">
             <div className={cn(
               "h-2 w-2 rounded-full shrink-0",
-              idx === 0 && "bg-emerald-500",
-              idx === 1 && "bg-blue-500",
-              idx === 2 && "bg-amber-500",
+              idx === 0 && "bg-chart-1",
+              idx === 1 && "bg-chart-2",
+              idx === 2 && "bg-chart-3",
               idx >= 3 && "bg-muted-foreground"
             )} />
             <Input
@@ -2856,9 +2857,9 @@ function ConfigPanel({
           <div key={option.id} className="flex items-center gap-2 p-2 rounded-lg bg-secondary/30 border border-border">
             <div className={cn(
               "h-2 w-2 rounded-full",
-              idx === 0 && "bg-emerald-500",
-              idx === 1 && "bg-red-500",
-              idx === 2 && "bg-amber-500",
+              idx === 0 && "bg-success",
+              idx === 1 && "bg-destructive",
+              idx === 2 && "bg-warning",
               idx >= 3 && "bg-muted-foreground"
             )} />
             <Input
@@ -4618,9 +4619,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
         {loadError && !isLoadingGraph && (
           <div className="flex-1 flex items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4 text-center max-w-md px-4">
-              <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6 text-destructive" />
-              </div>
+              <Illustration name="moment-error" width={180} />
               <div>
                 <p className="font-medium text-foreground">Failed to load workflow</p>
                 <p className="text-sm text-muted-foreground mt-1">{loadError}</p>
@@ -5791,7 +5790,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       y1={labelY - 3} 
       x2={labelX + 3} 
       y2={labelY + 3} 
-      stroke="white" 
+      stroke="var(--g-bone)" 
       strokeWidth="1.75" 
       strokeLinecap="round" 
     />
@@ -5800,7 +5799,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
       y1={labelY - 3} 
       x2={labelX - 3} 
       y2={labelY + 3} 
-      stroke="white" 
+      stroke="var(--g-bone)" 
       strokeWidth="1.75" 
       strokeLinecap="round" 
     />
@@ -5825,7 +5824,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   x={labelX}
   y={labelY + 32}
   textAnchor="middle"
-  fill="white"
+  fill="var(--g-bone)"
   fontSize="10"
   fontFamily="ui-monospace, monospace"
   fontWeight="500"
@@ -5960,9 +5959,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             {nodes.length === 0 && !isLoadingGraph && (
               <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
                 <div className="pointer-events-auto flex flex-col items-center gap-4 text-center max-w-md px-4">
-                  <div className="h-16 w-16 rounded-lg bg-muted/50 flex items-center justify-center border border-border">
-                    <Workflow className="h-8 w-8 text-muted-foreground" />
-                  </div>
+                  <Illustration name="moment-welcome" width={180} />
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">Start building your workflow</h3>
                     <p className="text-sm text-muted-foreground mt-1">
@@ -5980,7 +5977,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
   {/* Drag-to-connect indicator */}
   {isDraggingConnection && (
   <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-success/10 border border-success/30 text-success rounded-full px-4 py-2 shadow-md z-50">
-  <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+  <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
   <span className="text-sm font-medium">Drop on a node to connect</span>
   </div>
   )}
@@ -6052,12 +6049,12 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                       <div 
                         className={cn(
                           "h-full rounded-full transition-all duration-300",
-                          executionStatus === "running" && "bg-blue-500",
-                          executionStatus === "completed" && "bg-emerald-500",
-                          executionStatus === "error" && "bg-red-500",
-                          executionStatus === "paused" && "bg-amber-500",
-                          executionStatus === "waiting" && "bg-amber-500",
-                          executionStatus === "cancelled" && "bg-red-500"
+                          executionStatus === "running" && "bg-info",
+                          executionStatus === "completed" && "bg-success",
+                          executionStatus === "error" && "bg-destructive",
+                          executionStatus === "paused" && "bg-warning",
+                          executionStatus === "waiting" && "bg-warning",
+                          executionStatus === "cancelled" && "bg-destructive"
                         )}
                         style={{ width: `${(executionStep / nodes.length) * 100}%` }}
                       />
@@ -6517,7 +6514,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                       {node.state && node.state !== "idle" && (
                         <Badge variant="outline" className={cn(
                           "text-[10px] py-0",
-                          node.state === "running" && "border-blue-500 text-blue-500",
+                          node.state === "running" && "border-info text-info",
                           node.state === "success" && "border-success text-success",
                           node.state === "error" && "border-destructive text-destructive"
                         )}>
@@ -6562,7 +6559,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
             })}
             {nodes.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Workflow className="h-10 w-10 text-muted-foreground mb-3" />
+                <Illustration name="moment-welcome" width={140} className="mb-3" />
                 <p className="text-muted-foreground">No nodes yet</p>
                 <Button
                   variant="outline"

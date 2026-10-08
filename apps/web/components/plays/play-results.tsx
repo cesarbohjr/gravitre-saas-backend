@@ -3,6 +3,7 @@
 import Link from "next/link"
 import useSWR from "swr"
 import { Button } from "@/components/ui/button"
+import { Illustration } from "@/components/gravitre/illustration"
 import { fetcher } from "@/lib/fetcher"
 import { cn } from "@/lib/utils"
 import { ArrowRight, CheckCircle2, Clock3, ExternalLink, XCircle } from "lucide-react"
@@ -61,7 +62,7 @@ export function PlayResults({ playKey }: { playKey: string }) {
           <Link href="/activity">View all activity <ArrowRight className="size-3.5" /></Link>
         </Button>
       </div>
-      {!rows.length ? <p className="m-4 rounded-lg border border-dashed border-divide p-4 text-sm text-muted-foreground">No measured results yet. When this Play acts, results will remain pending until Gravitre can verify the business outcome.</p> : (
+      {!rows.length ? <div className="m-4 rounded-lg border border-dashed border-divide p-4 text-center"><Illustration name="moment-focus-time" width={130} className="mx-auto mb-3" /><p className="text-sm text-muted-foreground">No measured results yet. When this Play acts, results will remain pending until Gravitre can verify the business outcome.</p></div> : (
         <ul className="divide-y divide-divide">
           {rows.slice(0, 10).map((row) => {
             const meta = row.metadata ?? {}

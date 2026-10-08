@@ -350,7 +350,7 @@ export function OnboardingChecklist() {
                 )}
               >
                 {isComplete ? (
-                  <Gift className="h-5 w-5 text-white" />
+                  <Gift className="h-5 w-5 text-success-foreground" />
                 ) : (
                   <Rocket className="h-5 w-5 text-success" />
                 )}

@@ -19,8 +19,8 @@ export function BusinessSignalsBanner({ signals }: { signals: BusinessSignal[] |
   const top = signals.slice(0, 3)
 
   return (
-    <div className="border-b border-border bg-amber-50/60 px-4 py-2 md:px-6 dark:bg-amber-950/20">
-      <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-amber-800 dark:text-amber-300">
+    <div className="border-b border-border bg-warning/[0.06] px-4 py-2 md:px-6">
+      <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-warning-text">
         Proactive business signals
       </p>
       <ul className="space-y-1">
@@ -36,7 +36,7 @@ export function BusinessSignalsBanner({ signals }: { signals: BusinessSignal[] |
               <Icon
                 className={cn(
                   "mt-0.5 h-3.5 w-3.5 shrink-0",
-                  isRisk ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400",
+                  isRisk ? "text-warning-text" : "text-success-text",
                 )}
               />
               <span>

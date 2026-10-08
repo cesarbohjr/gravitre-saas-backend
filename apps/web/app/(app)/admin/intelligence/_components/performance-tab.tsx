@@ -163,7 +163,7 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
         transition={{ duration: 0.4 }}
         className="relative overflow-hidden rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]"
       >
-        <div aria-hidden className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl" />
+        <div aria-hidden className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-brand/10 blur-2xl" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--g-emerald-pale)] ring-1 ring-[color:var(--g-emerald)]/20">
@@ -350,7 +350,7 @@ export function PerformanceTab({ enabled }: { enabled: boolean }) {
               className="rounded-xl border border-border/60 bg-background/40 p-4 ring-1 ring-border/40"
             >
               <div className="mb-3 flex items-center gap-2">
-                <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <Zap className="h-4 w-4 text-success" />
                 <div>
                   <p className="text-sm font-medium text-foreground">Cache hit rates</p>
                   <p className="text-xs text-muted-foreground">How often fast paths reuse prior work</p>
@@ -394,16 +394,16 @@ function KpiTile({
   delay: number
 }) {
   const toneStyles = {
-    emerald: "border-emerald-500/20 bg-emerald-500/5",
-    sky: "border-sky-500/20 bg-sky-500/5",
-    teal: "border-teal-500/20 bg-teal-500/5",
-    amber: "border-amber-500/20 bg-amber-500/5",
+    emerald: "border-success/20 bg-success/5",
+    sky: "border-info/20 bg-info/5",
+    teal: "border-brand/20 bg-brand/5",
+    amber: "border-warning/20 bg-warning/5",
   }
   const iconStyles = {
-    emerald: "text-emerald-600 dark:text-emerald-400",
-    sky: "text-sky-600 dark:text-sky-400",
-    teal: "text-teal-600 dark:text-teal-400",
-    amber: "text-amber-600 dark:text-amber-400",
+    emerald: "text-success",
+    sky: "text-info",
+    teal: "text-brand-text",
+    amber: "text-warning",
   }
 
   return (

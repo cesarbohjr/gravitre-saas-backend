@@ -16,7 +16,7 @@ export function DesktopNav({ items }: { items: ReadonlyArray<{ title: string; hr
       <div className="flex items-center gap-10">
         {items.map((item) => (
           <Link
-            className="font-medium text-gray-600 transition duration-200 hover:text-neutral-900"
+            className="font-medium text-gray-600 transition duration-200 hover:text-foreground"
             href={item.href}
             key={item.title}
           >
@@ -25,7 +25,7 @@ export function DesktopNav({ items }: { items: ReadonlyArray<{ title: string; hr
         ))}
       </div>
       <div className="flex items-center gap-2">
-        <Link href="/login" className="px-3 text-sm font-medium text-gray-600 hover:text-neutral-900">
+        <Link href="/login" className="px-3 text-sm font-medium text-gray-600 hover:text-foreground">
           Log in
         </Link>
         <Button as={Link} href="/get-started">

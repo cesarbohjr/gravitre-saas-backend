@@ -17,6 +17,7 @@ import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ArrowLeft, Loader2, Lock, Play, Square } from "lucide-react"
 import { toast } from "sonner"
 import type { PrivateConnectorBundle } from "@/types/api"
+import { Illustration } from "@/components/gravitre/illustration"
 
 const STATUS_VARIANT: Record<
   string,
@@ -241,9 +242,12 @@ export default function MarketplacePrivatePage() {
               </p>
             )}
             {data && !isLoading && bundles.length === 0 && (
-              <p className="px-5 py-6 text-sm text-muted-foreground">
-                No private bundles yet.
-              </p>
+              <div className="px-5 py-6 text-center">
+                <Illustration name="moment-welcome" width={160} className="mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  No private bundles yet.
+                </p>
+              </div>
             )}
             <ul className="divide-y divide-border">
               {bundles.map((bundle) => (

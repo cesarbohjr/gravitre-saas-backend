@@ -41,8 +41,8 @@ export default function AboutPage() {
               Put Gravitre to work
             </Button>
           </div>
-          <div className="border-divide flex flex-col justify-center rounded-3xl border bg-gray-50 p-8 md:p-10">
-            <p className="font-mono text-xs tracking-tight text-neutral-500 uppercase">
+          <div className="border-divide flex flex-col justify-center rounded-3xl border bg-[color:var(--g-marketing-surface)] p-8 md:p-10">
+            <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
               What we believe
             </p>
             <p className="text-charcoal-700 mt-4 text-lg font-medium leading-relaxed">
@@ -66,7 +66,7 @@ export default function AboutPage() {
           className="mb-6"
         />
         <GravitreTrace>
-          <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-divide bg-white p-3 sm:p-4 md:p-5">
+          <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-divide bg-card p-3 sm:p-4 md:p-5">
             <ConvergeNodesVisual />
           </div>
         </GravitreTrace>
@@ -83,7 +83,7 @@ export default function AboutPage() {
           {principles.map((item, index) => (
             <div
               key={item.title}
-              className="rounded-lg border border-divide bg-gray-50 p-5"
+              className="rounded-lg border border-divide bg-[color:var(--g-marketing-surface)] p-5"
             >
               <p className="font-mono text-xs text-gray-500">
                 {String(index + 1).padStart(2, "0")}

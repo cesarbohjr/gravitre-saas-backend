@@ -675,16 +675,16 @@ export function StatusIcon({
   }
   
   const statusColorMap: Record<string, string> = {
-    success: "text-emerald-500",
-    completed: "text-emerald-500",
-    failed: "text-red-500",
-    warning: "text-amber-500",
-    error: "text-red-500",
-    running: "text-blue-500 animate-spin",
+    success: "text-success",
+    completed: "text-success",
+    failed: "text-destructive",
+    warning: "text-warning",
+    error: "text-destructive",
+    running: "text-info animate-spin",
     pending: "text-muted-foreground",
-    active: "text-emerald-500",
+    active: "text-success",
     draft: "text-muted-foreground",
-    paused: "text-amber-500",
+    paused: "text-warning",
   }
   
   return (
@@ -713,9 +713,9 @@ export function EnvironmentIcon({
   }
   
   const envColorMap: Record<string, string> = {
-    production: "text-emerald-500",
-    staging: "text-amber-500", 
-    development: "text-blue-500",
+    production: "text-success",
+    staging: "text-warning", 
+    development: "text-info",
   }
   
   return (
@@ -735,16 +735,16 @@ export function getIconComponent(name: IconName): LucideIcon {
 // Get status icon and color
 export function getStatusIcon(status: string): { icon: LucideIcon; color: string } {
   const map: Record<string, { icon: LucideIcon; color: string }> = {
-    success: { icon: CheckCircle, color: "text-emerald-500" },
-    completed: { icon: CheckCheck, color: "text-emerald-500" },
-    failed: { icon: XCircle, color: "text-red-500" },
-    warning: { icon: AlertTriangle, color: "text-amber-500" },
-    error: { icon: AlertCircle, color: "text-red-500" },
-    running: { icon: Loader2, color: "text-blue-500" },
+    success: { icon: CheckCircle, color: "text-success" },
+    completed: { icon: CheckCheck, color: "text-success" },
+    failed: { icon: XCircle, color: "text-destructive" },
+    warning: { icon: AlertTriangle, color: "text-warning" },
+    error: { icon: AlertCircle, color: "text-destructive" },
+    running: { icon: Loader2, color: "text-info" },
     pending: { icon: Clock, color: "text-muted-foreground" },
-    active: { icon: Circle, color: "text-emerald-500" },
+    active: { icon: Circle, color: "text-success" },
     draft: { icon: FileQuestion, color: "text-muted-foreground" },
-    paused: { icon: Pause, color: "text-amber-500" },
+    paused: { icon: Pause, color: "text-warning" },
   }
   return map[status] || { icon: Circle, color: "text-muted-foreground" }
 }
@@ -759,7 +759,7 @@ export { iconMap as Icons }
  * 
  * Usage:
  * import { Zap } from "lucide-react"
- * <ThinIcon icon={Zap} size={20} className="text-emerald-500" />
+ * <ThinIcon icon={Zap} size={20} className="text-success" />
  */
 interface ThinIconProps {
   icon: LucideIcon

@@ -172,7 +172,7 @@ export function LearningTrendsTab({ enabled }: { enabled: boolean }) {
             </div>
           </dl>
         )}
-        <Badge variant="outline" className="mt-4 border-amber-500/30 bg-amber-500/5 text-amber-900 dark:text-amber-200">
+        <Badge variant="outline" className="mt-4 border-warning/30 bg-warning/5 text-warning">
           Suggestions only. Never applied automatically.
         </Badge>
       </SectionCard>

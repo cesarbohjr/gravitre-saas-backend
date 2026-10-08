@@ -51,16 +51,16 @@ export function NodusGlowFrame({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[var(--np-radius-md,8px)] bg-neutral-200 shadow-xl dark:bg-neutral-700",
+        "relative overflow-hidden rounded-[var(--np-radius-md,8px)] bg-border shadow-xl",
         pad,
         className,
       )}
     >
-      <div className="pointer-events-none absolute inset-0 scale-[1.45] animate-spin rounded-full [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-blue-500,#3b82f6)_20%,transparent_30%)]" />
-      <div className="pointer-events-none absolute inset-0 scale-[1.45] animate-spin rounded-full [animation-delay:1s] [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-brand,#F17463)_20%,transparent_30%)]" />
+      <div className="pointer-events-none absolute inset-0 scale-[1.45] animate-spin rounded-full [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--info)_20%,transparent_30%)]" />
+      <div className="pointer-events-none absolute inset-0 scale-[1.45] animate-spin rounded-full [animation-delay:1s] [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--brand)_20%,transparent_30%)]" />
       <div
         className={cn(
-          "relative z-10 h-full w-full rounded-[calc(var(--np-radius-md,8px)-1px)] bg-white dark:bg-neutral-900",
+          "relative z-10 h-full w-full rounded-[calc(var(--np-radius-md,8px)-1px)] bg-card",
           contentClassName,
         )}
       >
@@ -109,7 +109,7 @@ export function NodusGravitreHub({ className }: { className?: string }) {
     <NodusGlowFrame
       size="md"
       className={cn("h-14 w-14 shrink-0 shadow-md sm:h-16 sm:w-16", className)}
-      contentClassName="flex items-center justify-center p-3 text-black dark:text-white sm:p-3.5"
+      contentClassName="flex items-center justify-center p-3 text-foreground sm:p-3.5"
     >
       <LogoSVG className="size-6" />
     </NodusGlowFrame>
@@ -153,10 +153,10 @@ export function NodusSweepConnector({
   const gradientId = `fleet-sweep-${reactId.replace(/:/g, "")}`
   const mid =
     accent === "coral"
-      ? "#F17463"
+      ? "var(--g-viz-attention)"
       : accent === "amber"
-        ? "var(--color-yellow-500, #eab308)"
-        : "var(--color-blue-500, #3b82f6)"
+        ? "var(--warning)"
+        : "var(--info)"
 
   return (
     <svg
@@ -171,7 +171,7 @@ export function NodusSweepConnector({
         y1="1"
         x2="119.5"
         y2="1"
-        stroke="var(--color-line, #eaedf1)"
+        stroke="var(--line)"
         strokeLinecap="round"
       />
       <line
@@ -196,9 +196,9 @@ export function NodusSweepConnector({
             repeatDelay: 1,
           }}
         >
-          <stop stopColor="var(--color-line, #EAEDF1)" />
+          <stop stopColor="var(--line)" />
           <stop offset="0.5" stopColor={mid} />
-          <stop offset="1" stopColor="var(--color-line, #EAEDF1)" />
+          <stop offset="1" stopColor="var(--line)" />
         </motion.linearGradient>
       </defs>
     </svg>
@@ -222,10 +222,10 @@ export function NodusConvergeConnector({
   const gid = `fleet-converge-${reactId.replace(/:/g, "")}`
   const mid =
     accent === "coral"
-      ? "#F17463"
+      ? "var(--g-viz-attention)"
       : accent === "amber"
-        ? "var(--color-yellow-500, #eab308)"
-        : "var(--color-blue-500, #3b82f6)"
+        ? "var(--warning)"
+        : "var(--info)"
 
   if (variant === "mid") {
     return <NodusSweepConnector accent={accent} className={cn("w-full max-w-[12rem]", className)} />
@@ -250,7 +250,7 @@ export function NodusConvergeConnector({
         y1={yLine}
         x2={w - 0.5}
         y2={yLine}
-        stroke="var(--color-line, #eaedf1)"
+        stroke="var(--line)"
         strokeLinecap="round"
       />
       <line
@@ -258,7 +258,7 @@ export function NodusConvergeConnector({
         y1={yLine}
         x2={w - 0.5}
         y2={yEnd}
-        stroke="var(--color-line, #eaedf1)"
+        stroke="var(--line)"
         strokeLinecap="round"
       />
       <line
@@ -283,10 +283,10 @@ export function NodusConvergeConnector({
             repeatDelay: 1,
           }}
         >
-          <stop stopColor="var(--color-line, #EAEDF1)" />
+          <stop stopColor="var(--line)" />
           <stop offset="0.33" stopColor={mid} />
           <stop offset="0.66" stopColor={mid} />
-          <stop offset="1" stopColor="var(--color-line, #EAEDF1)" />
+          <stop offset="1" stopColor="var(--line)" />
         </motion.linearGradient>
       </defs>
     </svg>

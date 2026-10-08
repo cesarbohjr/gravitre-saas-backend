@@ -21,9 +21,9 @@ import { SURFACE_COPY } from "@/lib/surface-copy"
 type Row = Record<string, unknown>
 
 const STAT_TONES = {
-  emerald: "bg-emerald-500/10 text-emerald-600 ring-emerald-500/20 dark:text-emerald-400",
-  sky: "bg-sky-500/10 text-sky-600 ring-sky-500/20 dark:text-sky-400",
-  amber: "bg-amber-500/10 text-amber-600 ring-amber-500/20 dark:text-amber-400",
+  emerald: "bg-success/10 text-success ring-success/20",
+  sky: "bg-info/10 text-info ring-info/20",
+  amber: "bg-warning/10 text-warning ring-warning/20",
 } as const
 
 /** A layered KPI tile with a brand-tinted icon chip, hover lift, and entrance. */
@@ -62,7 +62,7 @@ function StatTile({
         <p
           className={cn(
             "text-2xl font-semibold tabular-nums",
-            emphasize ? "text-amber-600 dark:text-amber-400" : "text-foreground",
+            emphasize ? "text-warning" : "text-foreground",
           )}
         >
           {value}
@@ -142,7 +142,7 @@ export function OverviewTab({
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Warning className="h-5 w-5 text-amber-500" weight="duotone" aria-hidden />
+            <Warning className="h-5 w-5 text-warning" weight="duotone" aria-hidden />
             <CardTitle>{SURFACE_COPY.learningAdmin.knowledgeGapsTitle}</CardTitle>
           </div>
           <CardDescription>
@@ -185,7 +185,7 @@ export function OverviewTab({
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Stack className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
+            <Stack className="h-5 w-5 text-success" weight="duotone" aria-hidden />
             <CardTitle>{SURFACE_COPY.learningAdmin.queryClustersTitle}</CardTitle>
           </div>
           <CardDescription>Recurring question themes from real usage. Useful for training and docs.</CardDescription>
@@ -225,7 +225,7 @@ export function OverviewTab({
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
+            <BookOpen className="h-5 w-5 text-success" weight="duotone" aria-hidden />
             <CardTitle>Company glossary</CardTitle>
           </div>
           <CardDescription>
@@ -272,7 +272,7 @@ export function OverviewTab({
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <ChatCircleDots className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
+            <ChatCircleDots className="h-5 w-5 text-success" weight="duotone" aria-hidden />
             <CardTitle>Recent unanswered searches</CardTitle>
           </div>
           <CardDescription>Latest questions that did not find a good answer, before they form a theme.</CardDescription>

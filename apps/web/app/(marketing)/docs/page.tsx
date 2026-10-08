@@ -102,7 +102,7 @@ export default function DocsPage() {
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
           <Link
             href="/docs/getting-started/quickstart"
-            className="rounded-full bg-foreground px-5 py-2.5 font-medium text-white transition-colors hover:bg-foreground/90"
+            className="rounded-full bg-foreground px-5 py-2.5 font-medium text-background transition-colors hover:bg-foreground/90"
           >
             Start here
           </Link>
@@ -154,7 +154,7 @@ export default function DocsPage() {
                 <Link
                   key={link.title}
                   href={link.href}
-                  className="group block rounded-xl border border-border bg-gray-50 p-5 transition-all hover:border-primary/30 hover:bg-white"
+                  className="group block rounded-xl border border-border bg-muted p-5 transition-all hover:border-primary/30 hover:bg-card"
                 >
                   <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
                     <Icon className="h-5 w-5" />
@@ -217,7 +217,7 @@ export default function DocsPage() {
                 <Link
                   key={section.title}
                   href={href}
-                  className="group flex flex-col rounded-xl border border-border bg-gray-50 p-5 transition-all hover:border-primary/30 hover:bg-white"
+                  className="group flex flex-col rounded-xl border border-border bg-muted p-5 transition-all hover:border-primary/30 hover:bg-card"
                 >
                   <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
                     <Icon className="h-5 w-5" />

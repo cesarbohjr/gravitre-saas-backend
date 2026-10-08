@@ -283,7 +283,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+          className="absolute inset-0 bg-[color:var(--overlay)] backdrop-blur-sm"
           onClick={handleClose}
         />
         <motion.div
@@ -300,7 +300,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
               <X className="h-4 w-4 text-muted-foreground" />
             </button>
             <div className="h-14 w-14 rounded-[10px] bg-gradient-to-br from-[color:var(--g-emerald)] to-[color:var(--g-emerald-deep)] flex items-center justify-center mb-4">
-              <Blocks className="h-7 w-7 text-white" />
+              <Blocks className="h-7 w-7 text-brand-foreground" />
             </div>
             <h2 className="text-xl font-semibold text-foreground">
               Meson is available in Control and Command
@@ -317,7 +317,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
               {["Create agents automatically", "Generate training structures", "Build workflows in seconds", "Deploy immediately"].map((benefit, i) => (
                 <li key={i} className="flex items-center gap-3">
                   <div className="h-5 w-5 rounded-full bg-gradient-to-br from-[color:var(--g-emerald)] to-[color:var(--g-emerald-deep)] flex items-center justify-center">
-                    <Check className="h-3 w-3 text-white" />
+                    <Check className="h-3 w-3 text-brand-foreground" />
                   </div>
                   <span className="text-sm text-foreground">{benefit}</span>
                 </li>
@@ -360,7 +360,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-[color:var(--overlay)] backdrop-blur-sm"
         onClick={handleClose}
       />
 
@@ -534,7 +534,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                             "h-5 w-5 rounded-full border flex items-center justify-center",
                             isSelected ? "border-[color:var(--g-emerald)] bg-[color:var(--g-emerald)]" : "border-border"
                           )}>
-                            {isSelected && <Check className="h-3 w-3 text-white" />}
+                            {isSelected && <Check className="h-3 w-3 text-brand-foreground" />}
                           </div>
                         </button>
                       )
@@ -581,7 +581,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                             "h-5 w-5 rounded-full border flex items-center justify-center",
                             isSelected ? "border-[color:var(--g-emerald)] bg-[color:var(--g-emerald)]" : "border-border"
                           )}>
-                            {isSelected && <Check className="h-3 w-3 text-white" />}
+                            {isSelected && <Check className="h-3 w-3 text-brand-foreground" />}
                           </div>
                         </div>
                         <p className="text-xs text-muted-foreground">{output.description}</p>
@@ -684,15 +684,15 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                       <div className={cn(
                         "h-6 w-6 rounded-full flex items-center justify-center",
                         i < generationStep 
-                          ? "bg-emerald-500" 
+                          ? "bg-success" 
                           : i === generationStep 
                             ? "bg-[color:var(--g-emerald)] animate-pulse" 
                             : "bg-secondary"
                       )}>
                         {i < generationStep ? (
-                          <Check className="h-3 w-3 text-white" />
+                          <Check className="h-3 w-3 text-success-foreground" />
                         ) : i === generationStep ? (
-                          <Loader2 className="h-3 w-3 text-white animate-spin" />
+                          <Loader2 className="h-3 w-3 text-brand-foreground animate-spin" />
                         ) : (
                           <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
                         )}
@@ -717,8 +717,8 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                 className="space-y-6"
               >
                 <div className="text-center">
-                  <div className="h-16 w-16 mx-auto rounded-[10px] bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-4">
-                    <Check className="h-8 w-8 text-emerald-400" />
+                  <div className="h-16 w-16 mx-auto rounded-[10px] bg-success/10 border border-success/20 flex items-center justify-center mb-4">
+                    <Check className="h-8 w-8 text-success" />
                   </div>
                   <h3 className="text-xl font-semibold text-foreground mb-1">System generated</h3>
                   <p className="text-sm text-muted-foreground">
@@ -731,8 +731,8 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                   {/* Agent */}
                   <div className="rounded-xl border border-border bg-secondary/30 p-4">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                        <Bot className="h-4 w-4 text-blue-400" />
+                      <div className="h-8 w-8 rounded-lg bg-info/10 flex items-center justify-center">
+                        <Bot className="h-4 w-4 text-info" />
                       </div>
                       <div>
                         <p className="text-sm font-medium text-foreground">Agent Configuration</p>
@@ -752,8 +752,8 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                   {/* Training */}
                   <div className="rounded-xl border border-border bg-secondary/30 p-4">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                        <FileText className="h-4 w-4 text-amber-400" />
+                      <div className="h-8 w-8 rounded-lg bg-warning/10 flex items-center justify-center">
+                        <FileText className="h-4 w-4 text-warning" />
                       </div>
                       <div>
                         <p className="text-sm font-medium text-foreground">Training Structure</p>
@@ -792,8 +792,8 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                   {/* Sample Outputs */}
                   <div className="rounded-xl border border-border bg-secondary/30 p-4">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                        <Zap className="h-4 w-4 text-emerald-400" />
+                      <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center">
+                        <Zap className="h-4 w-4 text-success" />
                       </div>
                       <div>
                         <p className="text-sm font-medium text-foreground">Sample Outputs</p>
@@ -803,7 +803,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                     <div className="space-y-1">
                       {generatedResult.generatedConfig.sampleOutputs.map((item, i) => (
                         <p key={i} className="text-xs text-muted-foreground flex items-center gap-2">
-                          <Check className="h-3 w-3 text-emerald-500" />
+                          <Check className="h-3 w-3 text-success" />
                           {item}
                         </p>
                       ))}
@@ -863,7 +863,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                   size="sm" 
                   onClick={handleDeploy}
                   disabled={isDeploying}
-                  className="bg-emerald-600 hover:bg-emerald-500"
+                  className="bg-success hover:bg-success/90"
                 >
                   {isDeploying ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

@@ -18,7 +18,7 @@ import {
 } from "./report-model"
 
 const LINK_PRIMARY =
-  "inline-flex min-h-11 items-center rounded-[var(--np-radius-md)] bg-[color:var(--g-brand-active)] px-3 text-sm font-medium text-white hover:bg-[color:var(--g-brand-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9"
+  "inline-flex min-h-11 items-center rounded-[var(--np-radius-md)] bg-[color:var(--g-brand-active)] px-3 text-sm font-medium text-primary-foreground hover:bg-[color:var(--g-brand-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9"
 const LINK_OUTLINE =
   "inline-flex min-h-11 items-center rounded-[var(--np-radius-md)] border border-[color:var(--g-border-default)] bg-background px-3 text-sm font-medium text-foreground hover:border-[color:var(--g-border-strong)] hover:bg-[color:var(--g-surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9"
 
@@ -104,7 +104,7 @@ export function EvidenceTrail({
                         className={cn(
                           "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold tabular-nums",
                           step.present
-                            ? "border-[color:var(--g-brand-active)] bg-[color:var(--g-brand-active)] text-white"
+                            ? "border-[color:var(--g-brand-active)] bg-[color:var(--g-brand-active)] text-primary-foreground"
                             : "border-[color:var(--g-border-strong)] bg-[color:var(--g-surface-1)] text-[color:var(--g-text-muted)]",
                         )}
                       >

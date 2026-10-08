@@ -28,7 +28,7 @@ type FilterKey = "all" | "active" | "needs_data" | "roadmap"
 
 function toneDot(tone: ReturnType<typeof statusTone>): string {
   if (tone === "ready") return "bg-primary"
-  if (tone === "learning") return "bg-[oklch(0.65_0.14_250)]"
+  if (tone === "learning") return "bg-info"
   if (tone === "off") return "bg-muted-foreground/40"
   return "bg-muted-foreground/50"
 }

@@ -329,6 +329,7 @@ export default function MarketplaceAdminPage() {
             </div>
             {!data ? null : pending.length === 0 ? (
               <GravitreEmpty
+                illustration="moment-all-clear"
                 className="border-0 shadow-none"
                 title="No submissions awaiting review"
                 hint="Partner packages appear here when submitted for certification."
@@ -416,6 +417,7 @@ export default function MarketplaceAdminPage() {
             ) : null}
             {!registry ? null : published.length === 0 ? (
               <GravitreEmpty
+                illustration="moment-focus-time"
                 className="border-0 shadow-none"
                 title="No published partner connectors yet"
                 hint="Approved submissions appear in the org catalog registry."

@@ -78,11 +78,11 @@ function GovernedExecutionFieldImpl({ className }: { className?: string }) {
       }
     >
       {reduced ? (
-        <div className="rounded-2xl border border-divide bg-white p-5" data-testid="gov-reduced">
+        <div className="rounded-2xl border border-divide bg-card p-5" data-testid="gov-reduced">
           <ReducedModel />
         </div>
       ) : (
-        <div className="rounded-2xl border border-divide bg-white p-4 md:p-6" data-testid="gov-desktop">
+        <div className="rounded-2xl border border-divide bg-card p-4 md:p-6" data-testid="gov-desktop">
           <p className="text-center text-sm text-[color:var(--g-text-secondary)]">{ILLUSTRATIVE_CONTEXT}</p>
 
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2 md:gap-3">
@@ -94,21 +94,21 @@ function GovernedExecutionFieldImpl({ className }: { className?: string }) {
                   <div
                     className={cn(
                       "min-w-[4.5rem] rounded-xl border px-2.5 py-2 text-center",
-                      on && !waiting && "border-[color:var(--color-brand,#16a374)]",
-                      on && waiting && isApproval && "border-amber-400 bg-amber-50",
+                      on && !waiting && "border-brand",
+                      on && waiting && isApproval && "border-warning/60 bg-warning/10",
                       !on && "border-divide opacity-60",
                     )}
                     data-testid={`gov-stage-${stage.id}`}
                     data-lit={on ? "1" : "0"}
                   >
                     {isApproval && waiting ? (
-                      <NucleoApproval className="mx-auto h-3.5 w-3.5 text-amber-700" aria-hidden />
+                      <NucleoApproval className="mx-auto h-3.5 w-3.5 text-warning-text" aria-hidden />
                     ) : null}
                     <p
                       className={cn(
                         "text-[11px] font-semibold",
                         on ? "text-[color:var(--g-text-secondary)]" : "text-[color:var(--g-text-muted)]",
-                        waiting && isApproval && "text-amber-800",
+                        waiting && isApproval && "text-warning-text",
                       )}
                     >
                       {stage.label}
@@ -142,7 +142,7 @@ function GovernedExecutionFieldImpl({ className }: { className?: string }) {
               aria-hidden
               data-testid="gov-trail"
             >
-              <line x1="4" y1="4" x2="196" y2="4" stroke="#16a374" strokeWidth="2" strokeLinecap="round" />
+              <line x1="4" y1="4" x2="196" y2="4" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" />
             </svg>
           ) : null}
         </div>

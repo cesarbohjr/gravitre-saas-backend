@@ -60,7 +60,7 @@ export function NodusGraphNodeTile({
     <div className={cn("flex max-w-[8.5rem] flex-col items-center gap-1.5", className)}>
       <div
         className={cn(
-          "relative shrink-0 overflow-hidden rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-px shadow-[0_12px_30px_-26px_rgba(16,24,22,.65)]",
+          "relative shrink-0 overflow-hidden rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-px shadow-[0_12px_30px_-26px_color-mix(in_srgb,var(--g-carbon)_65%,transparent)]",
           box,
           selected && "ring-2 ring-[color:var(--g-brand)] ring-offset-1",
           active && "ring-1 ring-[color:var(--g-emerald)]",

@@ -505,7 +505,7 @@ function AppShellFrame({ children, title, fillViewport, persistent = false }: Ap
               <button 
                 onClick={handleDismissTrialBanner} 
                 aria-label="Dismiss trial banner"
-                className="p-1 hover:bg-black/5 rounded transition-colors"
+                className="p-1 hover:bg-foreground/5 rounded transition-colors"
               >
                 <NucleoClose size={16} />
               </button>

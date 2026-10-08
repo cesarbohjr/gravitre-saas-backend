@@ -48,7 +48,7 @@ export function DocsShell({
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
-          className="fixed bottom-5 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-lg"
+          className="fixed bottom-5 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-popover px-4 py-2.5 text-sm font-medium text-foreground shadow-lg"
         >
           <Menu className="h-4 w-4" />
           Menu
@@ -59,15 +59,15 @@ export function DocsShell({
               type="button"
               aria-label="Close menu"
               onClick={() => setDrawerOpen(false)}
-              className="absolute inset-0 bg-zinc-900/40"
+              className="absolute inset-0 bg-[color:var(--overlay)]"
             />
-            <div className="relative z-10 h-full w-80 max-w-[85vw] overflow-y-auto bg-white shadow-xl">
-              <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
-                <span className="text-sm font-semibold text-zinc-900">Documentation</span>
+            <div className="relative z-10 h-full w-80 max-w-[85vw] overflow-y-auto bg-popover shadow-xl">
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                <span className="text-sm font-semibold text-foreground">Documentation</span>
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(false)}
-                  className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+                  className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                   aria-label="Close"
                 >
                   <X className="h-5 w-5" />

@@ -51,10 +51,10 @@ export function AdvisorBriefPanel({ brief }: { brief: AdvisorBrief | null | unde
   const actions = brief.recommended_actions ?? []
 
   return (
-    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+    <div className="rounded-xl border border-brand/20 bg-brand/5 px-4 py-3">
       <div className="mb-2 flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
+        <Sparkles className="h-4 w-4 text-brand-text" />
+        <p className="text-xs font-semibold uppercase tracking-wide text-brand-text">
           Advisor brief{brief.department ? ` · ${brief.department}` : ""}
         </p>
         {brief.confidence != null ? (

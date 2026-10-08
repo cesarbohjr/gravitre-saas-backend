@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { STATUS, STATUS_DOT } from "@/lib/design-system"
+import { Illustration } from "@/components/gravitre/illustration"
 import {
   Workflow as WorkflowIcon,
   Plus,
@@ -108,7 +109,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                <Sparkles className="h-4 w-4 text-emerald-500" />
+                <Sparkles className="h-4 w-4 text-success" />
                 Action readiness
               </CardTitle>
               {actions.length > 0 ? (
@@ -125,9 +126,12 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
           </CardHeader>
           <CardContent>
             {actions.length === 0 ? (
-              <p className="py-6 text-center text-xs text-muted-foreground">
-                No catalog actions are published for this vendor yet.
-              </p>
+              <div className="py-6 text-center">
+                <Illustration name="moment-focus-time" width={130} className="mx-auto mb-3" />
+                <p className="text-xs text-muted-foreground">
+                  No catalog actions are published for this vendor yet.
+                </p>
+              </div>
             ) : (
               <div className="max-h-72 space-y-1.5 overflow-auto pr-1">
                 {actions.map((action) => (
@@ -137,9 +141,9 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
                   >
                     <div className="flex min-w-0 items-center gap-2">
                       {action.chatExecutable ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" />
                       ) : action.implemented ? (
-                        <CircleDashed className="h-3.5 w-3.5 shrink-0 text-sky-500" />
+                        <CircleDashed className="h-3.5 w-3.5 shrink-0 text-info" />
                       ) : (
                         <CircleDashed className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       )}
@@ -164,7 +168,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
                           asChild
                           variant="ghost"
                           size="sm"
-                          className="h-6 gap-1 px-1.5 text-[10px] text-emerald-600 hover:text-emerald-700"
+                          className="h-6 gap-1 px-1.5 text-[10px] text-success hover:text-success/80"
                         >
                           <Link
                             href={`/workflows/new/builder?vendor=${encodeURIComponent(vendor)}&action=${encodeURIComponent(action.tool)}`}
@@ -187,7 +191,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                <WorkflowIcon className="h-4 w-4 text-sky-500" />
+                <WorkflowIcon className="h-4 w-4 text-info" />
                 Used in workflows
               </CardTitle>
               <span className="text-xs text-muted-foreground">
@@ -199,6 +203,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
           <CardContent>
             {linkedWorkflows.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-6 text-center">
+                <Illustration name="moment-welcome" width={130} />
                 <p className="text-xs text-muted-foreground">No workflows use this connector yet.</p>
                 {chatReadyCount + workflowOnlyCount > 0 ? (
                   <Button asChild variant="outline" size="sm" className="gap-1.5">
@@ -240,7 +245,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+              <Sparkles className="h-4 w-4 text-primary" />
               Starter workflows
             </CardTitle>
             <CardDescription className="text-xs">
@@ -278,7 +283,7 @@ export function ConnectorLinkage({ vendor, connectorStatus, catalog, workflows }
                       asChild
                       variant="ghost"
                       size="sm"
-                      className="h-6 gap-1 px-1.5 text-[10px] text-emerald-600 hover:text-emerald-700"
+                      className="h-6 gap-1 px-1.5 text-[10px] text-success hover:text-success/80"
                     >
                       <Link
                         href={`/workflows/new/builder?vendor=${encodeURIComponent(vendor)}&demo=${encodeURIComponent(demo.id)}`}

@@ -9,6 +9,7 @@ import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitreEmpty } from "@/components/gravitre/nodus-product"
+import { Illustration } from "@/components/gravitre/illustration"
 import { Button } from "@/components/ui/button"
 import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
@@ -288,8 +289,10 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
       <DetailShell>
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-[var(--np-page-pad-sm)] pt-4 sm:px-[var(--np-page-pad)]">
           <BackLink />
+          <div className="flex flex-col items-center pt-6">
+          <Illustration name="moment-error" width={170} className="mx-auto" />
           <GravitreEmpty
-            icon={<Icon name="warning" size="lg" />}
+            className="w-full border-0 pt-4 shadow-none"
             title="Assignment not found"
             hint={loadError instanceof Error ? loadError.message : "This assignment could not be loaded."}
             action={
@@ -298,6 +301,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
               </Button>
             }
           />
+          </div>
         </div>
       </DetailShell>
     )

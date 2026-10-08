@@ -20,8 +20,8 @@ export function MetricProvenanceBadge({
       variant="outline"
       className={cn(
         "text-xs font-normal font-medium",
-        kind === "estimate" ? "border-amber-500/30 text-amber-600 dark:text-amber-400" : "",
-        kind === "measured" ? "border-emerald-500/30 text-emerald-700 dark:text-emerald-400" : "",
+        kind === "estimate" ? "border-warning/30 text-warning" : "",
+        kind === "measured" ? "border-success/30 text-success" : "",
         className,
       )}
     >

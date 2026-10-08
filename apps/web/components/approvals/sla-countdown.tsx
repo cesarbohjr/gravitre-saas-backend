@@ -45,7 +45,7 @@ export function ApprovalSlaCountdown({
         "inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium tabular-nums",
         breached
           ? "bg-destructive/10 text-destructive border border-destructive/20"
-          : "bg-amber-500/10 text-amber-600 border border-amber-500/20",
+          : "bg-warning/10 text-warning border border-warning/20",
         className,
       )}
     >

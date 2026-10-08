@@ -19,6 +19,7 @@ import {
   AlertTriangle,
 } from "lucide-react"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
+import { Illustration } from "@/components/gravitre/illustration"
 import { cn } from "@/lib/utils"
 import { ModelSelector } from "@/components/gravitre/model-selector"
 import { AgentReferenceFoldersEditor } from "@/components/agents/agent-reference-folders-editor"
@@ -241,9 +242,9 @@ export default function NewAgentPage() {
                   <div className={cn(
                     "flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors",
                     currentStep === step.id
-                      ? "bg-[color:var(--g-emerald)] text-white ring-2 ring-[color:var(--g-emerald)]/15"
+                      ? "bg-[color:var(--g-emerald)] text-primary-foreground ring-2 ring-[color:var(--g-emerald)]/15"
                       : currentStep > step.id
-                        ? "bg-[color:var(--g-emerald-deep)] text-white"
+                        ? "bg-[color:var(--g-emerald-deep)] text-[color:var(--g-bone)]"
                         : "bg-[color:var(--g-surface-2)] text-muted-foreground"
                   )}>
                     {currentStep > step.id ? <Check className="h-4 w-4" /> : step.id}
@@ -433,9 +434,12 @@ export default function NewAgentPage() {
                       Could not load connected apps. You can continue; the agent will use every connected app.
                     </p>
                   ) : availableSystems.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No apps are connected yet. Connect one to give this agent tools, or continue and add apps later.
-                    </p>
+                    <div className="py-2 text-center">
+                      <Illustration name="moment-welcome" width={130} className="mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground">
+                        No apps are connected yet. Connect one to give this agent tools, or continue and add apps later.
+                      </p>
+                    </div>
                   ) : null}
                   {availableSystems.map((sys) => {
                     const isSelected = selectedSystems.includes(sys.id)

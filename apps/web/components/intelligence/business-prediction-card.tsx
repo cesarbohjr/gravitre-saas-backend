@@ -93,7 +93,7 @@ export function BusinessPredictionCard({ prediction }: { prediction: BusinessPre
           </p>
         ) : null}
         {prediction.qualityNotes.length > 0 ? (
-          <p className={cn(TYPE.meta, "text-amber-700 dark:text-amber-400")}>
+          <p className={cn(TYPE.meta, "text-warning")}>
             {prediction.qualityNotes.join(" · ")}
           </p>
         ) : null}

@@ -70,8 +70,8 @@ export function DocsSearch({
 
   return (
     <div className="relative w-full">
-      <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm transition-colors focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-100">
-        <Search className="h-5 w-5 shrink-0 text-zinc-400" aria-hidden="true" />
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm transition-colors focus-within:border-brand focus-within:ring-2 focus-within:ring-brand-soft">
+        <Search className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
         <input
           type="text"
           value={query}
@@ -87,7 +87,7 @@ export function DocsSearch({
           }}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
-          className="w-full bg-transparent text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none"
+          className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
           role="combobox"
           aria-expanded={showDropdown}
           aria-controls="docs-search-results"
@@ -99,13 +99,13 @@ export function DocsSearch({
         <div
           id="docs-search-results"
           role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl"
+          className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-border bg-popover shadow-xl"
           onMouseDown={() => {
             if (blurTimer.current) clearTimeout(blurTimer.current)
           }}
         >
           {results.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-zinc-500">
+            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
               No results for &ldquo;{query.trim()}&rdquo;
             </p>
           ) : (
@@ -119,17 +119,17 @@ export function DocsSearch({
                     onMouseEnter={() => setActive(i)}
                     onClick={() => go(item.slug)}
                     className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors ${
-                      i === active ? "bg-emerald-50" : "hover:bg-zinc-50"
+                      i === active ? "bg-brand-soft" : "hover:bg-surface-hover"
                     }`}
                   >
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-zinc-900">
+                      <span className="block truncate text-sm font-medium text-foreground">
                         {item.title}
                       </span>
-                      <span className="block truncate text-xs text-zinc-500">{item.category}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{item.category}</span>
                     </span>
                     {i === active && (
-                      <CornerDownLeft className="h-3.5 w-3.5 shrink-0 text-emerald-500" aria-hidden="true" />
+                      <CornerDownLeft className="h-3.5 w-3.5 shrink-0 text-brand" aria-hidden="true" />
                     )}
                   </button>
                 </li>

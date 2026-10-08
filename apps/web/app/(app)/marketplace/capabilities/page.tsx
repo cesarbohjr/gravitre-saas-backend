@@ -29,6 +29,7 @@ import type { MCPAdminServer } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { toast } from "sonner"
+import { Illustration } from "@/components/gravitre/illustration"
 
 function riskLabel(value?: string) {
   if (!value) return "Unknown"
@@ -968,7 +969,8 @@ export default function CapabilityMarketplacePage() {
               </div>
 
               {communityCatalog.error ? (
-                <div className="rounded border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+                <div className="rounded border border-destructive/30 bg-destructive/5 p-3 text-center text-xs text-destructive">
+                  <Illustration name="moment-error" width={130} className="mx-auto mb-3" />
                   Official catalog discovery is temporarily unavailable.
                   Installed and staged capabilities remain unaffected.
                 </div>
@@ -1020,7 +1022,7 @@ export default function CapabilityMarketplacePage() {
                     </p>
                   ) : communityItems.length === 0 ? (
                     <GravitreEmpty
-                      icon={<Package className="h-5 w-5" />}
+                      illustration="moment-focus-time"
                       title={
                         normalizedCommunitySearch
                           ? "No official skills or plugins match your search"
@@ -1062,7 +1064,7 @@ export default function CapabilityMarketplacePage() {
                   )}
 
                   {(communityCatalog.data?.errors ?? []).length ? (
-                    <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                    <p className="text-[11px] text-warning">
                       Some official sources could not be refreshed. Gravitre did
                       not substitute unverified community sources.
                     </p>
@@ -1314,13 +1316,14 @@ export default function CapabilityMarketplacePage() {
                 </div>
               </div>
               {packages.error ? (
-                <div className="p-4 text-sm text-destructive">
+                <div className="p-4 text-center text-sm text-destructive">
+                  <Illustration name="moment-error" width={140} className="mx-auto mb-3" />
                   Could not load installed capabilities.
                 </div>
               ) : packageRows.length === 0 ? (
                 <div className="p-4">
                   <GravitreEmpty
-                    icon={<Package className="h-5 w-5" />}
+                    illustration="moment-welcome"
                     title="No portable capabilities installed"
                     hint="Inspect a package first, then install only what passes your organization policy."
                   />
@@ -1328,7 +1331,7 @@ export default function CapabilityMarketplacePage() {
               ) : filteredPackageRows.length === 0 ? (
                 <div className="p-4">
                   <GravitreEmpty
-                    icon={<Package className="h-5 w-5" />}
+                    illustration="moment-focus-time"
                     title="No matching capabilities"
                     hint="Try another capability type filter."
                   />
@@ -1355,7 +1358,7 @@ export default function CapabilityMarketplacePage() {
                             )}
                           </span>
                           {item.publisher_verified ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
+                            <span className="inline-flex items-center gap-1 text-xs text-success">
                               <CheckCircle2
                                 className="h-3.5 w-3.5"
                                 aria-hidden
@@ -1363,7 +1366,7 @@ export default function CapabilityMarketplacePage() {
                               Verified Marketplace publisher
                             </span>
                           ) : item.publisher_trusted ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
+                            <span className="inline-flex items-center gap-1 text-xs text-success">
                               <ShieldCheck
                                 className="h-3.5 w-3.5"
                                 aria-hidden
@@ -1788,7 +1791,7 @@ export default function CapabilityMarketplacePage() {
             {bindablePackages.length === 0 ? (
               <div className="mt-4">
                 <GravitreEmpty
-                  icon={<Package className="h-5 w-5" />}
+                  illustration="moment-focus-time"
                   title="No native-bindable declarations"
                   hint="Installed packages with agent, play, template, or trigger declarations will appear here."
                 />
@@ -1972,13 +1975,14 @@ export default function CapabilityMarketplacePage() {
                 </Button>
               </div>
               {packageVersions.error ? (
-                <div className="p-4 text-sm text-destructive">
+                <div className="p-4 text-center text-sm text-destructive">
+                  <Illustration name="moment-error" width={130} className="mx-auto mb-3" />
                   Could not load capability versions.
                 </div>
               ) : (packageVersions.data?.items ?? []).length === 0 ? (
                 <div className="p-4">
                   <GravitreEmpty
-                    icon={<Package className="h-5 w-5" />}
+                    illustration="moment-focus-time"
                     title="No version snapshots yet"
                     hint="A snapshot is recorded when this capability is installed or updated."
                   />
@@ -2047,7 +2051,7 @@ export default function CapabilityMarketplacePage() {
               {portableMcpServers.length === 0 ? (
                 <div className="p-4">
                   <GravitreEmpty
-                    icon={<ShieldCheck className="h-5 w-5" />}
+                    illustration="moment-focus-time"
                     title="No prepared MCP dependencies"
                     hint="Use Prepare MCP on an installed capability that declares remote MCP servers."
                   />
@@ -2273,7 +2277,7 @@ export default function CapabilityMarketplacePage() {
             {candidateRows.length === 0 ? (
               <div className="p-4">
                 <GravitreEmpty
-                  icon={<ShieldCheck className="h-5 w-5" />}
+                  illustration="moment-all-clear"
                   title="No capability candidates"
                   hint="Sync a Git marketplace to discover skills and plugins for review."
                 />

@@ -21,7 +21,7 @@ export const aiAgentBestPracticesPost: BlogPost = {
   displayDate: "February 20, 2026",
   readTime: "11 min read",
   heroImage: "/images/blog/ai-agent-best-practices-hero.png",
-  heroGradient: "from-stone-100 via-muted/50 to-primary/10/30",
+  heroGradient: "from-muted via-muted/50 to-primary/10/30",
   heroAlt:
     "Editorial poster with a large numeral 10 and the practices Scope, Connect, Approve, and Prove.",
   keywords: [

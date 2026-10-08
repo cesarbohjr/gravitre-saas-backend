@@ -94,7 +94,7 @@ function LogoCell({
     >
       <div
         className={cn(
-          "rounded-xl border border-border bg-zinc-50 p-2.5 shadow-[var(--g-shadow-surface)] transition-transform duration-[var(--g-duration-state)]",
+          "rounded-xl border border-border bg-[color:var(--g-marketing-surface)] p-2.5 shadow-[var(--g-shadow-surface)] transition-transform duration-[var(--g-duration-state)]",
           hoverable && "group-hover:scale-110 group-hover:border-primary/50 group-hover:shadow-[var(--g-glow-operational)]",
         )}
       >

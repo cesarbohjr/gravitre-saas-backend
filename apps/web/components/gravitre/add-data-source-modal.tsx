@@ -305,7 +305,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
                         showStatusIndicator={false}
                         icon={
                           useBrandLogo ? undefined : (
-                            <FallbackIcon className="h-[55%] w-[55%] text-zinc-500" />
+                            <FallbackIcon className="h-[55%] w-[55%] text-muted-foreground" />
                           )
                         }
                       />
@@ -413,16 +413,16 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
             )}
 
             {testError && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-600 dark:text-red-400">
+              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-center text-sm text-danger-text">
                 {testError}
               </div>
             )}
 
             {testResult?.success && (
-              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
+              <div className="rounded-lg border border-success/30 bg-success/10 p-4">
                 <div className="text-center">
-                  <Check className="mx-auto mb-2 h-8 w-8 text-emerald-500" />
-                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                  <Check className="mx-auto mb-2 h-8 w-8 text-success" />
+                  <p className="text-sm font-medium text-success-text">
                     {testResult.message ?? "Connection successful"}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -432,7 +432,7 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
                   </p>
                 </div>
                 {testResult.suggestions?.length ? (
-                  <div className="mt-4 border-t border-emerald-500/20 pt-3">
+                  <div className="mt-4 border-t border-success/20 pt-3">
                     <p className="mb-2 text-xs font-semibold text-muted-foreground">
                       Suggested questions after connect
                     </p>

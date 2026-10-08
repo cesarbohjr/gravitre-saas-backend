@@ -50,9 +50,9 @@ export const HorizontalLine = (props: React.SVGProps<SVGSVGElement>) => {
           }}
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="#EAEDF1" />
-          <stop offset="0.5" stopColor="var(--color-blue-500)" />
-          <stop offset="1" stopColor="#EAEDF1" />
+          <stop stopColor="var(--line)" />
+          <stop offset="0.5" stopColor="var(--info)" />
+          <stop offset="1" stopColor="var(--line)" />
         </motion.linearGradient>
       </defs>
     </svg>

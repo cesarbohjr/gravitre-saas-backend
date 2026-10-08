@@ -23,7 +23,7 @@ export function IntegrationsGrid(_props: { theme?: "light" | "dark" } = {}) {
           className="group flex flex-col items-center justify-center gap-3"
         >
           <ConnectorIcon vendor={name} size="md" showStatusIndicator={false} forceLight />
-          <span className="max-w-full truncate text-center text-xs font-medium text-zinc-500 transition-colors group-hover:text-zinc-900">
+          <span className="max-w-full truncate text-center text-xs font-medium text-muted-foreground transition-colors group-hover:text-foreground">
             {name}
           </span>
         </div>

@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Illustration } from "@/components/gravitre/illustration"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Icon } from "@/lib/icons"
@@ -129,6 +130,7 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
   if (!agent) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+        <Illustration name={agentError ? "moment-error" : "moment-focus-time"} width={160} />
         {agentError ? <WorkSectionErrorCard title="Could not load agent" error={agentError} onRetry={() => void mutateAgent()} /> : null}
         <p className="text-sm text-muted-foreground">Agent not found or you don&apos;t have access.</p>
         <Button asChild variant="outline" size="sm">
@@ -168,7 +170,7 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
         <GravitreMetric
           label="Knowledge health"
           value={workspace.summary.healthLabel}
-          className={kpiTone === "emerald" ? "text-emerald-600" : undefined}
+          className={kpiTone === "emerald" ? "text-success" : undefined}
         />
         <GravitreMetric label="Last sync" value={workspace.summary.lastSyncLabel} />
       </section>
@@ -214,6 +216,8 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
             <div className="space-y-3">
               {instructionsError ? <WorkSectionErrorCard title="Could not refresh instructions" error={instructionsError} onRetry={() => void mutateInstructions()} /> : null}
               {instructionsLoading ? <p className="text-sm text-muted-foreground">Loading instructions…</p> : !instructionsError && instructions.length === 0 ? (
+                <div>
+                <Illustration name="moment-welcome" width={130} className="mb-3" />
                 <p className="text-sm text-muted-foreground">
                   No custom instructions yet.{" "}
                   <Link href="/training" className="underline underline-offset-2">
@@ -221,6 +225,7 @@ function AgentKnowledgePageBody({ agentId }: { agentId: string }) {
                   </Link>
                   .
                 </p>
+                </div>
               ) : (
                 instructions.map((instruction) => (
                   <div

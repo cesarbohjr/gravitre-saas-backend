@@ -73,8 +73,8 @@ export const Card = ({
       className={cn("relative h-full text-xs", className)}
       ref={ref}
     >
-      <div className="absolute inset-0 z-10 m-auto h-full w-full rounded-lg border border-(--pattern-fg) bg-white bg-[image:repeating-linear-gradient(315deg,_var(--pattern-fg)_0,_var(--pattern-fg)_1px,_transparent_0,_transparent_50%)] bg-[size:10px_10px] bg-fixed dark:bg-neutral-900"></div>
-      <div className="absolute inset-x-0 -top-1.5 mx-auto size-3 rounded-full border-2 border-gray-300 bg-white dark:border-neutral-700 dark:bg-neutral-900"></div>
+      <div className="absolute inset-0 z-10 m-auto h-full w-full rounded-lg border border-(--pattern-fg) bg-card bg-[image:repeating-linear-gradient(315deg,_var(--pattern-fg)_0,_var(--pattern-fg)_1px,_transparent_0,_transparent_50%)] bg-[size:10px_10px] bg-fixed"></div>
+      <div className="absolute inset-x-0 -top-1.5 mx-auto size-3 rounded-full border-2 border-gray-300 bg-card"></div>
 
       <motion.div
         onMouseMove={handleMouseMove}
@@ -83,7 +83,7 @@ export const Card = ({
           translateX,
           translateY,
         }}
-        className="shadow-aceternity relative z-20 flex w-54 shrink-0 flex-col items-start rounded-lg bg-white dark:bg-neutral-900"
+        className="shadow-aceternity relative z-20 flex w-54 shrink-0 flex-col items-start rounded-lg bg-card"
       >
         <div className="flex w-full items-center justify-between p-2 md:p-4">
           <div className="flex items-center gap-2 font-medium">
@@ -97,11 +97,11 @@ export const Card = ({
           className={cn(
             "m-4 rounded-sm border px-2 py-0.5",
             tone === "default" &&
-              "border-blue-500 bg-blue-50 text-blue-500 dark:bg-blue-50/10 dark:text-blue-500",
+              "border-info bg-info/10 text-info",
             tone === "danger" &&
-              "border-rose-500 bg-rose-50 text-rose-600",
+              "border-destructive bg-destructive/10 text-danger-text",
             tone === "success" &&
-              "border-neutral-500 bg-neutral-50 text-neutral-500 dark:bg-neutral-50/10 dark:text-neutral-500",
+              "border-border-control bg-muted/50 text-muted-foreground",
           )}
         >
           {cta}

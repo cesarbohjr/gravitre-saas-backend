@@ -77,11 +77,11 @@ function GibeLearningFieldImpl({ className }: { className?: string }) {
       }
     >
       {reduced ? (
-        <div className="rounded-2xl border border-divide bg-white p-5" data-testid="gibe-reduced">
+        <div className="rounded-2xl border border-divide bg-card p-5" data-testid="gibe-reduced">
           <ReducedModel />
         </div>
       ) : (
-        <div className="rounded-2xl border border-divide bg-white p-4 md:p-6" data-testid="gibe-desktop">
+        <div className="rounded-2xl border border-divide bg-card p-4 md:p-6" data-testid="gibe-desktop">
           <p className="text-center text-sm text-[color:var(--g-text-secondary)]">{ILLUSTRATIVE_CONTEXT}</p>
 
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2 md:gap-3">
@@ -94,9 +94,9 @@ function GibeLearningFieldImpl({ className }: { className?: string }) {
                   <div
                     className={cn(
                       "min-w-[4.25rem] rounded-xl border px-2.5 py-2 text-center",
-                      on && !waiting && !advisory && "border-[color:var(--color-brand,#16a374)]",
-                      on && advisory && isRecommend && "border-[color:var(--g-intelligence)] bg-slate-50",
-                      on && waiting && isApprove && "border-amber-400 bg-amber-50",
+                      on && !waiting && !advisory && "border-brand",
+                      on && advisory && isRecommend && "border-[color:var(--g-intelligence)] bg-[color:var(--g-marketing-surface)]",
+                      on && waiting && isApprove && "border-warning/60 bg-warning/10",
                       !on && "border-divide opacity-60",
                     )}
                     data-testid={`gibe-stage-${stage.id}`}
@@ -106,13 +106,13 @@ function GibeLearningFieldImpl({ className }: { className?: string }) {
                       <NucleoIntelligence className="mx-auto h-3.5 w-3.5 text-[color:var(--g-intelligence)]" aria-hidden />
                     ) : null}
                     {isApprove && waiting ? (
-                      <NucleoApproval className="mx-auto h-3.5 w-3.5 text-amber-700" aria-hidden />
+                      <NucleoApproval className="mx-auto h-3.5 w-3.5 text-warning-text" aria-hidden />
                     ) : null}
                     <p
                       className={cn(
                         "text-[11px] font-semibold",
                         on ? "text-[color:var(--g-text-secondary)]" : "text-[color:var(--g-text-muted)]",
-                        waiting && isApprove && "text-amber-800",
+                        waiting && isApprove && "text-warning-text",
                       )}
                     >
                       {stage.label}
@@ -147,7 +147,7 @@ function GibeLearningFieldImpl({ className }: { className?: string }) {
                 aria-hidden
                 data-testid="gibe-retain-trail"
               >
-                <line x1="4" y1="4" x2="196" y2="4" stroke="#16a374" strokeWidth="2" strokeLinecap="round" />
+                <line x1="4" y1="4" x2="196" y2="4" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" />
               </svg>
             </div>
           ) : null}

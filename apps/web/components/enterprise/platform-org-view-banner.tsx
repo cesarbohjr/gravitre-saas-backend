@@ -36,10 +36,10 @@ export function PlatformOrgViewBanner() {
   if (!snapshot) return null
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-violet-500/30 bg-violet-500/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-lg border border-info/30 bg-info/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-start gap-3 min-w-0">
-        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-violet-500/10">
-          <Building2 className="h-4 w-4 text-violet-600" />
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-info/10">
+          <Building2 className="h-4 w-4 text-info" />
         </div>
         <div className="min-w-0 space-y-1">
           <p className="text-sm font-medium text-foreground">

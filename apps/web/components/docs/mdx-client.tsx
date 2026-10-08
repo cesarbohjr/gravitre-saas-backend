@@ -45,7 +45,7 @@ export function CodeBlock({
         >
           {copied ? (
             <>
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+              <CheckCircle2 className="h-3.5 w-3.5 text-success" />
               Copied
             </>
           ) : (
@@ -70,27 +70,27 @@ const CALLOUT_STYLES: Record<
   { container: string; title: string; body: string; icon: typeof Info }
 > = {
   tip: {
-    container: "border-emerald-200 bg-emerald-50/70",
-    title: "text-emerald-900",
-    body: "text-emerald-900/90",
+    container: "border-success/30 bg-success/10",
+    title: "text-success-text",
+    body: "text-success-text/90",
     icon: Lightbulb,
   },
   info: {
-    container: "border-zinc-200 bg-zinc-50",
-    title: "text-zinc-900",
-    body: "text-zinc-600",
+    container: "border-info/30 bg-info/10",
+    title: "text-foreground",
+    body: "text-muted-foreground",
     icon: Info,
   },
   warning: {
-    container: "border-amber-200 bg-amber-50/70",
-    title: "text-amber-900",
-    body: "text-amber-900/90",
+    container: "border-warning/30 bg-warning/10",
+    title: "text-warning-text",
+    body: "text-warning-text/90",
     icon: AlertTriangle,
   },
   danger: {
-    container: "border-rose-200 bg-rose-50/70",
-    title: "text-rose-900",
-    body: "text-rose-900/90",
+    container: "border-destructive/30 bg-destructive/10",
+    title: "text-danger-text",
+    body: "text-danger-text/90",
     icon: OctagonAlert,
   },
 }
@@ -135,8 +135,8 @@ export function Tabs({ children }: { children: ReactNode }) {
   if (tabs.length === 0) return null
 
   return (
-    <div className="my-5 overflow-hidden rounded-xl border border-zinc-200">
-      <div role="tablist" className="flex flex-wrap gap-1 border-b border-zinc-200 bg-zinc-50 px-2 py-1.5">
+    <div className="my-5 overflow-hidden rounded-xl border border-border">
+      <div role="tablist" className="flex flex-wrap gap-1 border-b border-border bg-muted px-2 py-1.5">
         {tabs.map((tab, index) => {
           const selected = index === active
           return (
@@ -148,8 +148,8 @@ export function Tabs({ children }: { children: ReactNode }) {
               onClick={() => setActive(index)}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                 selected
-                  ? "bg-white text-emerald-700 shadow-sm"
-                  : "text-zinc-500 hover:text-zinc-900"
+                  ? "bg-card text-brand-text shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {tab.props.label ?? `Tab ${index + 1}`}

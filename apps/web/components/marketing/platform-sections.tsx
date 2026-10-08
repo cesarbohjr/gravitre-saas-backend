@@ -38,7 +38,7 @@ export function GibeDataFlowSection({ compact = false }: { compact?: boolean }) 
         </motion.div>
 
         <div className="relative">
-          <div className="hidden lg:block absolute top-1/2 left-[12%] right-[12%] h-0.5 bg-gradient-to-r from-emerald-200 via-teal-200 to-emerald-200 -translate-y-1/2" />
+          <div className="hidden lg:block absolute top-1/2 left-[12%] right-[12%] h-0.5 bg-gradient-to-r from-brand/25 via-brand/25 to-brand/25 -translate-y-1/2" />
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {copy.steps.map((step, i) => {
               const Icon = flowIcons[i] ?? Database
@@ -75,7 +75,7 @@ export function TransparencyMetricsSection() {
   const copy = MARKETING_COPY.transparencyMetrics
   const tierStyles = [
     "border-primary/20 bg-primary/10/50",
-    "border-amber-200 bg-amber-50/50",
+    "border-warning/30 bg-warning/5",
     "border-border bg-muted/50",
   ]
 
@@ -151,9 +151,9 @@ export function MarketplaceHighlightsSection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2">
-              <Package className="h-4 w-4 text-amber-700" />
-              <span className="text-sm font-medium text-amber-800">{copy.badge}</span>
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-warning/30 bg-warning/10 px-4 py-2">
+              <Package className="h-4 w-4 text-warning-text" />
+              <span className="text-sm font-medium text-warning-text">{copy.badge}</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground text-balance">{copy.title}</h2>
             <p className="mt-4 text-lg text-muted-foreground">{copy.subtitle}</p>
@@ -179,7 +179,7 @@ export function MarketplaceHighlightsSection() {
             <div className="mt-8 flex flex-wrap gap-4">
               <Link
                 href={copy.cta.href}
-                className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-white hover:bg-foreground/90"
+                className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background hover:bg-foreground/90"
               >
                 {copy.cta.label}
                 <ArrowRight className="h-4 w-4" />
@@ -283,9 +283,9 @@ export function GovernanceAiStackSection() {
           viewport={{ once: true }}
           className="mx-auto max-w-3xl text-center mb-12"
         >
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-4 py-2">
-            <Shield className="h-4 w-4 text-rose-600" />
-            <span className="text-sm font-medium text-rose-700">{copy.badge}</span>
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-destructive/30 bg-destructive/10 px-4 py-2">
+            <Shield className="h-4 w-4 text-danger-text" />
+            <span className="text-sm font-medium text-danger-text">{copy.badge}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">{copy.title}</h2>
           <p className="mt-4 text-lg text-muted-foreground">{copy.subtitle}</p>

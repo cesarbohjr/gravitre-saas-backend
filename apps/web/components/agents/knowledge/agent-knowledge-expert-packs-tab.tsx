@@ -6,6 +6,7 @@ import { fetcher } from "@/lib/fetcher"
 import { packAvailabilityLabel } from "@/lib/agent-knowledge-assign"
 import { ExpertPackCard } from "./agent-knowledge-card"
 import type { AgentKnowledgeState } from "./use-agent-knowledge"
+import { Illustration } from "@/components/gravitre/illustration"
 
 type PackRow = {
   pack_id: string
@@ -64,9 +65,12 @@ export function AgentKnowledgeExpertPacksTab({
         />
       ) : null}
       {!error && data && !packs.length ? (
-        <p className="text-sm text-muted-foreground">
-          No expert packs are available in this catalog.
-        </p>
+        <div className="py-6 text-center">
+          <Illustration name="moment-focus-time" width={140} className="mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">
+            No expert packs are available in this catalog.
+          </p>
+        </div>
       ) : null}
       {recommended.length > 0 ? (
         <section className="space-y-3">

@@ -67,7 +67,7 @@ function AuthorAvatar({ name, className = "" }: { name: string; className?: stri
   return (
     <span
       aria-hidden
-      className={`grid place-items-center rounded-full bg-primary font-semibold text-white ${className}`}
+      className={`grid place-items-center rounded-full bg-primary font-semibold text-primary-foreground ${className}`}
     >
       {initials}
     </span>
@@ -270,7 +270,7 @@ export default async function BlogPostPage({
             </p>
             <Link
               href="/get-started"
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               Get started
               <ArrowRight className="h-4 w-4" />

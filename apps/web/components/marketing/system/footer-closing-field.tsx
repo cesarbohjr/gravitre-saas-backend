@@ -61,7 +61,7 @@ export function FooterClosingField({ className }: { className?: string }) {
             cx={cx}
             cy={cy}
             r={5}
-            fill={`color-mix(in srgb, ${CREATIVE_BRAND} 55%, white)`}
+            fill={`color-mix(in srgb, ${CREATIVE_BRAND} 55%, var(--card))`}
             initial={false}
             animate={
               reduce

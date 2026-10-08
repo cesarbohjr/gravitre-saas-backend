@@ -203,7 +203,7 @@ export function FindDataSection({
           <label htmlFor="data-intent" className="sr-only">
             What should Gravitre learn?
           </label>
-          <div className="flex flex-col gap-2 rounded-[var(--g-radius-card)] border border-white/12 bg-white/[0.04] p-1.5 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-2 rounded-[var(--g-radius-card)] border border-[color:var(--g-bone)]/12 bg-[color:var(--g-bone)]/[0.04] p-1.5 sm:flex-row sm:items-center">
             <input
               id="data-intent"
               value={query}
@@ -234,7 +234,7 @@ export function FindDataSection({
                   "inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]",
                   on
                     ? "border-[color:var(--g-brand)]/40 bg-[color:var(--g-brand)]/15 text-[color:var(--g-bone)]"
-                    : "border-white/15 text-[color:var(--g-bone)]/70 hover:text-[color:var(--g-bone)]",
+                    : "border-[color:var(--g-bone)]/15 text-[color:var(--g-bone)]/70 hover:text-[color:var(--g-bone)]",
                 )}
               >
                 {on ? <Check aria-hidden className="h-3 w-3 text-[color:var(--g-brand)]" /> : null}

@@ -7,6 +7,7 @@ import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { LiveStatus } from "@/components/gravitre/nodus-product"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Illustration } from "@/components/gravitre/illustration"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Icon } from "@/lib/icons"
@@ -497,11 +498,14 @@ export default function AssignmentsPage() {
                 data-assignments-empty=""
                 className="flex flex-col gap-2 border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-rail-bg)] px-[var(--np-page-pad-sm)] py-3 sm:flex-row sm:items-center sm:justify-between sm:px-[var(--np-page-pad)]"
               >
-                <div>
-                  <p className="text-[13px] font-medium text-foreground">No assignments yet</p>
-                  <p className="text-xs text-muted-foreground">
-                    Give an agent an objective. Its work appears here, with anything that needs your decision listed first.
-                  </p>
+                <div className="flex items-center gap-4">
+                  <Illustration name="moment-welcome" width={120} className="hidden shrink-0 sm:block" />
+                  <div>
+                    <p className="text-[13px] font-medium text-foreground">No assignments yet</p>
+                    <p className="text-xs text-muted-foreground">
+                      Give an agent an objective. Its work appears here, with anything that needs your decision listed first.
+                    </p>
+                  </div>
                 </div>
                 <Button size="sm" variant="outline" onClick={openNewAssignment}>
                   <Icon name="add" size="sm" />

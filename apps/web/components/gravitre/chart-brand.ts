@@ -1,18 +1,22 @@
-/** Shared chart colors aligned with Brand Foundation (Figma 01). */
-export const CHART_EMERALD = "#00a878"
-export const CHART_TEAL = "#007f5f"
-export const CHART_VIOLET = "#315cff"
+/**
+ * Shared chart colors aligned with Brand Foundation (Figma 01). These resolve
+ * to the global theme tokens (app/globals.css) so SVG fills/stops follow the
+ * light and dark themes instead of shipping hard-coded hex.
+ */
+export const CHART_EMERALD = "var(--g-brand)"
+export const CHART_TEAL = "var(--chart-1)"
+export const CHART_VIOLET = "var(--chart-4)"
 
 export function progressBarClass(value: number): string {
-  if (value >= 75) return "bg-emerald-500"
-  if (value >= 50) return "bg-amber-500"
-  return "bg-orange-500"
+  if (value >= 75) return "bg-success"
+  if (value >= 50) return "bg-chart-3"
+  return "bg-warning"
 }
 
 export function cacheHitBarClass(rate: number): string {
-  if (rate >= 0.6) return "bg-emerald-500"
-  if (rate >= 0.25) return "bg-amber-500"
-  return "bg-orange-500"
+  if (rate >= 0.6) return "bg-success"
+  if (rate >= 0.25) return "bg-chart-3"
+  return "bg-warning"
 }
 
 /** Cubic ease-out for count-up / grow animations. */

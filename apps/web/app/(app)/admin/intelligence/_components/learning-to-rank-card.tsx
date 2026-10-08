@@ -36,13 +36,13 @@ function WeightOnBoundsTrack({
     <div className="mt-2">
       <div className="relative h-2 w-full rounded-full bg-secondary">
         <div
-          className={cn("absolute inset-y-0 left-0 rounded-full", active ? "bg-emerald-500/25" : "bg-muted-foreground/20")}
+          className={cn("absolute inset-y-0 left-0 rounded-full", active ? "bg-success/25" : "bg-muted-foreground/20")}
           style={{ width: `${pct}%` }}
         />
         <div
           className={cn(
             "absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background shadow",
-            active ? "bg-emerald-500" : "bg-muted-foreground",
+            active ? "bg-success" : "bg-muted-foreground",
           )}
           style={{ left: `${pct}%` }}
           aria-hidden
@@ -76,7 +76,7 @@ export function LearningToRankCard({ status, delay = 0 }: { status: RetrievalRan
         <span
           className={cn(
             "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
-            active ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-secondary text-muted-foreground",
+            active ? "bg-success/10 text-success" : "bg-secondary text-muted-foreground",
           )}
         >
           <Lightning className="h-3.5 w-3.5" weight="duotone" aria-hidden />
@@ -86,16 +86,16 @@ export function LearningToRankCard({ status, delay = 0 }: { status: RetrievalRan
     >
       {active && learnedWeight != null ? (
         <div className="space-y-4">
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-500/30 dark:bg-emerald-500/10">
-            <p className="text-sm text-emerald-900 dark:text-emerald-100">
+          <div className="rounded-xl border border-success/30 bg-success/5 p-4">
+            <p className="text-sm text-success">
               Learned ranking strength:{" "}
               <span className="font-semibold tabular-nums">{learnedWeight.toFixed(2)}</span>{" "}
-              <span className="text-emerald-700 dark:text-emerald-300">
+              <span className="text-success">
                 (safe range: {weightBounds.min.toFixed(2)}–{weightBounds.max.toFixed(2)})
               </span>
             </p>
             <WeightOnBoundsTrack value={learnedWeight} min={weightBounds.min} max={weightBounds.max} active />
-            <p className="mt-2 text-xs leading-relaxed text-emerald-800 text-pretty dark:text-emerald-200">
+            <p className="mt-2 text-xs leading-relaxed text-success text-pretty">
               This setting comes from real feedback and stays inside the range above so ranking stays stable.
             </p>
           </div>
@@ -146,7 +146,7 @@ export function LearningToRankCard({ status, delay = 0 }: { status: RetrievalRan
               aria-label="Training examples collected"
             >
               <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400"
+                className="h-full rounded-full bg-gradient-to-r from-success to-brand"
                 initial={{ width: 0 }}
                 animate={{ width: `${progressPct}%` }}
                 transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}

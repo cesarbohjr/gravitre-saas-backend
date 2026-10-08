@@ -125,7 +125,7 @@ export function CommandPalette({
             <span>Start chat</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => summonWorkspace())}>
-            <Bot className="mr-2 h-4 w-4 text-teal-700 dark:text-teal-400" />
+            <Bot className="mr-2 h-4 w-4 text-success-text" />
             <span>Open Gravitre AI</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push("/agents/new"))}>
@@ -137,7 +137,7 @@ export function CommandPalette({
             <span>Run workflow</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.approvals))}>
-            <CheckCircle className="mr-2 h-4 w-4 text-amber-700 dark:text-amber-400" />
+            <CheckCircle className="mr-2 h-4 w-4 text-warning-text" />
             <span>View approvals</span>
           </CommandItem>
         </CommandGroup>
@@ -146,7 +146,7 @@ export function CommandPalette({
 
         <CommandGroup heading="Search">
           <CommandItem onSelect={() => runCommand(openUniversalSearch)}>
-            <Search className="mr-2 h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+            <Search className="mr-2 h-4 w-4 text-success-text" />
             <span>Universal search</span>
             <span className="ml-2 text-xs text-muted-foreground">Find records — not chat</span>
             <CommandShortcut>⌘K</CommandShortcut>
@@ -162,7 +162,7 @@ export function CommandPalette({
               onCreateFromGoal?.()
             })}
           >
-            <Target className="mr-2 h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+            <Target className="mr-2 h-4 w-4 text-success-text" />
             <span>Create from Goal</span>
             <CommandShortcut>G</CommandShortcut>
           </CommandItem>
@@ -175,13 +175,13 @@ export function CommandPalette({
           <CommandItem
             onSelect={() => runCommand(() => router.push("/goals"))}
           >
-            <BarChart3 className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <BarChart3 className="mr-2 h-4 w-4 text-info" />
             <span>Show goal progress</span>
           </CommandItem>
           <CommandItem
             onSelect={() => runCommand(() => {})}
           >
-            <RotateCcw className="mr-2 h-4 w-4 text-amber-700 dark:text-amber-400" />
+            <RotateCcw className="mr-2 h-4 w-4 text-warning-text" />
             <span>Regenerate plan</span>
           </CommandItem>
         </CommandGroup>
@@ -198,7 +198,7 @@ export function CommandPalette({
             <span>{SURFACE_COPY.learning.title}</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.builtInModels))}>
-            <Cpu className="mr-2 h-4 w-4 text-teal-700 dark:text-teal-400" />
+            <Cpu className="mr-2 h-4 w-4 text-success-text" />
             <span>{SURFACE_COPY.builtInModels.title}</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push(APP_ROUTES.intelligenceData))}>
@@ -233,11 +233,11 @@ export function CommandPalette({
               onPreviewChanges?.()
             })}
           >
-            <Eye className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <Eye className="mr-2 h-4 w-4 text-info" />
             <span>Preview recommended changes</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
-            <TrendingUp className="mr-2 h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+            <TrendingUp className="mr-2 h-4 w-4 text-success-text" />
             <span>Apply top optimization</span>
           </CommandItem>
           <CommandItem
@@ -245,7 +245,7 @@ export function CommandPalette({
               onStartABTest?.()
             })}
           >
-            <FlaskConical className="mr-2 h-4 w-4 text-amber-700 dark:text-amber-400" />
+            <FlaskConical className="mr-2 h-4 w-4 text-warning-text" />
             <span>Start A/B Test</span>
           </CommandItem>
           <CommandItem
@@ -253,15 +253,15 @@ export function CommandPalette({
               onCompareVersions?.()
             })}
           >
-            <History className="mr-2 h-4 w-4 text-cyan-700 dark:text-cyan-400" />
+            <History className="mr-2 h-4 w-4 text-info" />
             <span>Compare workflow versions</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
-            <RotateCcw className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" />
+            <RotateCcw className="mr-2 h-4 w-4 text-danger-text" />
             <span>Roll back workflow</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
-            <Activity className="mr-2 h-4 w-4 text-pink-400" />
+            <Activity className="mr-2 h-4 w-4 text-intelligence-text" />
             <span>View agent performance</span>
           </CommandItem>
         </CommandGroup>
@@ -286,11 +286,11 @@ export function CommandPalette({
           <CommandItem
             onSelect={() => runCommand(() => router.push(`${APP_ROUTES.activity}?tab=failures`))}
           >
-            <ShieldAlert className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" />
+            <ShieldAlert className="mr-2 h-4 w-4 text-danger-text" />
             <span>Failure alerts</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
-            <Shield className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" />
+            <Shield className="mr-2 h-4 w-4 text-danger-text" />
             <span>Add approval gate</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
@@ -298,7 +298,7 @@ export function CommandPalette({
             <span>Add decision node</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => {})}>
-            <Users className="mr-2 h-4 w-4 text-amber-700 dark:text-amber-400" />
+            <Users className="mr-2 h-4 w-4 text-warning-text" />
             <span>Add Agent Council</span>
           </CommandItem>
         </CommandGroup>
@@ -316,7 +316,7 @@ export function CommandPalette({
           <CommandItem
             onSelect={() => runCommand(() => router.push(APP_ROUTES.welcome))}
           >
-            <Rocket className="mr-2 h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+            <Rocket className="mr-2 h-4 w-4 text-success-text" />
             <span>Getting started</span>
           </CommandItem>
           <CommandItem
@@ -328,7 +328,7 @@ export function CommandPalette({
           <CommandItem
             onSelect={() => runCommand(() => router.push(APP_ROUTES.marketplace))}
           >
-            <Package className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <Package className="mr-2 h-4 w-4 text-info" />
             <span>Marketplace</span>
           </CommandItem>
           <CommandItem
@@ -340,7 +340,7 @@ export function CommandPalette({
           <CommandItem
             onSelect={() => runCommand(() => router.push(APP_ROUTES.revenueRisk))}
           >
-            <ShieldAlert className="mr-2 h-4 w-4 text-red-600 dark:text-red-400" />
+            <ShieldAlert className="mr-2 h-4 w-4 text-danger-text" />
             <span>Revenue risk radar</span>
           </CommandItem>
 
@@ -381,11 +381,11 @@ export function CommandPalette({
         {/* Quick Actions */}
         <CommandGroup heading="Actions">
           <CommandItem onSelect={() => runCommand(() => {})}>
-            <Plug className="mr-2 h-4 w-4 text-amber-700 dark:text-amber-400" />
+            <Plug className="mr-2 h-4 w-4 text-warning-text" />
             <span>Add missing connector</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push("/deliverables"))}>
-            <FileText className="mr-2 h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+            <FileText className="mr-2 h-4 w-4 text-success-text" />
             <span>Open goal deliverables</span>
           </CommandItem>
           <CommandItem

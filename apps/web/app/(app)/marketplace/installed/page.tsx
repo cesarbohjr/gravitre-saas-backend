@@ -44,6 +44,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import type { MarketplaceInstall } from "@/types/api"
+import { Illustration } from "@/components/gravitre/illustration"
 
 function formatInstalledAt(value?: string | null) {
   if (!value) return null
@@ -183,6 +184,7 @@ function InstalledInspector({
       ) : null}
       {packError ? (
         <div role="alert" className="space-y-2 text-sm">
+          <Illustration name="moment-error" width={120} />
           <p>Could not load pack contents.</p>
           <Button
             variant="outline"
@@ -314,7 +316,8 @@ function InstalledContent() {
           {error ? (
             <div role="alert">
               <GravitreSurface className="flex flex-col gap-3 border-destructive/30 bg-destructive/5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
+                <Illustration name="moment-error" width={120} className="hidden shrink-0 sm:block" />
+                <div className="min-w-0 flex-1 space-y-1">
                   <p className="flex items-center gap-2 text-sm font-medium text-foreground">
                     <AlertTriangle
                       className="h-4 w-4 text-destructive"
@@ -345,7 +348,7 @@ function InstalledContent() {
             </p>
           ) : !data ? null : installed.length === 0 ? (
             <GravitreEmpty
-              icon={<Package className="h-5 w-5" />}
+              illustration="moment-welcome"
               title="Nothing installed yet"
               hint="Install a department pack or catalog asset to deploy agents, workflows, and knowledge in one click."
               action={

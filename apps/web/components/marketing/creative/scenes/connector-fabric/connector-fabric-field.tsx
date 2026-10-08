@@ -81,11 +81,11 @@ function ConnectorFabricFieldImpl({ className }: { className?: string }) {
       data-cf-logo-wall="0"
     >
       {reduced ? (
-        <div className="rounded-2xl border border-divide bg-white p-5" data-testid="cf-reduced">
+        <div className="rounded-2xl border border-divide bg-card p-5" data-testid="cf-reduced">
           <ReducedModel />
         </div>
       ) : (
-        <div className="rounded-2xl border border-divide bg-white p-4 md:p-6" data-testid="cf-desktop">
+        <div className="rounded-2xl border border-divide bg-card p-4 md:p-6" data-testid="cf-desktop">
           <p className="text-center text-sm text-[color:var(--g-text-secondary)]">{ILLUSTRATIVE_CONTEXT}</p>
           {ports ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -94,9 +94,9 @@ function ConnectorFabricFieldImpl({ className }: { className?: string }) {
                   key={port.id}
                   type="button"
                   className={cn(
-                    "rounded-xl border bg-white px-3 py-3 text-center",
-                    selectedPort === port.id && "ring-2 ring-[color:var(--color-brand,#16a374)]",
-                    auth ? "border-[color:var(--color-brand,#16a374)]" : "border-divide",
+                    "rounded-xl border bg-card px-3 py-3 text-center",
+                    selectedPort === port.id && "ring-2 ring-brand",
+                    auth ? "border-brand" : "border-divide",
                   )}
                   data-testid={`cf-port-${port.id}`}
                   aria-pressed={selectedPort === port.id}
@@ -105,7 +105,7 @@ function ConnectorFabricFieldImpl({ className }: { className?: string }) {
                   <NucleoConnector
                     className={cn(
                       "mx-auto h-4 w-4",
-                      auth ? "text-[color:var(--color-brand,#16a374)]" : "text-[color:var(--g-text-muted)]",
+                      auth ? "text-brand" : "text-[color:var(--g-text-muted)]",
                     )}
                     aria-hidden
                   />
@@ -120,8 +120,8 @@ function ConnectorFabricFieldImpl({ className }: { className?: string }) {
                           key={cap}
                           className={cn(
                             "rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                            highlightWait && "border-amber-400 bg-amber-50 text-amber-800",
-                            highlightDone && "border-[color:var(--color-brand,#16a374)] text-[color:var(--color-brand,#16a374)]",
+                            highlightWait && "border-warning/60 bg-warning/10 text-warning-text",
+                            highlightDone && "border-brand text-brand",
                             !highlightWait && !highlightDone && "border-divide text-[color:var(--g-text-muted)]",
                           )}
                         >
@@ -149,7 +149,7 @@ function ConnectorFabricFieldImpl({ className }: { className?: string }) {
             </div>
           ) : null}
           {done && !evidence ? (
-            <div className="mt-4 flex items-center justify-center gap-1 text-xs text-[color:var(--color-brand,#16a374)]">
+            <div className="mt-4 flex items-center justify-center gap-1 text-xs text-brand">
               <NucleoApproval className="h-3.5 w-3.5" aria-hidden />
               Same write path continues after approval
             </div>

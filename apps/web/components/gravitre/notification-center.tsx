@@ -275,33 +275,33 @@ const platformIcons: Record<string, React.ElementType> = {
 const typeConfig = {
   task_complete: { 
     icon: CheckCircle2, 
-    color: "text-emerald-500", 
-    bg: "bg-emerald-500/10",
-    border: "border-emerald-500/20"
+    color: "text-success", 
+    bg: "bg-success/10",
+    border: "border-success/20"
   },
   output_delivered: { 
     icon: Package, 
-    color: "text-blue-500", 
-    bg: "bg-blue-500/10",
-    border: "border-blue-500/20"
+    color: "text-info", 
+    bg: "bg-info/10",
+    border: "border-info/20"
   },
   external_action: { 
     icon: ExternalLink, 
-    color: "text-violet-500", 
-    bg: "bg-violet-500/10",
-    border: "border-violet-500/20"
+    color: "text-intelligence-text", 
+    bg: "bg-chart-4/10",
+    border: "border-chart-4/20"
   },
   approval_required: { 
     icon: AlertCircle, 
-    color: "text-amber-500", 
-    bg: "bg-amber-500/10",
-    border: "border-amber-500/20"
+    color: "text-warning", 
+    bg: "bg-warning/10",
+    border: "border-warning/20"
   },
   error: { 
     icon: AlertCircle, 
-    color: "text-red-500", 
-    bg: "bg-red-500/10",
-    border: "border-red-500/20"
+    color: "text-destructive", 
+    bg: "bg-destructive/10",
+    border: "border-destructive/20"
   },
 }
 
@@ -344,7 +344,7 @@ function NotificationItem({
     >
       {/* Unread indicator */}
       {!notification.read && (
-        <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-500" />
+        <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-info" />
       )}
 
       <Link 
@@ -385,9 +385,9 @@ function NotificationItem({
                       key={i}
                       className={cn(
                         "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]",
-                        action.status === "success" && "bg-emerald-500/10 text-emerald-500",
-                        action.status === "failed" && "bg-red-500/10 text-red-500",
-                        action.status === "pending" && "bg-amber-500/10 text-amber-500"
+                        action.status === "success" && "bg-success/10 text-success",
+                        action.status === "failed" && "bg-destructive/10 text-destructive",
+                        action.status === "pending" && "bg-warning/10 text-warning"
                       )}
                     >
                       <ActionIcon className="w-2.5 h-2.5" />
@@ -474,7 +474,7 @@ export function NotificationCenter() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-foreground">Notifications</span>
                     {unreadCount > 0 && (
-                      <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-blue-500/10 text-blue-500">
+                      <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-info/10 text-info">
                         {unreadCount} new
                       </Badge>
                     )}
@@ -583,7 +583,7 @@ export function NotificationToast({
                       key={i}
                       className={cn(
                         "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px]",
-                        action.status === "success" && "bg-emerald-500/10 text-emerald-500"
+                        action.status === "success" && "bg-success/10 text-success"
                       )}
                     >
                       <ActionIcon className="w-2.5 h-2.5" />

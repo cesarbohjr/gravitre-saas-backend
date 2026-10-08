@@ -17,7 +17,7 @@ export function IntelligenceEngineSection({ variant = "default" }: { variant?: "
       {!isCompact ? (
         <>
           <div className="absolute top-0 right-0 w-[480px] h-[480px] rounded-full bg-primary/15/40 blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-[360px] h-[360px] rounded-full bg-teal-100/30 blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-[360px] h-[360px] rounded-full bg-brand/5 blur-3xl pointer-events-none" />
         </>
       ) : null}
 
@@ -78,7 +78,7 @@ export function IntelligenceEngineSection({ variant = "default" }: { variant?: "
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 to-teal-50/80 p-6 md:p-8"
+            className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 to-brand/10 p-6 md:p-8"
           >
             <div className="flex items-start gap-4">
               <div className="hidden sm:flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-card border border-primary/20">

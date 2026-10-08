@@ -48,7 +48,7 @@ export function UserAccountAvatar({
       <AvatarFallback
         suppressHydrationWarning
         className={cn(
-          "bg-blue-600 font-semibold text-white",
+          "bg-info font-semibold text-info-foreground",
           fallbackClassName,
         )}
       >

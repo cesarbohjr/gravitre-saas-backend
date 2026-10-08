@@ -3,74 +3,77 @@
 import { cn } from "@/lib/utils"
 import type { AgentConfigState, AgentRuntimeState } from "./types"
 
+// Runtime states map onto the semantic status tokens (success / info /
+// warning / destructive / muted) so pills match status colours elsewhere in the
+// app; "live" states share the info hue and are distinguished by pulse + label.
 const RUNTIME_META: Record<
   AgentRuntimeState,
   { label: string; dotClass: string; pillClass: string; live?: boolean }
 > = {
   available: {
     label: "Available",
-    dotClass: "bg-emerald-500",
-    pillClass: "text-emerald-800 dark:text-emerald-200 bg-emerald-50/80 dark:bg-emerald-950/30",
+    dotClass: "bg-success",
+    pillClass: "text-success bg-success/10",
   },
   idle: {
     label: "Idle",
-    dotClass: "bg-zinc-400",
-    pillClass: "text-zinc-600 dark:text-zinc-300 bg-zinc-100/80 dark:bg-zinc-900/40",
+    dotClass: "bg-muted-foreground/60",
+    pillClass: "text-muted-foreground bg-muted",
   },
   thinking: {
     label: "Thinking",
-    dotClass: "bg-sky-500",
-    pillClass: "text-sky-800 dark:text-sky-200 bg-sky-50/80 dark:bg-sky-950/30",
+    dotClass: "bg-info",
+    pillClass: "text-info bg-info/10",
     live: true,
   },
   retrieving: {
     label: "Retrieving",
-    dotClass: "bg-cyan-500",
-    pillClass: "text-cyan-800 dark:text-cyan-200 bg-cyan-50/80 dark:bg-cyan-950/30",
+    dotClass: "bg-info",
+    pillClass: "text-info bg-info/10",
     live: true,
   },
   planning: {
     label: "Planning",
-    dotClass: "bg-indigo-500",
-    pillClass: "text-indigo-800 dark:text-indigo-200 bg-indigo-50/80 dark:bg-indigo-950/30",
+    dotClass: "bg-info",
+    pillClass: "text-info bg-info/10",
     live: true,
   },
   executing: {
     label: "Executing",
-    dotClass: "bg-blue-500",
-    pillClass: "text-blue-800 dark:text-blue-200 bg-blue-50/80 dark:bg-blue-950/30",
+    dotClass: "bg-info",
+    pillClass: "text-info bg-info/10",
     live: true,
   },
   waiting_approval: {
     label: "Waiting approval",
-    dotClass: "bg-amber-500",
-    pillClass: "text-amber-900 dark:text-amber-100 bg-amber-50/80 dark:bg-amber-950/30",
+    dotClass: "bg-warning",
+    pillClass: "text-warning bg-warning/10",
   },
   delegating: {
     label: "Delegating",
-    dotClass: "bg-violet-500",
-    pillClass: "text-violet-800 dark:text-violet-200 bg-violet-50/80 dark:bg-violet-950/30",
+    dotClass: "bg-primary",
+    pillClass: "text-primary bg-primary/10",
     live: true,
   },
   completed: {
     label: "Completed",
-    dotClass: "bg-emerald-400",
-    pillClass: "text-emerald-800 dark:text-emerald-200 bg-emerald-50/60 dark:bg-emerald-950/20",
+    dotClass: "bg-success/70",
+    pillClass: "text-success bg-success/5",
   },
   failed: {
     label: "Failed",
-    dotClass: "bg-rose-500",
-    pillClass: "text-rose-800 dark:text-rose-200 bg-rose-50/80 dark:bg-rose-950/30",
+    dotClass: "bg-destructive",
+    pillClass: "text-destructive bg-destructive/10",
   },
   blocked: {
     label: "Blocked",
-    dotClass: "bg-orange-500",
-    pillClass: "text-orange-900 dark:text-orange-100 bg-orange-50/80 dark:bg-orange-950/30",
+    dotClass: "bg-warning",
+    pillClass: "text-warning bg-warning/15",
   },
   offline: {
     label: "Offline",
-    dotClass: "bg-zinc-400",
-    pillClass: "text-zinc-600 dark:text-zinc-300 bg-zinc-100/80 dark:bg-zinc-900/40",
+    dotClass: "bg-muted-foreground/40",
+    pillClass: "text-muted-foreground bg-muted/70",
   },
 }
 

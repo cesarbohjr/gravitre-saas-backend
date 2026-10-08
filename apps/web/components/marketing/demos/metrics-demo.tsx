@@ -63,7 +63,7 @@ function MiniChart({ data }: { data: typeof CHART_DATA }) {
               initial={{ height: 0 }}
               animate={{ height: `${(item.failed / maxValue) * 100}%` }}
               transition={{ delay: index * 0.1 + 0.2, duration: 0.3 }}
-              className="bg-red-400 rounded-b-sm w-full"
+              className="bg-destructive/70 rounded-b-sm w-full"
             />
           )}
         </div>
@@ -103,8 +103,8 @@ export function MetricsDemo() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
-            <BarChart3 className="h-4 w-4 text-blue-600" />
+          <div className="h-8 w-8 rounded-lg bg-info/15 flex items-center justify-center">
+            <BarChart3 className="h-4 w-4 text-info" />
           </div>
           <span className="font-medium text-sm text-foreground">Metrics Dashboard</span>
           {isLive && (
@@ -156,7 +156,7 @@ export function MetricsDemo() {
                 )}
               </div>
               <div className={`flex items-center gap-0.5 text-xs mt-1 ${
-                metric.trendUp ? "text-primary" : "text-amber-600"
+                metric.trendUp ? "text-primary" : "text-warning-text"
               }`}>
                 {metric.trendUp ? (
                   <TrendingUp className="h-3 w-3" />
@@ -179,7 +179,7 @@ export function MetricsDemo() {
                 Completed
               </span>
               <span className="flex items-center gap-1 text-muted-foreground">
-                <span className="h-2 w-2 rounded-full bg-red-400" />
+                <span className="h-2 w-2 rounded-full bg-destructive/70" />
                 Failed
               </span>
             </div>

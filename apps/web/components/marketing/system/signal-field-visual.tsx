@@ -44,7 +44,7 @@ export function SignalFieldVisual({ className }: { className?: string }) {
           />
         ))}
         <circle cx={140} cy={100} r={10} fill="var(--primary)" opacity={0.85} />
-        <circle cx={140} cy={100} r={4} fill="#fff" />
+        <circle cx={140} cy={100} r={4} fill="var(--card)" />
       </svg>
     </div>
   )

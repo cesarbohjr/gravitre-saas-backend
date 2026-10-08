@@ -515,7 +515,7 @@ export function MesonCopilotPanel({
               </p>
             ) : null}
             {editProposal ? (
-              <div className="mt-2 space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5">
+              <div className="mt-2 space-y-2 rounded-lg border border-warning/30 bg-warning/5 p-2.5">
                 <p className="text-xs font-medium text-foreground">{editProposal.summary}</p>
                 {editProposal.diff?.available && editProposal.diff.prior ? (
                   <pre className="max-h-32 overflow-auto rounded bg-muted/40 p-2 text-[9px] leading-snug">
@@ -579,7 +579,7 @@ export function MesonCopilotPanel({
               {crossWorkflowSignals.slice(0, 3).map((signal, idx) => (
                 <p
                   key={`${signal.message}-${idx}`}
-                  className="rounded border border-orange-500/25 bg-orange-500/5 px-2 py-1.5 text-[10px] text-orange-700 dark:text-orange-400"
+                  className="rounded border border-warning/25 bg-warning/5 px-2 py-1.5 text-[10px] text-warning"
                 >
                   {signal.message}
                 </p>
@@ -761,7 +761,7 @@ export function MesonCopilotPanel({
                         >
                           {isFixed ? (
                             <>
-                              <CheckCircle className="h-3 w-3 text-emerald-500" />
+                              <CheckCircle className="h-3 w-3 text-success" />
                               Fixed
                             </>
                           ) : fixingAlertId === alert.id ? (
@@ -805,7 +805,7 @@ export function MesonCopilotPanel({
                       className="rounded-lg border border-border bg-secondary/20 p-2.5"
                     >
                       <div className="flex items-start gap-2">
-                        <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+                        <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-medium text-foreground">{tip.title}</p>
                           <p className="mt-0.5 line-clamp-3 text-[10px] text-muted-foreground">

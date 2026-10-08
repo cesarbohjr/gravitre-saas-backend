@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { marketplaceApi } from "@/lib/api"
 import { History } from "lucide-react"
 import { toast } from "sonner"
+import { Illustration } from "@/components/gravitre/illustration"
 
 export function AssetVersionHistory({
   slug,
@@ -76,9 +77,12 @@ export function AssetVersionHistory({
         </div>
       ) : null}
       {data && !versions.length ? (
-        <p className="py-3 text-sm text-muted-foreground">
-          No snapshots returned.
-        </p>
+        <div className="py-3 text-center">
+          <Illustration name="moment-focus-time" width={130} className="mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">
+            No snapshots returned.
+          </p>
+        </div>
       ) : null}
       <ul className="divide-y divide-border">
         {versions.map((version) => (

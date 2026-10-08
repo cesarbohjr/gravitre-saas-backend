@@ -78,15 +78,15 @@ export const ConnectYourTooklsSkeleton = () => {
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="relative h-70 w-[min(15rem,42vw)] max-w-[15rem] -translate-x-1 rounded-2xl border-t border-gray-300 bg-white p-4 shadow-2xl sm:w-60 sm:translate-x-0 md:translate-x-0 dark:border-neutral-700 dark:bg-neutral-900"
+        className="relative h-70 w-[min(15rem,42vw)] max-w-[15rem] -translate-x-1 rounded-2xl border-t border-gray-300 bg-card p-4 shadow-2xl sm:w-60 sm:translate-x-0 md:translate-x-0"
       >
-        <div className="absolute -top-4 -right-4 flex h-14 w-14 items-center justify-center rounded-lg bg-white shadow-xl">
+        <div className="absolute -top-4 -right-4 flex h-14 w-14 items-center justify-center rounded-lg bg-card shadow-xl">
           <Scale />
           <OpenAILogo className="relative z-20 h-8 w-8" />
         </div>
         <div className="mt-12 flex items-center gap-2">
           <IntegrationsLogo />
-          <span className="text-charcoal-700 text-sm font-medium dark:text-neutral-200">
+          <span className="text-charcoal-700 text-sm font-medium">
             Tasks
           </span>
         </div>
@@ -94,7 +94,7 @@ export const ConnectYourTooklsSkeleton = () => {
 
         <div className="mt-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="text-charcoal-700 text-[10px] leading-loose font-normal md:text-xs dark:text-neutral-200">
+            <span className="text-charcoal-700 text-[10px] leading-loose font-normal md:text-xs">
               {text.split(/(\s+)/).map((word, index) => (
                 <motion.span
                   key={index}
@@ -134,7 +134,7 @@ export const ConnectYourTooklsSkeleton = () => {
                 repeat: Infinity,
                 repeatType: "reverse",
               }}
-              className="mt-2 h-4 w-full rounded-full bg-gray-200 dark:bg-neutral-800"
+              className="mt-2 h-4 w-full rounded-full bg-gray-200"
             />
           ))}
         </div>
@@ -146,26 +146,26 @@ export const ConnectYourTooklsSkeleton = () => {
         transition={{ duration: 1, delay: 1 }}
         className="absolute inset-x-0 z-30 hidden items-center justify-center md:flex"
       >
-        <div className="size-3 rounded-full border-2 border-blue-500 bg-white dark:bg-neutral-800" />
-        <div className="h-[2px] w-38 bg-blue-500" />
-        <div className="size-3 rounded-full border-2 border-blue-500 bg-white dark:bg-neutral-800" />
+        <div className="size-3 rounded-full border-2 border-info bg-card" />
+        <div className="h-[2px] w-38 bg-info" />
+        <div className="size-3 rounded-full border-2 border-info bg-card" />
       </motion.div>
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, delay: 1 }}
-        className="relative h-70 w-[min(15rem,42vw)] max-w-[15rem] translate-x-1 rounded-2xl border-t border-gray-300 bg-white p-4 shadow-2xl sm:w-60 sm:translate-x-0 md:translate-x-0 dark:border-neutral-700 dark:bg-neutral-900"
+        className="relative h-70 w-[min(15rem,42vw)] max-w-[15rem] translate-x-1 rounded-2xl border-t border-gray-300 bg-card p-4 shadow-2xl sm:w-60 sm:translate-x-0 md:translate-x-0"
       >
-        <div className="absolute -top-4 -left-4 flex h-14 w-14 items-center justify-center rounded-lg bg-white shadow-xl dark:bg-neutral-800">
+        <div className="absolute -top-4 -left-4 flex h-14 w-14 items-center justify-center rounded-lg bg-card shadow-xl">
           <Scale />
-          <LogoSVG className="relative z-20 size-6 text-black dark:text-white" />
+          <LogoSVG className="relative z-20 size-6 text-foreground" />
         </div>
         <div className="mt-12 flex items-center gap-2">
-          <IntegrationsLogo className="dark:text-neutral-200" />
-          <span className="text-charcoal-700 text-xs font-medium md:text-sm dark:text-neutral-200">
+          <IntegrationsLogo />
+          <span className="text-charcoal-700 text-xs font-medium md:text-sm">
             Integrations
           </span>
-          <span className="text-charcoal-700 rounded-lg border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-200">
+          <span className="text-charcoal-700 rounded-lg border border-gray-200 bg-muted/50 px-2 py-0.5 text-xs">
             200
           </span>
         </div>
@@ -173,24 +173,24 @@ export const ConnectYourTooklsSkeleton = () => {
         <div className="mt-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <OpenAILogo className="h-4 w-4 shrink-0" />
-            <span className="text-charcoal-700 text-xs font-medium md:text-sm dark:text-neutral-200">
+            <span className="text-charcoal-700 text-xs font-medium md:text-sm">
               ChatGPT
             </span>
           </div>
 
-          <div className="rounded-sm border border-blue-500 bg-blue-50 px-2 py-0.5 text-xs text-blue-500">
+          <div className="rounded-sm border border-info bg-info/10 px-2 py-0.5 text-xs text-info">
             Connected
           </div>
         </div>
         <div className="mt-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <AnthropicLogo className="h-4 w-4 shrink-0" />
-            <span className="text-charcoal-700 text-xs font-medium md:text-sm dark:text-neutral-200">
+            <span className="text-charcoal-700 text-xs font-medium md:text-sm">
               Claude 4 Opus
             </span>
           </div>
 
-          <div className="rounded-sm border border-blue-500 bg-blue-50 px-2 py-0.5 text-xs text-blue-500">
+          <div className="rounded-sm border border-info bg-info/10 px-2 py-0.5 text-xs text-info">
             Connected
           </div>
         </div>
@@ -211,7 +211,7 @@ export const ConnectYourTooklsSkeleton = () => {
                 repeat: Infinity,
                 repeatType: "reverse",
               }}
-              className="mt-2 h-4 w-full rounded-full bg-gray-200 dark:bg-neutral-800"
+              className="mt-2 h-4 w-full rounded-full bg-gray-200"
             />
           ))}
         </div>
@@ -382,18 +382,18 @@ const DeployCard = ({
           className={cn(
             "flex h-6 w-6 items-center justify-center rounded-md",
             variant === "default" && "bg-gray-200",
-            variant === "danger" && "bg-red-200",
-            variant === "success" && "bg-green-200",
-            variant === "warning" && "bg-yellow-200",
+            variant === "danger" && "bg-destructive/25",
+            variant === "success" && "bg-brand/25",
+            variant === "warning" && "bg-warning/25",
           )}
         >
           <ForkIcon
             className={cn(
               "h-4 w-4",
               variant === "default" && "text-gray-500",
-              variant === "danger" && "text-red-500",
-              variant === "success" && "text-green-500",
-              variant === "warning" && "text-yellow-500",
+              variant === "danger" && "text-destructive",
+              variant === "success" && "text-brand",
+              variant === "warning" && "text-warning",
             )}
           />
         </div>
@@ -500,7 +500,7 @@ const LeftSVG = (props: React.SVGProps<SVGSVGElement>) => {
       </mask>
       <path
         d="M127.457 0.0891113L127.576 95.9138L127.457 0.0891113ZM-0.0609919 96.0731L-0.160632 16.2484C-0.172351 6.85959 7.4293 -0.761068 16.8181 -0.772787L16.8206 1.22721C8.53637 1.23755 1.82903 7.96166 1.83937 16.2459L1.93901 96.0706L-0.0609919 96.0731ZM-0.160632 16.2484C-0.172351 6.85959 7.4293 -0.761068 16.8181 -0.772787L127.455 -0.910888L127.458 1.08911L16.8206 1.22721C8.53637 1.23755 1.82903 7.96166 1.83937 16.2459L-0.160632 16.2484ZM127.576 95.9138L0.939007 96.0718L127.576 95.9138Z"
-        fill="#EAEDF1"
+        fill="var(--line)"
         mask="url(#path-1-inside-1_557_1106)"
       />
       <path
@@ -532,7 +532,7 @@ const LeftSVG = (props: React.SVGProps<SVGSVGElement>) => {
           gradientUnits="userSpaceOnUse"
         >
           <stop stopColor="var(--color-line)" stopOpacity="0.5" offset="0" />
-          <stop stopColor="#5787FF" stopOpacity="1" offset="0.5" />
+          <stop stopColor="var(--info)" stopOpacity="1" offset="0.5" />
           <stop stopColor="var(--color-line)" stopOpacity="0" offset="1" />
         </motion.linearGradient>
       </defs>
@@ -565,7 +565,7 @@ const RightSVG = (props: React.SVGProps<SVGSVGElement>) => {
       </mask>
       <path
         d="M0.619629 0L0.500018 95.8247L0.619629 0ZM128.137 95.984L128.237 16.1593C128.249 6.77047 120.647 -0.850179 111.258 -0.861898L111.256 1.1381C119.54 1.14844 126.247 7.87255 126.237 16.1568L126.137 95.9815L128.137 95.984ZM128.237 16.1593C128.249 6.77047 120.647 -0.850179 111.258 -0.861898L0.620877 -0.999999L0.618381 0.999999L111.256 1.1381C119.54 1.14844 126.247 7.87255 126.237 16.1568L128.237 16.1593ZM0.500018 95.8247L127.137 95.9827L0.500018 95.8247Z"
-        fill="#EAEDF1"
+        fill="var(--line)"
         mask="url(#path-1-inside-1_557_1107)"
       />
       <path
@@ -597,9 +597,9 @@ const RightSVG = (props: React.SVGProps<SVGSVGElement>) => {
           }}
           gradientUnits="userSpaceOnUse"
         >
-          <stop stopColor="white" stopOpacity="0.5" offset="0" />
-          <stop stopColor="#F17463" stopOpacity="1" offset="0.5" />
-          <stop stopColor="white" stopOpacity="0" offset="1" />
+          <stop stopColor="var(--card)" stopOpacity="0.5" offset="0" />
+          <stop stopColor="var(--brand)" stopOpacity="1" offset="0.5" />
+          <stop stopColor="var(--card)" stopOpacity="0" offset="1" />
         </motion.linearGradient>
       </defs>
     </motion.svg>
@@ -656,8 +656,8 @@ const CenterSVG = (props: React.SVGProps<SVGSVGElement>) => {
           gradientUnits="userSpaceOnUse"
         >
           <stop stopColor="var(--color-line)" stopOpacity="1" offset="0" />
-          <stop stopColor="#F17463" stopOpacity="0.5" offset="0.5" />
-          <stop stopColor="#F17463" stopOpacity="0" offset="1" />
+          <stop stopColor="var(--brand)" stopOpacity="0.5" offset="0.5" />
+          <stop stopColor="var(--brand)" stopOpacity="0" offset="1" />
         </motion.linearGradient>
       </defs>
     </motion.svg>

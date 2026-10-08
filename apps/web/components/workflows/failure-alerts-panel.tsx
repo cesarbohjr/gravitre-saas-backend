@@ -13,6 +13,7 @@ import useSWR from "swr"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { toast } from "sonner"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Illustration } from "@/components/gravitre/illustration"
 import { GravitreSurface } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -33,7 +34,7 @@ import {
 import { OutcomeOpsPanel } from "@/components/workflows/outcome-ops-panel"
 import { workflowsApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
-import { AlertTriangle, ChevronDown, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react"
+import { AlertTriangle, ChevronDown, RefreshCw, ShieldAlert } from "lucide-react"
 
 type StatusFilter = "open" | "dismissed" | "all"
 type Severity = "critical" | "high" | "medium" | "low"
@@ -169,7 +170,7 @@ export function FailureAlertsPanel() {
             className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:inline-flex"
             title="Predictions are advisory. Dismiss alerts after remediation or when risk is accepted."
           >
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" aria-hidden />
+            <AlertTriangle className="h-3.5 w-3.5 text-warning" aria-hidden />
             Predictions are advisory
           </span>
           <Button
@@ -213,11 +214,14 @@ export function FailureAlertsPanel() {
         </Collapsible>
 
         {error ? (
+          <div className="space-y-3">
+          <Illustration name="moment-error" width={160} />
           <WorkSectionErrorCard
             title="Failed to load failure predictions"
             message={error instanceof Error ? error.message : "Unknown error"}
             onRetry={() => void mutate()}
           />
+          </div>
         ) : isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, index) => (
@@ -226,9 +230,10 @@ export function FailureAlertsPanel() {
           </div>
         ) : alerts.length === 0 ? (
           <GravitreSurface className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10">
-                <ShieldCheck className="h-6 w-6 text-success" aria-hidden />
-              </div>
+              <Illustration
+                name={statusFilter === "open" ? "moment-all-clear" : "moment-focus-time"}
+                width={170}
+              />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-foreground">
                   {statusFilter === "open" ? "No open failure alerts" : "No alerts for this filter"}

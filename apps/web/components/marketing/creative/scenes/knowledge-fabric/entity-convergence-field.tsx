@@ -38,9 +38,9 @@ function MentionChip({
     <div
       className={cn(
         "rounded-lg border px-2.5 py-1.5 text-left shadow-sm",
-        converging && "border-[color:var(--color-brand,#16a374)] bg-[color:color-mix(in_srgb,var(--color-brand,#16a374)_8%,white)]",
+        converging && "border-brand bg-[color:color-mix(in_srgb,var(--brand)_8%,var(--card))]",
         rejected && "border-divide opacity-90",
-        !converging && !rejected && "border-divide bg-white",
+        !converging && !rejected && "border-divide bg-card",
       )}
       data-converging={converging ? "1" : "0"}
       data-fuzzy-reject={rejected ? "1" : "0"}
@@ -127,13 +127,13 @@ function EntityConvergenceFieldImpl({ className }: { className?: string }) {
       data-kf-fuzzy-merged="0"
     >
       {reduced ? (
-        <div className="rounded-2xl border border-divide bg-white p-5" data-testid="kf-reduced">
+        <div className="rounded-2xl border border-divide bg-card p-5" data-testid="kf-reduced">
           <ReducedModel />
         </div>
       ) : (
         <>
           <div
-            className="hidden rounded-2xl border border-divide bg-white p-4 md:block md:p-6"
+            className="hidden rounded-2xl border border-divide bg-card p-4 md:block md:p-6"
             data-testid="kf-desktop"
           >
             <div className="grid grid-cols-[1.2fr_1fr_1.1fr] gap-4">
@@ -174,7 +174,7 @@ function EntityConvergenceFieldImpl({ className }: { className?: string }) {
                       y1="6"
                       x2="76"
                       y2="6"
-                      stroke="#16a374"
+                      stroke="var(--brand)"
                       strokeWidth="2"
                       strokeLinecap="round"
                     />
@@ -188,10 +188,10 @@ function EntityConvergenceFieldImpl({ className }: { className?: string }) {
                 </p>
                 {entityLabel ? (
                   <div
-                    className="mt-2 rounded-xl border border-[color:var(--color-brand,#16a374)] bg-white px-3 py-2"
+                    className="mt-2 rounded-xl border border-brand bg-card px-3 py-2"
                     data-testid="kf-resolved-entity"
                   >
-                    <p className="text-sm font-semibold text-[color:var(--color-brand,#16a374)]">{entityLabel}</p>
+                    <p className="text-sm font-semibold text-brand">{entityLabel}</p>
                     <p className="text-[10px] text-[color:var(--g-text-muted)]">Exact normalized identity</p>
                   </div>
                 ) : (
@@ -199,7 +199,7 @@ function EntityConvergenceFieldImpl({ className }: { className?: string }) {
                 )}
                 {fuzzy ? (
                   <div className="mt-3 space-y-1.5" data-testid="kf-fuzzy-kept-apart">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-warning-text">
                       Kept separate
                     </p>
                     <MentionChip raw="Sarah" normalized="sarah" showNorm rejected />
@@ -217,7 +217,7 @@ function EntityConvergenceFieldImpl({ className }: { className?: string }) {
           </div>
 
           <div
-            className="space-y-3 rounded-2xl border border-divide bg-white p-4 md:hidden"
+            className="space-y-3 rounded-2xl border border-divide bg-card p-4 md:hidden"
             data-testid="kf-mobile"
           >
             <p className="text-sm font-medium">{ILLUSTRATIVE_CONTEXT}</p>
@@ -234,7 +234,7 @@ function EntityConvergenceFieldImpl({ className }: { className?: string }) {
               ))}
             </div>
             {entityLabel ? (
-              <p className="text-sm font-semibold text-[color:var(--color-brand,#16a374)]" data-testid="kf-resolved-entity">
+              <p className="text-sm font-semibold text-brand" data-testid="kf-resolved-entity">
                 Resolved: {entityLabel}
               </p>
             ) : null}

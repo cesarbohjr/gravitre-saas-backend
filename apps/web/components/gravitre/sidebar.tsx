@@ -350,7 +350,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
                                       navExpanded ? "md:inline" : "md:hidden",
                                       isActive && !lockedFullSeat
                                         ? "bg-[color:var(--g-emerald-soft)] text-[color:var(--g-emerald-bright)]"
-                                        : "bg-white/[0.08] text-muted-foreground",
+                                        : "bg-foreground/[0.08] text-muted-foreground",
                                     )}
                                   >
                                     {item.badge}

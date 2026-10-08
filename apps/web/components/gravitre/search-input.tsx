@@ -96,7 +96,7 @@ export function SearchInput({
       className={cn(
         "relative flex items-center rounded-lg border border-border bg-secondary/50 transition-all",
         styles.container,
-        isFocused && "border-blue-500/50 ring-1 ring-blue-500/20",
+        isFocused && "border-ring/50 ring-1 ring-ring/20",
         disabled && "opacity-50 pointer-events-none",
         className
       )}

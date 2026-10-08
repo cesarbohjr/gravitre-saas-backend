@@ -65,6 +65,7 @@ import { InstallStepperSheet } from "@/components/marketplace/install-experience
 import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import { getCategoryIcon } from "@/lib/marketplace-category-icons"
 import { MarketplaceFeaturedOutcome } from "@/components/marketplace/marketplace-featured-outcome"
+import { Illustration } from "@/components/gravitre/illustration"
 const TYPE_FILTERS = [
   { id: "all", label: "All" },
   { id: "ai_agent", label: "Agents", icon: Bot },
@@ -350,7 +351,7 @@ function AssetCard({
             className={cn(
               "min-w-0 truncate text-xs",
               missing > 0 && !asset.installed
-                ? "text-amber-800 dark:text-warning"
+                ? "text-warning"
                 : "text-muted-foreground",
             )}
           >
@@ -912,6 +913,7 @@ function MarketplaceAssetsContent() {
               </div>
             ) : !data && !federatedData ? null : visibleAssets.length === 0 ? (
               <GravitreEmpty
+                illustration="moment-focus-time"
                 title={emptyMessage}
                 hint="Adjust filters or clear search to see more listings."
               />
@@ -934,9 +936,12 @@ function MarketplaceAssetsContent() {
                     </p>
                   </div>
                   {discoveryAssets.length === 0 ? (
-                    <p className="mt-3 text-sm text-muted-foreground">
-                      Everything matching these filters is already installed.
-                    </p>
+                    <div className="mt-3 text-center">
+                      <Illustration name="moment-all-clear" width={140} className="mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground">
+                        Everything matching these filters is already installed.
+                      </p>
+                    </div>
                   ) : (
                     <div
                       className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3"

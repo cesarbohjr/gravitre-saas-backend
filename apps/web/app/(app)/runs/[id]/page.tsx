@@ -15,6 +15,7 @@ import {
   GravitreSurface,
 } from "@/components/gravitre/nodus-product"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
+import { Illustration } from "@/components/gravitre/illustration"
 import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -680,8 +681,9 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
 
         <div className="flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] overflow-auto px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-3.5">
           {error && (
-            <div className="flex items-center gap-2 rounded-[var(--np-radius-lg)] border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              <AlertCircle className="h-4 w-4" />
+            <div className="flex items-center gap-3 rounded-[var(--np-radius-lg)] border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              <Illustration name="moment-error" width={96} className="hidden shrink-0 sm:block" />
+              <AlertCircle className="h-4 w-4 shrink-0 sm:hidden" />
               Failed to load run details.
               <Button variant="ghost" size="sm" className="ml-auto h-7" onClick={() => mutate()}>
                 Retry
@@ -850,10 +852,13 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
               </p>
             ) : null}
             {steps.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
+              <div className="flex flex-col items-center py-2 text-center">
+              <Illustration name="moment-focus-time" width={140} className="mx-auto mb-3" />
+              <p className="max-w-xl text-sm text-muted-foreground">
                 No step outputs recorded yet. If this run shows completed with empty work, the tools
                 may not have written durable records — check connector connection and approval queue.
               </p>
+              </div>
             ) : (
               <ol className="space-y-2">
                 {steps.map((step, index) => {
@@ -935,11 +940,14 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           </GravitreSurface>
 
           {runErrorSummary ? (
-            <div className="rounded-[var(--np-radius-lg)] border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              <p className="font-medium">{runErrorSummary.title}</p>
-              {runErrorSummary.fix ? (
-                <p className="mt-2 text-xs text-destructive/90">{runErrorSummary.fix}</p>
-              ) : null}
+            <div className="flex items-center gap-4 rounded-[var(--np-radius-lg)] border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              <Illustration name="moment-error" width={120} className="hidden shrink-0 sm:block" />
+              <div className="min-w-0">
+                <p className="font-medium">{runErrorSummary.title}</p>
+                {runErrorSummary.fix ? (
+                  <p className="mt-2 text-xs text-destructive/90">{runErrorSummary.fix}</p>
+                ) : null}
+              </div>
             </div>
           ) : null}
 
@@ -1090,7 +1098,7 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
                             className={cn(
                               "h-px w-4 shrink-0",
                               grammarKey === "verified"
-                                ? "bg-[color:var(--color-brand,#16a374)]"
+                                ? "bg-[color:var(--g-brand)]"
                                 : "bg-[color:var(--g-border-default)]",
                             )}
                           />

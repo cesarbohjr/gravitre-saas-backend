@@ -27,7 +27,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[color:var(--g-marketing-canvas)]">
       <Container className="border-divide min-h-screen border-x py-10 md:py-16">
         <div className="grid grid-cols-1 gap-10 px-4 md:grid-cols-2 md:px-8 lg:gap-16">
           <div className="hidden md:block">
@@ -41,7 +41,7 @@ export default function ForgotPasswordPage() {
               transition={{ duration: 0.5 }}
               className="w-full max-w-[440px]"
             >
-              <div className="shadow-aceternity rounded-2xl border border-divide bg-white p-6 sm:p-8 lg:p-10">
+              <div className="shadow-aceternity rounded-2xl border border-divide bg-card p-6 sm:p-8 lg:p-10">
                 <div className="text-center mb-8">
                   <div className="mb-8 flex justify-center md:hidden">
                     <GravitreMarketingLogo height={32} className="h-8" />
@@ -96,7 +96,7 @@ export default function ForgotPasswordPage() {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-medium text-white transition-all hover:bg-foreground/90 disabled:opacity-50"
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-medium text-background transition-all hover:bg-foreground/90 disabled:opacity-50"
                     >
                       {isLoading ? (
                         <GravitrePulse className="flex items-center justify-center">

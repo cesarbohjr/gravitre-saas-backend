@@ -18,6 +18,7 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Illustration } from "@/components/gravitre/illustration"
 import { formatReportedCount as formatCount, reportedNumber, sourceSyncFeedback } from "@/lib/source-evidence"
 import { sourcesApi } from "@/lib/api"
 import { buildWorkflowFromSourceUrl } from "@/lib/source-workflow-handoff"
@@ -187,6 +188,7 @@ export default function SourceDetailPage() {
           <button onClick={() => router.push("/sources")} className="mb-4 flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Back to sources
           </button>
+          <Illustration name="moment-error" width={160} className="mb-3" />
           <WorkSectionErrorCard title="Source unavailable" message={error instanceof Error ? error.message : "This source was not returned."} onRetry={() => void mutate()} />
         </div>
       </AppShell>
@@ -349,7 +351,10 @@ export default function SourceDetailPage() {
               <div className="space-y-2">
                 {historyError ? <WorkSectionErrorCard title="Could not refresh sync history" onRetry={() => void mutateHistory()} /> : null}
                 {history.length === 0 ? (
+                  <div>
+                  {!historyLoading ? <Illustration name="moment-focus-time" width={120} className="mb-2" /> : null}
                   <p className="text-xs text-muted-foreground">{historyLoading ? "Loading sync history…" : !Array.isArray((historyData as { history?: unknown } | undefined)?.history) ? "Sync history not reported" : "No sync history returned."}</p>
+                  </div>
                 ) : (
                   history.map((item) => {
                     const ok = String(item.status) === "success"
@@ -357,7 +362,7 @@ export default function SourceDetailPage() {
                       <div key={String(item.id)} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
                         <div className="flex items-center gap-3">
                           {ok ? (
-                            <Check className="h-4 w-4 text-emerald-500" />
+                            <Check className="h-4 w-4 text-success" />
                           ) : (
                             <AlertCircle className="h-4 w-4 text-destructive" />
                           )}

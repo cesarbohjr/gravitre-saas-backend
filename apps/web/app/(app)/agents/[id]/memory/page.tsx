@@ -364,7 +364,7 @@ export default function AgentMemoryPage({
 
           {!isLoading && !error && filteredMemories.length === 0 && (
             <GravitreEmpty
-              icon={<Icon name="search" size="sm" />}
+              illustration="moment-focus-time"
               title="No memories found"
               hint="Try adjusting your search or add a new memory"
               action={

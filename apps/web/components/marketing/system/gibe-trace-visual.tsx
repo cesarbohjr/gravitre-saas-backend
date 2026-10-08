@@ -39,8 +39,8 @@ export function GibeTraceVisual({ className }: { className?: string }) {
       >
         <defs>
           <linearGradient id="gibe-trace-stroke" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="color-mix(in srgb, var(--primary) 40%, #eaedf1)" />
-            <stop offset="55%" stopColor="color-mix(in oklch, var(--g-intelligence) 55%, #eaedf1)" />
+            <stop offset="0%" stopColor="color-mix(in srgb, var(--primary) 40%, var(--line))" />
+            <stop offset="55%" stopColor="color-mix(in oklch, var(--g-intelligence) 55%, var(--line))" />
             <stop offset="100%" stopColor="var(--primary)" />
           </linearGradient>
         </defs>
@@ -73,11 +73,11 @@ export function GibeTraceVisual({ className }: { className?: string }) {
               cx={stage.x}
               cy={y}
               r={14}
-              fill="#ffffff"
+              fill="var(--card)"
               stroke={
                 index === STAGES.length - 1
                   ? "var(--primary)"
-                  : "color-mix(in oklch, var(--g-intelligence) 45%, #eaedf1)"
+                  : "color-mix(in oklch, var(--g-intelligence) 45%, var(--line))"
               }
               strokeWidth="1.5"
               initial={reduce ? false : { scale: 0.7, opacity: 0 }}

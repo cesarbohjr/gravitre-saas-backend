@@ -58,8 +58,8 @@ export function TestimonialsMarquee({ testimonials = defaultTestimonials }: { te
   return (
     <div className="relative overflow-hidden py-4">
       {/* Fade edges */}
-      <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-white to-transparent z-10" />
-      <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10" />
+      <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[color:var(--g-marketing-canvas)] to-transparent z-10" />
+      <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[color:var(--g-marketing-canvas)] to-transparent z-10" />
       
       <motion.div
         className="flex gap-6"
@@ -72,7 +72,7 @@ export function TestimonialsMarquee({ testimonials = defaultTestimonials }: { te
             className="shrink-0 w-[400px] p-6 rounded-2xl bg-card border border-border shadow-sm hover:shadow-md transition-shadow"
           >
             <div className="flex items-start gap-3 mb-4">
-              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-semibold text-lg shrink-0">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-brand/70 to-brand flex items-center justify-center text-brand-foreground font-semibold text-lg shrink-0">
                 {testimonial.author.charAt(0)}
               </div>
               <div>
@@ -97,13 +97,13 @@ export function TestimonialsGrid({ testimonials = defaultTestimonials }: { testi
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       {/* Large featured testimonial */}
-      <div className="lg:col-span-2 lg:row-span-2 p-8 rounded-2xl bg-gradient-to-br from-primary/10 to-teal-50 border border-primary/20">
-        <Quote className="h-10 w-10 text-emerald-300 mb-6" />
+      <div className="lg:col-span-2 lg:row-span-2 p-8 rounded-2xl bg-gradient-to-br from-primary/10 to-brand/10 border border-primary/20">
+        <Quote className="h-10 w-10 text-brand mb-6" />
         <p className="text-xl text-foreground leading-relaxed mb-8">
           &ldquo;{testimonials[0].quote}&rdquo;
         </p>
         <div className="flex items-center gap-4">
-          <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary/100 to-teal-600 flex items-center justify-center text-white font-bold text-xl">
+          <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary/100 to-[color:var(--g-brand-hover)] flex items-center justify-center text-primary-foreground font-bold text-xl">
             {testimonials[0].author.charAt(0)}
           </div>
           <div>
@@ -130,7 +130,7 @@ export function TestimonialsGrid({ testimonials = defaultTestimonials }: { testi
         >
           <div className="flex mb-3">
             {[1, 2, 3, 4, 5].map((star) => (
-              <Star key={star} className="h-4 w-4 fill-amber-400 text-amber-400" />
+              <Star key={star} className="h-4 w-4 fill-warning text-warning" />
             ))}
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed mb-4 line-clamp-4">
@@ -179,8 +179,8 @@ export function LogoCloud() {
         
         <div className="relative overflow-hidden">
           {/* Fade edges */}
-          <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-white to-transparent z-10" />
-          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-white to-transparent z-10" />
+          <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[color:var(--g-marketing-canvas)] to-transparent z-10" />
+          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[color:var(--g-marketing-canvas)] to-transparent z-10" />
           
           <motion.div
             className="flex items-center gap-16"
@@ -246,14 +246,14 @@ function TestimonialsCarouselFullActive({ testimonials }: { testimonials: Testim
           >
             <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
               <div className="shrink-0">
-                <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-3xl shadow-lg shadow-emerald-500/20">
+                <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-brand/70 to-brand flex items-center justify-center text-brand-foreground font-bold text-3xl shadow-lg shadow-brand/20">
                   {testimonials[activeIndex].author.charAt(0)}
                 </div>
               </div>
               <div className="flex-1">
                 <div className="flex mb-4">
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <Star key={star} className="h-5 w-5 fill-amber-400 text-amber-400" />
+                    <Star key={star} className="h-5 w-5 fill-warning text-warning" />
                   ))}
                 </div>
                 <blockquote className="text-xl md:text-2xl text-foreground leading-relaxed mb-6">

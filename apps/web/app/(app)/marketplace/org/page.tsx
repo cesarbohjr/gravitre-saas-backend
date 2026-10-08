@@ -73,6 +73,7 @@ export default function OrgMarketplacePage() {
             </div>
           ) : !data ? null : assets.length === 0 ? (
             <GravitreEmpty
+              illustration="moment-welcome"
               title="No internal assets published yet"
               hint="Org admins can approve drafts from the publish queue."
               action={
