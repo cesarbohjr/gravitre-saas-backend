@@ -315,18 +315,21 @@ def record_critical_path(
         logger.debug("turn_latency_critical_path_skipped reason=missing_org_or_user")
         return analysis
     try:
-        from app.workflows.audit import write_audit_event
+        from app.workflows.audit import submit_audit_off_loop, write_audit_event
         from app.workflows.repository import get_supabase_client
 
         client = get_supabase_client(settings)
-        write_audit_event(
+        # Called from the turn's compose step on the event loop: the inserts
+        # must not hold up the reply (or audio of other sessions).
+        submit_audit_off_loop(
+            write_audit_event,
             client,
             org_id,
             user_id,
             AUDIT_ACTION,
             "conversation",
             conversation_id or org_id,
-            analysis,
+            dict(analysis),
         )
     except Exception as exc:  # noqa: BLE001
         logger.debug("turn_latency_critical_path_write_failed error=%s", exc)

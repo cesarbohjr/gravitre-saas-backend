@@ -31,7 +31,7 @@ from app.services.first_token_honesty import (
 from app.services.module_d_unified_voice_spec import MODULE_D_UNIFIED_SYSTEM_SPEC
 from app.services.response_envelope import coerce_user_envelope, envelope_kind
 from app.services.user_facing_copy_guard import finalize_user_facing_message
-from app.workflows.audit import write_audit_event
+from app.workflows.audit import submit_audit_off_loop, write_audit_event
 
 logger = get_logger(__name__)
 
@@ -805,7 +805,8 @@ def _emit_composer_audit(
     if client is None or not org_id:
         return
     try:
-        write_audit_event(
+        submit_audit_off_loop(
+            write_audit_event,
             client,
             org_id=org_id,
             actor_id=str(user_id or org_id),

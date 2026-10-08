@@ -102,7 +102,7 @@ from app.services.sync_confidence import compute_sync_confidence
 from app.services.unified_retrieval_service import UnifiedRetrievalService, get_unified_retrieval_service
 from app.services.tool_registry import get_tool_registry
 from app.services.tool_types import ToolContext
-from app.workflows.audit import write_audit_event
+from app.workflows.audit import submit_audit_off_loop, write_audit_event
 from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
@@ -4861,7 +4861,8 @@ class AgentIntelligence:
         # fixes. rewriteAttempted separates them; modelRan then separates a
         # dormant call from a model that declined to rewrite.
         try:
-            write_audit_event(
+            submit_audit_off_loop(
+                write_audit_event,
                 client,
                 org_id=org_id,
                 actor_id=user_id,

@@ -1,6 +1,7 @@
 """BE-11: Write audit events; no PII or query text in metadata."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import threading
 import time
@@ -192,3 +193,36 @@ def write_audit_event(
 
     if events_ok or logs_ok:
         _schedule_siem_dispatch(client, org_id, action, resource_type, resource_id_str, meta)
+
+
+_OFF_LOOP_WRITES: set["asyncio.Future[Any]"] = set()
+
+
+def submit_audit_off_loop(write: Any, /, *args: Any, **kwargs: Any) -> None:
+    """Run an audit write without blocking the event loop.
+
+    ``write`` is ``write_audit_event`` (passed in so callers' module-level name,
+    and any test patch of it, is the one used). On the event loop the blocking
+    inserts run on the default executor and the caller does not wait for them;
+    anywhere else this is a plain call. Like ``write_audit_event`` it never raises.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop is None:
+        try:
+            write(*args, **kwargs)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("audit_write_failed error=%s", exc)
+        return
+
+    def _run() -> None:
+        try:
+            write(*args, **kwargs)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("audit_write_failed error=%s", exc)
+
+    future = loop.run_in_executor(None, _run)
+    _OFF_LOOP_WRITES.add(future)
+    future.add_done_callback(_OFF_LOOP_WRITES.discard)

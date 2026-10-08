@@ -110,3 +110,49 @@ def test_voice_critical_path_carries_tier_and_durations(monkeypatch) -> None:
     assert captured["stage_durations_ms"] == {"eot_detection_ms": 400}
     assert captured["speculative_outcome"] == "adopted"
     assert analysis["dominant_checkpoint"] == "llm_first_token_ms"
+
+
+async def test_critical_path_audit_does_not_block_the_event_loop(monkeypatch) -> None:
+    import asyncio
+    import threading
+    import time
+
+    from app.services import turn_latency_trace
+
+    loop_thread = threading.current_thread()
+    seen: list[threading.Thread] = []
+    done = threading.Event()
+
+    def _slow_write(*_args, **_kwargs):
+        time.sleep(0.2)  # a blocking Supabase insert
+        seen.append(threading.current_thread())
+        done.set()
+
+    monkeypatch.setattr("app.workflows.audit.write_audit_event", _slow_write)
+    monkeypatch.setattr("app.workflows.repository.get_supabase_client", lambda _s: object())
+    started = time.perf_counter()
+    analysis = turn_latency_trace.record_critical_path(
+        None,
+        org_id="00000000-0000-4000-8000-000000000001",
+        user_id="00000000-0000-4000-8000-000000000002",
+        conversation_id=None,
+        turn_id="t-1",
+        marks={"client_ready": 0, "compose": 900},
+    )
+    assert time.perf_counter() - started < 0.1
+    assert analysis["turn_id"] == "t-1"
+    await asyncio.get_running_loop().run_in_executor(None, done.wait, 2)
+    assert seen and seen[0] is not loop_thread
+
+
+def test_off_loop_audit_is_a_plain_call_without_a_loop_and_never_raises() -> None:
+    from app.workflows.audit import submit_audit_off_loop
+
+    calls: list[tuple] = []
+    submit_audit_off_loop(lambda *a, **k: calls.append((a, k)), "c", org_id="o")
+    assert calls == [(("c",), {"org_id": "o"})]
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("insert failed")
+
+    submit_audit_off_loop(_boom)  # must not raise
