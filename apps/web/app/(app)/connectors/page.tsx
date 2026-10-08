@@ -119,6 +119,7 @@ import { isManagedConnectorVendor } from "@/lib/connectors"
 import { openPlaidLink } from "@/lib/plaid-link"
 import {
   CONNECTOR_DEPARTMENTS,
+  ConnectorDepartmentBar,
   ConnectorDepartmentCards,
   ConnectorsViewToggle,
   connectorDepartment,
@@ -2892,6 +2893,8 @@ function ConnectorsPageContent() {
   }
 
   const activeDepartment = browseMode === "departments" ? departmentFilter : null
+  // By department starts on its own page of department cards; the list shows once one is picked.
+  const showDepartmentPicker = browseMode === "departments" && departmentFilter === null && connectors.length > 0
   const departmentCounts = useMemo(
     () =>
       Object.fromEntries(
@@ -3238,15 +3241,21 @@ function ConnectorsPageContent() {
               />
             </div>
           )}
-          {browseMode === "departments" && connectors.length > 0 ? (
+          {showDepartmentPicker ? (
             <ConnectorDepartmentCards
-              selected={departmentFilter}
               counts={departmentCounts}
-              onSelect={(id) => setDepartmentFilter((prev) => (prev === id ? null : id))}
+              onSelect={setDepartmentFilter}
               onShowAll={showAllConnectors}
             />
           ) : null}
-          {isLoading && connectors.length === 0 ? (
+          {activeDepartment && connectors.length > 0 ? (
+            <ConnectorDepartmentBar
+              department={activeDepartment}
+              onBack={() => setDepartmentFilter(null)}
+              onShowAll={showAllConnectors}
+            />
+          ) : null}
+          {showDepartmentPicker ? null : isLoading && connectors.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <Spinner size="lg" className="mb-4" />
               <p className="text-sm text-muted-foreground">Loading connectors...</p>

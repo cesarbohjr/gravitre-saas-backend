@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, useReducedMotion } from "framer-motion"
-import { Building2, LayoutList } from "lucide-react"
+import { ArrowLeft, Building2, LayoutList } from "lucide-react"
 import { Illustration, type IllustrationName } from "@/components/gravitre/illustration"
 import { cn } from "@/lib/utils"
 
@@ -118,27 +118,26 @@ export function ConnectorsViewToggle({
   )
 }
 
-/** Department image cards; picking one filters the connectors below, "Show all" returns to the full list. */
+/** Department image cards, shown on their own; picking one opens that department's connectors. */
 export function ConnectorDepartmentCards({
-  selected,
   counts,
   onSelect,
   onShowAll,
 }: {
-  selected: ConnectorDepartmentId | null
   counts: Record<ConnectorDepartmentId, number>
   onSelect: (id: ConnectorDepartmentId) => void
   onShowAll: () => void
 }) {
   const reduceMotion = useReducedMotion()
-  // Once a department is picked the cards shrink to one row so its connectors sit right below.
-  const compact = selected !== null
   return (
-    <section aria-labelledby="connector-departments-heading" className="mb-6" data-testid="connector-department-cards">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
-        <h2 id="connector-departments-heading" className="text-[13px] font-semibold text-foreground">
-          Departments
-        </h2>
+    <section aria-labelledby="connector-departments-heading" className="mx-auto max-w-[1040px]" data-testid="connector-department-cards">
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <h2 id="connector-departments-heading" className="text-[15px] font-semibold text-foreground">
+            Departments
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">Pick a team to see the systems it works in.</p>
+        </div>
         <button
           type="button"
           onClick={onShowAll}
@@ -147,34 +146,22 @@ export function ConnectorDepartmentCards({
           Show all connectors
         </button>
       </div>
-      <div
-        className={cn(
-          "grid",
-          compact
-            ? "grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6 xl:gap-5"
-            : "mx-auto max-w-[1040px] grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 xl:gap-8",
-        )}
-      >
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 xl:gap-8">
         {CONNECTOR_DEPARTMENTS.map((department, index) => {
-          const active = selected === department.id
           const count = counts[department.id] ?? 0
           return (
             <motion.button
               key={department.id}
-              layout={!reduceMotion}
               type="button"
-              aria-pressed={active}
               onClick={() => onSelect(department.id)}
               initial={reduceMotion ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               whileHover={reduceMotion ? undefined : { y: -3 }}
               whileTap={reduceMotion ? undefined : { scale: 0.99 }}
               transition={{ duration: 0.35, ease: "easeOut", delay: reduceMotion ? 0 : index * 0.04 }}
-              className={cn(
-                "group overflow-hidden rounded-2xl border bg-card text-left shadow-sm transition-[border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                active ? "border-brand ring-2 ring-brand/40" : "border-border hover:shadow-md",
-              )}
+              className="group overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               data-department={department.id}
+              aria-label={`${department.label}: ${count} connected`}
             >
               <div className="overflow-hidden bg-muted">
                 <motion.div
@@ -185,24 +172,58 @@ export function ConnectorDepartmentCards({
                   <Illustration name={department.illustration} width={420} className="!w-full rounded-none" />
                 </motion.div>
               </div>
-              <div className={compact ? "px-3 py-2.5" : "px-5 py-4"}>
+              <div className="px-5 py-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className={cn("font-semibold text-foreground", compact ? "text-sm" : "text-[15px]")}>{department.label}</p>
-                  <span
-                    className={cn(
-                      "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums",
-                      active ? "bg-brand text-brand-foreground" : "bg-secondary text-muted-foreground",
-                    )}
-                  >
-                    {compact ? count : `${count} connected`}
+                  <p className="text-[15px] font-semibold text-foreground">{department.label}</p>
+                  <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+                    {count} connected
                   </span>
                 </div>
-                {compact ? null : <p className="mt-1 text-sm text-muted-foreground">{department.sentence}</p>}
+                <p className="mt-1 text-sm text-muted-foreground">{department.sentence}</p>
               </div>
             </motion.button>
           )
         })}
       </div>
     </section>
+  )
+}
+
+/** Header above a department's connectors: where you are, and the way back to the cards. */
+export function ConnectorDepartmentBar({
+  department: id,
+  onBack,
+  onShowAll,
+}: {
+  department: ConnectorDepartmentId
+  onBack: () => void
+  onShowAll: () => void
+}) {
+  const department = connectorDepartment(id)
+  if (!department) return null
+  return (
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3" data-testid="connector-department-bar">
+      <div className="flex min-w-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+          Departments
+        </button>
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold text-foreground">{department.label}</p>
+          <p className="text-sm text-muted-foreground">{department.sentence}</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onShowAll}
+        className="rounded-md text-sm font-medium text-[color:var(--g-emerald-deep)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Show all connectors
+      </button>
+    </div>
   )
 }
