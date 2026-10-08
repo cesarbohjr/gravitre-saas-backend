@@ -41,29 +41,29 @@ _CLASSIFICATION_SPANS = (
 )
 
 
-def resolve_turn_tier(data: dict[str, Any] | None, marks: dict[str, Any] | None = None) -> tuple[str | None, str]:
-    """Tier for a turn from its intelligence metadata, else derived.
+def resolve_turn_tier(data: dict[str, Any] | None, bridge_tier: str | None = None) -> tuple[str | None, str]:
+    """The turn's conversation tier as the brain recorded it.
 
-    An explicit tier (``conversationTier`` / ``conversation_tier`` / ``tier`` on
-    the event or its ``routing``) wins. Otherwise: lite path or a canned/social
-    reply -> light, agent mode -> deep, any other mode -> medium.
+    The brain classifies every turn (``loop_trace.conversation_tier``) and puts
+    it on the intelligence event as ``routing.conversationTier``; that wins.
+    Before that event arrives (or when the brain never emits it, e.g. a refused
+    turn) the bridge's own classification of the same text and history is used.
+    Nothing is inferred from mode or checkpoints.
     """
     data = data if isinstance(data, dict) else {}
     routing = data.get("routing") if isinstance(data.get("routing"), dict) else {}
-    for source in (data, routing):
-        for key in ("conversationTier", "conversation_tier", "tier"):
+    for source in (routing, data):
+        for key in ("conversationTier", "conversation_tier"):
             value = str(source.get(key) or "").strip().lower()
-            if value in {"light", "medium", "deep"}:
-                return value, "event"
-    marks = marks if isinstance(marks, dict) else {}
-    if "dialogue_settings_lite" in marks or (marks and "pre_kernel_entry" not in marks):
-        return "light", "derived"
-    mode = str(data.get("effectiveMode") or data.get("effective_mode") or "").strip().lower()
-    if mode == "agent":
-        return "deep", "derived"
-    if mode:
-        return "medium", "derived"
+            if value in _TIERS:
+                return value, "brain"
+    value = str(bridge_tier or "").strip().lower()
+    if value in _TIERS:
+        return value, "bridge"
     return None, "unknown"
+
+
+_TIERS = frozenset({"light", "medium", "deep"})
 
 
 def _ms(later: float | None, earlier: float | None) -> int | None:
@@ -184,7 +184,7 @@ class VoiceTurnTrace:
         turn = self._turn
         if turn is None or not isinstance(data, dict):
             return
-        for key in ("effectiveMode", "routingTier", "pipelineTier", "conversationTier", "conversation_tier", "tier"):
+        for key in ("effectiveMode", "routingTier", "pipelineTier", "conversationTier", "conversation_tier"):
             if data.get(key) is not None:
                 turn.intelligence[key] = data.get(key)
         routing = data.get("routing")
@@ -196,7 +196,7 @@ class VoiceTurnTrace:
                 "preModelMs",
                 "conversationTier",
                 "conversation_tier",
-                "tier",
+                "conversationTierReason",
                 "spokenLitePath",
             ):
                 if routing.get(key) is not None:
@@ -392,10 +392,7 @@ def build_turn_record(turn: _TurnTimes) -> dict[str, Any]:
         if ms is not None:
             marks[name] = max(0, ms)
 
-    explicit_tier = turn.tier_override
-    tier, tier_source = resolve_turn_tier(turn.intelligence, turn.brain_marks)
-    if explicit_tier:
-        tier, tier_source = explicit_tier, "explicit"
+    tier, tier_source = resolve_turn_tier(turn.intelligence, turn.tier_override)
     routing = turn.intelligence.get("routing") or {}
     return {
         "turn_id": turn.turn_id or str(uuid.uuid4()),
@@ -407,6 +404,7 @@ def build_turn_record(turn: _TurnTimes) -> dict[str, Any]:
             "speculative_outcome": turn.speculative_outcome,
             "effective_mode": turn.intelligence.get("effectiveMode"),
             "routing_tier": turn.intelligence.get("routingTier"),
+            "tier_reason": routing.get("conversationTierReason") if isinstance(routing, dict) else None,
             "reasoning_depth": routing.get("reasoningDepth") if isinstance(routing, dict) else None,
             "reported_model_ttft_ms": routing.get("modelTtftMs") if isinstance(routing, dict) else None,
             "ttfb_by_processor_ms": dict(turn.ttfb_by_processor_ms),

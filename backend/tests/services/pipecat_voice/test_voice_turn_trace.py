@@ -65,7 +65,9 @@ def _drive_full_turn(trace: VoiceTurnTrace, clock: _Clock) -> None:
             "first_sse": 1500,
         }
     )
-    trace.attach_intelligence({"effectiveMode": "fast", "routing": {"reasoningDepth": "full"}})
+    trace.attach_intelligence(
+        {"effectiveMode": "fast", "routing": {"reasoningDepth": "full", "conversationTier": "medium"}}
+    )
     clock.at(1790)
     trace.note("first_token")
     clock.at(1850)
@@ -96,7 +98,7 @@ class TestOneRecordPerTurn:
         rec = written[0]
         d = rec["stage_durations_ms"]
         assert rec["turn_id"] == "turn-1"
-        assert rec["tier"] == "medium" and rec["tier_source"] == "derived"
+        assert rec["tier"] == "medium" and rec["tier_source"] == "brain"
         assert d["eot_detection_ms"] == 470
         assert d["stt_finalization_ms"] == 450
         assert d["eager_eot_ms"] == 200
@@ -164,18 +166,26 @@ class TestOneRecordPerTurn:
 
 
 class TestTier:
-    def test_explicit_tier_wins(self) -> None:
-        assert resolve_turn_tier({"routing": {"conversationTier": "Light"}, "effectiveMode": "agent"}) == (
-            "light",
-            "event",
-        )
+    def test_the_brains_recorded_tier_wins(self) -> None:
+        data = {"routing": {"conversationTier": "Light", "conversationTierReason": "social"}, "effectiveMode": "agent"}
+        assert resolve_turn_tier(data, "deep") == ("light", "brain")
 
-    def test_derived_tiers(self) -> None:
-        assert resolve_turn_tier({"effectiveMode": "agent"}, {"pre_kernel_entry": 1}) == ("deep", "derived")
-        assert resolve_turn_tier({"effectiveMode": "fast"}, {"pre_kernel_entry": 1}) == ("medium", "derived")
-        # Canned / social replies never reach the kernel.
-        assert resolve_turn_tier({}, {"client_ready": 0, "compose_canned": 40}) == ("light", "derived")
-        assert resolve_turn_tier({}, {}) == (None, "unknown")
+    def test_bridge_tier_is_the_fallback_and_nothing_is_inferred(self) -> None:
+        assert resolve_turn_tier({"effectiveMode": "agent"}, "medium") == ("medium", "bridge")
+        assert resolve_turn_tier({"effectiveMode": "agent"}) == (None, "unknown")
+        assert resolve_turn_tier({}, None) == (None, "unknown")
+
+    def test_record_carries_the_brain_tier_over_the_bridge_tier(self) -> None:
+        clock = _Clock()
+        written: list[dict] = []
+        trace = VoiceTurnTrace(writer=written.append, clock=clock)
+        trace.begin_turn()
+        trace.set_turn_meta(tier="medium")
+        trace.attach_intelligence({"routing": {"conversationTier": "deep", "conversationTierReason": "connector"}})
+        trace.end_turn()
+        trace.flush_pending()
+        assert written[0]["tier"] == "deep" and written[0]["tier_source"] == "brain"
+        assert written[0]["extra"]["tier_reason"] == "connector"
 
 
 class TestBrowserReport:

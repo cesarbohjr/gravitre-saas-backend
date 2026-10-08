@@ -292,6 +292,9 @@ class GravitreCognitiveLLMService(LLMService):
         # Same helper and inputs (final text + merged history) as the
         # speculative run, so an adopted run was produced under the same tier.
         voice_tier, voice_mode = resolve_voice_turn_routing(user_text, history=history)
+        if trace is not None:
+            # Fallback only: the brain's own routing.conversationTier wins.
+            trace.set_turn_meta(tier=voice_tier.tier)
         logger.info(
             "pipecat_voice_conversation_tier org_id=%s tier=%s reason=%s mode=%s",
             self._org_id,
