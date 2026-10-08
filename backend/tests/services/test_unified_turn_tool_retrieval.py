@@ -114,7 +114,9 @@ def test_embed_narrow_falls_back_to_keyword_on_error():
         _tool("apollo_lists_create", "Create a contact list in Apollo", write=True),
         _tool("gmail_messages_send", "Send an email via Gmail", write=True),
     ]
-    settings = MagicMock(embedding_model="text-embedding-3-small")
+    # A bare MagicMock makes unified_turn_tool_embed_local truthy, which loads
+    # sentence_transformers/torch inside the call: minutes in a full run.
+    settings = MagicMock(embedding_model="text-embedding-3-small", unified_turn_tool_embed_local=False)
     with patch(
         "app.rag.tool_retrieval_embedding.embed_tool_retrieval_query_timed",
         side_effect=RuntimeError("no provider"),
