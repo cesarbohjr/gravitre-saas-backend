@@ -41,6 +41,14 @@ export interface DemoAssignment {
   approvalPrompt?: string
   /** The job's own summary of what it delivered, when reported. */
   resultSummary?: string
+  /** Agent id from the job result, when reported. */
+  agentId?: string
+  /** Status flag derived from the job's error / tool results (e.g. "Blocked by plan limit"). */
+  flag?: { label: string; tone: "amber" | "red" | "brand" | "neutral"; needsLook: boolean } | null
+  /** Reported tool-call outcomes; null when the job reported none. */
+  actions?: { total: number; failed: number; succeeded: number } | null
+  /** Raw job status, so cancelled and paused stay distinguishable. */
+  jobStatus?: JobStatus
 }
 
 /** Production assignment shape (legacy name retained for compatibility). */

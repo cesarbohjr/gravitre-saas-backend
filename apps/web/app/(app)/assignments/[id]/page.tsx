@@ -1,117 +1,89 @@
 "use client"
 
-import { useState, use, useMemo, type ReactNode } from "react"
+import { useState, use, useMemo, useRef, type FormEvent, type ReactNode } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { toast } from "sonner"
-import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
-import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Bot,
+  Check,
+  ChevronRight,
+  Download,
+  Link2,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Send,
+  X,
+} from "lucide-react"
+import { usePublishGravitreAISelection, useOptionalGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { GravitreEmpty } from "@/components/gravitre/nodus-product"
-import { Illustration } from "@/components/gravitre/illustration"
-import { Button } from "@/components/ui/button"
+import { WsPage } from "@/components/workspace/ws-page"
 import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
-import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
-import { Icon, type IconName } from "@/lib/icons"
-import { cn } from "@/lib/utils"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { approveAssignment, fetchAssignmentJob, pushAssignmentDeliverable, rejectAssignment, updateAssignmentDeliverable } from "@/lib/demo-assignments"
+import { cancelAssignmentJob, createAssignment, retryAssignmentJob } from "@/lib/assignments"
 import { readableAssignmentText } from "@/lib/assignments-list"
 import { deliverableExport, parseDeliverable } from "@/lib/assignment-deliverable"
 import { DeliverableEditorDialog } from "@/components/assignments/deliverable-editor"
 import { formatAssignmentOutput } from "@/lib/plain-english"
 import type { AgentJob } from "@/hooks/use-async-job"
-import { parseHandoffResult, buildExecutionSteps, relativeTime } from "@/lib/agent-job-result"
+import { parseHandoffResult, buildExecutionSteps } from "@/lib/agent-job-result"
 import { ExecutionTimeline, AssignmentApprovalDialog, reportedAssignmentConfidence } from "@/components/assignments/assignment-detail-surfaces"
 import { DeliverableReport, OriginalDataDisclosure } from "@/components/assignments/deliverable-report"
+import { actionResults, assignmentFlag, reportedIssueText, shortDate, upgradeLinkFrom } from "@/lib/assignment-signals"
+import "@/components/assignments/assignments-workspace.css"
 
-type Tone = "attention" | "danger" | "positive" | "neutral" | "live"
+type OutcomeTone = "amber" | "red" | "brand" | "neutral"
 
-const TONE_CLASS: Record<Tone, string> = {
-  attention: "border-[color:var(--g-approval)]/40 bg-[color:var(--g-approval-soft)] text-foreground",
-  danger: "border-destructive/30 bg-destructive/5 text-foreground",
-  positive: "border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-soft)] text-foreground",
-  neutral: "border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] text-foreground",
-  live: "border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] text-foreground",
+interface Outcome {
+  tone: OutcomeTone
+  illustration: string
+  eyebrow: string
+  title: string
+  body: ReactNode
+  actions: ReactNode
+  role: "alert" | "status"
 }
 
-const TONE_ICON_CLASS: Record<Tone, string> = {
-  attention: "text-[color:var(--g-approval)]",
-  danger: "text-destructive",
-  positive: "text-[color:var(--g-brand)]",
-  neutral: "text-muted-foreground",
-  live: "text-[color:var(--g-brand)]",
-}
-
-function StatusPill({ tone, children }: { tone: Tone; children: ReactNode }) {
-  return (
-    <span className={cn("inline-flex h-6 items-center gap-1.5 rounded-full border px-2 text-[12px] font-medium", TONE_CLASS[tone])}>
-      <span aria-hidden className={cn("size-1.5 rounded-full bg-current", TONE_ICON_CLASS[tone])} />
-      {children}
-    </span>
-  )
-}
-
-function Banner({ tone, icon, title, body, action }: { tone: Tone; icon: IconName; title: string; body?: ReactNode; action?: ReactNode }) {
-  return (
-    <div
-      role={tone === "danger" ? "alert" : "status"}
-      data-banner={tone}
-      className={cn("flex flex-col gap-3 rounded-[var(--g-radius-card,10px)] border p-4 sm:flex-row sm:items-center sm:justify-between", TONE_CLASS[tone])}
-    >
-      <div className="flex min-w-0 items-start gap-3">
-        <Icon
-          name={icon}
-          size="md"
-          className={cn("mt-0.5 shrink-0", TONE_ICON_CLASS[tone], icon === "spinner" && "animate-spin motion-reduce:animate-none")}
-        />
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <p className="text-[14px] font-semibold">{title}</p>
-          {body ? <div className="text-pretty text-[13px] leading-relaxed text-muted-foreground">{body}</div> : null}
-        </div>
-      </div>
-      {action ? <div className="flex shrink-0 flex-wrap gap-2">{action}</div> : null}
-    </div>
-  )
-}
-
-function AsideSection({ title, children, meta }: { title: string; children: ReactNode; meta?: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3 border-t border-[color:var(--g-border-subtle)] pt-4 first:border-t-0 first:pt-0">
-      <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-[13px] font-semibold text-foreground">{title}</h2>
-        {meta ? <span className="text-[12px] text-muted-foreground">{meta}</span> : null}
-      </div>
-      {children}
-    </section>
-  )
-}
+const ACTIVE = ["queued", "running", "paused"]
 
 function DetailShell({ children }: { children: ReactNode }) {
   return (
     <AppShell title="Assignment">
-      <div className="flex min-h-full w-full flex-col bg-[color:var(--g-canvas)] pb-[calc(80px+env(safe-area-inset-bottom))] lg:pb-8">
-        {children}
-      </div>
+      <WsPage>{children}</WsPage>
     </AppShell>
   )
 }
 
-function BackLink() {
+function Crumbs({ current }: { current?: string }) {
   return (
-    <Link
-      href="/assignments"
-      className="inline-flex min-h-11 items-center gap-1 self-start text-[13px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:min-h-8"
-    >
-      <Icon name="chevronLeft" size="sm" />
-      Assignments
-    </Link>
+    <nav aria-label="Breadcrumb" className="asgd-crumbs">
+      <Link href="/assignments">Assignments</Link>
+      {current ? (
+        <>
+          <span aria-hidden>/</span>
+          <span>{current}</span>
+        </>
+      ) : null}
+    </nav>
   )
 }
 
 export default function AssignmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
   const searchParams = useSearchParams()
+  const workspace = useOptionalGravitreAIWorkspace()
   const approvalFromUrl = searchParams.get("approval") === "1"
   const [approvalRequested, setApprovalRequested] = useState(approvalFromUrl)
   const [approvalDismissed, setApprovalDismissed] = useState(false)
@@ -119,12 +91,21 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
   const [editOpen, setEditOpen] = useState(false)
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [isPushing, setIsPushing] = useState(false)
+  const [jobAction, setJobAction] = useState<null | "retry" | "cancel" | "rerun">(null)
+  const [activeTab, setActiveTab] = useState<"deliverable" | "actions" | "steps">("deliverable")
+  const [traceOpen, setTraceOpen] = useState<boolean | null>(null)
+  const [openErrors, setOpenErrors] = useState<Set<string>>(() => new Set())
+  const [question, setQuestion] = useState("")
+  const deliverableRef = useRef<HTMLElement | null>(null)
+  const actionsRef = useRef<HTMLElement | null>(null)
+  const stepsRef = useRef<HTMLElement | null>(null)
 
   const { data: job, error: loadError, isLoading, mutate } = useSWR(
     id ? `agent-job-${id}` : null,
     () => fetchAssignmentJob(id),
     {
-      refreshInterval: (latest) => (latest && ["queued", "running", "paused"].includes(latest.status) ? 2000 : 0),
+      // Poll while the agent is still working; stop once the job settles.
+      refreshInterval: (latest) => (latest && ACTIVE.includes(latest.status) ? 2000 : 0),
       revalidateOnFocus: true,
     },
   )
@@ -134,6 +115,8 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
     () => (job && handoff?.react_trace?.length ? buildExecutionSteps(job, handoff) : []),
     [job, handoff],
   )
+  const actions = useMemo(() => actionResults(handoff?.tool_calls), [handoff?.tool_calls])
+  const failedActions = actions.filter((row) => !row.ok).length
   const progress =
     typeof handoff?.progress_percent === "number" && Number.isFinite(handoff.progress_percent)
       ? Math.min(100, Math.max(0, handoff.progress_percent))
@@ -157,12 +140,13 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
     readableAssignmentText(handoff?.action_title?.trim() || handoff?.task?.description?.trim() || "") || "Agent assignment"
   const agentName = handoff?.agent_name || "Agent"
   const agentId = handoff?.agent_id
-  const createdAt = relativeTime(job?.createdAt)
+  const createdLabel = shortDate(job?.createdAt, true)
   const confidencePercent = reportedAssignmentConfidence(handoff?.confidence)
   const sources = (handoff?.rag_sources ?? []).map((s) => s.source).filter((s): s is string => Boolean(s))
-  const proposedActions = (handoff?.recommended_actions ?? [])
-    .map((action) => formatAssignmentOutput(action) || String(action).trim())
-    .filter(Boolean)
+  const toolCallsUsed =
+    handoff?.tool_call_count ?? handoff?.toolCallCount ?? (Array.isArray(handoff?.tool_calls) ? handoff.tool_calls.length : null)
+  const toolsAvailable = handoff?.tools_available ?? handoff?.toolsAvailable ?? null
+  const destination = (job?.result as Record<string, unknown> | null)?.destination
 
   const approvalStatus = handoff?.approval_status
   const needsApproval =
@@ -171,10 +155,12 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
     approvalStatus !== "approved" &&
     approvalStatus !== "rejected"
   const approvalOpen = (needsApproval || (approvalRequested && job?.status === "completed")) && approvalRequested && !approvalDismissed
-  const jobError = job?.status === "failed" ? job.error || handoff?.error || "The agent task failed." : null
+  const issueText = job ? reportedIssueText(job) : null
+  const flag = job ? assignmentFlag(job) : null
   const rejectionReason = handoff?.rejection_reason || (job?.status === "cancelled" && job.error ? job.error : null)
   const canPush = job?.status === "completed" && !needsApproval && approvalStatus !== "rejected" && Boolean(deliverable)
   const canEdit = job?.status === "completed" && Boolean(deliverable) && !isDecisionPending && !isSavingEdit && !isPushing
+  const canRerun = Boolean(agentId && handoff?.task?.description?.trim())
 
   usePublishGravitreAISelection(job ? { kind: "assignment", id, label: taskTitle } : null)
 
@@ -226,10 +212,6 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
     }
   }
 
-  const handleEdit = () => {
-    if (deliverable) setEditOpen(true)
-  }
-
   // Errors are rethrown so the editor keeps the draft open and shows them inline.
   const handleSaveEdit = async (content: string) => {
     if (isSavingEdit) return
@@ -270,15 +252,105 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
     URL.revokeObjectURL(url)
   }
 
+  const handleRetry = async () => {
+    if (jobAction) return
+    setJobAction("retry")
+    try {
+      const updated = await retryAssignmentJob(id)
+      await mutate(updated, { revalidate: true })
+      toast.success(job?.status === "paused" ? "Assignment resumed" : "Assignment queued to run again")
+    } catch (err) {
+      toast.error("Could not retry", { description: err instanceof Error ? err.message : "Please try again." })
+    } finally {
+      setJobAction(null)
+    }
+  }
+
+  const handleCancel = async () => {
+    if (jobAction) return
+    setJobAction("cancel")
+    try {
+      const updated = await cancelAssignmentJob(id)
+      await mutate(updated, { revalidate: true })
+      toast.success("Assignment cancelled")
+    } catch (err) {
+      toast.error("Could not cancel", { description: err instanceof Error ? err.message : "Please try again." })
+    } finally {
+      setJobAction(null)
+    }
+  }
+
+  // A delivered job cannot be re-queued by the API, so "Run again" assigns the same brief to the same agent.
+  const handleRerun = async () => {
+    const task = handoff?.task?.description?.trim()
+    if (jobAction || !agentId || !task) return
+    setJobAction("rerun")
+    try {
+      const { id: nextId } = await createAssignment({
+        agentId,
+        agentName,
+        agentRole: "Agent",
+        agentGradient: "",
+        task,
+        priority: "normal",
+      })
+      toast.success("Assignment queued again")
+      router.push(`/assignments/${nextId}`)
+    } catch (err) {
+      toast.error("Could not run again", { description: err instanceof Error ? err.message : "Please try again." })
+    } finally {
+      setJobAction(null)
+    }
+  }
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href.split("?")[0])
+      toast.success("Link copied")
+    } catch {
+      toast.error("Could not copy the link")
+    }
+  }
+
+  const askAgent = (event: FormEvent) => {
+    event.preventDefault()
+    const text = question.trim()
+    if (!text || !agentId) return
+    if (workspace) {
+      workspace.summonWorkspace({
+        agentScope: { agentId, name: agentName },
+        selected: { kind: "assignment", id, label: taskTitle },
+        composerText: text,
+        submit: true,
+      })
+      setQuestion("")
+      return
+    }
+    router.push(`/agents/${agentId}/chat`)
+  }
+
+  const goTo = (tab: "deliverable" | "actions" | "steps") => {
+    setActiveTab(tab)
+    if (tab === "steps") setTraceOpen(true)
+    const target = tab === "deliverable" ? deliverableRef.current : tab === "actions" ? actionsRef.current : stepsRef.current
+    target?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  const toggleError = (key: string) =>
+    setOpenErrors((current) => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+
   if (isLoading && !job) {
     return (
       <DetailShell>
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-[var(--np-page-pad-sm)] pt-4 sm:px-[var(--np-page-pad)]">
-          <BackLink />
-          <div role="status" className="flex items-center gap-2 py-16 text-[14px] text-muted-foreground">
-            <Icon name="spinner" size="md" className="animate-spin motion-reduce:animate-none" />
-            Loading assignment…
-          </div>
+        <Crumbs />
+        <div role="status" className="asgd-loading">
+          <Loader2 size={18} className="animate-spin motion-reduce:animate-none" aria-hidden />
+          Loading assignment
         </div>
       </DetailShell>
     )
@@ -287,35 +359,21 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
   if (!job) {
     return (
       <DetailShell>
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-[var(--np-page-pad-sm)] pt-4 sm:px-[var(--np-page-pad)]">
-          <BackLink />
-          <div className="flex flex-col items-center pt-6">
-          <Illustration name="moment-error" width={170} className="mx-auto" />
-          <GravitreEmpty
-            className="w-full border-0 pt-4 shadow-none"
-            title="Assignment not found"
-            hint={loadError instanceof Error ? loadError.message : "This assignment could not be loaded."}
-            action={
-              <Button variant="outline" className="min-h-11" onClick={() => void mutate()}>
-                Retry
-              </Button>
-            }
-          />
-          </div>
+        <Crumbs />
+        <div className="asgd-notfound">
+          {/* eslint-disable-next-line @next/next/no-img-element -- static library illustration */}
+          <img src="/illustrations/moment-error.svg" alt="" data-illustration="moment-error" />
+          <h1 className="gv-h2">Assignment not found</h1>
+          <p className="gv-hint">{loadError instanceof Error ? loadError.message : "This assignment could not be loaded."}</p>
+          <button type="button" className="gv-btn outline" onClick={() => void mutate()}>
+            Retry
+          </button>
         </div>
       </DetailShell>
     )
   }
 
-  const statusTone: Tone = needsApproval
-    ? "attention"
-    : job.status === "failed" || approvalStatus === "rejected" || job.status === "cancelled"
-      ? "danger"
-      : job.status === "running" || job.status === "queued" || job.status === "paused"
-        ? "live"
-        : approvalStatus === "approved"
-          ? "positive"
-          : "neutral"
+  const isActive = ACTIVE.includes(job.status)
   const statusLabel = needsApproval
     ? "Needs your decision"
     : approvalStatus === "approved"
@@ -324,9 +382,197 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
         ? "Rejected"
         : job.status === "completed"
           ? "Delivered"
-          : job.status.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase())
+          : job.status === "queued"
+            ? "Queued"
+            : job.status === "running"
+              ? "Executing"
+              : job.status === "paused"
+                ? "Paused"
+                : job.status === "failed"
+                  ? "Failed"
+                  : "Cancelled"
+  const statusTone = needsApproval ? "amber" : job.status === "running" ? "brand" : job.status === "failed" ? "red" : "neutral"
+  const laneCrumb = needsApproval
+    ? "Waiting on you"
+    : job.status === "running"
+      ? "Executing"
+      : job.status === "queued" || job.status === "paused"
+        ? "Queued"
+        : "Delivered"
+  const showFlag = flag && flag.label !== statusLabel
+  const upgrade = upgradeLinkFrom(issueText) ?? (flag?.needsLook ? upgradeLinkFrom(typeof rawAnswer === "string" ? rawAnswer : null) : null)
+  const issueBody = issueText ? formatAssignmentOutput(issueText) || issueText : null
+
+  const otherSource = (
+    <Link href="/connectors" className="gv-btn ghost">
+      Use another data source
+    </Link>
+  )
+  const upgradeButton = upgrade ? (
+    <a href={upgrade.href} target="_blank" rel="noopener noreferrer" className="gv-btn primary">
+      {upgrade.label}
+      <ArrowUpRight size={16} aria-hidden />
+    </a>
+  ) : null
+
+  const outcome: Outcome | null = (() => {
+    if (needsApproval) {
+      return {
+        tone: "amber",
+        illustration: "moment-request-waiting",
+        eyebrow: "Waiting on you",
+        title: handoff?.human_input_prompt ? formatAssignmentOutput(handoff.human_input_prompt) : "This output is waiting for your decision",
+        body: "Approving records your decision. Nothing is sent until you push the output to a destination.",
+        role: "status",
+        actions: (
+          <>
+            <button type="button" className="gv-btn primary" onClick={openReview} disabled={isDecisionPending}>
+              Review and decide
+            </button>
+            <Link href="/approvals" className="gv-btn ghost">
+              Open decision queue
+            </Link>
+          </>
+        ),
+      }
+    }
+    if (job.status === "failed") {
+      return {
+        tone: "amber",
+        illustration: "moment-unplugged",
+        eyebrow: "Outcome",
+        title: "The agent could not finish this assignment",
+        body: issueBody ?? "The job stopped without reporting a reason.",
+        role: "alert",
+        actions: (
+          <>
+            {upgradeButton}
+            <button type="button" className="gv-btn outline" onClick={() => void handleRetry()} disabled={Boolean(jobAction)}>
+              {jobAction === "retry" ? "Retrying" : "Retry assignment"}
+            </button>
+            {otherSource}
+          </>
+        ),
+      }
+    }
+    if (job.status === "cancelled") {
+      return {
+        tone: "neutral",
+        illustration: "moment-paused-agents",
+        eyebrow: "Outcome",
+        title: "Cancelled",
+        body: rejectionReason ?? "This assignment was cancelled before it finished.",
+        role: "status",
+        actions: (
+          <button type="button" className="gv-btn outline" onClick={() => void handleRetry()} disabled={Boolean(jobAction)}>
+            {jobAction === "retry" ? "Retrying" : "Run it again"}
+          </button>
+        ),
+      }
+    }
+    if (approvalStatus === "rejected") {
+      return {
+        tone: "red",
+        illustration: "moment-error",
+        eyebrow: "Outcome",
+        title: "Rejected",
+        body: rejectionReason ?? "This output was rejected.",
+        role: "status",
+        actions: canRerun ? (
+          <button type="button" className="gv-btn outline" onClick={() => void handleRerun()} disabled={Boolean(jobAction)}>
+            {jobAction === "rerun" ? "Assigning" : "Run again"}
+          </button>
+        ) : null,
+      }
+    }
+    if (job.status === "completed" && flag?.needsLook) {
+      const title =
+        actions.length > 0 && failedActions > 0
+          ? `Delivered, but ${failedActions} of ${actions.length} actions failed`
+          : "Delivered with a problem"
+      return {
+        tone: "amber",
+        illustration: "moment-unplugged",
+        eyebrow: "Outcome",
+        title,
+        body: issueBody ?? "Some of the agent's actions did not complete.",
+        role: "alert",
+        actions: (
+          <>
+            {upgradeButton}
+            {canRerun ? (
+              <button type="button" className="gv-btn outline" onClick={() => void handleRerun()} disabled={Boolean(jobAction)}>
+                {jobAction === "rerun" ? "Assigning" : "Run again"}
+              </button>
+            ) : null}
+            {otherSource}
+          </>
+        ),
+      }
+    }
+    if (approvalStatus === "approved") {
+      return {
+        tone: "brand",
+        illustration: "moment-high-five",
+        eyebrow: "Outcome",
+        title: "Approved",
+        body: handoff?.approval_notes ? handoff.approval_notes : "Push the output when you are ready to deliver it.",
+        role: "status",
+        actions: null,
+      }
+    }
+    if (job.status === "completed") {
+      const summary = handoff?.summary ? formatAssignmentOutput(handoff.summary) : ""
+      return {
+        tone: "brand",
+        illustration: "moment-all-clear",
+        eyebrow: "Outcome",
+        title: "Delivered",
+        body: summary && summary !== taskTitle ? summary : "The agent finished this assignment. Review the deliverable below.",
+        role: "status",
+        actions: null,
+      }
+    }
+    if (isActive) {
+      return {
+        tone: "neutral",
+        illustration: job.status === "running" ? "moment-focus-time" : "moment-paused-agents",
+        eyebrow: job.status === "running" ? "Executing" : job.status === "paused" ? "Paused" : "Queued",
+        title:
+          job.status === "running"
+            ? `${agentName} is working on this`
+            : job.status === "queued"
+              ? "Queued. The agent will start shortly."
+              : "Paused",
+        body: progress != null ? `Reported progress ${progress}%` : "Results appear here as soon as the agent returns them.",
+        role: "status",
+        actions:
+          job.status === "paused" ? (
+            <button type="button" className="gv-btn primary" onClick={() => void handleRetry()} disabled={Boolean(jobAction)}>
+              {jobAction === "retry" ? "Resuming" : "Resume"}
+            </button>
+          ) : null,
+      }
+    }
+    return null
+  })()
+
+  const pushNote = !deliverable
+    ? null
+    : canPush
+      ? typeof destination === "string" && destination && destination !== "export"
+        ? `Push sends this deliverable to ${destination}.`
+        : "Push marks this deliverable as delivered and keeps it ready to export."
+      : needsApproval
+        ? "Push stays off until you decide on this output."
+        : approvalStatus === "rejected"
+          ? "Push stays off because this output was rejected."
+          : isActive
+            ? "Push turns on once the agent returns its output."
+            : "Push stays off until the assignment delivers an output."
 
   const report = deliverable ? <DeliverableReport parsed={deliverable} /> : undefined
+  const traceIsOpen = traceOpen ?? (job.status === "running" || job.status === "failed")
 
   return (
     <DetailShell>
@@ -349,201 +595,343 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
         isSubmitting={isDecisionPending}
       />
 
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-[var(--np-page-pad-sm)] pt-4 sm:px-[var(--np-page-pad)]" data-composition="operate">
-        <header className="flex flex-col gap-3">
-          <BackLink />
-          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div className="flex min-w-0 flex-col gap-2">
-              <h1 className="text-balance break-words text-[20px] font-semibold leading-snug text-foreground md:text-[22px]">
-                {taskTitle}
-              </h1>
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
-                <AgentIdentityAvatar agent={{ name: agentName }} size="sm" showStatusDot={false} />
-                <span className="text-foreground">{agentName}</span>
+      <Crumbs current={laneCrumb} />
+      <div className="asgd-head" data-composition="operate">
+        <div className="asgd-head-main">
+          <h1 className="asgd-title">{taskTitle}</h1>
+          <div className="asgd-meta">
+            <span className="asgd-agent">
+              <span className="asg-bot lg" aria-hidden>
+                <Bot size={14} />
+              </span>
+              {agentName}
+            </span>
+            {createdLabel ? (
+              <>
                 <span aria-hidden>·</span>
-                <span>Created {createdAt}</span>
-                <StatusPill tone={statusTone}>{statusLabel}</StatusPill>
-              </div>
-            </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              {agentId ? (
-                <Button asChild variant="outline" size="sm" className="min-h-11 md:min-h-9">
-                  <Link href={`/agents/${agentId}/chat`}>Ask {agentName}</Link>
-                </Button>
-              ) : null}
-            </div>
+                <span>Created {createdLabel}</span>
+                <span aria-hidden>·</span>
+              </>
+            ) : null}
+            <span className={`gv-pill ${statusTone}`}>{statusLabel}</span>
+            {showFlag && flag ? <span className={`gv-pill ${flag.tone}`}>{flag.label}</span> : null}
           </div>
-        </header>
+        </div>
+        <div className="asgd-head-actions">
+          {agentId ? (
+            <Link href={`/agents/${agentId}/chat`} className="gv-btn outline">
+              Ask the agent
+            </Link>
+          ) : null}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="gv-btn outline asgd-more" aria-label="More actions">
+                <MoreHorizontal size={18} aria-hidden />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => void copyLink()}>
+                <Link2 size={14} aria-hidden />
+                Copy link
+              </DropdownMenuItem>
+              {deliverable ? (
+                <DropdownMenuItem onSelect={handleExport}>
+                  <Download size={14} aria-hidden />
+                  Export deliverable
+                </DropdownMenuItem>
+              ) : null}
+              {!isActive && canRerun ? (
+                <DropdownMenuItem onSelect={() => void handleRerun()} disabled={Boolean(jobAction)}>
+                  Run again
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem asChild>
+                <Link href="/approvals">Open decision queue</Link>
+              </DropdownMenuItem>
+              {isActive ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => void handleCancel()} disabled={Boolean(jobAction)}>
+                    <X size={14} aria-hidden />
+                    Cancel assignment
+                  </DropdownMenuItem>
+                </>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
 
-        {loadError ? (
-          <WorkSectionErrorCard
-            title="Could not refresh assignment"
-            message="Showing the last retrieved assignment. Retry for the current state."
-            onRetry={() => void mutate()}
-          />
-        ) : null}
+      {loadError ? (
+        <div role="alert" className="gv-card asg-alert" style={{ marginTop: 0, marginBottom: 16 }}>
+          <span>
+            <strong>Could not refresh assignment.</strong> Showing the last retrieved assignment. Retry for the current state.
+          </span>
+          <button type="button" className="gv-btn outline sm" onClick={() => void mutate()}>
+            Retry
+          </button>
+        </div>
+      ) : null}
 
-        {needsApproval ? (
-          <Banner
-            tone="attention"
-            icon="approvals"
-            title={handoff?.human_input_prompt ? formatAssignmentOutput(handoff.human_input_prompt) : "This output is waiting for your decision"}
-            body="Approving records your decision. Nothing is sent until you push the output to a destination."
-            action={
-              <Button className="min-h-11 md:min-h-9" onClick={openReview} disabled={isDecisionPending}>
-                Review and decide
-              </Button>
-            }
-          />
-        ) : jobError ? (
-          <Banner
-            tone="danger"
-            icon="warning"
-            title="The agent could not finish this assignment"
-            body={formatAssignmentOutput(jobError) || jobError}
-            action={
-              agentId ? (
-                <Button asChild variant="outline" className="min-h-11 md:min-h-9">
-                  <Link href={`/agents/${agentId}/chat`}>Ask {agentName}</Link>
-                </Button>
-              ) : undefined
-            }
-          />
-        ) : approvalStatus === "rejected" ? (
-          <Banner tone="danger" icon="close" title="Rejected" body={rejectionReason ?? "This output was rejected."} />
-        ) : approvalStatus === "approved" ? (
-          <Banner
-            tone="positive"
-            icon="checkCircle"
-            title="Approved"
-            body={handoff?.approval_notes ? handoff.approval_notes : "Push the output when you are ready to deliver it."}
-          />
-        ) : job.status === "running" || job.status === "queued" || job.status === "paused" ? (
-          <Banner
-            tone="live"
-            icon={job.status === "running" ? "spinner" : "clock"}
-            title={job.status === "running" ? `${agentName} is working on this` : job.status === "queued" ? "Queued — the agent will start shortly" : "Paused"}
-            body={progress != null ? `Reported progress ${progress}%` : "Results appear here as soon as the agent returns them."}
-          />
-        ) : null}
+      {outcome ? (
+        <section className={`gv-card gv-rise asgd-outcome ${outcome.tone}`} role={outcome.role} data-banner={outcome.tone}>
+          <div className="asgd-outcome-art">
+            {/* eslint-disable-next-line @next/next/no-img-element -- static library illustration */}
+            <img src={`/illustrations/${outcome.illustration}.svg`} alt="" data-illustration={outcome.illustration} />
+          </div>
+          <div className="asgd-outcome-body">
+            <div className="gv-eyebrow">{outcome.eyebrow}</div>
+            <h2>{outcome.title}</h2>
+            <p className="asgd-outcome-text">{outcome.body}</p>
+            {outcome.actions ? <div className="asgd-outcome-actions">{outcome.actions}</div> : null}
+          </div>
+        </section>
+      ) : null}
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
-          <main className="flex min-w-0 flex-col gap-4" aria-labelledby="deliverable-heading">
-            <section className="flex flex-col gap-4 rounded-[var(--g-radius-card,10px)] border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] p-4 md:p-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 id="deliverable-heading" className="text-[16px] font-semibold text-foreground">
-                  Deliverable
-                </h2>
-                {deliverable ? (
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="ghost" size="sm" className="min-h-11 gap-1.5 md:min-h-8" onClick={handleEdit} disabled={!canEdit}>
-                      <Icon name="edit" size="xs" />
-                      Edit
-                    </Button>
-                    <Button variant="ghost" size="sm" className="min-h-11 gap-1.5 md:min-h-8" onClick={handleExport}>
-                      <Icon name="download" size="xs" />
-                      Export
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="min-h-11 gap-1.5 md:min-h-8"
-                      onClick={() => void handlePush()}
-                      disabled={!canPush || isPushing}
-                      title={needsApproval ? "Decide on this output before pushing it" : undefined}
-                    >
-                      <Icon name={isPushing ? "spinner" : "send"} size="xs" className={isPushing ? "animate-spin motion-reduce:animate-none" : undefined} />
-                      {isPushing ? "Pushing…" : "Push"}
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
+      <div className="asgd-grid">
+        <div className="asgd-main">
+          <nav className="gv-tabs" aria-label="Assignment sections">
+            <button
+              type="button"
+              className={`gv-utab${activeTab === "deliverable" ? " on" : ""}`}
+              aria-current={activeTab === "deliverable" ? "true" : undefined}
+              onClick={() => goTo("deliverable")}
+            >
+              Deliverable
+            </button>
+            <button
+              type="button"
+              className={`gv-utab${activeTab === "actions" ? " on" : ""}`}
+              aria-current={activeTab === "actions" ? "true" : undefined}
+              onClick={() => goTo("actions")}
+            >
+              Actions<span className="asgd-tabcount">{actions.length}</span>
+            </button>
+            <button
+              type="button"
+              className={`gv-utab${activeTab === "steps" ? " on" : ""}`}
+              aria-current={activeTab === "steps" ? "true" : undefined}
+              onClick={() => goTo("steps")}
+            >
+              Steps<span className="asgd-tabcount">{executionSteps.length}</span>
+            </button>
+          </nav>
 
+          <section id="deliverable" ref={deliverableRef} className="gv-card asgd-section" aria-labelledby="deliverable-heading">
+            <div className="asgd-section-head">
+              <h3 id="deliverable-heading">Deliverable</h3>
               {deliverable ? (
                 <>
-                  {report}
-                  <OriginalDataDisclosure parsed={deliverable} />
+                  <button type="button" className="gv-btn outline sm" onClick={() => setEditOpen(true)} disabled={!canEdit}>
+                    <Pencil size={14} aria-hidden />
+                    Edit
+                  </button>
+                  <button type="button" className="gv-btn outline sm" onClick={handleExport}>
+                    <Download size={14} aria-hidden />
+                    Export
+                  </button>
+                  <button
+                    type="button"
+                    className="gv-btn outline sm"
+                    onClick={() => void handlePush()}
+                    disabled={!canPush || isPushing}
+                    title={canPush ? undefined : (pushNote ?? undefined)}
+                  >
+                    {isPushing ? <Loader2 size={14} className="animate-spin motion-reduce:animate-none" aria-hidden /> : <Send size={14} aria-hidden />}
+                    {isPushing ? "Pushing" : "Push"}
+                  </button>
                 </>
-              ) : (
-                <p className="text-[14px] text-muted-foreground">
-                  {job.status === "running" || job.status === "queued"
-                    ? "Waiting for the agent to return its output."
-                    : "The agent did not return a written deliverable for this assignment."}
-                </p>
-              )}
-            </section>
-
-            {proposedActions.length > 0 ? (
-              <section className="flex flex-col gap-3 rounded-[var(--g-radius-card,10px)] border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] p-4 md:p-6">
-                <h2 className="text-[14px] font-semibold text-foreground">
-                  Proposed actions <span className="font-normal tabular-nums text-muted-foreground">{proposedActions.length}</span>
-                </h2>
-                <ul className="flex flex-col gap-2">
-                  {proposedActions.map((action, index) => (
-                    <li key={index} className="flex items-start gap-2 text-[14px] leading-relaxed text-foreground">
-                      <Icon name="workflow" size="sm" className="mt-1 shrink-0 text-muted-foreground" />
-                      <span className="break-words">{action}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-          </main>
-
-          <aside className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:self-start" aria-label="Assignment context">
-            <AsideSection title="Brief">
-              {brief ? (
-                brief.format === "structured" ? (
-                  <div className="flex flex-col gap-3 text-[13px]">
-                    <DeliverableReport parsed={brief} />
-                    <OriginalDataDisclosure parsed={brief} />
-                  </div>
-                ) : (
-                  <p className="text-pretty break-words text-[13px] leading-relaxed text-foreground">{brief.original}</p>
-                )
-              ) : (
-                <p className="text-[13px] text-muted-foreground">No brief was recorded.</p>
-              )}
-            </AsideSection>
-
-            <AsideSection title="Evidence" meta={sources.length ? `${sources.length} sources` : undefined}>
-              {sources.length > 0 ? (
-                <ul className="flex flex-col gap-1.5">
-                  {sources.slice(0, 8).map((source) => (
-                    <li key={source} className="flex items-start gap-2 text-[13px] text-foreground">
-                      <Icon name="link" size="xs" className="mt-1 shrink-0 text-muted-foreground" />
-                      <span className="break-all">{source}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="flex items-start gap-2 text-[13px] text-muted-foreground">
-                  <Icon name="warning" size="xs" className="mt-1 shrink-0 text-[color:var(--g-approval)]" />
-                  No retrieved sources were reported for this output.
-                </p>
-              )}
-              <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-[13px]">
-                <dt className="text-muted-foreground">Confidence</dt>
-                <dd className="text-foreground">{confidencePercent != null ? `${confidencePercent}% (agent-reported)` : "Not reported"}</dd>
-                <dt className="text-muted-foreground">Tool calls</dt>
-                <dd className="tabular-nums text-foreground">{handoff?.tool_call_count ?? handoff?.toolCallCount ?? handoff?.tool_calls?.length ?? 0}</dd>
-              </dl>
-              {handoff ? <ExecutionModeBadge source={handoff} showMeta /> : null}
-            </AsideSection>
-
-            <AsideSection title="Execution">
-              <details className="group" open={job.status === "running" || job.status === "failed"}>
-                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground md:min-h-8 [&::-webkit-details-marker]:hidden">
-                  <Icon name="chevronRight" size="sm" className="transition-transform group-open:rotate-90 motion-reduce:transition-none" />
-                  {executionSteps.length ? `${executionSteps.length} reported steps` : "Trace details"}
-                </summary>
-                <div className="pt-2">
-                  <ExecutionTimeline steps={executionSteps} currentProgress={progress} jobStatus={job.status} />
+              ) : null}
+            </div>
+            {deliverable ? (
+              <>
+                <div className="asgd-deliverable">{report}</div>
+                {pushNote ? <p className="asgd-note">{pushNote}</p> : null}
+                <div className="asgd-original">
+                  <OriginalDataDisclosure parsed={deliverable} />
                 </div>
-              </details>
-            </AsideSection>
-          </aside>
+              </>
+            ) : (
+              <p className="asgd-empty-line">
+                {isActive
+                  ? "Waiting for the agent to return its output."
+                  : "The agent did not return a written deliverable for this assignment."}
+              </p>
+            )}
+          </section>
+
+          <section id="actions" ref={actionsRef} className="gv-card asgd-section" aria-labelledby="actions-heading">
+            <div className="asgd-section-head">
+              <h3 id="actions-heading">Action results</h3>
+              {actions.length > 0 ? (
+                <span className="asgd-tally">
+                  <span className="ok">{actions.length - failedActions} succeeded</span> ·{" "}
+                  <span className="bad">{failedActions} failed</span>
+                </span>
+              ) : null}
+            </div>
+            {actions.length > 0 ? (
+              <>
+                <div className="asgd-segbar" role="img" aria-label={`${actions.length - failedActions} succeeded, ${failedActions} failed`}>
+                  {actions.map((row) => (
+                    <span key={row.key} className={row.ok ? undefined : "bad"} />
+                  ))}
+                </div>
+                <ol className="asgd-acts">
+                  {actions.map((row) => (
+                    <li key={row.key} className="asgd-act">
+                      <span className={`asgd-act-icon${row.ok ? "" : " bad"}`} aria-hidden>
+                        {row.ok ? <Check size={14} strokeWidth={2.4} /> : <X size={14} strokeWidth={2.4} />}
+                      </span>
+                      <div className="asgd-act-main">
+                        <div className="asgd-act-name">{row.label}</div>
+                        <div className="gv-mono asgd-act-tool">
+                          {row.tool} · {row.ok ? "executed" : "failed"}
+                        </div>
+                      </div>
+                      {!row.ok ? (
+                        <button
+                          type="button"
+                          className="asgd-linkbtn"
+                          aria-expanded={openErrors.has(row.key)}
+                          onClick={() => toggleError(row.key)}
+                        >
+                          {openErrors.has(row.key) ? "Hide" : "Review"}
+                        </button>
+                      ) : null}
+                      {!row.ok && openErrors.has(row.key) ? (
+                        <p className="asgd-act-error">{row.error ? formatAssignmentOutput(row.error) || row.error : "The tool did not report why it failed."}</p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ol>
+              </>
+            ) : (
+              <p className="asgd-empty-line">
+                {isActive ? "Tool actions appear here as the agent runs them." : "No tool actions were reported for this assignment."}
+              </p>
+            )}
+          </section>
+
+          <section id="steps" ref={stepsRef} className="gv-card" style={{ scrollMarginTop: 16 }}>
+            <details
+              className="asgd-trace"
+              open={traceIsOpen}
+              onToggle={(event) => setTraceOpen((event.currentTarget as HTMLDetailsElement).open)}
+            >
+              <summary>
+                <ChevronRight size={18} className="chev" aria-hidden />
+                <span className="t">Execution trace</span>
+                <span className="m">
+                  {executionSteps.length} reported step{executionSteps.length === 1 ? "" : "s"} ·{" "}
+                  {toolCallsUsed ?? 0} tool call{toolCallsUsed === 1 ? "" : "s"}
+                </span>
+              </summary>
+              <div className="asgd-trace-body">
+                <ExecutionTimeline steps={executionSteps} currentProgress={progress} jobStatus={job.status} />
+              </div>
+            </details>
+          </section>
         </div>
+
+        <aside className="asgd-aside" aria-label="Assignment context">
+          <div className="gv-card asgd-side">
+            <div className="gv-eyebrow">Brief</div>
+            {brief ? (
+              brief.format === "structured" ? (
+                <div className="asgd-side-text">
+                  <DeliverableReport parsed={brief} />
+                  <OriginalDataDisclosure parsed={brief} />
+                </div>
+              ) : (
+                <p className="asgd-side-text">{brief.original}</p>
+              )
+            ) : (
+              <p className="asgd-side-text gv-hint">No brief was recorded.</p>
+            )}
+          </div>
+
+          <div className="gv-card asgd-side">
+            <div className="gv-eyebrow">Trust signals</div>
+            <div style={{ marginTop: 14 }}>
+              <div className="asgd-row">
+                <span className="l">Confidence, agent reported</span>
+                <strong>{confidencePercent != null ? `${confidencePercent}%` : "Not reported"}</strong>
+              </div>
+              {confidencePercent != null ? (
+                <>
+                  <div
+                    className="asgd-meter"
+                    role="meter"
+                    aria-label="Agent reported confidence"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={confidencePercent}
+                  >
+                    <span style={{ left: `${confidencePercent}%` }} />
+                  </div>
+                  <div className="asgd-meter-scale" aria-hidden>
+                    <span>Low</span>
+                    <span>Medium</span>
+                    <span>High</span>
+                  </div>
+                </>
+              ) : null}
+            </div>
+            <div className="asgd-row sep">
+              <span className="l">Tool calls</span>
+              <span>
+                {toolCallsUsed != null ? (
+                  <>
+                    <strong>{toolCallsUsed}</strong>
+                    {toolsAvailable != null ? <span className="l"> of {toolsAvailable} available</span> : null}
+                  </>
+                ) : (
+                  <span className="l">Not reported</span>
+                )}
+              </span>
+            </div>
+            {sources.length > 0 ? (
+              <ul className="asgd-sources" aria-label={`${sources.length} reported sources`}>
+                {sources.slice(0, 8).map((source) => (
+                  <li key={source}>
+                    <Link2 size={13} aria-hidden style={{ marginTop: 3, flex: "0 0 auto" }} />
+                    <span>{source}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="asgd-warn">
+                <AlertTriangle size={16} aria-hidden style={{ flex: "0 0 auto", marginTop: 1 }} />
+                No retrieved sources were reported for this output.
+              </div>
+            )}
+            {handoff ? (
+              <div style={{ marginTop: 14 }}>
+                <ExecutionModeBadge source={handoff} showMeta />
+              </div>
+            ) : null}
+          </div>
+
+          {agentId ? (
+            <div id="ask" className="gv-card asgd-side">
+              <div className="gv-eyebrow">Ask {agentName}</div>
+              <form onSubmit={askAgent}>
+                <label className="gv-field asgd-ask">
+                  <input
+                    value={question}
+                    onChange={(event) => setQuestion(event.target.value)}
+                    placeholder="Ask about this assignment"
+                    aria-label={`Ask ${agentName}`}
+                  />
+                  <button type="submit" className="gv-btn primary sm" disabled={!question.trim()}>
+                    Ask
+                  </button>
+                </label>
+              </form>
+            </div>
+          ) : null}
+        </aside>
       </div>
 
       {editOpen && deliverable ? (
