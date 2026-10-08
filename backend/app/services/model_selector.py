@@ -1,6 +1,7 @@
 """Model selection across ML catalog and model_router LLM tiers."""
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -148,12 +149,25 @@ class ModelSelector:
         tiers = ("fast", "standard", "reasoning")
         default_key = f"llm:{base.get('llm_tier') or 'standard'}"
         candidate_keys = [f"llm:{tier}" for tier in tiers]
-        pref = await get_strategy_performance_ledger(self.settings).choose_preferred_strategy(
-            org_id,
-            default_key,
-            candidate_keys,
-            segment_key=segment_key,
-            fallback_segment_key=fallback_segment_key,
+        provider_keys = list(PROVIDER_STRATEGY_KEYS)
+        default_provider = str(getattr(self.settings, "preferred_ai_provider", "openai") or "openai")
+        ledger = get_strategy_performance_ledger(self.settings)
+        # The tier and provider preferences are independent ledger reads.
+        pref, provider_pref = await asyncio.gather(
+            ledger.choose_preferred_strategy(
+                org_id,
+                default_key,
+                candidate_keys,
+                segment_key=segment_key,
+                fallback_segment_key=fallback_segment_key,
+            ),
+            ledger.choose_preferred_strategy(
+                org_id,
+                f"provider:{default_provider}",
+                provider_keys,
+                segment_key=segment_key,
+                fallback_segment_key=fallback_segment_key,
+            ),
         )
         selected = str(pref.get("selected_key") or default_key)
         if selected.startswith("llm:"):
@@ -162,15 +176,6 @@ class ModelSelector:
                 base["llm_tier"] = tier
                 if pref.get("reason") == "ledger_win_rate":
                     base["reason"] = f"Ledger preferred LLM tier {tier} for {task_type}"
-        provider_keys = list(PROVIDER_STRATEGY_KEYS)
-        default_provider = str(getattr(self.settings, "preferred_ai_provider", "openai") or "openai")
-        provider_pref = await get_strategy_performance_ledger(self.settings).choose_preferred_strategy(
-            org_id,
-            f"provider:{default_provider}",
-            provider_keys,
-            segment_key=segment_key,
-            fallback_segment_key=fallback_segment_key,
-        )
         provider_selected = str(provider_pref.get("selected_key") or f"provider:{default_provider}")
         if provider_selected.startswith("provider:"):
             base["preferred_provider"] = provider_selected.split(":", 1)[1]

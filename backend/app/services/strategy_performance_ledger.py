@@ -1,12 +1,14 @@
 """Empirical strategy performance ledger (meta-learning v1 / contextual bandit v1)."""
 from __future__ import annotations
 
+import asyncio
 import math
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
 from app.config import Settings, get_settings
+from app.core.io_pool import run_io
 from app.core.logging import get_logger
 from app.ml.model_catalog import GRAVITRE_ML_CATALOG
 from app.ml.base import ModelStatus
@@ -117,7 +119,8 @@ class StrategyPerformanceLedger:
         since_days: int = 30,
     ) -> dict[str, Any]:
         since = (datetime.now(timezone.utc) - timedelta(days=since_days)).isoformat()
-        try:
+
+        def _read() -> list[dict[str, Any]]:
             query = (
                 self._client()
                 .table(self.TABLE)
@@ -128,7 +131,12 @@ class StrategyPerformanceLedger:
             )
             if segment_key:
                 query = query.eq("segment_key", segment_key)
-            rows = query.limit(5000).execute().data or []
+            return query.limit(5000).execute().data or []
+
+        try:
+            # Sync Supabase read: off the event loop (it was the most frequent
+            # blocking call on a spoken turn, several per model selection).
+            rows = await run_io(_read)
         except Exception:  # noqa: BLE001
             rows = []
         wins = sum(1 for r in rows if r.get("outcome_polarity") == "win")
@@ -154,10 +162,12 @@ class StrategyPerformanceLedger:
         *,
         segment_key: str = "default",
     ) -> list[dict[str, Any]]:
-        ranked: list[dict[str, Any]] = []
-        for key in candidate_keys:
-            stats = await self.get_strategy_stats(org_id, key, segment_key=segment_key)
-            ranked.append(stats)
+        # Independent reads: run them together instead of one round trip each.
+        ranked: list[dict[str, Any]] = list(
+            await asyncio.gather(
+                *(self.get_strategy_stats(org_id, key, segment_key=segment_key) for key in candidate_keys)
+            )
+        )
         ranked.sort(
             key=lambda item: (
                 item.get("win_rate") is not None,
@@ -227,8 +237,10 @@ class StrategyPerformanceLedger:
         from app.services.org_learning_profile_service import get_org_learning_profile_service
 
         keys = list(dict.fromkeys([default_key, *candidate_keys]))
-        ranked = await self.rank_strategies(org_id, keys, segment_key=segment_key)
-        profile = await get_org_learning_profile_service(self.settings).load_profile(org_id)
+        ranked, profile = await asyncio.gather(
+            self.rank_strategies(org_id, keys, segment_key=segment_key),
+            get_org_learning_profile_service(self.settings).load_profile(org_id),
+        )
         segment_weights = (
             (profile.get("segments") or {}).get(segment_key, {}).get("strategy_weights") or {}
         )
