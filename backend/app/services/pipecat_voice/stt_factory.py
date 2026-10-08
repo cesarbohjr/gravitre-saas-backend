@@ -132,14 +132,22 @@ def build_pipecat_stt(
         flux_settings = (
             DeepgramFluxSTTService.Settings(**settings_kwargs) if settings_kwargs else None
         )
+        # With an eager threshold Flux reports "probably done" (EagerEndOfTurn)
+        # ahead of the committed EndOfTurn. Pipecat drops that event unless
+        # enable_eager_end_of_turn is on; on, it arrives as an
+        # EagerTranscriptionFrame that starts the speculative answer early.
+        # The pipeline passes its own user turn strategies, so this does not
+        # change how turns are committed.
         stt = DeepgramFluxSTTService(
             api_key=dg_key,
             model="flux-general-en",
             should_interrupt=True,
             settings=flux_settings,
+            enable_eager_end_of_turn=eager is not None,
         )
         meta = stt_meta(STT_FLUX, fallback_from=fallback_from, fallback_reason=fallback_reason)
         meta["stt_turn_detection"] = "flux_native_eot"
+        meta["stt_eager_end_of_turn"] = eager is not None
         if preset_key:
             meta["stt_turn_sensitivity"] = preset_key
         if keyterms:

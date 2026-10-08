@@ -71,7 +71,10 @@ def _drive(guard: Any) -> dict[str, Any]:
 
 def test_voice_passes_text_chats_canonical_prompt_to_the_shared_brain() -> None:
     seen = _drive(AsyncMock(return_value=None))
-    assert seen["kwargs"]["assistant_base_prompt"] == "CANONICAL PROMPT"
+    # Text chat's prompt, plus the one voice note that keeps context background.
+    from app.services.pipecat_voice.cognitive_llm import VOICE_NO_VOLUNTEERED_DATA_NOTE
+
+    assert seen["kwargs"]["assistant_base_prompt"] == f"CANONICAL PROMPT\n\n{VOICE_NO_VOLUNTEERED_DATA_NOTE}"
     assert seen["kwargs"]["spoken_mode"] is True
     assert "Here is the plan" in "".join(seen["display"])
 

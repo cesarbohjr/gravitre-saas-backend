@@ -28,6 +28,8 @@ import asyncio
 from typing import Any
 
 from pipecat.frames.frames import (
+    EagerEndOfTurnCancelFrame,
+    EagerTranscriptionFrame,
     Frame,
     InterimTranscriptionFrame,
     ProposedUserStoppedSpeakingFrame,
@@ -36,8 +38,10 @@ from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
 from app.core.logging import get_logger
 from app.services.pipecat_voice.llm_context_utils import messages_from_context
+from app.services.pipecat_voice.utterance_gate import is_non_utterance
 from app.services.pipecat_voice.speculative_generation import (
     SpeculativeGenerationCoordinator,
+    SpeculativeGenerationRun,
     start_speculative_run,
 )
 from app.services.pipecat_voice.voice_latency_tuning import (
@@ -165,6 +169,20 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                         self._last_speculative_text, text
                     ):
                         self._speculative_coordinator.cancel()
+        elif isinstance(frame, EagerTranscriptionFrame):
+            # Flux's eager end of turn: the earliest "probably done" signal,
+            # 200-400 ms before the committed EndOfTurn. Its transcript is the
+            # best text for the turn so far.
+            text = (frame.text or "").strip()
+            if text:
+                self._last_partial = text
+            self._maybe_start_speculative_generation()
+        elif isinstance(frame, EagerEndOfTurnCancelFrame):
+            # The user kept talking. Free the run now; the next eager or
+            # committed end of turn starts a fresh one.
+            if self._speculative_coordinator is not None:
+                self._speculative_coordinator.cancel()
+            self._last_speculative_text = ""
         elif isinstance(frame, ProposedUserStoppedSpeakingFrame):
             self._maybe_start_speculative_generation()
         await self.push_frame(frame, direction)
@@ -181,6 +199,9 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             # one currently speculating (a duplicate Proposed-stop signal
             # with no new interim in between) — do not restart identical work.
             return
+        if is_non_utterance(text):
+            # Hesitations never start a brain call, speculative or confirmed.
+            return
         if _looks_write_shaped(text):
             # Same conservative gate as the read-only prefetch's knowledge
             # warm: never speculatively run the full governed turn (tool
@@ -191,14 +212,24 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             # state behind. Read-only prefetch above still applies; only
             # real generation is skipped here.
             return
+        from app.services.conversation_tier import is_continuation_utterance
+
+        if is_continuation_utterance(text):
+            # "yes, do that" / "go ahead" / "the second one" answer whatever is
+            # pending, and pending approvals live in task_state this processor
+            # cannot see. A speculative run could act on a confirmation the user
+            # is still qualifying ("yes... wait"), so these wait for the
+            # confirmed turn.
+            return
         from app.services.voice_session_service import reconstitute_spoken_identity_fields
 
         query = reconstitute_spoken_identity_fields(text)
         self._last_speculative_text = text
+        run_holder: list[SpeculativeGenerationRun] = []
 
         async def _runner():
             from app.operators.agent_intelligence import get_agent_intelligence
-            from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
+            from app.services.operator_task_intent import resolve_voice_turn_routing
 
             if self.before_run is not None:
                 await self.before_run()
@@ -214,6 +245,10 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                 history = (list(durable or []) + list(socket_history or []))[-48:]
                 conversation_id = provider_conversation_id or conversation_id
             turn_inputs = await self._turn_inputs_provider(query) if self._turn_inputs_provider is not None else {}
+            # Same helper and inputs as the confirmed turn (adopt-on-match parity).
+            spec_tier, spec_mode = resolve_voice_turn_routing(query, history=history or None)
+            if run_holder:
+                run_holder[0].tier = spec_tier.tier
             stream = intelligence.execute_task_streaming(
                 settings=self._app_settings,
                 org_id=self._org_id,
@@ -224,7 +259,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                 history_summary=history_summary,
                 conversation_id=conversation_id,
                 spoken_mode=True,
-                mode=resolve_voice_session_intelligence_mode(query),
+                mode=spec_mode,
                 **turn_inputs,
             )
             async for event in stream:
@@ -235,6 +270,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             runner=_runner,
             create_task=self.create_task,
         )
+        run_holder.append(run)
         self._speculative_coordinator.set_run(run)
         logger.info(
             "pipecat_voice_speculative_generation_started org_id=%s chars=%s",

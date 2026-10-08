@@ -838,6 +838,7 @@ class AgentIntelligence:
         spoken_settings: Settings | None = None,
         operator_act_section: str | None = None,
         response_style_key: str | None = None,
+        conversation_tier: str | None = None,
     ) -> str:
         """Shared system prompt builder for execute_task() and execute_task_streaming().
 
@@ -933,6 +934,15 @@ class AgentIntelligence:
             )
             if polish_flags["spoken_prompt_v2"]:
                 sections.extend([spoken_prompt_v2_section().strip(), ""])
+            # Conversation DNA: stable character + small per-turn tier overlay.
+            # Sits after persona/style (which win) and before policy sections.
+            from app.services.pipecat_voice.conversation_dna import (
+                conversation_dna_for_turn,
+            )
+
+            sections.extend(
+                [conversation_dna_for_turn(conversation_tier, spoken_user_text).strip(), ""]
+            )
             if polish_flags["response_length_adapt_v1"]:
                 band = resolve_response_length_band(spoken_user_text)
                 sections.extend([response_length_directive(band).strip(), ""])
@@ -1845,6 +1855,18 @@ class AgentIntelligence:
 
         loop_controller = get_cognitive_loop_controller(active_settings)
         loop_trace = loop_controller.begin(message=task_text, spoken_mode=bool(spoken_mode))
+        # One conversational tier per turn (light / medium / deep), history- and
+        # state-aware. It decides the spoken lite path and the voice style
+        # overlay; it is traced so latency can be reported per tier.
+        from app.services.conversation_tier import classify_conversation_tier
+
+        conversation_tier = classify_conversation_tier(
+            task_text,
+            history=conversation_history if isinstance(conversation_history, list) else None,
+            task_state=task_state if isinstance(task_state, dict) else _canonical_task_state,
+        )
+        loop_trace.conversation_tier = conversation_tier.tier
+        loop_trace.conversation_tier_reason = conversation_tier.reason
         classification_confidence = 0.55
         persona = {
             "persona_key": (explicit_persona or "friendly_assistant").strip()
@@ -1979,6 +2001,7 @@ class AgentIntelligence:
                     turn_id=turn_id,
                     marks=combined,
                     spoken_mode=bool(spoken_mode),
+                    conversation_tier=loop_trace.conversation_tier,
                 )
                 env["data"]["latency_critical_path"] = {
                     "dominant_stage": analysis.get("dominant_stage"),
@@ -2613,11 +2636,17 @@ class AgentIntelligence:
                     conversation_id=None,
                     connected_integrations=list(connected_early or []),
                 )
-        # Same mode resolver for text and voice when the caller did not pin one.
+        # Text callers without a pinned mode keep the operator-task rule; voice
+        # entry surfaces always pin a mode from the tier.
         if mode is None:
-            from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
+            from app.services.operator_task_intent import resolve_default_text_intelligence_mode
 
-            mode = resolve_voice_session_intelligence_mode(task_text)
+            mode = resolve_default_text_intelligence_mode(task_text)
+        from app.services.conversation_tier import upgrade_spoken_mode_for_tier
+
+        mode = upgrade_spoken_mode_for_tier(
+            mode, conversation_tier.tier, spoken_mode=bool(spoken_mode)
+        )
         requested_mode = normalize_mode(mode)
         mode_key = resolve_effective_intelligence_mode(
             mode,
@@ -3140,10 +3169,20 @@ class AgentIntelligence:
         from app.services.computer_browser_interact_turn import computer_interact_should_compile
 
         chat_facade = get_chat_intelligence_facade(active_settings)
+        # Lite path = light tier with no pending approval / offer / active plan.
+        # Pending-reply, offered-action and hold-commit handling above already
+        # ran; guardrails ran at the voice entry surface.
+        _lite_state = (
+            early_state
+            if isinstance(early_state, dict)
+            else (task_state if isinstance(task_state, dict) else _canonical_task_state)
+        )
         spoken_lite_path = use_spoken_lite_path(
             spoken_mode=bool(spoken_mode),
             routing_tier=str(routing_control.tier or ""),
             message=task_text,
+            history=conversation_history if isinstance(conversation_history, list) else None,
+            task_state=_lite_state,
         )
         _compiled_read_ingress = should_skip_unified_live_for_compiled_read(
             task_text,
@@ -3645,9 +3684,11 @@ class AgentIntelligence:
                 try:
                     logger.info(
                         "agent_intelligence_pre_kernel_breakdown_ms org_id=%s spoken_lite_path=%s "
-                        "checkpoints=%s",
+                        "conversation_tier=%s tier_reason=%s checkpoints=%s",
                         org_id,
                         spoken_lite_path,
+                        conversation_tier.tier,
+                        conversation_tier.reason,
                         _pre_kernel_checkpoints,
                     )
                 except Exception:  # noqa: BLE001 — logging must never break the turn.
@@ -4065,6 +4106,7 @@ class AgentIntelligence:
                         on_text_delta=on_text_delta,
                         compiled_reasoning_context=_compiled_unified_reasoning,
                         response_style_key=str(persona.get("persona_key") or "") or None,
+                        conversation_tier=conversation_tier.tier,
                     )
                 finally:
                     if delta_queue is not None:
@@ -5213,6 +5255,7 @@ class AgentIntelligence:
             spoken_user_text=query,
             spoken_settings=active_settings,
             response_style_key=str(persona.get("persona_key") or "") or None,
+            conversation_tier=conversation_tier.tier,
             operator_act_section=build_operator_act_context(
                 user_text=task_text,
                 connected_integrations=connected_list,

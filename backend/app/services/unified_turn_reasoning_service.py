@@ -573,6 +573,7 @@ async def run_unified_turn_shadow(
     reasoning_depth: str = "full",
     compiled_reasoning_context: Any | None = None,
     response_style_key: str | None = None,
+    conversation_tier: str | None = None,
 ) -> UnifiedTurnShadowResult:
     """One model call; does not execute tools (Phase 4 may serve text to the user)."""
     active = settings or get_settings()
@@ -866,6 +867,8 @@ async def run_unified_turn_shadow(
             spoken_prompt_v2=_polish_v2,
             spoken_length_band=_length_band,
             response_style_key=response_style_key,
+            conversation_tier=conversation_tier,
+            spoken_user_text=message,
         )
     )
     user_parts: list[str] = []
@@ -1976,6 +1979,7 @@ async def apply_unified_turn_live(
     reasoning_depth: str = "full",
     compiled_reasoning_context: Any | None = None,
     response_style_key: str | None = None,
+    conversation_tier: str | None = None,
 ) -> dict[str, Any] | None:
     """Phase 4: run unified turn and map to a stop_pipeline turn when safe.
 
@@ -2301,6 +2305,7 @@ async def apply_unified_turn_live(
         on_text_delta=on_text_delta,
         compiled_reasoning_context=compiled_reasoning_context,
         response_style_key=response_style_key,
+        conversation_tier=conversation_tier,
     )
     if result.outcome_kind in {"skipped", "error"}:
         _mark_live_fallthrough(result, f"outcome_{result.outcome_kind}")

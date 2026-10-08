@@ -197,6 +197,8 @@ def build_module_d_unified_system_prompt(
     spoken_prompt_v2: bool = False,
     spoken_length_band: object | None = None,
     response_style_key: str | None = None,
+    conversation_tier: str | None = None,
+    spoken_user_text: str | None = None,
 ) -> str:
     """Compose the system prompt for the unified reasoning call.
 
@@ -253,16 +255,24 @@ def build_module_d_unified_system_prompt(
             parts.append(expert)
     if spoken_mode:
         parts.append(spoken_register_section())
-        if spoken_prompt_v2 or spoken_length_band is not None:
+        if spoken_prompt_v2:
             from app.services.pipecat_voice.voice_conversational_polish import (
-                response_length_directive,
                 spoken_prompt_v2_section,
             )
 
-            if spoken_prompt_v2:
-                parts.append(spoken_prompt_v2_section())
-            if spoken_length_band is not None:
-                parts.append(response_length_directive(spoken_length_band))  # type: ignore[arg-type]
+            parts.append(spoken_prompt_v2_section())
+        # Conversation DNA: same helper and slot as the classical prompt builder.
+        from app.services.pipecat_voice.conversation_dna import (
+            conversation_dna_for_turn,
+        )
+
+        parts.append(conversation_dna_for_turn(conversation_tier, spoken_user_text))
+        if spoken_length_band is not None:
+            from app.services.pipecat_voice.voice_conversational_polish import (
+                response_length_directive,
+            )
+
+            parts.append(response_length_directive(spoken_length_band))  # type: ignore[arg-type]
     extra = (extra_operator_rules or "").strip()
     if extra:
         parts.append(extra)

@@ -27,6 +27,7 @@ from app.operators.stream_events import AssistantStreamComplete, AssistantStream
 from app.services.pipecat_voice.llm_context_utils import messages_from_context as _messages_from_context
 from app.services.pipecat_voice.speculative_generation import SpeculativeGenerationCoordinator
 from app.services.pipecat_voice.spoken_stream_filter import SpokenMarkdownStreamFilter
+from app.services.pipecat_voice.utterance_gate import is_filler_only
 from app.services.pipecat_voice.voice_delivery_tags import strip_and_validate_delivery_tags
 from app.services.pipecat_voice.voice_latency_metrics import record_voice_llm_stage_sample
 from app.services.pipecat_voice.voice_latency_tuning import (
@@ -56,6 +57,14 @@ logger = get_logger(__name__)
 
 # How often a streaming voice turn re-checks the conversation stop marker.
 STOP_POLL_INTERVAL_S = 0.25
+
+# Appended to the voice turn's base prompt. Business context, memory and
+# history ride along on every turn; this keeps them background.
+VOICE_NO_VOLUNTEERED_DATA_NOTE = (
+    "Treat business context, memory and earlier conversation as background: never volunteer "
+    "figures from them or run connector tools unless the user's current message asks for that "
+    "or accepts your offer."
+)
 
 
 async def adopt_or_fresh(adopted: Any, fresh: Any):
@@ -135,9 +144,10 @@ class GravitreCognitiveLLMService(LLMService):
         async with self._durable_load_lock:
             if self._durable_history_loaded:
                 return
-            self._durable_history, self._durable_summary = await asyncio.to_thread(
+            history, self._durable_summary = await asyncio.to_thread(
                 self._load_durable_conversation_context
             )
+            self._durable_history = self._drop_trailing_unanswered_user_turns(history)
             self._durable_history_loaded = True
 
     async def shared_turn_inputs(self, user_text: str) -> dict[str, Any]:
@@ -165,6 +175,7 @@ class GravitreCognitiveLLMService(LLMService):
                         self._base_prompt = ""
         prompt = self._base_prompt or None
         if prompt:
+            prompt = f"{prompt}\n\n{VOICE_NO_VOLUNTEERED_DATA_NOTE}"
             prompt = await harden_against_injection(
                 self._app_settings,
                 org_id=self._org_id,
@@ -182,6 +193,13 @@ class GravitreCognitiveLLMService(LLMService):
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
+        if isinstance(frame, LLMContextFrame) and getattr(frame, "speculation", False):
+            # Pipecat's provisional context for a turn that has not ended. This
+            # service runs its own speculative path (speculative_prefetch.py);
+            # answering this frame would run the full governed turn, tools
+            # included, on text the user has not finished saying.
+            logger.info("pipecat_voice_provisional_context_ignored org_id=%s", self._org_id)
+            return
         if isinstance(frame, LLMContextFrame):
             await self.push_frame(LLMFullResponseStartFrame())
             try:
@@ -216,7 +234,7 @@ class GravitreCognitiveLLMService(LLMService):
             VOICE_TURN_FAILURE_MESSAGE,
             is_voice_turn_failure_probe,
         )
-        from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
+        from app.services.operator_task_intent import resolve_voice_turn_routing
 
         # Disposable fault path, isolated smoke org + sentinel conversation only.
         # The except-handler in process_frame is unreachable otherwise, so without
@@ -228,6 +246,10 @@ class GravitreCognitiveLLMService(LLMService):
 
         user_text, history = _messages_from_context(context)
         if not user_text:
+            return
+        if is_filler_only(user_text):
+            # Backstop for UtteranceGateProcessor: a hesitation is not a request.
+            logger.info("pipecat_voice_filler_turn_skipped org_id=%s", self._org_id)
             return
         if self._interrupt_reporter is not None:
             # A confirmed new user turn ends the interrupted one: let its
@@ -255,7 +277,16 @@ class GravitreCognitiveLLMService(LLMService):
             return
         intelligence = get_agent_intelligence()
         turn_inputs = await self.shared_turn_inputs(user_text)
-        voice_mode = resolve_voice_session_intelligence_mode(user_text)
+        # Same helper and inputs (final text + merged history) as the
+        # speculative run, so an adopted run was produced under the same tier.
+        voice_tier, voice_mode = resolve_voice_turn_routing(user_text, history=history)
+        logger.info(
+            "pipecat_voice_conversation_tier org_id=%s tier=%s reason=%s mode=%s",
+            self._org_id,
+            voice_tier.tier,
+            voice_tier.reason,
+            voice_mode,
+        )
         # Same guardrails text chat runs before streaming (kill switch, rate
         # limit, budget, moderation, model policy). Moderation is a network
         # round trip, so it runs concurrently with the brain's preparation and
@@ -354,6 +385,7 @@ class GravitreCognitiveLLMService(LLMService):
             self._speculative_coordinator.adopt(
                 user_text,
                 prefix_max_extra_words=prefix_extra,
+                tier=voice_tier.tier,
             )
             if self._speculative_coordinator
             else None
@@ -453,11 +485,13 @@ class GravitreCognitiveLLMService(LLMService):
                 if isinstance(data, dict):
                     routing = data.get("routing") if isinstance(data.get("routing"), dict) else {}
                     logger.info(
-                        "pipecat_voice_turn_latency org_id=%s pre_llm_ms=%s reasoning_depth=%s "
-                        "routing_tier=%s effective_mode=%s model_ttft_ms=%s pre_model_ms=%s "
-                        "wall_to_first_token_ms=%s cached_prompt_tokens=%s cognitive_stage_ms=%s",
+                        "pipecat_voice_turn_latency org_id=%s pre_llm_ms=%s conversation_tier=%s "
+                        "reasoning_depth=%s routing_tier=%s effective_mode=%s model_ttft_ms=%s "
+                        "pre_model_ms=%s wall_to_first_token_ms=%s cached_prompt_tokens=%s "
+                        "cognitive_stage_ms=%s",
                         self._org_id,
                         int((time.perf_counter() - turn_start) * 1000),
+                        routing.get("conversationTier") or voice_tier.tier,
                         routing.get("reasoningDepth"),
                         data.get("routingTier"),
                         data.get("effectiveMode"),
@@ -696,6 +730,25 @@ class GravitreCognitiveLLMService(LLMService):
                 str(exc),
             )
             return [], None
+
+    @staticmethod
+    def _drop_trailing_unanswered_user_turns(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Strip user messages at the end of the pre-socket seed that never got a reply.
+
+        The seed is background. A question typed before Talk opened whose
+        answer never landed (a failed or abandoned text turn) is not a pending
+        request: left at the tail it sits right before the first thing the user
+        says in voice, and the brain answered it instead -- CRM numbers spoken
+        on open, or a connector call nobody asked for in this session.
+        """
+        trimmed = [dict(message) for message in history or []]
+        dropped = 0
+        while trimmed and str(trimmed[-1].get("role") or "") == "user":
+            trimmed.pop()
+            dropped += 1
+        if dropped:
+            logger.info("pipecat_durable_unanswered_user_turns_dropped count=%s", dropped)
+        return trimmed
 
     @staticmethod
     def _merge_durable_and_socket_history(

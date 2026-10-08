@@ -81,6 +81,12 @@ import { buildWorkspaceFocusPayload } from "@/lib/gravitre-workspace-focus"
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
 import { useAgentVoicePlayback } from "@/hooks/use-agent-voice-playback"
 import { useVoiceDuplexSession } from "@/hooks/use-voice-duplex-session"
+import {
+  lastAssistantMessageId,
+  reconcileClaimOnConversationChange,
+  shouldAutoSpeakReply,
+  type VoiceReplyClaim,
+} from "@/lib/voice-auto-tts"
 import { buildDuplexControls, type ChatSurfaceVoiceProps } from "@/lib/voice-duplex-controls"
 import { getVoiceStatusDetailed, type VoiceStatus } from "@/lib/tier1-voice-client"
 import type { MicFieldProfile } from "@/lib/voice-mic-devices"
@@ -403,6 +409,11 @@ export function AiWorkspace({
   const [micStatus, setMicStatus] = useState<SpeechRecognitionStatus>("idle")
   const [duplexVoiceError, setDuplexVoiceError] = useState<string | undefined>()
   const lastSpokenMessageIdRef = useRef<string | null>(null)
+  // Auto-TTS speaks only a reply to something the user asked with Voice armed;
+  // arming Voice alone must never read the last stored reply aloud.
+  const voiceReplyClaimRef = useRef<VoiceReplyClaim | null>(null)
+  // Conversation the pending claim belongs to (null until a new chat gets its id).
+  const voiceReplyClaimOwnerRef = useRef<string | null>(null)
   // When Pipecat hands a text-only turn to HTTP TTS, that recovery path owns
   // audible delivery for the turn even if the browser temporarily blocks it.
   // Track ownership separately from proof-of-playback so post-session auto-TTS
@@ -929,6 +940,13 @@ export function AiWorkspace({
 
   useEffect(() => {
     activeConversationIdRef.current = activeConversationId
+    const reconciled = reconcileClaimOnConversationChange({
+      claim: voiceReplyClaimRef.current,
+      owner: voiceReplyClaimOwnerRef.current,
+      next: activeConversationId,
+    })
+    voiceReplyClaimRef.current = reconciled.claim
+    voiceReplyClaimOwnerRef.current = reconciled.owner
   }, [activeConversationId])
 
   useEffect(() => {
@@ -1441,6 +1459,11 @@ export function AiWorkspace({
       startChatPerf("first_token")
       lastUserPromptRef.current = prompt
       connectedFileRefsRef.current = attachments
+      voiceReplyClaimRef.current =
+        modalityRef.current === "voice"
+          ? { kind: "after", afterAssistantId: lastAssistantMessageId(messagesRef.current) }
+          : null
+      voiceReplyClaimOwnerRef.current = activeConversationIdRef.current
       setCanContinueAfterStop(false)
       await ensureConversation(prompt)
       sendMessage({
@@ -2013,6 +2036,13 @@ export function AiWorkspace({
             (spokeDuringTurn || duplexOwnsTurn || recoveryOwnsTurn) && !result.cancelled
               ? assistantId
               : null
+          // A completed live turn whose audio never played may still be read
+          // aloud once; nothing else from this turn may.
+          voiceReplyClaimRef.current =
+            !spokeDuringTurn && !duplexOwnsTurn && !recoveryOwnsTurn && !result.cancelled
+              ? { kind: "message", messageId: assistantId }
+              : null
+          voiceReplyClaimOwnerRef.current = activeConversationIdRef.current
         }
         const conversationId = activeConversationIdRef.current || result.conversationId
         if (conversationId && next.length > 0) {
@@ -2066,10 +2096,19 @@ export function AiWorkspace({
     if (isChatBusy) return
     const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant")
     if (!lastAssistant) return
-    if (lastSpokenMessageIdRef.current === lastAssistant.id) return
+    if (
+      !shouldAutoSpeakReply({
+        lastAssistantId: lastAssistant.id,
+        lastSpokenId: lastSpokenMessageIdRef.current,
+        claim: voiceReplyClaimRef.current,
+      })
+    ) {
+      return
+    }
     const text = uiMessageText(lastAssistant).trim()
     if (!text) return
     lastSpokenMessageIdRef.current = lastAssistant.id
+    voiceReplyClaimRef.current = null
     void speakAgentVoice(text, {
       messageId: lastAssistant.id,
       agentId: effectiveVoiceAgentId,
@@ -2092,6 +2131,7 @@ export function AiWorkspace({
       clearVoiceErrors()
       setDuplexVoiceError(undefined)
       lastSpokenMessageIdRef.current = null
+      voiceReplyClaimRef.current = null
       voiceAudioRecoveryOwnsTurnRef.current = false
       if (duplexIsActive) stopDuplex()
     }

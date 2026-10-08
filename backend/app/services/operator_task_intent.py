@@ -12,6 +12,7 @@ operator task falls through to CognitiveTurnKernel / unified LIVE.
 from __future__ import annotations
 
 import re
+from typing import Any
 
 # Phrases that mean "this is a real job," not a one-line FAQ or vent.
 OPERATOR_TASK_HINTS: tuple[str, ...] = (
@@ -143,9 +144,30 @@ def use_spoken_lite_path(
     spoken_mode: bool,
     routing_tier: str,
     message: str,
+    history: list[dict[str, Any]] | None = None,
+    task_state: dict[str, Any] | None = None,
 ) -> bool:
-    """Absorbed by the Intent Gateway. Spoken no longer skips kernel enrichments."""
-    return False
+    """Skip understand / classify / enrich only for light spoken turns.
+
+    Light comes from the shared tier classifier, which already disqualifies
+    business nouns, task verbs, operator tasks and continuations of a deep
+    exchange. Any pending approval, offered action or active plan in
+    ``task_state`` keeps the full pipeline, as does any routing escalation.
+    Moderation, rate limit and the kill switch run on the voice entry
+    surfaces before this point and are not affected.
+    """
+    if not spoken_mode or not (message or "").strip():
+        return False
+    if (routing_tier or "").lower() not in {"simple", "fast", "low"}:
+        return False
+    from app.services.conversation_tier import (
+        classify_conversation_tier,
+        has_pending_task_state,
+    )
+
+    if has_pending_task_state(task_state):
+        return False
+    return classify_conversation_tier(message, history=history, task_state=task_state).tier == "light"
 
 
 def should_skip_unified_live_guards(
@@ -173,8 +195,43 @@ def spoken_should_stream_live_deltas(*, spoken_mode: bool, message: str) -> bool
     return True
 
 
-def resolve_voice_session_intelligence_mode(message: str) -> str:
-    """Native /voice/session/turn has no mode picker; operator jobs match agent chat."""
+def resolve_voice_turn_routing(
+    message: str,
+    *,
+    history: list[dict[str, Any]] | None = None,
+    task_state: dict[str, Any] | None = None,
+) -> tuple[Any, str]:
+    """(ConversationTier, execution mode) for one voice turn.
+
+    The one function every voice entry (Pipecat confirmed turn, speculative
+    run, legacy HTTP duplex) uses, so the same final text and history always
+    produce the same tier and mode.
+    """
+    from app.services.conversation_tier import (
+        classify_conversation_tier,
+        tier_to_execution_mode,
+    )
+
+    tier = classify_conversation_tier(message, history=history, task_state=task_state)
+    return tier, tier_to_execution_mode(tier.tier)
+
+
+def resolve_voice_session_intelligence_mode(
+    message: str,
+    *,
+    history: list[dict[str, Any]] | None = None,
+    task_state: dict[str, Any] | None = None,
+) -> str:
+    """Voice has no mode picker: light/medium run fast, deep runs the agent engine."""
+    return resolve_voice_turn_routing(message, history=history, task_state=task_state)[1]
+
+
+def resolve_default_text_intelligence_mode(message: str) -> str:
+    """Text chat without a pinned mode: operator jobs match agent chat, the rest fast.
+
+    Kept separate from the voice tier mapping so text routing does not change
+    when the voice classifier does.
+    """
     if should_keep_full_reasoning_for_spoken(message):
         return "agent"
     return "fast"

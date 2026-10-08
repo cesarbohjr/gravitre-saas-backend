@@ -1,3 +1,5 @@
 # Optional voice orchestration (Pipecat). Installed on Railway via requirements.txt.
 # Keeps Deepgram STT + ElevenLabs TTS; Gravitre CognitiveTurnKernel is the LLM bridge.
-pipecat-ai[deepgram,elevenlabs,websocket]>=0.0.92,<2
+# Pinned to the minor version the voice code and tests are written against
+# (Flux eager end-of-turn frames, empty-turn recovery default); bump deliberately.
+pipecat-ai[deepgram,elevenlabs,websocket]>=1.12,<1.13

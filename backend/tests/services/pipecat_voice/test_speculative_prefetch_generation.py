@@ -172,3 +172,59 @@ class TestContinuedSpeechCancelsThePendingRun:
 
         assert run_task.cancelled() or run_task.done()
         assert coordinator.has_pending_run is False
+
+
+class TestFluxEagerEndOfTurnStartsTheRunEarly:
+    """Flux's EagerEndOfTurn arrives 200-400 ms before the committed EndOfTurn
+    (ProposedUserStoppedSpeakingFrame). Starting there is what makes the
+    speculative answer land before the user's turn is committed."""
+
+    @staticmethod
+    def _eager(text: str):
+        from pipecat.frames.frames import EagerTranscriptionFrame
+
+        return EagerTranscriptionFrame(text, "u1", "")
+
+    @pytest.mark.asyncio
+    async def test_eager_end_of_turn_starts_a_run_with_its_transcript(self):
+        coordinator = SpeculativeGenerationCoordinator()
+        proc = await _processor(min_chars=5, speculative_coordinator=coordinator)
+        await proc.process_frame(_interim("what is two"), FrameDirection.DOWNSTREAM)
+        with patch(
+            "app.operators.agent_intelligence.get_agent_intelligence",
+            return_value=_fake_intelligence(["ok"]),
+        ):
+            await proc.process_frame(self._eager("what is two plus two"), FrameDirection.DOWNSTREAM)
+
+        assert coordinator.has_pending_run is True
+        assert proc._last_speculative_text == "what is two plus two"
+
+    @pytest.mark.asyncio
+    async def test_committed_end_of_turn_does_not_restart_the_same_run(self):
+        coordinator = SpeculativeGenerationCoordinator()
+        proc = await _processor(min_chars=5, speculative_coordinator=coordinator)
+        with patch(
+            "app.operators.agent_intelligence.get_agent_intelligence",
+            return_value=_fake_intelligence(["ok"]),
+        ):
+            await proc.process_frame(self._eager("what is two plus two"), FrameDirection.DOWNSTREAM)
+            first = coordinator._run
+            await proc.process_frame(ProposedUserStoppedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+
+        assert coordinator._run is first
+
+    @pytest.mark.asyncio
+    async def test_turn_resumed_cancels_the_eager_run(self):
+        from pipecat.frames.frames import EagerEndOfTurnCancelFrame
+
+        coordinator = SpeculativeGenerationCoordinator()
+        proc = await _processor(min_chars=5, speculative_coordinator=coordinator)
+        with patch(
+            "app.operators.agent_intelligence.get_agent_intelligence",
+            return_value=_fake_intelligence(["ok"]),
+        ):
+            await proc.process_frame(self._eager("what is two plus two"), FrameDirection.DOWNSTREAM)
+        await proc.process_frame(EagerEndOfTurnCancelFrame(), FrameDirection.DOWNSTREAM)
+
+        assert coordinator.has_pending_run is False
+        assert proc._last_speculative_text == ""
