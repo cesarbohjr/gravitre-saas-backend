@@ -170,7 +170,6 @@ export default function GoalsPage() {
           title={SURFACE_COPY.pages.goals.title}
           description={SURFACE_COPY.pages.goals.description}
           icon={<Target className="h-5 w-5" />}
-          art="dept-sales"
           status={
             allGoals.length > 0 ? (
               <LiveStatus tone={activeGoals > 0 ? "live" : "idle"}>

@@ -82,7 +82,6 @@ export default function SchedulesPage() {
           className="min-w-0"
           title="Schedules"
           description="All workflow schedules, task runs and training jobs across your organization."
-          art="header-quiet-desk"
           icon={<CalendarClock className="h-5 w-5" />}
           status={
             items.length > 0 ? (

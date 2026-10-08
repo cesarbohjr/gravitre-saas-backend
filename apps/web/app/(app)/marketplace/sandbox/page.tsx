@@ -126,7 +126,6 @@ export default function MarketplaceSandboxPage() {
         data-composition="operate"
       >
         <GravitrePageHeader
-          art="dept-engineering"
           eyebrow="Marketplace · Sandbox"
           title="Partner connector sandbox"
           description="Isolated org with demo agents, Acme Tools mock connector, and a smoke-test workflow for partner QA."

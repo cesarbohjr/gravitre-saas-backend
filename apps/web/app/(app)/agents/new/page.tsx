@@ -223,7 +223,6 @@ export default function NewAgentPage() {
           title="Add team member"
           description="Configure purpose, skills, apps, and limits for a new agent."
           icon={<NucleoWorkflow className="h-5 w-5" />}
-          art="header-team-at-work"
           actions={
             <Button variant="outline" asChild>
               <Link href="/agents" className="gap-1">

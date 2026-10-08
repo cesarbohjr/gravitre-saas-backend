@@ -148,7 +148,6 @@ export default function SourcesPage() {
         <GravitrePageHeader
           title={SOURCES_TITLE}
           description={SOURCES_DESCRIPTION}
-          art="header-quiet-desk"
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => mutate()} disabled={isValidating}>

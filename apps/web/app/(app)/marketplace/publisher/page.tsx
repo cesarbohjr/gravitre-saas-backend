@@ -143,7 +143,6 @@ export default function MarketplacePublisherPage() {
         data-composition="create"
       >
         <GravitrePageHeader
-          art="dept-sales"
           title="Creator publisher onboarding"
           description="Register your organization as a creator on the public Gravitre catalog. Internal org publishing does not require this step."
           icon={<Sparkles className="h-5 w-5" />}

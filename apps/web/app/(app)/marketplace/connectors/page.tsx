@@ -61,7 +61,6 @@ export default function FederatedConnectorsPage() {
         data-composition="discover"
       >
         <GravitrePageHeader
-          art="dept-engineering"
           eyebrow="Gravitre Marketplace"
           title="Federated partner connectors"
           description="Partner registry entries surfaced in unified catalog shape. Linked entries also appear in the main catalog."

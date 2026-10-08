@@ -289,7 +289,6 @@ function InstalledContent() {
         data-composition="operate"
       >
         <GravitrePageHeader
-          art="header-team-at-work"
           eyebrow="Operate / Installed capabilities"
           title="Installed assets"
           description="Marketplace assets your team has deployed, with quick links to agents, workflows, and knowledge sources."

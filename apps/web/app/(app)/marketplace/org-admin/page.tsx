@@ -456,7 +456,6 @@ export default function MarketplaceOrgAdminPage() {
         data-composition="operate"
       >
         <GravitrePageHeader
-          art="header-quiet-desk"
           eyebrow="Gravitre Marketplace"
           title="Org marketplace admin"
           description="Create drafts, publish internally, or submit to the public catalog after publisher onboarding."

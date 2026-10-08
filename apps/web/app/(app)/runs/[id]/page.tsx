@@ -660,7 +660,6 @@ export default function RunDetailPage({ params }: { params: Promise<{ id: string
           description="Result first. TRACE is a drill-down — timings appear only from this run’s steps."
           icon={<NucleoWorkflow className="h-5 w-5" />}
           actions={runActions}
-          art="dept-operations"
         >
           <div className="flex flex-wrap items-center gap-2">
             <Link

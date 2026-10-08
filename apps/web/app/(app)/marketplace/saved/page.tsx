@@ -40,7 +40,6 @@ export default function MarketplaceSavedPage() {
         data-composition="discover"
       >
         <GravitrePageHeader
-          art="header-quiet-desk"
           eyebrow="Gravitre Marketplace"
           title="Saved assets"
           description="Assets you bookmarked from the unified marketplace catalog."

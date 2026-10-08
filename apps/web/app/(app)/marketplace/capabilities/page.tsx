@@ -887,7 +887,6 @@ export default function CapabilityMarketplacePage() {
           title="Capabilities"
           description="Install and govern portable skills, plugins, and MCP capability packages while Gravitre retains execution, approval, and verification control."
           icon={<Package className="h-5 w-5" />}
-          art="dept-engineering"
         />
 
         <div className="mx-auto w-full max-w-6xl space-y-6 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">

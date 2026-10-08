@@ -345,7 +345,6 @@ export default function WorkflowsPage() {
           <GravitrePageHeader
             title={SURFACE_COPY.pages.workflows.title}
             description={SURFACE_COPY.pages.workflows.description}
-            art="dept-operations"
             status={
               workflows.length > 0 ? (
                 <LiveStatus tone={runningCount > 0 ? "live" : errorCount > 0 ? "attention" : "idle"}>

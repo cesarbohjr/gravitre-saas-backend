@@ -150,7 +150,6 @@ export default function MarketplacePrivatePage() {
         data-composition="operate"
       >
         <GravitrePageHeader
-          art="header-quiet-desk"
           eyebrow="Enterprise · org-scoped"
           title="Private connector runtime"
           description="Upload a signed bundle, inspect its reported status and activate it for your organization when ready."

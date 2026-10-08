@@ -172,7 +172,6 @@ export default function AuditPage() {
           eyebrow="Governance"
           title="Audit trail"
           family="operating"
-          art="header-quiet-desk"
           description="Who did what, when, and the outcome"
           icon={<NavFile className="h-5 w-5" />}
           actions={

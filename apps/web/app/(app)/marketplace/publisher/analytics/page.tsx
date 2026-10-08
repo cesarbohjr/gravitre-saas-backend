@@ -413,7 +413,6 @@ export default function MarketplacePublisherAnalyticsPage() {
     <AppShell title="Publisher revenue">
       <div className="bg-[color:var(--g-canvas)]">
         <GravitrePageHeader
-          art="dept-finance"
           title="Publisher revenue analytics"
           description={
             publisherName

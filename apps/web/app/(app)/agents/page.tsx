@@ -822,7 +822,6 @@ export default function AgentsPage() {
                 title={SURFACE_COPY.pages.agents.rosterTitle}
                 description="A team of specialists. See who is working, what they can do, and where attention is needed."
                 icon={<NucleoWorkflow size={NUCLEO_SIZE.default} />}
-                art="header-team-at-work"
                 actions={
                   <div className="flex flex-wrap items-center justify-end gap-2 [&_button]:min-h-11 lg:[&_button]:min-h-0">
                     {rosterActions}

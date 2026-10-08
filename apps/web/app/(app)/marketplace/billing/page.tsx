@@ -401,7 +401,6 @@ export default function MarketplaceBillingPage() {
         data-composition="operate"
       >
         <GravitrePageHeader
-          art="dept-finance"
           title="Partner revenue & payouts"
           description="Connect Stripe, sync pending asset payouts, and manage connector pricing."
           icon={<DollarSign className="h-5 w-5" />}

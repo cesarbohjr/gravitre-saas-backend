@@ -261,7 +261,6 @@ export default function MarketplaceAdminPage() {
         data-composition="operate"
       >
         <GravitrePageHeader
-          art="header-quiet-desk"
           eyebrow="Partner marketplace · Admin"
           title="Connector review queue"
           description="Approve submissions to publish connectors to the org catalog. All reviewer actions are audit-logged."

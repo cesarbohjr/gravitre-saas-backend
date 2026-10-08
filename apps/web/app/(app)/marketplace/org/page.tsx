@@ -33,7 +33,6 @@ export default function OrgMarketplacePage() {
         data-composition="discover"
       >
         <GravitrePageHeader
-          art="header-team-at-work"
           eyebrow="Gravitre Marketplace"
           title="Shared in your organization"
           description="Internal assets published by your team — not visible in the public Gravitre catalog."

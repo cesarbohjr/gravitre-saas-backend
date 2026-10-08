@@ -146,7 +146,6 @@ export default function MarketplaceSubmitPage() {
         className="bg-[color:var(--g-canvas)] pb-24 [&_[data-slot=button]]:min-h-11 [&_input]:min-h-11"
       >
         <GravitrePageHeader
-          art="dept-engineering"
           eyebrow="Partner marketplace"
           title="Submit connector package"
           description="Upload your manifest.json and complete the security checklist. Admins review submissions before connectors appear in the catalog."

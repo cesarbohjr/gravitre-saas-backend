@@ -68,7 +68,6 @@ export default function PlaysPage() {
           title="Plays"
           description="Turn business goals into coordinated action across your agents, data, and systems."
           icon={<PlayCircle className="h-5 w-5" />}
-          art="dept-operations"
           status={plays.length ? <LiveStatus tone={readyCount ? "live" : "idle"}>{readyCount} of {plays.length} ready to observe</LiveStatus> : undefined}
         />
 

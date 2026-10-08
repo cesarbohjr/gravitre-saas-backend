@@ -472,7 +472,6 @@ export default function MarketplacePlatformAdminPage() {
         data-composition="operate"
       >
         <GravitrePageHeader
-          art="header-quiet-desk"
           title="Gravitre public review queue"
           description="Set paid pricing and review community submissions before they appear in the public catalog."
           icon={<Globe className="h-5 w-5" />}

@@ -58,7 +58,6 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
               : "Recurring and one-time execution windows for this workflow."
           }
           icon={<CalendarClock className="h-5 w-5" />}
-          art="header-quiet-desk"
           status={
             <LiveStatus tone={isLoading ? "idle" : items.length > 0 ? "live" : "idle"}>
               {isLoading ? "Syncing schedules" : items.length > 0 ? `${items.length} in this window` : "No schedules in window"}
