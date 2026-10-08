@@ -19,10 +19,11 @@ from app.plays.evidence import build_play_evidence_chain
 from app.plays.marketing_performance import list_marketing_performance_signals
 from app.plays.outcomes import list_play_business_results
 from app.plays.impact import play_impact_summary
-from app.plays.readiness import resolve_play_readiness
+from app.plays.readiness import org_metric_keys, resolve_play_readiness
 from app.plays.revenue_recovery import list_revenue_recovery_signals
 from app.plays.workflow_bindings import (
     bind_play_to_workflow,
+    list_all_play_workflow_bindings,
     list_play_workflow_bindings,
     unbind_play_from_workflow,
 )
@@ -165,6 +166,10 @@ def list_plays(
     org_id = _member_org(member)
     client = get_supabase_client(settings)
     connected = connected_vendors(client, org_id, environment_name)
+    # One read each for metrics and workflow bindings, shared by every Play,
+    # instead of two queries per Play (~100 sequential calls per page load).
+    metric_keys = org_metric_keys(client, org_id)
+    bindings_by_play = list_all_play_workflow_bindings(client, org_id)
     items = []
     for play in platform_play_templates():
         readiness = resolve_play_readiness(
@@ -173,8 +178,9 @@ def list_plays(
             client=client,
             org_id=org_id,
             policy_authorized_actions=set(),
+            metric_keys=metric_keys,
         )
-        bindings = list_play_workflow_bindings(client, org_id, play.key)
+        bindings = bindings_by_play.get(play.key.strip().lower(), [])
         items.append(
             {
                 "play": _template_payload(play),

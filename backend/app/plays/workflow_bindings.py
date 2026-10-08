@@ -47,12 +47,8 @@ def play_binding_for_workflow(
     return dict(play)
 
 
-def list_play_workflow_bindings(
-    client: Any,
-    org_id: str,
-    play_key: str,
-) -> list[dict[str, Any]]:
-    wanted = play_key.strip().lower()
+def list_all_play_workflow_bindings(client: Any, org_id: str) -> dict[str, list[dict[str, Any]]]:
+    """Every Play's workflow bindings for the org, keyed by Play key, in one query."""
     rows = (
         client.table("workflow_defs")
         .select("id, name, description, status, stage, version, config, updated_at")
@@ -62,13 +58,14 @@ def list_play_workflow_bindings(
         .data
         or []
     )
-    out: list[dict[str, Any]] = []
+    out: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         config = row.get("config") if isinstance(row.get("config"), dict) else {}
         play = config.get(PLAY_CONFIG_KEY) if isinstance(config.get(PLAY_CONFIG_KEY), dict) else {}
-        if str(play.get("key") or "").strip().lower() != wanted:
+        key = str(play.get("key") or "").strip().lower()
+        if not key:
             continue
-        out.append(
+        out.setdefault(key, []).append(
             {
                 "workflowId": str(row.get("id") or ""),
                 "name": row.get("name"),
@@ -81,6 +78,14 @@ def list_play_workflow_bindings(
             }
         )
     return out
+
+
+def list_play_workflow_bindings(
+    client: Any,
+    org_id: str,
+    play_key: str,
+) -> list[dict[str, Any]]:
+    return list_all_play_workflow_bindings(client, org_id).get(play_key.strip().lower(), [])
 
 
 def bind_play_to_workflow(

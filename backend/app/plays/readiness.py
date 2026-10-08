@@ -50,6 +50,11 @@ def _metric_keys(client: Any, org_id: str | None) -> set[str]:
     return keys
 
 
+def org_metric_keys(client: Any, org_id: str | None) -> set[str]:
+    """The org's metric keys (platform defaults plus overrides), for batch readiness."""
+    return _metric_keys(client, org_id)
+
+
 def resolve_play_readiness(
     definition: PlayDefinition,
     *,
@@ -57,11 +62,14 @@ def resolve_play_readiness(
     client: Any = None,
     org_id: str | None = None,
     policy_authorized_actions: set[str] | None = None,
+    metric_keys: set[str] | None = None,
 ) -> PlayReadiness:
     """Resolve current Play maturity without executing anything.
 
     `policy_authorized_actions` must come from a runtime/effective-policy
     evaluation for the relevant agent/context. Absence never means authorized.
+    `metric_keys` lets a caller resolving many Plays load the org's metric
+    keys once (see `org_metric_keys`) instead of once per Play.
     """
 
     blockers: list[str] = []
@@ -149,7 +157,7 @@ def resolve_play_readiness(
         if state != "AVAILABLE":
             blockers.append(f"signal {signal}: {state}")
 
-    keys = _metric_keys(client, org_id)
+    keys = metric_keys if metric_keys is not None else _metric_keys(client, org_id)
     metric_rows: list[dict[str, Any]] = []
     for metric in definition.outcome_metrics:
         state: Readiness = "AVAILABLE" if metric.strip().lower() in keys else "MISSING"

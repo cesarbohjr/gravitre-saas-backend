@@ -1,5 +1,6 @@
 from app.plays.workflow_bindings import (
     bind_play_to_workflow,
+    list_all_play_workflow_bindings,
     list_play_workflow_bindings,
     play_binding_for_workflow,
     unbind_play_from_workflow,
@@ -155,3 +156,26 @@ def test_play_binding_resolver_requires_exact_play_key():
         workflow,
         expected_play_key="customer-rescue",
     ) is None
+
+
+def test_all_bindings_are_grouped_by_play_from_one_read():
+    rows = [
+        {"id": "wf-1", "org_id": "org-1", "name": "Collections", "config": {"play": {"key": "Revenue-Recovery"}}},
+        {"id": "wf-2", "org_id": "org-1", "name": "Rescue", "config": {"play": {"key": "customer-rescue"}}},
+        {"id": "wf-3", "org_id": "org-1", "name": "Unbound", "config": {}},
+        {"id": "wf-4", "org_id": "org-2", "name": "Other org", "config": {"play": {"key": "customer-rescue"}}},
+    ]
+    reads = []
+
+    class _CountingClient(_Client):
+        def table(self, name):
+            reads.append(name)
+            return super().table(name)
+
+    grouped = list_all_play_workflow_bindings(_CountingClient(rows), "org-1")
+
+    assert reads == ["workflow_defs"]
+    assert [b["workflowId"] for b in grouped["revenue-recovery"]] == ["wf-1"]
+    assert [b["workflowId"] for b in grouped["customer-rescue"]] == ["wf-2"]
+    assert set(grouped) == {"revenue-recovery", "customer-rescue"}
+    assert list_play_workflow_bindings(_Client(rows), "org-1", "customer-rescue")[0]["workflowId"] == "wf-2"
