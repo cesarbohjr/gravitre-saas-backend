@@ -868,6 +868,7 @@ async def run_unified_turn_shadow(
             spoken_length_band=_length_band,
             response_style_key=response_style_key,
             conversation_tier=conversation_tier,
+            spoken_user_text=message,
         )
     )
     user_parts: list[str] = []

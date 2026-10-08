@@ -56,3 +56,19 @@ def build_conversation_dna_section(tier: str | None, *, fewshot_block: str = "")
     if block:
         parts.append(block)
     return "\n".join(parts)
+
+
+# Style examples only help the conversational tiers; deep turns already carry
+# tool demos and a long policy prompt, so they get none.
+_FEWSHOT_TIERS = frozenset({"light", "medium"})
+
+
+def conversation_dna_for_turn(tier: str | None, user_text: str | None) -> str:
+    """DNA section with up to two tier-matched style examples from the dialogue library."""
+    fewshots = ""
+    tier_key = str(tier or "").strip().lower()
+    if tier_key in _FEWSHOT_TIERS and (user_text or "").strip():
+        from app.services.pipecat_voice.dialogue_library import select_fewshots
+
+        fewshots = select_fewshots(tier_key, user_text or "", k=2)
+    return build_conversation_dna_section(tier, fewshot_block=fewshots)

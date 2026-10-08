@@ -137,3 +137,32 @@ def test_classical_agent_prompt_also_carries_dna(intelligence: AgentIntelligence
 def test_classical_typed_prompt_has_no_dna(intelligence: AgentIntelligence) -> None:
     prompt = intelligence._build_system_prompt("assistant", None, [], {}, conversation_tier="light")
     assert DNA_HEADER not in prompt
+
+
+def test_conversational_tiers_get_library_style_examples() -> None:
+    from app.services.pipecat_voice.conversation_dna import conversation_dna_for_turn
+    from app.services.pipecat_voice.dialogue_library import HEADER
+
+    light = conversation_dna_for_turn("light", "haha tell me a joke")
+    assert light.startswith(build_conversation_dna_section("light"))
+    assert HEADER in light
+    assert len(light) < 900 + 700
+
+
+def test_deep_and_empty_turns_get_no_style_examples() -> None:
+    from app.services.pipecat_voice.conversation_dna import conversation_dna_for_turn
+
+    assert conversation_dna_for_turn("deep", "pull my pipeline") == build_conversation_dna_section("deep")
+    assert conversation_dna_for_turn("light", "  ") == build_conversation_dna_section("light")
+
+
+def test_module_d_spoken_prompt_carries_style_examples_for_light_turns() -> None:
+    from app.services.pipecat_voice.dialogue_library import HEADER
+
+    prompt = build_module_d_unified_system_prompt(
+        spoken_mode=True,
+        include_few_shots=False,
+        conversation_tier="light",
+        spoken_user_text="haha that's funny",
+    )
+    assert HEADER in prompt

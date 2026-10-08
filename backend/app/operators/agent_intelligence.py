@@ -937,10 +937,12 @@ class AgentIntelligence:
             # Conversation DNA: stable character + small per-turn tier overlay.
             # Sits after persona/style (which win) and before policy sections.
             from app.services.pipecat_voice.conversation_dna import (
-                build_conversation_dna_section,
+                conversation_dna_for_turn,
             )
 
-            sections.extend([build_conversation_dna_section(conversation_tier).strip(), ""])
+            sections.extend(
+                [conversation_dna_for_turn(conversation_tier, spoken_user_text).strip(), ""]
+            )
             if polish_flags["response_length_adapt_v1"]:
                 band = resolve_response_length_band(spoken_user_text)
                 sections.extend([response_length_directive(band).strip(), ""])
