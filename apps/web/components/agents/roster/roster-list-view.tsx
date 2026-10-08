@@ -10,6 +10,7 @@ import { models as MODEL_OPTIONS } from "@/components/gravitre/model-selector"
 import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
 import type { Agent as ApiAgent } from "@/types/api"
 import {
+  DEPARTMENT_BY_ID,
   ROSTER_DEPARTMENTS,
   blockedReason,
   emptyDepartments,
@@ -154,22 +155,51 @@ function Insights({ agents, statsAvailable }: { agents: RosterAgent[]; statsAvai
   )
 }
 
+/** Rows per page; "View all" lifts the limit. */
+export const LIST_PAGE_SIZE = 10
+
+/** Page numbers to show: all when few, otherwise first, last and a window around the current page. */
+export function pageItems(page: number, pages: number): Array<number | "gap"> {
+  if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1)
+  const out: Array<number | "gap"> = [1]
+  const from = Math.max(2, page - 1)
+  const to = Math.min(pages - 1, page + 1)
+  if (from > 2) out.push("gap")
+  for (let n = from; n <= to; n++) out.push(n)
+  if (to < pages - 1) out.push("gap")
+  out.push(pages)
+  return out
+}
+
+function isDepartment(value: string | null | undefined): value is AgentDepartmentId {
+  return Boolean(value) && ROSTER_DEPARTMENTS.some((d) => d.id === value)
+}
+
 export function RosterListView({
   agents,
   statsAvailable,
   initialStatus,
+  initialDept,
   onChanged,
   onSelectionChange,
 }: {
   agents: RosterAgent[]
   statsAvailable: boolean
   initialStatus?: string | null
+  /** Department to filter by on arrival, e.g. from a team band's View all. */
+  initialDept?: string | null
   onChanged: () => Promise<unknown>
   onSelectionChange?: (agent: RosterAgent | null) => void
 }) {
   const router = useRouter()
   const [query, setQuery] = useState("")
-  const [dept, setDept] = useState<AgentDepartmentId | "all">("all")
+  const [dept, setDeptState] = useState<AgentDepartmentId | "all">(isDepartment(initialDept) ? initialDept : "all")
+  const [page, setPage] = useState(1)
+  const [showAll, setShowAll] = useState(false)
+  const setDept = (next: AgentDepartmentId | "all") => {
+    setDeptState(next)
+    setPage(1)
+  }
   const [needsOnly, setNeedsOnly] = useState(initialStatus === "needs")
   const [sort, setSort] = useState<SortKey>("tasks")
   const [sel, setSel] = useState<string[]>([])
@@ -192,9 +222,21 @@ export function RosterListView({
     )
   }, [agents, dept, needsOnly, q, sort])
 
+  const pages = Math.max(1, Math.ceil(rows.length / LIST_PAGE_SIZE))
+  const current = Math.min(page, pages)
+  const pageRows = showAll ? rows : rows.slice((current - 1) * LIST_PAGE_SIZE, current * LIST_PAGE_SIZE)
+  const firstShown = rows.length === 0 ? 0 : showAll ? 1 : (current - 1) * LIST_PAGE_SIZE + 1
+  const lastShown = showAll ? rows.length : Math.min(rows.length, current * LIST_PAGE_SIZE)
+  const rangeLabel =
+    rows.length === 0
+      ? `No agents match (${agents.length} in total)`
+      : showAll || rows.length <= LIST_PAGE_SIZE
+        ? `Showing all ${rows.length} ${rows.length === 1 ? "agent" : "agents"}`
+        : `Showing ${firstShown} to ${lastShown} of ${rows.length} agents`
+
   const selected = agents.filter((a) => sel.includes(a.id))
-  const visibleIds = rows.map((r) => r.id)
-  const allOn = rows.length > 0 && visibleIds.every((id) => sel.includes(id))
+  const visibleIds = pageRows.map((r) => r.id)
+  const allOn = pageRows.length > 0 && visibleIds.every((id) => sel.includes(id))
   const maxTasks = Math.max(1, ...agents.map((a) => a.tasksToday))
 
   const setSelection = (next: string[]) => {
@@ -241,7 +283,19 @@ export function RosterListView({
   return (
     <>
       <Insights agents={agents} statsAvailable={statsAvailable} />
-      <section className="gv-card rs-listcard">
+      <section className="gv-card rs-listcard" aria-labelledby="rs-list-heading">
+        <div className="rs-listhead">
+          <div>
+            <h2 id="rs-list-heading">{dept === "all" ? "All agents" : `${DEPARTMENT_BY_ID.get(dept)?.name ?? "Department"} agents`}</h2>
+            <span>{rangeLabel}</span>
+          </div>
+          <Link className="gv-btn outline rs-backteam" href="/agents?view=team" replace scroll={false}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M19 12H5M11 6l-6 6 6 6" />
+            </svg>
+            Back to team view
+          </Link>
+        </div>
         <div className="rs-listbar">
           <label className="gv-field">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
@@ -253,7 +307,10 @@ export function RosterListView({
               aria-label="Search agents"
               placeholder="Search agents, roles or apps"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                setPage(1)
+              }}
             />
           </label>
           <div className="rs-chips" role="group" aria-label="Filter by department" style={{ gap: 6 }}>
@@ -279,7 +336,10 @@ export function RosterListView({
               </button>
             ))}
             {needsOnly ? (
-              <button type="button" className="gv-fchip on" aria-pressed onClick={() => setNeedsOnly(false)}>
+              <button type="button" className="gv-fchip on" aria-pressed onClick={() => {
+                setNeedsOnly(false)
+                setPage(1)
+              }}>
                 Needs you ✕
               </button>
             ) : null}
@@ -387,7 +447,7 @@ export function RosterListView({
               </tr>
             </thead>
             <tbody>
-              {rows.map((a) => {
+              {pageRows.map((a) => {
                 const on = sel.includes(a.id)
                 const pill = STATUS_PILL[a.state]
                 const rate = formatRate(a.success7d)
@@ -489,12 +549,60 @@ export function RosterListView({
             </tbody>
           </table>
         </div>
-        <div className="rs-listfoot">
-          <span>
-            Showing {rows.length} of {agents.length} agents
-          </span>
-          <span>Tip: select several agents to move or brief them together</span>
-        </div>
+        {rows.length > LIST_PAGE_SIZE ? (
+          <nav className="rs-listfoot" aria-label="Pagination">
+            <span>{showAll ? "Showing every agent on one page" : `Page ${current} of ${pages}, ${LIST_PAGE_SIZE} per page`}</span>
+            <div className="rs-pager">
+              {showAll ? (
+                <button
+                  type="button"
+                  className="rs-pg"
+                  onClick={() => {
+                    setShowAll(false)
+                    setPage(1)
+                  }}
+                >
+                  Show {LIST_PAGE_SIZE} per page
+                </button>
+              ) : (
+                <>
+                  <button type="button" className="rs-pg" disabled={current === 1} onClick={() => setPage(current - 1)}>
+                    Previous
+                  </button>
+                  {pageItems(current, pages).map((item, i) =>
+                    item === "gap" ? (
+                      <span key={`gap-${i}`} className="rs-pg-gap" aria-hidden>
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        key={item}
+                        type="button"
+                        className={cn("rs-pg num", item === current && "on")}
+                        aria-label={`Page ${item}`}
+                        aria-current={item === current ? "page" : undefined}
+                        onClick={() => setPage(item)}
+                      >
+                        {item}
+                      </button>
+                    ),
+                  )}
+                  <button type="button" className="rs-pg" disabled={current === pages} onClick={() => setPage(current + 1)}>
+                    Next
+                  </button>
+                  <span className="rs-pg-sep" aria-hidden />
+                  <button type="button" className="rs-pg on" onClick={() => setShowAll(true)}>
+                    View all {rows.length}
+                  </button>
+                </>
+              )}
+            </div>
+          </nav>
+        ) : (
+          <div className="rs-listfoot">
+            <span>Tip: select several agents to move or brief them together</span>
+          </div>
+        )}
       </section>
     </>
   )

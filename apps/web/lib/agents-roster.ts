@@ -77,40 +77,40 @@ export const ROSTER_DEPARTMENTS: DepartmentMeta[] = [
     id: "sales",
     name: "Sales",
     blurb: "Finds, enriches and moves accounts from first touch to closed deal.",
-    illustration: "dept-sales",
+    illustration: "roster-sales",
     alt: "Two people shaking hands next to a growth chart",
     emptyHint: "No agents yet. Add one to find leads, enrich accounts or watch the pipeline.",
   },
   {
     id: "marketing",
     name: "Marketing",
-    blurb: "Runs campaigns, watches search and AI visibility, and keeps content sharp.",
-    illustration: "dept-marketing",
-    alt: "Two people planning a campaign on a sticky note board",
+    blurb: "Plans, writes and measures campaigns across search, social and email.",
+    illustration: "roster-marketing",
+    alt: "Two people planning a campaign at a board of notes",
     emptyHint: "No agents yet. Add one for campaigns, SEO or content.",
   },
   {
     id: "customer_success",
     name: "Customer Success",
-    blurb: "Keeps customers healthy and every ticket in the right hands.",
-    illustration: "dept-support",
-    alt: "A support agent with a headset answering messages",
+    blurb: "Keeps customers healthy, answered and renewing.",
+    illustration: "roster-customer-success",
+    alt: "A person with a headset helping a customer at a desk",
     emptyHint: "No agents yet. Add one to triage tickets or flag churn risk.",
   },
   {
     id: "operations",
     name: "Operations",
-    blurb: "Keeps the day-to-day running, from vendor checks to internal reports.",
-    illustration: "dept-operations",
-    alt: "A person at a monitor with gears turning above",
+    blurb: "Runs the back office checks that keep work moving.",
+    illustration: "roster-operations",
+    alt: "A person turning a large gear beside stacked boxes",
     emptyHint: "No agents yet. Add one for reporting, vendor checks or handoffs.",
   },
   {
     id: "finance",
     name: "Finance",
-    blurb: "Watches cash, invoices and spend so the numbers stay honest.",
-    illustration: "dept-finance",
-    alt: "A person at a desk with stacks of coins and a chart",
+    blurb: "Tracks cash, spend and the numbers behind decisions.",
+    illustration: "roster-finance",
+    alt: "A person reviewing a receipt beside stacks of coins",
     emptyHint: "No agents yet. Add one for cash forecasts, invoices or spend reviews.",
   },
   {
@@ -124,17 +124,17 @@ export const ROSTER_DEPARTMENTS: DepartmentMeta[] = [
   {
     id: "security",
     name: "Security",
-    blurb: "Watches access, vulnerabilities and compliance evidence.",
-    illustration: null,
-    alt: "",
+    blurb: "Watches access, permissions and risky changes across your tools.",
+    illustration: "roster-security",
+    alt: "A person carrying a large key toward a locked shield",
     emptyHint: "No agents yet. Add one to watch access and vulnerabilities.",
   },
   {
     id: "general",
     name: "General",
     blurb: "Helpers that work across the whole workspace.",
-    illustration: null,
-    alt: "",
+    illustration: "roster-general",
+    alt: "A person connecting a node into a network that links every team",
     emptyHint: "No agents yet. Add a general helper for everyday requests.",
   },
 ]
@@ -359,6 +359,21 @@ export function standoutAgent(agents: RosterAgent[]): RosterAgent | null {
   for (const a of agents) {
     if (a.tasksToday <= 0) continue
     if (!best || a.tasksToday > best.tasksToday) best = a
+  }
+  return best
+}
+
+/**
+ * Busiest agent yesterday by completed tasks (the second-to-last entry of the daily series,
+ * whose last entry is today); null when nobody finished anything yesterday.
+ */
+export function yesterdayBestAgent(agents: RosterAgent[]): { agent: RosterAgent; tasks: number } | null {
+  let best: { agent: RosterAgent; tasks: number } | null = null
+  for (const a of agents) {
+    const daily = a.stats?.daily ?? []
+    const tasks = daily.length >= 2 ? daily[daily.length - 2] : 0
+    if (tasks <= 0) continue
+    if (!best || tasks > best.tasks) best = { agent: a, tasks }
   }
   return best
 }

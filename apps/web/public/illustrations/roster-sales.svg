@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="260" viewBox="0 0 320 260" preserveAspectRatio="xMidYMid slice">
+<defs><filter id="art-grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch"></feTurbulence><feColorMatrix values="0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0 0.1 0.9 0 0 0 -0.38"></feColorMatrix></filter></defs>
+<rect width="320" height="260" fill="#DEDAD0"></rect>
+<ellipse cx="160" cy="128" rx="130" ry="96" fill="#CACCE8"></ellipse>
+<rect x="200" y="172" width="18" height="42" rx="2" fill="#5B5BD6" opacity="0.5"></rect>
+<rect x="224" y="148" width="18" height="66" rx="2" fill="#5B5BD6" opacity="0.72"></rect>
+<rect x="248" y="120" width="18" height="94" rx="2" fill="#5B5BD6"></rect>
+<polyline points="196,158 220,136 236,146 266,104" fill="none" stroke="#26282C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+<polygon points="271,97 256,101 266,112" fill="#26282C"></polygon>
+<g transform="translate(112 0)">
+<rect x="-8" y="164" width="7" height="50" rx="3" fill="#26282C"></rect><rect x="1" y="164" width="7" height="50" rx="3" fill="#26282C"></rect>
+<path d="M-13 124 Q0 116 13 124 L15 168 L-15 168 Z" fill="#7C8F6B"></path>
+<path d="M-10 128 L-13 160" stroke="#7C8F6B" stroke-width="6" stroke-linecap="round"></path><circle cx="-13" cy="162" r="3.2" fill="#D6AB86"></circle>
+<path d="M9 128 L18 142 L26 146" fill="none" stroke="#7C8F6B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path>
+<circle cx="0" cy="106" r="10" fill="#D6AB86"></circle>
+<path d="M-10.5 105 A10.5 10.5 0 0 1 10.5 105 Q2 97 -10.5 105 Z" fill="#2E231D"></path><circle cx="-8" cy="97" r="4.5" fill="#2E231D"></circle>
+</g>
+<g transform="translate(164 0) scale(-1 1)">
+<rect x="-8" y="164" width="7" height="50" rx="3" fill="#26282C"></rect><rect x="1" y="164" width="7" height="50" rx="3" fill="#26282C"></rect>
+<path d="M-13 124 Q0 116 13 124 L15 168 L-15 168 Z" fill="#B0573F"></path>
+<path d="M-10 128 L-12 160" stroke="#B0573F" stroke-width="6" stroke-linecap="round"></path><circle cx="-12" cy="162" r="3.2" fill="#C99572"></circle>
+<path d="M9 128 L18 142 L26 146" fill="none" stroke="#B0573F" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path>
+<circle cx="0" cy="106" r="10" fill="#C99572"></circle>
+<path d="M-10.5 106 A10.5 10.5 0 0 1 10.5 106 L10 102 Q0 96 -10.5 106 Z" fill="#1F1A17"></path>
+</g>
+<circle cx="138" cy="146" r="4" fill="#D6AB86"></circle>
+<line x1="28" y1="214" x2="292" y2="214" stroke="#9C8C74" stroke-width="2"></line>
+<rect width="320" height="260" filter="url(#art-grain)" opacity="0.55"></rect>
+</svg>

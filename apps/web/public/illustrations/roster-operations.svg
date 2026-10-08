@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="260" viewBox="0 0 320 260" preserveAspectRatio="xMidYMid slice">
+<defs><filter id="art-grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch"></feTurbulence><feColorMatrix values="0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0 0.1 0.9 0 0 0 -0.38"></feColorMatrix></filter></defs>
+<rect width="320" height="260" fill="#DEDAD0"></rect>
+<ellipse cx="160" cy="128" rx="130" ry="96" fill="#C9D1DD"></ellipse>
+<g transform="translate(212 118)">
+<rect x="-7" y="-50" width="14" height="100" rx="2" fill="#4A6A8E"></rect>
+<rect x="-7" y="-50" width="14" height="100" rx="2" fill="#4A6A8E" transform="rotate(45)"></rect>
+<rect x="-7" y="-50" width="14" height="100" rx="2" fill="#4A6A8E" transform="rotate(90)"></rect>
+<rect x="-7" y="-50" width="14" height="100" rx="2" fill="#4A6A8E" transform="rotate(135)"></rect>
+<circle r="40" fill="#4A6A8E"></circle>
+<circle r="27" fill="none" stroke="#3A5677" stroke-width="3"></circle>
+<circle r="13" fill="#DEDAD0"></circle>
+</g>
+<g transform="translate(262 186)">
+<rect x="-5" y="-26" width="10" height="52" rx="2" fill="#C9A24B"></rect>
+<rect x="-5" y="-26" width="10" height="52" rx="2" fill="#C9A24B" transform="rotate(60)"></rect>
+<rect x="-5" y="-26" width="10" height="52" rx="2" fill="#C9A24B" transform="rotate(120)"></rect>
+<circle r="20" fill="#C9A24B"></circle>
+<circle r="7" fill="#DEDAD0"></circle>
+</g>
+<rect x="44" y="180" width="36" height="34" rx="2" fill="#B8875A"></rect>
+<rect x="50" y="150" width="28" height="30" rx="2" fill="#CDA27B"></rect>
+<line x1="62" y1="180" x2="62" y2="214" stroke="#9A6E46" stroke-width="2"></line>
+<line x1="64" y1="150" x2="64" y2="180" stroke="#B0855D" stroke-width="2"></line>
+<g transform="translate(132 0)">
+<rect x="-8" y="164" width="7" height="50" rx="3" fill="#26282C" transform="rotate(-6 -4 164)"></rect><rect x="1" y="164" width="7" height="50" rx="3" fill="#26282C" transform="rotate(8 4 164)"></rect>
+<path d="M-12 124 Q1 116 14 124 L16 168 L-14 168 Z" fill="#7C8F6B"></path>
+<path d="M-8 129 L14 140 L32 140" fill="none" stroke="#6C7E5C" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="34" cy="140" r="3.2" fill="#D6AB86"></circle>
+<path d="M10 128 L24 134 L36 128" fill="none" stroke="#7C8F6B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="38" cy="127" r="3.2" fill="#D6AB86"></circle>
+<circle cx="1" cy="106" r="10" fill="#D6AB86"></circle>
+<path d="M-9.5 105 A10.5 10.5 0 0 1 11.5 105 Q3 97 -9.5 105 Z" fill="#2E231D"></path><circle cx="-7" cy="97" r="4.5" fill="#2E231D"></circle>
+</g>
+<line x1="28" y1="214" x2="292" y2="214" stroke="#9C8C74" stroke-width="2"></line>
+<rect width="320" height="260" filter="url(#art-grain)" opacity="0.55"></rect>
+</svg>
