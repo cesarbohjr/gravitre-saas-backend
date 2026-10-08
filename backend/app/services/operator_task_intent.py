@@ -144,8 +144,15 @@ def use_spoken_lite_path(
     routing_tier: str,
     message: str,
 ) -> bool:
-    """Absorbed by the Intent Gateway. Spoken no longer skips kernel enrichments."""
-    return False
+    """Use low-latency processing for simple spoken turns after Gateway fallthrough.
+
+    Operator tasks and connector writes still use the full guarded pipeline.
+    """
+    if not spoken_mode or not (message or "").strip():
+        return False
+    if (routing_tier or "").lower() not in {"simple", "fast", "low"}:
+        return False
+    return not should_keep_full_reasoning_for_spoken(message)
 
 
 def should_skip_unified_live_guards(
