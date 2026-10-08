@@ -157,11 +157,14 @@ export function RosterWorkMap({
     const bottomAgents = TOP + model.agents.length * PITCH + 24
 
     const apps = model.apps.map((p) => ({ ...p, y: snap(mean(p.agentIds.map((id) => agentY.get(id) ?? 0), TOP + 50)) }))
-    place(apps, PITCH * 2, TOP + 50)
+    // Many apps would overrun the agents lane at the roomy pitch, so tighten it.
+    const appPitch = apps.length > 6 ? APP.h + 12 : PITCH * 2
+    place(apps, appPitch, TOP + 50)
+    const appsBottom = apps.length ? apps[apps.length - 1].y + APP.h / 2 + 24 : 0
     const blindY = model.noAppAgentIds.length
       ? Math.max(
           snap(mean(model.noAppAgentIds.map((id) => agentY.get(id) ?? 0), TOP + 50)),
-          (apps.length ? apps[apps.length - 1].y + PITCH * 2 : TOP + 50),
+          (apps.length ? apps[apps.length - 1].y + appPitch : TOP + 50),
         )
       : null
 
@@ -182,7 +185,7 @@ export function RosterWorkMap({
     const noneIdeal = mean(unmeasured.map((o) => outY.get(o.name) ?? 0), goalsBottom) - noneH / 2
     const noneY0 = unmeasured.length ? Math.max(goalsBottom + 24, noneIdeal) : goalsBottom
     const sugY0 = (unmeasured.length ? noneY0 + noneH : goalsBottom) + 18
-    const H = Math.max(bottomAgents, sugY0 + SUG_H + 24, (blindY ?? 0) + 60, TOP + 260)
+    const H = Math.max(bottomAgents, appsBottom, sugY0 + SUG_H + 24, (blindY ?? 0) + 60, TOP + 260)
     return { agentY, apps, blindY, outs, outY, goalCards, goalY, noneH, noneY0, sugY0, H }
   }, [model])
 

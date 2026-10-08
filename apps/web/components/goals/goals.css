@@ -87,7 +87,7 @@
 .gv-ws .gv-pill.offtrack { background: var(--gv-red-soft); color: var(--gv-red-text); }
 
 .gv-ws .gv-tpl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 16px; }
-.gv-ws button.gv-tpl { width: 100%; padding: 0; font: inherit; text-align: left; cursor: pointer; }
+.gv-ws button.gv-tpl { width: 100%; padding: 0; font: inherit; text-align: left; cursor: pointer; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; }
 .gv-ws .gv-tpl .cap { padding: 14px 16px; }
 .gv-ws .gv-tpl .cap .k { font-size: 12px; color: var(--gv-muted); }
 .gv-ws .gv-tpl .cap .t { font-weight: 600; margin-top: 4px; line-height: 1.35; }

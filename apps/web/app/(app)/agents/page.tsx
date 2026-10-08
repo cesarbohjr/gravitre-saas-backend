@@ -4,7 +4,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR, { mutate as globalMutate } from "swr"
-import { useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WsPage } from "@/components/workspace/ws-page"
 import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
@@ -89,6 +89,7 @@ function RosterSkeleton() {
 
 function AgentsRoster() {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const { user } = useAuth()
   const { prefs, hydrated, setView } = useAgentsFleetPrefs()
@@ -103,8 +104,8 @@ function AgentsRoster() {
     if (!hydrated || isRosterView(param)) return
     const next = new URLSearchParams(searchParams.toString())
     next.set("view", prefs.view)
-    router.replace(`/agents?${next.toString()}`, { scroll: false })
-  }, [hydrated, param, prefs.view, router, searchParams])
+    router.replace(`${pathname || "/agents"}?${next.toString()}`, { scroll: false })
+  }, [hydrated, param, pathname, prefs.view, router, searchParams])
 
   useEffect(() => {
     if (isRosterView(param) && param !== prefs.view && hydrated) setView(param)
@@ -143,7 +144,7 @@ function AgentsRoster() {
   const viewHref = (id: RosterView) => {
     const next = new URLSearchParams()
     next.set("view", id)
-    return `/agents?${next.toString()}`
+    return `${pathname || "/agents"}?${next.toString()}`
   }
 
   return (

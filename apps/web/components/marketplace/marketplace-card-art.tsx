@@ -3,7 +3,7 @@ import { resolveMarketArt, type MarketArtInput } from "@/lib/marketplace-categor
 
 /**
  * Objects-only category art at the top of a marketplace card (300x190 scene).
- * The frame keeps the art's aspect ratio so every card in a grid row starts its
+ * The frame is a fixed 2:1 crop of the scene (sky and margin trimmed, ground line kept), so every card in a grid row starts its
  * copy at the same height, whatever the column width.
  */
 export function MarketplaceCardArt({
@@ -17,7 +17,7 @@ export function MarketplaceCardArt({
   return (
     <div
       className={cn(
-        "relative aspect-[300/190] w-full shrink-0 overflow-hidden border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)]",
+        "relative aspect-[2/1] w-full shrink-0 overflow-hidden border-b border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)]",
         className,
       )}
       data-market-art={art.name}

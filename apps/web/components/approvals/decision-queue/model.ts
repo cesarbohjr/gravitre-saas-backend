@@ -264,6 +264,12 @@ export function humanize(key: string): string {
   return spaced.charAt(0).toUpperCase() + spaced.slice(1)
 }
 
+/** Impact text is a sentence: keep its words, capitalise only the first letter. */
+export function sentenceCase(value: string): string {
+  const text = value.trim()
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : text
+}
+
 export function titleCase(value: string): string {
   return value
     .replace(/[_-]+/g, " ")
@@ -408,7 +414,7 @@ export function whatWillHappen(a: Approval): DetailRow[] {
       rows.push({ term: "Proposed on", value: host })
     }
   }
-  if (ctx.impact) rows.push({ term: "Impact", value: titleCase(ctx.impact) })
+  if (ctx.impact) rows.push({ term: "Impact", value: sentenceCase(ctx.impact) })
   if (ctx.runId) rows.push({ term: "Run", value: "Open the run", href: `/runs/${encodeURIComponent(ctx.runId)}` })
   return rows
 }

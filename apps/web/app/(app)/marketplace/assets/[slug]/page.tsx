@@ -63,6 +63,15 @@ import type {
 } from "@/types/api"
 import "./template-detail.css"
 
+/** "google_analytics" -> "Google Analytics" for the connect link. */
+function connectorLabel(key: string): string {
+  return key
+    .split(/[_\-\s]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ")
+}
+
 function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
   if (!blockers.length) return null
   return (
@@ -80,7 +89,7 @@ function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
                 href={blocker.action_url}
                 className="text-primary underline-offset-4 hover:underline"
               >
-                Connect {blocker.connector}
+                Connect {connectorLabel(blocker.connector)}
               </Link>
             ) : null}
           </div>

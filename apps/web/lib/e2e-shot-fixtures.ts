@@ -1786,6 +1786,33 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       },
     ],
   },
+  // Capture-only assignment detail: a delivered job whose search step hit a plan limit.
+  "/api/agent-jobs/job_shot_blocked": {
+    jobId: "job_shot_blocked",
+    kind: "agent_task",
+    status: "completed",
+    sessionId: null,
+    attempts: 1,
+    error: null,
+    createdAt: AGO(300),
+    finishedAt: AGO(290),
+    result: {
+      agent_name: "Inbound lead triage",
+      action_title: "Add Northwind's new logistics prospects to the Q4 target list",
+      task: { description: "Find logistics companies that match the Q4 ICP and add them to the Q4 target list." },
+      summary: "Company search needs a data provider plan with search API access. See app.apollo.io to upgrade.",
+      confidence: 0.35,
+      tool_call_count: 5,
+      tools_available: 24,
+      tool_calls: [
+        { tool: "apollo.lists.list", result: { success: false, error: "Plan does not include API access" } },
+        { tool: "apollo.organizations.search", result: { success: false, error: "Plan does not include search API access" } },
+        { tool: "apollo.lists.list", result: { success: true } },
+        { tool: "apollo.organizations.search", result: { success: true } },
+        { tool: "apollo.organizations.search", result: { success: false, error: "Plan does not include search API access" } },
+      ],
+    },
+  },
   // FIXTURE: execution-outcome ledger rollup (shape of GET ops-summary). Counts only.
   "/api/workflows/execution-outcomes/ops-summary": {
     window_hours: 24,
