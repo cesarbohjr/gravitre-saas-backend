@@ -40,6 +40,7 @@ from app.services.pipecat_voice.stt_factory import STT_FLUX, build_pipecat_stt
 from app.services.pipecat_voice.text_turn_kick import TextTurnKickProcessor
 from app.services.pipecat_voice.transcript_relay import TranscriptRelayProcessor
 from app.services.pipecat_voice.tts_warmup import warm_elevenlabs_tts_connection
+from app.services.pipecat_voice.utterance_gate import UtteranceGateProcessor
 from app.services.pipecat_voice.voice_conversational_polish import (
     resolve_conversational_polish_flags,
 )
@@ -296,6 +297,13 @@ def build_pipecat_voice_task(
             ],
             stop=[ExternalUserTurnStopStrategy()],
         )
+    if "empty_user_turn" in getattr(LLMUserAggregatorParams, "__dataclass_fields__", {}):
+        # Pipecat's empty-turn recovery runs the LLM for a user turn with no
+        # transcript (noise, a cough, a dropped filler), and counts any turn
+        # before the bot's first reply as one that interrupted it -- so a breath
+        # right after Talk opens ran a turn nobody asked for. Never answer
+        # silence.
+        user_params_kwargs["empty_user_turn"] = None
     user_agg, assistant_agg = LLMContextAggregatorPair(
         context,
         user_params=LLMUserAggregatorParams(**user_params_kwargs),
@@ -305,6 +313,9 @@ def build_pipecat_voice_task(
         [
             transport.input(),
             stt,
+            # Before anything reads a final transcript: a cough, breath or "uh"
+            # Flux finalizes as a turn must never reach the brain.
+            UtteranceGateProcessor(app_settings=settings, org_id=org_id),
             # user_agg consumes TranscriptionFrame before transport.output(), so
             # the serializer never sees one and the client got no transcript at
             # all. Mirror finals as a message frame, which passes through.

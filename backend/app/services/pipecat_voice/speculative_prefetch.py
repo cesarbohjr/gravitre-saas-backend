@@ -38,6 +38,7 @@ from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
 from app.core.logging import get_logger
 from app.services.pipecat_voice.llm_context_utils import messages_from_context
+from app.services.pipecat_voice.utterance_gate import is_non_utterance
 from app.services.pipecat_voice.speculative_generation import (
     SpeculativeGenerationCoordinator,
     SpeculativeGenerationRun,
@@ -197,6 +198,9 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             # Either nothing usable yet, or this exact text is already the
             # one currently speculating (a duplicate Proposed-stop signal
             # with no new interim in between) — do not restart identical work.
+            return
+        if is_non_utterance(text):
+            # Hesitations never start a brain call, speculative or confirmed.
             return
         if _looks_write_shaped(text):
             # Same conservative gate as the read-only prefetch's knowledge
