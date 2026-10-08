@@ -38,6 +38,9 @@ for _key, _value in {
     "SUPABASE_SERVICE_ROLE_KEY": "service-role-test",
     "SUPABASE_JWT_SECRET": "jwt-secret-test",
     "OPENAI_API_KEY": "sk-test-openai",
+    # The guard asserts the exact reply; a slow CI runner would otherwise get
+    # the deep-turn "one moment" acknowledgement spoken ahead of it.
+    "VOICE_DEEP_ACK_SECONDS": "0",
 }.items():
     if not os.environ.get(_key):
         os.environ[_key] = _value
