@@ -216,7 +216,7 @@ class GravitreCognitiveLLMService(LLMService):
             VOICE_TURN_FAILURE_MESSAGE,
             is_voice_turn_failure_probe,
         )
-        from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
+        from app.services.operator_task_intent import resolve_voice_turn_routing
 
         # Disposable fault path, isolated smoke org + sentinel conversation only.
         # The except-handler in process_frame is unreachable otherwise, so without
@@ -255,7 +255,16 @@ class GravitreCognitiveLLMService(LLMService):
             return
         intelligence = get_agent_intelligence()
         turn_inputs = await self.shared_turn_inputs(user_text)
-        voice_mode = resolve_voice_session_intelligence_mode(user_text)
+        # Same helper and inputs (final text + merged history) as the
+        # speculative run, so an adopted run was produced under the same tier.
+        voice_tier, voice_mode = resolve_voice_turn_routing(user_text, history=history)
+        logger.info(
+            "pipecat_voice_conversation_tier org_id=%s tier=%s reason=%s mode=%s",
+            self._org_id,
+            voice_tier.tier,
+            voice_tier.reason,
+            voice_mode,
+        )
         # Same guardrails text chat runs before streaming (kill switch, rate
         # limit, budget, moderation, model policy). Moderation is a network
         # round trip, so it runs concurrently with the brain's preparation and
@@ -354,6 +363,7 @@ class GravitreCognitiveLLMService(LLMService):
             self._speculative_coordinator.adopt(
                 user_text,
                 prefix_max_extra_words=prefix_extra,
+                tier=voice_tier.tier,
             )
             if self._speculative_coordinator
             else None
@@ -453,11 +463,13 @@ class GravitreCognitiveLLMService(LLMService):
                 if isinstance(data, dict):
                     routing = data.get("routing") if isinstance(data.get("routing"), dict) else {}
                     logger.info(
-                        "pipecat_voice_turn_latency org_id=%s pre_llm_ms=%s reasoning_depth=%s "
-                        "routing_tier=%s effective_mode=%s model_ttft_ms=%s pre_model_ms=%s "
-                        "wall_to_first_token_ms=%s cached_prompt_tokens=%s cognitive_stage_ms=%s",
+                        "pipecat_voice_turn_latency org_id=%s pre_llm_ms=%s conversation_tier=%s "
+                        "reasoning_depth=%s routing_tier=%s effective_mode=%s model_ttft_ms=%s "
+                        "pre_model_ms=%s wall_to_first_token_ms=%s cached_prompt_tokens=%s "
+                        "cognitive_stage_ms=%s",
                         self._org_id,
                         int((time.perf_counter() - turn_start) * 1000),
+                        routing.get("conversationTier") or voice_tier.tier,
                         routing.get("reasoningDepth"),
                         data.get("routingTier"),
                         data.get("effectiveMode"),

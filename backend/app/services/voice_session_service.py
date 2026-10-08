@@ -333,7 +333,7 @@ async def stream_voice_turn_events(
     from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
     from app.services.operator_task_intent import (
         looks_like_operator_task,
-        resolve_voice_session_intelligence_mode,
+        resolve_voice_turn_routing,
     )
     from app.services.tier1_voice_service import normalize_elevenlabs_output_format
 
@@ -616,7 +616,14 @@ async def stream_voice_turn_events(
     )
 
     # Same prompt and guardrails as text chat; only the refusal's presentation differs.
-    voice_mode = resolve_voice_session_intelligence_mode(text)
+    voice_tier, voice_mode = resolve_voice_turn_routing(text, history=conversation_history)
+    logger.info(
+        "voice_http_conversation_tier org_id=%s tier=%s reason=%s mode=%s",
+        org_id,
+        voice_tier.tier,
+        voice_tier.reason,
+        voice_mode,
+    )
     try:
         base_prompt: str | None = await asyncio.to_thread(
             build_turn_system_prompt,

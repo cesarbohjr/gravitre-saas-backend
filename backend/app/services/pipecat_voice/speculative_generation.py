@@ -76,15 +76,30 @@ class SpeculativeGenerationRun:
     task: "asyncio.Task[None]"
     queue: "asyncio.Queue[Any]" = field(default_factory=asyncio.Queue)
     consumed: bool = False
+    # Conversation tier the run computed for its own text + history; set by
+    # the runner once known. Used to refuse a prefix adoption across tiers.
+    tier: str | None = None
 
-    def matches(self, final_text: str, *, prefix_max_extra_words: int = 0) -> bool:
+    def matches(
+        self,
+        final_text: str,
+        *,
+        prefix_max_extra_words: int = 0,
+        tier: str | None = None,
+    ) -> bool:
         if not final_text:
             return False
         norm_final = _normalize_for_match(final_text)
         norm_spec = _normalize_for_match(self.text)
         if norm_final == norm_spec:
+            # Same text and same history give the same tier (the classifier is
+            # pure), so an exact match needs no tier comparison.
             return True
         if prefix_max_extra_words <= 0 or not norm_spec:
+            return False
+        if tier is not None and self.tier != tier:
+            # Extra trailing words can change the tier ("hey" -> "hey, pull my
+            # pipeline"); an answer produced for another tier is not reusable.
             return False
         if not norm_final.startswith(norm_spec):
             return False
@@ -181,6 +196,7 @@ class SpeculativeGenerationCoordinator:
         final_text: str,
         *,
         prefix_max_extra_words: int = 0,
+        tier: str | None = None,
     ) -> SpeculativeGenerationRun | None:
         """Return the pending run if its text matches `final_text`, else None
         (cancelling a non-matching pending run along the way — it will never
@@ -197,7 +213,7 @@ class SpeculativeGenerationCoordinator:
         self._run = None
         if run is None or run.consumed:
             return None
-        if not run.matches(final_text, prefix_max_extra_words=prefix_max_extra_words):
+        if not run.matches(final_text, prefix_max_extra_words=prefix_max_extra_words, tier=tier):
             run.cancel()
             return None
         run.consumed = True

@@ -61,8 +61,10 @@ def test_simple_apollo_connected_question_is_not_operator_task() -> None:
     assert not is_operator_task_shaped("is Apollo connected.")
 
 
-def test_spoken_lite_path_is_absorbed_by_the_gateway() -> None:
-    assert not use_spoken_lite_path(
+def test_spoken_lite_path_is_light_tier_only() -> None:
+    # Restored on the conversation tier: light social turns skip enrichments,
+    # operator tasks and typed turns never do.
+    assert use_spoken_lite_path(
         spoken_mode=True,
         routing_tier="simple",
         message="hey, how's it going",

@@ -12,7 +12,7 @@ Phase 0 inventory (code search 2026-09-10, not memory):
   5. Definition brief     conversational_turn_gate.definition_brief_reply
   6. Channel override      unified_turn_pending_live.resolve_unified_live_channel_override_reply
   7. Meta-capability       unified_turn_pending_live.resolve_unified_live_meta_capability_reply
-  8. Spoken lite-path     operator_task_intent.use_spoken_lite_path (deleted as independent decision)
+  8. Spoken lite-path     operator_task_intent.use_spoken_lite_path (conversation_tier light only; skips enrichments, not the kernel)
   9. Spoken LIVE stream    operator_task_intent.spoken_should_stream_live_deltas (modality after kernel)
  10. KB-empty skip         cognitive_turn_kernel conversational spoken KNOWLEDGE skip
  11. Pending-reply         unified_turn_pending_live.resolve_unified_live_pending_reply

@@ -94,6 +94,8 @@ class CognitiveLoopTrace:
     fast_path: bool = False
     gateway_candidate: str | None = None
     gateway_reason: str | None = None
+    conversation_tier: str | None = None
+    conversation_tier_reason: str | None = None
 
     def record(
         self,
@@ -155,6 +157,8 @@ class CognitiveLoopTrace:
             "turnId": self.turn_id,
             "stages": [s.to_dict() for s in self.stages],
             "fullLoop": self.has_full_loop(),
+            "conversationTier": self.conversation_tier,
+            "conversationTierReason": self.conversation_tier_reason,
         }
 
     def to_dict(self) -> dict[str, Any]:
@@ -168,6 +172,8 @@ class CognitiveLoopTrace:
             "gateway_reason": self.gateway_reason,
             "stages": [s.to_dict() for s in self.stages],
             "full_loop": self.has_full_loop(),
+            "conversation_tier": self.conversation_tier,
+            "conversation_tier_reason": self.conversation_tier_reason,
         }
 
 

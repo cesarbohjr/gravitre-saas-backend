@@ -216,11 +216,14 @@ def record_critical_path(
     turn_id: str | None,
     marks: dict[str, int] | None,
     spoken_mode: bool = False,
+    conversation_tier: str | None = None,
 ) -> dict[str, Any]:
     """Best-effort audit_events write. Never raises; never blocks the turn."""
     analysis = analyze_cumulative_checkpoints(marks)
     analysis["turn_id"] = turn_id
     analysis["spoken_mode"] = bool(spoken_mode)
+    # Lets latency be reported per conversational tier (light / medium / deep).
+    analysis["conversation_tier"] = conversation_tier
     if not org_id or not user_id:
         logger.debug("turn_latency_critical_path_skipped reason=missing_org_or_user")
         return analysis
