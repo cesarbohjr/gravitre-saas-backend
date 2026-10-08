@@ -103,13 +103,26 @@ class ModelSelector:
         return apply_model_selection_policy(selection, classification)
 
     async def _list_deployed_ml_models(self, org_id: str) -> list[str]:
-        deployed: list[str] = []
-        for name, meta in GRAVITRE_ML_CATALOG.items():
-            if meta.get("status") != ModelStatus.TRAINED:
-                continue
-            if await self._org_has_deployed_model(org_id, name):
-                deployed.append(name)
-        return deployed
+        # One read of the org's deployed/ready models for the whole catalog; it
+        # was two identical registry queries per catalog entry, one after another.
+        try:
+            models = await self._deployed_and_ready_models(org_id)
+        except Exception:  # noqa: BLE001
+            return []
+        return [
+            name
+            for name, meta in GRAVITRE_ML_CATALOG.items()
+            if meta.get("status") == ModelStatus.TRAINED and _matches_catalog_name(models, name)
+        ]
+
+    @staticmethod
+    async def _deployed_and_ready_models(org_id: str) -> list[Any]:
+        registry = get_model_registry()
+        deployed, ready = await asyncio.gather(
+            registry.list_models(org_id, status=ModelStatus.DEPLOYED),
+            registry.list_models(org_id, status=ModelStatus.READY),
+        )
+        return [*deployed, *ready]
 
     async def _ledger_preferred_ml(
         self,
@@ -198,22 +211,11 @@ class ModelSelector:
         return base
 
     async def _org_has_deployed_model(self, org_id: str, catalog_name: str) -> bool:
-        aliases = BASE_MODEL_ALIASES.get(catalog_name, (catalog_name,))
         try:
-            registry = get_model_registry()
-            models = await registry.list_models(org_id, status=ModelStatus.DEPLOYED)
-            for model in models:
-                base = str(getattr(model, "base_model", "") or "")
-                if base in aliases or model.name in aliases:
-                    return True
-            models_ready = await registry.list_models(org_id, status=ModelStatus.READY)
-            for model in models_ready:
-                base = str(getattr(model, "base_model", "") or "")
-                if base in aliases or model.name in aliases:
-                    return True
+            models = await self._deployed_and_ready_models(org_id)
         except Exception:  # noqa: BLE001
             return False
-        return False
+        return _matches_catalog_name(models, catalog_name)
 
     def _llm_selection(
         self,
@@ -238,6 +240,16 @@ class ModelSelector:
             "fallback": "llm_fast",
             "reason": reason or f"No trained ML model for {task_type} — using LLM {tier} tier",
         }
+
+
+def _matches_catalog_name(models: list[Any], catalog_name: str) -> bool:
+    """True when a deployed or ready model is (or is based on) this catalog entry."""
+    aliases = BASE_MODEL_ALIASES.get(catalog_name, (catalog_name,))
+    for model in models:
+        base = str(getattr(model, "base_model", "") or "")
+        if base in aliases or getattr(model, "name", None) in aliases:
+            return True
+    return False
 
 
 _model_selector: ModelSelector | None = None
