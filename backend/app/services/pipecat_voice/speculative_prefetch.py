@@ -28,6 +28,8 @@ import asyncio
 from typing import Any
 
 from pipecat.frames.frames import (
+    EagerEndOfTurnCancelFrame,
+    EagerTranscriptionFrame,
     Frame,
     InterimTranscriptionFrame,
     ProposedUserStoppedSpeakingFrame,
@@ -165,6 +167,20 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                         self._last_speculative_text, text
                     ):
                         self._speculative_coordinator.cancel()
+        elif isinstance(frame, EagerTranscriptionFrame):
+            # Flux's eager end of turn: the earliest "probably done" signal,
+            # 200-400 ms before the committed EndOfTurn. Its transcript is the
+            # best text for the turn so far.
+            text = (frame.text or "").strip()
+            if text:
+                self._last_partial = text
+            self._maybe_start_speculative_generation()
+        elif isinstance(frame, EagerEndOfTurnCancelFrame):
+            # The user kept talking. Free the run now; the next eager or
+            # committed end of turn starts a fresh one.
+            if self._speculative_coordinator is not None:
+                self._speculative_coordinator.cancel()
+            self._last_speculative_text = ""
         elif isinstance(frame, ProposedUserStoppedSpeakingFrame):
             self._maybe_start_speculative_generation()
         await self.push_frame(frame, direction)
