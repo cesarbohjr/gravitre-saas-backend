@@ -46,3 +46,16 @@ it("closes navigation when resizing from tablet to desktop", () => {
 it("does not add a second heading when a standalone route supplies its own hero", () => {
   render(false, true); expect(container.querySelector("h1")).toBeNull()
 })
+it("filters the settings links with the search field and keeps real hrefs", () => {
+  render(true); open()
+  const dialog = document.querySelector('[role="dialog"]')!
+  const input = dialog.querySelector<HTMLInputElement>('input[type="search"]')!
+  const type = (value: string) => act(() => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value)
+    input.dispatchEvent(new Event("input", { bubbles: true }))
+  })
+  type("addons")
+  expect([...dialog.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual(["/settings?section=meson-addons"])
+  type("zzz")
+  expect(dialog.textContent).toContain("No settings match")
+})

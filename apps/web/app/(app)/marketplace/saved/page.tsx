@@ -12,6 +12,7 @@ import {
   GravitreSurface,
 } from "@/components/gravitre/nodus-product"
 import { CategoryIconChip } from "@/components/marketplace/category-icon-chip"
+import { MarketplaceCardArt } from "@/components/marketplace/marketplace-card-art"
 import type { AssetCategory } from "@/lib/marketplace-category-icons"
 import { AssetSaveButton } from "@/components/marketplace/asset-save-button"
 import { ErrorState } from "@/components/gravitre/empty-state"
@@ -106,7 +107,15 @@ export default function MarketplaceSavedPage() {
                       delay: reduced ? 0 : Math.min(index, 5) * 0.02,
                     }}
                   >
-                    <GravitreSurface className="flex h-full flex-col shadow-none">
+                    <GravitreSurface padded={false} className="flex h-full flex-col overflow-hidden shadow-none">
+                      <Link
+                        href={`/marketplace/assets/${encodeURIComponent(asset.slug)}`}
+                        tabIndex={-1}
+                        aria-hidden
+                      >
+                        <MarketplaceCardArt asset={asset} />
+                      </Link>
+                      <div className="flex flex-1 flex-col p-5 sm:p-6">
                       <div className="mb-3 flex items-start justify-between gap-2">
                         <Link
                           href={`/marketplace/assets/${encodeURIComponent(asset.slug)}`}
@@ -175,6 +184,7 @@ export default function MarketplaceSavedPage() {
                             />
                           </Link>
                         </Button>
+                      </div>
                       </div>
                     </GravitreSurface>
                   </motion.li>

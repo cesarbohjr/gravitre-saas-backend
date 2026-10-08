@@ -1,1097 +1,245 @@
 "use client"
 
-// Agents Page — AI Team (Agents 4.0 Phase 2: department-grouped TEAM view)
-import { Suspense, useEffect, useMemo, useRef, useState } from "react"
+// Agents > Roster: Team / List / Work map (Workspace redesign v1). ?view=team|list|graph
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import useSWR, { mutate as globalMutate } from "swr"
-import { useRouter } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
-import {
-  GravitreEmpty,
-  GravitrePageHeader,
-  GravitreSurface,
-} from "@/components/gravitre/nodus-product"
-import { StatusChip } from "@/components/gravitre/visual"
-import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet"
-import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
-import { Illustration } from "@/components/gravitre/illustration"
-import { SURFACE_COPY } from "@/lib/surface-copy"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
-import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
+import { WsPage } from "@/components/workspace/ws-page"
+import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
-import { 
-  Plus, 
-  Search,
-  X,
-  ChevronUp,
-  ChevronDown,
-  PanelRightClose,
-  PanelRightOpen,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { NUCLEO_SIZE } from "@/lib/design-system"
-import { AgentSurfaceSwitch } from "@/components/agents/agent-surface-switch"
-import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
-import { WorkforceBriefing } from "@/components/agents/workforce-briefing"
 import { MesonWizard } from "@/components/gravitre/meson-wizard"
+import { RosterTeamView } from "@/components/agents/roster/roster-team-view"
+import { RosterListView } from "@/components/agents/roster/roster-list-view"
+import { RosterWorkMap } from "@/components/agents/roster/roster-work-map"
+import "@/components/agents/roster/roster.css"
+import { SURFACE_COPY } from "@/lib/surface-copy"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
-import { agentsApi } from "@/lib/api"
-import { FleetControls, FleetControlsCollapsed, GraphView, ListView, TeamView } from "@/components/agents/fleet-v4"
-import { AgentCapabilityOverview } from "@/components/agents/fleet-v4/agent-capability-overview"
-import { AgentFleetInspectorBody } from "@/components/agents/fleet-v4/agent-fleet-inspector"
-import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
-import {
-  agentStatusToRuntime,
-  mapApiDepartmentToFleet,
-  mapFleetDepartmentToApi,
-  toFleetAgent,
-} from "@/lib/agent-identity-bridge"
-import { normalizeAgentDepartment, type AgentDepartment } from "@/lib/agent-display"
-import { buildFleetGraphModel } from "@/lib/agents-fleet-graph"
-import { filterFleetAgents, sortFleetAgents, uniqueSorted } from "@/lib/agents-fleet-query"
-import { isAgentsFleetView } from "@/lib/agents-fleet-prefs"
 import { useAgentsFleetPrefs } from "@/hooks/use-agents-fleet-prefs"
-import { agentSwarmApi } from "@/lib/api"
-import type { Agent as ApiAgent, AgentSwarmRun } from "@/types/api"
 import {
-  normalizeAgentStatus,
-  presentAgentStatus,
-  taskRuntimeBadgeClass,
-  taskRuntimeLabel,
-} from "@/lib/agent-runtime-status"
-import { toast } from "sonner"
-import { formatDistanceToNow } from "date-fns"
+  isRosterView,
+  normalizeAgentsPayload,
+  rosterStatsKey,
+  toRosterAgent,
+  type RosterAgent,
+  type RosterStatsPayload,
+  type RosterView,
+} from "@/lib/agents-roster"
+import { cn } from "@/lib/utils"
 
-type AgentRecentTask = {
-  id: string
-  title: string
-  time: string
-  status: string
-}
-
-type Agent = ApiAgent & {
-  model?: string
-  knowledgeDocCount?: number
-  recentTasks?: AgentRecentTask[]
-  config?: Record<string, unknown>
-  connectedSystems?: string[]
-  workflowCount?: number
-  parentAgentId?: string | null
-}
-
-const AGENT_DETAIL_PANEL_KEY = "gravitre:agentsDetailPanelOpen"
-/** Single Maximize canvas toggle — hides overview + search/filters together. */
-const AGENT_CHROME_COLLAPSED_KEY = "gravitre:agentsChromeCollapsed"
-/** Legacy keys — migrated once into AGENT_CHROME_COLLAPSED_KEY. */
-const AGENT_HEADER_COLLAPSED_KEY = "gravitre:agentsHeaderCollapsed"
-const AGENT_FILTERS_CHROME_KEY = "gravitre:agentsFiltersChromeCollapsed"
 const AGENTS_REFRESH_MS = 30_000
 
-function deriveModelLabel(input: Record<string, unknown>): string {
-  const config = (input.config ?? {}) as Record<string, unknown>
-  const activeVersion = (input.active_version ?? input.activeVersion) as Record<string, unknown> | undefined
-  const versionConfig = (activeVersion?.config ?? {}) as Record<string, unknown>
-  const explicit = String(
-    config.model ?? config.model_base ?? versionConfig.model ?? input.model ?? "",
-  ).trim()
-  if (explicit) return explicit.replace(/^openai\//, "").replace(/^anthropic\//, "Claude ")
-  // No configured model is shown as unknown; never guess one from the role.
-  return ""
-}
+const VIEWS: Array<{ id: RosterView; label: string; hint: string; icon: React.ReactNode }> = [
+  {
+    id: "team",
+    label: "Team",
+    hint: "Meet your crew",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+        <circle cx="8" cy="9" r="3" />
+        <circle cx="16" cy="9" r="3" />
+        <path d="M3 19c.8-3 2.8-4.5 5-4.5s4.2 1.5 5 4.5M11 19c.8-3 2.8-4.5 5-4.5s4.2 1.5 5 4.5" />
+      </svg>
+    ),
+  },
+  {
+    id: "list",
+    label: "List",
+    hint: "Manage at scale",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+        <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />
+      </svg>
+    ),
+  },
+  {
+    id: "graph",
+    label: "Graph",
+    hint: "See how work flows",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+        <circle cx="12" cy="12" r="2.5" />
+        <circle cx="5" cy="6" r="2" />
+        <circle cx="19" cy="6" r="2" />
+        <circle cx="5" cy="18" r="2" />
+        <circle cx="19" cy="18" r="2" />
+        <path d="m6.6 7.2 3.4 3.3M17.4 7.2 14 10.5M6.6 16.8l3.4-3.3M17.4 16.8 14 13.5" />
+      </svg>
+    ),
+  },
+]
 
-function deriveKnowledgeDocCount(input: Record<string, unknown>, stats: Record<string, unknown>): number {
-  const direct = Number(input.knowledgeDocCount ?? input.knowledge_doc_count ?? NaN)
-  if (!Number.isNaN(direct) && direct >= 0) return direct
-  const fromStats = Number(stats.knowledgeDocCount ?? stats.knowledge_docs ?? stats.knowledgeDocs ?? NaN)
-  if (!Number.isNaN(fromStats) && fromStats >= 0) return fromStats
-  return 0
-}
-
-function normalizeAgent(input: Record<string, unknown>): Agent {
-  const personality = (input.personality ?? {}) as Record<string, unknown>
-  const stats = (input.stats ?? {}) as Record<string, unknown>
-  const status = normalizeAgentStatus(input.status)
-  const department = normalizeAgentDepartment(String(input.department ?? "Operations"))
-  return {
-    id: String(input.id ?? ""),
-    name: String(input.name ?? "Agent"),
-    role: String(input.role ?? "Operator"),
-    department,
-    description: String(input.description ?? ""),
-    status,
-    icon: typeof input.icon === "string" ? input.icon : null,
-    avatarColor:
-      typeof input.avatarColor === "string"
-        ? input.avatarColor
-        : typeof input.avatar_color === "string"
-          ? input.avatar_color
-          : null,
-    avatarUrl:
-      typeof input.avatarUrl === "string"
-        ? input.avatarUrl
-        : typeof input.avatar_url === "string"
-          ? input.avatar_url
-          : null,
-    personality: {
-      color: String(personality.color ?? "blue"),
-      gradient: String(personality.gradient ?? "from-transparent to-transparent"),
-      glow: String(personality.glow ?? "shadow-none"),
-    },
-    stats: (() => {
-      const tasksToday = Number(stats.tasksToday ?? stats.tasks_today ?? 0)
-      const raw = stats.successRate ?? stats.success_rate
-      const hasRate = raw !== undefined && raw !== null && raw !== ""
-      const parsed = hasRate ? Number(raw) : NaN
-      const successRate =
-        !hasRate || !Number.isFinite(parsed) ? null : parsed
-      return {
-        tasksToday,
-        successRate,
-        successRateSource:
-          (typeof stats.successRateSource === "string"
-            ? stats.successRateSource
-            : successRate == null
-              ? "insufficient_data"
-              : "stored_column") as Agent["stats"]["successRateSource"],
-        avgResponseTime: String(stats.avgResponseTime ?? stats.avg_response_time ?? "-"),
-        workflowsUsing: Number(
-          stats.workflowsUsing ??
-            stats.workflows_using ??
-            input.workflowCount ??
-            input.workflow_count ??
-            0,
-        ),
-      }
-    })(),
-    capabilities: Array.isArray(input.capabilities)
-      ? (input.capabilities as string[])
-      : [],
-    permissions: Array.isArray(input.permissions)
-      ? (input.permissions as string[])
-      : Array.isArray(input.systems)
-      ? (input.systems as string[])
-      : [],
-    connectedSystems: Array.isArray(input.connectedSystems)
-      ? (input.connectedSystems as string[]).map(String)
-      : Array.isArray(input.connected_systems)
-        ? (input.connected_systems as string[]).map(String)
-        : Array.isArray(input.systems)
-          ? (input.systems as string[]).map(String)
-          : [],
-    workflowCount: Number(input.workflowCount ?? input.workflow_count ?? stats.workflowsUsing ?? 0),
-    parentAgentId:
-      typeof input.parentAgentId === "string"
-        ? input.parentAgentId
-        : typeof input.parent_agent_id === "string"
-          ? input.parent_agent_id
-          : null,
-    lastAction: String(input.lastAction ?? input.last_action ?? "No activity yet"),
-    lastActionTime: String(input.lastActionTime ?? input.last_action_time ?? "unknown"),
-    model: deriveModelLabel(input),
-    knowledgeDocCount: deriveKnowledgeDocCount(input, stats),
-    recentTasks: Array.isArray(input.recentTasks)
-      ? (input.recentTasks as AgentRecentTask[])
-      : Array.isArray(input.recent_tasks)
-        ? (input.recent_tasks as AgentRecentTask[])
-        : [],
-    config:
-      input.config && typeof input.config === "object"
-        ? (input.config as Record<string, unknown>)
-        : undefined,
-  }
-}
-
-function normalizeAgentsResponse(payload: unknown): Agent[] {
-  if (!payload || typeof payload !== "object") return []
-  const model = payload as Record<string, unknown>
-  const raw =
-    (Array.isArray(model.agents) ? model.agents : null) ??
-    (Array.isArray(model.operators) ? model.operators : null) ??
-    (Array.isArray(model.data) ? model.data : null)
-  if (!raw) return []
-  return raw
-    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
-    .map((item) => normalizeAgent(item))
-    .filter((item) => item.id.length > 0)
-}
-
-const statusConfig = {
-  active: presentAgentStatus("active"),
-  idle: presentAgentStatus("idle"),
-  processing: presentAgentStatus("processing"),
-  error: presentAgentStatus("error"),
-} as const
-
-/** Phase 5 honesty: withhold rate when null / no tasks / idle-zero. */
-function getDisplaySuccessRate(agent: Agent): number | null {
-  const rate = agent.stats.successRate
-  if (rate == null || Number.isNaN(Number(rate))) return null
-  if (agent.stats.tasksToday <= 0) return null
-  if (agent.status === "idle" && rate === 0) return null
-  return rate
-}
-
-function shouldShowSuccessRate(agent: Agent): boolean {
-  return getDisplaySuccessRate(agent) != null
-}
-
-function successRateColorClass(rate: number): string {
-  if (rate >= 90) return "text-success"
-  if (rate >= 70) return "text-warning"
-  return "text-destructive"
-}
-
-function successRateBadgeClass(rate: number): string {
-  if (rate >= 90) return "bg-success/10 text-success"
-  if (rate >= 70) return "bg-warning/10 text-warning"
-  return "bg-destructive/10 text-destructive"
-}
-
-function formatModelDisplayName(model: string, maxLength = 15): string {
-  const trimmed = model.trim()
-  if (trimmed.length <= maxLength) return trimmed
-  return `${trimmed.slice(0, maxLength - 1)}…`
-}
-
-function AgentModelBadge({
-  model,
-  className,
-  variant = "orb",
-}: {
-  model: string
-  className?: string
-  variant?: "orb" | "panel"
-}) {
-  const display = formatModelDisplayName(model, variant === "orb" ? 14 : 22)
-
+function RosterSkeleton() {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span
-          className={className}
-          onClick={(event) => event.stopPropagation()}
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          {display}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-xs font-mono text-xs">
-        {model}
-      </TooltipContent>
-    </Tooltip>
+    <div className="gv-card" style={{ padding: 28, display: "grid", gap: 14 }} aria-busy="true" aria-label="Loading agents">
+      <div className="gv-skel" style={{ width: 120 }} />
+      <div className="gv-skel" style={{ width: "50%", height: 28 }} />
+      <div className="gv-skel" style={{ width: "70%" }} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginTop: 12 }}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="gv-skel" style={{ height: 72, borderRadius: 12 }} />
+        ))}
+      </div>
+    </div>
   )
 }
 
-function agentMatchesQuery(agent: Agent, query: string): boolean {
-  const haystack = [
-    agent.name,
-    agent.role,
-    agent.department,
-    agent.description,
-    agent.model ?? "",
-    statusConfig[agent.status].label,
-    ...agent.capabilities,
-    ...agent.permissions,
-  ]
-    .join(" ")
-    .toLowerCase()
-  return haystack.includes(query)
-}
-
-function formatTaskTime(value: string): string {
-  if (!value || value === "unknown" || value === "recently") return value
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return formatDistanceToNow(date, { addSuffix: true })
-}
-
-function getAgentRecentTasks(agent: Agent): AgentRecentTask[] {
-  if (agent.recentTasks && agent.recentTasks.length > 0) {
-    return agent.recentTasks.slice(0, 3)
-  }
-  if (
-    agent.lastAction &&
-    agent.lastAction !== "No recent activity" &&
-    agent.lastAction !== "No activity yet"
-  ) {
-    return [
-      {
-        id: `${agent.id}-last`,
-        title: agent.lastAction,
-        time: agent.lastActionTime,
-        status: agent.status === "processing" ? "running" : agent.status,
-      },
-    ]
-  }
-  return []
-}
-
-// Agent Detail Panel
-function AgentDetailPanel({
-  agent,
-  onStart,
-  onStop,
-  onDepartmentChange,
-  onClose,
-  isMutating,
-}: {
-  agent: Agent
-  onStart: (agent: Agent) => Promise<void>
-  onStop: (agent: Agent) => Promise<void>
-  onDepartmentChange: (agentId: string, department: AgentDepartment) => Promise<void>
-  onClose?: () => void
-  isMutating: boolean
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 20 }}
-      className="flex h-full flex-col overflow-y-auto"
-    >
-      <AgentFleetInspectorBody
-        agent={agent}
-        layout="panel"
-        onClose={onClose}
-        onStart={(a) => onStart(a as Agent)}
-        onStop={(a) => onStop(a as Agent)}
-        onDepartmentChange={(agentId, department) => {
-          void onDepartmentChange(agentId, department)
-        }}
-        isMutating={isMutating}
-        successRateDisplay={getDisplaySuccessRate(agent)}
-      />
-    </motion.div>
-  )
-}
-
-function AgentPreviewSheet({
-  agent,
-  open,
-  onOpenChange,
-  onStart,
-  onStop,
-  isMutating,
-  onDepartmentChange,
-}: {
-  agent: Agent
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onOpenProfile?: () => void
-  onStart?: (agent: Agent) => Promise<void>
-  onStop?: (agent: Agent) => Promise<void>
-  isMutating?: boolean
-  onDepartmentChange?: (agentId: string, department: AgentDepartment) => Promise<void>
-}) {
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full gap-0 overflow-y-auto p-0 sm:max-w-[400px]">
-        <SheetHeader className="sr-only">
-          <SheetTitle>{agent.name}</SheetTitle>
-          <SheetDescription>{agent.role}</SheetDescription>
-        </SheetHeader>
-        <AgentFleetInspectorBody
-          agent={agent}
-          layout="sheet"
-          onStart={onStart ? (a) => onStart(a as Agent) : undefined}
-          onStop={onStop ? (a) => onStop(a as Agent) : undefined}
-          isMutating={isMutating}
-          onDepartmentChange={
-            onDepartmentChange
-              ? (agentId, department) => {
-                  void onDepartmentChange(agentId, department)
-                }
-              : undefined
-          }
-          successRateDisplay={getDisplaySuccessRate(agent)}
-        />
-      </SheetContent>
-    </Sheet>
-  )
-}
-
-function MesonBuildButton({
-  onClick,
-  isOpen,
-}: {
-  onClick: () => void
-  isOpen?: boolean
-}) {
-  return (
-    <TooltipProvider delayDuration={300}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onClick}
-            aria-expanded={isOpen}
-            aria-haspopup="dialog"
-            aria-label="Build with Meson"
-            className={cn(
-              "gap-2 px-3 text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
-              isOpen && "bg-[color:var(--g-surface-active)] text-[color:var(--g-text-primary)]",
-            )}
-          >
-            <NucleoWorkflow className="h-4 w-4 text-[color:var(--g-intelligence)]" />
-            <span className="hidden font-medium sm:inline">Build with Meson</span>
-            <span className="text-sm font-medium sm:hidden">Meson</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs">
-          AI-powered builder — describe intent, deploy agents and workflows
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  )
-}
-
-export default function AgentsPage() {
+function AgentsRoster() {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
-  const [isMutatingAgent, setIsMutatingAgent] = useState<string | null>(null)
-  const [detailPanelOpen, setDetailPanelOpen] = useState(() => {
-    if (typeof window === "undefined") return true
-    return window.localStorage.getItem(AGENT_DETAIL_PANEL_KEY) !== "0"
-  })
-
-  const toggleDetailPanel = () => {
-    setDetailPanelOpen((open) => {
-      const next = !open
-      window.localStorage.setItem(AGENT_DETAIL_PANEL_KEY, next ? "1" : "0")
-      return next
-    })
-  }
-
-  // One Connectors-style Minimize: hide overview + search/filters for a full canvas.
-  const [chromeCollapsed, setChromeCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false
-    const unified = window.localStorage.getItem(AGENT_CHROME_COLLAPSED_KEY)
-    if (unified === "1" || unified === "0") return unified === "1"
-    // Migrate prior split toggles into a single chrome flag.
-    const legacy =
-      window.localStorage.getItem(AGENT_FILTERS_CHROME_KEY) === "1" ||
-      window.localStorage.getItem(AGENT_HEADER_COLLAPSED_KEY) === "1"
-    window.localStorage.setItem(AGENT_CHROME_COLLAPSED_KEY, legacy ? "1" : "0")
-    return legacy
-  })
-
-  const toggleChromeCollapsed = () => {
-    setChromeCollapsed((collapsed) => {
-      const next = !collapsed
-      window.localStorage.setItem(AGENT_CHROME_COLLAPSED_KEY, next ? "1" : "0")
-      return next
-    })
-  }
-  
-  // Fetch agents from API with SWR — refresh every 30s for live task/active counts
-  const { data, error, isLoading, mutate } = useSWR<{ agents: Agent[] }>(
-    user ? "/api/agents" : null,
-    apiFetcher,
-    {
-      revalidateOnFocus: true,
-      revalidateOnMount: true,
-      refreshInterval: AGENTS_REFRESH_MS,
-      dedupingInterval: 2000,
-      onError: (err) => {
-        console.error("[v0] Agents fetch error:", err)
-      },
-    }
-  )
-  
-  const agents = normalizeAgentsResponse(data)
-  
-  const searchInputRef = useRef<HTMLInputElement>(null)
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
-  const [previewOpen, setPreviewOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
+  const { prefs, hydrated, setView } = useAgentsFleetPrefs()
   const [mesonWizardOpen, setMesonWizardOpen] = useState(false)
-  const { prefs, hydrated, setView, setSort, toggleSortDir, setFilters, clearFilters } =
-    useAgentsFleetPrefs()
+  const [selected, setSelected] = useState<RosterAgent | null>(null)
 
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+  const param = searchParams.get("view")
+  const view: RosterView = isRosterView(param) ? param : prefs.view
 
-  // URL ?view=team|list|graph is shareable; applies once after prefs hydrate.
+  // Keep ?view= in the URL so every roster view is shareable.
   useEffect(() => {
-    if (!hydrated) return
-    const param = new URLSearchParams(window.location.search).get("view")
-    if (isAgentsFleetView(param) && param !== prefs.view) {
-      setView(param)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot URL override after hydrate
-  }, [hydrated])
+    if (!hydrated || isRosterView(param)) return
+    const next = new URLSearchParams(searchParams.toString())
+    next.set("view", prefs.view)
+    router.replace(`${pathname || "/agents"}?${next.toString()}`, { scroll: false })
+  }, [hydrated, param, pathname, prefs.view, router, searchParams])
 
   useEffect(() => {
-    if (!hydrated || typeof window === "undefined") return
-    const url = new URL(window.location.href)
-    if (url.searchParams.get("view") === prefs.view) return
-    url.searchParams.set("view", prefs.view)
-    const qs = url.searchParams.toString()
-    window.history.replaceState({}, "", `${url.pathname}${qs ? `?${qs}` : ""}${url.hash}`)
-  }, [prefs.view, hydrated])
+    if (isRosterView(param) && param !== prefs.view && hydrated) setView(param)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- remember the last view the URL asked for
+  }, [param, hydrated])
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return
-      const target = event.target as HTMLElement | null
-      const tag = target?.tagName
-      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return
-      event.preventDefault()
-      searchInputRef.current?.focus()
-    }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [])
+  const { data, error, isLoading, mutate } = useSWR(user ? "/api/agents" : null, apiFetcher, {
+    revalidateOnFocus: true,
+    refreshInterval: AGENTS_REFRESH_MS,
+    dedupingInterval: 2000,
+  })
+  const statsKey = useMemo(() => (user ? rosterStatsKey() : null), [user])
+  const {
+    data: stats,
+    error: statsError,
+    mutate: mutateStats,
+  } = useSWR<RosterStatsPayload>(statsKey, apiFetcher, {
+    revalidateOnFocus: true,
+    refreshInterval: AGENTS_REFRESH_MS,
+    dedupingInterval: 2000,
+  })
+  const statsAvailable = Boolean(stats && !statsError)
 
-  useWorkPageShortcut("focus-search", () => searchInputRef.current?.focus())
-
-  const handleStartAgent = async (agent: Agent) => {
-    try {
-      setIsMutatingAgent(agent.id)
-      await agentsApi.start(agent.id)
-      toast.success(`${agent.name} started`)
-      await mutate()
-    } catch (err) {
-      console.error("[v0] Failed to start agent:", err)
-      toast.error(`Failed to start ${agent.name}`)
-    } finally {
-      setIsMutatingAgent((current) => (current === agent.id ? null : current))
-    }
-  }
-
-  const handleStopAgent = async (agent: Agent) => {
-    try {
-      setIsMutatingAgent(agent.id)
-      await agentsApi.stop(agent.id)
-      toast.success(`${agent.name} stopped`)
-      await mutate()
-    } catch (err) {
-      console.error("[v0] Failed to stop agent:", err)
-      toast.error(`Failed to stop ${agent.name}`)
-    } finally {
-      setIsMutatingAgent((current) => (current === agent.id ? null : current))
-    }
-  }
-
-  const handleDepartmentChange = async (agentId: string, department: AgentDepartmentId) => {
-    const agent = agents.find((a) => a.id === agentId)
-    if (!agent) return
-    const label = mapFleetDepartmentToApi(department)
-    const currentFleetId = toFleetAgent(agent).department
-    if (currentFleetId === department) return
-    try {
-      setIsMutatingAgent(agentId)
-      await agentsApi.update(agentId, { department: label as Agent["department"] })
-      toast.success(`${agent.name} moved to ${label}`)
-      await mutate()
-      if (selectedAgent?.id === agentId) {
-        setSelectedAgent({ ...selectedAgent, department: label as Agent["department"] })
-      }
-    } catch (err) {
-      console.error("[v0] Failed to move agent department:", err)
-      toast.error(`Failed to move ${agent.name}`)
-    } finally {
-      setIsMutatingAgent((current) => (current === agentId ? null : current))
-    }
-  }
-
-  const handleDepartmentLabelChange = async (agentId: string, department: AgentDepartment) => {
-    const fleetId = mapApiDepartmentToFleet(department).id
-    await handleDepartmentChange(agentId, fleetId)
-  }
-  
-  const runtimeCounts = useMemo(() => {
-    const counts = { executing: 0, available: 0, failed: 0, idle: 0 }
-    for (const agent of agents) {
-      const state = agentStatusToRuntime(agent.status)
-      if (state === "executing" || state === "available" || state === "failed" || state === "idle") counts[state] += 1
-    }
-    return counts
-  }, [agents])
-
-  const filteredAgents = useMemo(() => {
-    if (!normalizedSearchQuery) return agents
-    return agents.filter((agent) => agentMatchesQuery(agent, normalizedSearchQuery))
-  }, [agents, normalizedSearchQuery])
-
-  const visibleSelectedAgent = useMemo(() => {
-    if (selectedAgent && filteredAgents.some((agent) => agent.id === selectedAgent.id)) {
-      return selectedAgent
-    }
-    return null
-  }, [selectedAgent, filteredAgents])
-
-  usePublishGravitreAISelection(
-    visibleSelectedAgent
-      ? { kind: "agent", id: visibleSelectedAgent.id, label: visibleSelectedAgent.name }
-      : null,
+  const agents = useMemo(
+    () => normalizeAgentsPayload(data).map((raw) => toRosterAgent(raw, statsAvailable ? stats : undefined)),
+    [data, stats, statsAvailable],
   )
 
-  const hasActiveFilters = Boolean(
-    prefs.filters.department ||
-      prefs.filters.status ||
-      prefs.filters.role ||
-      prefs.filters.model,
-  )
+  usePublishGravitreAISelection(selected ? { kind: "agent", id: selected.id, label: selected.name } : null)
+  useEffect(() => setSelected(null), [view])
 
-  const fleetAgents = useMemo(() => {
-    const mapped = filteredAgents.map((agent) =>
-      toFleetAgent({
-        ...agent,
-        connectedSystems: agent.connectedSystems,
-        workflowCount: agent.workflowCount ?? agent.stats.workflowsUsing,
-        parentAgentId: agent.parentAgentId,
-      }),
-    )
-    const filtered = filterFleetAgents(mapped, prefs.filters)
-    return sortFleetAgents(filtered, prefs.sort, prefs.sortDir)
-  }, [filteredAgents, prefs.filters, prefs.sort, prefs.sortDir])
+  const refresh = useCallback(async () => {
+    await Promise.all([mutate(), mutateStats()])
+  }, [mutate, mutateStats])
 
-  const filterOptions = useMemo(() => {
-    const mapped = agents.map((agent) =>
-      toFleetAgent({
-        ...agent,
-        connectedSystems: agent.connectedSystems,
-        workflowCount: agent.workflowCount ?? agent.stats.workflowsUsing,
-        parentAgentId: agent.parentAgentId,
-      }),
-    )
-    return {
-      departments: uniqueSorted(mapped.map((a) => a.departmentLabel)),
-      roles: uniqueSorted(mapped.map((a) => a.role)),
-      models: uniqueSorted(mapped.map((a) => a.model).filter((m) => m && m !== "—")),
-    }
-  }, [agents])
-
-  const agentsById = useMemo(() => {
-    const map = new Map<string, Agent>()
-    for (const agent of agents) map.set(agent.id, agent)
-    return map
-  }, [agents])
-
-  // Fetch swarm runs when GRAPH is open — hydrate subtasks for active runs only.
-  const { data: swarmList } = useSWR(
-    user && prefs.view === "graph" ? "agents-fleet-swarm" : null,
-    () => agentSwarmApi.list({ limit: 12 }),
-    { revalidateOnFocus: true, dedupingInterval: 5000 },
-  )
-
-  const [swarmRunsDetailed, setSwarmRunsDetailed] = useState<AgentSwarmRun[]>([])
-
-  useEffect(() => {
-    if (prefs.view !== "graph") {
-      setSwarmRunsDetailed([])
-      return
-    }
-    const runs = swarmList?.runs ?? []
-    const candidates = runs.filter((r) =>
-      ["pending", "running", "aggregating"].includes(String(r.status)),
-    )
-    if (candidates.length === 0) {
-      setSwarmRunsDetailed([])
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      const detailed = await Promise.all(
-        candidates.slice(0, 3).map(async (run) => {
-          try {
-            return await agentSwarmApi.get(run.id)
-          } catch {
-            return run
-          }
-        }),
-      )
-      if (!cancelled) setSwarmRunsDetailed(detailed)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [prefs.view, swarmList])
-
-  const graphModel = useMemo(
-    () => buildFleetGraphModel(fleetAgents, swarmRunsDetailed),
-    [fleetAgents, swarmRunsDetailed],
-  )
-
-  const selectAgentById = (id: string) => {
-    const agent = agentsById.get(id)
-    if (!agent) return
-    setSelectedAgent(agent)
-    const desktop =
-      typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches
-    if (desktop) {
-      if (!detailPanelOpen) {
-        window.localStorage.setItem(AGENT_DETAIL_PANEL_KEY, "1")
-        setDetailPanelOpen(true)
-      }
-      return
-    }
-    setPreviewOpen(true)
+  const viewHref = (id: RosterView) => {
+    const next = new URLSearchParams()
+    next.set("view", id)
+    return `${pathname || "/agents"}?${next.toString()}`
   }
-
-  const closeDetailPanel = () => {
-    window.localStorage.setItem(AGENT_DETAIL_PANEL_KEY, "0")
-    setDetailPanelOpen(false)
-  }
-
-  const chromeToggle = (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className="h-8 shrink-0 gap-1.5 whitespace-nowrap text-xs text-muted-foreground"
-      onClick={toggleChromeCollapsed}
-      aria-pressed={chromeCollapsed}
-      aria-label={chromeCollapsed ? "Expand header and filters" : "Minimize header for a full canvas"}
-      title={chromeCollapsed ? "Expand" : "Minimize"}
-    >
-      {chromeCollapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
-      <span className="hidden sm:inline">{chromeCollapsed ? "Expand" : "Minimize"}</span>
-    </Button>
-  )
-
-  const rosterActions = (
-    <>
-      {chromeToggle}
-      <AskGravitreSummonButton />
-      <MesonBuildButton
-        onClick={() => setMesonWizardOpen(true)}
-        isOpen={mesonWizardOpen}
-      />
-      <Button onClick={() => router.push("/agents/new")}>
-        <Plus className="size-4" />
-        <span className="hidden sm:inline">New agent</span>
-      </Button>
-      {visibleSelectedAgent ? (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleDetailPanel}
-          aria-label={detailPanelOpen ? "Hide agent details" : "Show agent details"}
-          aria-pressed={detailPanelOpen}
-          className="hidden lg:inline-flex"
-        >
-          {detailPanelOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
-        </Button>
-      ) : null}
-    </>
-  )
 
   return (
-  <AppShell title={SURFACE_COPY.pages.agents.title}>
-    <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)] lg:flex-row" data-composition="manage">
-  {/* Left - Agent roster */}
-  <div className="relative z-10 flex min-w-0 flex-1 flex-col border-divide lg:border-r">
-          {chromeCollapsed ? (
-            <div className="relative z-10 px-[var(--np-page-pad-sm)] pt-3 sm:px-[var(--np-page-pad)]">
-              <Suspense fallback={null}>
-                <AgentsHubTabs active="roster" />
-              </Suspense>
-            </div>
-          ) : null}
-
-          {chromeCollapsed ? (
-            <div className="flex flex-wrap items-center gap-2 border-b border-divide px-[var(--np-page-pad-sm)] py-2 sm:px-[var(--np-page-pad)]">
-              <FleetControlsCollapsed
-                view={prefs.view}
-                onViewChange={setView}
-              />
-              <div className="ml-auto flex shrink-0 flex-wrap items-center gap-2">{rosterActions}</div>
-            </div>
-          ) : (
-            <>
-              <GravitrePageHeader
-                className="shrink-0"
-                title={SURFACE_COPY.pages.agents.rosterTitle}
-                description="A team of specialists. See who is working, what they can do, and where attention is needed."
-                icon={<NucleoWorkflow size={NUCLEO_SIZE.default} />}
-                actions={
-                  <div className="flex flex-wrap items-center justify-end gap-2 [&_button]:min-h-11 lg:[&_button]:min-h-0">
-                    {rosterActions}
-                  </div>
-                }
-              >
-                <Suspense fallback={null}>
-                  <AgentsHubTabs active="roster" />
-                </Suspense>
-                <AgentSurfaceSwitch surface="operate" />
-              </GravitrePageHeader>
-
-              {agents.length > 0 ? (
-                <WorkforceBriefing
-                  counts={runtimeCounts}
-                  total={agents.length}
-                  active={prefs.filters.status}
-                  onSelect={(next) => setFilters({ status: next })}
-                />
-              ) : null}
-
-              <div className="border-b border-divide px-[var(--np-page-pad-sm)] py-2.5 sm:px-[var(--np-page-pad)]">
-                <FleetControls
-                  view={prefs.view}
-                  onViewChange={setView}
-                  sort={prefs.sort}
-                  sortDir={prefs.sortDir}
-                  onSortChange={setSort}
-                  onToggleSortDir={toggleSortDir}
-                  filters={prefs.filters}
-                  onFiltersChange={setFilters}
-                  onClearFilters={clearFilters}
-                  departments={filterOptions.departments}
-                  roles={filterOptions.roles}
-                  models={filterOptions.models}
-                  searchSlot={
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[color:var(--g-text-muted)]" />
-                      <input
-                        ref={searchInputRef}
-                        type="search"
-                        placeholder="Search name, role, department…"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        aria-label="Search agents"
-                        className="h-11 w-full rounded-[var(--np-radius-md)] text-base lg:h-8 lg:!text-[13px] border border-[color:var(--g-border-default)] bg-background pl-8 pr-8 text-[13px] text-[color:var(--g-text-primary)] placeholder:text-[color:var(--g-text-muted)] hover:border-[color:var(--g-border-strong)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/20"
-                      />
-                      {searchQuery ? (
-                        <button
-                          type="button"
-                          aria-label="Clear search"
-                          onClick={() => {
-                            setSearchQuery("")
-                            searchInputRef.current?.focus()
-                          }}
-                          className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-[color:var(--g-text-muted)] hover:bg-[color:var(--g-surface-active)] hover:text-[color:var(--g-text-primary)]"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      ) : null}
-                    </div>
-                  }
-                />
-                {(normalizedSearchQuery ||
-                  prefs.filters.department ||
-                  prefs.filters.status ||
-                  prefs.filters.role ||
-                  prefs.filters.model) &&
-                agents.length > 0 ? (
-                  <p className="mt-2 text-xs text-[color:var(--g-text-muted)]">
-                    {fleetAgents.length} of {agents.length} agent{agents.length === 1 ? "" : "s"}
-                  </p>
-                ) : null}
-              </div>
-            </>
-          )}
-
-          {/* LIST / TEAM / GRAPH — no decorative atmosphere */}
-          <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-4">
-            {!chromeCollapsed && !error && !isLoading && prefs.view !== "graph" && fleetAgents.length > 0 ? (() => {
-              const overviewAgent = fleetAgents.find((agent) => agent.id === visibleSelectedAgent?.id) ?? fleetAgents[0]
-              return (
-                <div className="hidden md:block">
-                  <AgentCapabilityOverview agent={overviewAgent} connectedSystems={agentsById.get(overviewAgent.id)?.connectedSystems ?? []} onInspect={selectAgentById} />
-                </div>
-              )
-            })() : null}
-            <div className="relative z-10 w-full min-h-[360px] flex-1 sm:min-h-0">
-              {error ? (
-                <>
-                <Illustration name="moment-error" width={150} className="mx-auto mb-3" />
-                <WorkSectionErrorCard
-                  title="Could not load agents"
-                  message="We couldn't reach the agents service. Check your connection and try again."
-                  onRetry={() => void mutate()}
-                  className="mx-auto max-w-sm"
-                />
-                </>
-              ) : isLoading && agents.length === 0 ? (
-                prefs.view === "list" ? (
-                  <div className="space-y-2 rounded-[var(--np-radius-lg)] border border-divide p-4">
-                    {Array.from({ length: 6 }).map((_, index) => (
-                      <Skeleton key={index} className="h-10 w-full" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {Array.from({ length: 2 }).map((_, section) => (
-                      <div key={section} className="space-y-3">
-                        <Skeleton className="h-3 w-24" />
-                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                          {Array.from({ length: 3 }).map((_, index) => (
-                            <div
-                              key={index}
-                              className="flex items-start gap-3 rounded-[var(--np-radius-md)] border border-divide p-3"
-                            >
-                              <Skeleton className="h-11 w-11 rounded-[var(--np-radius-md)]" />
-                              <div className="flex-1 space-y-2">
-                                <Skeleton className="h-3 w-32" />
-                                <Skeleton className="h-2 w-24" />
-                                <Skeleton className="h-5 w-16" />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )
-              ) : fleetAgents.length === 0 ? (
-                <div className="mx-auto w-full max-w-sm px-4">
-                  {normalizedSearchQuery ||
-                  prefs.filters.department ||
-                  prefs.filters.status ||
-                  prefs.filters.role ||
-                  prefs.filters.model ? (
-                    <GravitreEmpty
-                      illustration="moment-focus-time"
-                      title="No agents match"
-                      hint="Try clearing search or filters."
-                      action={
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSearchQuery("")
-                            clearFilters()
-                            searchInputRef.current?.focus()
-                          }}
-                        >
-                          Clear search & filters
-                        </Button>
-                      }
-                    />
-                  ) : (
-                    <GravitreEmpty
-                      illustration="moment-welcome"
-                      title="No agents yet"
-                      hint="Create your first teammate to start delegating work."
-                      action={
-                        <Button onClick={() => router.push("/agents/new")}>
-                          <Plus className="size-4" />
-                          New agent
-                        </Button>
-                      }
-                    />
-                  )}
-                </div>
-              ) : prefs.view === "list" ? (
-                <ListView
-                  agents={fleetAgents}
-                  selectedId={visibleSelectedAgent?.id ?? null}
-                  onSelect={selectAgentById}
-                  onDepartmentChange={handleDepartmentChange}
-                  showEmptyDepartments={!hasActiveFilters}
-                  toolbar={
-                    <p className="text-xs text-[color:var(--g-text-muted)]">
-                      {hasActiveFilters
-                        ? "Clear filters to move agents between departments."
-                        : "Drag a row onto a department to reassign it."}
-                    </p>
-                  }
-                />
-              ) : prefs.view === "graph" ? (
-                <div className="space-y-2">
-                  {graphModel.hasLiveSwarm ? (
-                    <p className="text-xs text-[color:var(--g-brand)]">
-                      A multi-agent run is in progress. Its path is highlighted.
-                    </p>
-                  ) : (
-                    <p className="text-xs text-[color:var(--g-text-muted)]">
-                      Lines show reporting, delegation, and shared connectors.
-                      {hasActiveFilters ? null : " Drag an agent onto a department to reassign it."}
-                    </p>
-                  )}
-                  <GraphView
-                    agents={fleetAgents}
-                    edges={graphModel.edges}
-                    extraNodes={graphModel.extraNodes}
-                    selectedId={visibleSelectedAgent?.id ?? null}
-                    onSelect={selectAgentById}
-                    onDepartmentChange={handleDepartmentChange}
-                    showEmptyDepartments={!hasActiveFilters}
-                    activeAgentIds={graphModel.activeAgentIds}
-                  />
-                </div>
-              ) : (
-                <TeamView
-                  agents={fleetAgents}
-                  selectedId={visibleSelectedAgent?.id ?? null}
-                  grouped
-                  onSelect={selectAgentById}
-                  onDepartmentChange={handleDepartmentChange}
-                  showEmptyDepartments={!hasActiveFilters}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-
-        {visibleSelectedAgent ? (
-          <AgentPreviewSheet
-            agent={visibleSelectedAgent}
-            open={previewOpen}
-            onOpenChange={setPreviewOpen}
-            onStart={handleStartAgent}
-            onStop={handleStopAgent}
-            isMutating={isMutatingAgent === visibleSelectedAgent.id}
-            onDepartmentChange={handleDepartmentLabelChange}
-          />
-        ) : null}
-
-{/* Right - Agent Detail Panel */}
-        <AnimatePresence initial={false}>
-          {/* Only reserve the side-panel width when there is actually an agent
-             to show. Previously the panel defaulted open and reserved 420px even
-             with no selection, leaving a large empty panel that squeezed the roster.
-             stage into a narrow strip. */}
-          {detailPanelOpen && visibleSelectedAgent ? (
-            <motion.div
-              key="agent-detail-panel"
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 380, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              aria-label={`${visibleSelectedAgent.name} details`}
-              role="complementary"
-              className="relative z-10 hidden shrink-0 overflow-hidden border-l border-[color:var(--g-border-subtle)] bg-background lg:block"
+    <WsPage>
+      <div className="rs-tabs">
+        <AgentsHubTabs active="roster" />
+      </div>
+      <div className="rs-toolbar">
+        <nav aria-label="Roster view" className="gv-card rs-views">
+          {VIEWS.map((v) => (
+            <Link
+              key={v.id}
+              href={viewHref(v.id)}
+              replace
+              scroll={false}
+              className={cn("rs-view", view === v.id && "on")}
+              aria-current={view === v.id ? "page" : undefined}
+              onClick={() => setView(v.id)}
             >
-              <AnimatePresence mode="wait">
-                <TooltipProvider delayDuration={200}>
-                  <AgentDetailPanel
-                    key={visibleSelectedAgent.id}
-                    agent={visibleSelectedAgent}
-                    onStart={handleStartAgent}
-                    onStop={handleStopAgent}
-                    onDepartmentChange={handleDepartmentLabelChange}
-                    onClose={closeDetailPanel}
-                    isMutating={isMutatingAgent === visibleSelectedAgent.id}
-                  />
-                </TooltipProvider>
-              </AnimatePresence>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+              <span className="ic">{v.icon}</span>
+              <span>
+                <b>{v.label}</b>
+                <small>{v.hint}</small>
+              </span>
+            </Link>
+          ))}
+        </nav>
+        <div className="rs-actions">
+          <AskGravitreSummonButton className="rs-ask" />
+          <button
+            type="button"
+            className="gv-btn outline"
+            onClick={() => setMesonWizardOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={mesonWizardOpen}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gv-blue)" strokeWidth="2" strokeLinecap="round" aria-hidden>
+              <path d="M4 8h12l-3-3M4 16h12l-3 3" />
+            </svg>
+            Build with Meson
+          </button>
+          <Link className="gv-btn dark" href="/agents/new">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            New agent
+          </Link>
+        </div>
       </div>
 
-      {/* Meson Wizard */}
-      <MesonWizard 
-        open={mesonWizardOpen} 
+      {error ? (
+        <div className="gv-card rs-empty">
+          {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
+          <img src="/illustrations/moment-error.svg" alt="" />
+          <h2>Could not load agents</h2>
+          <p>We couldn&apos;t reach the agents service. Check your connection and try again.</p>
+          <button type="button" className="gv-btn dark" onClick={() => void refresh()}>
+            Try again
+          </button>
+        </div>
+      ) : isLoading && agents.length === 0 ? (
+        <RosterSkeleton />
+      ) : agents.length === 0 ? (
+        <div className="gv-card rs-empty">
+          {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
+          <img src="/illustrations/moment-welcome.svg" alt="" />
+          <h2>No agents yet</h2>
+          <p>Create your first teammate to start delegating work.</p>
+          <Link className="gv-btn dark" href="/agents/new">
+            New agent
+          </Link>
+        </div>
+      ) : view === "list" ? (
+        <RosterListView
+          agents={agents}
+          statsAvailable={statsAvailable}
+          initialStatus={searchParams.get("status")}
+          onChanged={refresh}
+          onSelectionChange={setSelected}
+        />
+      ) : view === "graph" ? (
+        <RosterWorkMap
+          agents={agents}
+          goals={statsAvailable ? stats?.goals ?? [] : []}
+          statsAvailable={statsAvailable}
+          initialTrace={searchParams.get("trace")}
+          onGoalsChanged={() => void mutateStats()}
+          onSelectAgent={setSelected}
+        />
+      ) : (
+        <RosterTeamView agents={agents} statsAvailable={statsAvailable} days={stats?.days?.length ?? 0} />
+      )}
+
+      <MesonWizard
+        open={mesonWizardOpen}
         onClose={() => setMesonWizardOpen(false)}
         onComplete={async (result) => {
           await globalMutate("/api/agents")
@@ -1102,6 +250,16 @@ export default function AgentsPage() {
           router.push("/agents")
         }}
       />
+    </WsPage>
+  )
+}
+
+export default function AgentsPage() {
+  return (
+    <AppShell title={SURFACE_COPY.pages.agents.title}>
+      <Suspense fallback={null}>
+        <AgentsRoster />
+      </Suspense>
     </AppShell>
   )
 }

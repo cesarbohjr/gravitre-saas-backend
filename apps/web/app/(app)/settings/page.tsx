@@ -14,7 +14,7 @@ import {
 import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { settingsApi } from "@/lib/api"
-import type { BillingUsageResponse, LiteSeatDepartment, MesonAddon, User } from "@/types/api"
+import type { BillingUsageResponse, LiteSeatDepartment, User } from "@/types/api"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { OrganizationSettings } from "@/components/settings/organization-settings"
@@ -24,6 +24,7 @@ import { TeamSettings } from "@/components/settings/team-settings"
 import { ApiKeysSettings } from "@/components/settings/api-keys-settings"
 import { AIModelsSettings } from "@/components/settings/ai-models-settings"
 import { WebhooksSettings } from "@/components/settings/webhooks-settings"
+import { MesonAddonsSettings } from "@/components/settings/meson-addons-settings"
 import { SettingsShell, canAccessSettingsSection } from "@/components/settings/settings-shell"
 import { SETTINGS_SECTIONS, settingsHrefForSection, type SettingsSectionId } from "@/lib/settings-sections"
 import { useOrgAdmin } from "@/lib/use-org-admin"
@@ -366,121 +367,6 @@ function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
   )
 }
 
-function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
-  const { data, error, isLoading, mutate } = useSWR(isAdmin ? "/api/settings/meson-addons" : null, apiFetcher, {
-    revalidateOnFocus: false,
-  })
-  const [isSaving, setIsSaving] = useState(false)
-  if (!isAdmin) return <p className="text-sm text-muted-foreground">Admin or owner permission is required to manage Meson addons.</p>
-  if (isLoading) return <p role="status" className="text-sm text-muted-foreground">Loading Meson addons…</p>
-  if (error) return <div role="alert" className="space-y-3"><p className="text-sm">Could not load Meson addons.</p><Button variant="outline" className="min-h-11" onClick={() => void mutate()}>Retry Meson addons</Button></div>
-  const addons = ((data as { addons?: MesonAddon[] } | undefined)?.addons ?? []) as MesonAddon[]
-  const monthlyTotal = Number((data as { monthly_total_usd?: number } | undefined)?.monthly_total_usd ?? 0)
-  const voice = (data as { voice?: { enabled?: boolean; note?: string; billing_href?: string } } | undefined)?.voice
-
-  const handleToggle = async (addon: MesonAddon) => {
-    setIsSaving(true)
-    try {
-      await settingsApi.toggleMesonAddon(addon.code, !addon.enabled)
-      toast.success(`${addon.name} ${addon.enabled ? "disabled" : "enabled"}`)
-      await mutate()
-    } catch (err) {
-      console.error("[v0] Failed to toggle addon:", err)
-      toast.error("Failed to update addon")
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handleVoiceToggle = async () => {
-    if (!isAdmin) return
-    setIsSaving(true)
-    try {
-      const res = await apiFetch("/api/settings/voice-access", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ enabled: !voice?.enabled }),
-      })
-      if (!res.ok) throw new Error("voice toggle failed")
-      toast.success(`Voice ${voice?.enabled ? "disabled" : "enabled"} for this organization`)
-      await mutate()
-    } catch {
-      toast.error("Failed to update voice access")
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-foreground">Internal voice (staff chat)</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Policy control for Text|Voice in Gravitre chat. On by default. This is
-              staff speaking to your org AI — not outbound phone calls (Twilio/Vapi connectors).
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Status: {voice?.enabled === false ? "Off for this org" : "On"}
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <Button
-              variant={voice?.enabled === false ? "default" : "outline"}
-              size="sm"
-              onClick={handleVoiceToggle}
-              disabled={!isAdmin || isSaving}
-            >
-              {voice?.enabled === false ? "Allow voice" : "Disable voice"}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {addons.length > 0 ? (
-        <>
-          <div className="border-b border-divide py-3">
-            <p className="text-sm font-medium text-foreground">Monthly addon total</p>
-            <p className="text-lg font-semibold text-foreground mt-1">${monthlyTotal.toFixed(2)}</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Sum of enabled Stripe-wired Meson addons only.
-            </p>
-          </div>
-          <div className="space-y-3">
-            {addons.map((addon) => (
-              <div key={addon.code} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{addon.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{addon.description}</p>
-                    <p className="text-xs text-muted-foreground mt-1">${addon.monthly_price_usd}/mo</p>
-                  </div>
-                  <Button
-                    variant={addon.enabled ? "outline" : "default"}
-                    size="sm"
-                    onClick={() => handleToggle(addon)}
-                    disabled={!isAdmin || isSaving}
-                  >
-                    {addon.enabled ? "Disable" : "Enable"}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      ) : (
-        <div className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4">
-          <p className="text-sm font-medium text-foreground">No billable Meson addons</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            There are no Stripe-wired Meson addons available for purchase. Voice is plan-included above.
-          </p>
-        </div>
-      )}
-    </div>
-  )
-}
-
 function SoftUsageMeter({
   label,
   used,
@@ -787,6 +673,7 @@ function SettingsContent() {
       activeSection={activeSection}
       onSectionChange={handleSectionChange}
       isAdmin={showAdmin}
+      hideHeader={activeSection === "meson-addons" && canAccessSettingsSection(activeSection, isAdmin)}
       mobileMenuOpen={mobileMenuOpen}
       onMobileMenuOpenChange={setMobileMenuOpen}
     >

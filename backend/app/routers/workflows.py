@@ -3466,6 +3466,7 @@ def list_approvals_alias(
             "sla_deadline": deadline.isoformat(),
             "sla_minutes_remaining": max(0, round(remaining, 1)),
             "sla_breached": remaining < 0,
+            "sla_minutes": max(1, sla_minutes),
         }
 
     q = (
@@ -3527,6 +3528,7 @@ def list_approvals_alias(
             else:
                 user_labels[uid] = f"Member ({uid[:8]}…)"
     approvals = []
+    run_meta: dict[str, dict[str, object]] = {}
     for run in runs:
         required = run.get("required_approvals") or 0
         pri = "high" if required >= 2 else "medium"
@@ -3588,12 +3590,17 @@ def list_approvals_alias(
                     "run_id": str(run["id"]),
                     "conversation_id": params.get("conversation_id"),
                 },
+                # Raw request shown behind "View raw request": the run's own parameters.
+                "request": params,
+                "required_approvals": required,
                 "environment": environment_name,
                 "sla_deadline": sla["sla_deadline"],
                 "sla_minutes_remaining": sla["sla_minutes_remaining"],
                 "sla_breached": sla["sla_breached"],
+                "sla_minutes": sla["sla_minutes"],
             }
         )
+        run_meta[str(run["id"])] = {"workflow_id": workflow_id, "required_approvals": required}
     # Chat connector writes queued for org admins (not workflow_runs).
     if not type or type in {"connector", "connector_chat"}:
         try:
@@ -3717,6 +3724,7 @@ def list_approvals_alias(
                     "sla_deadline": sla["sla_deadline"],
                     "sla_minutes_remaining": sla["sla_minutes_remaining"],
                     "sla_breached": sla["sla_breached"],
+                    "sla_minutes": sla["sla_minutes"],
                 }
             )
 
@@ -3738,6 +3746,9 @@ def list_approvals_alias(
 
     approvals.sort(key=lambda item: item["requested_at"] or "", reverse=True)
     approvals.sort(key=lambda item: 0 if item["priority"] == "high" else 1)
+    from app.services.decision_queue_enrichment import enrich_decision_queue
+
+    enrich_decision_queue(client, org_id, approvals, run_meta=run_meta, user_labels=user_labels)
     return {"approvals": approvals}
 
 
@@ -3921,6 +3932,55 @@ async def reject_run_alias(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = get_supabase_client(settings)
     require_feature(get_plan_for_org(client, org_id), "approvals")
+
+    # Chat connector writes share this URL shape; rejecting one closes it without running.
+    chat_rows: list[dict] = []
+    try:
+        chat_rows = (
+            client.table("approvals")
+            .select("id, type, status, context")
+            .eq("id", str(run_id))
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:  # noqa: BLE001 — workflow-run mocks may not expose approvals table
+        chat_rows = []
+    if chat_rows and str(chat_rows[0].get("type") or "") == "connector_chat":
+        from app.auth.platform_admin import is_org_admin_role
+        from app.workflows.policy import PolicyResolutionError, get_user_role
+
+        if str(chat_rows[0].get("status") or "") != "pending":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Approval already resolved")
+        try:
+            role = get_user_role(client, org_id, str(current_user.get("user_id") or ""))
+        except PolicyResolutionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        if not is_org_admin_role(role):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin approval required")
+        ctx = chat_rows[0].get("context") if isinstance(chat_rows[0].get("context"), dict) else {}
+        update: dict = {
+            "status": "rejected",
+            "reviewed_by": str(current_user.get("user_id") or ""),
+            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if body.comment:
+            update["context"] = {**ctx, "rejection_reason": body.comment}
+        client.table("approvals").update(update).eq("id", str(run_id)).eq("org_id", org_id).execute()
+        conversation_id = str(ctx.get("conversation_id") or "")
+        if conversation_id:
+            from app.services.conversation_state_service import get_conversation_state_service
+
+            await get_conversation_state_service(settings).update_task_state(
+                conversation_id,
+                org_id,
+                {"pending_task": None},
+                client=client,
+            )
+        return {"success": True, "approval_id": str(run_id), "status": "rejected", "message": "Rejected. Nothing was written."}
+
     extension = _decide_extension_approval_or_none(
         client,
         settings,

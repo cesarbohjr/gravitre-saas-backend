@@ -9,10 +9,10 @@ import { toast } from "sonner"
 import type { AgentJob } from "@/hooks/use-async-job"
 
 const state = vi.hoisted(() => ({ query: "", data: undefined as unknown, error: undefined as unknown, mutate: vi.fn(), approve: vi.fn(), push: vi.fn() }))
-vi.mock("@/components/gravitre/ai-workspace-provider", () => ({ usePublishGravitreAISelection: vi.fn() }))
+vi.mock("@/components/gravitre/ai-workspace-provider", () => ({ usePublishGravitreAISelection: vi.fn(), useOptionalGravitreAIWorkspace: () => null }))
 vi.mock("@/components/intelligence/ask-gravitre-summon-button", () => ({ AskGravitreSummonButton: () => null }))
 vi.mock("swr", () => ({ default: () => ({ data: state.data, error: state.error, isLoading: false, mutate: state.mutate }) }))
-vi.mock("next/navigation", () => ({ useParams: () => ({ id: "goal" }), useSearchParams: () => new URLSearchParams(state.query) }))
+vi.mock("next/navigation", () => ({ useParams: () => ({ id: "goal" }), useSearchParams: () => new URLSearchParams(state.query), useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }))
 vi.mock("@/components/gravitre/app-shell", () => ({ AppShell: ({ children }: { children: ReactNode }) => <main>{children}</main> }))
 vi.mock("@/components/gravitre/agent-identity-avatar", () => ({ AgentIdentityAvatar: () => null }))
 vi.mock("@/components/intelligence/execution-mode-badge", () => ({ ExecutionModeBadge: () => null }))
@@ -42,7 +42,9 @@ it("shows the returned report inline without opening a review or decision contro
   state.data = job; act(() => root.render(<AssignmentDetailPage params={params} />))
   expect(document.querySelector('[role="dialog"]')).toBeNull()
   expect(container.textContent).toContain("Returned report")
-  expect(container.textContent).toContain("0% (agent-reported)")
+  // Trust signals: an actual reported zero is shown as 0%, not "Not reported".
+  expect(container.textContent).toContain("Confidence, agent reported0%")
+  expect(container.querySelector('[role="meter"]')?.getAttribute("aria-valuenow")).toBe("0")
   expect([...container.querySelectorAll("button")].some(b => b.textContent?.includes("Review and decide"))).toBe(false)
 })
 const approvalJob: AgentJob = { ...job, result: { ...job.result as object, requires_approval: true } }
@@ -140,4 +142,29 @@ it("does not invent execution phases or a percentage when the handoff omits its 
   expect(container.textContent).toContain("Step-level trace not reported")
   expect(container.textContent).not.toContain("Gathering Context")
   expect(container.querySelector('[role="progressbar"]')).toBeNull()
+})
+
+it("derives the outcome banner and action results from the job's reported tool calls", () => {
+  const error = "Company/contact discovery requires an Apollo plan with search API access. See app.apollo.io to upgrade."
+  state.data = {
+    ...job,
+    result: {
+      ...(job.result as object),
+      agent_id: "agent-7",
+      tool_calls: [
+        { tool: "apollo", result: { success: true, action: "apollo.lists.list" } },
+        { tool: "apollo", result: { success: false, action: "apollo.organizations.search", error } },
+      ],
+    },
+  }
+  act(() => root.render(<AssignmentDetailPage params={params} />))
+  expect(container.textContent).toContain("Delivered, but 1 of 2 actions failed")
+  expect(container.textContent).toContain("Blocked by plan limit")
+  expect(container.querySelector('a[href="https://app.apollo.io"]')?.textContent).toContain("Upgrade Apollo plan")
+  expect(container.querySelector('a[href="/connectors"]')?.textContent).toBe("Use another data source")
+  expect(container.querySelector('a[href="/agents/agent-7/chat"]')?.textContent).toBe("Ask the agent")
+  expect(container.textContent).toContain("1 succeeded")
+  expect(container.textContent).toContain("apollo.organizations.search · failed")
+  click(container, "Review")
+  expect(container.textContent).toContain("requires an Apollo plan")
 })
