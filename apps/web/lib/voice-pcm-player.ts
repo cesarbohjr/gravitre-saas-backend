@@ -76,14 +76,19 @@ export function createWorkletPcmPlayer(
   node.connect(options.destination ?? ctx.destination)
   let active = false
   let origin: number | null = null
+  // Sequence of the last pcm message posted; the worklet echoes the last one it
+  // processed. An "inactive" report from before audio we already posted (e.g. the
+  // end of a barge-in flush fade) is stale and must not end the reply.
+  let posted = 0
   node.port.onmessage = (event: MessageEvent) => {
-    const msg = event.data as { type?: string; active?: boolean; frame?: number }
+    const msg = event.data as { type?: string; active?: boolean; frame?: number; seq?: number }
     if (msg?.type === "started") {
       const at = typeof msg.frame === "number" ? msg.frame / ctx.sampleRate : ctx.currentTime
       if (origin == null) origin = at
       options.onStarted?.(at)
     } else if (msg?.type === "active") {
       const next = Boolean(msg.active)
+      if (!next && typeof msg.seq === "number" && msg.seq < posted) return
       if (next === active) return
       active = next
       options.onActiveChange?.(next)
@@ -101,7 +106,11 @@ export function createWorkletPcmPlayer(
         if (origin == null) origin = ctx.currentTime + 0.12
         options.onActiveChange?.(true)
       }
-      node.port.postMessage({ type: "pcm", pcm: copy, sampleRate: sampleRate || 16000 }, [copy.buffer])
+      posted += 1
+      node.port.postMessage(
+        { type: "pcm", pcm: copy, sampleRate: sampleRate || 16000, seq: posted },
+        [copy.buffer],
+      )
     },
     flush() {
       node.port.postMessage({ type: "flush" })

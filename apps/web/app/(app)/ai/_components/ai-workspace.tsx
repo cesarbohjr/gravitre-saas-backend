@@ -83,6 +83,7 @@ import { useAgentVoicePlayback } from "@/hooks/use-agent-voice-playback"
 import { useVoiceDuplexSession } from "@/hooks/use-voice-duplex-session"
 import {
   lastAssistantMessageId,
+  reconcileClaimOnConversationChange,
   shouldAutoSpeakReply,
   type VoiceReplyClaim,
 } from "@/lib/voice-auto-tts"
@@ -411,6 +412,8 @@ export function AiWorkspace({
   // Auto-TTS speaks only a reply to something the user asked with Voice armed;
   // arming Voice alone must never read the last stored reply aloud.
   const voiceReplyClaimRef = useRef<VoiceReplyClaim | null>(null)
+  // Conversation the pending claim belongs to (null until a new chat gets its id).
+  const voiceReplyClaimOwnerRef = useRef<string | null>(null)
   // When Pipecat hands a text-only turn to HTTP TTS, that recovery path owns
   // audible delivery for the turn even if the browser temporarily blocks it.
   // Track ownership separately from proof-of-playback so post-session auto-TTS
@@ -937,6 +940,13 @@ export function AiWorkspace({
 
   useEffect(() => {
     activeConversationIdRef.current = activeConversationId
+    const reconciled = reconcileClaimOnConversationChange({
+      claim: voiceReplyClaimRef.current,
+      owner: voiceReplyClaimOwnerRef.current,
+      next: activeConversationId,
+    })
+    voiceReplyClaimRef.current = reconciled.claim
+    voiceReplyClaimOwnerRef.current = reconciled.owner
   }, [activeConversationId])
 
   useEffect(() => {
@@ -1453,6 +1463,7 @@ export function AiWorkspace({
         modalityRef.current === "voice"
           ? { kind: "after", afterAssistantId: lastAssistantMessageId(messagesRef.current) }
           : null
+      voiceReplyClaimOwnerRef.current = activeConversationIdRef.current
       setCanContinueAfterStop(false)
       await ensureConversation(prompt)
       sendMessage({
@@ -2031,6 +2042,7 @@ export function AiWorkspace({
             !spokeDuringTurn && !duplexOwnsTurn && !recoveryOwnsTurn && !result.cancelled
               ? { kind: "message", messageId: assistantId }
               : null
+          voiceReplyClaimOwnerRef.current = activeConversationIdRef.current
         }
         const conversationId = activeConversationIdRef.current || result.conversationId
         if (conversationId && next.length > 0) {

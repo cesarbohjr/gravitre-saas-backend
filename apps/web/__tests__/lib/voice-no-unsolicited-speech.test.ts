@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
-import { lastAssistantMessageId, shouldAutoSpeakReply } from "@/lib/voice-auto-tts"
+import {
+  lastAssistantMessageId,
+  reconcileClaimOnConversationChange,
+  shouldAutoSpeakReply,
+} from "@/lib/voice-auto-tts"
 
 const webRoot = resolve(__dirname, "../..")
 const hook = readFileSync(resolve(webRoot, "hooks/use-voice-duplex-session.ts"), "utf8")
@@ -85,5 +89,31 @@ describe("connecting the Pipecat voice session sends no text turn", () => {
     const submit = blockAfter(hook, "submitFinalTranscript: async (text: string, opts?: { speculative?: boolean }) => {")
     expect(submit).toMatch(/ws\.send\(JSON\.stringify\(\{ type: "text", text: trimmed \}\)\)/)
     expect(submit).toMatch(/if \(!trimmed\) return/)
+  })
+})
+
+describe("voice reply claims stay in their conversation", () => {
+  const claim = { kind: "after" as const, afterAssistantId: "a1" }
+
+  it("a new chat's claim adopts the id the chat gets", () => {
+    expect(reconcileClaimOnConversationChange({ claim, owner: null, next: "c-new" })).toEqual({
+      claim,
+      owner: "c-new",
+    })
+  })
+
+  it("switching to another conversation drops the claim", () => {
+    expect(reconcileClaimOnConversationChange({ claim, owner: "c1", next: "c2" })).toEqual({
+      claim: null,
+      owner: null,
+    })
+  })
+
+  it("the same conversation keeps it", () => {
+    expect(reconcileClaimOnConversationChange({ claim, owner: "c1", next: "c1" }).claim).toBe(claim)
+  })
+
+  it("the workspace reconciles the claim when the active conversation changes", () => {
+    expect(workspace).toMatch(/reconcileClaimOnConversationChange\(\{/)
   })
 })

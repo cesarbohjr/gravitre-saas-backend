@@ -7,8 +7,11 @@
  * chunk boundary: a click 25 times a second), and playout runs on the audio
  * thread from a queue with fades on underrun and flush.
  *
- * Messages in:  { type: "pcm", pcm: Int16Array, sampleRate } | { type: "flush" } | { type: "dispose" }
- * Messages out: { type: "started", frame } | { type: "active", active, underruns }
+ * Messages in:  { type: "pcm", pcm: Int16Array, sampleRate, seq } | { type: "flush" } | { type: "dispose" }
+ * Messages out: { type: "started", frame } | { type: "active", active, underruns, seq }
+ *
+ * `seq` echoes the last pcm message processed, so the main thread can ignore an
+ * "inactive" report that was overtaken by audio it has already posted.
  */
 import { PcmPlayoutQueue, StreamingResampler, int16ArrayToFloat } from "./voice-dsp.js"
 
@@ -20,12 +23,14 @@ class GravitrePcmPlayerProcessor extends AudioWorkletProcessor {
     this.resampler = null
     this.disposed = false
     this.active = false
+    this.seq = 0
     this.port.onmessage = (event) => this.onMessage(event.data)
   }
 
   onMessage(msg) {
     if (!msg || typeof msg !== "object") return
     if (msg.type === "pcm" && msg.pcm) {
+      if (typeof msg.seq === "number") this.seq = msg.seq
       const inRate = Number(msg.sampleRate) || 16000
       if (!this.resampler || this.resampler.inRate !== inRate) {
         this.resampler = new StreamingResampler(inRate, sampleRate)
@@ -46,7 +51,7 @@ class GravitrePcmPlayerProcessor extends AudioWorkletProcessor {
     const active = this.queue.isActive()
     if (active === this.active) return
     this.active = active
-    this.port.postMessage({ type: "active", active, underruns: this.queue.underruns })
+    this.port.postMessage({ type: "active", active, underruns: this.queue.underruns, seq: this.seq })
   }
 
   process(_inputs, outputs) {

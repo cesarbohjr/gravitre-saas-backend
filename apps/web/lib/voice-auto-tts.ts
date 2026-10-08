@@ -38,3 +38,23 @@ export function shouldAutoSpeakReply(options: {
   if (claim.kind === "message") return claim.messageId === lastAssistantId
   return lastAssistantId !== claim.afterAssistantId
 }
+
+/**
+ * Keep a claim tied to the conversation it was made in.
+ *
+ * A claim made on a brand-new chat has no conversation yet (`owner` null) and
+ * adopts the first id the chat gets. Any later switch to a different
+ * conversation drops the claim, so an "after" claim can never read another
+ * thread's last reply aloud.
+ */
+export function reconcileClaimOnConversationChange(options: {
+  claim: VoiceReplyClaim | null
+  owner: string | null
+  next: string | null
+}): { claim: VoiceReplyClaim | null; owner: string | null } {
+  const { claim, owner, next } = options
+  if (!claim) return { claim: null, owner: null }
+  if (owner === null) return { claim, owner: next }
+  if (owner !== next) return { claim: null, owner: null }
+  return { claim, owner }
+}

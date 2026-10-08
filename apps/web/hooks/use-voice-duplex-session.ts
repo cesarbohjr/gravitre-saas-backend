@@ -1218,10 +1218,10 @@ export function useVoiceDuplexSession(options: Options) {
       if (audioCtxRef.current !== ctx) {
         // Torn down while we waited: release what this attempt acquired.
         player.dispose()
-        if (streamRef.current === stream) {
-          stream.getTracks().forEach((t) => t.stop())
-          streamRef.current = null
-        }
+        // This attempt's mic is ours to stop even if a newer start already
+        // replaced streamRef; only clear the ref when it still points here.
+        stream.getTracks().forEach((t) => t.stop())
+        if (streamRef.current === stream) streamRef.current = null
         return
       }
       pcmPlayerRef.current = player
@@ -1468,6 +1468,8 @@ export function useVoiceDuplexSession(options: Options) {
       })
       if (audioCtxRef.current !== ctx) {
         mic.dispose()
+        stream.getTracks().forEach((t) => t.stop())
+        if (streamRef.current === stream) streamRef.current = null
         return
       }
       micProcessorRef.current = mic
