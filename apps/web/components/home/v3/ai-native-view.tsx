@@ -156,7 +156,7 @@ function HeroScene({ nodes }: { nodes: Array<{ id: string; label: string; state:
     : "A person relaxing at their desk"
   return (
     <svg viewBox="0 0 520 340" width="100%" style={{ display: "block" }} role="img" aria-label={label}>
-      <image href="/illustrations/home-hero.svg" x={0} y={0} width={520} height={340} />
+      <image href="/illustrations/home-hero.svg?v=2" x={0} y={0} width={520} height={340} />
       {nodes.map((n, i) => {
         const slot = NODE_SLOTS[i]
         const s = nodeStyle(n.state)
