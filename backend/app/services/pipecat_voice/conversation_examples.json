@@ -1,0 +1,2112 @@
+{
+  "version": 1,
+  "description": "Three tiers, 100 illustrative conversation pairs each. Use for offline evaluation and style inspiration only; never quote or randomly sample as live responses. Existing personas, user preferences and governed execution are authoritative.",
+  "examples": {
+    "light": [
+      {
+        "id": "light-001",
+        "scenario": "greeting",
+        "user": "I've been thinking about greeting.",
+        "assistant": "I hear you. What was the best part?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-002",
+        "scenario": "small talk",
+        "user": "I've been thinking about small talk.",
+        "assistant": "That sounds like a lot. Want to tell me more?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-003",
+        "scenario": "long day",
+        "user": "I've been thinking about long day.",
+        "assistant": "Interesting—what made you think of that?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-004",
+        "scenario": "weekend",
+        "user": "I've been thinking about weekend.",
+        "assistant": "I can see why that caught your attention.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-005",
+        "scenario": "weather chat",
+        "user": "I've been thinking about weather chat.",
+        "assistant": "I'm following. What happened next?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-006",
+        "scenario": "hobby",
+        "user": "I've been thinking about hobby.",
+        "assistant": "That's a fun direction to explore.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-007",
+        "scenario": "music",
+        "user": "I've been thinking about music.",
+        "assistant": "What did you enjoy most about it?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-008",
+        "scenario": "reading",
+        "user": "I've been thinking about reading.",
+        "assistant": "We can keep this casual. What's on your mind?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-009",
+        "scenario": "food",
+        "user": "I've been thinking about food.",
+        "assistant": "That makes sense. How did it turn out?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-010",
+        "scenario": "coffee",
+        "user": "I've been thinking about coffee.",
+        "assistant": "Tell me the part that stood out to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-011",
+        "scenario": "exercise",
+        "user": "I've been thinking about exercise.",
+        "assistant": "I hear you. What was the best part?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-012",
+        "scenario": "pet",
+        "user": "I've been thinking about pet.",
+        "assistant": "That sounds like a lot. Want to tell me more?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-013",
+        "scenario": "travel dream",
+        "user": "I've been thinking about travel dream.",
+        "assistant": "Interesting—what made you think of that?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-014",
+        "scenario": "celebration",
+        "user": "I've been thinking about celebration.",
+        "assistant": "I can see why that caught your attention.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-015",
+        "scenario": "joke",
+        "user": "I've been thinking about joke.",
+        "assistant": "I'm following. What happened next?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-016",
+        "scenario": "surprise",
+        "user": "I've been thinking about surprise.",
+        "assistant": "That's a fun direction to explore.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-017",
+        "scenario": "good news",
+        "user": "I've been thinking about good news.",
+        "assistant": "What did you enjoy most about it?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-018",
+        "scenario": "bad day",
+        "user": "I've been thinking about bad day.",
+        "assistant": "We can keep this casual. What's on your mind?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-019",
+        "scenario": "hesitation",
+        "user": "I've been thinking about hesitation.",
+        "assistant": "That makes sense. How did it turn out?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-020",
+        "scenario": "silence",
+        "user": "I've been thinking about silence.",
+        "assistant": "Tell me the part that stood out to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-021",
+        "scenario": "gratitude",
+        "user": "I've been thinking about gratitude.",
+        "assistant": "I hear you. What was the best part?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-022",
+        "scenario": "compliment",
+        "user": "I've been thinking about compliment.",
+        "assistant": "That sounds like a lot. Want to tell me more?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-023",
+        "scenario": "frustration",
+        "user": "I've been thinking about frustration.",
+        "assistant": "Interesting—what made you think of that?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-024",
+        "scenario": "nervousness",
+        "user": "I've been thinking about nervousness.",
+        "assistant": "I can see why that caught your attention.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-025",
+        "scenario": "excitement",
+        "user": "I've been thinking about excitement.",
+        "assistant": "I'm following. What happened next?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-026",
+        "scenario": "greeting",
+        "user": "You know, greeting is on my mind today.",
+        "assistant": "What did you enjoy most about it?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-027",
+        "scenario": "small talk",
+        "user": "You know, small talk is on my mind today.",
+        "assistant": "We can keep this casual. What's on your mind?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-028",
+        "scenario": "long day",
+        "user": "You know, long day is on my mind today.",
+        "assistant": "That makes sense. How did it turn out?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-029",
+        "scenario": "weekend",
+        "user": "You know, weekend is on my mind today.",
+        "assistant": "Tell me the part that stood out to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-030",
+        "scenario": "weather chat",
+        "user": "You know, weather chat is on my mind today.",
+        "assistant": "I hear you. What was the best part?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-031",
+        "scenario": "hobby",
+        "user": "You know, hobby is on my mind today.",
+        "assistant": "That sounds like a lot. Want to tell me more?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-032",
+        "scenario": "music",
+        "user": "You know, music is on my mind today.",
+        "assistant": "Interesting—what made you think of that?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-033",
+        "scenario": "reading",
+        "user": "You know, reading is on my mind today.",
+        "assistant": "I can see why that caught your attention.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-034",
+        "scenario": "food",
+        "user": "You know, food is on my mind today.",
+        "assistant": "I'm following. What happened next?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-035",
+        "scenario": "coffee",
+        "user": "You know, coffee is on my mind today.",
+        "assistant": "That's a fun direction to explore.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-036",
+        "scenario": "exercise",
+        "user": "You know, exercise is on my mind today.",
+        "assistant": "What did you enjoy most about it?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-037",
+        "scenario": "pet",
+        "user": "You know, pet is on my mind today.",
+        "assistant": "We can keep this casual. What's on your mind?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-038",
+        "scenario": "travel dream",
+        "user": "You know, travel dream is on my mind today.",
+        "assistant": "That makes sense. How did it turn out?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-039",
+        "scenario": "celebration",
+        "user": "You know, celebration is on my mind today.",
+        "assistant": "Tell me the part that stood out to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-040",
+        "scenario": "joke",
+        "user": "You know, joke is on my mind today.",
+        "assistant": "I hear you. What was the best part?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-041",
+        "scenario": "surprise",
+        "user": "You know, surprise is on my mind today.",
+        "assistant": "That sounds like a lot. Want to tell me more?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-042",
+        "scenario": "good news",
+        "user": "You know, good news is on my mind today.",
+        "assistant": "Interesting—what made you think of that?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-043",
+        "scenario": "bad day",
+        "user": "You know, bad day is on my mind today.",
+        "assistant": "I can see why that caught your attention.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-044",
+        "scenario": "hesitation",
+        "user": "You know, hesitation is on my mind today.",
+        "assistant": "I'm following. What happened next?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-045",
+        "scenario": "silence",
+        "user": "You know, silence is on my mind today.",
+        "assistant": "That's a fun direction to explore.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-046",
+        "scenario": "gratitude",
+        "user": "You know, gratitude is on my mind today.",
+        "assistant": "What did you enjoy most about it?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-047",
+        "scenario": "compliment",
+        "user": "You know, compliment is on my mind today.",
+        "assistant": "We can keep this casual. What's on your mind?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-048",
+        "scenario": "frustration",
+        "user": "You know, frustration is on my mind today.",
+        "assistant": "That makes sense. How did it turn out?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-049",
+        "scenario": "nervousness",
+        "user": "You know, nervousness is on my mind today.",
+        "assistant": "Tell me the part that stood out to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-050",
+        "scenario": "excitement",
+        "user": "You know, excitement is on my mind today.",
+        "assistant": "I hear you. What was the best part?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-051",
+        "scenario": "greeting",
+        "user": "Can we talk about greeting for a bit?",
+        "assistant": "Interesting—what made you think of that?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-052",
+        "scenario": "small talk",
+        "user": "Can we talk about small talk for a bit?",
+        "assistant": "I can see why that caught your attention.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-053",
+        "scenario": "long day",
+        "user": "Can we talk about long day for a bit?",
+        "assistant": "I'm following. What happened next?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-054",
+        "scenario": "weekend",
+        "user": "Can we talk about weekend for a bit?",
+        "assistant": "That's a fun direction to explore.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-055",
+        "scenario": "weather chat",
+        "user": "Can we talk about weather chat for a bit?",
+        "assistant": "What did you enjoy most about it?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-056",
+        "scenario": "hobby",
+        "user": "Can we talk about hobby for a bit?",
+        "assistant": "We can keep this casual. What's on your mind?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-057",
+        "scenario": "music",
+        "user": "Can we talk about music for a bit?",
+        "assistant": "That makes sense. How did it turn out?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-058",
+        "scenario": "reading",
+        "user": "Can we talk about reading for a bit?",
+        "assistant": "Tell me the part that stood out to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-059",
+        "scenario": "food",
+        "user": "Can we talk about food for a bit?",
+        "assistant": "I hear you. What was the best part?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-060",
+        "scenario": "coffee",
+        "user": "Can we talk about coffee for a bit?",
+        "assistant": "That sounds like a lot. Want to tell me more?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-061",
+        "scenario": "exercise",
+        "user": "Can we talk about exercise for a bit?",
+        "assistant": "Interesting—what made you think of that?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-062",
+        "scenario": "pet",
+        "user": "Can we talk about pet for a bit?",
+        "assistant": "I can see why that caught your attention.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-063",
+        "scenario": "travel dream",
+        "user": "Can we talk about travel dream for a bit?",
+        "assistant": "I'm following. What happened next?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-064",
+        "scenario": "celebration",
+        "user": "Can we talk about celebration for a bit?",
+        "assistant": "That's a fun direction to explore.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-065",
+        "scenario": "joke",
+        "user": "Can we talk about joke for a bit?",
+        "assistant": "What did you enjoy most about it?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-066",
+        "scenario": "surprise",
+        "user": "Can we talk about surprise for a bit?",
+        "assistant": "We can keep this casual. What's on your mind?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-067",
+        "scenario": "good news",
+        "user": "Can we talk about good news for a bit?",
+        "assistant": "That makes sense. How did it turn out?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-068",
+        "scenario": "bad day",
+        "user": "Can we talk about bad day for a bit?",
+        "assistant": "Tell me the part that stood out to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-069",
+        "scenario": "hesitation",
+        "user": "Can we talk about hesitation for a bit?",
+        "assistant": "I hear you. What was the best part?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-070",
+        "scenario": "silence",
+        "user": "Can we talk about silence for a bit?",
+        "assistant": "That sounds like a lot. Want to tell me more?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-071",
+        "scenario": "gratitude",
+        "user": "Can we talk about gratitude for a bit?",
+        "assistant": "Interesting—what made you think of that?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-072",
+        "scenario": "compliment",
+        "user": "Can we talk about compliment for a bit?",
+        "assistant": "I can see why that caught your attention.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-073",
+        "scenario": "frustration",
+        "user": "Can we talk about frustration for a bit?",
+        "assistant": "I'm following. What happened next?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-074",
+        "scenario": "nervousness",
+        "user": "Can we talk about nervousness for a bit?",
+        "assistant": "That's a fun direction to explore.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-075",
+        "scenario": "excitement",
+        "user": "Can we talk about excitement for a bit?",
+        "assistant": "What did you enjoy most about it?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-076",
+        "scenario": "greeting",
+        "user": "Something about greeting caught my attention.",
+        "assistant": "That makes sense. How did it turn out?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-077",
+        "scenario": "small talk",
+        "user": "Something about small talk caught my attention.",
+        "assistant": "Tell me the part that stood out to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-078",
+        "scenario": "long day",
+        "user": "Something about long day caught my attention.",
+        "assistant": "I hear you. What was the best part?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-079",
+        "scenario": "weekend",
+        "user": "Something about weekend caught my attention.",
+        "assistant": "That sounds like a lot. Want to tell me more?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-080",
+        "scenario": "weather chat",
+        "user": "Something about weather chat caught my attention.",
+        "assistant": "Interesting—what made you think of that?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-081",
+        "scenario": "hobby",
+        "user": "Something about hobby caught my attention.",
+        "assistant": "I can see why that caught your attention.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-082",
+        "scenario": "music",
+        "user": "Something about music caught my attention.",
+        "assistant": "I'm following. What happened next?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-083",
+        "scenario": "reading",
+        "user": "Something about reading caught my attention.",
+        "assistant": "That's a fun direction to explore.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-084",
+        "scenario": "food",
+        "user": "Something about food caught my attention.",
+        "assistant": "What did you enjoy most about it?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-085",
+        "scenario": "coffee",
+        "user": "Something about coffee caught my attention.",
+        "assistant": "We can keep this casual. What's on your mind?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-086",
+        "scenario": "exercise",
+        "user": "Something about exercise caught my attention.",
+        "assistant": "That makes sense. How did it turn out?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-087",
+        "scenario": "pet",
+        "user": "Something about pet caught my attention.",
+        "assistant": "Tell me the part that stood out to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-088",
+        "scenario": "travel dream",
+        "user": "Something about travel dream caught my attention.",
+        "assistant": "I hear you. What was the best part?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-089",
+        "scenario": "celebration",
+        "user": "Something about celebration caught my attention.",
+        "assistant": "That sounds like a lot. Want to tell me more?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-090",
+        "scenario": "joke",
+        "user": "Something about joke caught my attention.",
+        "assistant": "Interesting—what made you think of that?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-091",
+        "scenario": "surprise",
+        "user": "Something about surprise caught my attention.",
+        "assistant": "I can see why that caught your attention.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-092",
+        "scenario": "good news",
+        "user": "Something about good news caught my attention.",
+        "assistant": "I'm following. What happened next?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-093",
+        "scenario": "bad day",
+        "user": "Something about bad day caught my attention.",
+        "assistant": "That's a fun direction to explore.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-094",
+        "scenario": "hesitation",
+        "user": "Something about hesitation caught my attention.",
+        "assistant": "What did you enjoy most about it?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-095",
+        "scenario": "silence",
+        "user": "Something about silence caught my attention.",
+        "assistant": "We can keep this casual. What's on your mind?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-096",
+        "scenario": "gratitude",
+        "user": "Something about gratitude caught my attention.",
+        "assistant": "That makes sense. How did it turn out?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-097",
+        "scenario": "compliment",
+        "user": "Something about compliment caught my attention.",
+        "assistant": "Tell me the part that stood out to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-098",
+        "scenario": "frustration",
+        "user": "Something about frustration caught my attention.",
+        "assistant": "I hear you. What was the best part?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-099",
+        "scenario": "nervousness",
+        "user": "Something about nervousness caught my attention.",
+        "assistant": "That sounds like a lot. Want to tell me more?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "light-100",
+        "scenario": "excitement",
+        "user": "Something about excitement caught my attention.",
+        "assistant": "Interesting—what made you think of that?",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      }
+    ],
+    "medium": [
+      {
+        "id": "medium-001",
+        "scenario": "explain idea",
+        "user": "Can you help me understand explain idea?",
+        "assistant": "There are two useful ways to look at that.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-002",
+        "scenario": "compare choices",
+        "user": "Can you help me understand compare choices?",
+        "assistant": "The key distinction is between the goal and the method.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-003",
+        "scenario": "brainstorm",
+        "user": "Can you help me understand brainstorm?",
+        "assistant": "An example may make this clearer.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-004",
+        "scenario": "learn concept",
+        "user": "Can you help me understand learn concept?",
+        "assistant": "I'd start with the assumption we're least certain about.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-005",
+        "scenario": "follow up",
+        "user": "Can you help me understand follow up?",
+        "assistant": "That depends on which outcome matters most to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-006",
+        "scenario": "clarify term",
+        "user": "Can you help me understand clarify term?",
+        "assistant": "We can compare the tradeoffs without overcomplicating it.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-007",
+        "scenario": "give example",
+        "user": "Can you help me understand give example?",
+        "assistant": "The short answer is yes, with one important caveat.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-008",
+        "scenario": "reflect",
+        "user": "Can you help me understand reflect?",
+        "assistant": "Here's how I'd connect that to what you said earlier.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-009",
+        "scenario": "weigh tradeoffs",
+        "user": "Can you help me understand weigh tradeoffs?",
+        "assistant": "Let's separate what we know from what we're inferring.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-010",
+        "scenario": "summarize",
+        "user": "Can you help me understand summarize?",
+        "assistant": "A practical next step is to test the simplest explanation.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-011",
+        "scenario": "organize thoughts",
+        "user": "Can you help me understand organize thoughts?",
+        "assistant": "There are two useful ways to look at that.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-012",
+        "scenario": "plan week",
+        "user": "Can you help me understand plan week?",
+        "assistant": "The key distinction is between the goal and the method.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-013",
+        "scenario": "prioritize",
+        "user": "Can you help me understand prioritize?",
+        "assistant": "An example may make this clearer.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-014",
+        "scenario": "ask why",
+        "user": "Can you help me understand ask why?",
+        "assistant": "I'd start with the assumption we're least certain about.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-015",
+        "scenario": "challenge assumption",
+        "user": "Can you help me understand challenge assumption?",
+        "assistant": "That depends on which outcome matters most to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-016",
+        "scenario": "offer perspective",
+        "user": "Can you help me understand offer perspective?",
+        "assistant": "We can compare the tradeoffs without overcomplicating it.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-017",
+        "scenario": "teach step",
+        "user": "Can you help me understand teach step?",
+        "assistant": "The short answer is yes, with one important caveat.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-018",
+        "scenario": "spot gap",
+        "user": "Can you help me understand spot gap?",
+        "assistant": "Here's how I'd connect that to what you said earlier.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-019",
+        "scenario": "evaluate claim",
+        "user": "Can you help me understand evaluate claim?",
+        "assistant": "Let's separate what we know from what we're inferring.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-020",
+        "scenario": "form hypothesis",
+        "user": "Can you help me understand form hypothesis?",
+        "assistant": "A practical next step is to test the simplest explanation.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-021",
+        "scenario": "explore alternative",
+        "user": "Can you help me understand explore alternative?",
+        "assistant": "There are two useful ways to look at that.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-022",
+        "scenario": "help decide",
+        "user": "Can you help me understand help decide?",
+        "assistant": "The key distinction is between the goal and the method.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-023",
+        "scenario": "connect ideas",
+        "user": "Can you help me understand connect ideas?",
+        "assistant": "An example may make this clearer.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-024",
+        "scenario": "reason with uncertainty",
+        "user": "Can you help me understand reason with uncertainty?",
+        "assistant": "I'd start with the assumption we're least certain about.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-025",
+        "scenario": "recap progress",
+        "user": "Can you help me understand recap progress?",
+        "assistant": "That depends on which outcome matters most to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-026",
+        "scenario": "explain idea",
+        "user": "How would you think through explain idea?",
+        "assistant": "The short answer is yes, with one important caveat.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-027",
+        "scenario": "compare choices",
+        "user": "How would you think through compare choices?",
+        "assistant": "Here's how I'd connect that to what you said earlier.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-028",
+        "scenario": "brainstorm",
+        "user": "How would you think through brainstorm?",
+        "assistant": "Let's separate what we know from what we're inferring.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-029",
+        "scenario": "learn concept",
+        "user": "How would you think through learn concept?",
+        "assistant": "A practical next step is to test the simplest explanation.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-030",
+        "scenario": "follow up",
+        "user": "How would you think through follow up?",
+        "assistant": "There are two useful ways to look at that.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-031",
+        "scenario": "clarify term",
+        "user": "How would you think through clarify term?",
+        "assistant": "The key distinction is between the goal and the method.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-032",
+        "scenario": "give example",
+        "user": "How would you think through give example?",
+        "assistant": "An example may make this clearer.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-033",
+        "scenario": "reflect",
+        "user": "How would you think through reflect?",
+        "assistant": "I'd start with the assumption we're least certain about.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-034",
+        "scenario": "weigh tradeoffs",
+        "user": "How would you think through weigh tradeoffs?",
+        "assistant": "That depends on which outcome matters most to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-035",
+        "scenario": "summarize",
+        "user": "How would you think through summarize?",
+        "assistant": "We can compare the tradeoffs without overcomplicating it.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-036",
+        "scenario": "organize thoughts",
+        "user": "How would you think through organize thoughts?",
+        "assistant": "The short answer is yes, with one important caveat.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-037",
+        "scenario": "plan week",
+        "user": "How would you think through plan week?",
+        "assistant": "Here's how I'd connect that to what you said earlier.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-038",
+        "scenario": "prioritize",
+        "user": "How would you think through prioritize?",
+        "assistant": "Let's separate what we know from what we're inferring.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-039",
+        "scenario": "ask why",
+        "user": "How would you think through ask why?",
+        "assistant": "A practical next step is to test the simplest explanation.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-040",
+        "scenario": "challenge assumption",
+        "user": "How would you think through challenge assumption?",
+        "assistant": "There are two useful ways to look at that.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-041",
+        "scenario": "offer perspective",
+        "user": "How would you think through offer perspective?",
+        "assistant": "The key distinction is between the goal and the method.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-042",
+        "scenario": "teach step",
+        "user": "How would you think through teach step?",
+        "assistant": "An example may make this clearer.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-043",
+        "scenario": "spot gap",
+        "user": "How would you think through spot gap?",
+        "assistant": "I'd start with the assumption we're least certain about.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-044",
+        "scenario": "evaluate claim",
+        "user": "How would you think through evaluate claim?",
+        "assistant": "That depends on which outcome matters most to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-045",
+        "scenario": "form hypothesis",
+        "user": "How would you think through form hypothesis?",
+        "assistant": "We can compare the tradeoffs without overcomplicating it.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-046",
+        "scenario": "explore alternative",
+        "user": "How would you think through explore alternative?",
+        "assistant": "The short answer is yes, with one important caveat.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-047",
+        "scenario": "help decide",
+        "user": "How would you think through help decide?",
+        "assistant": "Here's how I'd connect that to what you said earlier.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-048",
+        "scenario": "connect ideas",
+        "user": "How would you think through connect ideas?",
+        "assistant": "Let's separate what we know from what we're inferring.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-049",
+        "scenario": "reason with uncertainty",
+        "user": "How would you think through reason with uncertainty?",
+        "assistant": "A practical next step is to test the simplest explanation.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-050",
+        "scenario": "recap progress",
+        "user": "How would you think through recap progress?",
+        "assistant": "There are two useful ways to look at that.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-051",
+        "scenario": "explain idea",
+        "user": "What should I consider when I explain idea?",
+        "assistant": "An example may make this clearer.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-052",
+        "scenario": "compare choices",
+        "user": "What should I consider when I compare choices?",
+        "assistant": "I'd start with the assumption we're least certain about.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-053",
+        "scenario": "brainstorm",
+        "user": "What should I consider when I brainstorm?",
+        "assistant": "That depends on which outcome matters most to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-054",
+        "scenario": "learn concept",
+        "user": "What should I consider when I learn concept?",
+        "assistant": "We can compare the tradeoffs without overcomplicating it.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-055",
+        "scenario": "follow up",
+        "user": "What should I consider when I follow up?",
+        "assistant": "The short answer is yes, with one important caveat.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-056",
+        "scenario": "clarify term",
+        "user": "What should I consider when I clarify term?",
+        "assistant": "Here's how I'd connect that to what you said earlier.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-057",
+        "scenario": "give example",
+        "user": "What should I consider when I give example?",
+        "assistant": "Let's separate what we know from what we're inferring.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-058",
+        "scenario": "reflect",
+        "user": "What should I consider when I reflect?",
+        "assistant": "A practical next step is to test the simplest explanation.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-059",
+        "scenario": "weigh tradeoffs",
+        "user": "What should I consider when I weigh tradeoffs?",
+        "assistant": "There are two useful ways to look at that.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-060",
+        "scenario": "summarize",
+        "user": "What should I consider when I summarize?",
+        "assistant": "The key distinction is between the goal and the method.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-061",
+        "scenario": "organize thoughts",
+        "user": "What should I consider when I organize thoughts?",
+        "assistant": "An example may make this clearer.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-062",
+        "scenario": "plan week",
+        "user": "What should I consider when I plan week?",
+        "assistant": "I'd start with the assumption we're least certain about.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-063",
+        "scenario": "prioritize",
+        "user": "What should I consider when I prioritize?",
+        "assistant": "That depends on which outcome matters most to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-064",
+        "scenario": "ask why",
+        "user": "What should I consider when I ask why?",
+        "assistant": "We can compare the tradeoffs without overcomplicating it.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-065",
+        "scenario": "challenge assumption",
+        "user": "What should I consider when I challenge assumption?",
+        "assistant": "The short answer is yes, with one important caveat.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-066",
+        "scenario": "offer perspective",
+        "user": "What should I consider when I offer perspective?",
+        "assistant": "Here's how I'd connect that to what you said earlier.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-067",
+        "scenario": "teach step",
+        "user": "What should I consider when I teach step?",
+        "assistant": "Let's separate what we know from what we're inferring.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-068",
+        "scenario": "spot gap",
+        "user": "What should I consider when I spot gap?",
+        "assistant": "A practical next step is to test the simplest explanation.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-069",
+        "scenario": "evaluate claim",
+        "user": "What should I consider when I evaluate claim?",
+        "assistant": "There are two useful ways to look at that.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-070",
+        "scenario": "form hypothesis",
+        "user": "What should I consider when I form hypothesis?",
+        "assistant": "The key distinction is between the goal and the method.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-071",
+        "scenario": "explore alternative",
+        "user": "What should I consider when I explore alternative?",
+        "assistant": "An example may make this clearer.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-072",
+        "scenario": "help decide",
+        "user": "What should I consider when I help decide?",
+        "assistant": "I'd start with the assumption we're least certain about.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-073",
+        "scenario": "connect ideas",
+        "user": "What should I consider when I connect ideas?",
+        "assistant": "That depends on which outcome matters most to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-074",
+        "scenario": "reason with uncertainty",
+        "user": "What should I consider when I reason with uncertainty?",
+        "assistant": "We can compare the tradeoffs without overcomplicating it.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-075",
+        "scenario": "recap progress",
+        "user": "What should I consider when I recap progress?",
+        "assistant": "The short answer is yes, with one important caveat.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-076",
+        "scenario": "explain idea",
+        "user": "Can you help me reason about explain idea with some nuance?",
+        "assistant": "Let's separate what we know from what we're inferring.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-077",
+        "scenario": "compare choices",
+        "user": "Can you help me reason about compare choices with some nuance?",
+        "assistant": "A practical next step is to test the simplest explanation.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-078",
+        "scenario": "brainstorm",
+        "user": "Can you help me reason about brainstorm with some nuance?",
+        "assistant": "There are two useful ways to look at that.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-079",
+        "scenario": "learn concept",
+        "user": "Can you help me reason about learn concept with some nuance?",
+        "assistant": "The key distinction is between the goal and the method.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-080",
+        "scenario": "follow up",
+        "user": "Can you help me reason about follow up with some nuance?",
+        "assistant": "An example may make this clearer.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-081",
+        "scenario": "clarify term",
+        "user": "Can you help me reason about clarify term with some nuance?",
+        "assistant": "I'd start with the assumption we're least certain about.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-082",
+        "scenario": "give example",
+        "user": "Can you help me reason about give example with some nuance?",
+        "assistant": "That depends on which outcome matters most to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-083",
+        "scenario": "reflect",
+        "user": "Can you help me reason about reflect with some nuance?",
+        "assistant": "We can compare the tradeoffs without overcomplicating it.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-084",
+        "scenario": "weigh tradeoffs",
+        "user": "Can you help me reason about weigh tradeoffs with some nuance?",
+        "assistant": "The short answer is yes, with one important caveat.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-085",
+        "scenario": "summarize",
+        "user": "Can you help me reason about summarize with some nuance?",
+        "assistant": "Here's how I'd connect that to what you said earlier.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-086",
+        "scenario": "organize thoughts",
+        "user": "Can you help me reason about organize thoughts with some nuance?",
+        "assistant": "Let's separate what we know from what we're inferring.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-087",
+        "scenario": "plan week",
+        "user": "Can you help me reason about plan week with some nuance?",
+        "assistant": "A practical next step is to test the simplest explanation.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-088",
+        "scenario": "prioritize",
+        "user": "Can you help me reason about prioritize with some nuance?",
+        "assistant": "There are two useful ways to look at that.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-089",
+        "scenario": "ask why",
+        "user": "Can you help me reason about ask why with some nuance?",
+        "assistant": "The key distinction is between the goal and the method.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-090",
+        "scenario": "challenge assumption",
+        "user": "Can you help me reason about challenge assumption with some nuance?",
+        "assistant": "An example may make this clearer.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-091",
+        "scenario": "offer perspective",
+        "user": "Can you help me reason about offer perspective with some nuance?",
+        "assistant": "I'd start with the assumption we're least certain about.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-092",
+        "scenario": "teach step",
+        "user": "Can you help me reason about teach step with some nuance?",
+        "assistant": "That depends on which outcome matters most to you.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-093",
+        "scenario": "spot gap",
+        "user": "Can you help me reason about spot gap with some nuance?",
+        "assistant": "We can compare the tradeoffs without overcomplicating it.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-094",
+        "scenario": "evaluate claim",
+        "user": "Can you help me reason about evaluate claim with some nuance?",
+        "assistant": "The short answer is yes, with one important caveat.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-095",
+        "scenario": "form hypothesis",
+        "user": "Can you help me reason about form hypothesis with some nuance?",
+        "assistant": "Here's how I'd connect that to what you said earlier.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-096",
+        "scenario": "explore alternative",
+        "user": "Can you help me reason about explore alternative with some nuance?",
+        "assistant": "Let's separate what we know from what we're inferring.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-097",
+        "scenario": "help decide",
+        "user": "Can you help me reason about help decide with some nuance?",
+        "assistant": "A practical next step is to test the simplest explanation.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-098",
+        "scenario": "connect ideas",
+        "user": "Can you help me reason about connect ideas with some nuance?",
+        "assistant": "There are two useful ways to look at that.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-099",
+        "scenario": "reason with uncertainty",
+        "user": "Can you help me reason about reason with uncertainty with some nuance?",
+        "assistant": "The key distinction is between the goal and the method.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "medium-100",
+        "scenario": "recap progress",
+        "user": "Can you help me reason about recap progress with some nuance?",
+        "assistant": "An example may make this clearer.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      }
+    ],
+    "deep": [
+      {
+        "id": "deep-001",
+        "scenario": "investigate logs",
+        "user": "Please investigate logs for Gravitre and show the evidence.",
+        "assistant": "I'll inspect the available evidence before drawing conclusions.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-002",
+        "scenario": "debug latency",
+        "user": "Please debug latency for Gravitre and show the evidence.",
+        "assistant": "First I'll establish the current state and scope.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-003",
+        "scenario": "audit access",
+        "user": "Please audit access for Gravitre and show the evidence.",
+        "assistant": "I'll distinguish confirmed findings from plausible causes.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-004",
+        "scenario": "review architecture",
+        "user": "Please review architecture for Gravitre and show the evidence.",
+        "assistant": "This action requires an authorization check before execution.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-005",
+        "scenario": "plan deployment",
+        "user": "Please plan deployment for Gravitre and show the evidence.",
+        "assistant": "The audit trail should show who changed what and when.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-006",
+        "scenario": "evaluate vendors",
+        "user": "Please evaluate vendors for Gravitre and show the evidence.",
+        "assistant": "I can investigate without modifying production.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-007",
+        "scenario": "analyze CRM",
+        "user": "Please analyze CRM for Gravitre and show the evidence.",
+        "assistant": "I'll validate the assumptions against the actual configuration.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-008",
+        "scenario": "research market",
+        "user": "Please research market for Gravitre and show the evidence.",
+        "assistant": "The safest release path includes rollback and regression checks.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-009",
+        "scenario": "assess security",
+        "user": "Please assess security for Gravitre and show the evidence.",
+        "assistant": "I'll identify the bottleneck from measured timings.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-010",
+        "scenario": "design workflow",
+        "user": "Please design workflow for Gravitre and show the evidence.",
+        "assistant": "I'll report what was verified and what remains unresolved.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-011",
+        "scenario": "inspect data",
+        "user": "Please inspect data for Gravitre and show the evidence.",
+        "assistant": "I'll inspect the available evidence before drawing conclusions.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-012",
+        "scenario": "verify integration",
+        "user": "Please verify integration for Gravitre and show the evidence.",
+        "assistant": "First I'll establish the current state and scope.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-013",
+        "scenario": "review incident",
+        "user": "Please review incident for Gravitre and show the evidence.",
+        "assistant": "I'll distinguish confirmed findings from plausible causes.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-014",
+        "scenario": "compare costs",
+        "user": "Please compare costs for Gravitre and show the evidence.",
+        "assistant": "This action requires an authorization check before execution.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-015",
+        "scenario": "trace failures",
+        "user": "Please trace failures for Gravitre and show the evidence.",
+        "assistant": "The audit trail should show who changed what and when.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-016",
+        "scenario": "assess permissions",
+        "user": "Please assess permissions for Gravitre and show the evidence.",
+        "assistant": "I can investigate without modifying production.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-017",
+        "scenario": "plan migration",
+        "user": "Please plan migration for Gravitre and show the evidence.",
+        "assistant": "I'll validate the assumptions against the actual configuration.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-018",
+        "scenario": "test changes",
+        "user": "Please test changes for Gravitre and show the evidence.",
+        "assistant": "The safest release path includes rollback and regression checks.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-019",
+        "scenario": "diagnose incident",
+        "user": "Please diagnose incident for Gravitre and show the evidence.",
+        "assistant": "I'll identify the bottleneck from measured timings.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-020",
+        "scenario": "report evidence",
+        "user": "Please report evidence for Gravitre and show the evidence.",
+        "assistant": "I'll report what was verified and what remains unresolved.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-021",
+        "scenario": "seek approval",
+        "user": "Please seek approval for Gravitre and show the evidence.",
+        "assistant": "I'll inspect the available evidence before drawing conclusions.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-022",
+        "scenario": "coordinate agents",
+        "user": "Please coordinate agents for Gravitre and show the evidence.",
+        "assistant": "First I'll establish the current state and scope.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-023",
+        "scenario": "analyze performance",
+        "user": "Please analyze performance for Gravitre and show the evidence.",
+        "assistant": "I'll distinguish confirmed findings from plausible causes.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-024",
+        "scenario": "summarize findings",
+        "user": "Please summarize findings for Gravitre and show the evidence.",
+        "assistant": "This action requires an authorization check before execution.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-025",
+        "scenario": "propose remediation",
+        "user": "Please propose remediation for Gravitre and show the evidence.",
+        "assistant": "The audit trail should show who changed what and when.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-026",
+        "scenario": "investigate logs",
+        "user": "I need you to investigate logs; don't make unapproved changes.",
+        "assistant": "I'll validate the assumptions against the actual configuration.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-027",
+        "scenario": "debug latency",
+        "user": "I need you to debug latency; don't make unapproved changes.",
+        "assistant": "The safest release path includes rollback and regression checks.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-028",
+        "scenario": "audit access",
+        "user": "I need you to audit access; don't make unapproved changes.",
+        "assistant": "I'll identify the bottleneck from measured timings.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-029",
+        "scenario": "review architecture",
+        "user": "I need you to review architecture; don't make unapproved changes.",
+        "assistant": "I'll report what was verified and what remains unresolved.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-030",
+        "scenario": "plan deployment",
+        "user": "I need you to plan deployment; don't make unapproved changes.",
+        "assistant": "I'll inspect the available evidence before drawing conclusions.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-031",
+        "scenario": "evaluate vendors",
+        "user": "I need you to evaluate vendors; don't make unapproved changes.",
+        "assistant": "First I'll establish the current state and scope.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-032",
+        "scenario": "analyze CRM",
+        "user": "I need you to analyze CRM; don't make unapproved changes.",
+        "assistant": "I'll distinguish confirmed findings from plausible causes.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-033",
+        "scenario": "research market",
+        "user": "I need you to research market; don't make unapproved changes.",
+        "assistant": "This action requires an authorization check before execution.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-034",
+        "scenario": "assess security",
+        "user": "I need you to assess security; don't make unapproved changes.",
+        "assistant": "The audit trail should show who changed what and when.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-035",
+        "scenario": "design workflow",
+        "user": "I need you to design workflow; don't make unapproved changes.",
+        "assistant": "I can investigate without modifying production.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-036",
+        "scenario": "inspect data",
+        "user": "I need you to inspect data; don't make unapproved changes.",
+        "assistant": "I'll validate the assumptions against the actual configuration.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-037",
+        "scenario": "verify integration",
+        "user": "I need you to verify integration; don't make unapproved changes.",
+        "assistant": "The safest release path includes rollback and regression checks.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-038",
+        "scenario": "review incident",
+        "user": "I need you to review incident; don't make unapproved changes.",
+        "assistant": "I'll identify the bottleneck from measured timings.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-039",
+        "scenario": "compare costs",
+        "user": "I need you to compare costs; don't make unapproved changes.",
+        "assistant": "I'll report what was verified and what remains unresolved.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-040",
+        "scenario": "trace failures",
+        "user": "I need you to trace failures; don't make unapproved changes.",
+        "assistant": "I'll inspect the available evidence before drawing conclusions.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-041",
+        "scenario": "assess permissions",
+        "user": "I need you to assess permissions; don't make unapproved changes.",
+        "assistant": "First I'll establish the current state and scope.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-042",
+        "scenario": "plan migration",
+        "user": "I need you to plan migration; don't make unapproved changes.",
+        "assistant": "I'll distinguish confirmed findings from plausible causes.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-043",
+        "scenario": "test changes",
+        "user": "I need you to test changes; don't make unapproved changes.",
+        "assistant": "This action requires an authorization check before execution.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-044",
+        "scenario": "diagnose incident",
+        "user": "I need you to diagnose incident; don't make unapproved changes.",
+        "assistant": "The audit trail should show who changed what and when.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-045",
+        "scenario": "report evidence",
+        "user": "I need you to report evidence; don't make unapproved changes.",
+        "assistant": "I can investigate without modifying production.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-046",
+        "scenario": "seek approval",
+        "user": "I need you to seek approval; don't make unapproved changes.",
+        "assistant": "I'll validate the assumptions against the actual configuration.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-047",
+        "scenario": "coordinate agents",
+        "user": "I need you to coordinate agents; don't make unapproved changes.",
+        "assistant": "The safest release path includes rollback and regression checks.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-048",
+        "scenario": "analyze performance",
+        "user": "I need you to analyze performance; don't make unapproved changes.",
+        "assistant": "I'll identify the bottleneck from measured timings.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-049",
+        "scenario": "summarize findings",
+        "user": "I need you to summarize findings; don't make unapproved changes.",
+        "assistant": "I'll report what was verified and what remains unresolved.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-050",
+        "scenario": "propose remediation",
+        "user": "I need you to propose remediation; don't make unapproved changes.",
+        "assistant": "I'll inspect the available evidence before drawing conclusions.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-051",
+        "scenario": "investigate logs",
+        "user": "Can you investigate logs and identify material risks?",
+        "assistant": "I'll distinguish confirmed findings from plausible causes.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-052",
+        "scenario": "debug latency",
+        "user": "Can you debug latency and identify material risks?",
+        "assistant": "This action requires an authorization check before execution.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-053",
+        "scenario": "audit access",
+        "user": "Can you audit access and identify material risks?",
+        "assistant": "The audit trail should show who changed what and when.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-054",
+        "scenario": "review architecture",
+        "user": "Can you review architecture and identify material risks?",
+        "assistant": "I can investigate without modifying production.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-055",
+        "scenario": "plan deployment",
+        "user": "Can you plan deployment and identify material risks?",
+        "assistant": "I'll validate the assumptions against the actual configuration.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-056",
+        "scenario": "evaluate vendors",
+        "user": "Can you evaluate vendors and identify material risks?",
+        "assistant": "The safest release path includes rollback and regression checks.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-057",
+        "scenario": "analyze CRM",
+        "user": "Can you analyze CRM and identify material risks?",
+        "assistant": "I'll identify the bottleneck from measured timings.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-058",
+        "scenario": "research market",
+        "user": "Can you research market and identify material risks?",
+        "assistant": "I'll report what was verified and what remains unresolved.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-059",
+        "scenario": "assess security",
+        "user": "Can you assess security and identify material risks?",
+        "assistant": "I'll inspect the available evidence before drawing conclusions.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-060",
+        "scenario": "design workflow",
+        "user": "Can you design workflow and identify material risks?",
+        "assistant": "First I'll establish the current state and scope.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-061",
+        "scenario": "inspect data",
+        "user": "Can you inspect data and identify material risks?",
+        "assistant": "I'll distinguish confirmed findings from plausible causes.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-062",
+        "scenario": "verify integration",
+        "user": "Can you verify integration and identify material risks?",
+        "assistant": "This action requires an authorization check before execution.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-063",
+        "scenario": "review incident",
+        "user": "Can you review incident and identify material risks?",
+        "assistant": "The audit trail should show who changed what and when.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-064",
+        "scenario": "compare costs",
+        "user": "Can you compare costs and identify material risks?",
+        "assistant": "I can investigate without modifying production.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-065",
+        "scenario": "trace failures",
+        "user": "Can you trace failures and identify material risks?",
+        "assistant": "I'll validate the assumptions against the actual configuration.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-066",
+        "scenario": "assess permissions",
+        "user": "Can you assess permissions and identify material risks?",
+        "assistant": "The safest release path includes rollback and regression checks.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-067",
+        "scenario": "plan migration",
+        "user": "Can you plan migration and identify material risks?",
+        "assistant": "I'll identify the bottleneck from measured timings.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-068",
+        "scenario": "test changes",
+        "user": "Can you test changes and identify material risks?",
+        "assistant": "I'll report what was verified and what remains unresolved.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-069",
+        "scenario": "diagnose incident",
+        "user": "Can you diagnose incident and identify material risks?",
+        "assistant": "I'll inspect the available evidence before drawing conclusions.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-070",
+        "scenario": "report evidence",
+        "user": "Can you report evidence and identify material risks?",
+        "assistant": "First I'll establish the current state and scope.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-071",
+        "scenario": "seek approval",
+        "user": "Can you seek approval and identify material risks?",
+        "assistant": "I'll distinguish confirmed findings from plausible causes.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-072",
+        "scenario": "coordinate agents",
+        "user": "Can you coordinate agents and identify material risks?",
+        "assistant": "This action requires an authorization check before execution.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-073",
+        "scenario": "analyze performance",
+        "user": "Can you analyze performance and identify material risks?",
+        "assistant": "The audit trail should show who changed what and when.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-074",
+        "scenario": "summarize findings",
+        "user": "Can you summarize findings and identify material risks?",
+        "assistant": "I can investigate without modifying production.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-075",
+        "scenario": "propose remediation",
+        "user": "Can you propose remediation and identify material risks?",
+        "assistant": "I'll validate the assumptions against the actual configuration.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-076",
+        "scenario": "investigate logs",
+        "user": "Please investigate logs, verify findings, and propose next steps.",
+        "assistant": "I'll identify the bottleneck from measured timings.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-077",
+        "scenario": "debug latency",
+        "user": "Please debug latency, verify findings, and propose next steps.",
+        "assistant": "I'll report what was verified and what remains unresolved.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-078",
+        "scenario": "audit access",
+        "user": "Please audit access, verify findings, and propose next steps.",
+        "assistant": "I'll inspect the available evidence before drawing conclusions.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-079",
+        "scenario": "review architecture",
+        "user": "Please review architecture, verify findings, and propose next steps.",
+        "assistant": "First I'll establish the current state and scope.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-080",
+        "scenario": "plan deployment",
+        "user": "Please plan deployment, verify findings, and propose next steps.",
+        "assistant": "I'll distinguish confirmed findings from plausible causes.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-081",
+        "scenario": "evaluate vendors",
+        "user": "Please evaluate vendors, verify findings, and propose next steps.",
+        "assistant": "This action requires an authorization check before execution.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-082",
+        "scenario": "analyze CRM",
+        "user": "Please analyze CRM, verify findings, and propose next steps.",
+        "assistant": "The audit trail should show who changed what and when.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-083",
+        "scenario": "research market",
+        "user": "Please research market, verify findings, and propose next steps.",
+        "assistant": "I can investigate without modifying production.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-084",
+        "scenario": "assess security",
+        "user": "Please assess security, verify findings, and propose next steps.",
+        "assistant": "I'll validate the assumptions against the actual configuration.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-085",
+        "scenario": "design workflow",
+        "user": "Please design workflow, verify findings, and propose next steps.",
+        "assistant": "The safest release path includes rollback and regression checks.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-086",
+        "scenario": "inspect data",
+        "user": "Please inspect data, verify findings, and propose next steps.",
+        "assistant": "I'll identify the bottleneck from measured timings.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-087",
+        "scenario": "verify integration",
+        "user": "Please verify integration, verify findings, and propose next steps.",
+        "assistant": "I'll report what was verified and what remains unresolved.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-088",
+        "scenario": "review incident",
+        "user": "Please review incident, verify findings, and propose next steps.",
+        "assistant": "I'll inspect the available evidence before drawing conclusions.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-089",
+        "scenario": "compare costs",
+        "user": "Please compare costs, verify findings, and propose next steps.",
+        "assistant": "First I'll establish the current state and scope.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-090",
+        "scenario": "trace failures",
+        "user": "Please trace failures, verify findings, and propose next steps.",
+        "assistant": "I'll distinguish confirmed findings from plausible causes.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-091",
+        "scenario": "assess permissions",
+        "user": "Please assess permissions, verify findings, and propose next steps.",
+        "assistant": "This action requires an authorization check before execution.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-092",
+        "scenario": "plan migration",
+        "user": "Please plan migration, verify findings, and propose next steps.",
+        "assistant": "The audit trail should show who changed what and when.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-093",
+        "scenario": "test changes",
+        "user": "Please test changes, verify findings, and propose next steps.",
+        "assistant": "I can investigate without modifying production.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-094",
+        "scenario": "diagnose incident",
+        "user": "Please diagnose incident, verify findings, and propose next steps.",
+        "assistant": "I'll validate the assumptions against the actual configuration.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-095",
+        "scenario": "report evidence",
+        "user": "Please report evidence, verify findings, and propose next steps.",
+        "assistant": "The safest release path includes rollback and regression checks.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-096",
+        "scenario": "seek approval",
+        "user": "Please seek approval, verify findings, and propose next steps.",
+        "assistant": "I'll identify the bottleneck from measured timings.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-097",
+        "scenario": "coordinate agents",
+        "user": "Please coordinate agents, verify findings, and propose next steps.",
+        "assistant": "I'll report what was verified and what remains unresolved.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-098",
+        "scenario": "analyze performance",
+        "user": "Please analyze performance, verify findings, and propose next steps.",
+        "assistant": "I'll inspect the available evidence before drawing conclusions.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-099",
+        "scenario": "summarize findings",
+        "user": "Please summarize findings, verify findings, and propose next steps.",
+        "assistant": "First I'll establish the current state and scope.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      },
+      {
+        "id": "deep-100",
+        "scenario": "propose remediation",
+        "user": "Please propose remediation, verify findings, and propose next steps.",
+        "assistant": "I'll distinguish confirmed findings from plausible causes.",
+        "use": "illustrative tone example; not a factual answer, tool result, or canned completion"
+      }
+    ]
+  }
+}
