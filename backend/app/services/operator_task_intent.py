@@ -194,31 +194,27 @@ def spoken_should_stream_live_deltas(*, spoken_mode: bool, message: str) -> bool
 
 
 def classify_spoken_conversation_tier(message: str) -> str:
-    """Classify speech without splitting the unified conversation or its guardrails.
+    """Route voice conservatively within the shared guarded intelligence engine.
 
-    Light: unambiguous social exchanges.
-    Medium: other questions and contextual conversation.
-    Deep: operator work, connector writes, and explicit complex analysis.
-    Unknown utterances default to Medium rather than an unsafe lightweight skip.
+    Light only handles clear social exchanges. Medium handles questions and
+    contextual discussion. Deep handles explicit operational work or analysis.
     """
     text = (message or "").strip()
     if not text:
         return "medium"
     if should_keep_full_reasoning_for_spoken(text):
         return "deep"
-    if re.search(
-        r"(?i)\\b(analy[sz]e|investigate|debug|audit|deploy|merge|"
+    deep_intent = re.compile(
+        r"\b(analy[sz]e|investigate|debug|audit|deploy|merge|"
         r"run a workflow|across (?:my |our )?(?:apps|systems)|"
-        r"research thoroughly|create an agent|execute|send emails?)\\b",
-        text,
-    ):
+        r"research thoroughly|create an agent|execute|send emails?)\b",
+        re.IGNORECASE,
+    )
+    if deep_intent.search(text):
         return "deep"
-    if use_spoken_lite_path(
-        spoken_mode=True, routing_tier="simple", message=text
-    ):
+    if use_spoken_lite_path(spoken_mode=True, routing_tier="simple", message=text):
         return "light"
     return "medium"
-
 
 def resolve_voice_session_intelligence_mode(message: str) -> str:
     """Map three conversational tiers to existing guarded execution modes.
