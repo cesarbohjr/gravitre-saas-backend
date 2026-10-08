@@ -1,13 +1,16 @@
 """Unified knowledge graph query interface over org_entity_relationships (v6)."""
 from __future__ import annotations
 
+import asyncio
 import json
 import re
+import time
 from collections import deque
 from datetime import datetime, timezone
 from typing import Any
 
 from app.config import Settings, get_settings
+from app.core.io_pool import run_io
 from app.core.logging import get_logger
 from app.services.confidence_honesty import (
     CONFIDENCE_SOURCE_TYPE_PRIOR,
@@ -24,6 +27,17 @@ ONE_HOP_SCOPE_NOTE = (
     "One-hop traversal only over org_entity_relationships. "
     "No multi-hop inference or fabricated edges."
 )
+
+ENTITY_IDENTIFY_TTL_S = 30.0
+_ENTITY_IDENTIFY_MAX = 1024
+_entity_identify_cache: dict[tuple[str, str, int], tuple[float, dict[str, str]]] = {}
+_entity_identify_inflight: dict[tuple[int, tuple[str, str, int]], "asyncio.Future[dict[str, str]]"] = {}
+
+
+def clear_entity_identify_cache() -> None:
+    _entity_identify_cache.clear()
+    _entity_identify_inflight.clear()
+
 
 MULTI_HOP_SCOPE_NOTE = (
     "Bounded multi-hop traversal over org_entity_relationships only. "
@@ -115,9 +129,51 @@ class KnowledgeGraphService:
         settings: Settings,
         client: Any,
     ) -> dict[str, str]:
+        """Same question, same org, within a few seconds: one lookup.
+
+        Several context builders of one turn ask this for the same question at
+        the same time (each was a separate classification call in front of the
+        reply). Concurrent askers share one lookup and the answer is reused for
+        ENTITY_IDENTIFY_TTL_S. Keyed by org, so nothing crosses tenants; an
+        error or an unknown answer is not kept.
+        """
+        key = (str(org_id), question, id(client))
+        now = time.monotonic()
+        cached = _entity_identify_cache.get(key)
+        if cached is not None and cached[0] > now:
+            return dict(cached[1])
+        loop_key = (id(asyncio.get_running_loop()), key)
+        pending = _entity_identify_inflight.get(loop_key)
+        if pending is not None:
+            return dict(await asyncio.shield(pending))
+        task = asyncio.ensure_future(
+            self._identify_primary_entity_uncached(org_id, question, settings=settings, client=client)
+        )
+        _entity_identify_inflight[loop_key] = task
+        try:
+            result = await asyncio.shield(task)
+        finally:
+            if _entity_identify_inflight.get(loop_key) is task:
+                _entity_identify_inflight.pop(loop_key, None)
+        if result.get("resolution") == "llm" and result.get("entity_type") == "unknown":
+            return dict(result)  # possibly a failed call; ask again next time
+        if len(_entity_identify_cache) >= _ENTITY_IDENTIFY_MAX:
+            _entity_identify_cache.clear()
+        _entity_identify_cache[key] = (time.monotonic() + ENTITY_IDENTIFY_TTL_S, dict(result))
+        return dict(result)
+
+    async def _identify_primary_entity_uncached(
+        self,
+        org_id: str,
+        question: str,
+        *,
+        settings: Settings,
+        client: Any,
+    ) -> dict[str, str]:
         from app.services.graph_query_intent import resolve_entity_from_knowledge_nodes
 
-        resolved = resolve_entity_from_knowledge_nodes(org_id, question, client=client)
+        # A synchronous Supabase read; keep it off the event loop.
+        resolved = await run_io(resolve_entity_from_knowledge_nodes, org_id, question, client=client)
         if resolved:
             return {
                 "entity_type": resolved["entity_type"],

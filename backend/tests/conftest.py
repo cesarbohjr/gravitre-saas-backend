@@ -153,6 +153,9 @@ def _reset_singletons():
     import app.services.ai_guardrails as ai_guardrails_module
 
     ai_guardrails_module.clear_moderation_cache()
+    import app.services.knowledge_graph_service as knowledge_graph_module
+
+    knowledge_graph_module.clear_entity_identify_cache()
     yield
 
 
