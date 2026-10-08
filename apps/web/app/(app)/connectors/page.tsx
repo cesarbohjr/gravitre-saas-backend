@@ -2949,19 +2949,19 @@ function ConnectorsPageContent() {
       ),
     [connectedVendorKeys],
   )
-  const hasActiveFilters = Boolean(
-    searchQuery.trim() || statusFilter !== "all" || categoryFilter !== "all" || activeDepartment !== null,
-  )
-  const hubConnectedCount = hasActiveFilters
+  // Search, status and category are "filters" the Clear button resets; a picked department is a view
+  // (left via its Departments / Show all controls), but it still narrows the hub counts.
+  const hasActiveFilters = Boolean(searchQuery.trim() || statusFilter !== "all" || categoryFilter !== "all")
+  const listIsNarrowed = hasActiveFilters || activeDepartment !== null
+  const hubConnectedCount = listIsNarrowed
     ? filteredConnectors.filter((c) => connectorIsExecutable(c)).length
     : connectedCount
-  const hubTotalCount = hasActiveFilters ? filteredConnectors.length : connectors.length
+  const hubTotalCount = listIsNarrowed ? filteredConnectors.length : connectors.length
 
   function clearFilters() {
     setSearchQuery("")
     setStatusFilter("all")
     setCategoryFilter("all")
-    setDepartmentFilter(null)
   }
 
   function openAddModal(preset?: string | null) {
