@@ -147,7 +147,14 @@ export function ConnectorDepartmentCards({
           Show all connectors
         </button>
       </div>
-      <div className={cn("grid gap-4", compact ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-6" : "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3")}>
+      <div
+        className={cn(
+          "grid",
+          compact
+            ? "grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6 xl:gap-5"
+            : "mx-auto max-w-[1040px] grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 xl:gap-8",
+        )}
+      >
         {CONNECTOR_DEPARTMENTS.map((department, index) => {
           const active = selected === department.id
           const count = counts[department.id] ?? 0
@@ -178,19 +185,19 @@ export function ConnectorDepartmentCards({
                   <Illustration name={department.illustration} width={420} className="!w-full rounded-none" />
                 </motion.div>
               </div>
-              <div className={cn("flex items-end justify-between gap-3", compact ? "px-3 py-2.5" : "px-5 py-4")}>
-                <div className="min-w-0">
+              <div className={compact ? "px-3 py-2.5" : "px-5 py-4"}>
+                <div className="flex items-center justify-between gap-3">
                   <p className={cn("font-semibold text-foreground", compact ? "text-sm" : "text-[15px]")}>{department.label}</p>
-                  {compact ? null : <p className="mt-0.5 text-sm text-muted-foreground">{department.sentence}</p>}
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums",
+                      active ? "bg-brand text-brand-foreground" : "bg-secondary text-muted-foreground",
+                    )}
+                  >
+                    {compact ? count : `${count} connected`}
+                  </span>
                 </div>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums",
-                    active ? "bg-brand text-brand-foreground" : "bg-secondary text-muted-foreground",
-                  )}
-                >
-                  {compact ? count : `${count} connected`}
-                </span>
+                {compact ? null : <p className="mt-1 text-sm text-muted-foreground">{department.sentence}</p>}
               </div>
             </motion.button>
           )
