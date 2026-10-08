@@ -13,6 +13,7 @@ import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Illustration } from "@/components/gravitre/illustration"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { agentsApi } from "@/lib/api"
@@ -64,6 +65,7 @@ export default function AgentChatPage({
     return (
       <AppShell title="Agent chat">
         <div className="p-6">
+          <Illustration name={error ? "moment-error" : "moment-focus-time"} width={150} className="mb-4" />
           {error ? <WorkSectionErrorCard title="Could not load agent" error={error} onRetry={() => void mutate()} /> : <p className="text-sm text-[color:var(--g-text-secondary)]">Agent not found or you don&apos;t have access.</p>}
           <Link href="/agents" className="mt-3 inline-block text-sm font-medium text-[color:var(--g-brand)]">
             Back to AI Team

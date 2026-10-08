@@ -393,7 +393,7 @@ function ExecutionStepRow({
             <div
               className={cn(
                 "relative mt-1 w-px flex-1 overflow-hidden",
-                isAwaiting ? "bg-warning/40" : isCompleted ? "bg-[color:var(--color-brand,#16a374)]/25" : "bg-border",
+                isAwaiting ? "bg-warning/40" : isCompleted ? "bg-[color:var(--g-brand)]/25" : "bg-border",
               )}
               data-grammar-spine={isAwaiting ? "waiting" : isRunning ? "running" : isCompleted ? "verified" : "idle"}
             >

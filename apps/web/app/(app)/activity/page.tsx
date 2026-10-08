@@ -31,6 +31,7 @@ import {
 import { formatStatusLabel } from "@/components/gravitre/status-badge"
 import { StatusChip } from "@/components/gravitre/visual"
 import { ActivityStatStrip } from "@/components/activity/activity-stat-strip"
+import { Illustration } from "@/components/gravitre/illustration"
 import { summarizeActivityView } from "@/lib/activity-view-summary"
 import { ListSkeleton } from "@/components/gravitre/loading-state"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
@@ -611,9 +612,14 @@ function ActivityPageInner() {
                   {isPanelLoading ? (
                     <ListSkeleton items={5} className="p-3" />
                   ) : currentRows.length === 0 ? (
+                    <div className="m-3 flex flex-col items-center pt-6">
+                    <Illustration
+                      name={hasActiveFilters ? "moment-focus-time" : "moment-welcome"}
+                      width={140}
+                      className="mx-auto"
+                    />
                     <GravitreEmpty
-                      className="m-3 border-0 shadow-none"
-                      icon={<NucleoActivity className="h-5 w-5" />}
+                      className="border-0 pt-4 shadow-none"
                       title={
                         hasActiveFilters
                           ? `No matching ${tab === "objects" ? "WorkObjects" : "activity"}`
@@ -640,6 +646,7 @@ function ActivityPageInner() {
                         )
                       }
                     />
+                    </div>
                   ) : (
                     <ul
                       className="divide-y divide-divide"

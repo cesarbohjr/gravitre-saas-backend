@@ -19,6 +19,7 @@ import {
   AlertTriangle,
 } from "lucide-react"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
+import { Illustration } from "@/components/gravitre/illustration"
 import { cn } from "@/lib/utils"
 import { ModelSelector } from "@/components/gravitre/model-selector"
 import { AgentReferenceFoldersEditor } from "@/components/agents/agent-reference-folders-editor"
@@ -222,6 +223,7 @@ export default function NewAgentPage() {
           title="Add team member"
           description="Configure purpose, skills, apps, and limits for a new agent."
           icon={<NucleoWorkflow className="h-5 w-5" />}
+          art="header-team-at-work"
           actions={
             <Button variant="outline" asChild>
               <Link href="/agents" className="gap-1">
@@ -433,9 +435,12 @@ export default function NewAgentPage() {
                       Could not load connected apps. You can continue; the agent will use every connected app.
                     </p>
                   ) : availableSystems.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No apps are connected yet. Connect one to give this agent tools, or continue and add apps later.
-                    </p>
+                    <div className="py-2 text-center">
+                      <Illustration name="moment-welcome" width={130} className="mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground">
+                        No apps are connected yet. Connect one to give this agent tools, or continue and add apps later.
+                      </p>
+                    </div>
                   ) : null}
                   {availableSystems.map((sys) => {
                     const isSelected = selectedSystems.includes(sys.id)

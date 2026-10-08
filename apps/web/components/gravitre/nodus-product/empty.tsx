@@ -1,3 +1,4 @@
+import { Illustration, type IllustrationName } from "@/components/gravitre/illustration"
 import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 import { GravitreSurface } from "./metric"
@@ -10,19 +11,24 @@ export function GravitreEmpty({
   hint,
   action,
   icon,
+  illustration,
   className,
 }: {
   title: string
   hint?: string
   action?: ReactNode
   icon?: ReactNode
+  /** Library scene shown instead of the icon tile. */
+  illustration?: IllustrationName
   className?: string
 }) {
   return (
     <GravitreSurface
       className={cn("flex flex-col items-center px-4 py-10 text-center", className)}
     >
-      {icon ? (
+      {illustration ? (
+        <Illustration name={illustration} width={160} className="mb-4" />
+      ) : icon ? (
         <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] text-[color:var(--g-text-muted)]">
           {icon}
         </div>

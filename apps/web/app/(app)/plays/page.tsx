@@ -5,6 +5,7 @@ import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader, LiveStatus } from "@/components/gravitre/nodus-product"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Illustration } from "@/components/gravitre/illustration"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -67,22 +68,26 @@ export default function PlaysPage() {
           title="Plays"
           description="Turn business goals into coordinated action across your agents, data, and systems."
           icon={<PlayCircle className="h-5 w-5" />}
+          art="dept-operations"
           status={plays.length ? <LiveStatus tone={readyCount ? "live" : "idle"}>{readyCount} of {plays.length} ready to observe</LiveStatus> : undefined}
         />
 
         {error ? (
-          <WorkSectionErrorCard
-            title="Could not load plays"
-            message={error instanceof Error ? error.message : "Unknown error"}
-            onRetry={() => void mutate()}
-          />
+          <div className="space-y-4">
+            <Illustration name="moment-error" width={160} />
+            <WorkSectionErrorCard
+              title="Could not load plays"
+              message={error instanceof Error ? error.message : "Unknown error"}
+              onRetry={() => void mutate()}
+            />
+          </div>
         ) : isLoading ? (
           <div className="divide-y divide-divide border-y border-divide">
             {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-24 w-full rounded-none" />)}
           </div>
         ) : plays.length === 0 ? (
           <GravitreEmpty
-            icon={<PlayCircle className="h-5 w-5" />}
+            illustration="moment-welcome"
             title="No plays in this workspace"
             hint="Plays appear here when the catalog returns them for your organization. Nothing is invented when the list is empty."
           />

@@ -13,6 +13,7 @@ import { workflowsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { isPersistableWorkflowId } from "@/lib/workflows/builder-persistence"
 import { TYPE } from "@/lib/design-system"
+import { Illustration } from "@/components/gravitre/illustration"
 
 export default function NewWorkflowPage() {
   const router = useRouter()
@@ -143,6 +144,7 @@ export default function NewWorkflowPage() {
             </Button>
           </form>
           <aside className="space-y-3 border-t border-[color:var(--g-border-subtle)] pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+            <Illustration name="spot-workflows" width={200} className="hidden lg:block" />
             <p className={TYPE.eyebrow}>Next in the builder</p>
             <ol className="space-y-3 text-sm text-muted-foreground">
               <li>Choose sources and agents.</li>

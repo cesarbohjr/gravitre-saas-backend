@@ -36,20 +36,20 @@ export function FleetSummaryBar({
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[color:var(--g-text-muted)]">
         <span className="inline-flex items-center gap-1.5" title="Currently executing work">
-          <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+          <span className="h-1.5 w-1.5 rounded-full bg-info" />
           {counts.working} Working
         </span>
         <span className="inline-flex items-center gap-1.5" title="Enabled and ready">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <span className="h-1.5 w-1.5 rounded-full bg-success" />
           {counts.available} Available
         </span>
         <span className="inline-flex items-center gap-1.5" title="Enabled but not in live work">
-          <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
+          <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
           {counts.idle} Idle
         </span>
         {counts.failed > 0 ? (
-          <span className="inline-flex items-center gap-1.5 text-rose-700 dark:text-rose-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+          <span className="inline-flex items-center gap-1.5 text-destructive">
+            <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
             {counts.failed} Failed
           </span>
         ) : null}

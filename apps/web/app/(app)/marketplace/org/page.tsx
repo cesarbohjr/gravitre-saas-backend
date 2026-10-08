@@ -33,6 +33,7 @@ export default function OrgMarketplacePage() {
         data-composition="discover"
       >
         <GravitrePageHeader
+          art="header-team-at-work"
           eyebrow="Gravitre Marketplace"
           title="Shared in your organization"
           description="Internal assets published by your team — not visible in the public Gravitre catalog."
@@ -73,6 +74,7 @@ export default function OrgMarketplacePage() {
             </div>
           ) : !data ? null : assets.length === 0 ? (
             <GravitreEmpty
+              illustration="moment-welcome"
               title="No internal assets published yet"
               hint="Org admins can approve drafts from the publish queue."
               action={

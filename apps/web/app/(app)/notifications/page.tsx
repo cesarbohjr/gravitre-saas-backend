@@ -5,6 +5,7 @@ import useSWR from "swr"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { Illustration } from "@/components/gravitre/illustration"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -269,13 +270,14 @@ export default function NotificationsPage() {
           </div>
           <p className="mb-3 text-xs text-muted-foreground">Showing up to 200 recent notifications. Filters apply to this list; the unread count covers your whole inbox.</p>
           {error && <div role="alert" className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-card p-4">
-            <p className="text-sm">Could not load notifications. {data ? "Showing previously loaded updates." : "Try again to see your inbox."}</p>
+            <Illustration name="moment-error" width={96} className="hidden shrink-0 sm:block" />
+            <p className="flex-1 text-sm">Could not load notifications. {data ? "Showing previously loaded updates." : "Try again to see your inbox."}</p>
             <Button variant="outline" className="min-h-11" onClick={() => void mutate()} disabled={pending}>Retry</Button>
           </div>}
           <div aria-label="Notifications" aria-busy={isLoading || pending} className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-card">
             {isLoading ? <p role="status" className="p-6 text-sm text-muted-foreground">Loading notifications...</p>
               : filteredNotifications.length === 0 ? (!error && <div className="px-4 py-16 text-center">
-                <Bell className="mx-auto mb-4 h-7 w-7 text-muted-foreground" />
+                <Illustration name={filter !== "all" || typeFilter ? "moment-focus-time" : "moment-all-clear"} width={170} className="mx-auto mb-4" />
                 <p className="text-sm font-medium">{filter !== "all" || typeFilter ? "No matching notifications" : "No notifications"}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{filter !== "all" || typeFilter ? "Try changing your filters." : "Your recent inbox is empty."}</p>
               </div>) : <AnimatePresence initial={false}>

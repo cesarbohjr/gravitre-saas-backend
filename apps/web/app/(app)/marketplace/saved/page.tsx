@@ -40,6 +40,7 @@ export default function MarketplaceSavedPage() {
         data-composition="discover"
       >
         <GravitrePageHeader
+          art="header-quiet-desk"
           eyebrow="Gravitre Marketplace"
           title="Saved assets"
           description="Assets you bookmarked from the unified marketplace catalog."
@@ -82,7 +83,7 @@ export default function MarketplaceSavedPage() {
             </div>
           ) : !data ? null : saves.length === 0 ? (
             <GravitreEmpty
-              icon={<Bookmark className="h-5 w-5" />}
+              illustration="moment-welcome"
               title="No saved assets yet"
               hint="Bookmark assets from the marketplace catalog and they'll show up here for quick access."
               action={

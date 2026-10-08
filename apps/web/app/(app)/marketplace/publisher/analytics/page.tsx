@@ -22,7 +22,6 @@ import {
   DollarSign,
   Plug,
   RefreshCw,
-  Sparkles,
   TrendingUp,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -33,6 +32,7 @@ import type {
   MarketplaceTopEarningAsset,
   MarketplaceUsageEvent,
 } from "@/types/api"
+import { Illustration } from "@/components/gravitre/illustration"
 
 function formatUsd(cents: number) {
   return new Intl.NumberFormat("en-US", {
@@ -305,10 +305,7 @@ function RecentUsageList({ rows }: { rows: MarketplaceUsageEvent[] }) {
 function EmptyRevenueState() {
   return (
     <div className="rounded-xl border border-dashed border-border bg-card/50 p-8 text-center">
-      <Sparkles
-        className="mx-auto mb-3 h-8 w-8 text-muted-foreground/70"
-        aria-hidden
-      />
+      <Illustration name="moment-welcome" width={180} className="mx-auto mb-4" />
       <p className="text-sm font-medium text-foreground">
         No publisher revenue yet
       </p>
@@ -416,6 +413,7 @@ export default function MarketplacePublisherAnalyticsPage() {
     <AppShell title="Publisher revenue">
       <div className="bg-[color:var(--g-canvas)]">
         <GravitrePageHeader
+          art="dept-finance"
           title="Publisher revenue analytics"
           description={
             publisherName

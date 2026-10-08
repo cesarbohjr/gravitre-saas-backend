@@ -7,6 +7,7 @@ import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspac
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Illustration } from "@/components/gravitre/illustration"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -45,12 +46,13 @@ export default function GoalDetailPage() {
           </div> : null}
         </GravitrePageHeader>
         <div className="space-y-6 px-[var(--np-page-pad-sm)] sm:px-[var(--np-page-pad)]">
+          {error && !data ? <Illustration name="moment-error" width={160} /> : null}
           {error ? <WorkSectionErrorCard title={data ? "Could not refresh goal" : "Could not load goal"} message={data ? "Showing the last retrieved goal. Retry for the current state." : error instanceof Error ? error.message : "Try again to retrieve this goal."} onRetry={() => void mutate()} /> : null}
           {isLoading && !data ? <Skeleton className="h-48 w-full" /> : data ? <>
             <GoalProgressSummary progress={progress} milestones={milestones ?? null} />
             <section aria-labelledby="goal-milestones-heading">
               <h2 id="goal-milestones-heading" className="font-sans text-xl font-medium">Plan milestones</h2>
-              {milestones == null ? <p className="mt-4 text-sm text-muted-foreground">Milestones not reported.</p> : milestones.length === 0 ? <p className="mt-4 text-sm text-muted-foreground">No milestones have been added to this goal.</p> : <MilestoneTrack milestones={milestones} />}
+              {milestones == null ? <p className="mt-4 text-sm text-muted-foreground">Milestones not reported.</p> : milestones.length === 0 ? <div className="mt-4"><Illustration name="moment-focus-time" width={140} className="mb-3" /><p className="text-sm text-muted-foreground">No milestones have been added to this goal.</p></div> : <MilestoneTrack milestones={milestones} />}
             </section>
           </> : !error && !isLoading ? <p className="text-sm text-muted-foreground">Goal details not reported.</p> : null}
         </div>

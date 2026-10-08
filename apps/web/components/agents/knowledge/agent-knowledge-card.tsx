@@ -42,11 +42,11 @@ function SourceTypeIcon({
 function statusBadge(status?: string) {
   const s = (status ?? "unknown").toLowerCase()
   if (s === "fresh" || s === "ready")
-    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+    return "border-success/30 bg-success/10 text-success"
   if (s === "stale")
-    return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+    return "border-warning/30 bg-warning/10 text-warning"
   if (s === "failed" || s === "expired")
-    return "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300"
+    return "border-destructive/30 bg-destructive/10 text-destructive"
   return "border-border bg-secondary text-muted-foreground"
 }
 
@@ -98,7 +98,7 @@ export function AgentKnowledgeCard({
           className={cn(
             "flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--np-radius-md)]",
             assigned
-              ? "bg-emerald-500/10 text-emerald-600"
+              ? "bg-success/10 text-success"
               : "bg-[color:var(--g-surface-2)] text-[color:var(--g-brand)]",
           )}
         >
@@ -112,7 +112,7 @@ export function AgentKnowledgeCard({
             {assigned ? (
               <Badge
                 variant="outline"
-                className="border-emerald-500/30 bg-emerald-500/10 text-[10px] font-normal text-emerald-700 dark:text-emerald-300"
+                className="border-success/30 bg-success/10 text-[10px] font-normal text-success"
               >
                 Assigned
               </Badge>

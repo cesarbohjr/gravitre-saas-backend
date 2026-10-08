@@ -151,6 +151,7 @@ export default function MarketplaceAnalyticsPage() {
         data-composition="understand"
       >
         <GravitrePageHeader
+          art="dept-finance"
           eyebrow="Gravitre Marketplace"
           title="Marketplace analytics"
           description="Catalog adoption and your organization's install activity."

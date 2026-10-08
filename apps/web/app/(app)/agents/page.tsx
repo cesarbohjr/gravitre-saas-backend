@@ -22,6 +22,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Illustration } from "@/components/gravitre/illustration"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import {
   Tooltip,
@@ -821,6 +822,7 @@ export default function AgentsPage() {
                 title={SURFACE_COPY.pages.agents.rosterTitle}
                 description="A team of specialists. See who is working, what they can do, and where attention is needed."
                 icon={<NucleoWorkflow size={NUCLEO_SIZE.default} />}
+                art="header-team-at-work"
                 actions={
                   <div className="flex flex-wrap items-center justify-end gap-2 [&_button]:min-h-11 lg:[&_button]:min-h-0">
                     {rosterActions}
@@ -910,12 +912,15 @@ export default function AgentsPage() {
             })() : null}
             <div className="relative z-10 w-full min-h-[360px] flex-1 sm:min-h-0">
               {error ? (
+                <>
+                <Illustration name="moment-error" width={150} className="mx-auto mb-3" />
                 <WorkSectionErrorCard
                   title="Could not load agents"
                   message="We couldn't reach the agents service. Check your connection and try again."
                   onRetry={() => void mutate()}
                   className="mx-auto max-w-sm"
                 />
+                </>
               ) : isLoading && agents.length === 0 ? (
                 prefs.view === "list" ? (
                   <div className="space-y-2 rounded-[var(--np-radius-lg)] border border-divide p-4">
@@ -955,7 +960,7 @@ export default function AgentsPage() {
                   prefs.filters.role ||
                   prefs.filters.model ? (
                     <GravitreEmpty
-                      icon={<NucleoWorkflow size={NUCLEO_SIZE.default} />}
+                      illustration="moment-focus-time"
                       title="No agents match"
                       hint="Try clearing search or filters."
                       action={
@@ -974,7 +979,7 @@ export default function AgentsPage() {
                     />
                   ) : (
                     <GravitreEmpty
-                      icon={<NucleoWorkflow size={NUCLEO_SIZE.default} />}
+                      illustration="moment-welcome"
                       title="No agents yet"
                       hint="Create your first teammate to start delegating work."
                       action={

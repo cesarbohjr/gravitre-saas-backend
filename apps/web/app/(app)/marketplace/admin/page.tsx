@@ -261,6 +261,7 @@ export default function MarketplaceAdminPage() {
         data-composition="operate"
       >
         <GravitrePageHeader
+          art="header-quiet-desk"
           eyebrow="Partner marketplace · Admin"
           title="Connector review queue"
           description="Approve submissions to publish connectors to the org catalog. All reviewer actions are audit-logged."
@@ -329,6 +330,7 @@ export default function MarketplaceAdminPage() {
             </div>
             {!data ? null : pending.length === 0 ? (
               <GravitreEmpty
+                illustration="moment-all-clear"
                 className="border-0 shadow-none"
                 title="No submissions awaiting review"
                 hint="Partner packages appear here when submitted for certification."
@@ -416,6 +418,7 @@ export default function MarketplaceAdminPage() {
             ) : null}
             {!registry ? null : published.length === 0 ? (
               <GravitreEmpty
+                illustration="moment-focus-time"
                 className="border-0 shadow-none"
                 title="No published partner connectors yet"
                 hint="Approved submissions appear in the org catalog registry."

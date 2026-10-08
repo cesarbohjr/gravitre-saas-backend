@@ -34,6 +34,7 @@ import type {
   MarketplacePartnerPricing,
   MarketplacePublisherPayoutSyncResult,
 } from "@/types/api"
+import { Illustration } from "@/components/gravitre/illustration"
 
 function formatUsd(cents: number) {
   return new Intl.NumberFormat("en-US", {
@@ -400,6 +401,7 @@ export default function MarketplaceBillingPage() {
         data-composition="operate"
       >
         <GravitrePageHeader
+          art="dept-finance"
           title="Partner revenue & payouts"
           description="Connect Stripe, sync pending asset payouts, and manage connector pricing."
           icon={<DollarSign className="h-5 w-5" />}
@@ -701,10 +703,13 @@ export default function MarketplaceBillingPage() {
                   />
                 ) : null}
                 {!pricingData ? null : pricing.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Publish a connector to the marketplace before setting
-                    pricing.
-                  </p>
+                  <div className="py-2 text-center">
+                    <Illustration name="moment-welcome" width={140} className="mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      Publish a connector to the marketplace before setting
+                      pricing.
+                    </p>
+                  </div>
                 ) : (
                   pricing.map((item) => (
                     <PricingRow

@@ -36,9 +36,9 @@ export function SourceIngestionIndicator({ snapshot }: { snapshot: SourceIngesti
         <span
           className={cn(
             "rounded border px-1.5 py-0.5 font-medium capitalize",
-            ready && "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-            indexing && "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300",
-            failed && "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300",
+            ready && "border-success/30 bg-success/10 text-success",
+            indexing && "border-info/30 bg-info/10 text-info",
+            failed && "border-destructive/30 bg-destructive/10 text-destructive",
             !ready && !indexing && !failed && "border-border bg-secondary",
           )}
         >
@@ -56,7 +56,7 @@ export function SourceIngestionIndicator({ snapshot }: { snapshot: SourceIngesti
           {progress != null ? (
             <div className="h-1.5 overflow-hidden rounded-full bg-muted/60">
               <motion.div
-                className="h-full rounded-full bg-violet-500/80"
+                className="h-full rounded-full bg-info/80"
                 initial={reduced ? false : { width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: reduced ? 0 : 0.2 }}
@@ -65,7 +65,7 @@ export function SourceIngestionIndicator({ snapshot }: { snapshot: SourceIngesti
           ) : (
             <div className="h-1.5 overflow-hidden rounded-full bg-muted/60">
               <motion.div
-                className="h-full w-1/3 rounded-full bg-violet-500/70"
+                className="h-full w-1/3 rounded-full bg-info/70"
                 animate={reduced ? undefined : { x: ["-100%", "300%"] }}
                 transition={reduced ? { duration: 0 } : { duration: 1.4, repeat: Infinity, ease: "linear" }}
               />

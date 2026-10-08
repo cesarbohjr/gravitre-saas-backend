@@ -29,6 +29,7 @@ import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { Illustration, type IllustrationName } from "@/components/gravitre/illustration"
 import { workflowsApi } from "@/lib/api"
 import type {
   WorkflowDigitalTwinResponse,
@@ -391,6 +392,7 @@ export function WorkflowIntelligenceDrawer({
                 <EmptyState
                   icon={Beaker}
                   title="Predict the run timeline"
+                  illustration="spot-schedules"
                   body="Estimate how long each step will take, using sample data from your connectors and past runs. Nothing is executed."
                   actionLabel={isPersisted && nodes.length ? "Run timing simulation" : undefined}
                   onAction={isPersisted && nodes.length ? runSimulation : undefined}
@@ -530,6 +532,7 @@ export function WorkflowIntelligenceDrawer({
                 <EmptyState
                   icon={ShieldAlert}
                   title="Scan for failure risks"
+                  illustration="spot-governance"
                   body="Check this workflow against predicted failure patterns before running it in production."
                   actionLabel={isPersisted ? "Run risk scan" : undefined}
                   onAction={isPersisted ? runRiskScan : undefined}
@@ -538,8 +541,8 @@ export function WorkflowIntelligenceDrawer({
               )}
 
               {!riskLoading && !riskError && alerts !== null && alerts.length === 0 && (
-                <div className="flex flex-col items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-8 text-center">
-                  <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+                <div className="flex flex-col items-center gap-2 rounded-lg border border-success/30 bg-success/10 px-4 py-8 text-center">
+                  <Illustration name="moment-all-clear" width={140} />
                   <p className="text-sm font-medium text-foreground">No risks detected</p>
                   <p className="text-xs text-muted-foreground">
                     This workflow shows no predicted failure patterns.
@@ -646,6 +649,7 @@ export function WorkflowIntelligenceDrawer({
                 <EmptyState
                   icon={Play}
                   title="Validate without side effects"
+                  illustration="spot-workflows"
                   body="Run the workflow through the engine to validate configuration and surface errors before a live run."
                   actionLabel={isPersisted ? "Start dry run" : undefined}
                   onAction={isPersisted ? runDryRun : undefined}
@@ -659,7 +663,7 @@ export function WorkflowIntelligenceDrawer({
                     className={cn(
                       "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm",
                       dryRunSuccessful
-                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        ? "border-success/30 bg-success/10 text-success"
                         : "border-destructive/40 bg-destructive/10 text-destructive",
                     )}
                   >
@@ -739,6 +743,7 @@ export function WorkflowIntelligenceDrawer({
 
 function EmptyState({
   icon: Icon,
+  illustration,
   title,
   body,
   actionLabel,
@@ -747,6 +752,8 @@ function EmptyState({
   tone = "default",
 }: {
   icon: typeof Beaker
+  /** Library scene shown instead of the icon tile; error tone defaults to moment-error. */
+  illustration?: IllustrationName
   title: string
   body: string
   actionLabel?: string
@@ -754,18 +761,16 @@ function EmptyState({
   disabledHint?: string
   tone?: "default" | "error"
 }) {
+  const scene = illustration ?? (tone === "error" ? "moment-error" : undefined)
   return (
     <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border px-4 py-10 text-center">
-      <div
-        className={cn(
-          "flex h-11 w-11 items-center justify-center rounded-full",
-          tone === "error"
-            ? "bg-destructive/10 text-destructive"
-            : "bg-muted text-muted-foreground",
-        )}
-      >
-        <Icon className="h-5 w-5" />
-      </div>
+      {scene ? (
+        <Illustration name={scene} width={140} />
+      ) : (
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <Icon className="h-5 w-5" />
+        </div>
+      )}
       <div className="space-y-1">
         <p className="text-sm font-medium text-foreground">{title}</p>
         <p className="text-xs text-muted-foreground">{body}</p>

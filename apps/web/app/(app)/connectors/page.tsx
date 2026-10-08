@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { Illustration } from "@/components/gravitre/illustration"
 import {
   OperatingEmpty,
   PhaseBand,
@@ -446,7 +447,7 @@ function TopologyConnectionLine({
         y1="1"
         x2="313.5"
         y2="1"
-        stroke="var(--color-line, #eaedf1)"
+        stroke="var(--color-line)"
         strokeLinecap="round"
       />
       {active ? (
@@ -483,9 +484,9 @@ function TopologyConnectionLine({
                 repeatDelay: 1,
               }}
             >
-              <stop stopColor="var(--color-line, #EAEDF1)" />
-              <stop offset="0.5" stopColor="var(--color-blue-500)" />
-              <stop offset="1" stopColor="var(--color-line, #EAEDF1)" />
+              <stop stopColor="var(--color-line)" />
+              <stop offset="0.5" stopColor="var(--color-info)" />
+              <stop offset="1" stopColor="var(--color-line)" />
             </motion.linearGradient>
           </defs>
         </>
@@ -498,8 +499,8 @@ function TopologyConnectionLine({
 function CentralHub({ connectedCount, totalCount }: { connectedCount: number; totalCount: number }) {
   return (
     <div className="relative flex flex-col items-center gap-3">
-      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md bg-gray-200 p-px shadow-xl dark:bg-neutral-700 sm:h-24 sm:w-24">
-        <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-blue-500)_20%,transparent_30%)]" />
+      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md bg-muted p-px shadow-xl sm:h-24 sm:w-24">
+        <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-info)_20%,transparent_30%)]" />
         <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-delay:1s] [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-brand)_20%,transparent_30%)]" />
         <div className="relative z-20 flex h-full w-full flex-col items-center justify-center rounded-[5px] bg-card p-2 text-foreground">
           <Cable className="mb-0.5 h-5 w-5 text-[color:var(--color-brand)] sm:h-6 sm:w-6" />
@@ -509,7 +510,7 @@ function CentralHub({ connectedCount, totalCount }: { connectedCount: number; to
           </div>
         </div>
       </div>
-      <span className="rounded-sm border border-blue-500 bg-blue-50 px-2 py-0.5 text-xs text-blue-500 dark:bg-blue-900 dark:text-white">
+      <span className="rounded-sm border border-success/30 bg-success/10 px-2 py-0.5 text-xs text-success">
         Connected
       </span>
     </div>
@@ -745,7 +746,7 @@ function ConnectorTopologyCard({
               {connectorNeedsOAuthReconnect(connector) && onReconnect && (
                   <button
                     type="button"
-                    className="text-[10px] text-[color:var(--g-emerald-deep)] hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                    className="text-[10px] text-[color:var(--g-emerald-deep)] hover:text-primary transition-colors"
                     onClick={() => void onReconnect(connector)}
                   >
                     {connector.authStatus === "auth_expired" ? "Reconnect OAuth" : "Complete OAuth"}
@@ -753,7 +754,7 @@ function ConnectorTopologyCard({
                 )}
               <Link 
                 href={`/connectors/${connector.id}`}
-                className="text-[10px] text-[color:var(--g-emerald-deep)] hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                className="text-[10px] text-[color:var(--g-emerald-deep)] hover:text-primary transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
                 Details
@@ -1440,24 +1441,19 @@ function AddConnectorModal({
                   className={cn(
                     "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
                     modalCategoryFilter === "all"
-                      ? "bg-blue-500 text-white"
+                      ? "bg-primary text-primary-foreground"
                       : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                   )}
                 >
                   All ({availableConnectors.length})
                 </button>
                 {Object.entries(connectorCategories).map(([cat, data]) => {
-                  const colorMap: Record<string, { active: string, inactive: string }> = {
-                    emerald: { active: "bg-emerald-500 text-brand-foreground", inactive: "hover:bg-emerald-500/10 hover:text-emerald-800 dark:hover:text-emerald-400" },
-                    blue: { active: "bg-blue-500 text-white", inactive: "hover:bg-blue-500/10 hover:text-blue-800 dark:hover:text-blue-400" },
-                    violet: { active: "bg-[color:var(--g-signal)] text-white", inactive: "hover:bg-[color:var(--g-signal-surface)] hover:text-[color:var(--g-signal)]" },
-                    amber: { active: "bg-amber-500 text-white", inactive: "hover:bg-amber-500/10 hover:text-amber-800 dark:hover:text-amber-400" },
-                    pink: { active: "bg-pink-500 text-white", inactive: "hover:bg-pink-500/10 hover:text-pink-400" },
-                    cyan: { active: "bg-cyan-500 text-white", inactive: "hover:bg-cyan-500/10 hover:text-cyan-800 dark:hover:text-cyan-400" },
-                    orange: { active: "bg-orange-500 text-white", inactive: "hover:bg-orange-500/10 hover:text-orange-800 dark:hover:text-orange-400" },
-                    indigo: { active: "bg-indigo-500 text-white", inactive: "hover:bg-indigo-500/10 hover:text-indigo-400" },
+                  // One brand treatment for every category pill (matches "All"), instead of
+                  // a per-category palette hue.
+                  const colors = {
+                    active: "bg-primary text-primary-foreground",
+                    inactive: "hover:bg-primary/10 hover:text-primary",
                   }
-                  const colors = colorMap[data.color] || colorMap.blue
                   return (
                     <button
                       key={cat}
@@ -1479,10 +1475,11 @@ function AddConnectorModal({
               <div className="space-y-4">
                 {Object.keys(groupedConnectors).length === 0 && (
                   <div className="text-center py-8">
+                    <Illustration name="moment-focus-time" width={130} className="mx-auto mb-3" />
                     <p className="text-sm text-muted-foreground">No connectors found</p>
                     <button 
                       onClick={() => { setSearchQuery(""); setModalCategoryFilter("all"); }}
-                      className="text-xs text-[color:var(--g-emerald-deep)] hover:text-blue-800 dark:hover:text-blue-300 mt-1"
+                      className="text-xs text-[color:var(--g-emerald-deep)] hover:text-primary mt-1"
                     >
                       Clear filters
                     </button>
@@ -1499,8 +1496,8 @@ function AddConnectorModal({
                           key={connector.type}
                           onClick={() => handleSelectConnector(connector)}
                           className={cn(
-                            "group flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3 text-left transition-all hover:border-blue-500/30 hover:bg-blue-500/5",
-                            selectedType === connector.type && "border-blue-500 bg-blue-500/10"
+                            "group flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3 text-left transition-all hover:border-primary/30 hover:bg-primary/5",
+                            selectedType === connector.type && "border-primary bg-primary/10"
                           )}
                         >
 <ConnectorIcon vendor={connector.type} size="sm" />
@@ -1529,9 +1526,9 @@ function AddConnectorModal({
                                 isPartnerGatedConnector(connector)
                                   ? "bg-warning/10 text-warning"
                                   : !connector.partner && !isShippedConnector(connector)
-                                  ? "bg-zinc-500/10 text-zinc-400"
+                                  ? "bg-muted text-muted-foreground"
                                   : connector.authType === "oauth"
-                                    ? "bg-blue-500/10 text-[color:var(--g-emerald-deep)]"
+                                    ? "bg-primary/10 text-[color:var(--g-emerald-deep)]"
                                     : connector.authType === "webhook"
                                       ? "bg-[color:var(--g-signal-surface)] text-[color:var(--g-signal)]"
                                       : "bg-warning/10 text-warning"
@@ -1572,7 +1569,7 @@ function AddConnectorModal({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{selectedType}</span>
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-[color:var(--g-emerald-deep)] font-medium">OAuth</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-[color:var(--g-emerald-deep)] font-medium">OAuth</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {getSelectedConnector()?.description}
@@ -1593,7 +1590,7 @@ function AddConnectorModal({
               <div className="rounded-xl border border-border bg-secondary/30 p-6 text-center">
                 {oauthStatus === "idle" && (
                   <div className="space-y-4">
-                    <div className="mx-auto h-16 w-16 rounded-full bg-blue-500/10 flex items-center justify-center">
+                    <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
                       <Globe className="h-8 w-8 text-[color:var(--g-emerald-deep)]" />
                     </div>
                     <div>
@@ -1648,7 +1645,7 @@ function AddConnectorModal({
                             href="https://docs.apollo.io/docs/use-oauth-20-authorization-flow-to-access-apollo-user-information-partners"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-[color:var(--g-emerald-deep)] hover:text-blue-800 dark:hover:text-blue-300"
+                            className="inline-flex items-center gap-1 text-xs text-[color:var(--g-emerald-deep)] hover:text-primary"
                           >
                             Apollo OAuth partner guide
                             <ExternalLink className="h-3 w-3" />
@@ -2040,7 +2037,7 @@ function AddConnectorModal({
                         href="https://university.clay.com/docs/using-clay-as-an-api"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-[color:var(--g-emerald-deep)] hover:text-blue-800 dark:hover:text-blue-300"
+                        className="inline-flex items-center gap-1 text-xs text-[color:var(--g-emerald-deep)] hover:text-primary"
                       >
                         Clay API guide
                         <ExternalLink className="h-3 w-3" />
@@ -2082,7 +2079,7 @@ function AddConnectorModal({
                         href="https://www.twilio.com/docs/iam/api-keys"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-[color:var(--g-emerald-deep)] hover:text-blue-800 dark:hover:text-blue-300"
+                        className="inline-flex items-center gap-1 text-xs text-[color:var(--g-emerald-deep)] hover:text-primary"
                       >
                         Twilio API keys guide
                         <ExternalLink className="h-3 w-3" />
@@ -2210,7 +2207,7 @@ function AddConnectorModal({
                   <button
                     type="button"
                     onClick={switchToOAuthAuth}
-                    className="text-xs text-[color:var(--g-emerald-deep)] hover:text-blue-800 dark:hover:text-blue-300 underline-offset-2 hover:underline"
+                    className="text-xs text-[color:var(--g-emerald-deep)] hover:text-primary underline-offset-2 hover:underline"
                   >
                     Connect with OAuth instead
                   </button>
@@ -3211,7 +3208,7 @@ function ConnectorsPageContent() {
             </div>
           ) : error && connectors.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
-              <XCircle className="h-10 w-10 text-destructive mb-4" />
+              <Illustration name="moment-error" width={190} className="mb-4" />
               <h3 className="text-base font-medium text-foreground mb-1">Unable to load connectors</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {formatUnknownError(error, "Check backend connectivity and try again.")}
@@ -3220,6 +3217,7 @@ function ConnectorsPageContent() {
             </div>
           ) : connectors.length === 0 ? (
             <div className="py-6">
+              <Illustration name="moment-welcome" width={180} className="mb-4" />
               <OperatingEmpty
                 className="px-0 py-0 sm:px-0"
                 title="No connectors yet"
@@ -3261,7 +3259,7 @@ function ConnectorsPageContent() {
             </div>
           ) : filteredConnectors.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-              <Filter className="h-10 w-10 text-muted-foreground/50 mb-3" />
+              <Illustration name="moment-focus-time" width={170} className="mb-3" />
               <p className="text-sm font-medium text-foreground">No connectors match your filters</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm">
                 {connectors.length} connector{connectors.length === 1 ? "" : "s"} are hidden by search or filter settings.

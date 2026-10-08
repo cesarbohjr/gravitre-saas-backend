@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { Illustration } from "@/components/gravitre/illustration"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import { CalendarClock, History } from "lucide-react"
 import { KIND_STYLES, type ScheduledItem } from "@/lib/schedules"
@@ -34,7 +35,8 @@ export function ListView({
       </div>
       <ul className="min-h-0 flex-1 divide-y divide-border overflow-y-auto">
         {items.length === 0 ? (
-          <li className="flex h-full min-h-[12rem] items-center justify-center px-6 py-12 text-center text-sm text-muted-foreground">
+          <li className="flex h-full min-h-[12rem] flex-col items-center justify-center px-6 py-12 text-center text-sm text-muted-foreground">
+            <Illustration name="moment-focus-time" width={160} className="mb-3" />
             No scheduled items match the current filters.
           </li>
         ) : null}

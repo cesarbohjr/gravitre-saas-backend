@@ -3,6 +3,7 @@
 import { useMemo } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { Illustration } from "@/components/gravitre/illustration"
 import { KIND_STYLES, type ScheduledItem, type ScheduleOccurrence } from "@/lib/schedules"
 import { KindDot, isSameDay, scheduleBoardStyle } from "./shared"
 
@@ -124,7 +125,8 @@ export function GanttView({
       style={scheduleBoardStyle}
     >
       {rows.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
+        <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-sm text-muted-foreground">
+          <Illustration name="moment-focus-time" width={160} className="mb-3" />
           No scheduled items this month.
         </div>
       ) : (

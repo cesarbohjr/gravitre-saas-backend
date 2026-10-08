@@ -15,6 +15,7 @@ import { useAuth } from "@/lib/auth-context"
 import { Loader2, Package, ShieldCheck, ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
 import type { PartnerConnectorSubmission } from "@/types/api"
+import { Illustration } from "@/components/gravitre/illustration"
 
 const CHECKLIST_ITEMS = [
   {
@@ -145,6 +146,7 @@ export default function MarketplaceSubmitPage() {
         className="bg-[color:var(--g-canvas)] pb-24 [&_[data-slot=button]]:min-h-11 [&_input]:min-h-11"
       >
         <GravitrePageHeader
+          art="dept-engineering"
           eyebrow="Partner marketplace"
           title="Submit connector package"
           description="Upload your manifest.json and complete the security checklist. Admins review submissions before connectors appear in the catalog."
@@ -263,9 +265,12 @@ export default function MarketplaceSubmitPage() {
           {isLoading && !mine ? (
             <p role="status">Loading submissions…</p>
           ) : mine?.submissions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No submissions returned.
-            </p>
+            <div className="py-4 text-center">
+              <Illustration name="moment-welcome" width={160} className="mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">
+                No submissions returned.
+              </p>
+            </div>
           ) : null}
           {(mine?.submissions?.length ?? 0) > 0 && (
             <section className="rounded-lg border border-border bg-card overflow-hidden">

@@ -6,6 +6,7 @@ import { FLEET_DEPARTMENT_ORDER } from "./fleet-department-dnd"
 import { GravitreAgentCard } from "./gravitre-agent-card"
 import { NodusDepartmentLabel } from "./nodus-fleet-chrome"
 import type { AgentDepartmentId, AgentRuntimeState, FleetAgent } from "./types"
+import { Illustration } from "@/components/gravitre/illustration"
 
 const WORKING_STATES = new Set<AgentRuntimeState>([
   "thinking",
@@ -71,9 +72,12 @@ export function TeamView({
 
   if (groups.length === 0) {
     return (
-      <p className="py-10 text-center text-sm text-[color:var(--g-text-muted)]">
-        No teammates match the current filters.
-      </p>
+      <div className="py-10 text-center">
+        <Illustration name="moment-focus-time" width={140} className="mx-auto mb-3" />
+        <p className="text-sm text-[color:var(--g-text-muted)]">
+          No teammates match the current filters.
+        </p>
+      </div>
     )
   }
 

@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { agentKnowledgeApi, type AgentKnowledgeAssignment } from "@/lib/api"
 import { toast } from "sonner"
+import { Illustration } from "@/components/gravitre/illustration"
 
 export function AgentKnowledgeSourcesTab({
   workspace,
@@ -160,6 +161,7 @@ export function AgentKnowledgeSourcesTab({
           </p>
         ) : assigned.length === 0 ? (
           <div className="rounded-[var(--np-radius-lg)] border border-dashed border-divide bg-[color:var(--g-surface-2)]/40 px-6 py-10 text-center">
+            <Illustration name="moment-welcome" width={160} className="mx-auto mb-4" />
             <p className="text-sm font-medium text-[color:var(--g-text-primary)]">
               Give this agent something to work with.
             </p>

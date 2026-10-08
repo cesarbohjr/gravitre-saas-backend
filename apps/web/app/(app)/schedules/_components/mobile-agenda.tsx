@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { motion, useReducedMotion } from "framer-motion"
-import { ChevronLeft, ChevronRight, CalendarClock, Repeat, Clock } from "lucide-react"
+import { ChevronLeft, ChevronRight, Repeat, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Illustration } from "@/components/gravitre/illustration"
 import { StatusBadge } from "@/components/gravitre/status-badge"
 import {
   KIND_STYLES,
@@ -206,7 +207,7 @@ export function MobileAgenda({
 
         {dayOccurrences.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border py-10 text-center">
-            <CalendarClock className="h-6 w-6 text-muted-foreground/60" />
+            <Illustration name="moment-focus-time" width={140} />
             <p className="text-sm text-muted-foreground">Nothing scheduled this day.</p>
           </div>
         ) : (

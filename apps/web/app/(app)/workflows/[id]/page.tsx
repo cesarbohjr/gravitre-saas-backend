@@ -9,6 +9,7 @@ import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
 import { formatStatusLabel } from "@/components/gravitre/status-badge"
 import { StatusChip } from "@/components/gravitre/visual"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { Illustration } from "@/components/gravitre/illustration"
 import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
@@ -232,6 +233,9 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
         </GravitrePageHeader>
 
         <div className="space-y-6 px-[var(--np-page-pad-sm)] sm:px-[var(--np-page-pad)]">
+          {error && !workflow && !isLoading ? (
+            <Illustration name="moment-error" width={160} />
+          ) : null}
           {error ? (
             <WorkSectionErrorCard
               title="Workflow could not refresh"
@@ -263,7 +267,7 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
               {hasActiveRun ? (
                 <section className="border-b border-divide py-4">
                   <h2 className="flex items-center gap-2 text-base font-medium">
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                    <Loader2 className="h-4 w-4 animate-spin text-info" />
                     Run in progress
                   </h2>
                   <p className="mt-1 text-sm text-muted-foreground">
@@ -356,10 +360,13 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                   {latestLoading && !latestRuns ? (
                     <p role="status">Loading run history…</p>
                   ) : !latestRun && !latestError && latestRuns ? (
-                    <p className="text-sm text-muted-foreground">
-                      No runs yet. Use <span className="font-medium text-foreground">Run now</span>{" "}
-                      or <span className="font-medium text-foreground">Schedule runs</span> above.
-                    </p>
+                    <div>
+                      <Illustration name="moment-focus-time" width={140} className="mb-3" />
+                      <p className="text-sm text-muted-foreground">
+                        No runs yet. Use <span className="font-medium text-foreground">Run now</span>{" "}
+                        or <span className="font-medium text-foreground">Schedule runs</span> above.
+                      </p>
+                    </div>
                   ) : latestRun ? (
                     <>
                       <div className="flex flex-wrap items-center gap-2">
@@ -404,6 +411,8 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                   {builderLoading && !builder ? (
                     <p role="status">Loading canvas…</p>
                   ) : !builder ? null : intelligenceNodes.length === 0 ? (
+                    <div>
+                    <Illustration name="moment-welcome" width={140} className="mb-3" />
                     <p className="text-sm text-muted-foreground">
                       No steps yet.{" "}
                       <Link
@@ -414,6 +423,7 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                       </Link>{" "}
                       to design this workflow.
                     </p>
+                    </div>
                   ) : (
                     <ol className="space-y-2">
                       {intelligenceNodes.map((node, index) => (

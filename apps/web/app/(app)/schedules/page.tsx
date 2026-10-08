@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { PAGE_FRAME, RADIUS } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Illustration } from "@/components/gravitre/illustration"
 import { RefreshCw, CalendarClock, Plus } from "lucide-react"
 import { useSchedules } from "@/lib/use-schedules"
 import { workflowsApi } from "@/lib/api"
@@ -81,6 +82,7 @@ export default function SchedulesPage() {
           className="min-w-0"
           title="Schedules"
           description="All workflow schedules, task runs and training jobs across your organization."
+          art="header-quiet-desk"
           icon={<CalendarClock className="h-5 w-5" />}
           status={
             items.length > 0 ? (
@@ -118,11 +120,14 @@ export default function SchedulesPage() {
         />
 
         {error && items.length === 0 ? (
+          <>
+          <Illustration name="moment-error" width={160} className="mb-3" />
           <WorkSectionErrorCard
             title="Couldn't load schedules"
             message="We couldn't reach the schedules service. Please try again."
             onRetry={refresh}
           />
+          </>
         ) : (
           <>
           <PhaseBand

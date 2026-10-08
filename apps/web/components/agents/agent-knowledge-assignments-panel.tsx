@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { agentKnowledgeApi, type AgentKnowledgeAssignment } from "@/lib/api"
+import { Illustration } from "@/components/gravitre/illustration"
 
 type AgentKnowledgeAssignmentsPanelProps = {
   agentId: string
@@ -79,7 +80,7 @@ export function AgentKnowledgeAssignmentsPanel({ agentId }: AgentKnowledgeAssign
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     )
   }
@@ -126,6 +127,7 @@ export function AgentKnowledgeAssignmentsPanel({ agentId }: AgentKnowledgeAssign
 
       {assignments.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card/40 p-8 text-center">
+          <Illustration name="moment-welcome" width={150} className="mx-auto mb-4" />
           <p className="text-sm font-medium text-foreground">No assigned knowledge sources</p>
           <p className="mt-2 text-xs text-muted-foreground max-w-md mx-auto">
             Assign Google Drive folders, knowledge packs, or connector-backed sources so this agent only uses approved knowledge.

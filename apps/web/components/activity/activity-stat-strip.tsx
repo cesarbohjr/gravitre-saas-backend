@@ -7,14 +7,14 @@ export type ActivityStat = {
 }
 
 const DOT: Record<ActivityStat["tone"], string> = {
-  info: "bg-sky-500",
+  info: "bg-info",
   attention: "bg-[color:var(--g-approval)]",
   neutral: "bg-muted-foreground/50",
   brand: "bg-[color:var(--g-emerald)]",
 }
 
 const ACTIVE: Record<ActivityStat["tone"], string> = {
-  info: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  info: "bg-info/10 text-info",
   attention: "bg-[color:var(--g-approval)]/12 text-[color:var(--g-approval)]",
   neutral: "bg-[color:var(--g-surface-2)] text-foreground",
   brand: "bg-[color:var(--g-emerald-pale)] text-[color:var(--g-brand-active)] dark:bg-[color:var(--g-emerald-soft)] dark:text-[color:var(--g-brand)]",

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { TYPE } from "@/lib/design-system"
 import { resolvePageFamily, type PageFamily } from "@/lib/page-family"
+import { Illustration, type IllustrationName } from "@/components/gravitre/illustration"
 
 export type PageHeaderFamily = Exclude<PageFamily, "immersive">
 
@@ -28,6 +29,7 @@ export function GravitrePageHeader({
   status,
   family,
   titleScale = "default",
+  art,
 }: {
   title: string
   description?: string
@@ -41,6 +43,11 @@ export function GravitrePageHeader({
   family?: PageHeaderFamily
   /** "display": the larger title and lead the Intelligence v2 designs use. */
   titleScale?: "default" | "display"
+  /**
+   * Library scene to the right of the title (header-* 3:1 scenes or a dept-* scene).
+   * Operating and standard headers only, from large screens up; dense expert bands skip it.
+   */
+  art?: IllustrationName
 }) {
   const pathname = usePathname() ?? ""
   const routeFamily = resolvePageFamily(pathname)
@@ -125,8 +132,20 @@ export function GravitrePageHeader({
             {status ? <div className="pt-0.5 text-[13px] text-[color:var(--g-text-muted)]">{status}</div> : null}
           </div>
         </div>
-        {actions ? (
-          <div className="flex w-full shrink-0 flex-wrap items-center gap-2 lg:w-auto lg:justify-end">{actions}</div>
+        {art || actions ? (
+          <div className="flex w-full shrink-0 flex-col gap-3 lg:w-auto lg:flex-row-reverse lg:items-end">
+            {art ? (
+              <Illustration
+                name={art}
+                width={art.startsWith("header-") ? 240 : 180}
+                priority
+                className="hidden lg:block"
+              />
+            ) : null}
+            {actions ? (
+              <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">{actions}</div>
+            ) : null}
+          </div>
         ) : null}
       </div>
       {children ? <div className="mt-3">{children}</div> : null}

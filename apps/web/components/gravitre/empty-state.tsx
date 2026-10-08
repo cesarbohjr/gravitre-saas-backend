@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { RADIUS } from "@/lib/design-system"
 import { type LucideIcon, Inbox, Search, AlertCircle, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Illustration, type IllustrationName } from "@/components/gravitre/illustration"
 
 type HeaderIcon = ComponentType<{ className?: string }>
 
@@ -14,6 +15,8 @@ interface EmptyStateProps {
   icon?: HeaderIcon
   /** Optional custom icon node (e.g. Phosphor) rendered instead of Lucide icon */
   iconSlot?: ReactNode
+  /** Library scene shown instead of the icon tile (moment-* for empty and error states). */
+  illustration?: IllustrationName
   /** Title text */
   title: string
   /** Description text */
@@ -71,6 +74,7 @@ const variantStyles = {
 const sizeStyles = {
   sm: {
     container: "py-8",
+    art: 150,
     iconContainer: "w-10 h-10",
     icon: "h-5 w-5",
     title: "text-sm",
@@ -78,6 +82,7 @@ const sizeStyles = {
   },
   md: {
     container: "py-12",
+    art: 190,
     iconContainer: "w-12 h-12",
     icon: "h-6 w-6",
     title: "text-base",
@@ -85,6 +90,7 @@ const sizeStyles = {
   },
   lg: {
     container: "py-16",
+    art: 240,
     iconContainer: "w-16 h-16",
     icon: "h-8 w-8",
     title: "text-lg",
@@ -95,6 +101,7 @@ const sizeStyles = {
 export function EmptyState({
   icon,
   iconSlot,
+  illustration,
   title,
   description,
   variant = "default",
@@ -118,7 +125,11 @@ export function EmptyState({
         className
       )}
     >
-      {/* Icon */}
+      {illustration ? (
+        <motion.div initial={{ scale: 0.96 }} animate={{ scale: 1 }} transition={{ delay: 0.05 }} className="mb-4">
+          <Illustration name={illustration} width={sizes.art} />
+        </motion.div>
+      ) : (
       <motion.div
         initial={{ scale: 0.8 }}
         animate={{ scale: 1 }}
@@ -132,6 +143,7 @@ export function EmptyState({
       >
         {iconSlot ? iconSlot : <Icon className={cn(sizes.icon, styles.iconColor)} />}
       </motion.div>
+      )}
 
       {/* Title */}
       <h3 className={cn("font-medium text-foreground", sizes.title)}>
@@ -190,6 +202,7 @@ export function NoResultsState({
   return (
     <EmptyState
       variant="search"
+      illustration="moment-focus-time"
       title={query ? `No results for "${query}"` : "No results found"}
       description="Try adjusting your search or filters to find what you're looking for."
       action={onClear ? { label: "Clear search", onClick: onClear, variant: "outline" } : undefined}
@@ -206,6 +219,7 @@ export function NoDataState({
 }) {
   return (
     <EmptyState
+      illustration="moment-welcome"
       title={`No ${itemName} yet`}
       description={`Create your first ${itemName.slice(0, -1)} to get started.`}
       action={onCreate ? { label: `Create ${itemName.slice(0, -1)}`, onClick: onCreate } : undefined}
@@ -225,6 +239,7 @@ export function ErrorState({
   return (
     <EmptyState
       variant="error"
+      illustration="moment-error"
       title={title}
       description={description}
       action={onRetry ? { label: "Try again", onClick: onRetry, variant: "outline" } : undefined}

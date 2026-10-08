@@ -15,6 +15,7 @@ import {
   PhaseBand,
 } from "@/components/gravitre/operating/operating-primitives"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Illustration } from "@/components/gravitre/illustration"
 import { GoalWorkflowWizard } from "@/components/gravitre/goal-workflow-wizard"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -169,6 +170,7 @@ export default function GoalsPage() {
           title={SURFACE_COPY.pages.goals.title}
           description={SURFACE_COPY.pages.goals.description}
           icon={<Target className="h-5 w-5" />}
+          art="dept-sales"
           status={
             allGoals.length > 0 ? (
               <LiveStatus tone={activeGoals > 0 ? "live" : "idle"}>
@@ -212,6 +214,8 @@ export default function GoalsPage() {
             ))}
           </div>
         ) : !data ? null : allGoals.length === 0 ? (
+          <div className="py-4">
+          <Illustration name="moment-milestone" width={180} className="mb-2" />
           <OperatingEmpty
             className="px-0 sm:px-0"
             title="No objectives yet"
@@ -229,6 +233,7 @@ export default function GoalsPage() {
               </Button>
             }
           />
+          </div>
         ) : (
           <div className="space-y-4 -mx-[var(--np-page-pad-sm)] sm:-mx-[var(--np-page-pad)]">
             <div className="grid gap-3 px-4 sm:grid-cols-[minmax(0,1fr)_12rem_12rem]">
@@ -326,7 +331,10 @@ export default function GoalsPage() {
               ) : null}
             </div>
             {goals.length === 0 ? (
-              <OperatingEmpty title="No goals match these filters" />
+              <div className="px-[var(--np-page-pad-sm)] pt-6 sm:px-[var(--np-page-pad)]">
+                <Illustration name="moment-focus-time" width={150} />
+                <OperatingEmpty className="px-0 pt-3 sm:px-0" title="No goals match these filters" />
+              </div>
             ) : (
               <ul className="divide-y divide-[color:var(--g-border-subtle)] border-b border-[color:var(--g-border-default)]">
                 {goals.map((goal, index) => (

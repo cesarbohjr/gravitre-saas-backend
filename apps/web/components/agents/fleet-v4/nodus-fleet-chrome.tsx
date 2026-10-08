@@ -51,7 +51,7 @@ export function NodusGlowFrame({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[var(--np-radius-md,8px)] bg-neutral-200 shadow-xl dark:bg-neutral-700",
+        "relative overflow-hidden rounded-[var(--np-radius-md,8px)] bg-border shadow-xl",
         pad,
         className,
       )}
@@ -60,7 +60,7 @@ export function NodusGlowFrame({
       <div className="pointer-events-none absolute inset-0 scale-[1.45] animate-spin rounded-full [animation-delay:1s] [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-brand,#F17463)_20%,transparent_30%)]" />
       <div
         className={cn(
-          "relative z-10 h-full w-full rounded-[calc(var(--np-radius-md,8px)-1px)] bg-white dark:bg-neutral-900",
+          "relative z-10 h-full w-full rounded-[calc(var(--np-radius-md,8px)-1px)] bg-card",
           contentClassName,
         )}
       >

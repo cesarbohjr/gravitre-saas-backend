@@ -8,6 +8,7 @@ import { GravitrePageHeader, LiveStatus } from "@/components/gravitre/nodus-prod
 import { PAGE_FRAME, RADIUS } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Illustration } from "@/components/gravitre/illustration"
 import { ArrowLeft, Plus, RefreshCw, CalendarClock } from "lucide-react"
 import { describeCron, type ScheduleKind } from "@/lib/schedules"
 import { useSchedules } from "@/lib/use-schedules"
@@ -57,6 +58,7 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
               : "Recurring and one-time execution windows for this workflow."
           }
           icon={<CalendarClock className="h-5 w-5" />}
+          art="header-quiet-desk"
           status={
             <LiveStatus tone={isLoading ? "idle" : items.length > 0 ? "live" : "idle"}>
               {isLoading ? "Syncing schedules" : items.length > 0 ? `${items.length} in this window` : "No schedules in window"}
@@ -87,11 +89,14 @@ export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id
         />
 
         {error && items.length === 0 ? (
+          <>
+          <Illustration name="moment-error" width={160} className="mb-3" />
           <WorkSectionErrorCard
             title="Couldn't load schedules"
             message="We couldn't reach the schedules service. Please try again."
             onRetry={refresh}
           />
+          </>
         ) : (
           <SchedulesView
             items={items}

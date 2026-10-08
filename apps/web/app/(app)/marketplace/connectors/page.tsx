@@ -61,6 +61,7 @@ export default function FederatedConnectorsPage() {
         data-composition="discover"
       >
         <GravitrePageHeader
+          art="dept-engineering"
           eyebrow="Gravitre Marketplace"
           title="Federated partner connectors"
           description="Partner registry entries surfaced in unified catalog shape. Linked entries also appear in the main catalog."
@@ -111,6 +112,7 @@ export default function FederatedConnectorsPage() {
             </div>
           ) : !data ? null : assets.length === 0 ? (
             <GravitreEmpty
+              illustration="moment-focus-time"
               title={
                 debouncedSearch
                   ? "No partner connectors match your search"

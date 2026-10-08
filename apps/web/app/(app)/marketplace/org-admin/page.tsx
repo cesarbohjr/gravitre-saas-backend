@@ -456,6 +456,7 @@ export default function MarketplaceOrgAdminPage() {
         data-composition="operate"
       >
         <GravitrePageHeader
+          art="header-quiet-desk"
           eyebrow="Gravitre Marketplace"
           title="Org marketplace admin"
           description="Create drafts, publish internally, or submit to the public catalog after publisher onboarding."
@@ -539,6 +540,7 @@ export default function MarketplaceOrgAdminPage() {
               <div className="h-24 animate-pulse rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]" />
             ) : !draftData ? null : drafts.length === 0 ? (
               <GravitreEmpty
+                illustration="moment-welcome"
                 title="No draft assets yet"
                 hint="Create a draft to start the internal publish flow."
                 action={
@@ -580,6 +582,7 @@ export default function MarketplaceOrgAdminPage() {
                 <p role="status">Loading public submissions…</p>
               ) : !publicPendingData ? null : publicPending.length === 0 ? (
                 <GravitreEmpty
+                  illustration="moment-all-clear"
                   title="No drafts awaiting Gravitre public review"
                   hint="Submit a draft with Public catalog to reach the platform queue."
                 />
@@ -622,6 +625,7 @@ export default function MarketplaceOrgAdminPage() {
               <div className="h-24 animate-pulse rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]" />
             ) : !data ? null : pending.length === 0 ? (
               <GravitreEmpty
+                illustration="moment-all-clear"
                 title="No assets awaiting review"
                 hint="Submitted drafts appear here for approval."
               />
@@ -681,6 +685,7 @@ export default function MarketplaceOrgAdminPage() {
               <div className="h-24 animate-pulse rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]" />
             ) : !publishedData ? null : published.length === 0 ? (
               <GravitreEmpty
+                illustration="moment-welcome"
                 title="No published internal assets yet"
                 hint="Approved assets appear here with version history and rollback."
               />

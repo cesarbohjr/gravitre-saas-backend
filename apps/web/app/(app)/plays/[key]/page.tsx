@@ -6,6 +6,7 @@ import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { Illustration } from "@/components/gravitre/illustration"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { fetcher } from "@/lib/fetcher"
@@ -140,9 +141,13 @@ export default function PlayDetailPage() {
 
         <div className="space-y-5 px-[var(--np-page-pad-sm)] sm:px-[var(--np-page-pad)]">
           {error ? (
-            <WorkSectionErrorCard title="Could not load play" message={error instanceof Error ? error.message : "Unknown error"} onRetry={() => void mutate()} />
+            <div className="space-y-4">
+              <Illustration name="moment-error" width={160} />
+              <WorkSectionErrorCard title="Could not load play" message={error instanceof Error ? error.message : "Unknown error"} onRetry={() => void mutate()} />
+            </div>
           ) : playMissing ? (
             <section className="border-y border-divide py-6">
+              <Illustration name="moment-focus-time" width={150} className="mb-4" />
               <h2 className="text-base font-semibold text-foreground">This play isn&apos;t available</h2>
               <p className="mt-1 text-pretty text-sm leading-relaxed text-muted-foreground">
                 No play matches <span className="font-mono text-foreground">{key}</span> in this workspace. It may have been renamed or removed from the catalog.
