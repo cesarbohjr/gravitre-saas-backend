@@ -1147,6 +1147,38 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   },
   "/api/metrics/insights": { insights: [] },
   "/api/metrics/home-reports": homeReportsShotFixture(),
+  // FIXTURE: shape of GET /api/metrics/agent-roster (Agents roster Team / List / Work map).
+  "/api/metrics/agent-roster": {
+    generatedAt: AGO(1),
+    days: Array.from({ length: 14 }, (_, i) => AGO((13 - i) * 1440)),
+    agents: {
+      agt_lead_triage: {
+        tasksToday: 34, failedToday: 1, runningNow: 0, successRateToday: 97.1, successRate7d: 98,
+        lastActiveAt: AGO(4), daily: [12, 18, 0, 22, 25, 19, 28, 30, 24, 0, 26, 31, 29, 34], blocked: null,
+      },
+      agt_deal_desk: {
+        tasksToday: 6, failedToday: 0, runningNow: 1, successRateToday: 100, successRate7d: 94,
+        lastActiveAt: AGO(2), daily: [3, 4, 2, 5, 6, 4, 3, 5, 7, 2, 4, 6, 5, 6], blocked: null,
+      },
+      agt_support_escalation: {
+        tasksToday: 0, failedToday: 1, runningNow: 0, successRateToday: 0, successRate7d: 88,
+        lastActiveAt: AGO(95), daily: [5, 4, 6, 3, 2, 4, 5, 6, 3, 2, 4, 3, 1, 0],
+        blocked: { kind: "failed", reason: "Waiting on a Zendesk plan with API access", jobId: "job_shot_1", at: AGO(95) },
+      },
+      agt_market_research: {
+        tasksToday: 3, failedToday: 0, runningNow: 0, successRateToday: 100, successRate7d: 100,
+        lastActiveAt: AGO(40), daily: [0, 1, 0, 2, 1, 0, 3, 1, 2, 0, 1, 2, 1, 3], blocked: null,
+      },
+    },
+    approvalGate: { agt_market_research: false },
+    goals: [
+      {
+        id: "goal_pipeline", objective: "Recover $1.2M of stalled Q3 pipeline", status: "active",
+        department: "Sales", priority: "high", connectedSystems: ["HubSpot", "Salesforce", "Slack"],
+        agentIds: ["agt_lead_triage", "agt_deal_desk"],
+      },
+    ],
+  },
   "/api/settings/home-reports-layout": { layout: null },
   "/api/settings/hitl-policies": { policies: [] },
   "/api/metrics/weekly-throughput": {

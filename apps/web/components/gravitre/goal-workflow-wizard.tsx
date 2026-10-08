@@ -84,6 +84,13 @@ function userDisplayName(user: unknown): { id: string | null; name: string | nul
   return { id: u.id ?? null, name }
 }
 
+/** What a template or suggestion can prefill. GoalTemplate fits this shape. */
+export type GoalPrefill = Pick<GoalTemplate, "objective"> & {
+  department?: GoalDepartmentId | null
+  metric?: string
+  systems?: string[]
+}
+
 export function GoalWorkflowWizard({
   open,
   onOpenChange,
@@ -98,8 +105,8 @@ export function GoalWorkflowWizard({
   onGoalSaved?: () => void
   /** Continue setting up a saved goal instead of starting a new one. */
   initialGoal?: GoalRecord | null
-  /** Prefill a new goal from a goal template. */
-  template?: GoalTemplate | null
+  /** Prefill a new goal from a goal template or a suggestion (text only, never numbers). */
+  template?: GoalPrefill | null
 }) {
   const router = useRouter()
   const { user } = useAuth()
@@ -160,7 +167,7 @@ export function GoalWorkflowWizard({
       setStart(m?.start !== null && m?.start !== undefined ? String(m.start) : "")
       setTarget(m?.target !== null && m?.target !== undefined ? String(m.target) : "")
       setDueDate(m?.dueDate ?? "")
-      setSystems(g?.connectedSystems ?? [])
+      setSystems(g?.connectedSystems ?? template?.systems ?? [])
       setPauseBefore(
         Array.isArray(sm.pauseBefore)
           ? (sm.pauseBefore as unknown[]).filter((v): v is string => typeof v === "string")
