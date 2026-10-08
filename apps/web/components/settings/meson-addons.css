@@ -1,0 +1,40 @@
+/* Settings > Meson Addons (Workspace redesign v1). Scoped under .gv-ws. */
+.gv-ws.ma-root { background: transparent; padding: 32px 40px 96px; }
+@media (max-width: 760px) { .gv-ws.ma-root { padding: 20px 16px 72px; } }
+.gv-ws .ma-inner { max-width: 960px; }
+.gv-ws .ma-crumbs { font-size: 14px; color: var(--gv-muted); display: flex; gap: 8px; flex-wrap: wrap; }
+.gv-ws .ma-crumbs a { text-decoration: none; font-weight: 500; }
+.gv-ws .ma-header { display: flex; flex-wrap: wrap; overflow: hidden; margin-top: 14px; }
+.gv-ws .ma-header-copy { flex: 1 1 360px; min-width: 0; padding: 28px 30px; }
+.gv-ws .ma-header h1 { margin: 0; font-size: 34px; line-height: 1.1; font-weight: 600; letter-spacing: -0.02em; }
+.gv-ws .ma-header p { margin: 10px 0 0; font-size: 16px; color: var(--gv-muted); line-height: 1.5; }
+.gv-ws .ma-scope { display: inline-flex; align-items: center; gap: 10px; margin-top: 18px; background: var(--gv-brand-surface); border: 1px solid var(--gv-mint-2); border-radius: 10px; padding: 10px 14px; font-size: 14px; }
+.gv-ws .ma-scope svg { color: var(--gv-brand-strong); flex: 0 0 auto; }
+.gv-ws .ma-scope strong { font-weight: 600; color: var(--gv-brand-strong); }
+.gv-ws .ma-header-art { flex: 1 1 320px; min-width: 0; background: var(--gv-paper); border-left: 1px solid var(--gv-paper-border); display: grid; place-items: center; }
+.gv-ws .ma-header-art img { display: block; width: 100%; height: auto; }
+@media (max-width: 760px) { .gv-ws .ma-header-art { border-left: 0; border-top: 1px solid var(--gv-paper-border); } .gv-ws .ma-header h1 { font-size: 28px; } .gv-ws .ma-header-copy { padding: 22px 20px; } }
+.gv-ws .ma-h2 { margin: 36px 0 14px; font-size: 18px; font-weight: 600; }
+.gv-ws .ma-addon { padding: 24px 26px; }
+@media (max-width: 760px) { .gv-ws .ma-addon { padding: 20px; } }
+.gv-ws .ma-addon + .ma-addon { margin-top: 12px; }
+.gv-ws .ma-addon-row { display: flex; align-items: flex-start; gap: 16px; }
+.gv-ws .ma-addon-main { flex: 1 1 auto; min-width: 0; }
+.gv-ws .ma-addon-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.gv-ws .ma-addon h3 { margin: 0; font-size: 18px; font-weight: 600; }
+.gv-ws .ma-addon-desc { margin: 8px 0 0; font-size: 15px; color: var(--gv-muted); line-height: 1.55; }
+.gv-ws .ma-addon-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex: 0 0 auto; }
+.gv-ws .ma-price { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.gv-ws .ma-foot { display: flex; gap: 10px; align-items: flex-start; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--gv-subtle); font-size: 13px; color: var(--gv-muted); line-height: 1.5; }
+.gv-ws .ma-foot svg { flex: 0 0 auto; margin-top: 1px; }
+.gv-ws .ma-foot a { font-weight: 500; text-decoration: none; }
+.gv-ws .ma-saved { margin-top: 12px; font-size: 13px; color: var(--gv-brand-strong); display: flex; align-items: center; gap: 8px; }
+.gv-ws .ma-perm { margin-top: 12px; font-size: 13px; color: var(--gv-muted); display: flex; align-items: center; gap: 8px; }
+.gv-ws .ma-total { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; font-size: 14px; color: var(--gv-muted); }
+.gv-ws .ma-total strong { color: var(--gv-text); font-size: 16px; }
+.gv-ws .ma-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 32px 24px; }
+.gv-ws .ma-empty img { width: 300px; max-width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--gv-paper-border); }
+.gv-ws .ma-empty-title { font-weight: 600; font-size: 17px; margin-top: 16px; }
+.gv-ws .ma-empty-copy { font-size: 14px; color: var(--gv-muted); margin-top: 6px; max-width: 420px; line-height: 1.5; }
+.gv-ws .ma-empty .gv-btn { margin-top: 18px; }
+.gv-ws .ma-alert { padding: 20px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }

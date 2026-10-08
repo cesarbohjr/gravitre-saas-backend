@@ -65,6 +65,7 @@ import { InstallStepperSheet } from "@/components/marketplace/install-experience
 import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import { getCategoryIcon } from "@/lib/marketplace-category-icons"
 import { MarketplaceFeaturedOutcome } from "@/components/marketplace/marketplace-featured-outcome"
+import { MarketplaceCardArt } from "@/components/marketplace/marketplace-card-art"
 import { Illustration } from "@/components/gravitre/illustration"
 const TYPE_FILTERS = [
   { id: "all", label: "All" },
@@ -235,7 +236,9 @@ function useDebouncedValue<T>(value: T, delayMs = 300): T {
 
 function AssetCardSkeleton() {
   return (
-    <div className="flex h-56 flex-col gap-3 rounded-xl border border-[color:var(--g-border-subtle)] p-4">
+    <div className="flex flex-col overflow-hidden rounded-xl border border-[color:var(--g-border-subtle)]">
+      <Skeleton className="aspect-[300/190] w-full rounded-none" />
+      <div className="flex h-56 flex-col gap-3 p-4">
       <div className="flex items-center gap-3">
         <Skeleton className="size-10 rounded-lg" />
         <Skeleton className="h-4 w-40" />
@@ -243,6 +246,7 @@ function AssetCardSkeleton() {
       <Skeleton className="h-3 w-full" />
       <Skeleton className="h-3 w-2/3" />
       <Skeleton className="mt-auto h-9 w-full" />
+      </div>
     </div>
   )
 }
@@ -284,9 +288,11 @@ function AssetCard({
 
   return (
     <article
-      className="group relative flex h-full flex-col rounded-xl border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-4 transition-colors duration-200 focus-within:border-[color:var(--g-text-muted)] hover:border-[color:var(--g-text-muted)]"
+      className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] transition-[border-color,transform,box-shadow] duration-200 focus-within:border-[color:var(--g-text-muted)] hover:-translate-y-0.5 hover:border-[color:var(--g-text-muted)] hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0"
       data-testid="marketplace-pack-row"
     >
+      <MarketplaceCardArt asset={asset} />
+      <div className="flex flex-1 flex-col p-4">
       <div className="flex items-start gap-3">
         <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] [&>*]:mt-0">
           <AssetMark asset={asset} />
@@ -416,6 +422,7 @@ function AssetCard({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+      </div>
       </div>
     </article>
   )
