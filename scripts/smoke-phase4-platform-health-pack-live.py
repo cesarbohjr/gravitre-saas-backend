@@ -162,7 +162,7 @@ def main() -> int:
                 }
             )
 
-    reports = (REPO / "apps" / "web" / "app" / "intelligence" / "reports" / "page.tsx").read_text(
+    reports = (REPO / "apps" / "web" / "app" / "(app)" / "intelligence" / "reports" / "page.tsx").read_text(
         encoding="utf-8"
     )
     ui_ok = "platform-health-intelligence-pack" in reports and "PackKpiPanel" in reports

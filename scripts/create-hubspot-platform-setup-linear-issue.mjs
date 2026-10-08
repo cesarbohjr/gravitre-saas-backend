@@ -78,7 +78,7 @@ See \`backend/.env.example\`.
 ## Code references
 - OAuth routes: \`backend/app/routers/connector_oauth.py\`
 - HubSpot OAuth: \`backend/app/connectors/hubspot_oauth.py\`
-- Connect UI: \`apps/web/app/connectors/page.tsx\`
+- Connect UI: \`apps/web/app/(app)/connectors/page.tsx\`
 
 ## Linear links
 - **Depends on:** [STA-13](https://linear.app/staqbot/issue/STA-13) (T1-004 — Real connector OAuth UX) — code shipped

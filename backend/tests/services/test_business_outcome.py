@@ -30,7 +30,7 @@ CHAT_PANEL = (
     / "assistant"
     / "chat-execution-panel.tsx"
 )
-RUNS_PAGE = REPO / "apps" / "web" / "app" / "runs" / "[id]" / "page.tsx"
+RUNS_PAGE = REPO / "apps" / "web" / "app" / "(app)" / "runs" / "[id]" / "page.tsx"
 VIEW_PATH = (
     REPO
     / "apps"
