@@ -117,6 +117,15 @@ import {
 import { openManagedConnector } from "@/lib/managed-connector-auth"
 import { isManagedConnectorVendor } from "@/lib/connectors"
 import { openPlaidLink } from "@/lib/plaid-link"
+import {
+  CONNECTOR_DEPARTMENTS,
+  ConnectorDepartmentCards,
+  ConnectorsViewToggle,
+  connectorDepartment,
+  connectorInDepartment,
+  type ConnectorDepartmentId,
+  type ConnectorsViewMode,
+} from "@/components/connectors/department-filter"
 import type { Connector as ApiConnector, ConnectorStatus } from "@/types/api"
 
 interface ConnectorAvailability {
@@ -2595,6 +2604,8 @@ function ConnectorsPageContent() {
   const [viewMode, setViewMode] = useState<"topology" | "grid">("grid")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
+  const [browseMode, setBrowseMode] = useState<ConnectorsViewMode>("all")
+  const [departmentFilter, setDepartmentFilter] = useState<ConnectorDepartmentId | null>(null)
   const [isLiveRefreshing, setIsLiveRefreshing] = useState(false)
   const [chromeCollapsed, setChromeCollapsed] = useState(false)
   const inspectorReturnFocus = useRef<HTMLElement | null>(null)
@@ -2880,12 +2891,26 @@ function ConnectorsPageContent() {
     }
   }
 
+  const activeDepartment = browseMode === "departments" ? departmentFilter : null
+  const departmentCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        CONNECTOR_DEPARTMENTS.map((d) => [d.id, connectors.filter((c) => connectorInDepartment(c.category, d.id)).length]),
+      ) as Record<ConnectorDepartmentId, number>,
+    [connectors],
+  )
+
+  function showAllConnectors() {
+    setBrowseMode("all")
+    setDepartmentFilter(null)
+  }
+
   const filteredConnectors = connectors.filter((c) => {
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.type.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = statusFilter === "all" || c.status === statusFilter
     const matchesCategory = categoryFilter === "all" || c.category === categoryFilter
-    return matchesSearch && matchesStatus && matchesCategory
+    return matchesSearch && matchesStatus && matchesCategory && connectorInDepartment(c.category, activeDepartment)
   })
 
   const leftConnectors = filteredConnectors.filter((_, i) => i % 2 === 0)
@@ -2894,8 +2919,12 @@ function ConnectorsPageContent() {
   const vendorCapabilities = useVendorCapabilities(Boolean(user && orgId))
   const agentsByVendor = useAgentsByVendor(Boolean(user && orgId))
   const attentionItems = useMemo(
-    () => connectors.map((c) => deriveConnectorAttention(c)).filter((x): x is ConnectorAttention => x !== null),
-    [connectors],
+    () =>
+      connectors
+        .filter((c) => connectorInDepartment(c.category, activeDepartment))
+        .map((c) => deriveConnectorAttention(c))
+        .filter((x): x is ConnectorAttention => x !== null),
+    [connectors, activeDepartment],
   )
   const attentionIds = useMemo(() => new Set(attentionItems.map((x) => x.connector.id)), [attentionItems])
   const selectedConnector = focusedConnector
@@ -2915,7 +2944,7 @@ function ConnectorsPageContent() {
     [connectedVendorKeys],
   )
   const hasActiveFilters = Boolean(
-    searchQuery.trim() || statusFilter !== "all" || categoryFilter !== "all",
+    searchQuery.trim() || statusFilter !== "all" || categoryFilter !== "all" || activeDepartment !== null,
   )
   const hubConnectedCount = hasActiveFilters
     ? filteredConnectors.filter((c) => connectorIsExecutable(c)).length
@@ -2926,6 +2955,7 @@ function ConnectorsPageContent() {
     setSearchQuery("")
     setStatusFilter("all")
     setCategoryFilter("all")
+    setDepartmentFilter(null)
   }
 
   function openAddModal(preset?: string | null) {
@@ -3049,6 +3079,10 @@ function ConnectorsPageContent() {
         >
           {/* Toolbar row — search/filters never share the title flex line (avoids overlap) */}
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <ConnectorsViewToggle
+              value={browseMode}
+              onChange={(mode) => (mode === "all" ? showAllConnectors() : setBrowseMode(mode))}
+            />
             <div className="relative w-full min-w-0 sm:max-w-xs sm:flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -3201,6 +3235,14 @@ function ConnectorsPageContent() {
               />
             </div>
           )}
+          {browseMode === "departments" && connectors.length > 0 ? (
+            <ConnectorDepartmentCards
+              selected={departmentFilter}
+              counts={departmentCounts}
+              onSelect={(id) => setDepartmentFilter((prev) => (prev === id ? null : id))}
+              onShowAll={showAllConnectors}
+            />
+          ) : null}
           {isLoading && connectors.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <Spinner size="lg" className="mb-4" />
@@ -3260,13 +3302,35 @@ function ConnectorsPageContent() {
           ) : filteredConnectors.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center px-4">
               <Illustration name="moment-focus-time" width={170} className="mb-3" />
-              <p className="text-sm font-medium text-foreground">No connectors match your filters</p>
-              <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                {connectors.length} connector{connectors.length === 1 ? "" : "s"} are hidden by search or filter settings.
-              </p>
-              <Button variant="outline" size="sm" className="mt-4" onClick={clearFilters}>
-                Clear filters
-              </Button>
+              {activeDepartment && !searchQuery.trim() && statusFilter === "all" && categoryFilter === "all" ? (
+                <>
+                  <p className="text-sm font-medium text-foreground">
+                    No {connectorDepartment(activeDepartment)?.label} connectors yet
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                    Connect a system this team uses, or pick another department.
+                  </p>
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    <Button size="sm" className="gap-2" onClick={() => openAddModal()}>
+                      <Plus className="h-4 w-4" />
+                      Add connector
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={showAllConnectors}>
+                      Show all connectors
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-foreground">No connectors match your filters</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                    {connectors.length} connector{connectors.length === 1 ? "" : "s"} are hidden by search or filter settings.
+                  </p>
+                  <Button variant="outline" size="sm" className="mt-4" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                </>
+              )}
             </div>
           ) : (
           <>
@@ -3336,7 +3400,7 @@ function ConnectorsPageContent() {
                 <section aria-labelledby="connectors-connected-heading" className="min-w-0">
                   <div className="mb-2 flex items-baseline justify-between gap-3">
                     <h2 id="connectors-connected-heading" className="text-[13px] font-semibold text-foreground">
-                      Connected systems
+                      {activeDepartment ? `${connectorDepartment(activeDepartment)?.label} connectors` : "Connected systems"}
                     </h2>
                     <p className={TYPE.meta}>
                       {filteredConnectors.length} shown · select a row to inspect
