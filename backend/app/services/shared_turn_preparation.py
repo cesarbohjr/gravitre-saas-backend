@@ -195,7 +195,12 @@ async def guard_spoken_turn(
             settings,
             org_id=org_id,
             user_text=user_text,
-            system_prompt=system_prompt,
+            # Moderation screens what the caller said. Sending Gravitre's own
+            # multi-thousand-token system prompt along with it made the gate
+            # in front of the first spoken word several times slower on every
+            # voice turn and checked nothing the user wrote. The system prompt
+            # still drives the brain unchanged.
+            system_prompt="",
             history=history,
             task_type=task_type,
             model_override=model_override,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import time
@@ -201,14 +202,11 @@ class ModelRouter:
         model = model_override or self._resolve_model(task_type)  # primary model, for cache key
 
         if org_id:
-            try:
-                client = get_supabase_client(self.settings)
-                policy = load_org_model_policy(client, org_id)
-                assert_model_allowed(policy, provider=resolve_provider_for_model(model), model=model)
-            except AIModelPolicyError:
-                raise
-            except Exception:  # noqa: BLE001
-                logger.debug("model_policy_check_skipped org_id=%s", org_id, exc_info=True)
+            # The policy read, rate limit and budget checks are blocking
+            # Supabase/Redis calls. They run in a worker thread so a turn's
+            # guardrails never stall other work on the event loop (live voice
+            # audio in particular).
+            await asyncio.to_thread(self._assert_model_policy, org_id, model)
 
         if autonomous_run and operator_id and org_id:
             try:
@@ -251,8 +249,7 @@ class ModelRouter:
         try:
             if getattr(self.settings, "disable_ai", False):
                 raise AIServiceDisabledError()
-            enforce_rate_limit(org_id, self.settings)
-            enforce_budget(org_id, self.settings)
+            await asyncio.to_thread(self._enforce_rate_and_budget, org_id)
             await moderate_input(f"{system_prompt or ''}\n{prompt}", self.settings, self._openai)
         except AIGuardrailError as exc:
             code = getattr(exc, "code", "AI_GUARDRAIL")
@@ -405,6 +402,20 @@ class ModelRouter:
         )
         return final
 
+    def _assert_model_policy(self, org_id: str, model: str) -> None:
+        try:
+            client = get_supabase_client(self.settings)
+            policy = load_org_model_policy(client, org_id)
+            assert_model_allowed(policy, provider=resolve_provider_for_model(model), model=model)
+        except AIModelPolicyError:
+            raise
+        except Exception:  # noqa: BLE001
+            logger.debug("model_policy_check_skipped org_id=%s", org_id, exc_info=True)
+
+    def _enforce_rate_and_budget(self, org_id: str | None) -> None:
+        enforce_rate_limit(org_id, self.settings)
+        enforce_budget(org_id, self.settings)
+
     async def prepare_stream(
         self,
         task_type: TaskType,
@@ -427,14 +438,11 @@ class ModelRouter:
         model = model_override or self._resolve_model(task_type)
 
         if org_id:
-            try:
-                client = get_supabase_client(self.settings)
-                policy = load_org_model_policy(client, org_id)
-                assert_model_allowed(policy, provider=resolve_provider_for_model(model), model=model)
-            except AIModelPolicyError:
-                raise
-            except Exception:  # noqa: BLE001
-                logger.debug("model_policy_check_skipped org_id=%s", org_id, exc_info=True)
+            # The policy read, rate limit and budget checks are blocking
+            # Supabase/Redis calls. They run in a worker thread so a turn's
+            # guardrails never stall other work on the event loop (live voice
+            # audio in particular).
+            await asyncio.to_thread(self._assert_model_policy, org_id, model)
 
         if autonomous_run and operator_id and org_id:
             try:
@@ -474,8 +482,7 @@ class ModelRouter:
         try:
             if getattr(self.settings, "disable_ai", False):
                 raise AIServiceDisabledError()
-            enforce_rate_limit(org_id, self.settings)
-            enforce_budget(org_id, self.settings)
+            await asyncio.to_thread(self._enforce_rate_and_budget, org_id)
             await moderate_input(f"{system_prompt or ''}\n{prompt}", self.settings, self._openai)
         except AIGuardrailError as exc:
             code = getattr(exc, "code", "AI_GUARDRAIL")

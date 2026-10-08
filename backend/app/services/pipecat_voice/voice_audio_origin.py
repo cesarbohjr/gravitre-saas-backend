@@ -32,6 +32,19 @@ class VoicePipelineSession:
     origin: str = USER_MIC
     turn_state: str = LISTENING
     tts_warming: bool = False
+    # Zero-arg callable set by the interrupt reporter: True once the bot has
+    # spoken a question that is still waiting for the user's answer. A short
+    # "yes"/"sure" then is that answer, not a backchannel to ignore.
+    answer_expected: Any = None
+
+    def expects_answer(self) -> bool:
+        probe = self.answer_expected
+        if probe is None:
+            return False
+        try:
+            return bool(probe())
+        except Exception:  # noqa: BLE001
+            return False
 
     def set_origin(self, origin: str) -> None:
         self.origin = normalize_origin(origin)

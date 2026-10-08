@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from pipecat.frames.frames import (
+    BotStartedSpeakingFrame,
+    BotStoppedSpeakingFrame,
     Frame,
     InterruptionFrame,
     LLMFullResponseEndFrame,
@@ -89,6 +91,38 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         # task before it clears the stop marker this socket armed.
         self._post_interrupt_tasks: set[asyncio.Task[Any]] = set()
         self._armed_stop: tuple[str, str] | None = None
+        # Whether an assistant turn is live: the brain is still producing text
+        # (LLMFullResponseStart..End) or the bot is still audibly speaking
+        # (Bot*SpeakingFrame, which the output transport pushes upstream past
+        # this processor). Flux opens every user turn with an InterruptionFrame,
+        # including when the bot is idle. Treating those as barge-ins armed the
+        # conversation stop marker on every turn, and the next answer (the
+        # speculative run in particular) saw the marker and returned nothing.
+        self._generating = False
+        self._bot_speaking = False
+        if voice_session is not None:
+            voice_session.answer_expected = self.answer_expected
+
+    @property
+    def assistant_turn_live(self) -> bool:
+        return (
+            self._generating
+            or self._bot_speaking
+            or bool(self._draft_llm or self._draft_client)
+        )
+
+    def answer_expected(self) -> bool:
+        """True when the reply ends in a question the listener has already heard."""
+        draft = (self._draft_client or self._draft_llm or "").rstrip()
+        if not draft.endswith("?"):
+            return False
+        body = draft[:-1]
+        question_start = max(body.rfind(". "), body.rfind("! "), body.rfind("? "))
+        question_start = question_start + 2 if question_start >= 0 else 0
+        if self._spoken_ledger is not None and self._spoken_ledger.ever_recorded:
+            # Playback has reached (roughly) the start of the question.
+            return len(self._spoken_ledger.snapshot()) >= int(question_start * 0.9)
+        return True
 
     @property
     def conversation_id(self) -> str | None:
@@ -256,11 +290,23 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         self,
         turn: _InterruptedTurn,
         *,
-        tts_cancel: dict[str, Any] | None,
         reconcile_meta: dict[str, Any] | None,
         playback_offset_ms: float | None,
         reconciled_text: str | None,
     ) -> None:
+        tts_cancel: dict[str, Any] | None = None
+        if self._tts_service is not None:
+            from app.services.pipecat_voice.tts_context_cancel import (
+                cancel_elevenlabs_tts_context,
+            )
+
+            try:
+                tts_cancel = await cancel_elevenlabs_tts_context(
+                    self._tts_service,
+                    keep_session=True,
+                ) or None
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("pipecat_tts_context_cancel_failed error=%s", str(exc))
         try:
             armed = await asyncio.to_thread(
                 self._run_post_interrupt_writes_sync,
@@ -313,7 +359,42 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         except Exception as exc:  # noqa: BLE001
             logger.warning("pipecat_barge_in_stop_release_failed error=%s", str(exc))
 
+    async def release_stop_marker(self) -> None:
+        """Socket open/close: drop any stop marker left for this conversation.
+
+        A marker armed by a previous socket (reconnect, or Talk closed and
+        reopened inside the 120 s TTL) has no reporter left to release it, and
+        every voice turn would then return without answering.
+        """
+        await self.settle_barge_in()
+        if not self._org_id or not self._conversation_id:
+            return
+        from app.services.chat_turn_cancel_service import clear_stop
+
+        try:
+            await asyncio.to_thread(
+                clear_stop, str(self._org_id), str(self._conversation_id), settings=self._settings
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("pipecat_stop_marker_release_failed error=%s", str(exc))
+
     async def process_frame(self, frame: Frame, direction: FrameDirection):
+        if isinstance(frame, BotStartedSpeakingFrame):
+            self._bot_speaking = True
+        elif isinstance(frame, BotStoppedSpeakingFrame):
+            self._bot_speaking = False
+            if not self._generating:
+                # The reply is fully generated and has finished playing.
+                self._draft_llm = ""
+                self._draft_client = ""
+                self._spoken_aligned = ""
+        if isinstance(frame, InterruptionFrame) and not self.assistant_turn_live:
+            # The user started a turn while nothing was being said or generated:
+            # not a barge-in. Let the frame reset the pipeline, but do not cancel
+            # TTS, tell the client speech was interrupted, or arm a stop marker.
+            await super().process_frame(frame, direction)
+            await self.push_frame(frame, direction)
+            return
         if isinstance(frame, InterruptionFrame):
             from app.services.pipecat_voice.voice_audio_origin import (
                 SPEAKING,
@@ -354,6 +435,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         await super().process_frame(frame, direction)
 
         if isinstance(frame, LLMFullResponseStartFrame):
+            self._generating = True
             self._draft_llm = ""
             self._draft_client = ""
             self._spoken_aligned = ""
@@ -373,8 +455,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         elif isinstance(frame, TTSTextFrame):
             self._spoken_aligned += str(getattr(frame, "text", None) or "")
         elif isinstance(frame, LLMFullResponseEndFrame):
-            pass
+            self._generating = False
         elif isinstance(frame, InterruptionFrame):
+            self._generating = False
             offset = getattr(frame, "gravitre_playback_offset_ms", None)
             if offset is not None:
                 try:
@@ -403,16 +486,6 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 else (self._spoken_aligned or draft or "")
             ).strip()
             full = (draft or self._spoken_aligned or spoken).strip()
-            tts_cancel: dict[str, Any] = {}
-            if self._tts_service is not None:
-                from app.services.pipecat_voice.tts_context_cancel import (
-                    cancel_elevenlabs_tts_context,
-                )
-
-                tts_cancel = await cancel_elevenlabs_tts_context(
-                    self._tts_service,
-                    keep_session=True,
-                )
             coordinator = self._speculative_coordinator
             if coordinator is not None and hasattr(coordinator, "cancel"):
                 try:
@@ -428,7 +501,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 "full_draft_text": full[:2000],
                 "interrupted": True,
                 "playback_offset_ms": self._last_playback_offset_ms,
-                "tts_context_cancel": tts_cancel or None,
+                # Cancelled after the stop is in flight (see _post_interrupt):
+                # awaiting the provider here held the interruption back.
+                "tts_context_cancel": None,
             }
             # Phase 5 (conversational polish): tell the client which text was
             # actually heard so the next turn's history is not padded with a tail
@@ -479,7 +554,6 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             # replace it.
             self._schedule_post_interrupt(
                 self._snapshot_turn(),
-                tts_cancel=tts_cancel or None,
                 reconcile_meta=reconcile_audit,
                 playback_offset_ms=self._last_playback_offset_ms,
                 reconciled_text=(
