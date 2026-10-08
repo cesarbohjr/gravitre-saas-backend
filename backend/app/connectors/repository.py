@@ -275,3 +275,45 @@ def get_decrypted_secret(
         return decrypt_secret(r.data[0]["encrypted_value"], settings.connector_secrets_encryption_key)
     except ValueError:
         return None
+
+
+# Ids per `.in_()` read. connector_secrets is UNIQUE (connector_id, key_name), so
+# one key_name returns at most one row per id: a chunk stays well under the
+# PostgREST 1000-row response cap and keeps the request URL short.
+_SECRETS_BULK_CHUNK = 200
+
+
+def get_decrypted_secrets_bulk(
+    client: Client,
+    connector_ids: list[str],
+    key_name: str,
+    settings: Settings,
+) -> dict[str, str | None]:
+    """Batched get_decrypted_secret: one read per chunk of connector ids.
+
+    Returns a value for every requested id (None when no row exists or the
+    value cannot be decrypted), matching per-id get_decrypted_secret results.
+    Backend-only; never expose to API response.
+    """
+    ids = list(dict.fromkeys(str(cid) for cid in connector_ids if cid))
+    out: dict[str, str | None] = {cid: None for cid in ids}
+    for start in range(0, len(ids), _SECRETS_BULK_CHUNK):
+        chunk = ids[start : start + _SECRETS_BULK_CHUNK]
+        r = (
+            client.table("connector_secrets")
+            .select("connector_id, encrypted_value")
+            .in_("connector_id", chunk)
+            .eq("key_name", key_name)
+            .execute()
+        )
+        seen: set[str] = set()
+        for row in r.data or []:
+            cid = str(row.get("connector_id") or "")
+            if cid not in out or cid in seen:
+                continue
+            seen.add(cid)
+            try:
+                out[cid] = decrypt_secret(row["encrypted_value"], settings.connector_secrets_encryption_key)
+            except ValueError:
+                out[cid] = None
+    return out

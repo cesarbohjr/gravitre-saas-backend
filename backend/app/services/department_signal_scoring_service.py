@@ -311,6 +311,48 @@ def _priority_band(score_0_100: float) -> str:
     return "low"
 
 
+class _OrgScoringInputs:
+    """Org-wide scoring inputs, each loaded at most once per request.
+
+    Connected integrations, registered actions, work-object events and
+    external signals are not department-scoped, so scoring every department
+    used to re-read them once per department.  This memoizes each input on
+    first use so the queries (and their LIMIT/ORDER semantics) are unchanged
+    but run once; per-department filtering happens in Python.
+    """
+
+    _UNSET: Any = object()
+
+    def __init__(self, service: DepartmentSignalScoringService, client: Any, org_id: str) -> None:
+        self._service = service
+        self._client = client
+        self._org_id = org_id
+        self._connected: Any = self._UNSET
+        self._registered: Any = self._UNSET
+        self._events: Any = self._UNSET
+        self._external: Any = self._UNSET
+
+    def connected(self) -> set[str]:
+        if self._connected is self._UNSET:
+            self._connected = self._service._connected_integrations(self._client, self._org_id)
+        return self._connected
+
+    def registered_actions(self) -> set[str]:
+        if self._registered is self._UNSET:
+            self._registered = self._service._registered_actions()
+        return self._registered
+
+    def work_object_events(self) -> list[dict[str, Any]]:
+        if self._events is self._UNSET:
+            self._events = self._service._load_work_object_events(self._client, org_id=self._org_id)
+        return self._events
+
+    def external_signals(self) -> list[dict[str, Any]]:
+        if self._external is self._UNSET:
+            self._external = self._service._load_external_signals(self._client, org_id=self._org_id)
+        return self._external
+
+
 class DepartmentSignalScoringService:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
@@ -362,9 +404,12 @@ class DepartmentSignalScoringService:
         org_id: str,
         client: Any,
         departments: set[DepartmentKey] | None = None,
+        inputs: _OrgScoringInputs | None = None,
     ) -> list[dict[str, Any]]:
-        connected = self._connected_integrations(client, org_id)
-        registered_actions = self._registered_actions()
+        if inputs is None:
+            inputs = _OrgScoringInputs(self, client, org_id)
+        connected = inputs.connected()
+        registered_actions = inputs.registered_actions()
         rows: list[dict[str, Any]] = []
         for source in _SOURCE_DEFS:
             if departments and source.department not in departments:
@@ -500,7 +545,9 @@ class DepartmentSignalScoringService:
         department: str,
         limit: int = 5,
         work_object_ids: list[str] | None = None,
+        _inputs: _OrgScoringInputs | None = None,
     ) -> dict[str, Any]:
+        inputs = _inputs if _inputs is not None else _OrgScoringInputs(self, client, org_id)
         dept = _normalize_department(department)
         if dept is None:
             return {
@@ -509,7 +556,7 @@ class DepartmentSignalScoringService:
                 "priorities": [],
                 "gaps": [f"Unsupported department: {department}"],
             }
-        source_rows = self._audit_rows(org_id=org_id, client=client, departments={dept})
+        source_rows = self._audit_rows(org_id=org_id, client=client, departments={dept}, inputs=inputs)
         source_status = {row["sourceId"]: str(row["status"]) for row in source_rows}
         work_objects = self._load_work_objects(
             client,
@@ -535,8 +582,8 @@ class DepartmentSignalScoringService:
             }
 
         object_ids = {str(row.get("id") or "") for row in work_objects if str(row.get("id") or "")}
-        events = [row for row in self._load_work_object_events(client, org_id=org_id) if str(row.get("work_object_id") or "") in object_ids]
-        external = self._load_external_signals(client, org_id=org_id)
+        events = [row for row in inputs.work_object_events() if str(row.get("work_object_id") or "") in object_ids]
+        external = inputs.external_signals()
 
         signal_specs = [spec for spec in _SIGNAL_DEFS if spec.department == dept]
         department_gaps: list[str] = []
@@ -673,6 +720,9 @@ class DepartmentSignalScoringService:
         client: Any,
         limit_per_department: int = 3,
     ) -> dict[str, Any]:
+        # Org-wide inputs (integrations, events, external signals) are shared
+        # across departments: loaded once here instead of once per department.
+        inputs = _OrgScoringInputs(self, client, org_id)
         return {
             "capturedAt": _now_iso(),
             "departments": [
@@ -681,6 +731,7 @@ class DepartmentSignalScoringService:
                     client=client,
                     department=dept,
                     limit=limit_per_department,
+                    _inputs=inputs,
                 )
                 for dept in _DEPARTMENT_ORDER
             ],
