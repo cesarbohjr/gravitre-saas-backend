@@ -228,8 +228,8 @@ for (const file of files) {
 
 // Required import sites (must exist and import shared controls)
 const requiredImporters = [
-  "app/ai/_components/ai-workspace.tsx",
-  "app/agents/[id]/chat/page.tsx",
+  "app/(app)/ai/_components/ai-workspace.tsx",
+  "app/(app)/agents/[id]/chat/page.tsx",
 ]
 for (const rel of requiredImporters) {
   const full = join(WEB, rel)

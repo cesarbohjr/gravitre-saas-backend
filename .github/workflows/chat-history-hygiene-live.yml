@@ -8,7 +8,7 @@ on:
       - "scripts/verify-chat-history-hygiene-live.py"
       - ".github/workflows/chat-history-hygiene-live.yml"
       - "backend/app/routers/conversations.py"
-      - "apps/web/app/ai/_components/ai-workspace.tsx"
+      - "apps/web/app/(app)/ai/_components/ai-workspace.tsx"
 
 concurrency:
   group: chat-history-hygiene-live

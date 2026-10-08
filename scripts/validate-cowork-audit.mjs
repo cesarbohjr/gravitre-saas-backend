@@ -44,7 +44,7 @@ assertIncludes(
 assertIncludes(
   "2",
   "AI workspace sends department and cross-department chat context",
-  "apps/web/app/ai/_components/ai-workspace.tsx",
+  "apps/web/app/(app)/ai/_components/ai-workspace.tsx",
   ["selectedDepartment", "cross_department", "DEPARTMENT_OPTIONS"],
 )
 assertIncludes(
@@ -64,7 +64,7 @@ assertIncludes(
 assertIncludes(
   "3b",
   "Execute results panel uses real action handlers",
-  "apps/web/app/ai/_components/ai-execute-results.tsx",
+  "apps/web/app/(app)/ai/_components/ai-execute-results.tsx",
   ["executeSuggestedAction", "executePlanApproval", "runAutoFix"],
 )
 
@@ -78,7 +78,7 @@ assertIncludes(
 assertIncludes(
   "4b",
   "Settings UI assigns Lite seats by email",
-  "apps/web/app/settings/page.tsx",
+  "apps/web/app/(app)/settings/page.tsx",
   ["addDepartmentMember", "Assign seat"],
 )
 
@@ -91,7 +91,7 @@ assertIncludes(
 )
 
 // 6. Billing charts derive from API usage (no hardcoded 12450 runs)
-const billing = read("apps/web/app/settings/billing/page.tsx")
+const billing = read("apps/web/app/(app)/settings/billing/page.tsx")
 if (billing.includes("12450")) {
   fail("6", "Billing page removed demo workflow usage constants", "Still contains 12450")
 } else if (billing.includes("buildUsageForecast")) {
@@ -110,7 +110,7 @@ assertIncludes(
 assertIncludes(
   "7b",
   "Execute mode uses resolved operator context",
-  "apps/web/app/ai/_components/ai-workspace.tsx",
+  "apps/web/app/(app)/ai/_components/ai-workspace.tsx",
   ["resolveOperatorActiveContext", "operatorContextRef"],
 )
 
