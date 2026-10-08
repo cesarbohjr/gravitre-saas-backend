@@ -1,11 +1,13 @@
 """Structured multi-turn task state within a conversation thread."""
 from __future__ import annotations
 
+from contextvars import ContextVar
 from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any
 
 from app.config import Settings, get_settings
+from app.core.io_pool import run_io
 from app.core.logging import get_logger
 from app.services.conversation_write_guard import (
     ConversationWriteBlockedError,
@@ -15,6 +17,10 @@ from app.workflows.repository import get_supabase_client
 from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
+
+# Set while this service reads task_state to merge into and write back, so that
+# read stays on the event loop with the write (see get_task_state).
+_read_on_loop: ContextVar[bool] = ContextVar("task_state_read_on_loop", default=False)
 
 DEFAULT_TASK_STATE: dict[str, Any] = {
     "clarified_params": {},
@@ -116,17 +122,21 @@ class ConversationStateService:
         if not conversation_id or not org_id:
             return deepcopy(DEFAULT_TASK_STATE)
         try:
-            rows = (
+            query = (
                 self._client(client)
                 .table("conversations")
                 .select("task_state")
                 .eq("id", conversation_id)
                 .eq("org_id", org_id)
                 .limit(1)
-                .execute()
-                .data
-                or []
             )
+            if _read_on_loop.get():
+                # Read-modify-write below: read and write with no await between,
+                # exactly as before, so no other coroutine can write in between.
+                rows = query.execute().data or []
+            else:
+                # A plain read: keep the blocking round trip off the event loop.
+                rows = (await run_io(query.execute)).data or []
             if rows:
                 return self._normalize_state(rows[0].get("task_state"))
         except Exception as exc:  # noqa: BLE001
@@ -147,6 +157,7 @@ class ConversationStateService:
     ) -> None:
         if not conversation_id or not org_id:
             return
+        token = _read_on_loop.set(True)
         try:
             current = await self.get_task_state(conversation_id, org_id, client=client)
             from app.services.execution_plan_adapters import enrich_task_state_patch
@@ -236,6 +247,8 @@ class ConversationStateService:
                 conversation_id,
                 exc,
             )
+        finally:
+            _read_on_loop.reset(token)
 
     async def update_task_state(
         self,
@@ -258,7 +271,11 @@ class ConversationStateService:
         actor_id: str | None = None,
     ) -> bool:
         """SQL compare-and-set on pending_task.status (not a process lock)."""
-        current = await self.get_task_state(conversation_id, org_id, client=client)
+        token = _read_on_loop.set(True)
+        try:
+            current = await self.get_task_state(conversation_id, org_id, client=client)
+        finally:
+            _read_on_loop.reset(token)
         pending = current.get("pending_task") if isinstance(current.get("pending_task"), dict) else {}
         if str(pending.get("status") or "") != str(expected_status or ""):
             return False
