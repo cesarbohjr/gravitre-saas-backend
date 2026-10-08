@@ -47,11 +47,20 @@ export function GoalWorkflowWizard({
   onOpenChange,
   onBuildWorkflow,
   onGoalSaved,
+  initial,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onBuildWorkflow?: (plan: Plan) => void
   onGoalSaved?: () => void
+  /** Prefill for a suggested goal (e.g. from the Agents work map). */
+  initial?: {
+    objective?: string
+    category?: string
+    department?: string
+    metric?: string
+    systems?: string[]
+  }
 }) {
   const router = useRouter()
   const [step, setStep] = useState(1)
@@ -91,13 +100,17 @@ export function GoalWorkflowWizard({
   useEffect(() => {
     if (open && !wasOpen.current) {
       setStep(1)
-      setObjective("")
-      setCategory("")
-      setDepartment("")
+      setObjective(initial?.objective ?? "")
+      setCategory(
+        initial?.category && CATEGORIES.includes(initial.category)
+          ? initial.category
+          : "",
+      )
+      setDepartment(initial?.department ?? "")
       setPriority("medium")
       setFrequency("once")
-      setMetric("")
-      setSystems([])
+      setMetric(initial?.metric ?? "")
+      setSystems(initial?.systems ?? [])
       setPlan(null)
       setPlanId(null)
       setError(null)
@@ -105,6 +118,7 @@ export function GoalWorkflowWizard({
       persistedId.current = null
     }
     wasOpen.current = open
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- prefill applies once per open
   }, [open])
   function close(next: boolean) {
     if (!lock.current) onOpenChange(next)

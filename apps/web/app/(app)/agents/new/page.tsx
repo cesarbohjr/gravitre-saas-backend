@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -34,6 +34,7 @@ import { useConnectedAgentApps } from "@/lib/agent-connected-apps"
 import {
   AGENT_DEPARTMENT_OPTIONS,
   inferAgentDepartment,
+  normalizeAgentDepartment,
   type AgentDepartment,
 } from "@/lib/agent-display"
 import {
@@ -101,6 +102,11 @@ export default function NewAgentPage() {
   const [agentPurpose, setAgentPurpose] = useState("")
   const [agentName, setAgentName] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState<AgentDepartment>("Operations")
+  // ?department=Engineering (from the Agents roster's empty department cards) preselects the team.
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("department")
+    if (requested) setSelectedDepartment(normalizeAgentDepartment(requested))
+  }, [])
   const [agentModel, setAgentModel] = useState("auto")
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([])
   const [selectedSystems, setSelectedSystems] = useState<string[]>([])

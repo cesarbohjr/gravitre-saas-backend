@@ -287,6 +287,32 @@ def home_reports(
     return data
 
 
+@router.get("/agent-roster")
+def agent_roster(
+    *,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    tz: Annotated[int, Query(ge=-840, le=840, description="Viewer offset from UTC in minutes")] = 0,
+) -> dict:
+    """Agents roster: tasks today, success, last active, daily work, blocked state, gates, goals."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.metrics.agent_roster import build_agent_roster
+
+    start = time.perf_counter()
+    client = shared_service_client(settings, create_client)
+    data = build_agent_roster(client, org_id, tz)
+    logger.info(
+        "metrics_agent_roster request_id=%s org_id=%s agents=%s latency_ms=%s",
+        request_id_ctx.get(),
+        org_id,
+        len(data.get("agents") or {}),
+        int((time.perf_counter() - start) * 1000),
+    )
+    return data
+
+
 @router.get("/workflows")
 def workflows(
     *,
