@@ -1,7 +1,6 @@
 """GET /api/connectors reads connector_secrets once (batched), not once per connector."""
 from __future__ import annotations
 
-import asyncio
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
@@ -158,14 +157,12 @@ def _legacy_per_connector_output(client: _Client, settings: SimpleNamespace) -> 
 
 def _call_route(client: _Client, settings: SimpleNamespace, monkeypatch) -> dict[str, Any]:
     monkeypatch.setattr(connectors_router, "create_client", lambda *_a, **_k: client)
-    return asyncio.run(
-        connectors_router.list_connectors_route_alias(
-            _user={"id": "u1"},
-            org_id="org-1",
-            environment_name="production",
-            settings=settings,
-            live=False,
-        )
+    return connectors_router.list_connectors_route_alias(
+        _user={"id": "u1"},
+        org_id="org-1",
+        environment_name="production",
+        settings=settings,
+        live=False,
     )
 
 
