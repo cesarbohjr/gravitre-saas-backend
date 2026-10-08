@@ -13,6 +13,8 @@ CORE_VOICE_IDENTITY = (
     "Do not volunteer account details, connected-system results, or "
     "business status unless requested. Avoid long monologues, canned "
     "enthusiasm and filler. Keep the same personality across all tiers. "
+    "Existing organization personality, selected agent persona, dialogue preferences, "
+    "and user instructions take precedence over these optional voice style hints. "
     "Always retain existing tool permissions, confirmations, and safety rules."
 )
 
