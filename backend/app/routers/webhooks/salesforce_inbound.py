@@ -7,6 +7,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.config import Settings, get_settings
 from app.connectors.salesforce_webhooks import verify_salesforce_webhook_signature
@@ -28,7 +29,7 @@ async def salesforce_inbound_webhook(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     body = await request.body()
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     row = (
         client.table("connectors")
         .select("id,type,config")

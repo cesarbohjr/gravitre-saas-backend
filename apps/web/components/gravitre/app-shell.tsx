@@ -20,6 +20,7 @@ import { CenteredLoader, LoadingIndicator } from "@/components/gravitre/gravitre
 import { NucleoClose } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { clearCachedBillingStatus, readCachedBillingStatus, writeCachedBillingStatus } from "@/lib/billing-status-cache"
 import { familyHidesTopBar, resolvePageFamily } from "@/lib/page-family"
 import type { OnboardingProgress } from "@/types/api"
 import { TrialExpiredBanner } from "@/components/billing/trial-expired-banner"
@@ -167,8 +168,20 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
     setSidebarOpen(true)
   }
 
+  // Last-known billing status for this user (read after mount to keep hydration
+  // identical). Lets the shell render immediately on repeat visits while the
+  // fresh status loads; first-ever visits still wait for the network.
+  const [cachedBillingStatus, setCachedBillingStatus] = useState<BillingStatus | undefined>(undefined)
+  useEffect(() => {
+    setCachedBillingStatus(readCachedBillingStatus<BillingStatus>(user?.id))
+  }, [user?.id])
+
   // Fetch billing status — refresh on focus so web/mobile stay aligned after expiry.
-  const { data: billingStatusData, isLoading: billingLoading, error: billingError } = useSWR<BillingStatus>(
+  const {
+    data: freshBillingStatus,
+    isLoading: billingLoading,
+    error: billingError,
+  } = useSWR<BillingStatus>(
     user ? "/api/billing/status" : null,
     apiFetcher,
     {
@@ -177,6 +190,18 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
       dedupingInterval: 30_000,
     }
   )
+  const billingStatusData = freshBillingStatus ?? cachedBillingStatus
+
+  useEffect(() => {
+    if (!freshBillingStatus || isBillingStatusDegraded(freshBillingStatus)) return
+    // Only remember "can access" states: a cached block must never redirect a
+    // user who has since resubscribed before the fresh status arrives.
+    if (freshBillingStatus.canAccessApp === true) {
+      writeCachedBillingStatus(user?.id, freshBillingStatus)
+    } else {
+      clearCachedBillingStatus(user?.id)
+    }
+  }, [freshBillingStatus, user?.id])
 
   // Fetch auth/me for onboarding status
   const { data: meData } = useSWR<MeData>(

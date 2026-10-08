@@ -10,10 +10,19 @@
  */
 
 import { Suspense, useEffect, useState } from "react"
+import dynamic from "next/dynamic"
 import { LayoutGroup } from "framer-motion"
-import { AiWorkspace } from "@/app/ai/_components/ai-workspace"
 import { GRAVITRE_AI_FLOAT_ENABLED } from "@/lib/ai-workspace-flags"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
+
+// Loaded on first arm only. The workspace (chat runtime, AI SDK, markdown,
+// voice/Pipecat client) is most of the signed-in shell's JavaScript, and a
+// static import put it in the bundle of every page even though it only mounts
+// on /ai, agent chat, or when the float is opened.
+const AiWorkspace = dynamic(
+  () => import("@/app/ai/_components/ai-workspace").then((m) => ({ default: m.AiWorkspace })),
+  { ssr: false },
+)
 
 function isWorkspaceArmPath(pathname: string): boolean {
   const path = pathname.split("?")[0] ?? ""

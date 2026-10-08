@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
@@ -161,14 +162,14 @@ def _save_org_settings(client, org_id: str, settings_value: dict) -> None:
 
 
 @router.get("")
-async def get_progress(
+def get_progress(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     org_settings = _load_org_settings(client, org_id)
     onboarding_state = org_settings.get("onboarding")
     if onboarding_state is not None and not isinstance(onboarding_state, dict):
@@ -177,7 +178,7 @@ async def get_progress(
 
 
 @router.post("/welcome-complete")
-async def complete_welcome(
+def complete_welcome(
     body: WelcomeCompleteRequest,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -187,7 +188,7 @@ async def complete_welcome(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     org_settings = _load_org_settings(client, org_id)
     onboarding_state = org_settings.get("onboarding")
     if not isinstance(onboarding_state, dict):
@@ -238,7 +239,7 @@ async def complete_welcome(
 
 
 @router.post("/complete-step")
-async def complete_step(
+def complete_step(
     body: CompleteStepRequest,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -250,7 +251,7 @@ async def complete_step(
     if step_key not in STEP_KEYS:
         raise HTTPException(status_code=400, detail="Invalid onboarding step key")
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     if step_key == "connect" and not _org_has_connected_connector(client, org_id):
         raise HTTPException(
             status_code=400,
@@ -284,7 +285,7 @@ async def complete_step(
 
 
 @router.post("/skip")
-async def skip_onboarding(
+def skip_onboarding(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -292,7 +293,7 @@ async def skip_onboarding(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     org_settings = _load_org_settings(client, org_id)
     onboarding_state = org_settings.get("onboarding")
     if not isinstance(onboarding_state, dict):
@@ -306,7 +307,7 @@ async def skip_onboarding(
 
 
 @router.post("/bootstrap")
-async def bootstrap_org(
+def bootstrap_org(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -314,7 +315,7 @@ async def bootstrap_org(
     """Seed demo agents, workflows, and runs for a new organization (idempotent)."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return seed_org_if_needed(client, org_id)
     except ValueError as exc:
@@ -324,7 +325,7 @@ async def bootstrap_org(
 
 
 @router.post("/reset")
-async def reset_onboarding(
+def reset_onboarding(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -332,7 +333,7 @@ async def reset_onboarding(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     org_settings = _load_org_settings(client, org_id)
     onboarding_state = {
         "completed_steps": [],

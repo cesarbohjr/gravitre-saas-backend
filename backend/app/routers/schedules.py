@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/schedules", tags=["schedules"])
 
 
 @router.get("")
-async def list_schedules(
+def list_schedules(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],

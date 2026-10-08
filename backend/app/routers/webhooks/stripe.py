@@ -6,6 +6,7 @@ from typing import Annotated, Any
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.billing.service import (
     DEFAULT_PLAN_CODE,
@@ -438,7 +439,7 @@ async def stripe_webhook(
     if not stripe_event_id:
         raise HTTPException(status_code=400, detail="Stripe event id missing")
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
 
     if is_webhook_event_processed(client, stripe_event_id):
         logger.info("Skipping duplicate Stripe webhook event %s", stripe_event_id)

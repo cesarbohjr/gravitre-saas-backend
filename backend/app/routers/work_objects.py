@@ -23,7 +23,7 @@ router = APIRouter(prefix="/api/work-objects", tags=["work-objects"])
 
 
 @router.get("")
-async def list_work_objects_route(
+def list_work_objects_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -49,7 +49,7 @@ async def list_work_objects_route(
 
 
 @router.get("/coverage")
-async def work_object_coverage_route(
+def work_object_coverage_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -62,7 +62,7 @@ async def work_object_coverage_route(
 
 
 @router.get("/{work_object_id}")
-async def get_work_object_route(
+def get_work_object_route(
     work_object_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],

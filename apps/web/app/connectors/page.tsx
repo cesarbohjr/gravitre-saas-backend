@@ -2587,7 +2587,7 @@ function ConnectorsPageContent() {
   const [orgId, setOrgId] = useState<string | null>(() => getQuickOrgId())
 
   useEffect(() => {
-    if (user) void ensureSelectedOrg(true).then(setOrgId)
+    if (user) void ensureSelectedOrg().then(setOrgId)
   }, [user])
 
   const [searchQuery, setSearchQuery] = useState("")

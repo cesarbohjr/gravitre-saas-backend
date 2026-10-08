@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from app.core.async_bridge import spawn_background
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -93,7 +94,7 @@ class EventIntelligenceService:
         enriched = dict(payload or {})
         enriched.setdefault("connector", connector.lower())
         enriched.setdefault("event_type", event_type)
-        asyncio.create_task(
+        spawn_background(
             self.handle_connector_event(org_id, connector, event_type, entity_id, enriched)
         )
 

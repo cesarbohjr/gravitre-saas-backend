@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/models", tags=["llm-models"])
 
 
 @router.get("/llm-catalog")
-async def get_llm_catalog(
+def get_llm_catalog(
     _user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:

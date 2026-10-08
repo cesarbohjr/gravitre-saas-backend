@@ -9,6 +9,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse, Response
 from supabase import Client, create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
@@ -128,7 +129,7 @@ def _build_dashboard_overview(client: Client, org_id: str, settings: Settings, r
 
 
 @router.get("/overview")
-async def overview(
+def overview(
     *,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -139,7 +140,7 @@ async def overview(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     start = time.perf_counter()
     rng = _validate_range(range)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     data = _build_dashboard_overview(client, org_id, settings, rng)
     latency_ms = int((time.perf_counter() - start) * 1000)
     logger.info(
@@ -165,7 +166,7 @@ _OVERVIEW_EXPORT_FIELDS: tuple[tuple[str, str], ...] = (
 
 
 @router.get("/export")
-async def export_metrics(
+def export_metrics(
     *,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -177,7 +178,7 @@ async def export_metrics(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     rng = _validate_range(range)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     data = _build_dashboard_overview(client, org_id, settings, rng)
 
     if format == "json":
@@ -197,7 +198,7 @@ async def export_metrics(
 
 
 @router.get("/workflows")
-async def workflows(
+def workflows(
     *,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -221,7 +222,7 @@ async def workflows(
 
 
 @router.get("/rag")
-async def rag(
+def rag(
     *,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -280,7 +281,7 @@ async def integrations(
 
 
 @router.get("/timeseries")
-async def timeseries(
+def timeseries(
     *,
     metric: str,
     _user: Annotated[dict, Depends(get_current_user)],
@@ -309,7 +310,7 @@ async def timeseries(
 
 
 @router.get("/insights")
-async def metrics_insights(
+def metrics_insights(
     *,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -322,7 +323,7 @@ async def metrics_insights(
     from datetime import datetime, timedelta, timezone
 
     rng = _validate_range(range)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     from app.metrics.service import parse_range
 
     _, start_at, _ = parse_range(rng)
@@ -383,7 +384,7 @@ async def metrics_insights(
 
 
 @router.get("/weekly-throughput")
-async def weekly_throughput(
+def weekly_throughput(
     *,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -405,7 +406,7 @@ async def weekly_throughput(
 
 
 @router.get("/runs")
-async def runs(
+def runs(
     *,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -419,7 +420,7 @@ async def runs(
     start = time.perf_counter()
     period_map = {"24h": "7d", "7d": "7d", "30d": "30d"}
     rng = _validate_range(period_map.get(period or "", range or "30d"))
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _, start_at, end_at = parse_range(rng)
     rows = (
         client.table("workflow_runs")

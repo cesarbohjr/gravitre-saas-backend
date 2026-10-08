@@ -8,6 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -64,7 +65,7 @@ class IngestRequest(BaseModel):
 
 
 @router.get("/sources")
-async def list_sources_route(
+def list_sources_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -72,12 +73,12 @@ async def list_sources_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return {"sources": list_sources(client, org_id, environment_name=environment_name)}
 
 
 @router.post("/sources", status_code=status.HTTP_201_CREATED)
-async def create_source_route(
+def create_source_route(
     body: SourceCreateRequest,
     admin_ctx: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -86,7 +87,7 @@ async def create_source_route(
     user, org_id = admin_ctx
     if body.type not in ALLOWED_SOURCE_TYPES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid source type")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     source = create_source(
         client,
         org_id,
@@ -111,7 +112,7 @@ async def create_source_route(
 
 
 @router.patch("/sources/{source_id}")
-async def update_source_route(
+def update_source_route(
     source_id: UUID,
     body: SourceUpdateRequest,
     admin_ctx: Annotated[tuple, Depends(require_admin)],
@@ -119,7 +120,7 @@ async def update_source_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin_ctx
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     payload = {}
     if body.title is not None:
         payload["title"] = body.title
@@ -150,7 +151,7 @@ async def get_source_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     source = get_source(client, org_id, str(source_id), environment_name=environment_name)
     if not source:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
@@ -158,7 +159,7 @@ async def get_source_route(
 
 
 @router.get("/documents")
-async def list_documents_route(
+def list_documents_route(
     source_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -167,12 +168,12 @@ async def list_documents_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return {"documents": list_documents(client, org_id, str(source_id), environment_name=environment_name)}
 
 
 @router.get("/documents/{doc_id}")
-async def get_document_route(
+def get_document_route(
     doc_id: UUID,
     *,
     user: Annotated[dict, Depends(get_current_user)],
@@ -184,7 +185,7 @@ async def get_document_route(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     if include_chunks:
-        client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+        client = shared_service_client(settings, create_client)
         r = (
             client.table("organization_members")
             .select("role")
@@ -195,7 +196,7 @@ async def get_document_route(
         )
         if not r.data or r.data[0].get("role") != "admin":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin required for include_chunks")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     doc = get_document(client, org_id, str(doc_id), environment_name=environment_name)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
@@ -206,7 +207,7 @@ async def get_document_route(
 
 
 @router.post("/ingest")
-async def ingest_route(
+def ingest_route(
     body: IngestRequest,
     admin_ctx: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -215,7 +216,7 @@ async def ingest_route(
     user, org_id = admin_ctx
     if settings.disable_ingestion:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Ingestion is disabled")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     source = get_source(client, org_id, str(body.source_id), environment_name=environment_name)
     if not source:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
@@ -324,7 +325,7 @@ async def ingest_file_route(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="metadata_json must be a JSON object")
         extra_metadata = parsed
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     source = get_source(client, org_id, str(source_id), environment_name=environment_name)
     if not source:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
@@ -401,7 +402,7 @@ async def ingest_file_route(
 
 
 @router.get("/ingest/{ingest_id}")
-async def get_ingest_route(
+def get_ingest_route(
     ingest_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -410,7 +411,7 @@ async def get_ingest_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     job = get_ingest_job(client, org_id, str(ingest_id), environment_name=environment_name)
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ingest job not found")
@@ -431,7 +432,7 @@ async def get_ingest_route(
 
 
 @router.get("/embedding-status")
-async def embedding_status_route(
+def embedding_status_route(
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -444,7 +445,7 @@ async def embedding_status_route(
     voyage_pending: int | None = None
     voyage_total: int | None = None
     try:
-        client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+        client = shared_service_client(settings, create_client)
         total_resp = client.table("rag_embeddings").select("chunk_id", count="exact").limit(1).execute()
         pending_resp = (
             client.table("rag_embeddings")

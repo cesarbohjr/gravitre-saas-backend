@@ -8,6 +8,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_department_context, get_org_context
 from app.config import Settings, get_settings
@@ -124,7 +125,7 @@ def _deliverable_from_run(run: dict[str, Any], workflow_name: str | None) -> dic
 
 
 @router.get("/home")
-async def get_lite_home(
+def get_lite_home(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -132,7 +133,7 @@ async def get_lite_home(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
 
     runs_resp = (
         client.table("workflow_runs")
@@ -262,7 +263,7 @@ def _user_department_name(
 
 
 @router.get("/workflows")
-async def get_lite_workflows(
+def get_lite_workflows(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     department_name: Annotated[str | None, Depends(get_department_context)],
@@ -270,7 +271,7 @@ async def get_lite_workflows(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     from app.billing.seat_context import list_assigned_resource_ids, resolve_seat_context
 
     user_id = str(current_user.get("user_id") or "")
@@ -317,7 +318,7 @@ async def get_lite_workflows(
 
 
 @router.post("/assign")
-async def assign_lite_work(
+def assign_lite_work(
     payload: Annotated[dict, Body(...)],
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -329,7 +330,7 @@ async def assign_lite_work(
     if not workflow_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="workflow_id is required")
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     wf_resp = (
         client.table("workflow_defs")
         .select("id, definition")
@@ -417,7 +418,7 @@ async def assign_lite_work(
 
 
 @router.get("/tasks")
-async def list_lite_tasks(
+def list_lite_tasks(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -426,7 +427,7 @@ async def list_lite_tasks(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
 
     response = (
         client.table("workflow_runs")
@@ -473,7 +474,7 @@ async def list_lite_tasks(
 
 
 @router.get("/tasks/{task_id}")
-async def get_lite_task(
+def get_lite_task(
     task_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -482,7 +483,7 @@ async def get_lite_task(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
 
     response = (
         client.table("workflow_runs")
@@ -519,7 +520,7 @@ async def get_lite_task(
 
 
 @router.post("/tasks/{task_id}/cancel")
-async def cancel_lite_task(
+def cancel_lite_task(
     task_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -528,7 +529,7 @@ async def cancel_lite_task(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
 
     check = (
         client.table("workflow_runs")
@@ -561,7 +562,7 @@ async def cancel_lite_task(
 
 
 @router.get("/deliverables")
-async def list_lite_deliverables(
+def list_lite_deliverables(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -569,7 +570,7 @@ async def list_lite_deliverables(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
 
     response = (
         client.table("workflow_runs")
@@ -616,7 +617,7 @@ async def list_lite_deliverables(
 
 
 @router.get("/deliverables/{deliverable_id}/download")
-async def download_lite_deliverable(
+def download_lite_deliverable(
     deliverable_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -629,7 +630,7 @@ async def download_lite_deliverable(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deliverable not found")
     run_id = deliverable_id.replace("dl_", "", 1)
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     run_resp = (
         client.table("workflow_runs")
         .select("id, workflow_id, status, parameters, created_at, completed_at, error_message")
@@ -681,7 +682,7 @@ async def download_lite_deliverable(
 
 
 @router.get("/results")
-async def get_lite_results(
+def get_lite_results(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -690,7 +691,7 @@ async def get_lite_results(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
 
     range_value = (range or "30d").lower().strip()
     days_map = {"7d": 7, "30d": 30, "90d": 90}

@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -456,7 +457,7 @@ async def list_operators_route(
 ) -> OperatorListResponse:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operators = list_operators(client, org_id)
     operator_ids = [str(op["id"]) for op in operators]
     bindings = list_operator_bindings(client, org_id, operator_ids)
@@ -525,7 +526,7 @@ async def create_operator_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> OperatorDetail:
     current_user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     allowed_envs = body.allowed_environments
     if allowed_envs is None:
         allowed_envs = [environment]
@@ -575,7 +576,7 @@ async def get_operator_route(
 ) -> OperatorDetail:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operator = get_operator(client, org_id, str(operator_id))
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
@@ -603,7 +604,7 @@ async def update_operator_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> OperatorDetail:
     current_user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operator = get_operator(client, org_id, str(operator_id))
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
@@ -682,7 +683,7 @@ async def list_operator_links_route(
     direction_value = (direction or "outgoing").strip().lower()
     if direction_value not in {"outgoing", "incoming", "all"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid direction")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operator = get_operator(client, org_id, str(operator_id))
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
@@ -703,7 +704,7 @@ async def create_operator_link_route(
     current_user, org_id = _admin
     if str(operator_id) == body.to_operator_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Operator link must be to another operator")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     from_operator = get_operator(client, org_id, str(operator_id))
     if not from_operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
@@ -750,7 +751,7 @@ async def delete_operator_link_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
     current_user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operator = get_operator(client, org_id, str(operator_id))
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
@@ -782,7 +783,7 @@ async def list_operator_versions_route(
 ) -> OperatorVersionListResponse:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operator = get_operator(client, org_id, str(operator_id))
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
@@ -808,7 +809,7 @@ async def create_operator_version_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> OperatorVersionSummary:
     current_user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operator = get_operator(client, org_id, str(operator_id))
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
@@ -862,7 +863,7 @@ async def activate_operator_version_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     current_user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operator = get_operator(client, org_id, str(operator_id))
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
@@ -911,7 +912,7 @@ async def list_operator_sessions_route(
 ) -> OperatorSessionListResponse:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operator = get_operator(client, org_id, str(operator_id))
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
@@ -939,7 +940,7 @@ async def create_operator_session_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     entitlements = resolve_entitlements(settings, org_id)
     concurrent_limit = (entitlements.get("limits") or {}).get("operator_sessions_concurrent")
     if concurrent_limit is not None:
@@ -1008,7 +1009,7 @@ async def get_operator_session_route(
 ) -> OperatorSessionDetail:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     session = get_operator_session(client, org_id, str(session_id))
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
@@ -1068,7 +1069,7 @@ async def create_operator_action_plan_route(
 ) -> OperatorActionPlanResponse:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operator = get_operator(client, org_id, str(operator_id))
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
@@ -1179,7 +1180,7 @@ async def run_operator_action_route(
 ) -> OperatorRunResponse:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operator = get_operator(client, org_id, str(operator_id))
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Operator not found")
@@ -1290,7 +1291,7 @@ async def list_agents_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operators = list_operators(client, org_id)
     operator_ids = [str(op["id"]) for op in operators]
     bindings = list_operator_bindings(client, org_id, operator_ids)
@@ -1404,7 +1405,7 @@ async def get_agent_detail_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operator = get_operator(client, org_id, str(agent_id))
     if not operator:
         legacy = _get_legacy_agent(client, org_id, str(agent_id))
@@ -1468,7 +1469,7 @@ async def create_agent_version_route(
     if body is None:
         return await create_operator_version_route(agent_id, _admin, environment, settings)
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operator = get_operator(client, org_id, str(agent_id))
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
@@ -1523,7 +1524,7 @@ async def create_agent_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     current_user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     entitlements = resolve_entitlements(settings, org_id)
     agent_limit = (entitlements.get("limits") or {}).get("agents")
     existing_agents = len(list_operators(client, org_id))
@@ -1602,7 +1603,7 @@ async def update_agent_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     current_user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     fields_set = getattr(body, "model_fields_set", getattr(body, "__fields_set__", set()))
     icon_field_set = "icon" in fields_set
     color_field_set = "avatar_color" in fields_set
@@ -1689,7 +1690,7 @@ async def delete_agent_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operator = get_operator(client, org_id, str(agent_id))
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
@@ -1741,7 +1742,7 @@ async def start_agent_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     current_user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     existing = get_operator(client, org_id, str(agent_id))
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
@@ -1775,7 +1776,7 @@ async def configure_agent_auto_execute_route(
 ) -> dict:
     """Configure policy-gated auto-execute for an agent/operator (STA-106)."""
     user, org_id = admin_ctx
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         updated = update_operator_auto_execute(
             client,
@@ -1807,7 +1808,7 @@ async def get_agent_run_budgets_route(
 ) -> dict:
     """Read autonomous run budget limits and today's usage (STA-109)."""
     _user, org_id = admin_ctx
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     operator = get_operator(client, org_id, str(agent_id))
     if not operator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
@@ -1825,7 +1826,7 @@ async def configure_agent_run_budgets_route(
 ) -> dict:
     """Configure per-agent autonomous run budgets (STA-109)."""
     user, org_id = admin_ctx
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         updated = update_operator_run_budgets(
             client,
@@ -1855,7 +1856,7 @@ async def stop_agent_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     current_user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     existing = get_operator(client, org_id, str(agent_id))
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
@@ -1888,7 +1889,7 @@ async def list_sessions_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         role = get_user_role(client, org_id, current_user["user_id"])
     except PolicyResolutionError as exc:
@@ -1937,7 +1938,7 @@ async def create_session_route(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     try:
-        client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+        client = shared_service_client(settings, create_client)
         entitlements = resolve_entitlements(settings, org_id)
         concurrent_limit = (entitlements.get("limits") or {}).get("operator_sessions_concurrent")
         if concurrent_limit is not None:
@@ -2026,7 +2027,7 @@ async def submit_session_task(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         session = (
             client.table("sessions")
@@ -2347,7 +2348,7 @@ async def get_session_detail(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     session = (
         client.table("sessions")
         .select(
@@ -2404,7 +2405,7 @@ async def execute_session_actions(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     session = (
         client.table("sessions")
         .select("id")
@@ -2461,7 +2462,7 @@ async def get_session_execution(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     execution = (
         client.table("task_executions")
         .select("id, status, progress, current_step, results")
@@ -2505,7 +2506,7 @@ async def execute_operator_action_route(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     from app.services.operator_execute_action_service import execute_operator_action
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return execute_operator_action(
             client=client,

@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/agents", tags=["agent-knowledge-assignments"])
 
 
 @router.get("/demo-knowledge-workflows")
-async def list_demo_knowledge_workflows():
+def list_demo_knowledge_workflows():
     from app.marketplace.demo_workflow_templates import list_agent_knowledge_demo_workflows
 
     return {"workflows": list_agent_knowledge_demo_workflows()}
@@ -91,7 +91,7 @@ def _assignment_service():
 
 
 @router.get("/{agent_id}/knowledge-assignments")
-async def list_knowledge_assignments(
+def list_knowledge_assignments(
     agent_id: str,
     org_id: Annotated[str, Depends(get_org_context)],
     client=Depends(get_supabase),
@@ -100,7 +100,7 @@ async def list_knowledge_assignments(
 
 
 @router.get("/{agent_id}/knowledge-sources")
-async def list_knowledge_sources_alias(
+def list_knowledge_sources_alias(
     agent_id: str,
     org_id: Annotated[str, Depends(get_org_context)],
     client=Depends(get_supabase),
@@ -135,7 +135,7 @@ async def create_knowledge_source_alias(
 
 
 @router.patch("/{agent_id}/knowledge-assignments/{assignment_id}")
-async def update_knowledge_assignment(
+def update_knowledge_assignment(
     agent_id: str,
     assignment_id: str,
     body: KnowledgeAssignmentUpdate,
@@ -148,7 +148,7 @@ async def update_knowledge_assignment(
 
 
 @router.delete("/{agent_id}/knowledge-assignments/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_knowledge_assignment(
+def delete_knowledge_assignment(
     agent_id: str,
     assignment_id: str,
     org_id: Annotated[str, Depends(get_org_context)],
@@ -177,7 +177,7 @@ async def sync_knowledge_assignment(
 
 
 @router.get("/{agent_id}/capabilities")
-async def get_agent_capabilities(
+def get_agent_capabilities(
     agent_id: str,
     org_id: Annotated[str, Depends(get_org_context)],
     client=Depends(get_supabase),
@@ -186,7 +186,7 @@ async def get_agent_capabilities(
 
 
 @router.get("/{agent_id}/knowledge-assignments/{assignment_id}/provenance")
-async def get_assignment_provenance(
+def get_assignment_provenance(
     agent_id: str,
     assignment_id: str,
     org_id: Annotated[str, Depends(get_org_context)],

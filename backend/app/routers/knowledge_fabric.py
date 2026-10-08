@@ -7,6 +7,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_platform_admin
 from app.config import Settings, get_settings
@@ -22,7 +23,7 @@ internal_router = APIRouter(prefix="/api/internal/knowledge-fabric", tags=["know
 
 
 def _client(settings: Settings):
-    return create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return shared_service_client(settings, create_client)
 
 
 class RetrieveRequest(BaseModel):
@@ -61,7 +62,7 @@ async def require_internal_secret(
 
 
 @router.get("/packs")
-async def list_packs(
+def list_packs(
     current_user: Annotated[dict, Depends(get_current_user)],
     department: str | None = None,
 ) -> dict[str, Any]:
@@ -78,7 +79,7 @@ async def list_packs(
 
 
 @router.get("/admin/quality")
-async def admin_quality_dashboard(
+def admin_quality_dashboard(
     _: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
@@ -88,7 +89,7 @@ async def admin_quality_dashboard(
 
 
 @router.post("/classify")
-async def classify_query(
+def classify_query(
     body: RetrieveRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
 ) -> dict[str, Any]:
@@ -130,7 +131,7 @@ async def retrieve(
 
 
 @router.post("/admin/register-sources", status_code=status.HTTP_201_CREATED)
-async def admin_register_sources(
+def admin_register_sources(
     _: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:

@@ -23,7 +23,7 @@ class RollbackMemoryRequest(BaseModel):
 
 
 @router.get("/candidates")
-async def list_promotion_candidates(
+def list_promotion_candidates(
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
     status: str | None = Query(default=None),
@@ -89,7 +89,7 @@ async def rollback_promoted_memory(
 
 
 @router.get("/audit")
-async def list_promotion_audit(
+def list_promotion_audit(
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
     memory_id: str | None = Query(default=None),
@@ -112,7 +112,7 @@ async def list_promotion_audit(
 
 
 @router.get("/recent-auto-promotions")
-async def list_recent_auto_promotions(
+def list_recent_auto_promotions(
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
     since: str = Query(default="24h"),

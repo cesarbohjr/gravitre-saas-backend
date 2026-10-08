@@ -53,6 +53,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // API route handlers and the /auth/v1 proxy authenticate each request
+  // themselves (bearer token / Supabase), and the user lookup below was only
+  // used to gate pages. Skipping it here removes a Supabase Auth round trip
+  // from every API call (~20 per page load; production middleware p75 ~150ms).
+  if (pathname.startsWith("/api/") || pathname.startsWith("/auth/v1/")) {
+    return withRouteKind(NextResponse.next({ request }), request, pathname)
+  }
+
   const { response: supabaseResponse, user } = await updateSession(request)
 
   const publicPaths = [
@@ -104,9 +112,7 @@ export async function proxy(request: NextRequest) {
       (p !== "/" && pathname.startsWith(p))
   )
 
-  const isApiRoute = pathname.startsWith("/api/")
-
-  if (isPublicPath || isApiRoute) {
+  if (isPublicPath) {
     return withRouteKind(supabaseResponse, request, pathname)
   }
 

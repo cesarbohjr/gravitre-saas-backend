@@ -131,7 +131,7 @@ async def patch_entity_relationship(
 
 
 @router.post("/relationships")
-async def create_entity_relationship(
+def create_entity_relationship(
     body: RelationshipCreateBody,
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
@@ -163,7 +163,7 @@ async def create_entity_relationship(
 
 
 @router.get("/knowledge-nodes/match")
-async def match_knowledge_nodes(
+def match_knowledge_nodes(
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
@@ -189,7 +189,7 @@ async def match_knowledge_nodes(
 
 
 @router.get("/knowledge-nodes")
-async def list_knowledge_nodes(
+def list_knowledge_nodes(
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
@@ -215,7 +215,7 @@ async def list_knowledge_nodes(
 
 
 @router.post("/knowledge-nodes")
-async def create_knowledge_node(
+def create_knowledge_node(
     body: KnowledgeNodeCreateBody,
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
@@ -243,7 +243,7 @@ async def create_knowledge_node(
 
 
 @router.patch("/knowledge-nodes/{node_id}")
-async def update_knowledge_node(
+def update_knowledge_node(
     node_id: str,
     body: KnowledgeNodeUpdateBody,
     org_id: Annotated[str, Depends(get_org_context)],
@@ -270,7 +270,7 @@ async def update_knowledge_node(
 
 
 @router.delete("/knowledge-nodes/{node_id}")
-async def delete_knowledge_node(
+def delete_knowledge_node(
     node_id: str,
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
@@ -491,7 +491,7 @@ async def get_bandit_status(
 
 
 @router.get("/learning/memory-conflicts")
-async def get_memory_conflicts(
+def get_memory_conflicts(
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
@@ -904,7 +904,7 @@ async def get_research_monitors_admin(
 
 
 @router.get("/consensus-history")
-async def get_consensus_history_admin(
+def get_consensus_history_admin(
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),

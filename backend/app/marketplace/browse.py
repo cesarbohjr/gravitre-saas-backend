@@ -6,7 +6,7 @@ import uuid
 from typing import Any
 
 from app.marketplace.entitlements import asset_requires_payment
-from app.marketplace.service import MarketplaceError, validate_connectors_for_asset
+from app.marketplace.service import MarketplaceError, org_connector_types, validate_connectors_for_asset
 
 BROWSE_LIST_COLUMNS = (
     "id, slug, title, description, asset_type, category, department, tags, "
@@ -346,6 +346,15 @@ def list_marketplace_assets(
     ]
     pack_items_by_asset = _pack_items_by_asset(client, pack_asset_ids)
 
+    # Connector types depend only on the org, so load them once for the page
+    # instead of 4 queries per row (~200 sequential round trips for 50 rows).
+    active_types: set[str] | None = None
+    staged_types: set[str] | None = None
+    if any(row.get("required_connectors") for row in rows):
+        active_types, staged_types = org_connector_types(
+            client, org_id, environment_name=environment_name
+        )
+
     assets: list[dict[str, Any]] = []
     for row in rows:
         validation = validate_connectors_for_asset(
@@ -353,6 +362,8 @@ def list_marketplace_assets(
             org_id,
             row.get("required_connectors") or [],
             environment_name=environment_name,
+            active_types=active_types,
+            staged_types=staged_types,
         )
         connector_summary = _checklist_summary(row.get("required_connectors"), validation, asset=row)
         asset_id = str(row["id"])

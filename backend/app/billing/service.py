@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from datetime import date, datetime, timedelta, timezone
 import math
 import uuid
@@ -174,11 +176,35 @@ MODEL_MULTIPLIERS: list[tuple[str, float]] = [
 
 
 def get_supabase_client(settings: Settings) -> Client:
-    return create_client(settings.supabase_url, settings.supabase_service_role_key)
+    # Shared process-wide client (see app.core.db); passes this module's
+    # create_client so tests that patch it still get their mock.
+    from app.core.db import shared_service_client
+
+    return shared_service_client(settings, create_client)
+
+
+# billing_plans is a small global catalog read several times per billing /
+# entitlement request; cache it briefly for the shared production client.
+_BILLING_PLANS_TTL_S = 300.0
+_billing_plans_cache: tuple[float, list[dict[str, Any]]] | None = None
+
+
+def _load_billing_plan_rows(client: Client) -> list[dict[str, Any]]:
+    global _billing_plans_cache
+    from app.core.db import is_shared_service_client
+
+    cacheable = is_shared_service_client(client)
+    now = time.monotonic()
+    if cacheable and _billing_plans_cache and _billing_plans_cache[0] > now:
+        return _billing_plans_cache[1]
+    rows = client.table("billing_plans").select("*").execute().data or []
+    if cacheable:
+        _billing_plans_cache = (now + _BILLING_PLANS_TTL_S, rows)
+    return rows
 
 
 def get_billing_plans(client: Client) -> dict[str, dict[str, Any]]:
-    rows = client.table("billing_plans").select("*").execute().data or []
+    rows = _load_billing_plan_rows(client)
     if not rows:
         return DEFAULT_PLANS
     plans = {row["code"]: row for row in rows if row.get("code")}

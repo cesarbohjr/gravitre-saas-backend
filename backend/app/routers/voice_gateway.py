@@ -83,7 +83,7 @@ async def start_voice_session_route(
 
 
 @router.get("/sessions/{session_id}")
-async def get_voice_session_route(
+def get_voice_session_route(
     session_id: str,
     org_id: Annotated[str, Depends(_voice_org)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -136,7 +136,7 @@ async def _twilio_auth_token(settings: Settings, org_id: str | None = None) -> s
 
 
 @twilio_router.post("/connect/{session_id}")
-async def twilio_connect_twiml(
+def twilio_connect_twiml(
     session_id: str,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> PlainTextResponse:

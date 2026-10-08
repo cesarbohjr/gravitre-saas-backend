@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from app.core.async_bridge import spawn_background
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -30,7 +31,7 @@ class IntelligenceOutcomeCoordinator:
         response: dict[str, Any],
         classification: dict[str, Any],
     ) -> None:
-        asyncio.create_task(
+        spawn_background(
             self.record_response(
                 org_id,
                 agent_id=agent_id,

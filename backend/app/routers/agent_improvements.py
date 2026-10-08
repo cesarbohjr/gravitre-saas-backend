@@ -37,7 +37,7 @@ class AgentImprovementsBody(BaseModel):
 
 
 @router.get("/{agent_id}/improvements")
-async def get_agent_improvement_state(
+def get_agent_improvement_state(
     agent_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -49,7 +49,7 @@ async def get_agent_improvement_state(
 
 
 @router.post("/{agent_id}/improvements")
-async def post_agent_improvements(
+def post_agent_improvements(
     agent_id: str,
     body: AgentImprovementsBody,
     admin: Annotated[tuple, Depends(require_admin)],

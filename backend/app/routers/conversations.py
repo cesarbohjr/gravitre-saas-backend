@@ -9,6 +9,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
@@ -334,7 +335,7 @@ def _list_conversations_query(
 
 
 @router.get("")
-async def list_conversations(
+def list_conversations(
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -345,7 +346,7 @@ async def list_conversations(
 ) -> dict:
     org_id = _require_org(org_id)
     load_started = time.monotonic()
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     select_cols = "id, title, preview, message_count, created_at, updated_at, archived_at, pinned_at"
     select_fallback = "id, title, preview, message_count, created_at, updated_at, archived_at"
     term = (search or "").strip()
@@ -484,7 +485,7 @@ async def list_conversations(
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_conversation(
+def create_conversation(
     body: ConversationCreateRequest,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -507,7 +508,7 @@ async def create_conversation(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     now = _now_iso()
     title = (body.title or "").strip() or "New conversation"
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     duplicate = _find_duplicate_conversation(
         client,
         org_id=org_id,
@@ -540,14 +541,14 @@ async def create_conversation(
 
 
 @router.post("/bulk-delete", status_code=status.HTTP_204_NO_CONTENT)
-async def bulk_delete_conversations(
+def bulk_delete_conversations(
     body: BulkDeleteRequest,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
     org_id = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     seen: set[str] = set()
     for raw_id in body.ids:
         conversation_id = raw_id.strip()
@@ -586,14 +587,14 @@ def _normalize_saved_question(row: dict) -> dict:
 
 
 @router.get("/saved-questions")
-async def list_saved_questions(
+def list_saved_questions(
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
     limit: int = Query(50, ge=1, le=200),
 ) -> dict:
     org_id = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         response = (
             client.table("saved_questions")
@@ -623,14 +624,14 @@ async def list_saved_questions(
 
 
 @router.post("/saved-questions", status_code=status.HTTP_201_CREATED)
-async def save_question(
+def save_question(
     body: SaveQuestionRequest,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     question_text = body.question_text.strip()
     if not question_text:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="question_text is required")
@@ -713,14 +714,14 @@ async def save_question(
 
 
 @router.delete("/saved-questions/{saved_question_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_saved_question(
+def delete_saved_question(
     saved_question_id: str,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
     org_id = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         response = (
             client.table("saved_questions")
@@ -743,14 +744,14 @@ async def delete_saved_question(
 
 
 @router.get("/{conversation_id}")
-async def get_conversation(
+def get_conversation(
     conversation_id: str,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     row = _get_owned_conversation(
         client,
         conversation_id=conversation_id,
@@ -761,7 +762,7 @@ async def get_conversation(
 
 
 @router.patch("/{conversation_id}")
-async def update_conversation(
+def update_conversation(
     conversation_id: str,
     body: ConversationUpdateRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -769,7 +770,7 @@ async def update_conversation(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _get_owned_conversation(
         client,
         conversation_id=conversation_id,
@@ -799,14 +800,14 @@ async def update_conversation(
 
 
 @router.post("/{conversation_id}/archive")
-async def archive_conversation(
+def archive_conversation(
     conversation_id: str,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _get_owned_conversation(
         client,
         conversation_id=conversation_id,
@@ -831,14 +832,14 @@ async def archive_conversation(
 
 
 @router.post("/{conversation_id}/unarchive")
-async def unarchive_conversation(
+def unarchive_conversation(
     conversation_id: str,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _get_owned_conversation(
         client,
         conversation_id=conversation_id,
@@ -863,14 +864,14 @@ async def unarchive_conversation(
 
 
 @router.post("/{conversation_id}/pin")
-async def pin_conversation(
+def pin_conversation(
     conversation_id: str,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _get_owned_conversation(
         client,
         conversation_id=conversation_id,
@@ -900,14 +901,14 @@ async def pin_conversation(
 
 
 @router.post("/{conversation_id}/unpin")
-async def unpin_conversation(
+def unpin_conversation(
     conversation_id: str,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _get_owned_conversation(
         client,
         conversation_id=conversation_id,
@@ -937,14 +938,14 @@ async def unpin_conversation(
 
 
 @router.delete("/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_conversation(
+def delete_conversation(
     conversation_id: str,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
     org_id = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _delete_owned_conversation(
         client,
         conversation_id=conversation_id,
@@ -954,7 +955,7 @@ async def delete_conversation(
 
 
 @router.get("/{conversation_id}/messages")
-async def list_conversation_messages(
+def list_conversation_messages(
     conversation_id: str,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -970,7 +971,7 @@ async def list_conversation_messages(
     org_id = _require_org(org_id)
     load_started = time.monotonic()
     page_limit = 80 if limit is None else int(limit)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _get_owned_conversation(
         client,
         conversation_id=conversation_id,
@@ -1013,7 +1014,7 @@ async def list_conversation_messages(
 
 
 @router.post("/{conversation_id}/messages", status_code=status.HTTP_201_CREATED)
-async def append_conversation_messages(
+def append_conversation_messages(
     conversation_id: str,
     body: AppendMessagesRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -1021,7 +1022,7 @@ async def append_conversation_messages(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     owned = _get_owned_conversation(
         client,
         conversation_id=conversation_id,

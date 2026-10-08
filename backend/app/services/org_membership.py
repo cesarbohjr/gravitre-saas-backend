@@ -315,18 +315,33 @@ FOUNDER_ADMIN_EMAILS = frozenset(
 )
 
 
+# (user_id, org_id) pairs already promoted by this process. /api/auth/me runs
+# this on every call, so without it founder accounts paid an upsert, a select
+# and two updates on each page load.
+_founder_access_ensured: set[tuple[str, str]] = set()
+
+
 def ensure_founder_admin_access(
     client: Client,
     *,
     user_id: str,
     email: str | None,
     org_id: str | None,
-) -> None:
-    """Idempotent: promote known founder emails to owner + platform_admins on login."""
+) -> bool:
+    """Idempotent: promote known founder emails to owner + platform_admins on login.
+
+    Returns True when it wrote anything (callers reload memberships only then).
+    """
     uid = str(user_id or "").strip()
     safe_email = str(email or "").strip().lower()
     if not uid or safe_email not in FOUNDER_ADMIN_EMAILS:
-        return
+        return False
+    from app.core.db import is_shared_service_client
+
+    memo_key = (uid, str(org_id or ""))
+    memoize = is_shared_service_client(client)
+    if memoize and memo_key in _founder_access_ensured:
+        return False
     try:
         client.table("platform_admins").upsert(
             {"user_id": uid, "email": safe_email, "notes": "Gravitre master admin"},
@@ -336,5 +351,8 @@ def ensure_founder_admin_access(
         logger.warning("ensure_founder_admin_access platform_admins failed user_id=%s error=%s", uid, exc)
     if org_id:
         promote_user_to_org_owner(client, org_id, uid)
+    if memoize:
+        _founder_access_ensured.add(memo_key)
+    return True
 
 # deploy trigger 20260726T054923Z

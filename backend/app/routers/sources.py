@@ -9,6 +9,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -141,7 +142,7 @@ def _serialize_source_row(
 
 
 @router.get("/types")
-async def list_source_types_route(
+def list_source_types_route(
     _user: Annotated[dict, Depends(get_current_user)],
     category: Annotated[str | None, Query(alias="category")] = None,
     search: Annotated[str | None, Query()] = None,
@@ -151,7 +152,7 @@ async def list_source_types_route(
 
 
 @router.get("/connectors")
-async def list_source_connectors_route(
+def list_source_connectors_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -160,7 +161,7 @@ async def list_source_connectors_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     connectors = list_connectors_for_vendor(client, org_id, environment=environment_name, oauth_vendor=vendor)
     return {"connectors": connectors}
 
@@ -176,7 +177,7 @@ async def test_source_connection_route(
     config = dict(body.config or {})
     if body.connection_string:
         config.setdefault("connection_string", body.connection_string)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key) if org_id else None
+    client = shared_service_client(settings, create_client) if org_id else None
     try:
         result = await run_connection_test(
             body.type_id,
@@ -204,7 +205,7 @@ async def test_source_connection_route(
 
 
 @router.get("")
-async def list_sources(
+def list_sources(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -212,7 +213,7 @@ async def list_sources(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         r = (
             client.table("rag_sources")
@@ -248,7 +249,7 @@ async def get_source_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     source = get_source(client, org_id, str(source_id), environment_name=environment_name)
     if not source or source.get("deleted_at"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
@@ -256,7 +257,7 @@ async def get_source_route(
 
 
 @router.get("/{source_id}/sync-history")
-async def get_source_sync_history_route(
+def get_source_sync_history_route(
     source_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -265,7 +266,7 @@ async def get_source_sync_history_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     history = list_source_sync_history(client, org_id, str(source_id), limit=limit)
     return {"history": history}
 
@@ -280,7 +281,7 @@ async def test_existing_source_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     source = get_source(client, org_id, str(source_id), environment_name=environment_name)
     if not source or source.get("deleted_at"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
@@ -318,7 +319,7 @@ async def get_source_schema_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     source = get_source(client, org_id, str(source_id), environment_name=environment_name)
     if not source or source.get("deleted_at"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
@@ -346,7 +347,7 @@ async def query_source_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     source = get_source(client, org_id, str(source_id), environment_name=environment_name)
     if not source or source.get("deleted_at"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
@@ -368,7 +369,7 @@ async def query_source_route(
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_source_route(
+def create_source_route(
     body: SourceCreateRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -388,7 +389,7 @@ async def create_source_route(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error_detail("; ".join(errors), "VALIDATION_ERROR"),
         )
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     saas_errors = validate_saas_connector_link(
         client,
         org_id,
@@ -457,7 +458,7 @@ async def update_source_route(
                 detail=error_detail("ENCRYPTION_KEY not configured", "INVALID_CONFIG"),
             )
         existing = get_source(
-            create_client(settings.supabase_url, settings.supabase_service_role_key),
+            shared_service_client(settings, create_client),
             org_id,
             str(source_id),
             environment_name=environment_name,
@@ -469,7 +470,7 @@ async def update_source_route(
             merged["connection_string"] = body.connection_string
         config = serialize_connection_config(type_id, merged)
         payload["connection_string_encrypted"] = encrypt_value(json.dumps(config), settings.encryption_key)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     updated = (
         client.table("rag_sources")
         .update(payload)
@@ -494,14 +495,14 @@ async def update_source_route(
 
 
 @router.delete("/{source_id}")
-async def delete_source_route(
+def delete_source_route(
     source_id: UUID,
     _admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     existing = (
         client.table("rag_sources")
         .select("id")
@@ -538,7 +539,7 @@ async def sync_source_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     source = (
         client.table("rag_sources")
         .select("id, org_id, status, metadata, type, connection_string_encrypted, tables_count, last_sync_at, environment")
@@ -571,7 +572,7 @@ async def list_source_agent_assignments(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     """Agents in this org and whether each is assigned this rag_source knowledge base."""
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     source = (
         client.table("rag_sources")
         .select("id, name, org_id")

@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context
 from app.config import Settings, get_settings
@@ -39,7 +40,7 @@ class SwarmStartRequest(BaseModel):
 
 
 def _client(settings: Settings):
-    return create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return shared_service_client(settings, create_client)
 
 
 def _raise_swarm(exc: SwarmCoordinatorError) -> None:
@@ -56,7 +57,7 @@ def _raise_swarm(exc: SwarmCoordinatorError) -> None:
 
 
 @router.get("")
-async def get_swarm_runs(
+def get_swarm_runs(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -68,7 +69,7 @@ async def get_swarm_runs(
 
 
 @router.get("/{swarm_run_id}")
-async def get_swarm_run_route(
+def get_swarm_run_route(
     swarm_run_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -125,7 +126,7 @@ async def post_swarm_aggregate(
 
 
 @router.post("/{swarm_run_id}/cancel")
-async def post_swarm_cancel(
+def post_swarm_cancel(
     swarm_run_id: str,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],

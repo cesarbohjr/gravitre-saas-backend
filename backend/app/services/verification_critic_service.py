@@ -6,6 +6,7 @@ and write-scope checks using a fast model tier.
 from __future__ import annotations
 
 import asyncio
+from app.core.async_bridge import spawn_background
 import json
 import re
 from typing import Any
@@ -178,7 +179,7 @@ def schedule_verification_after_delivery(
             logger.debug("async_observe_critic_failed error=%s", exc)
 
     try:
-        task = asyncio.create_task(_run())
+        task = spawn_background(_run())
         _CRITIC_BACKGROUND_TASKS.add(task)
         task.add_done_callback(_CRITIC_BACKGROUND_TASKS.discard)
     except Exception as exc:  # noqa: BLE001

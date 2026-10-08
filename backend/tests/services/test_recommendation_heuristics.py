@@ -187,7 +187,7 @@ def test_heuristics_service_does_not_import_execute_surfaces():
 
 
 def _route_body(source: str, fn_name: str) -> str:
-    marker = f"async def {fn_name}"
+    marker = f"def {fn_name}("
     start = source.index(marker)
     end = source.find("\n@router.", start + 1)
     return source[start : end if end > 0 else None]

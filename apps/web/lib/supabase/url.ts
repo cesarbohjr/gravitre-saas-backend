@@ -79,3 +79,29 @@ export function sanitizeAuthErrorMessage(message: string | undefined | null): st
     .replace(/https?:\/\/[a-z0-9-]+\.supabase\.co/gi, "Gravitre")
     .replace(/\b[a-z0-9-]+\.supabase\.co\b/gi, "gravitre.app")
 }
+
+/**
+ * Server-side Auth client config (middleware, route handlers, server components).
+ *
+ * Browsers talk to Auth through the branded same-origin proxy (gravitre.app/auth/v1),
+ * but server code using that URL loops back out through Vercel's edge and the
+ * middleware before reaching Supabase: production p75 was ~187ms per getUser()
+ * via gravitre.app versus ~45ms against the project host directly. Server code
+ * therefore talks to the project host, while keeping the cookie name the browser
+ * client derives from the public URL (`sb-<first host label>-auth-token`) so both
+ * sides read and write the same session cookie.
+ */
+export function getSupabaseServerAuthConfig(): { url: string; cookieName: string | undefined } {
+  const publicUrl = getSupabasePublicUrl()
+  const projectUrl = getSupabaseProjectUrl()
+  if (!projectUrl || projectUrl === publicUrl) {
+    return { url: publicUrl, cookieName: undefined }
+  }
+  let cookieName: string | undefined
+  try {
+    cookieName = `sb-${new URL(publicUrl).hostname.split(".")[0]}-auth-token`
+  } catch {
+    return { url: publicUrl, cookieName: undefined }
+  }
+  return { url: projectUrl, cookieName }
+}

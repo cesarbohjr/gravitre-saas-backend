@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from app.core.async_bridge import spawn_background
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -252,7 +253,7 @@ class OutcomeAttributionService:
                 "attribution_window_days": int(row.get("attribution_window_days") or 14),
                 "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
             }
-            asyncio.create_task(
+            spawn_background(
                 get_clickhouse_service().insert_events("gravitre.outcome_events", [ch_row])
             )
         except Exception as exc:  # noqa: BLE001

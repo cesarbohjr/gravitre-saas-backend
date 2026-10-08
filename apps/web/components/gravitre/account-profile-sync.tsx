@@ -3,15 +3,20 @@
 import { useEffect } from "react"
 import useSWR from "swr"
 import { useAuth } from "@/lib/auth-context"
-import { authApi } from "@/lib/api"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
+import type { UserProfile } from "@/types/api"
 import { useUserProfile } from "@/lib/user-profile-context"
 
 /** Keeps local profile context aligned with the server user row (name, avatar, title, department). */
 export function AccountProfileSync() {
   const { user } = useAuth()
   const { updateProfile, setAvatarImage } = useUserProfile()
-  const { data } = useSWR(user ? "account-profile-me" : null, () => authApi.me(), {
+  // Same key and fetcher as AppShell's /api/auth/me so SWR dedupes them into
+  // one request (this used to fetch the ~1.4s endpoint a second time).
+  const { data } = useSWR<UserProfile>(user ? "/api/auth/me" : null, apiFetcher, {
     revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    dedupingInterval: 60_000,
   })
 
   useEffect(() => {

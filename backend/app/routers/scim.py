@@ -188,7 +188,7 @@ def _get_group_members(client, group_id: str) -> list[dict[str, str]]:
 
 
 @router.get("/Users", response_model=SCIMListResponse)
-async def list_users(
+def list_users(
     auth: Annotated[dict[str, Any], Depends(verify_scim_token)],
     startIndex: int = Query(1, ge=1),
     count: int = Query(100, ge=1, le=1000),
@@ -218,7 +218,7 @@ async def list_users(
 
 
 @router.get("/Users/{user_id}", response_model=SCIMUser)
-async def get_user(
+def get_user(
     user_id: str,
     auth: Annotated[dict[str, Any], Depends(verify_scim_token)],
     settings: Settings = Depends(get_settings),
@@ -238,7 +238,7 @@ async def get_user(
 
 
 @router.post("/Users", status_code=status.HTTP_201_CREATED, response_model=SCIMUser)
-async def create_user(
+def create_user(
     user: SCIMUser,
     auth: Annotated[dict[str, Any], Depends(verify_scim_token)],
     settings: Settings = Depends(get_settings),
@@ -270,7 +270,7 @@ async def create_user(
 
 
 @router.put("/Users/{user_id}", response_model=SCIMUser)
-async def replace_user(
+def replace_user(
     user_id: str,
     user: SCIMUser,
     auth: Annotated[dict[str, Any], Depends(verify_scim_token)],
@@ -294,7 +294,7 @@ async def replace_user(
 
 
 @router.patch("/Users/{user_id}", response_model=SCIMUser)
-async def patch_user(
+def patch_user(
     user_id: str,
     patch: SCIMPatchOp,
     auth: Annotated[dict[str, Any], Depends(verify_scim_token)],
@@ -334,7 +334,7 @@ async def patch_user(
 
 
 @router.delete("/Users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(
+def delete_user(
     user_id: str,
     auth: Annotated[dict[str, Any], Depends(verify_scim_token)],
     settings: Settings = Depends(get_settings),
@@ -354,7 +354,7 @@ async def delete_user(
 
 
 @router.get("/Groups", response_model=SCIMListResponse)
-async def list_groups(
+def list_groups(
     auth: Annotated[dict[str, Any], Depends(verify_scim_token)],
     startIndex: int = Query(1, ge=1),
     count: int = Query(100, ge=1, le=1000),
@@ -383,7 +383,7 @@ async def list_groups(
 
 
 @router.get("/Groups/{group_id}", response_model=SCIMGroup)
-async def get_group(
+def get_group(
     group_id: str,
     auth: Annotated[dict[str, Any], Depends(verify_scim_token)],
     settings: Settings = Depends(get_settings),
@@ -404,7 +404,7 @@ async def get_group(
 
 
 @router.post("/Groups", status_code=status.HTTP_201_CREATED, response_model=SCIMGroup)
-async def create_group(
+def create_group(
     group: SCIMGroup,
     auth: Annotated[dict[str, Any], Depends(verify_scim_token)],
     settings: Settings = Depends(get_settings),
@@ -430,7 +430,7 @@ async def create_group(
 
 
 @router.put("/Groups/{group_id}", response_model=SCIMGroup)
-async def replace_group(
+def replace_group(
     group_id: str,
     group: SCIMGroup,
     auth: Annotated[dict[str, Any], Depends(verify_scim_token)],
@@ -456,7 +456,7 @@ async def replace_group(
 
 
 @router.patch("/Groups/{group_id}", response_model=SCIMGroup)
-async def patch_group(
+def patch_group(
     group_id: str,
     patch: SCIMPatchOp,
     auth: Annotated[dict[str, Any], Depends(verify_scim_token)],
@@ -496,7 +496,7 @@ async def patch_group(
 
 
 @router.delete("/Groups/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_group(
+def delete_group(
     group_id: str,
     auth: Annotated[dict[str, Any], Depends(verify_scim_token)],
     settings: Settings = Depends(get_settings),

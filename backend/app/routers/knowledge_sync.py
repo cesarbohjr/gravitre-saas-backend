@@ -8,6 +8,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_org_context, require_admin, require_org_member
 from app.auth.platform_admin import can_trigger_knowledge_sync, is_org_admin_role
@@ -91,7 +92,7 @@ async def _list_sync_jobs_handler(
     connector_id: str | None,
     limit: int,
 ) -> dict[str, Any]:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     jobs = list_recent_sync_jobs(client, org_id, limit=limit, connector_id=connector_id)
     return {"jobs": jobs}
 
@@ -104,7 +105,7 @@ async def _trigger_connector_sync_handler(
     *,
     full_sync: bool,
 ) -> dict[str, Any]:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         result = await asyncio.to_thread(
             trigger_connector_knowledge_sync,
@@ -168,7 +169,7 @@ async def webhook_trigger_sync(
     x_webhook_secret: Annotated[str | None, Header()] = None,
 ) -> dict[str, Any]:
     """Webhook-on-publish hook: enqueue immediate knowledge sync for a connector."""
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     row = (
         client.table("connectors")
         .select("id,org_id,type,config,status")

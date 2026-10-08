@@ -11,6 +11,7 @@ from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from onelogin.saml2.settings import OneLogin_Saml2_Settings
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
@@ -174,14 +175,14 @@ class SSOInitResponse(BaseModel):
 
 
 @router.get("/config")
-async def get_sso_config(
+def get_sso_config(
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
     _feature: Annotated[dict[str, Any], Depends(require_feature("sso_saml"))],
 ) -> SSOConfigurationResponse | None:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     result = client.table("sso_configurations").select("*").eq("org_id", org_id).limit(1).execute()
     result_err = response_error(result)
     if _is_missing_table_error(result_err):
@@ -208,7 +209,7 @@ async def get_sso_config(
 
 
 @router.post("/config")
-async def create_or_update_sso_config(
+def create_or_update_sso_config(
     data: SSOConfigurationCreate,
     org_id: Annotated[str | None, Depends(get_org_context)],
     user: Annotated[dict[str, Any], Depends(get_current_user)],
@@ -217,7 +218,7 @@ async def create_or_update_sso_config(
 ) -> SSOConfigurationResponse:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _assert_org_admin(client, org_id, user["user_id"])
 
     if data.provider_type == "saml":
@@ -283,7 +284,7 @@ async def create_or_update_sso_config(
 
 
 @router.post("/config/enable")
-async def enable_sso(
+def enable_sso(
     org_id: Annotated[str | None, Depends(get_org_context)],
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -291,7 +292,7 @@ async def enable_sso(
 ) -> dict[str, bool]:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _assert_org_admin(client, org_id, user["user_id"])
     result = (
         client.table("sso_configurations")
@@ -310,7 +311,7 @@ async def enable_sso(
 
 
 @router.post("/config/disable")
-async def disable_sso(
+def disable_sso(
     org_id: Annotated[str | None, Depends(get_org_context)],
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -318,7 +319,7 @@ async def disable_sso(
 ) -> dict[str, bool]:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _assert_org_admin(client, org_id, user["user_id"])
     result = (
         client.table("sso_configurations")
@@ -335,7 +336,7 @@ async def disable_sso(
 
 
 @router.delete("/config")
-async def delete_sso_config(
+def delete_sso_config(
     org_id: Annotated[str | None, Depends(get_org_context)],
     user: Annotated[dict[str, Any], Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -343,7 +344,7 @@ async def delete_sso_config(
 ) -> dict[str, str]:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _assert_org_admin(client, org_id, user["user_id"])
     result = client.table("sso_configurations").delete().eq("org_id", org_id).execute()
     result_err = response_error(result)
@@ -355,7 +356,7 @@ async def delete_sso_config(
 
 
 @router.get("/metadata")
-async def saml_metadata(
+def saml_metadata(
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
     request: Request,
@@ -363,7 +364,7 @@ async def saml_metadata(
 ) -> Response:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     result = client.table("sso_configurations").select("*").eq("org_id", org_id).limit(1).execute()
     if response_error(result) or not result.data:
         raise HTTPException(status_code=404, detail="SSO configuration not found")
@@ -380,14 +381,14 @@ async def saml_metadata(
 
 
 @router.post("/init")
-async def init_sso(
+def init_sso(
     request: Request,
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> SSOInitResponse:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     result = (
         client.table("sso_configurations")
         .select("*")
@@ -439,7 +440,7 @@ async def sso_callback(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> RedirectResponse:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
 
     form_payload: dict[str, Any] = {}
     if request.method.upper() == "POST":

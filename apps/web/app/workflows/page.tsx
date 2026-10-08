@@ -229,7 +229,7 @@ export default function WorkflowsPage() {
   const [phase, setPhase] = useState<WorkflowPhase | null>(null)
 
   useEffect(() => {
-    if (user) void ensureSelectedOrg(true).then(setOrgId)
+    if (user) void ensureSelectedOrg().then(setOrgId)
   }, [user])
   
   // Wait for org context so /api/workflows receives x-org-id / org_id (matches Connectors).

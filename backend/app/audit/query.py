@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.config import Settings
 
@@ -43,7 +44,7 @@ def query_audit_events(
     resource_type, resource_id, metadata, created_at. next_cursor is None if
     no more pages.
     """
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     cursor_created_at: str | None = None
     cursor_id: str | None = None
     if cursor:
@@ -87,7 +88,7 @@ def query_audit_log(
     end_at: str | None = None,
 ) -> tuple[list[dict[str, Any]], str | None]:
     """List audit events for an org with optional filters."""
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     cursor_created_at: str | None = None
     if cursor:
         decoded = _decode_cursor(cursor)

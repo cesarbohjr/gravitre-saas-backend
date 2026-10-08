@@ -8,6 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin, require_org_member
 from app.config import Settings, get_settings
@@ -52,7 +53,7 @@ class DelegationGrantCreate(BaseModel):
 
 
 def _client(settings: Settings):
-    return create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return shared_service_client(settings, create_client)
 
 
 def _assert_agent_in_org(client: Any, org_id: str, agent_id: str) -> None:
@@ -71,7 +72,7 @@ def _assert_agent_in_org(client: Any, org_id: str, agent_id: str) -> None:
 
 
 @router.get("/{agent_id}/identity")
-async def get_agent_identity(
+def get_agent_identity(
     agent_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -94,7 +95,7 @@ async def get_agent_identity(
 
 
 @router.put("/{agent_id}/identity")
-async def put_agent_identity(
+def put_agent_identity(
     agent_id: UUID,
     body: AgentIdentityUpsert,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -118,7 +119,7 @@ async def put_agent_identity(
 
 
 @router.get("/{agent_id}/delegations")
-async def get_agent_delegations(
+def get_agent_delegations(
     agent_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -135,7 +136,7 @@ async def get_agent_delegations(
 
 
 @router.post("/{agent_id}/delegations")
-async def post_agent_delegation(
+def post_agent_delegation(
     agent_id: UUID,
     body: DelegationGrantCreate,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -172,7 +173,7 @@ async def post_agent_delegation(
 
 
 @router.delete("/{agent_id}/delegations/{grant_id}")
-async def delete_agent_delegation(
+def delete_agent_delegation(
     agent_id: UUID,
     grant_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],

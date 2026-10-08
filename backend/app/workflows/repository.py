@@ -33,7 +33,11 @@ from app.core.safe_dict import safe_normalize_stored_dict
 
 
 def get_supabase_client(settings: Settings) -> Client:
-    return create_client(settings.supabase_url, settings.supabase_service_role_key)
+    # Shared process-wide client (see app.core.db); passes this module's
+    # create_client so tests that patch it still get their mock.
+    from app.core.db import shared_service_client
+
+    return shared_service_client(settings, create_client)
 
 
 def get_workflow_def(client: Client, org_id: str, workflow_id: str) -> dict | None:

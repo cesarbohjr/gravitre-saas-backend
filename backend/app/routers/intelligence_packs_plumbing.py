@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import require_admin, require_org_member
 from app.config import Settings, get_settings
@@ -45,7 +46,7 @@ async def intelligence_packs_plumbing_smoke(
     """Live evidence path for Phase 1.5 Gates C/D — not chat/agent tool invoke."""
     ensure_plumbing_registered()
     _user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
 
     requested = [str(v).strip().lower() for v in (body.vendors or []) if str(v).strip()]
     if not requested:
@@ -98,7 +99,7 @@ async def intelligence_packs_plumbing_smoke(
 
 
 @router.get("/{pack_id}/kpis")
-async def intelligence_pack_kpis(
+def intelligence_pack_kpis(
     pack_id: str,
     member: Annotated[tuple, Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -112,14 +113,14 @@ async def intelligence_pack_kpis(
 
 
 @router.post("/tools/invoke-smoke")
-async def intelligence_packs_phase3_invoke_smoke(
+def intelligence_packs_phase3_invoke_smoke(
     body: Phase3InvokeSmokeBody,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     """Phase 3: prove fred.series.get + nvd.cve.get via invoke_tool on the deployed tip."""
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     registered = set(list_registered_actions())
     missing = [a for a in ("fred.series.get", "nvd.cve.get") if a not in registered]
     if missing:

@@ -227,7 +227,7 @@ async def test_digital_twin_refuses_simulation_scope():
 
 def test_event_intelligence_is_fire_and_forget():
     service = EventIntelligenceService()
-    with patch("app.services.event_intelligence_service.asyncio.create_task") as mock_task:
+    with patch("app.services.event_intelligence_service.spawn_background") as mock_task:
         service.schedule_connector_event(
             "org-1",
             "hubspot",

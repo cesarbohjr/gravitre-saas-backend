@@ -1,5 +1,6 @@
 """Workflow schedule dispatch worker (STA-47)."""
 from __future__ import annotations
+from app.core.db import shared_service_client
 
 import logging
 from datetime import datetime, timezone
@@ -222,7 +223,7 @@ def dispatch_due_workflow_schedules(
     """Poll all due schedules and start workflow runs via the merged executor."""
     from supabase import create_client
 
-    client = client or create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = client or shared_service_client(settings, create_client)
     now = _now()
     due = list_due_workflow_schedules(
         client,

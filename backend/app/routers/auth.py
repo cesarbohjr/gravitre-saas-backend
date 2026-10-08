@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.billing.entitlements import compute_app_access, normalize_billing_status
@@ -150,7 +151,7 @@ def _resolve_user_row(client, auth_user_id: str) -> dict:
 
 
 @router.get("/me")
-async def me(
+def me(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -159,7 +160,7 @@ async def me(
     from app.auth.platform_admin import is_platform_admin
     from app.services.org_membership import ensure_founder_admin_access
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     auth_user_id = current_user["user_id"]
     user_row = _resolve_user_row(client, auth_user_id)
     organizations = load_user_organizations(client, auth_user_id)
@@ -167,14 +168,15 @@ async def me(
         [org["id"] for org in organizations],
         primary_org_id=str(user_row.get("org_id")) if user_row.get("org_id") else load_user_primary_org_id(client, auth_user_id),
     )
-    ensure_founder_admin_access(
+    promoted = ensure_founder_admin_access(
         client,
         user_id=auth_user_id,
         email=current_user.get("email") or user_row.get("email"),
         org_id=resolved_org_id,
     )
-    # Reload after possible founder promotion so role reflects owner.
-    organizations = load_user_organizations(client, auth_user_id)
+    if promoted:
+        # Reload after founder promotion so role reflects owner.
+        organizations = load_user_organizations(client, auth_user_id)
     role = _resolve_role(client, resolved_org_id, auth_user_id)
 
     merged_user = {
@@ -216,12 +218,12 @@ async def me(
 
 
 @router.patch("/me")
-async def update_me(
+def update_me(
     body: UserProfileUpdateRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     payload = {k: v for k, v in body.model_dump().items() if v is not None}
     if not payload:
         return {"id": current_user["user_id"], "email": current_user.get("email")}
@@ -256,7 +258,7 @@ async def update_me(
 
 
 @router.post("/change-password")
-async def change_password(
+def change_password(
     body: PasswordChangeRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -273,7 +275,7 @@ async def change_password(
     except Exception:
         raise HTTPException(status_code=400, detail="Current password is invalid")
 
-    admin_client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    admin_client = shared_service_client(settings, create_client)
     try:
         admin_client.auth.admin.update_user_by_id(
             current_user["user_id"],
@@ -285,12 +287,12 @@ async def change_password(
 
 
 @router.get("/sessions")
-async def list_sessions(
+def list_sessions(
     request: Request,
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     sessions: list[dict] = []
     try:
         sessions_resp = (
@@ -332,12 +334,12 @@ async def list_sessions(
 
 
 @router.delete("/sessions/{session_id}")
-async def revoke_session(
+def revoke_session(
     session_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         client.schema("auth").table("sessions").delete().eq("id", session_id).eq(
             "user_id", current_user["user_id"]
@@ -348,11 +350,11 @@ async def revoke_session(
 
 
 @router.post("/sessions/revoke-all")
-async def revoke_all_sessions(
+def revoke_all_sessions(
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         client.schema("auth").table("sessions").delete().eq(
             "user_id", current_user["user_id"]
@@ -363,11 +365,11 @@ async def revoke_all_sessions(
 
 
 @router.delete("/avatar")
-async def delete_avatar(
+def delete_avatar(
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         client.table("users").update({"avatar_url": None}).eq(
             "auth_user_id", current_user["user_id"]
@@ -392,7 +394,7 @@ async def upload_avatar(
     mime = avatar.content_type or "image/png"
     avatar_data_url = f"data:{mime};base64,{base64.b64encode(content).decode('utf-8')}"
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         client.table("users").update({"avatar_url": avatar_data_url}).eq(
             "auth_user_id", current_user["user_id"]

@@ -1,15 +1,18 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 
-import { getSupabasePublicUrl } from "@/lib/supabase/url"
+import { getSupabaseServerAuthConfig } from "@/lib/supabase/url"
 
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies()
+  // Project host, not the branded same-origin proxy — see getSupabaseServerAuthConfig.
+  const { url, cookieName } = getSupabaseServerAuthConfig()
 
   return createServerClient(
-    getSupabasePublicUrl(),
+    url,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      ...(cookieName ? { cookieOptions: { name: cookieName } } : {}),
       cookies: {
         getAll() {
           return cookieStore.getAll()

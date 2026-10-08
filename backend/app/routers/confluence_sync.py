@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -58,21 +59,21 @@ def _load_confluence_connector(client: Any, org_id: str, connector_id: str) -> d
 
 
 @router.get("/{connector_id}/confluence-sync")
-async def get_confluence_sync(
+def get_confluence_sync(
     connector_id: str,
     org_id: Annotated[str, Depends(get_org_context)],
     _user: Annotated[dict, Depends(get_current_user)],
     _admin: Annotated[None, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     connector = _load_confluence_connector(client, org_id, connector_id)
     status_payload = get_confluence_sync_status(connector)
     return {"connector_id": connector_id, **status_payload}
 
 
 @router.put("/{connector_id}/confluence-sync")
-async def update_confluence_sync(
+def update_confluence_sync(
     connector_id: str,
     body: ConfluenceSyncUpdate,
     org_id: Annotated[str, Depends(get_org_context)],
@@ -80,7 +81,7 @@ async def update_confluence_sync(
     _admin: Annotated[None, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _load_confluence_connector(client, org_id, connector_id)
     targets = None
     if body.targets is not None:
@@ -96,7 +97,7 @@ async def update_confluence_sync(
 
 
 @router.get("/{connector_id}/confluence-sync/search")
-async def confluence_sync_search(
+def confluence_sync_search(
     connector_id: str,
     org_id: Annotated[str, Depends(get_org_context)],
     _user: Annotated[dict, Depends(get_current_user)],
@@ -104,7 +105,7 @@ async def confluence_sync_search(
     settings: Settings = Depends(get_settings),
     q: str | None = Query(default=None),
 ) -> dict[str, Any]:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _load_confluence_connector(client, org_id, connector_id)
     try:
         results = search_confluence_spaces(
@@ -120,7 +121,7 @@ async def confluence_sync_search(
 
 
 @router.post("/{connector_id}/confluence-sync/run")
-async def confluence_sync_run(
+def confluence_sync_run(
     connector_id: str,
     body: ConfluenceSyncRunRequest,
     org_id: Annotated[str, Depends(get_org_context)],
@@ -128,7 +129,7 @@ async def confluence_sync_run(
     _admin: Annotated[None, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _load_confluence_connector(client, org_id, connector_id)
     try:
         result = run_confluence_sync(

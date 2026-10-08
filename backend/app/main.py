@@ -242,6 +242,17 @@ async def lifespan(app: FastAPI):
     from app.core.logging import setup_logging
 
     setup_logging(os.environ.get("LOG_LEVEL"))
+    # Most route handlers are plain `def` (blocking supabase-py I/O), which
+    # Starlette runs in AnyIO's worker-thread pool. Its default of 40 threads
+    # is low for one process serving every tab's parallel page-load requests.
+    try:
+        import anyio.to_thread
+
+        anyio.to_thread.current_default_thread_limiter().total_tokens = int(
+            os.environ.get("GRAVITRE_THREADPOOL_SIZE", "100")
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("threadpool_resize_failed error=%s", exc)
     from app.services.connector_registration_contract import (
         assert_registration_contract,
         registration_contract_summary,

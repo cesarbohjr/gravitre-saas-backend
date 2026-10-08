@@ -8,6 +8,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -114,14 +115,14 @@ def _current_month_start_iso() -> str:
 
 
 @router.get("")
-async def get_settings_route(
+def get_settings_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     r = client.table("organizations").select("id, settings").eq("id", org_id).limit(1).execute()
     if not r.data:
         raise HTTPException(status_code=404, detail="Organization not found")
@@ -129,13 +130,13 @@ async def get_settings_route(
 
 
 @router.patch("")
-async def update_settings_route(
+def update_settings_route(
     body: SettingsUpdateRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     updated = client.table("organizations").update({"settings": body.settings}).eq("id", org_id).execute()
     if not updated.data:
         raise HTTPException(status_code=404, detail="Organization not found")
@@ -152,25 +153,25 @@ async def update_settings_route(
 
 
 @router.get("/model-policy")
-async def get_model_policy_route(
+def get_model_policy_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return {"modelPolicy": load_org_model_policy(client, org_id)}
 
 
 @router.put("/model-policy")
-async def update_model_policy_route(
+def update_model_policy_route(
     body: ModelPolicyUpdateRequest,
     admin_ctx: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin_ctx
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     policy = save_org_model_policy(
         client,
         org_id,
@@ -189,27 +190,27 @@ async def update_model_policy_route(
 
 
 @router.get("/memory-entity-embeddings")
-async def get_memory_entity_embeddings_route(
+def get_memory_entity_embeddings_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return {
         "memoryEntityEmbeddings": load_memory_entity_embeddings_settings(client, org_id),
     }
 
 
 @router.put("/memory-entity-embeddings")
-async def update_memory_entity_embeddings_route(
+def update_memory_entity_embeddings_route(
     body: MemoryEntityEmbeddingsUpdateRequest,
     admin_ctx: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin_ctx
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     policy = save_memory_entity_embeddings_settings(
         client,
         org_id,
@@ -228,14 +229,14 @@ async def update_memory_entity_embeddings_route(
 
 
 @router.get("/lite-seats")
-async def get_lite_seats_route(
+def get_lite_seats_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
 
     departments_resp = (
         client.table("departments")
@@ -307,13 +308,13 @@ async def get_lite_seats_route(
 
 
 @router.post("/lite-seats")
-async def create_lite_seat_department_route(
+def create_lite_seat_department_route(
     body: LiteSeatCreateRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     # Bug fix (2026-09-12): postgrest-py's SyncQueryRequestBuilder (returned
     # by .insert()) has no .select()/.single() method — chaining them raised
     # an uncaught AttributeError on every call. .insert() already returns the
@@ -339,7 +340,7 @@ async def create_lite_seat_department_route(
 
 
 @router.patch("/lite-seats")
-async def update_lite_seat_department_route(
+def update_lite_seat_department_route(
     body: LiteSeatUpdateRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -358,7 +359,7 @@ async def update_lite_seat_department_route(
     # .select()/.single() — chaining them raised AttributeError -> HTTP 500.
     # .update() already returns the full updated row(s) by default; since
     # .single() was removed, .data is now a list, so index [0] explicitly.
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     updated = (
         client.table("departments")
         .update(payload)
@@ -374,13 +375,13 @@ async def update_lite_seat_department_route(
 
 
 @router.delete("/lite-seats")
-async def delete_lite_seat_department_route(
+def delete_lite_seat_department_route(
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
     department_id: str = Query(..., alias="departmentId"),
 ) -> dict:
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     deleted = (
         client.table("departments")
         .delete()
@@ -453,14 +454,14 @@ def _org_membership_role(client: Any, org_id: str, user_id: str) -> str | None:
 
 
 @router.get("/lite-membership")
-async def get_lite_membership_route(
+def get_lite_membership_route(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     user_id = str(current_user.get("user_id") or "")
 
     # Org owner/admin (Command purchaser, billing owner) always keep admin access —
@@ -530,7 +531,7 @@ async def add_department_member_route(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     dept = (
         client.table("departments")
         .select("id, lite_seat_allocation")
@@ -616,7 +617,7 @@ async def remove_department_member_route(
     user_id: str = Query(..., alias="userId"),
 ) -> dict:
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     dept = (
         client.table("departments")
         .select("id")
@@ -649,7 +650,7 @@ async def remove_department_member_route(
 
 
 @router.get("/meson-addons")
-async def get_meson_addons_route(
+def get_meson_addons_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -659,7 +660,7 @@ async def get_meson_addons_route(
     from app.billing.meson_addon_catalog import is_customer_facing_billable_addon
     from app.billing.voice_access import load_voice_org_settings
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     catalog_resp = (
         client.table("meson_addon_catalog")
         .select("id, code, name, description, monthly_price_usd, stripe_price_id, archived_at")
@@ -744,7 +745,7 @@ async def get_meson_addons_route(
 
 
 @router.patch("/meson-addons")
-async def update_meson_addons_route(
+def update_meson_addons_route(
     body: MesonAddonUpdateRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -761,7 +762,7 @@ async def update_meson_addons_route(
                 "Voice is plan-included via PATCH /api/settings/voice-access."
             ),
         )
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     catalog = (
         client.table("meson_addon_catalog")
         .select("code, stripe_price_id, archived_at")
@@ -810,7 +811,7 @@ async def update_meson_addons_route(
 
 
 @router.get("/voice-access")
-async def get_voice_access_route(
+def get_voice_access_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -819,13 +820,13 @@ async def get_voice_access_route(
         raise HTTPException(status_code=403, detail="Organization context required")
     from app.billing.voice_access import load_voice_org_settings
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     voice = load_voice_org_settings(client, org_id=org_id)
     return {"voice": {**voice, "plan_included": True}, "topup_href": "/settings/billing"}
 
 
 @router.patch("/voice-access")
-async def update_voice_access_route(
+def update_voice_access_route(
     body: VoiceAccessUpdateRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -833,7 +834,7 @@ async def update_voice_access_route(
     _user, org_id = _admin
     from app.billing.voice_access import load_voice_org_settings, set_voice_org_enabled
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     if body.enabled is not None:
         set_voice_org_enabled(client, org_id=org_id, enabled=bool(body.enabled))
     patch: dict[str, Any] = {"org_id": org_id}
@@ -858,7 +859,7 @@ async def update_voice_access_route(
 
 
 @router.get("/billing-usage")
-async def get_billing_usage_route(
+def get_billing_usage_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -867,7 +868,7 @@ async def get_billing_usage_route(
         raise HTTPException(status_code=403, detail="Organization context required")
     from app.billing.usage_records_summary import summarize_usage_records_billing
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         summary = summarize_usage_records_billing(client, org_id, settings=settings)
     except RuntimeError as exc:
@@ -890,7 +891,7 @@ async def get_billing_usage_route(
 
 
 @router.get("/grounding-volume")
-async def get_grounding_volume_route(
+def get_grounding_volume_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -900,7 +901,7 @@ async def get_grounding_volume_route(
         raise HTTPException(status_code=403, detail="Organization context required")
     from app.services.grounding_volume_monitor import get_platform_grounding_status, check_org_grounding_circuit
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     platform = get_platform_grounding_status(client, settings)
     org_circuit = check_org_grounding_circuit(client, org_id, settings)
     org_daily = 0
@@ -938,7 +939,7 @@ async def get_grounding_volume_route(
 
 
 @router.get("/hitl-policies")
-async def list_hitl_policies_route(
+def list_hitl_policies_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -947,13 +948,13 @@ async def list_hitl_policies_route(
         raise HTTPException(status_code=403, detail="Organization context required")
     from app.services.hitl_policy_service import get_hitl_policy_service
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     policies = get_hitl_policy_service(settings).list_policies(client, org_id)
     return {"policies": policies}
 
 
 @router.post("/hitl-policies")
-async def create_hitl_policy_route(
+def create_hitl_policy_route(
     body: HitlPolicyCreateRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -961,7 +962,7 @@ async def create_hitl_policy_route(
     user, org_id = admin
     from app.services.hitl_policy_service import get_hitl_policy_service
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         policy = get_hitl_policy_service(settings).create_policy(
             client,
@@ -991,7 +992,7 @@ async def create_hitl_policy_route(
 
 
 @router.patch("/hitl-policies/{policy_id}")
-async def update_hitl_policy_route(
+def update_hitl_policy_route(
     policy_id: str,
     body: HitlPolicyUpdateRequest,
     admin: Annotated[tuple, Depends(require_admin)],
@@ -1000,7 +1001,7 @@ async def update_hitl_policy_route(
     user, org_id = admin
     from app.services.hitl_policy_service import get_hitl_policy_service
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     payload = {k: v for k, v in body.model_dump().items() if v is not None}
     # Allow clearing optional UUID fields when scope changes via explicit nulls in JSON —
     # model_dump already drops None; accept empty strings as clear for department/user.
@@ -1039,7 +1040,7 @@ async def update_hitl_policy_route(
 
 
 @router.delete("/hitl-policies/{policy_id}")
-async def delete_hitl_policy_route(
+def delete_hitl_policy_route(
     policy_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1047,7 +1048,7 @@ async def delete_hitl_policy_route(
     user, org_id = admin
     from app.services.hitl_policy_service import get_hitl_policy_service
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         get_hitl_policy_service(settings).delete_policy(
             client, org_id=org_id, policy_id=policy_id

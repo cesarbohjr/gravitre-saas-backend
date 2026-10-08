@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { HomeDashboard } from "@/components/home/home-dashboard"
-import { Skeleton } from "@/components/ui/skeleton"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { useAuth } from "@/lib/auth-context"
 import { fetcher } from "@/lib/fetcher"
@@ -23,10 +22,10 @@ export default function HomePage() {
   const [orgId, setOrgId] = useState<string | null>(() => getQuickOrgId())
 
   useEffect(() => {
-    if (user) void ensureSelectedOrg(true).then(setOrgId)
+    if (user) void ensureSelectedOrg().then(setOrgId)
   }, [user])
 
-  const { data: onboarding, error: onboardingError, isLoading: onboardingLoading } =
+  const { data: onboarding, error: onboardingError } =
     useSWR<OnboardingProgress>(user ? "/api/onboarding" : null, fetcher, {
       revalidateOnFocus: false,
     })
@@ -39,23 +38,15 @@ export default function HomePage() {
     (WELCOME_ROLES[0]?.id as WelcomeRoleId)
   const roleMeta = WELCOME_ROLES.find((entry) => entry.id === roleId) ?? WELCOME_ROLES[0]
 
-  const showGettingStarted = !onboarding?.welcome_completed && !onboarding?.skipped
+  // Onboarding only decides the getting-started copy, so the dashboard renders
+  // (and starts its own fetches) without waiting for it; the getting-started
+  // block appears once onboarding has loaded and says it is still needed.
+  const showGettingStarted = Boolean(onboarding) && !onboarding?.welcome_completed && !onboarding?.skipped
   const showRoleQuickActions = showGettingStarted || !data.hasLearningSnapshot
 
   return (
     <AppShell title="Dashboard">
-      {onboardingLoading && user ? (
-        <div className="space-y-3 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)]" aria-busy="true" aria-label="Loading home dashboard">
-          <Skeleton className="h-9 w-48" />
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Skeleton className="h-24 rounded-[var(--np-radius-lg)]" />
-            <Skeleton className="h-24 rounded-[var(--np-radius-lg)]" />
-            <Skeleton className="h-24 rounded-[var(--np-radius-lg)]" />
-            <Skeleton className="h-24 rounded-[var(--np-radius-lg)]" />
-          </div>
-          <Skeleton className="h-48 rounded-[var(--np-radius-lg)]" />
-        </div>
-      ) : onboardingError && user ? (
+      {onboardingError && !onboarding && user ? (
         <WorkSectionErrorCard
           title="Could not load home dashboard"
           message="Refresh the page or try again in a moment."

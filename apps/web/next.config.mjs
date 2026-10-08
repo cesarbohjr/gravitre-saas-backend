@@ -41,6 +41,12 @@ const nextConfig = {
   // Type errors now fail the build (tsc is clean). Keep it that way via CI + typecheck.
   // The dev-tools "N" badge sits over the sidebar and AI dock in dev captures; it never ships.
   devIndicators: false,
+  // Barrel-heavy packages imported across the shell; neither is on Next's
+  // default optimizePackageImports list, so whole-package imports could pull
+  // unused icons/modules into shared chunks.
+  experimental: {
+    optimizePackageImports: ["@phosphor-icons/react", "framer-motion"],
+  },
   images: {
     unoptimized: true,
   },

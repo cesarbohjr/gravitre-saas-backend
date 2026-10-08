@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from app.core.async_bridge import spawn_background
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
@@ -131,7 +132,7 @@ class OutcomeLearningService:
             raise ValueError(f"Invalid outcome_event: {outcome_event}")
 
     def _fire_and_forget(self, coro: Any) -> None:
-        asyncio.create_task(coro)
+        spawn_background(coro)
 
     async def _insert_event(self, payload: dict[str, Any]) -> None:
         try:
@@ -156,7 +157,7 @@ class OutcomeLearningService:
                 "confidence_score": float(row.get("confidence_score") or 0),
                 "created_at": datetime.now(timezone.utc).replace(tzinfo=None),
             }
-            asyncio.create_task(
+            spawn_background(
                 get_clickhouse_service().insert_events("gravitre.intelligence_outcome_events", [ch_row])
             )
         except Exception as exc:  # noqa: BLE001

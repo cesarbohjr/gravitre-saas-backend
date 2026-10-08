@@ -185,7 +185,7 @@ async def predict(
 
 
 @router.post("/train/start", dependencies=_COMMAND_TIER)
-async def start_training(
+def start_training(
     job_id: str,
     background_tasks: BackgroundTasks,
     _user: Annotated[dict, Depends(get_current_user)],

@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -57,21 +58,21 @@ def _load_notion_connector(client: Any, org_id: str, connector_id: str) -> dict[
 
 
 @router.get("/{connector_id}/notion-sync")
-async def get_notion_sync(
+def get_notion_sync(
     connector_id: str,
     org_id: Annotated[str, Depends(get_org_context)],
     _user: Annotated[dict, Depends(get_current_user)],
     _admin: Annotated[None, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     connector = _load_notion_connector(client, org_id, connector_id)
     status_payload = get_notion_sync_status(connector)
     return {"connector_id": connector_id, **status_payload}
 
 
 @router.put("/{connector_id}/notion-sync")
-async def update_notion_sync(
+def update_notion_sync(
     connector_id: str,
     body: NotionSyncUpdate,
     org_id: Annotated[str, Depends(get_org_context)],
@@ -79,7 +80,7 @@ async def update_notion_sync(
     _admin: Annotated[None, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _load_notion_connector(client, org_id, connector_id)
     targets = None
     if body.targets is not None:
@@ -95,7 +96,7 @@ async def update_notion_sync(
 
 
 @router.get("/{connector_id}/notion-sync/search")
-async def notion_sync_search(
+def notion_sync_search(
     connector_id: str,
     org_id: Annotated[str, Depends(get_org_context)],
     _user: Annotated[dict, Depends(get_current_user)],
@@ -104,7 +105,7 @@ async def notion_sync_search(
     q: str | None = Query(default=None),
     object_type: str | None = Query(default=None, alias="type"),
 ) -> dict[str, Any]:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _load_notion_connector(client, org_id, connector_id)
     try:
         results = search_notion(
@@ -121,7 +122,7 @@ async def notion_sync_search(
 
 
 @router.post("/{connector_id}/notion-sync/run")
-async def notion_sync_run(
+def notion_sync_run(
     connector_id: str,
     body: NotionSyncRunRequest,
     org_id: Annotated[str, Depends(get_org_context)],
@@ -129,7 +130,7 @@ async def notion_sync_run(
     _admin: Annotated[None, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _load_notion_connector(client, org_id, connector_id)
     try:
         result = run_notion_sync(

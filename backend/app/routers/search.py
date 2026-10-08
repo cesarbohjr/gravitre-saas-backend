@@ -8,6 +8,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
@@ -227,7 +228,7 @@ async def search_route(
     )
     intent = _parse_search_intent(query)
     tokens = list(intent["tokens"])
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     results: list[dict[str, Any]] = []
     seen_ids: set[tuple[str, str]] = set()
 
@@ -616,14 +617,14 @@ async def search_route(
 
 
 @router.get("/history")
-async def search_history_route(
+def search_history_route(
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     response = (
         client.table("search_history")
         .select("id, query, results_count, created_at")
@@ -642,7 +643,7 @@ async def search_history_route(
 
 
 @router.delete("/history/{history_id}")
-async def delete_search_history_item_route(
+def delete_search_history_item_route(
     history_id: str,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -650,7 +651,7 @@ async def delete_search_history_item_route(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     response = (
         client.table("search_history")
         .delete()
@@ -668,14 +669,14 @@ async def delete_search_history_item_route(
 
 
 @router.delete("/history")
-async def clear_search_history_route(
+def clear_search_history_route(
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     response = (
         client.table("search_history")
         .delete()

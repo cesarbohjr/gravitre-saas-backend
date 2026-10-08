@@ -10,6 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 logger = logging.getLogger(__name__)
 
@@ -360,7 +361,7 @@ def _validate_webhook(url: str | None) -> None:
 
 
 @router.get("")
-async def list_integrations_route(
+def list_integrations_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -372,7 +373,7 @@ async def list_integrations_route(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Organization context required",
         )
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     items = list_connectors(client, org_id, environment_name=environment_name)
     return {
         "integrations": [
@@ -390,7 +391,7 @@ async def list_integrations_route(
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_integration_route(
+def create_integration_route(
     body: CreateIntegrationRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -398,7 +399,7 @@ async def create_integration_route(
 ) -> dict:
     """Create integration. Config only; add secrets via POST /:id/secrets."""
     _user, org_id = _admin
-    service_client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    service_client = shared_service_client(settings, create_client)
     entitlements = resolve_entitlements(settings, org_id)
     connector_limit = (entitlements.get("limits") or {}).get("connectors")
     if connector_limit is not None:
@@ -437,7 +438,7 @@ async def create_integration_route(
 
 
 @router.get("/{integration_id}")
-async def get_integration_route(
+def get_integration_route(
     integration_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -450,7 +451,7 @@ async def get_integration_route(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Organization context required",
         )
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     conn = get_connector(client, org_id, str(integration_id), environment_name=environment_name)
     if not conn:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Integration not found")
@@ -465,7 +466,7 @@ async def get_integration_route(
 
 
 @router.patch("/{integration_id}")
-async def update_integration_route(
+def update_integration_route(
     integration_id: UUID,
     body: UpdateIntegrationRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
@@ -474,7 +475,7 @@ async def update_integration_route(
 ) -> dict:
     """Update integration config/status."""
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     conn = update_connector(client, org_id, str(integration_id), body.config, body.status, environment_name=environment_name)
     if not conn:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Integration not found")
@@ -503,7 +504,7 @@ async def set_connector_secret(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Secrets encryption not configured",
         )
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     conn = get_connector(client, org_id, str(integration_id), environment_name=environment_name)
     if not conn:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Integration not found")
@@ -512,7 +513,7 @@ async def set_connector_secret(
 
 
 @router.post("/{integration_id}/sync", status_code=status.HTTP_202_ACCEPTED)
-async def sync_integration_route(
+def sync_integration_route(
     integration_id: UUID,
     _admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -520,7 +521,7 @@ async def sync_integration_route(
 ) -> dict:
     """Request a manual sync for an integration."""
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     conn = get_connector(client, org_id, str(integration_id), environment_name=environment_name)
     if not conn:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Integration not found")
@@ -537,7 +538,7 @@ async def sync_integration_route(
 
 
 @connectors_router.get("")
-async def list_connectors_route_alias(
+def list_connectors_route_alias(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -547,7 +548,7 @@ async def list_connectors_route_alias(
     """List connectors (spec shape)."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         q = (
             client.table("connectors")
@@ -608,7 +609,7 @@ async def list_connectors_route_alias(
 
 
 @connectors_router.get("/catalog/simulation-coverage")
-async def list_connector_simulation_coverage(
+def list_connector_simulation_coverage(
     _user: Annotated[dict, Depends(get_current_user)],
 ) -> dict:
     """Per-vendor demo-safe simulation coverage (STA-285). Zero coverage = demo-blocked."""
@@ -618,7 +619,7 @@ async def list_connector_simulation_coverage(
 
 
 @connectors_router.get("/catalog/actions")
-async def list_connector_action_catalog(
+def list_connector_action_catalog(
     _user: Annotated[dict, Depends(get_current_user)],
 ) -> dict:
     """Full v1/v2/v3 action catalog and demo workflows for all connectors."""
@@ -628,7 +629,7 @@ async def list_connector_action_catalog(
 
 
 @connectors_router.get("/catalog/source-action-destination")
-async def list_connector_source_action_destination_coverage(
+def list_connector_source_action_destination_coverage(
     _user: Annotated[dict, Depends(get_current_user)],
 ) -> dict:
     """Connector SOURCE/ACTION/DESTINATION coverage (complements integrationClass)."""
@@ -638,7 +639,7 @@ async def list_connector_source_action_destination_coverage(
 
 
 @connectors_router.get("/catalog/capability-recipes")
-async def list_capability_department_recipes(
+def list_capability_department_recipes(
     _user: Annotated[dict, Depends(get_current_user)],
     department: str | None = None,
 ) -> dict:
@@ -658,7 +659,7 @@ class ResolveCapabilityRecipeBody(BaseModel):
 
 
 @connectors_router.post("/catalog/capability-recipes/{recipe_id}/resolve")
-async def resolve_capability_department_recipe(
+def resolve_capability_department_recipe(
     recipe_id: str,
     body: ResolveCapabilityRecipeBody | None = None,
     _user: Annotated[dict, Depends(get_current_user)] = None,
@@ -700,7 +701,7 @@ async def resolve_capability_department_recipe(
 
 
 @connectors_router.get("/catalog/execution-matrix")
-async def list_connector_execution_matrix(
+def list_connector_execution_matrix(
     _user: Annotated[dict, Depends(get_current_user)],
     vendor: str | None = None,
 ) -> dict:
@@ -717,7 +718,7 @@ async def list_connector_execution_matrix(
 
 
 @connectors_router.get("/catalog/actions/{vendor}")
-async def get_connector_action_catalog_vendor(
+def get_connector_action_catalog_vendor(
     vendor: str,
     _user: Annotated[dict, Depends(get_current_user)],
 ) -> dict:
@@ -741,7 +742,7 @@ async def get_connector_route_alias(
     """Get connector (spec shape)."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     row = (
         client.table("connectors")
         .select(
@@ -770,7 +771,7 @@ async def get_connector_route_alias(
 
 
 @connectors_router.post("/{connector_id}/test")
-async def test_connector_route(
+def test_connector_route(
     connector_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -780,7 +781,7 @@ async def test_connector_route(
     """Test connector connectivity (OAuth token validity for HubSpot)."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     row = (
         client.table("connectors")
         .select("id, vendor, name, environment")
@@ -922,7 +923,7 @@ async def sync_connector_route_alias(
     from app.services.knowledge_sync_service import SOURCE_REGISTRY, trigger_connector_knowledge_sync
 
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     conn = (
         client.table("connectors")
         .select("id, status, name, vendor, type")
@@ -988,7 +989,7 @@ async def sync_connector_route_alias(
 
 
 @connectors_router.post("", status_code=status.HTTP_201_CREATED)
-async def create_connector_route(
+def create_connector_route(
     body: ConnectorCreateRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -1000,7 +1001,7 @@ async def create_connector_route(
     vendor = (body.vendor or "").strip().lower().replace(" ", "")
     if vendor == "googlecalendar":
         vendor = "google_calendar"
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     if vendor not in ALLOWED_CONNECTOR_VENDORS and not is_published_partner_vendor(client, vendor):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid vendor")
     if vendor == "snowflake":
@@ -1229,7 +1230,7 @@ async def activate_gravitre_connector_route(
     from app.services.gravitre_connector_activation import activate_gravitre_connector
 
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         result = activate_gravitre_connector(
             client,
@@ -1291,7 +1292,7 @@ async def update_connector_route(
         )
     if body.webhook_url is not None:
         payload["webhook_url"] = body.webhook_url
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     if body.config is not None:
         existing_row = (
             client.table("connectors")
@@ -1355,7 +1356,7 @@ async def _delete_connector_impl(
     settings: Settings,
 ) -> dict:
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     existing = (
         client.table("connectors")
         .select("id, name, environment, config, vendor, type")
@@ -1462,7 +1463,7 @@ async def delete_connector_post_route(
 
 
 @connectors_router.get("/{connector_id}/docs")
-async def get_connector_docs(
+def get_connector_docs(
     connector_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1471,7 +1472,7 @@ async def get_connector_docs(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     row = (
         client.table("connectors")
         .select("id, vendor, docs_url")
@@ -1507,7 +1508,7 @@ class PlaidExchangeRequest(BaseModel):
 
 
 @connectors_router.get("/plaid/status")
-async def plaid_status(
+def plaid_status(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Public readiness check for platform Plaid Link keys (no secrets)."""
@@ -1528,7 +1529,7 @@ async def plaid_status(
 
 
 @connectors_router.post("/plaid/link-token")
-async def plaid_create_link_token(
+def plaid_create_link_token(
     body: PlaidLinkTokenRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1566,7 +1567,7 @@ async def plaid_create_link_token(
 
 
 @connectors_router.post("/plaid/exchange")
-async def plaid_exchange_public_token(
+def plaid_exchange_public_token(
     body: PlaidExchangeRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -1602,7 +1603,7 @@ async def plaid_exchange_public_token(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=error_detail("Plaid exchange returned no access_token", "PLAID_EXCHANGE_EMPTY"),
         )
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         persisted = persist_plaid_connection(
             client,

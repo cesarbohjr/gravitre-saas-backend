@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -56,7 +57,7 @@ def _to_response(row: dict) -> ToolPermissionResponse:
 
 
 @router.get("/{agent_id}/tool-permissions", response_model=list[ToolPermissionResponse])
-async def list_tool_permissions(
+def list_tool_permissions(
     agent_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -65,13 +66,13 @@ async def list_tool_permissions(
 ) -> list[ToolPermissionResponse]:
     if not org_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     rows = list_agent_tool_permissions(client, org_id, str(agent_id))
     return [_to_response(r) for r in rows]
 
 
 @router.put("/{agent_id}/tool-permissions", response_model=ToolPermissionResponse)
-async def grant_tool_permission(
+def grant_tool_permission(
     agent_id: UUID,
     body: ToolPermissionGrant,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -89,7 +90,7 @@ async def grant_tool_permission(
     if not body.scopes:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="scopes must not be empty")
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     row = upsert_agent_tool_permission(
         client,
         org_id,
@@ -117,7 +118,7 @@ async def grant_tool_permission(
 
 
 @router.delete("/{agent_id}/tool-permissions/{permission_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def revoke_tool_permission(
+def revoke_tool_permission(
     agent_id: UUID,
     permission_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -127,7 +128,7 @@ async def revoke_tool_permission(
 ) -> None:
     if not org_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     delete_agent_tool_permission(client, org_id, str(permission_id))
     write_audit_event(
         client,
