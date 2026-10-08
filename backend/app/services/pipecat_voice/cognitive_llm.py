@@ -148,7 +148,7 @@ class GravitreCognitiveLLMService(LLMService):
         # Preserve the shared system and policy prompt; layer voice-specific
         # expression on top without changing tool privileges or engine routing.
         voice_guidance = build_voice_conversation_guidance(user_text)
-        return {"assistant_base_prompt": (prompt or "") + "\\n\\n" + voice_guidance}
+        return {"assistant_base_prompt": (prompt or "") + "\n\n" + voice_guidance}
 
     async def speculative_durable_context(self) -> tuple[list[dict[str, Any]], str | None, str | None]:
         """Return the same durable seed/summary used by confirmed voice turns."""
