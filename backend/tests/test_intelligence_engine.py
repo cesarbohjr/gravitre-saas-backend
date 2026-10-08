@@ -244,7 +244,7 @@ def test_confidence_scorer_neutral_when_no_signals():
 
 def test_outcome_tracker_is_fire_and_forget():
     tracker = OutcomeTracker()
-    with patch("asyncio.create_task") as mock_task:
+    with patch("app.services.outcome_tracker.spawn_background") as mock_task:
         tracker.track("org-1", None, "msg-1", None, {"answer": "ok"}, {"intent": "general"})
         assert mock_task.called
 

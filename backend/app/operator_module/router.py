@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context
 from app.config import Settings, get_settings
@@ -57,7 +58,7 @@ async def get_run_context(
 ) -> RunContextResponse:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     context = build_run_context(client, settings, org_id, environment, str(run_id))
     if not context:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Run not found")
@@ -91,7 +92,7 @@ async def get_workflow_context(
 ) -> WorkflowContextResponse:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     context = build_workflow_context(client, org_id, environment, str(workflow_id))
     if not context:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found")
@@ -126,7 +127,7 @@ async def get_connector_context(
 ) -> ConnectorContextResponse:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     context = build_connector_context(client, org_id, environment, str(connector_id))
     if not context:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Integration not found")
@@ -159,7 +160,7 @@ async def get_source_context(
 ) -> SourceContextResponse:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     context = build_source_context(client, org_id, environment, str(source_id))
     if not context:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
@@ -190,7 +191,7 @@ async def list_operator_prompts(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     rows = (
         client.table("operator_prompts")
         .select("id, icon, label, prompt, order_index")
@@ -224,7 +225,7 @@ async def create_action_plan(
 ) -> ActionPlanResponse:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         plan = build_action_plan(
             client=client,

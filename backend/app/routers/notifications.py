@@ -10,6 +10,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from postgrest.exceptions import APIError
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
@@ -93,7 +94,7 @@ async def stream_notifications(
 
 
 @router.get("")
-async def list_notifications(
+def list_notifications(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -104,7 +105,7 @@ async def list_notifications(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
 
     query = (
         client.table("notifications")
@@ -135,7 +136,7 @@ async def list_notifications(
 
 
 @router.get("/unread-count")
-async def get_unread_count(
+def get_unread_count(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -143,7 +144,7 @@ async def get_unread_count(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     response = _execute(
         client.table("notifications")
         .select("id", count="exact")
@@ -158,7 +159,7 @@ async def get_unread_count(
 
 
 @router.post("/{notification_id}/read")
-async def mark_read(
+def mark_read(
     notification_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -167,7 +168,7 @@ async def mark_read(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _execute(
         client.table("notifications")
         .update({"is_read": True})
@@ -179,7 +180,7 @@ async def mark_read(
 
 
 @router.post("/read-all")
-async def mark_all_read(
+def mark_all_read(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -187,7 +188,7 @@ async def mark_all_read(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _execute(
         client.table("notifications")
         .update({"is_read": True})
@@ -199,7 +200,7 @@ async def mark_all_read(
 
 
 @router.post("/{notification_id}/archive")
-async def archive_notification(
+def archive_notification(
     notification_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -208,7 +209,7 @@ async def archive_notification(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _execute(
         client.table("notifications")
         .update({"is_archived": True})
@@ -220,7 +221,7 @@ async def archive_notification(
 
 
 @router.delete("/{notification_id}")
-async def delete_notification(
+def delete_notification(
     notification_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -229,7 +230,7 @@ async def delete_notification(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _execute(
         client.table("notifications")
         .delete()
@@ -241,7 +242,7 @@ async def delete_notification(
 
 
 @router.get("/preferences")
-async def get_notification_preferences(
+def get_notification_preferences(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -249,7 +250,7 @@ async def get_notification_preferences(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     response = _execute(
         client.table("notification_preferences")
         .select("preferences")
@@ -264,7 +265,7 @@ async def get_notification_preferences(
 
 
 @router.patch("/preferences")
-async def update_notification_preferences(
+def update_notification_preferences(
     preferences: Annotated[dict[str, Any], Body(...)],
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -273,7 +274,7 @@ async def update_notification_preferences(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     payload = {
         "org_id": org_id,
         "user_id": user_id,

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const auth = vi.hoisted(() => ({
   getUser: vi.fn(),
   getSession: vi.fn(),
+  refreshSession: vi.fn(),
 }))
 
 vi.mock("@/lib/supabaseClient", () => ({
@@ -20,6 +21,7 @@ beforeEach(() => {
   ;(window as ShotWindow).__GRAVITRE_AI_INSTRUMENT = true
   auth.getUser.mockResolvedValue({ data: { user: { id: "real-user" } }, error: null })
   auth.getSession.mockResolvedValue({ data: { session: { access_token: "real-token" } }, error: null })
+  auth.refreshSession.mockResolvedValue({ data: { session: null }, error: null })
 })
 
 afterEach(() => {
@@ -32,22 +34,28 @@ describe("screenshot access-token isolation", () => {
   it("allows the explicitly instrumented local shot route", async () => {
     const { getAccessToken } = await import("@/lib/auth-context")
     expect(await getAccessToken()).toBe("shot-access-token")
-    expect(auth.getUser).not.toHaveBeenCalled()
+    expect(auth.getSession).not.toHaveBeenCalled()
   })
 
   it("never substitutes fixture auth in a normal production build", async () => {
     vi.stubEnv("NODE_ENV", "production")
     const { getAccessToken } = await import("@/lib/auth-context")
     expect(await getAccessToken()).toBe("real-token")
-    expect(auth.getUser).toHaveBeenCalled()
+    expect(auth.getSession).toHaveBeenCalled()
   })
 
   it("does not treat instrumentation as a real signed-in user", async () => {
     vi.stubEnv("NODE_ENV", "production")
-    auth.getUser.mockResolvedValue({ data: { user: null }, error: null })
+    auth.getSession.mockResolvedValue({ data: { session: null }, error: null })
     const { getAccessToken } = await import("@/lib/auth-context")
     expect(await getAccessToken()).toBeNull()
-    expect(auth.getSession).not.toHaveBeenCalled()
+  })
+
+  it("does not make a network user lookup per request", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    const { getAccessToken } = await import("@/lib/auth-context")
+    expect(await getAccessToken()).toBe("real-token")
+    expect(auth.getUser).not.toHaveBeenCalled()
   })
 
   it.each(["/marketplace/assets", "/agents", "/e2e/shots-not-a-route"])(
@@ -56,7 +64,7 @@ describe("screenshot access-token isolation", () => {
       window.history.replaceState(null, "", path)
       const { getAccessToken } = await import("@/lib/auth-context")
       expect(await getAccessToken()).toBe("real-token")
-      expect(auth.getUser).toHaveBeenCalled()
+      expect(auth.getSession).toHaveBeenCalled()
     },
   )
 

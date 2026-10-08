@@ -12,6 +12,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context
 from app.config import Settings, get_settings
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/api/agent-jobs", tags=["agent-jobs"])
 
 
 def _client(settings: Settings):
-    return create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return shared_service_client(settings, create_client)
 
 
 class EnqueueJobRequest(BaseModel):
@@ -98,7 +99,7 @@ async def enqueue_job(
 
 
 @router.get("")
-async def list_jobs_endpoint(
+def list_jobs_endpoint(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -127,7 +128,7 @@ async def get_job_status(
 
 
 @router.post("/{job_id}/pause")
-async def pause(
+def pause(
     job_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -187,7 +188,7 @@ async def cancel(
 
 
 @router.post("/{job_id}/retry")
-async def retry(
+def retry(
     job_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -205,7 +206,7 @@ async def retry(
 
 
 @router.post("/{job_id}/approve")
-async def approve_job_endpoint(
+def approve_job_endpoint(
     job_id: str,
     body: AssignmentDecisionRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -231,7 +232,7 @@ async def approve_job_endpoint(
 
 
 @router.post("/{job_id}/reject")
-async def reject_job_endpoint(
+def reject_job_endpoint(
     job_id: str,
     body: AssignmentDecisionRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -257,7 +258,7 @@ async def reject_job_endpoint(
 
 
 @router.patch("/{job_id}/deliverable")
-async def update_deliverable_endpoint(
+def update_deliverable_endpoint(
     job_id: str,
     body: AssignmentDeliverableUpdateRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -281,7 +282,7 @@ async def update_deliverable_endpoint(
 
 
 @router.post("/{job_id}/push")
-async def push_deliverable_endpoint(
+def push_deliverable_endpoint(
     job_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],

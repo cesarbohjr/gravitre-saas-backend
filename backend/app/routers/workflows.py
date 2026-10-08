@@ -592,7 +592,7 @@ def _run_step_out(s: dict) -> dict:
 
 
 @router.get("/{workflow_id}/nodes")
-async def list_workflow_nodes_route(
+def list_workflow_nodes_route(
     workflow_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -611,7 +611,7 @@ async def list_workflow_nodes_route(
 
 
 @router.get("/{workflow_id}/builder")
-async def get_workflow_builder(
+def get_workflow_builder(
     workflow_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -643,7 +643,7 @@ async def get_workflow_builder(
 
 
 @router.put("/{workflow_id}/builder")
-async def save_workflow_builder(
+def save_workflow_builder(
     workflow_id: UUID,
     body: BuilderSaveRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
@@ -718,7 +718,7 @@ async def save_workflow_builder(
 
 
 @router.post("/{workflow_id}/nodes", status_code=status.HTTP_201_CREATED)
-async def create_workflow_node_route(
+def create_workflow_node_route(
     workflow_id: UUID,
     body: WorkflowNodeCreateRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
@@ -788,7 +788,7 @@ async def create_workflow_node_route(
 
 
 @router.patch("/{workflow_id}/nodes")
-async def update_workflow_node_positions(
+def update_workflow_node_positions(
     workflow_id: UUID,
     body: WorkflowNodePositionsUpdateRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
@@ -834,7 +834,7 @@ async def update_workflow_node_positions(
 
 
 @router.patch("/nodes/{node_id}")
-async def update_workflow_node_route(
+def update_workflow_node_route(
     node_id: UUID,
     body: WorkflowNodeUpdateRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
@@ -933,7 +933,7 @@ async def delete_workflow_node_alias(
 
 
 @router.get("/{workflow_id}/edges")
-async def list_workflow_edges_route(
+def list_workflow_edges_route(
     workflow_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1031,7 +1031,7 @@ async def delete_workflow_connection_route(
 
 
 @router.post("/dry-run", response_model=DryRunResponse)
-async def dry_run(
+def dry_run(
     body: DryRunRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1257,7 +1257,7 @@ class OrgFailurePredictionScanResponse(BaseModel):
 
 
 @router.get("/execution-outcomes/ops-summary")
-async def execution_outcomes_ops_summary(
+def execution_outcomes_ops_summary(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1272,7 +1272,7 @@ async def execution_outcomes_ops_summary(
 
 
 @router.get("/execution-outcomes/executive-digest")
-async def execution_outcomes_executive_digest(
+def execution_outcomes_executive_digest(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1288,7 +1288,7 @@ async def execution_outcomes_executive_digest(
 
 
 @router.get("/failure-predictions")
-async def list_workflow_failure_predictions(
+def list_workflow_failure_predictions(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1315,7 +1315,7 @@ async def list_workflow_failure_predictions(
     response_model=OrgFailurePredictionScanResponse,
     response_model_by_alias=True,
 )
-async def scan_org_failure_predictions_route(
+def scan_org_failure_predictions_route(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -1336,7 +1336,7 @@ async def scan_org_failure_predictions_route(
 
 
 @router.post("/{workflow_id}/failure-predictions/scan", response_model=FailurePredictionScanResponse)
-async def scan_workflow_failure_predictions_route(
+def scan_workflow_failure_predictions_route(
     workflow_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1363,7 +1363,7 @@ async def scan_workflow_failure_predictions_route(
 
 
 @router.post("/failure-predictions/{alert_id}/dismiss")
-async def dismiss_workflow_failure_prediction(
+def dismiss_workflow_failure_prediction(
     alert_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1381,7 +1381,7 @@ async def dismiss_workflow_failure_prediction(
 
 
 @router.get("/connector-fixtures")
-async def get_connector_fixtures_route(
+def get_connector_fixtures_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -1402,7 +1402,7 @@ async def get_connector_fixtures_route(
 
 
 @router.post("/connector-fixtures", status_code=status.HTTP_201_CREATED)
-async def post_connector_fixture_route(
+def post_connector_fixture_route(
     body: ConnectorFixtureRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     environment: Annotated[str, Depends(get_environment_context)],
@@ -1430,7 +1430,7 @@ async def post_connector_fixture_route(
 
 
 @router.delete("/connector-fixtures/{fixture_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_connector_fixture_route(
+def delete_connector_fixture_route(
     fixture_id: str,
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1445,7 +1445,7 @@ async def delete_connector_fixture_route(
 
 
 @router.post("/{workflow_id}/versions")
-async def create_workflow_version_route(
+def create_workflow_version_route(
     workflow_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1511,7 +1511,7 @@ async def create_workflow_version_route(
 
 
 @router.get("/{workflow_id}/versions", response_model=WorkflowVersionListResponse)
-async def list_workflow_versions_route(
+def list_workflow_versions_route(
     workflow_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1541,7 +1541,7 @@ async def list_workflow_versions_route(
 
 
 @router.post("/{workflow_id}/versions/{version_id}/activate")
-async def activate_workflow_version_route(
+def activate_workflow_version_route(
     workflow_id: UUID,
     version_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -1594,7 +1594,7 @@ async def activate_workflow_version_route(
 
 
 @router.get("/{workflow_id}/active", response_model=WorkflowActiveVersion)
-async def get_active_workflow_version_route(
+def get_active_workflow_version_route(
     workflow_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1622,7 +1622,7 @@ async def get_active_workflow_version_route(
 
 
 @router.post("/{workflow_id}/versions/{version_id}/promote")
-async def promote_workflow_version_route(
+def promote_workflow_version_route(
     workflow_id: UUID,
     version_id: UUID,
     body: PromoteVersionRequest,
@@ -2534,7 +2534,7 @@ def _resolve_schedule_timing(
 
 
 @router.get("/{workflow_id}/schedules")
-async def list_workflow_schedules_route(
+def list_workflow_schedules_route(
     workflow_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -2549,7 +2549,7 @@ async def list_workflow_schedules_route(
 
 
 @router.post("/{workflow_id}/schedules", status_code=status.HTTP_201_CREATED)
-async def create_workflow_schedule_route(
+def create_workflow_schedule_route(
     workflow_id: UUID,
     body: ScheduleCreateRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
@@ -2732,7 +2732,7 @@ async def delete_workflow_schedule_alias(
 
 
 @router.post("/schedules/dispatch")
-async def dispatch_workflow_schedules(
+def dispatch_workflow_schedules(
     _admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -3116,7 +3116,7 @@ async def reject_run(
 
 
 @router.post("/runs/{run_id}/resume")
-async def resume_graph_run(
+def resume_graph_run(
     run_id: UUID,
     body: ResumeGraphRunRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -3233,7 +3233,7 @@ def _require_graph_approval_admin(
 
 
 @router.get("/runs/{run_id}/approval-batch")
-async def get_run_approval_batch(
+def get_run_approval_batch(
     run_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -3266,7 +3266,7 @@ async def get_run_approval_batch(
 
 
 @router.post("/runs/{run_id}/approval-batch/decide")
-async def decide_run_approval_batch(
+def decide_run_approval_batch(
     run_id: UUID,
     body: ApprovalBatchDecideRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -3431,7 +3431,7 @@ async def list_pending_approvals_alias(
 
 
 @approvals_router.get("")
-async def list_approvals_alias(
+def list_approvals_alias(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -3936,7 +3936,7 @@ async def reject_run_alias(
 
 
 @router.get("/runs")
-async def list_runs(
+def list_runs(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -4077,7 +4077,7 @@ async def get_run(
 
 
 @runs_router.get("")
-async def list_runs_alias(
+def list_runs_alias(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -4176,7 +4176,7 @@ async def get_run_alias(
 
 
 @runs_router.get("/{run_id}/observability")
-async def get_run_observability(
+def get_run_observability(
     run_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -4200,7 +4200,7 @@ async def get_run_observability(
 
 
 @runs_router.post("/{run_id}/retry")
-async def retry_run_alias(
+def retry_run_alias(
     run_id: UUID,
     _admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -4256,7 +4256,7 @@ async def retry_run_alias(
 
 
 @runs_router.post("/{run_id}/resume-paused")
-async def resume_paused_run_alias(
+def resume_paused_run_alias(
     run_id: UUID,
     admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -4296,7 +4296,7 @@ async def resume_paused_run_alias(
 
 
 @runs_router.post("/{run_id}/steps/{step_id}/retry")
-async def retry_run_step_alias(
+def retry_run_step_alias(
     run_id: UUID,
     step_id: UUID,
     admin: Annotated[tuple, Depends(require_admin)],
@@ -4338,7 +4338,7 @@ async def retry_run_step_alias(
 
 
 @runs_router.post("/{run_id}/cancel")
-async def cancel_run_alias(
+def cancel_run_alias(
     run_id: UUID,
     admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -4379,7 +4379,7 @@ async def cancel_run_alias(
 
 
 @runs_router.post("/{run_id}/pause")
-async def pause_run_alias(
+def pause_run_alias(
     run_id: UUID,
     admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -4442,7 +4442,7 @@ async def compensate_run_alias(
 
 
 @router.get("")
-async def list_workflows_route(
+def list_workflows_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -4526,7 +4526,7 @@ async def list_workflows_route(
 
 
 @router.get("/stats")
-async def workflow_org_stats(
+def workflow_org_stats(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -4735,7 +4735,7 @@ async def get_workflow(
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_workflow_route(
+def create_workflow_route(
     body: WorkflowCreateRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -4840,7 +4840,7 @@ async def update_workflow_route(
 
 
 @router.post("/{workflow_id}/schema-sync/from-contract")
-async def sync_workflow_schema_from_contract(
+def sync_workflow_schema_from_contract(
     workflow_id: UUID,
     _admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -4872,7 +4872,7 @@ async def sync_workflow_schema_from_contract(
 
 
 @router.post("/{workflow_id}/stage")
-async def update_workflow_stage(
+def update_workflow_stage(
     workflow_id: UUID,
     body: WorkflowStageUpdateRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
@@ -4915,7 +4915,7 @@ async def update_workflow_stage(
 
 
 @router.post("/{workflow_id}/ai/improve-step")
-async def workflow_ai_improve_step(
+def workflow_ai_improve_step(
     workflow_id: UUID,
     body: WorkflowAiStepRequest,
     _user: Annotated[dict, Depends(get_current_user)],
@@ -4975,7 +4975,7 @@ async def workflow_ai_improve_step(
 
 
 @router.post("/{workflow_id}/ai/explain-step")
-async def workflow_ai_explain_step(
+def workflow_ai_explain_step(
     workflow_id: UUID,
     body: WorkflowAiStepRequest,
     _user: Annotated[dict, Depends(get_current_user)],
@@ -5021,7 +5021,7 @@ async def workflow_ai_explain_step(
 
 
 @router.post("/{workflow_id}/ai/suggest-next")
-async def workflow_ai_suggest_next(
+def workflow_ai_suggest_next(
     workflow_id: UUID,
     body: WorkflowAiSuggestRequest,
     _user: Annotated[dict, Depends(get_current_user)],
@@ -5068,7 +5068,7 @@ async def workflow_ai_suggest_next(
 
 
 @router.post("/{workflow_id}/ai/chat")
-async def workflow_ai_chat(
+def workflow_ai_chat(
     workflow_id: UUID,
     body: WorkflowAiChatRequest,
     _user: Annotated[dict, Depends(get_current_user)],

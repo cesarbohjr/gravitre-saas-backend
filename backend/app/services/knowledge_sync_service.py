@@ -1,5 +1,6 @@
 """STA-45: Unified knowledge sync scheduler (Notion → RAG v1)."""
 from __future__ import annotations
+from app.core.db import shared_service_client
 
 import logging
 import re
@@ -397,7 +398,7 @@ def run_scheduled_knowledge_syncs(
     """Process all connectors due for scheduled knowledge sync."""
     from supabase import create_client
 
-    client = client or create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = client or shared_service_client(settings, create_client)
     due = list_due_knowledge_connectors(client)
     outcomes: list[dict[str, Any]] = []
 

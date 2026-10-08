@@ -59,7 +59,7 @@ class MCPServerAuthPatchRequest(BaseModel):
 
 
 @router.get("/servers")
-async def list_mcp_servers(
+def list_mcp_servers(
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
@@ -78,7 +78,7 @@ async def list_mcp_servers(
 
 
 @router.post("/servers")
-async def create_mcp_server(
+def create_mcp_server(
     body: MCPServerCreateRequest,
     org_id: Annotated[str, Depends(get_org_context)],
     admin: Annotated[tuple, Depends(require_admin)],
@@ -118,7 +118,7 @@ async def create_mcp_server(
 
 
 @router.delete("/servers/{server_id}")
-async def delete_mcp_server(
+def delete_mcp_server(
     server_id: str,
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
@@ -146,7 +146,7 @@ async def delete_mcp_server(
 
 
 @router.patch("/servers/{server_id}")
-async def patch_mcp_server(
+def patch_mcp_server(
     server_id: str,
     body: MCPServerPatchRequest,
     org_id: Annotated[str, Depends(get_org_context)],
@@ -211,7 +211,7 @@ async def patch_mcp_server(
 
 
 @router.patch("/servers/{server_id}/auth")
-async def patch_mcp_server_auth(
+def patch_mcp_server_auth(
     server_id: str,
     body: MCPServerAuthPatchRequest,
     org_id: Annotated[str, Depends(get_org_context)],
@@ -324,7 +324,7 @@ async def discover_mcp_tools(
 
 
 @router.get("/tools")
-async def list_mcp_tools(
+def list_mcp_tools(
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
@@ -346,7 +346,7 @@ async def list_mcp_tools(
 
 
 @router.patch("/tools/{tool_id}")
-async def patch_mcp_tool(
+def patch_mcp_tool(
     tool_id: str,
     body: MCPToolPatchRequest,
     org_id: Annotated[str, Depends(get_org_context)],

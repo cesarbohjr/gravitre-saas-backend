@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -116,7 +117,7 @@ class DelegatedTaskReasonRequest(BaseModel):
 
 
 def _client(settings: Settings):
-    return create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return shared_service_client(settings, create_client)
 
 
 def _raise_b2b(exc: B2BHandoffError) -> None:
@@ -152,7 +153,7 @@ def _raise_delegated(exc: DelegatedTaskError) -> None:
 
 
 @router.get("/partnerships")
-async def get_partnerships(
+def get_partnerships(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -171,7 +172,7 @@ async def get_partnerships(
 
 
 @router.post("/partnerships")
-async def post_partnership_invite(
+def post_partnership_invite(
     body: PartnershipInviteRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -191,7 +192,7 @@ async def post_partnership_invite(
 
 
 @router.post("/partnerships/{partnership_id}/accept")
-async def post_partnership_accept(
+def post_partnership_accept(
     partnership_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -211,7 +212,7 @@ async def post_partnership_accept(
 
 
 @router.post("/partnerships/{partnership_id}/reject")
-async def post_partnership_reject(
+def post_partnership_reject(
     partnership_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -231,7 +232,7 @@ async def post_partnership_reject(
 
 
 @router.post("/partnerships/{partnership_id}/revoke")
-async def post_partnership_revoke(
+def post_partnership_revoke(
     partnership_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -251,7 +252,7 @@ async def post_partnership_revoke(
 
 
 @router.get("/handoffs")
-async def get_handoffs(
+def get_handoffs(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -279,7 +280,7 @@ async def get_handoffs(
 
 
 @router.get("/handoffs/{handoff_id}")
-async def get_handoff(
+def get_handoff(
     handoff_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -295,7 +296,7 @@ async def get_handoff(
 
 
 @router.post("/handoffs")
-async def post_handoff(
+def post_handoff(
     body: CrossOrgHandoffRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -321,7 +322,7 @@ async def post_handoff(
 
 
 @router.post("/handoffs/{handoff_id}/accept")
-async def post_handoff_accept(
+def post_handoff_accept(
     handoff_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -341,7 +342,7 @@ async def post_handoff_accept(
 
 
 @router.post("/handoffs/{handoff_id}/reject")
-async def post_handoff_reject(
+def post_handoff_reject(
     handoff_id: str,
     body: HandoffRejectRequest,
     admin: Annotated[tuple, Depends(require_admin)],
@@ -363,7 +364,7 @@ async def post_handoff_reject(
 
 
 @router.post("/handoffs/{handoff_id}/complete")
-async def post_handoff_complete(
+def post_handoff_complete(
     handoff_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -383,7 +384,7 @@ async def post_handoff_complete(
 
 
 @router.get("/connector-grants")
-async def get_connector_grants(
+def get_connector_grants(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -395,7 +396,7 @@ async def get_connector_grants(
 
 
 @router.get("/connector-grants/{grant_id}")
-async def get_connector_grant(
+def get_connector_grant(
     grant_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -411,7 +412,7 @@ async def get_connector_grant(
 
 
 @router.post("/connector-grants")
-async def post_connector_grant(
+def post_connector_grant(
     body: FederatedGrantRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -434,7 +435,7 @@ async def post_connector_grant(
 
 
 @router.post("/connector-grants/{grant_id}/accept")
-async def post_connector_grant_accept(
+def post_connector_grant_accept(
     grant_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -453,7 +454,7 @@ async def post_connector_grant_accept(
 
 
 @router.post("/connector-grants/{grant_id}/reject")
-async def post_connector_grant_reject(
+def post_connector_grant_reject(
     grant_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -472,7 +473,7 @@ async def post_connector_grant_reject(
 
 
 @router.post("/connector-grants/{grant_id}/revoke")
-async def post_connector_grant_revoke(
+def post_connector_grant_revoke(
     grant_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -491,7 +492,7 @@ async def post_connector_grant_revoke(
 
 
 @router.get("/delegated-tasks")
-async def get_delegated_tasks(
+def get_delegated_tasks(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -512,7 +513,7 @@ async def get_delegated_tasks(
 
 
 @router.get("/delegated-tasks/{task_id}")
-async def get_delegated_task_route(
+def get_delegated_task_route(
     task_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -528,7 +529,7 @@ async def get_delegated_task_route(
 
 
 @router.post("/delegated-tasks")
-async def post_delegated_task(
+def post_delegated_task(
     body: DelegatedTaskRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -553,7 +554,7 @@ async def post_delegated_task(
 
 
 @router.post("/delegated-tasks/{task_id}/accept")
-async def post_delegated_task_accept(
+def post_delegated_task_accept(
     task_id: str,
     body: DelegatedTaskAcceptRequest,
     admin: Annotated[tuple, Depends(require_admin)],
@@ -575,7 +576,7 @@ async def post_delegated_task_accept(
 
 
 @router.post("/delegated-tasks/{task_id}/reject")
-async def post_delegated_task_reject(
+def post_delegated_task_reject(
     task_id: str,
     body: DelegatedTaskReasonRequest,
     admin: Annotated[tuple, Depends(require_admin)],
@@ -596,7 +597,7 @@ async def post_delegated_task_reject(
 
 
 @router.post("/delegated-tasks/{task_id}/start")
-async def post_delegated_task_start(
+def post_delegated_task_start(
     task_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -615,7 +616,7 @@ async def post_delegated_task_start(
 
 
 @router.post("/delegated-tasks/{task_id}/complete")
-async def post_delegated_task_complete(
+def post_delegated_task_complete(
     task_id: str,
     body: DelegatedTaskCompleteRequest,
     admin: Annotated[tuple, Depends(require_admin)],
@@ -636,7 +637,7 @@ async def post_delegated_task_complete(
 
 
 @router.post("/delegated-tasks/{task_id}/fail")
-async def post_delegated_task_fail(
+def post_delegated_task_fail(
     task_id: str,
     body: DelegatedTaskReasonRequest,
     admin: Annotated[tuple, Depends(require_admin)],
@@ -657,7 +658,7 @@ async def post_delegated_task_fail(
 
 
 @router.post("/delegated-tasks/{task_id}/cancel")
-async def post_delegated_task_cancel(
+def post_delegated_task_cancel(
     task_id: str,
     body: DelegatedTaskReasonRequest,
     admin: Annotated[tuple, Depends(require_admin)],

@@ -110,7 +110,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const { data, mutate } = useSWR(
     user ? ["notification-center", user.id] : null,
     () => notificationsApi.list({ limit: 50, offset: 0 }),
-    { refreshInterval: 15_000 }
+    // 60s (was 15s): every poll is a backend round trip on every open tab.
+    { refreshInterval: 60_000, revalidateOnFocus: true }
   )
 
   const notifications = useMemo(

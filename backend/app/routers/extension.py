@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import require_org_member
 from app.config import Settings, get_settings
@@ -81,7 +82,7 @@ def _tool_context(
     user_id: str,
     environment: str,
 ) -> ToolContext:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return ToolContext(
         settings=settings,
         client=client,
@@ -92,14 +93,14 @@ def _tool_context(
 
 
 @router.get("/session")
-async def extension_session(
+def extension_session(
     member: Annotated[tuple, Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     user, org_id, role = member
     if not org_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     connected = connected_integrations(client, str(org_id))
     return {
         "userId": str(user["user_id"]),
@@ -113,7 +114,7 @@ async def extension_session(
 
 
 @router.post("/usage-signal")
-async def extension_usage_signal(
+def extension_usage_signal(
     body: UsageSignalBody,
     member: Annotated[tuple, Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -122,7 +123,7 @@ async def extension_usage_signal(
     user, org_id, _role = member
     if not org_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return record_extension_usage_signal(
             client,
@@ -141,7 +142,7 @@ async def extension_usage_signal(
 
 
 @router.post("/enrich")
-async def extension_enrich(
+def extension_enrich(
     body: PageContextBody,
     member: Annotated[tuple, Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -180,7 +181,7 @@ async def extension_enrich(
 
 
 @router.get("/workflows")
-async def extension_list_workflows(
+def extension_list_workflows(
     member: Annotated[tuple, Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
     environment: str = "production",
@@ -189,7 +190,7 @@ async def extension_list_workflows(
     _user, org_id, _role = member
     if not org_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="org required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     workflows = list_extension_workflows(
         client, org_id=str(org_id), environment_name=environment or "production"
     )
@@ -289,7 +290,7 @@ async def extension_chat(
 
 
 @router.post("/actions/execute")
-async def extension_execute_action(
+def extension_execute_action(
     body: ExtensionActionBody,
     member: Annotated[tuple, Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],

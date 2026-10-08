@@ -6,6 +6,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.billing.seat_context import (
@@ -29,7 +30,7 @@ class AssignResourceRequest(BaseModel):
 
 
 def _client(settings: Settings):
-    return create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return shared_service_client(settings, create_client)
 
 
 def _seat(
@@ -45,7 +46,7 @@ def _seat(
 
 
 @router.get("/me")
-async def get_my_department_scope(
+def get_my_department_scope(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -65,7 +66,7 @@ async def get_my_department_scope(
 
 
 @router.get("/{department_id}/assignments")
-async def list_department_assignments(
+def list_department_assignments(
     department_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -104,7 +105,7 @@ async def list_department_assignments(
 
 
 @router.post("/assignments")
-async def assign_department_resource(
+def assign_department_resource(
     body: AssignResourceRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -151,7 +152,7 @@ async def assign_department_resource(
 
 
 @router.delete("/assignments")
-async def unassign_department_resource(
+def unassign_department_resource(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -174,7 +175,7 @@ async def unassign_department_resource(
 
 
 @router.get("/assigned/{resource_type}")
-async def list_my_assigned_resources(
+def list_my_assigned_resources(
     resource_type: ResourceType,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],

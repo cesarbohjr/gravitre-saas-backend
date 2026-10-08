@@ -6,6 +6,7 @@ import os
 from typing import Any
 
 from supabase import Client, create_client
+from app.core.db import shared_service_client
 
 from app.config import Settings
 from app.core.logging import get_logger, request_id_ctx
@@ -33,7 +34,7 @@ def _avg(values: list[float]) -> float:
 
 
 def _client(settings: Settings) -> Client:
-    return create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return shared_service_client(settings, create_client)
 
 
 def _count_rows(r: Any) -> int:

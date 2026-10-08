@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -89,7 +90,7 @@ async def interpret_build_request_route(
 ) -> MesonInterpretResult:
     """Turn Meson wizard inputs into an agent/workflow build plan."""
     resolved_org = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     user_id = str(_user.get("user_id") or "")
     return await meson.interpret_build_request(
         intent=body.intent,
@@ -112,7 +113,7 @@ async def deploy_build_route(
 ) -> MesonDeployResult:
     """Create agent (+ optional workflow draft) from a Meson build plan."""
     current_user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     user_id = str(current_user.get("user_id") or "")
     plan = await meson.interpret_build_request(
         intent=body.intent,
@@ -160,7 +161,7 @@ async def deploy_build_route(
 
 
 @router.post("/suggestions", response_model=MesonSuggestionsResponse, response_model_by_alias=True, dependencies=_MESON_BUILD)
-async def meson_suggestions_route(
+def meson_suggestions_route(
     body: MesonSuggestionsRequest,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -169,7 +170,7 @@ async def meson_suggestions_route(
 ) -> MesonSuggestionsResponse:
     """Return next-step node suggestions for the workflow builder."""
     resolved_org = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     feedback_summary = meson.load_feedback_summary(client, resolved_org, workflow_id=body.workflow_id)
     return meson.get_workflow_suggestions(
         workflow_state=body.workflow_state,
@@ -180,7 +181,7 @@ async def meson_suggestions_route(
 
 
 @router.get("/alerts", response_model=MesonAlertsResponse, response_model_by_alias=True, dependencies=_MESON_BUILD)
-async def meson_alerts_route(
+def meson_alerts_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -191,7 +192,7 @@ async def meson_alerts_route(
 ) -> MesonAlertsResponse:
     """Return proactive workflow and connector alerts (optionally scoped to a workflow)."""
     resolved_org = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     feedback_summary = meson.load_feedback_summary(
         client, resolved_org, workflow_id=workflow_id
     )
@@ -212,7 +213,7 @@ async def meson_alerts_route(
 
 
 @router.get("/insights", response_model=MesonInsightsResponse, response_model_by_alias=True, dependencies=_MESON_BUILD)
-async def meson_insights_route(
+def meson_insights_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -221,7 +222,7 @@ async def meson_insights_route(
 ) -> MesonInsightsResponse:
     """Return org-wide Meson insights for the copilot panel."""
     resolved_org = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     feedback_summary = meson.load_feedback_summary(client, resolved_org)
     return meson.get_proactive_insights(
         client,
@@ -232,7 +233,7 @@ async def meson_insights_route(
 
 
 @router.get("/page-context", response_model=MesonPageContextResponse, response_model_by_alias=True)
-async def meson_page_context_route(
+def meson_page_context_route(
     page: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -243,7 +244,7 @@ async def meson_page_context_route(
 ) -> MesonPageContextResponse:
     """Return page-scoped Meson insights and suggestions (AI chat, model registry, agents)."""
     resolved_org = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     feedback_summary = meson.load_feedback_summary(client, resolved_org)
     return meson.get_page_context(
         client,
@@ -262,7 +263,7 @@ class MesonOptimizationsRequest(BaseModel):
 
 
 @router.get("/optimizations/{workflow_id}", response_model=MesonInsightsResponse, response_model_by_alias=True)
-async def meson_workflow_optimizations_route(
+def meson_workflow_optimizations_route(
     workflow_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -272,7 +273,7 @@ async def meson_workflow_optimizations_route(
 ) -> MesonInsightsResponse:
     """Return workflow-scoped Meson optimization tips for the builder copilot panel."""
     resolved_org = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     feedback_summary = meson.load_feedback_summary(client, resolved_org, workflow_id=workflow_id)
     return meson.get_workflow_optimizations(
         client,
@@ -284,7 +285,7 @@ async def meson_workflow_optimizations_route(
 
 
 @router.post("/optimizations/{workflow_id}", response_model=MesonInsightsResponse, response_model_by_alias=True)
-async def meson_workflow_optimizations_with_canvas_route(
+def meson_workflow_optimizations_with_canvas_route(
     workflow_id: str,
     body: MesonOptimizationsRequest,
     _user: Annotated[dict, Depends(get_current_user)],
@@ -295,7 +296,7 @@ async def meson_workflow_optimizations_with_canvas_route(
 ) -> MesonInsightsResponse:
     """Canvas-aware optimizations (tips + insights) for the open workflow."""
     resolved_org = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     feedback_summary = meson.load_feedback_summary(client, resolved_org, workflow_id=workflow_id)
     return meson.get_workflow_optimizations(
         client,
@@ -308,7 +309,7 @@ async def meson_workflow_optimizations_with_canvas_route(
 
 
 @router.get("/preferences", response_model=MesonPreferencesResponse, response_model_by_alias=True)
-async def meson_preferences_route(
+def meson_preferences_route(
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -316,7 +317,7 @@ async def meson_preferences_route(
 ) -> MesonPreferencesResponse:
     """Return learned Meson build preferences for the current user."""
     resolved_org = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return meson.get_user_preferences(
         client,
         resolved_org,
@@ -325,7 +326,7 @@ async def meson_preferences_route(
 
 
 @router.get("/feedback/metrics", response_model=MesonFeedbackMetricsResponse, response_model_by_alias=True)
-async def meson_feedback_metrics_route(
+def meson_feedback_metrics_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -334,12 +335,12 @@ async def meson_feedback_metrics_route(
 ) -> MesonFeedbackMetricsResponse:
     """Return Meson suggestion accept/dismiss metrics for the org or a workflow."""
     resolved_org = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return meson.get_feedback_metrics(client, resolved_org, workflow_id=workflow_id)
 
 
 @router.post("/feedback", response_model=MesonFeedbackResult)
-async def meson_feedback_route(
+def meson_feedback_route(
     body: MesonFeedbackRequest,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -348,7 +349,7 @@ async def meson_feedback_route(
 ) -> MesonFeedbackResult:
     """Record accept/dismiss feedback for Meson suggestions."""
     resolved_org = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return meson.record_feedback(
             client,
@@ -390,7 +391,7 @@ async def meson_edit_propose_route(
     from app.services.meson_canvas_edit import propose_workflow_edit
 
     resolved_org = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         proposal = await propose_workflow_edit(
             client=client,
@@ -407,7 +408,7 @@ async def meson_edit_propose_route(
 
 
 @router.post("/edit/apply", dependencies=_MESON_BUILD)
-async def meson_edit_apply_route(
+def meson_edit_apply_route(
     body: MesonEditApplyRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -417,7 +418,7 @@ async def meson_edit_apply_route(
     from app.services.meson_canvas_edit import apply_workflow_edit
 
     current_user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         result = apply_workflow_edit(
             client=client,
@@ -435,7 +436,7 @@ async def meson_edit_apply_route(
 
 
 @router.get("/edit/history/{workflow_id}", dependencies=_MESON_BUILD)
-async def meson_edit_history_route(
+def meson_edit_history_route(
     workflow_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -459,7 +460,7 @@ async def meson_explain_workflow_route(
     from app.services.meson_canvas_edit import explain_workflow
 
     resolved_org = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         result = await explain_workflow(
             client=client,
@@ -473,7 +474,7 @@ async def meson_explain_workflow_route(
 
 
 @router.get("/node-reliability/{workflow_id}", dependencies=_MESON_BUILD)
-async def meson_node_reliability_route(
+def meson_node_reliability_route(
     workflow_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -483,5 +484,5 @@ async def meson_node_reliability_route(
     from app.services.canvas_node_reliability import node_reliability_for_workflow
 
     resolved_org = _require_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return node_reliability_for_workflow(client, org_id=resolved_org, workflow_id=workflow_id)

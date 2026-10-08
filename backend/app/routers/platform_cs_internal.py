@@ -7,6 +7,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.config import Settings, get_settings
 from app.services.platform_cs_workspace_service import backfill_platform_health_snapshots
@@ -36,7 +37,7 @@ async def internal_backfill_cs_snapshots(
     lookback_days: int = Query(default=30, ge=7, le=90, alias="lookbackDays"),
 ) -> dict[str, Any]:
     """Cron entry: backfill integration health snapshots for orgs missing history."""
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return await asyncio.to_thread(
         backfill_platform_health_snapshots,
         client,

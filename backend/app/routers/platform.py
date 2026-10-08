@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import require_platform_admin
 from app.config import Settings, get_settings
@@ -102,7 +103,7 @@ class PlatformCsAlertsResponse(BaseModel):
 
 
 @router.get("/cs-workspace/tenants", response_model=PlatformCsWorkspaceResponse, response_model_by_alias=True)
-async def get_platform_cs_workspace_tenants(
+def get_platform_cs_workspace_tenants(
     _user: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
     limit: int = Query(default=50, ge=1, le=100),
@@ -110,7 +111,7 @@ async def get_platform_cs_workspace_tenants(
     hide_snoozed: bool = Query(default=False, alias="hideSnoozed"),
 ) -> dict[str, Any]:
     """Cross-org integration health rollups for Gravitre platform operators."""
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return list_platform_tenant_summaries(
         client,
         limit=limit,
@@ -120,14 +121,14 @@ async def get_platform_cs_workspace_tenants(
 
 
 @router.post("/cs-workspace/snapshots/backfill")
-async def backfill_platform_cs_snapshots(
+def backfill_platform_cs_snapshots(
     user: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
     limit: int = Query(default=25, ge=1, le=100),
     lookback_days: int = Query(default=30, ge=7, le=90, alias="lookbackDays"),
 ) -> dict[str, Any]:
     """Record first integration health snapshot for orgs missing history."""
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return backfill_platform_health_snapshots(
         client,
         limit=limit,
@@ -137,14 +138,14 @@ async def backfill_platform_cs_snapshots(
 
 
 @router.post("/cs-workspace/tenants/{org_id}/assign")
-async def assign_platform_cs_tenant(
+def assign_platform_cs_tenant(
     org_id: str,
     body: PlatformTenantAssignRequest,
     user: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     """Assign a tenant to a platform operator for follow-up."""
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     assignee_id = body.assignee_user_id or user["user_id"]
     assignee_email = body.assignee_email or user.get("email")
     try:
@@ -162,14 +163,14 @@ async def assign_platform_cs_tenant(
 
 
 @router.post("/cs-workspace/tenants/{org_id}/snooze")
-async def snooze_platform_cs_tenant(
+def snooze_platform_cs_tenant(
     org_id: str,
     body: PlatformTenantSnoozeRequest,
     user: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     """Snooze an at-risk tenant from the platform alert queue."""
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         queue = snooze_platform_tenant(
             client,
@@ -183,7 +184,7 @@ async def snooze_platform_cs_tenant(
 
 
 @router.get("/cs-workspace/alerts", response_model=PlatformCsAlertsResponse, response_model_by_alias=True)
-async def get_platform_cs_alerts(
+def get_platform_cs_alerts(
     _user: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
     limit: int = Query(default=50, ge=1, le=100),
@@ -191,19 +192,19 @@ async def get_platform_cs_alerts(
     alert_type: str | None = Query(default=None, alias="alertType"),
 ) -> dict[str, Any]:
     """Cross-org open failure alerts and integration suggestions."""
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return list_platform_cs_alerts(client, limit=limit, offset=offset, alert_type=alert_type)
 
 
 @router.post("/cs-workspace/tenants/{org_id}/escalate")
-async def escalate_platform_cs_tenant(
+def escalate_platform_cs_tenant(
     org_id: str,
     body: PlatformTenantEscalateRequest,
     user: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     """Escalate a tenant to on-call (Slack/webhook) with CS context."""
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     app_base = (settings.public_app_url or settings.api_public_url or "").strip()
     try:
         return escalate_platform_tenant(

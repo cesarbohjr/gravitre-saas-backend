@@ -34,7 +34,7 @@ class MetricUpsertBody(BaseModel):
 
 
 @router.get("")
-async def list_cognitive_metrics(
+def list_cognitive_metrics(
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
@@ -54,7 +54,7 @@ async def list_cognitive_metrics(
 
 
 @router.put("/{metric_key}")
-async def upsert_cognitive_metric(
+def upsert_cognitive_metric(
     metric_key: str,
     body: MetricUpsertBody,
     org_id: Annotated[str, Depends(get_org_context)],
@@ -91,7 +91,7 @@ async def upsert_cognitive_metric(
 
 
 @router.get("/{metric_key}/resolve")
-async def resolve_cognitive_metric(
+def resolve_cognitive_metric(
     metric_key: str,
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],

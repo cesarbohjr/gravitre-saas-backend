@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from app.core.async_bridge import spawn_background
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -28,7 +29,7 @@ class OutcomeTracker:
         response: dict[str, Any],
         classification: dict[str, Any],
     ) -> None:
-        asyncio.create_task(
+        spawn_background(
             self._track_async(
                 org_id,
                 agent_id,

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context
+from app.core.db import shared_service_client
 from app.billing.service import (
     apply_usage_with_overage,
     build_ai_usage_metadata,
@@ -103,7 +104,7 @@ async def retrieve(
     try:
         from supabase import create_client
 
-        client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+        client = shared_service_client(settings, create_client)
         plan = get_plan_for_org(client, org_id)
         period_start, period_end = get_current_period()
         ai_meta = build_ai_usage_metadata(

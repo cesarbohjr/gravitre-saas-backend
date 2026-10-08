@@ -234,7 +234,7 @@ async def intelligence_heuristic_recommendations(
 
 
 @router.post("/recommendations/heuristics/{card_id}/dismiss")
-async def intelligence_heuristic_dismiss(
+def intelligence_heuristic_dismiss(
     card_id: str,
     org_id: Annotated[str, Depends(get_org_context)],
     member: Annotated[tuple, Depends(require_org_member)],
@@ -387,7 +387,7 @@ class ChurnLabelRequest(BaseModel):
 
 
 @router.post("/churn-risk/labels")
-async def intelligence_churn_risk_label(
+def intelligence_churn_risk_label(
     body: ChurnLabelRequest,
     org_id: Annotated[str, Depends(get_org_context)],
     member: Annotated[tuple, Depends(require_org_member)],

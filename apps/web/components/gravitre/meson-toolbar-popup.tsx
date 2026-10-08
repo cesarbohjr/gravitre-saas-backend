@@ -62,11 +62,14 @@ const QUICK_LAUNCH_PROMPTS = [
  * yet, and is labeled "Meson" (not "GIBE") when shown, so the badge always
  * matches the true source.
  */
-function useMesonGibeVoice() {
+function useMesonGibeVoice(enabled: boolean) {
   const { user } = useAuth()
   const { tier, loading: entitlementsLoading } = useEntitlements()
   const insightsTierAllowed = tier === "control" || tier === "command"
-  const briefKey = user ? ["meson-toolbar-advisor-brief"] : null
+  // Only fetched once the panel is opened: the brief is shown nowhere else, and
+  // fetching it on every page load put a ~3.5s backend call (plus a chained
+  // /api/meson/insights fallback) in front of every page's own data.
+  const briefKey = user && enabled ? ["meson-toolbar-advisor-brief"] : null
   const { data: brief, isLoading: briefLoading } = useSWR(
     briefKey,
     () => assistantApi.advisorBrief() as Promise<AdvisorBrief>,
@@ -82,7 +85,7 @@ function useMesonGibeVoice() {
 
   // /api/meson/insights is require_tier("control") server-side; lower tiers would get a 403 on every page.
   const fallbackKey =
-    !briefInsight && user && !entitlementsLoading && insightsTierAllowed ? ["meson-toolbar-fallback-insights"] : null
+    enabled && !briefInsight && !briefLoading && user && !entitlementsLoading && insightsTierAllowed ? ["meson-toolbar-fallback-insights"] : null
   const { data: fallbackData, isLoading: fallbackLoading } = useSWR(fallbackKey, () => mesonApi.insights(), {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
@@ -296,7 +299,7 @@ export function MesonToolbarPopup() {
   const router = useRouter()
   const { visible, panelOpen, closePanel, togglePanel } = useMesonToolbar()
   const mesonPage = useMemo(() => resolveMesonPageFromPath(pathname), [pathname])
-  const gibeVoice = useMesonGibeVoice()
+  const gibeVoice = useMesonGibeVoice(visible && panelOpen)
 
   const handleSuggestionClick = useCallback(
     (suggestion: MesonSuggestion) => {

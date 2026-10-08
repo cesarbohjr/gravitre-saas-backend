@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/business-outcomes", tags=["business-outcomes"])
 
 
 @router.get("")
-async def list_business_outcomes(
+def list_business_outcomes(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -152,7 +152,7 @@ def _project_from_run(
 
 
 @router.get("/{outcome_id}")
-async def get_business_outcome(
+def get_business_outcome(
     outcome_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -168,7 +168,7 @@ async def get_business_outcome(
 
 
 @router.post("/{outcome_id}/undo")
-async def undo_business_outcome(
+def undo_business_outcome(
     outcome_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -212,7 +212,7 @@ async def undo_business_outcome(
 
 
 @router.get("/{outcome_id}/export")
-async def export_business_outcome(
+def export_business_outcome(
     outcome_id: UUID,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],

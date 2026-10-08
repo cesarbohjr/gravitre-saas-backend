@@ -7,6 +7,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -38,14 +39,14 @@ class SalesforceTriggersUpdate(BaseModel):
 
 
 @router.get("/{connector_id}/salesforce-triggers")
-async def list_salesforce_triggers(
+def list_salesforce_triggers(
     connector_id: str,
     org_id: Annotated[str, Depends(get_org_context)],
     _user: Annotated[dict, Depends(get_current_user)],
     _admin: Annotated[None, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     row = (
         client.table("connectors")
         .select("id,type,config")
@@ -71,7 +72,7 @@ async def list_salesforce_triggers(
 
 
 @router.put("/{connector_id}/salesforce-triggers")
-async def update_salesforce_triggers(
+def update_salesforce_triggers(
     connector_id: str,
     body: SalesforceTriggersUpdate,
     org_id: Annotated[str, Depends(get_org_context)],
@@ -79,7 +80,7 @@ async def update_salesforce_triggers(
     _admin: Annotated[None, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     row = (
         client.table("connectors")
         .select("id,type")

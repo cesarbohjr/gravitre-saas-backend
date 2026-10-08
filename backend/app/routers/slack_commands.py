@@ -9,6 +9,7 @@ from urllib.parse import parse_qs
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.config import Settings, get_settings
 from app.services.agent_interrupt_service import request_interrupt, resolve_org_id_for_slack_team
@@ -64,7 +65,7 @@ async def slack_interrupt_command(
             "text": "Usage: /gravitre interrupt <pause|cancel> <job|run> <id>",
         }
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     org_id = resolve_org_id_for_slack_team(client, team_id)
     if not org_id:
         return {"response_type": "ephemeral", "text": "No Gravitre org linked to this Slack workspace."}

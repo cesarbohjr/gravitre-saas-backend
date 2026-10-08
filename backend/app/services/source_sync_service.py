@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from supabase import Client
+from app.core.db import shared_service_client
 
 from app.config import Settings
 from app.core.crypto import decrypt_value
@@ -235,7 +236,7 @@ def _is_due(row: dict[str, Any], *, now: datetime) -> bool:
 async def run_scheduled_source_syncs(settings: Settings) -> dict[str, Any]:
     from supabase import create_client
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     now = datetime.now(timezone.utc)
     response = (
         client.table("rag_sources")

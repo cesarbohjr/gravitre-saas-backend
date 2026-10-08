@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -28,14 +29,14 @@ _ALLOWED_ENVIRONMENT_NAMES = frozenset({"production", "staging", "development"})
 
 
 @router.get("")
-async def list_environments(
+def list_environments(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     from app.services.org_membership import ensure_default_production_environment
 
     ensure_default_production_environment(client, org_id)
@@ -44,7 +45,7 @@ async def list_environments(
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_environment(
+def create_environment(
     body: EnvironmentCreateRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -56,7 +57,7 @@ async def create_environment(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid environment name (use production, staging, or development)",
         )
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     plan = get_plan_for_org(client, org_id)
     count = client.table("environments").select("id", count="exact").eq("org_id", org_id).execute()
     current = count.count or 0 if hasattr(count, "count") else len(count.data or [])
@@ -78,7 +79,7 @@ async def create_environment(
 
 
 @router.patch("/{env_id}")
-async def update_environment(
+def update_environment(
     env_id: UUID,
     body: EnvironmentUpdateRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
@@ -90,7 +91,7 @@ async def update_environment(
         payload["is_active"] = body.is_active
     if not payload:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No changes provided")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     updated = client.table("environments").update(payload).eq("org_id", org_id).eq("id", str(env_id)).execute()
     if not updated.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Environment not found")

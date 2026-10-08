@@ -171,15 +171,12 @@ export async function getAccessToken(): Promise<string | null> {
   if (!hasSupabasePublicEnv) return null
   
   try {
-    const {
-      data: { user },
-      error: userError,
-    } = await withTimeout(supabaseClient.auth.getUser(), ACCESS_TOKEN_TIMEOUT_MS)
-
-    if (userError || !user) {
-      return null
-    }
-
+    // getSession() reads the stored session and refreshes it when it is close
+    // to expiry; it does not call the network otherwise. This used to call
+    // getUser() first, which is a round trip to /auth/v1/user on EVERY API
+    // request (~20 per page load, each through the same-origin auth proxy and
+    // middleware). The backend verifies the JWT on every call, and
+    // AuthProvider still validates the user once at startup.
     const {
       data: { session },
       error,

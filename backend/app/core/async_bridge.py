@@ -65,6 +65,24 @@ def run_coro_sync(coro: Coroutine[Any, Any, T], *, timeout: float | None = None)
     return future.result(timeout=timeout)
 
 
+def spawn_background(coro: Coroutine[Any, Any, Any]) -> "asyncio.Future[Any] | asyncio.Task[Any]":
+    """Fire-and-forget ``coro`` from sync or async code.
+
+    On the event loop thread this is ``loop.create_task``. From a worker thread
+    (sync ``def`` route handlers run in Starlette's threadpool, where
+    ``asyncio.create_task`` raises "no running event loop") the coroutine is
+    scheduled on the shared bridge loop instead, so background telemetry and
+    learning writes keep happening whichever kind of handler called them.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop is not None:
+        return asyncio.create_task(coro)
+    return asyncio.run_coroutine_threadsafe(coro, _ensure_bridge_loop())
+
+
 def is_resource_unavailable(exc: BaseException) -> bool:
     """True for errno 11 / EAGAIN, including wrapped HTTP/API errors."""
     current: BaseException | None = exc

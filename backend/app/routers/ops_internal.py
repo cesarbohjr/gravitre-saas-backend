@@ -1327,7 +1327,7 @@ class CapabilityRecipesSmokeBody(BaseModel):
 
 
 @router.post("/capability-recipes-smoke")
-async def capability_recipes_smoke(
+def capability_recipes_smoke(
     body: CapabilityRecipesSmokeBody,
     settings: Settings = Depends(get_settings),
     _: Annotated[None, Depends(require_internal_secret)] = None,
@@ -1572,7 +1572,7 @@ class AgentIdentitySpendSmokeBody(BaseModel):
 
 
 @router.post("/agent-identity-spend-smoke")
-async def agent_identity_spend_smoke(
+def agent_identity_spend_smoke(
     body: AgentIdentitySpendSmokeBody,
     settings: Settings = Depends(get_settings),
     _: Annotated[None, Depends(require_internal_secret)] = None,
@@ -1651,7 +1651,7 @@ class AgentDelegationSmokeBody(BaseModel):
 
 
 @router.post("/agent-delegation-smoke")
-async def agent_delegation_smoke(
+def agent_delegation_smoke(
     body: AgentDelegationSmokeBody,
     settings: Settings = Depends(get_settings),
     _: Annotated[None, Depends(require_internal_secret)] = None,

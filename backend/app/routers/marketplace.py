@@ -7,6 +7,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 logger = logging.getLogger(__name__)
 
@@ -390,7 +391,7 @@ class PrivateBundleUploadRequest(BaseModel):
 
 
 @router.get("/registry")
-async def list_marketplace_registry(
+def list_marketplace_registry(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -398,20 +399,20 @@ async def list_marketplace_registry(
     """List published partner connectors."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     connectors = enrich_registry_with_pricing(client, list_registry(client))
     return {"connectors": connectors}
 
 
 @router.get("/submissions")
-async def list_marketplace_submissions(
+def list_marketplace_submissions(
     admin_ctx: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
     status_filter: Annotated[str | None, Query(alias="status")] = None,
 ) -> dict:
     """List submissions. Admins see all pending/review queue."""
     _user, org_id = admin_ctx
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return {
         "submissions": list_submissions(
             client,
@@ -423,7 +424,7 @@ async def list_marketplace_submissions(
 
 
 @router.get("/submissions/mine")
-async def list_my_submissions(
+def list_my_submissions(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -432,7 +433,7 @@ async def list_my_submissions(
     """List submissions for the current org."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return {
         "submissions": list_submissions(
             client,
@@ -444,7 +445,7 @@ async def list_my_submissions(
 
 
 @router.post("/submissions", status_code=status.HTTP_201_CREATED)
-async def submit_partner_connector(
+def submit_partner_connector(
     body: SubmissionCreateRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -453,7 +454,7 @@ async def submit_partner_connector(
     """Submit a partner connector package for review."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     submission = create_submission(
         client,
         org_id=org_id,
@@ -487,26 +488,26 @@ async def submit_partner_connector(
 
 
 @router.get("/submissions/{submission_id}")
-async def get_marketplace_submission(
+def get_marketplace_submission(
     submission_id: str,
     admin_ctx: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Get submission detail (admin)."""
     _user, org_id = admin_ctx
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return {"submission": get_submission(client, submission_id, org_id=org_id, admin=True, include_sources=True)}
 
 
 @router.post("/submissions/{submission_id}/rescan")
-async def rescan_marketplace_submission(
+def rescan_marketplace_submission(
     submission_id: str,
     admin_ctx: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Re-run automated security scan and scope review (admin)."""
     user, org_id = admin_ctx
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     submission = rescan_submission_certification(client, submission_id)
     write_audit_event(
         client,
@@ -521,7 +522,7 @@ async def rescan_marketplace_submission(
 
 
 @router.post("/submissions/{submission_id}/review")
-async def review_marketplace_submission(
+def review_marketplace_submission(
     submission_id: str,
     body: ReviewSubmissionRequest,
     admin_ctx: Annotated[tuple, Depends(require_admin)],
@@ -529,7 +530,7 @@ async def review_marketplace_submission(
 ) -> dict:
     """Approve or reject a partner connector submission."""
     user, org_id = admin_ctx
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     result = review_submission(
         client,
         submission_id=submission_id,
@@ -562,7 +563,7 @@ async def review_marketplace_submission(
 
 
 @router.get("/sandbox")
-async def marketplace_sandbox_status(
+def marketplace_sandbox_status(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -570,12 +571,12 @@ async def marketplace_sandbox_status(
     """Return partner sandbox status for the current publisher org."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return get_sandbox_status(client, org_id)
 
 
 @router.post("/sandbox", status_code=status.HTTP_201_CREATED)
-async def marketplace_sandbox_provision(
+def marketplace_sandbox_provision(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -583,7 +584,7 @@ async def marketplace_sandbox_provision(
     """Provision isolated sandbox org for partner connector QA (idempotent)."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     result = provision_sandbox(
         client,
         settings,
@@ -603,7 +604,7 @@ async def marketplace_sandbox_provision(
 
 
 @router.post("/sandbox/reset")
-async def marketplace_sandbox_reset(
+def marketplace_sandbox_reset(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -611,7 +612,7 @@ async def marketplace_sandbox_reset(
     """Re-seed sandbox demo agents, connectors, and workflows."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     result = reset_sandbox(client, settings, publisher_org_id=org_id)
     write_audit_event(
         client,
@@ -626,7 +627,7 @@ async def marketplace_sandbox_reset(
 
 
 @router.post("/sandbox/demo")
-async def marketplace_sandbox_demo(
+def marketplace_sandbox_demo(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -634,7 +635,7 @@ async def marketplace_sandbox_demo(
     """STA-73: Run Acme Tools demo invoke in sandbox and return audit trail."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     result = run_sandbox_demo(
         client,
         settings,
@@ -658,7 +659,7 @@ async def marketplace_sandbox_demo(
 
 
 @router.get("/billing/status")
-async def marketplace_billing_status(
+def marketplace_billing_status(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -666,7 +667,7 @@ async def marketplace_billing_status(
     """Partner Connect account, pricing, and earnings summary (STA-96)."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     status_payload = get_partner_billing_status(client, org_id)
     status_payload["platformFeeBps"] = settings.marketplace_platform_fee_bps
     status_payload["recentUsage"] = list_recent_usage_events(client, org_id)
@@ -676,7 +677,7 @@ async def marketplace_billing_status(
 
 
 @router.post("/billing/connect/onboard")
-async def marketplace_billing_connect_onboard(
+def marketplace_billing_connect_onboard(
     body: ConnectOnboardRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -685,7 +686,7 @@ async def marketplace_billing_connect_onboard(
     """Create Stripe Connect onboarding link for partner payouts."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     link = create_partner_onboarding_link(
         client,
         settings,
@@ -706,7 +707,7 @@ async def marketplace_billing_connect_onboard(
 
 
 @router.post("/billing/connect/sync")
-async def marketplace_billing_connect_sync(
+def marketplace_billing_connect_sync(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -714,25 +715,25 @@ async def marketplace_billing_connect_sync(
     """Refresh Connect account status from Stripe after onboarding."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     account = sync_partner_connect_account(client, settings, org_id=org_id)
     return {"account": account}
 
 
 @router.get("/billing/pricing")
-async def marketplace_billing_pricing_list(
+def marketplace_billing_pricing_list(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return {"pricing": list_partner_pricing(client, org_id)}
 
 
 @router.put("/billing/pricing/{registry_id}")
-async def marketplace_billing_pricing_upsert(
+def marketplace_billing_pricing_upsert(
     registry_id: str,
     body: ConnectorPricingRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -741,7 +742,7 @@ async def marketplace_billing_pricing_upsert(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     pricing = upsert_connector_pricing(
         client,
         settings,
@@ -767,7 +768,7 @@ async def marketplace_billing_pricing_upsert(
 
 
 @router.get("/private-bundles")
-async def marketplace_private_bundles_list(
+def marketplace_private_bundles_list(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -775,12 +776,12 @@ async def marketplace_private_bundles_list(
     """List org-scoped private connector bundles (STA-98)."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return {"bundles": list_private_bundles(client, org_id=org_id)}
 
 
 @router.get("/private-bundles/{bundle_id}")
-async def marketplace_private_bundle_get(
+def marketplace_private_bundle_get(
     bundle_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -788,12 +789,12 @@ async def marketplace_private_bundle_get(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return {"bundle": get_private_bundle(client, org_id=org_id, bundle_id=bundle_id)}
 
 
 @router.post("/private-bundles", status_code=status.HTTP_201_CREATED)
-async def marketplace_private_bundle_upload(
+def marketplace_private_bundle_upload(
     body: PrivateBundleUploadRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -802,7 +803,7 @@ async def marketplace_private_bundle_upload(
     """Upload a signed private connector bundle (draft)."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     bundle = upload_private_bundle(
         client,
         org_id=org_id,
@@ -826,14 +827,14 @@ async def marketplace_private_bundle_upload(
 
 
 @router.post("/private-bundles/{bundle_id}/activate")
-async def marketplace_private_bundle_activate(
+def marketplace_private_bundle_activate(
     bundle_id: str,
     admin_ctx: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Activate a signed private bundle for sandbox invoke_tool execution."""
     user, org_id = admin_ctx
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     bundle = activate_private_bundle(
         client,
         org_id=org_id,
@@ -853,13 +854,13 @@ async def marketplace_private_bundle_activate(
 
 
 @router.post("/private-bundles/{bundle_id}/disable")
-async def marketplace_private_bundle_disable(
+def marketplace_private_bundle_disable(
     bundle_id: str,
     admin_ctx: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin_ctx
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     bundle = disable_private_bundle(client, org_id=org_id, bundle_id=bundle_id)
     write_audit_event(
         client,
@@ -874,7 +875,7 @@ async def marketplace_private_bundle_disable(
 
 
 @router.get("/role-packs")
-async def list_role_packs(
+def list_role_packs(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -883,12 +884,12 @@ async def list_role_packs(
     """List installable department role packs with connector readiness checklist."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return {"packs": list_department_packs(client, org_id, environment_name=environment_name)}
 
 
 @router.get("/role-packs/{pack_id}")
-async def get_role_pack(
+def get_role_pack(
     pack_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -897,7 +898,7 @@ async def get_role_pack(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return get_department_pack(client, org_id, pack_id, environment_name=environment_name)
     except RoleMarketplaceError as exc:
@@ -908,7 +909,7 @@ async def get_role_pack(
 
 
 @router.post("/role-packs/{pack_id}/install")
-async def install_role_pack(
+def install_role_pack(
     pack_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -916,7 +917,7 @@ async def install_role_pack(
 ) -> dict:
     """One-click install: agents + RAG sources + workflow + connector checklist."""
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return install_department_pack(
             client,
@@ -933,7 +934,7 @@ async def install_role_pack(
 
 
 @router.get("/installs")
-async def list_marketplace_installs(
+def list_marketplace_installs(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -945,7 +946,7 @@ async def list_marketplace_installs(
     """Org install ledger with deep links to installed agents, workflows, and sources."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return list_org_installs(
             client,
@@ -960,7 +961,7 @@ async def list_marketplace_installs(
 
 
 @router.get("/saves")
-async def list_marketplace_saves(
+def list_marketplace_saves(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -969,7 +970,7 @@ async def list_marketplace_saves(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return list_my_saves(
             client,
@@ -983,31 +984,31 @@ async def list_marketplace_saves(
 
 
 @router.get("/categories")
-async def get_marketplace_categories(
+def get_marketplace_categories(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return list_marketplace_categories(client, org_id)
 
 
 @router.get("/analytics/summary")
-async def get_marketplace_analytics_summary(
+def get_marketplace_analytics_summary(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return marketplace_analytics_summary(client, org_id)
 
 
 @router.get("/analytics/roi")
-async def get_marketplace_roi_summary(
+def get_marketplace_roi_summary(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1016,12 +1017,12 @@ async def get_marketplace_roi_summary(
     """Strategic hours-saved ROI dashboard (MKT-AUDIT-13.2)."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return marketplace_roi_summary(client, org_id, limit=limit)
 
 
 @router.get("/federated-connectors")
-async def list_federated_connectors(
+def list_federated_connectors(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1032,18 +1033,18 @@ async def list_federated_connectors(
     """Partner registry entries in unified catalog shape (MKT-AUDIT-13.1)."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return list_federated_connector_assets(client, search=search, limit=limit, offset=offset)
 
 
 @router.post("/platform/registry/{registry_id}/sync-asset")
-async def platform_sync_registry_asset(
+def platform_sync_registry_asset(
     registry_id: str,
     _user: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Materialize or refresh connector_config asset from partner registry (MKT-AUDIT-13.1)."""
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     registry = (
         client.table("partner_connector_registry")
         .select("*")
@@ -1060,13 +1061,13 @@ async def platform_sync_registry_asset(
 
 
 @router.post("/platform/assets/{asset_ref}/link-registry")
-async def platform_link_asset_registry(
+def platform_link_asset_registry(
     asset_ref: str,
     body: LinkRegistryRequest,
     _user: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     from app.marketplace.crud import _fetch_asset
 
     try:
@@ -1084,7 +1085,7 @@ async def platform_link_asset_registry(
 
 
 @router.get("/org/assets")
-async def list_org_marketplace_assets(
+def list_org_marketplace_assets(
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
     status_filter: Annotated[str | None, Query(alias="status")] = None,
@@ -1094,7 +1095,7 @@ async def list_org_marketplace_assets(
 ) -> dict:
     """Org-owned assets for internal publish admin queue (MKT-AUDIT-9.3)."""
     _user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return list_org_assets(
         client,
         org_id,
@@ -1106,7 +1107,7 @@ async def list_org_marketplace_assets(
 
 
 @router.post("/assets", status_code=status.HTTP_201_CREATED)
-async def create_marketplace_asset_route(
+def create_marketplace_asset_route(
     body: CreateMarketplaceAssetRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1120,7 +1121,7 @@ async def create_marketplace_asset_route(
                 "installed capability through /api/capabilities/packages/{id}/marketplace-draft"
             ),
         )
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return create_org_asset(
             client,
@@ -1149,14 +1150,14 @@ async def create_marketplace_asset_route(
 
 
 @router.patch("/assets/{asset_ref}")
-async def update_marketplace_asset_route(
+def update_marketplace_asset_route(
     asset_ref: str,
     body: UpdateMarketplaceAssetRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     patch = body.model_dump(exclude_unset=True, by_alias=False)
     try:
         return update_org_asset(
@@ -1171,7 +1172,7 @@ async def update_marketplace_asset_route(
 
 
 @router.patch("/assets/{asset_ref}/pricing")
-async def update_org_asset_pricing_route(
+def update_org_asset_pricing_route(
     asset_ref: str,
     body: AssetPricingRequest,
     admin: Annotated[tuple, Depends(require_admin)],
@@ -1179,7 +1180,7 @@ async def update_org_asset_pricing_route(
 ) -> dict:
     """Org-admin pricing updates for owned assets (STA-256)."""
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return set_org_asset_pricing(
             client,
@@ -1195,13 +1196,13 @@ async def update_org_asset_pricing_route(
 
 
 @router.delete("/assets/{asset_ref}")
-async def archive_marketplace_asset_route(
+def archive_marketplace_asset_route(
     asset_ref: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return archive_org_asset(
             client,
@@ -1214,13 +1215,13 @@ async def archive_marketplace_asset_route(
 
 
 @router.post("/assets/{asset_ref}/submit-for-review")
-async def submit_marketplace_asset_for_review(
+def submit_marketplace_asset_for_review(
     asset_ref: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return submit_asset_for_review(
             client,
@@ -1233,13 +1234,13 @@ async def submit_marketplace_asset_for_review(
 
 
 @router.post("/assets/{asset_ref}/approve")
-async def approve_marketplace_asset_for_internal_publish(
+def approve_marketplace_asset_for_internal_publish(
     asset_ref: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return approve_asset_for_internal_publish(
             client,
@@ -1252,14 +1253,14 @@ async def approve_marketplace_asset_for_internal_publish(
 
 
 @router.post("/assets/{asset_ref}/reject")
-async def reject_marketplace_asset_review(
+def reject_marketplace_asset_review(
     asset_ref: str,
     body: RejectAssetReviewRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return reject_asset_review(
             client,
@@ -1273,24 +1274,24 @@ async def reject_marketplace_asset_review(
 
 
 @router.get("/publisher/me")
-async def get_marketplace_publisher_profile(
+def get_marketplace_publisher_profile(
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     publisher = get_org_publisher_profile(client, org_id)
     return {"publisher": publisher}
 
 
 @router.post("/publisher/onboard")
-async def onboard_marketplace_publisher(
+def onboard_marketplace_publisher(
     body: PublisherOnboardRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return onboard_org_publisher(
             client,
@@ -1307,13 +1308,13 @@ async def onboard_marketplace_publisher(
 
 
 @router.post("/assets/{asset_ref}/submit-for-public-review")
-async def submit_marketplace_asset_for_public_review(
+def submit_marketplace_asset_for_public_review(
     asset_ref: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return submit_asset_for_public_review(
             client,
@@ -1326,18 +1327,18 @@ async def submit_marketplace_asset_for_public_review(
 
 
 @router.get("/platform/review-queue")
-async def list_platform_public_review_queue(
+def list_platform_public_review_queue(
     _user: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return list_public_review_queue(client, limit=limit, offset=offset)
 
 
 @router.get("/platform/catalog")
-async def list_platform_catalog_route(
+def list_platform_catalog_route(
     _user: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
     featured: Annotated[bool | None, Query()] = None,
@@ -1346,7 +1347,7 @@ async def list_platform_catalog_route(
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return list_platform_public_catalog(
         client,
         featured=featured,
@@ -1358,13 +1359,13 @@ async def list_platform_catalog_route(
 
 
 @router.post("/platform/assets/{asset_ref}/approve")
-async def approve_platform_public_asset(
+def approve_platform_public_asset(
     asset_ref: str,
     user: Annotated[dict, Depends(require_platform_admin)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return approve_asset_for_public_publish(
             client,
@@ -1377,14 +1378,14 @@ async def approve_platform_public_asset(
 
 
 @router.post("/platform/assets/{asset_ref}/reject")
-async def reject_platform_public_asset(
+def reject_platform_public_asset(
     asset_ref: str,
     body: RejectAssetReviewRequest,
     user: Annotated[dict, Depends(require_platform_admin)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return reject_asset_public_review(
             client,
@@ -1398,12 +1399,12 @@ async def reject_platform_public_asset(
 
 
 @router.get("/platform/assets/{asset_ref}/review")
-async def platform_public_review_asset_detail(
+def platform_public_review_asset_detail(
     asset_ref: str,
     _user: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return get_public_review_asset_detail(client, asset_ref)
     except MarketplacePublishError as exc:
@@ -1413,14 +1414,14 @@ async def platform_public_review_asset_detail(
 
 
 @router.post("/platform/assets/{asset_ref}/featured")
-async def set_platform_asset_featured(
+def set_platform_asset_featured(
     asset_ref: str,
     body: AssetFlagRequest,
     user: Annotated[dict, Depends(require_platform_admin)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return set_asset_featured(
             client,
@@ -1434,14 +1435,14 @@ async def set_platform_asset_featured(
 
 
 @router.post("/platform/assets/{asset_ref}/verified")
-async def set_platform_asset_verified(
+def set_platform_asset_verified(
     asset_ref: str,
     body: AssetFlagRequest,
     user: Annotated[dict, Depends(require_platform_admin)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return set_asset_verified(
             client,
@@ -1455,14 +1456,14 @@ async def set_platform_asset_verified(
 
 
 @router.patch("/platform/assets/{asset_ref}/pricing")
-async def update_platform_asset_pricing(
+def update_platform_asset_pricing(
     asset_ref: str,
     body: AssetPricingRequest,
     user: Annotated[dict, Depends(require_platform_admin)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return set_asset_pricing(
             client,
@@ -1478,7 +1479,7 @@ async def update_platform_asset_pricing(
 
 
 @router.get("/assets")
-async def list_marketplace_assets_route(
+def list_marketplace_assets_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1496,7 +1497,7 @@ async def list_marketplace_assets_route(
     """Unified marketplace browse — published catalog with org install + connector readiness."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return list_marketplace_assets(
             client,
@@ -1517,7 +1518,7 @@ async def list_marketplace_assets_route(
 
 
 @router.get("/assets/{asset_ref}")
-async def get_marketplace_asset_route(
+def get_marketplace_asset_route(
     asset_ref: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1527,7 +1528,7 @@ async def get_marketplace_asset_route(
     """Asset detail by UUID or slug, including connector pre-check for the requesting org."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return get_marketplace_asset(
             client,
@@ -1540,7 +1541,7 @@ async def get_marketplace_asset_route(
 
 
 @router.get("/assets/{asset_ref}/reviews")
-async def list_marketplace_asset_reviews(
+def list_marketplace_asset_reviews(
     asset_ref: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1550,7 +1551,7 @@ async def list_marketplace_asset_reviews(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return list_asset_reviews(
             client,
@@ -1565,7 +1566,7 @@ async def list_marketplace_asset_reviews(
 
 
 @router.put("/assets/{asset_ref}/reviews/mine")
-async def upsert_marketplace_asset_review(
+def upsert_marketplace_asset_review(
     asset_ref: str,
     body: AssetReviewRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -1574,7 +1575,7 @@ async def upsert_marketplace_asset_review(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return upsert_my_asset_review(
             client,
@@ -1592,7 +1593,7 @@ async def upsert_marketplace_asset_review(
 
 
 @router.delete("/assets/{asset_ref}/reviews/mine")
-async def delete_marketplace_asset_review(
+def delete_marketplace_asset_review(
     asset_ref: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1600,7 +1601,7 @@ async def delete_marketplace_asset_review(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return delete_my_asset_review(
             client,
@@ -1615,7 +1616,7 @@ async def delete_marketplace_asset_review(
 
 
 @router.post("/assets/{asset_ref}/save", status_code=status.HTTP_201_CREATED)
-async def save_marketplace_asset(
+def save_marketplace_asset(
     asset_ref: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1623,7 +1624,7 @@ async def save_marketplace_asset(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return save_asset(client, org_id, current_user["user_id"], asset_ref)
     except MarketplaceBrowseError as exc:
@@ -1631,7 +1632,7 @@ async def save_marketplace_asset(
 
 
 @router.delete("/assets/{asset_ref}/save")
-async def unsave_marketplace_asset(
+def unsave_marketplace_asset(
     asset_ref: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1639,7 +1640,7 @@ async def unsave_marketplace_asset(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return unsave_asset(client, org_id, current_user["user_id"], asset_ref)
     except MarketplaceSupportError as exc:
@@ -1649,14 +1650,14 @@ async def unsave_marketplace_asset(
 
 
 @router.post("/assets/{asset_ref}/uninstall")
-async def uninstall_marketplace_asset_route(
+def uninstall_marketplace_asset_route(
     asset_ref: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Mark org install inactive (MKT-AUDIT-8.1)."""
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return uninstall_marketplace_asset(
             client,
@@ -1669,7 +1670,7 @@ async def uninstall_marketplace_asset_route(
 
 
 @router.post("/assets/{asset_ref}/clone", status_code=status.HTTP_201_CREATED)
-async def clone_marketplace_asset(
+def clone_marketplace_asset(
     asset_ref: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1678,7 +1679,7 @@ async def clone_marketplace_asset(
     """Create a private draft copy of a published asset within the same org (MKT-7.2)."""
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return clone_asset(
             client,
@@ -1691,14 +1692,14 @@ async def clone_marketplace_asset(
 
 
 @router.get("/assets/{asset_ref}/versions")
-async def list_marketplace_asset_versions(
+def list_marketplace_asset_versions(
     asset_ref: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """List version history for an org-owned asset (MKT-9.4)."""
     _user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return list_asset_versions(client, org_id, asset_ref)
     except MarketplaceVersionError as exc:
@@ -1706,7 +1707,7 @@ async def list_marketplace_asset_versions(
 
 
 @router.post("/assets/{asset_ref}/rollback")
-async def rollback_marketplace_asset_version(
+def rollback_marketplace_asset_version(
     asset_ref: str,
     body: RollbackAssetRequest,
     admin: Annotated[tuple, Depends(require_admin)],
@@ -1714,7 +1715,7 @@ async def rollback_marketplace_asset_version(
 ) -> dict:
     """Restore an org-owned asset from ``marketplace_asset_versions`` (MKT-9.4)."""
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return rollback_asset_version(
             client,
@@ -1728,7 +1729,7 @@ async def rollback_marketplace_asset_version(
 
 
 @router.get("/assets/{asset_ref}/install-check")
-async def marketplace_asset_install_check(
+def marketplace_asset_install_check(
     asset_ref: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1737,7 +1738,7 @@ async def marketplace_asset_install_check(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return preview_install(
             client,
@@ -1750,7 +1751,7 @@ async def marketplace_asset_install_check(
 
 
 @router.get("/assets/{asset_ref}/entitlement")
-async def marketplace_asset_entitlement(
+def marketplace_asset_entitlement(
     asset_ref: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1758,7 +1759,7 @@ async def marketplace_asset_entitlement(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         asset = fetch_marketplace_asset(client, asset_ref)
         return get_entitlement_status(client, org_id, asset)
@@ -1767,14 +1768,14 @@ async def marketplace_asset_entitlement(
 
 
 @router.post("/assets/{asset_ref}/checkout")
-async def marketplace_asset_checkout(
+def marketplace_asset_checkout(
     asset_ref: str,
     body: AssetCheckoutRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         result = create_asset_checkout_session(
             client,
@@ -1800,12 +1801,12 @@ async def marketplace_asset_checkout(
 
 
 @router.post("/publisher/payouts/sync")
-async def marketplace_publisher_payouts_sync(
+def marketplace_publisher_payouts_sync(
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     result = sync_pending_payouts(client, settings, partner_org_id=org_id)
     summary = get_publisher_payout_summary(client, org_id)
     if result.get("transferred"):
@@ -1822,13 +1823,13 @@ async def marketplace_publisher_payouts_sync(
 
 
 @router.get("/publisher/analytics")
-async def get_marketplace_publisher_analytics(
+def get_marketplace_publisher_analytics(
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Publisher revenue dashboard: payouts, usage, and adoption (STA-255)."""
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     include_platform = is_platform_admin(client, user["user_id"])
     return get_publisher_revenue_analytics(
         client,
@@ -1838,7 +1839,7 @@ async def get_marketplace_publisher_analytics(
 
 
 @router.post("/connector-category-templates/{template_id}/install")
-async def marketplace_connector_category_template_install(
+def marketplace_connector_category_template_install(
     template_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1856,7 +1857,7 @@ async def marketplace_connector_category_template_install(
     user, org_id = admin
     if template_id not in CONNECTOR_CATEGORY_TEMPLATES:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown connector category template")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         result = install_connector_category_template(
             client,
@@ -1873,7 +1874,7 @@ async def marketplace_connector_category_template_install(
 
 
 @router.get("/connector-category-templates")
-async def marketplace_list_connector_category_templates(
+def marketplace_list_connector_category_templates(
     _: Annotated[dict, Depends(get_current_user)],
 ) -> dict:
     from app.marketplace.connector_category_templates import CONNECTOR_CATEGORY_TEMPLATES
@@ -1886,7 +1887,7 @@ async def marketplace_list_connector_category_templates(
 
 
 @router.post("/assets/{asset_ref}/install")
-async def marketplace_asset_install(
+def marketplace_asset_install(
     asset_ref: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1894,7 +1895,7 @@ async def marketplace_asset_install(
     body: InstallAssetRequest | None = None,
 ) -> dict:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return install_asset(
             client,

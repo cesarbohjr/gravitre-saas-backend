@@ -273,7 +273,7 @@ def _set_hard_budget_override(settings: Settings, org_id: str, enabled: bool | N
 
 
 @internal_router.post("/sync-usage")
-async def sync_usage_cron(
+def sync_usage_cron(
     settings: Annotated[Settings, Depends(get_settings)],
     _: Annotated[None, Depends(require_internal_secret)],
 ) -> dict[str, Any]:
@@ -299,7 +299,7 @@ async def sync_usage_cron(
 
 
 @admin_router.post("/sync-usage")
-async def sync_usage_admin(
+def sync_usage_admin(
     body: AdminSyncRequest,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -333,7 +333,7 @@ async def sync_usage_admin(
 
 
 @admin_router.post("/budget-enforcement")
-async def set_budget_enforcement(
+def set_budget_enforcement(
     body: BudgetEnforcementRequest,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -357,7 +357,7 @@ async def set_budget_enforcement(
 
 
 @admin_router.post("/attach-metered-price")
-async def attach_metered_price_admin(
+def attach_metered_price_admin(
     body: AttachMeteredPriceRequest,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -433,7 +433,7 @@ async def attach_all_metered_prices_admin(
 
 
 @internal_router.post("/budget-enforcement")
-async def set_budget_enforcement_internal(
+def set_budget_enforcement_internal(
     body: InternalBudgetEnforcementRequest,
     settings: Annotated[Settings, Depends(get_settings)],
     _: Annotated[None, Depends(require_internal_secret)],
@@ -447,7 +447,7 @@ async def set_budget_enforcement_internal(
 
 
 @admin_router.post("/plan")
-async def admin_set_org_plan(
+def admin_set_org_plan(
     body: AdminPlanChangeRequest,
     platform_admin: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],

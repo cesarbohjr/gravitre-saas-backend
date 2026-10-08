@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/entitlements", tags=["entitlements"])
 
 
 @router.get("")
-async def get_entitlements_route(
+def get_entitlements_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],

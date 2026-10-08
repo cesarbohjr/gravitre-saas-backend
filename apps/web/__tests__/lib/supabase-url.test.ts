@@ -44,4 +44,23 @@ describe("getSupabasePublicUrl", () => {
     expect(getSupabasePublicUrl()).toBe("https://gravitre.app")
     expect(getSupabaseDataUrl()).toBe("https://abc.supabase.co")
   })
+
+  it("server auth talks to the project host but keeps the browser cookie name", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    process.env.NEXT_PUBLIC_APP_URL = "https://gravitre.app"
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://abc.supabase.co"
+    const { getSupabaseServerAuthConfig } = await import("@/lib/supabase/url")
+    expect(getSupabaseServerAuthConfig()).toEqual({
+      url: "https://abc.supabase.co",
+      cookieName: "sb-gravitre-auth-token",
+    })
+  })
+
+  it("server auth falls back to the public URL when no project host is known", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "http://localhost:54321"
+    delete process.env.SUPABASE_URL
+    delete process.env.SUPABASE_PROJECT_URL
+    const { getSupabaseServerAuthConfig } = await import("@/lib/supabase/url")
+    expect(getSupabaseServerAuthConfig()).toEqual({ url: "http://localhost:54321", cookieName: undefined })
+  })
 })

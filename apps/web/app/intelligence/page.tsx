@@ -69,7 +69,7 @@ function IntelligenceCenterInner() {
       return
     }
     let cancelled = false
-    void ensureSelectedOrg(true).then((orgId) => {
+    void ensureSelectedOrg().then((orgId) => {
       if (!cancelled) setOrgReady(Boolean(orgId))
     })
     return () => {

@@ -35,7 +35,7 @@ def _raise(exc: DepartmentSubagentError) -> None:
 
 
 @router.get("/{umbrella_agent_id}")
-async def list_department_subagents(
+def list_department_subagents(
     umbrella_agent_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -55,7 +55,7 @@ async def list_department_subagents(
 
 
 @router.post("")
-async def spawn_department_subagent(
+def spawn_department_subagent(
     body: SpawnSubagentRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],

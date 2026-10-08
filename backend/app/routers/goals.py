@@ -5,6 +5,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context
 from app.config import Settings, get_settings
@@ -40,7 +41,7 @@ async def generate_plan(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     existing = (
         client.table("goals")
         .select("id")
@@ -254,7 +255,7 @@ def _objective_brief(body: ObjectiveRequest, client: Any, org_id: str, environme
 
 
 @router.post("/objectives/plan")
-async def preview_objective_plan(
+def preview_objective_plan(
     body: ObjectiveRequest,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -263,12 +264,12 @@ async def preview_objective_plan(
 ) -> dict[str, Any]:
     from app.services.objective_capability_composer import public_brief
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return public_brief(_objective_brief(body, client, _objective_org(org_id), environment_name, settings))
 
 
 @router.post("/objectives")
-async def create_objective(
+def create_objective(
     body: ObjectiveRequest,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -278,7 +279,7 @@ async def create_objective(
     from app.services.objective_capability_composer import save_objective
 
     org = _objective_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     brief = _objective_brief(body, client, org, environment_name, settings)
     if not brief.get("plan"):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=brief.get("summary") or "Objective needs a metric")
@@ -286,7 +287,7 @@ async def create_objective(
 
 
 @router.get("/objectives/{objective_id}/progress")
-async def get_objective_progress(
+def get_objective_progress(
     objective_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -294,7 +295,7 @@ async def get_objective_progress(
 ) -> dict[str, Any]:
     from app.services.objective_capability_composer import objective_progress
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     progress = objective_progress(client, _objective_org(org_id), objective_id)
     if progress is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Objective not found")
@@ -302,7 +303,7 @@ async def get_objective_progress(
 
 
 @router.post("/objectives/{objective_id}/replan")
-async def replan_objective_route(
+def replan_objective_route(
     objective_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -311,7 +312,7 @@ async def replan_objective_route(
 ) -> dict[str, Any]:
     from app.services.objective_capability_composer import replan_objective
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     result = replan_objective(
         client, _objective_org(org_id), objective_id, environment_name=environment_name, settings=settings, reason="requested", force=True
     )
@@ -333,7 +334,7 @@ async def execute_objective(
     from app.services.objective_capability_composer import execution_requests, load_objective, org_context
 
     org = _objective_org(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     goal = load_objective(client, org, objective_id)
     if goal is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Objective not found")

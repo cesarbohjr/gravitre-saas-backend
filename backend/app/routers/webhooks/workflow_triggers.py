@@ -176,7 +176,7 @@ async def trigger_workflow(
 
 
 @router.get("/{workflow_id}/config")
-async def get_webhook_config(
+def get_webhook_config(
     workflow_id: str,
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:

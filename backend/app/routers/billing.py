@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from postgrest.exceptions import APIError
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin, require_org_member
 from app.billing.entitlements import compute_app_access, normalize_billing_status
@@ -81,7 +82,7 @@ def _create_stripe_customer(settings: Settings, client, org_id: str, user_id: st
 
 # Health check endpoint to verify Stripe configuration
 @router.get("/health")
-async def billing_health(settings: Annotated[Settings, Depends(get_settings)]):
+def billing_health(settings: Annotated[Settings, Depends(get_settings)]):
     """Check if Stripe is properly configured."""
     issues = []
     
@@ -167,7 +168,7 @@ async def billing_webhook_health(settings: Annotated[Settings, Depends(get_setti
 
     idempotency_table = {"table": "stripe_webhook_events", "reachable": False, "error": "supabase_not_configured"}
     if settings.supabase_url and settings.supabase_service_role_key:
-        client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+        client = shared_service_client(settings, create_client)
         idempotency_table = check_webhook_idempotency_table(client)
         if not idempotency_table.get("reachable"):
             issues.append(
@@ -440,7 +441,7 @@ def _map_usage_for_billing_status(usage_payload: dict, *, weekly_totals: list[in
     }
     return mapped
 @router.get("/plans")
-async def list_billing_plans(
+def list_billing_plans(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -677,7 +678,7 @@ async def billing_overview(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     billing_row = get_org_billing(client, org_id) or {}
     billing_status = normalize_billing_status(billing_row.get("billing_status"))
     sub_resp = client.table("subscriptions").select("*").eq("org_id", org_id).limit(1).execute()
@@ -800,7 +801,7 @@ async def billing_overview(
 
 
 @router.get("/status")
-async def get_billing_status(
+def get_billing_status(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment: Annotated[str, Depends(get_environment_context)],
@@ -909,7 +910,7 @@ async def get_billing_status(
 
 
 @router.post("/checkout")
-async def create_checkout(
+def create_checkout(
     body: CheckoutRequest,
     member: Annotated[tuple, Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -933,7 +934,7 @@ async def create_checkout(
     app_url = (settings.public_app_url or "http://localhost:3000").rstrip("/")
     success_url = f"{app_url}/settings/billing?status=success"
     cancel_url = f"{app_url}/settings/billing?status=cancelled"
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     billing = get_org_billing(client, org_id)
     customer_id = billing.get("stripe_customer_id") if billing else None
     if not customer_id:
@@ -993,7 +994,7 @@ async def create_checkout(
 
 
 @router.post("/subscribe")
-async def create_subscription_payment(
+def create_subscription_payment(
     body: CheckoutRequest,
     member: Annotated[tuple, Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1016,7 +1017,7 @@ async def create_subscription_payment(
             detail=error_detail("Stripe is not configured", "INVALID_CONFIG"),
         )
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     billing = get_org_billing(client, org_id)
     customer_id = billing.get("stripe_customer_id") if billing else None
     if not customer_id:
@@ -1087,7 +1088,7 @@ async def create_subscription_payment(
 
 
 @router.post("/checkout/public")
-async def create_public_checkout(
+def create_public_checkout(
     body: PublicCheckoutRequest,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -1149,7 +1150,7 @@ async def create_public_checkout(
 
 
 @router.post("/portal")
-async def create_portal(
+def create_portal(
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -1159,7 +1160,7 @@ async def create_portal(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=error_detail("Stripe is not configured", "INVALID_CONFIG"),
         )
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     billing = get_org_billing(client, org_id)
     customer_id = billing.get("stripe_customer_id") if billing else None
     if not customer_id:
@@ -1183,13 +1184,13 @@ async def create_portal(
 
 
 @router.post("/seats")
-async def update_seats(
+def update_seats(
     body: SeatsRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     # Bug fix (2026-09-12): postgrest-py's SyncQueryRequestBuilder (returned
     # by .upsert()) has no .select()/.limit() method — chaining them raised
     # an uncaught AttributeError on every call. .upsert() already returns the
@@ -1213,7 +1214,7 @@ async def cancel_subscription(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     billing = get_org_billing(client, org_id) or {}
     sub_resp = (
         client.table("subscriptions")
@@ -1304,7 +1305,7 @@ async def reactivate_subscription(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     billing = get_org_billing(client, org_id) or {}
     sub_resp = (
         client.table("subscriptions")
@@ -1389,14 +1390,14 @@ async def reactivate_subscription(
 
 
 @router.get("/invoices")
-async def list_invoices(
+def list_invoices(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     sub_resp = client.table("subscriptions").select("stripe_customer_id").eq("org_id", org_id).limit(1).execute()
     customer_id = ((sub_resp.data or [{}])[0]).get("stripe_customer_id")
     invoices, _payment_methods = _fetch_invoices_and_payment_methods(settings, customer_id)
@@ -1404,7 +1405,7 @@ async def list_invoices(
 
 
 @router.get("/invoices/{invoice_id}/pdf")
-async def download_invoice_pdf(
+def download_invoice_pdf(
     invoice_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1434,7 +1435,7 @@ class VoiceTopUpRequest(BaseModel):
 
 
 @router.post("/top-up/voice-minutes")
-async def create_voice_minutes_topup(
+def create_voice_minutes_topup(
     body: VoiceTopUpRequest,
     member: Annotated[tuple, Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1448,7 +1449,7 @@ async def create_voice_minutes_topup(
         )
     from app.billing.voice_topup import create_voice_minutes_topup_checkout
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     billing = get_org_billing(client, org_id)
     customer_id = (billing or {}).get("stripe_customer_id")
     if not customer_id:

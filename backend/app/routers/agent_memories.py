@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
@@ -82,7 +83,7 @@ def _to_response(row: dict) -> AgentMemoryResponse:
 
 
 @router.get("/{agent_id}/memories", response_model=list[AgentMemoryResponse])
-async def list_memories_route(
+def list_memories_route(
     agent_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -92,13 +93,13 @@ async def list_memories_route(
 ) -> list[AgentMemoryResponse]:
     if not org_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     rows = list_agent_memories(client, org_id, str(agent_id), category=category, query=q)
     return [_to_response(row) for row in rows]
 
 
 @router.get("/{agent_id}/memories/{memory_id}", response_model=AgentMemoryResponse)
-async def get_memory_route(
+def get_memory_route(
     agent_id: UUID,
     memory_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -107,12 +108,12 @@ async def get_memory_route(
 ) -> AgentMemoryResponse:
     if not org_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return _to_response(get_agent_memory(client, org_id, str(agent_id), str(memory_id)))
 
 
 @router.post("/{agent_id}/memories", response_model=AgentMemoryResponse, status_code=status.HTTP_201_CREATED)
-async def create_memory_route(
+def create_memory_route(
     agent_id: UUID,
     body: AgentMemoryCreateRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -121,7 +122,7 @@ async def create_memory_route(
 ) -> AgentMemoryResponse:
     if not org_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     row = create_agent_memory(
         settings,
         client,
@@ -147,7 +148,7 @@ async def create_memory_route(
 
 
 @router.patch("/{agent_id}/memories/{memory_id}", response_model=AgentMemoryResponse)
-async def update_memory_route(
+def update_memory_route(
     agent_id: UUID,
     memory_id: UUID,
     body: AgentMemoryUpdateRequest,
@@ -157,7 +158,7 @@ async def update_memory_route(
 ) -> AgentMemoryResponse:
     if not org_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     row = update_agent_memory(
         settings,
         client,
@@ -183,7 +184,7 @@ async def update_memory_route(
 
 
 @router.delete("/{agent_id}/memories/{memory_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_memory_route(
+def delete_memory_route(
     agent_id: UUID,
     memory_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -192,7 +193,7 @@ async def delete_memory_route(
 ) -> None:
     if not org_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     delete_agent_memory(client, org_id, str(agent_id), str(memory_id))
     write_audit_event(
         client,
@@ -206,7 +207,7 @@ async def delete_memory_route(
 
 
 @router.post("/{agent_id}/memories/search", response_model=list[AgentMemoryResponse])
-async def search_memories_route(
+def search_memories_route(
     agent_id: UUID,
     body: AgentMemorySearchRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -215,7 +216,7 @@ async def search_memories_route(
 ) -> list[AgentMemoryResponse]:
     if not org_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     rows = search_agent_memories(
         settings,
         client,

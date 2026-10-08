@@ -165,6 +165,14 @@ def _find_active_connector_id(
     return str(result.data[0]["id"])
 
 
+def org_connector_types(client: Any, org_id: str, *, environment_name: str) -> tuple[set[str], set[str]]:
+    """(active, staged) connector types for an org — the inputs every asset check shares."""
+    return (
+        _active_connector_types(client, org_id, environment_name=environment_name),
+        _staged_connector_types(client, org_id, environment_name=environment_name),
+    )
+
+
 def validate_connectors_for_asset(
     client: Any,
     org_id: str,
@@ -173,8 +181,15 @@ def validate_connectors_for_asset(
     environment_name: str = "production",
     settings: Any | None = None,
     probe_apollo_discovery: bool = True,
+    active_types: set[str] | None = None,
+    staged_types: set[str] | None = None,
 ) -> dict[str, Any]:
-    """Return ``{can_install, blockers, checklist}`` (MKT-9.1 shape)."""
+    """Return ``{can_install, blockers, checklist}`` (MKT-9.1 shape).
+
+    ``active_types`` / ``staged_types`` let list callers (marketplace browse)
+    load the org's connector types once and reuse them for every row; without
+    them each call costs four connector queries.
+    """
     refs: list[RequiredConnectorRef]
     if not required_connectors:
         refs = []
@@ -182,8 +197,20 @@ def validate_connectors_for_asset(
         refs = list(required_connectors)  # type: ignore[arg-type]
     else:
         refs = validate_required_connectors(required_connectors)  # type: ignore[arg-type]
-    active = _active_connector_types(client, org_id, environment_name=environment_name)
-    staged = _staged_connector_types(client, org_id, environment_name=environment_name)
+    if not refs:
+        active: set[str] = set()
+        staged: set[str] = set()
+    else:
+        active = (
+            active_types
+            if active_types is not None
+            else _active_connector_types(client, org_id, environment_name=environment_name)
+        )
+        staged = (
+            staged_types
+            if staged_types is not None
+            else _staged_connector_types(client, org_id, environment_name=environment_name)
+        )
     blockers: list[dict[str, Any]] = []
     checklist: list[dict[str, Any]] = []
     for req in refs:

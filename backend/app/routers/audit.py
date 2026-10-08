@@ -10,6 +10,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse, Response
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.billing.service import get_plan_for_org, require_feature
@@ -143,7 +144,7 @@ def _filter_logs(
 
 
 @router.get("")
-async def list_audit_logs(
+def list_audit_logs(
     *,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -162,7 +163,7 @@ async def list_audit_logs(
             detail=error_detail("Organization context required", "UNAUTHORIZED"),
         )
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     require_feature(get_plan_for_org(client, org_id), "audit_logs")
     start = time.perf_counter()
 
@@ -198,7 +199,7 @@ async def list_audit_logs(
 
 
 @router.get("/summary")
-async def audit_summary(
+def audit_summary(
     *,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -211,7 +212,7 @@ async def audit_summary(
             detail=error_detail("Organization context required", "UNAUTHORIZED"),
         )
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     require_feature(get_plan_for_org(client, org_id), "audit_logs")
     rows = _fetch_rows(client, org_id, action=None)
     logs = [_normalize_log(row) for row in rows]
@@ -242,7 +243,7 @@ async def audit_summary(
 
 
 @router.get("/export")
-async def export_audit(
+def export_audit(
     *,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -257,7 +258,7 @@ async def export_audit(
             detail=error_detail("Organization context required", "UNAUTHORIZED"),
         )
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     require_feature(get_plan_for_org(client, org_id), "audit_logs")
     rows = _fetch_rows(client, org_id, action=None)
     logs = [_normalize_log(row) for row in rows]
@@ -312,7 +313,7 @@ async def export_audit(
 
 
 @router.get("/{log_id}")
-async def get_audit_log(
+def get_audit_log(
     log_id: str,
     *,
     _user: Annotated[dict, Depends(get_current_user)],
@@ -325,7 +326,7 @@ async def get_audit_log(
             detail=error_detail("Organization context required", "UNAUTHORIZED"),
         )
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     require_feature(get_plan_for_org(client, org_id), "audit_logs")
     response = client.table("audit_logs").select("*").eq("org_id", org_id).eq("id", log_id).limit(1).execute()
     if not response.data:

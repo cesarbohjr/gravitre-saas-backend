@@ -15,6 +15,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_environment_context, require_admin, require_org_member
 from app.config import Settings, get_settings
@@ -58,7 +59,7 @@ class ManagedAuthSessionResponse(BaseModel):
 
 
 @router.get("/catalog")
-async def managed_auth_catalog(
+def managed_auth_catalog(
     _member: Annotated[tuple, Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -74,14 +75,14 @@ async def managed_auth_catalog(
 
 
 @router.get("/{connector_id}/status")
-async def managed_auth_status(
+def managed_auth_status(
     connector_id: str,
     _member: Annotated[tuple, Depends(require_org_member)],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _, org_id, _role = _member
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     row = (client.table("connectors").select("config, status")
            .eq("id", connector_id).eq("org_id", org_id).eq("environment", environment_name)
            .is_("deleted_at", "null").limit(1).execute())
@@ -95,7 +96,7 @@ async def managed_auth_status(
 
 
 @router.post("/{vendor}/session", response_model=ManagedAuthSessionResponse)
-async def create_managed_auth_session(
+def create_managed_auth_session(
     vendor: str,
     body: ManagedAuthSessionRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
@@ -112,7 +113,7 @@ async def create_managed_auth_session(
             detail=error_detail("Managed connector authorization is not configured", "MANAGED_AUTH_NOT_CONFIGURED"),
         )
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     connector_id = body.connector_id
     reconnect = bool(connector_id)
     if connector_id:
@@ -291,7 +292,7 @@ async def handle_nango_auth_webhook(
             ),
         )
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     existing = (
         client.table("connectors")
         .select("id, org_id, vendor, type, config, environment")

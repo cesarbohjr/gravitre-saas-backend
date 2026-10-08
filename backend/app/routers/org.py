@@ -7,6 +7,7 @@ import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, require_admin
 from app.auth.platform_admin import is_org_admin_role
@@ -124,13 +125,13 @@ def _normalize_org_row(row: dict) -> dict:
 
 
 @router.get("/members")
-async def list_members(
+def list_members(
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """List org members. Admin only."""
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     r = (
         client.table("organization_members")
         .select("id, user_id, role, created_at")
@@ -159,7 +160,7 @@ async def list_members(
 
 
 @router.get("/role-permissions")
-async def get_role_permissions(
+def get_role_permissions(
     _user: Annotated[dict, Depends(get_current_user)],
 ) -> dict:
     """Return org role capability matrix for Settings → Permissions."""
@@ -167,14 +168,14 @@ async def get_role_permissions(
 
 
 @router.post("/members/invite")
-async def invite_member(
+def invite_member(
     body: InviteRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Stub: create invite token (no email sent). Admin only."""
     _user, org_id = _admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     token = f"stub-invite-{org_id[:8]}-{_user['user_id'][:8]}"
     write_audit_event(
         client,
@@ -189,7 +190,7 @@ async def invite_member(
 
 
 @router.patch("/members/{member_id}")
-async def update_member(
+def update_member(
     member_id: UUID,
     body: PatchMemberRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
@@ -198,7 +199,7 @@ async def update_member(
     """Update member role. Admin only. Cannot demote self if last admin."""
     _user, org_id = _admin
     mid = str(member_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
 
     existing = (
         client.table("organization_members")
@@ -242,7 +243,7 @@ async def update_member(
 
 
 @router.delete("/members/{member_id}")
-async def remove_member(
+def remove_member(
     member_id: UUID,
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -250,7 +251,7 @@ async def remove_member(
     """Remove member from org. Admin only. Cannot remove self if last admin."""
     _user, org_id = _admin
     mid = str(member_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
 
     existing = (
         client.table("organization_members")
@@ -291,11 +292,11 @@ async def remove_member(
 
 
 @organizations_router.get("")
-async def list_organizations(
+def list_organizations(
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     memberships = (
         client.table("organization_members")
         .select("org_id, role")
@@ -315,13 +316,13 @@ async def list_organizations(
 
 
 @organizations_router.get("/{org_id}")
-async def get_organization(
+def get_organization(
     org_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id_str = str(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _require_org_member(client, org_id_str, current_user["user_id"])
     org = (
         client.table("organizations")
@@ -336,12 +337,12 @@ async def get_organization(
 
 
 @organizations_router.post("")
-async def create_organization(
+def create_organization(
     body: OrganizationCreateRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     slug = _slugify(body.slug or body.name)
     # Bug fix (2026-09-12): postgrest-py's SyncQueryRequestBuilder (the type
     # returned by .insert()) has no .select()/.limit() method — chaining them
@@ -367,14 +368,14 @@ async def create_organization(
 
 
 @organizations_router.patch("/{org_id}")
-async def update_organization(
+def update_organization(
     org_id: UUID,
     body: OrganizationUpdateRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id_str = str(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _require_org_admin(client, org_id_str, current_user["user_id"])
 
     payload = {k: v for k, v in body.model_dump().items() if v is not None}
@@ -408,26 +409,26 @@ async def update_organization(
 
 
 @organizations_router.delete("/{org_id}")
-async def delete_organization(
+def delete_organization(
     org_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id_str = str(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _require_org_admin(client, org_id_str, current_user["user_id"])
     client.table("organizations").delete().eq("id", org_id_str).execute()
     return {"ok": True}
 
 
 @organizations_router.post("/{org_id}/switch")
-async def switch_organization(
+def switch_organization(
     org_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id_str = str(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _require_org_member(client, org_id_str, current_user["user_id"])
 
     now = datetime.now(timezone.utc)
@@ -448,13 +449,13 @@ async def switch_organization(
 
 
 @organizations_router.get("/{org_id}/members")
-async def list_organization_members(
+def list_organization_members(
     org_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id_str = str(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _require_org_member(client, org_id_str, current_user["user_id"])
     membership_rows = (
         client.table("organization_members")
@@ -502,7 +503,7 @@ async def invite_organization_member(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id_str = str(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _require_org_admin(client, org_id_str, current_user["user_id"])
     invite_result = invite_org_member_by_email(
         client,
@@ -533,7 +534,7 @@ async def invite_organization_member(
 
 
 @organizations_router.patch("/{org_id}/members/{user_id}")
-async def update_organization_member_role(
+def update_organization_member_role(
     org_id: UUID,
     user_id: UUID,
     body: OrganizationMemberRoleRequest,
@@ -542,7 +543,7 @@ async def update_organization_member_role(
 ) -> dict:
     org_id_str = str(org_id)
     member_user_id = str(user_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _require_org_admin(client, org_id_str, current_user["user_id"])
     # Bug fix: .update() returns SyncFilterRequestBuilder, which has no
     # .select()/.limit() — chaining them raised AttributeError -> HTTP 500.
@@ -560,7 +561,7 @@ async def update_organization_member_role(
 
 
 @organizations_router.delete("/{org_id}/members/{user_id}")
-async def remove_organization_member(
+def remove_organization_member(
     org_id: UUID,
     user_id: UUID,
     current_user: Annotated[dict, Depends(get_current_user)],
@@ -568,21 +569,21 @@ async def remove_organization_member(
 ) -> dict:
     org_id_str = str(org_id)
     member_user_id = str(user_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _require_org_admin(client, org_id_str, current_user["user_id"])
     client.table("organization_members").delete().eq("org_id", org_id_str).eq("user_id", member_user_id).execute()
     return {"ok": True}
 
 
 @organizations_router.post("/{org_id}/transfer")
-async def transfer_organization_ownership(
+def transfer_organization_ownership(
     org_id: UUID,
     body: TransferOwnershipRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     org_id_str = str(org_id)
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _require_org_admin(client, org_id_str, current_user["user_id"])
     _require_org_member(client, org_id_str, body.new_owner_id)
 

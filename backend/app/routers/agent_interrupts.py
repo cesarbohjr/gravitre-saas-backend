@@ -6,6 +6,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
@@ -36,7 +37,7 @@ def _public(row: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.post("", status_code=status.HTTP_202_ACCEPTED)
-async def create_interrupt(
+def create_interrupt(
     body: InterruptRequest,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -44,7 +45,7 @@ async def create_interrupt(
 ) -> dict[str, Any]:
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         row = request_interrupt(
             client,

@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -43,13 +44,13 @@ def _load_gsc_connector(client: Any, org_id: str, connector_id: str) -> dict[str
 
 
 @router.get("/{connector_id}/google-search-console/sites")
-async def list_google_search_console_sites(
+def list_google_search_console_sites(
     connector_id: str,
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[None, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     connector = _load_gsc_connector(client, org_id, connector_id)
     env = connector.get("environment") or "production"
     token, err = ensure_google_vendor_session(
@@ -71,14 +72,14 @@ async def list_google_search_console_sites(
 
 
 @router.put("/{connector_id}/google-search-console/site")
-async def link_google_search_console_site(
+def link_google_search_console_site(
     connector_id: str,
     body: GscSiteLinkRequest,
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[None, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     _load_gsc_connector(client, org_id, connector_id)
     env_row = (
         client.table("connectors")

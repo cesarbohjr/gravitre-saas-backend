@@ -6,6 +6,7 @@ briefings, role prompts, and ReAct tool loop.
 from __future__ import annotations
 
 import asyncio
+from app.core.async_bridge import spawn_background
 import json
 import time
 import uuid
@@ -137,7 +138,7 @@ def _schedule_connected_integrations_prefetch(
     """
     from app.services.connector_snapshot_cache import prefetch_connected_integrations
 
-    task = asyncio.create_task(
+    task = spawn_background(
         asyncio.to_thread(
             prefetch_connected_integrations,
             client,

@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from supabase import Client, create_client
+from app.core.db import shared_service_client
 
 from app.config import Settings
 from app.connectors.connection_health import map_auth_status_to_connector_status, resolve_connector_auth_status
@@ -233,7 +234,7 @@ def run_connector_health_monitor(settings: Settings) -> dict[str, Any]:
     if settings.disable_connectors:
         return {"disabled": True, "checked": 0, "updated": 0, "errors": 0, "skipped": 0}
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     rows = list_monitored_connectors(client)
 
     checked = 0

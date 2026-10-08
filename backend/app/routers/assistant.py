@@ -1112,7 +1112,7 @@ async def assistant_chat_stop(
 
 
 @router.get("/chat/replay")
-async def assistant_chat_replay(
+def assistant_chat_replay(
     request: Request,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1495,7 +1495,7 @@ async def assistant_daily_briefing(
 
 
 @router.get("/org-context")
-async def assistant_org_context(
+def assistant_org_context(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -1630,7 +1630,7 @@ async def assistant_business_signals(
 
 
 @router.get("/business-signals/source-audit")
-async def assistant_business_signal_source_audit(
+def assistant_business_signal_source_audit(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1652,7 +1652,7 @@ async def assistant_business_signal_source_audit(
 
 
 @router.get("/business-signals/priorities")
-async def assistant_business_signal_priorities(
+def assistant_business_signal_priorities(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],

@@ -161,7 +161,7 @@ class PackageInstallRequest(PackageInspectRequest):
 
 
 @router.get("/developer-kit")
-async def get_capability_developer_kit(
+def get_capability_developer_kit(
     _member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
 ) -> dict:
     """Return the stable portable capability packaging contract."""
@@ -169,7 +169,7 @@ async def get_capability_developer_kit(
 
 
 @router.get("")
-async def get_capabilities(
+def get_capabilities(
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -190,7 +190,7 @@ async def get_capabilities(
 
 
 @router.post("/packages/inspect")
-async def inspect_portable_package(
+def inspect_portable_package(
     body: PackageInspectRequest,
     _member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
 ) -> dict:
@@ -200,7 +200,7 @@ async def inspect_portable_package(
 
 
 @router.get("/usage")
-async def get_portable_capability_usage(
+def get_portable_capability_usage(
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
     days: int = 30,
@@ -211,7 +211,7 @@ async def get_portable_capability_usage(
 
 
 @router.get("/packages")
-async def get_portable_packages(
+def get_portable_packages(
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -221,7 +221,7 @@ async def get_portable_packages(
 
 
 @router.post("/packages/install")
-async def install_portable_package(
+def install_portable_package(
     body: PackageInstallRequest,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -261,7 +261,7 @@ async def install_portable_package(
 
 
 @router.post("/packages/inspect-bundle")
-async def inspect_portable_bundle(
+def inspect_portable_bundle(
     body: PackageBundleRequest,
     _member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
 ) -> dict:
@@ -284,7 +284,7 @@ async def inspect_portable_bundle(
 
 
 @router.post("/packages/install-bundle")
-async def install_portable_bundle(
+def install_portable_bundle(
     body: PackageBundleRequest,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -525,7 +525,7 @@ async def install_portable_zip(
 
 
 @router.get("/packages/{package_id}/versions")
-async def get_portable_package_versions(
+def get_portable_package_versions(
     package_id: str,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -538,7 +538,7 @@ async def get_portable_package_versions(
 
 
 @router.post("/packages/{package_id}/versions/{version_id}/rollback")
-async def rollback_portable_package_version(
+def rollback_portable_package_version(
     package_id: str,
     version_id: str,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
@@ -598,7 +598,7 @@ async def rollback_portable_package_version(
 
 
 @router.get("/packages/{package_id}/resources")
-async def get_portable_package_resources(
+def get_portable_package_resources(
     package_id: str,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -609,7 +609,7 @@ async def get_portable_package_resources(
 
 
 @router.get("/trusted-publishers")
-async def get_trusted_capability_publishers(
+def get_trusted_capability_publishers(
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -619,7 +619,7 @@ async def get_trusted_capability_publishers(
 
 
 @router.post("/trusted-publishers")
-async def add_trusted_capability_publisher(
+def add_trusted_capability_publisher(
     body: TrustedPublisherCreateRequest,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -737,7 +737,7 @@ async def stage_community_capability_catalog(
 
 
 @router.get("/marketplaces")
-async def get_capability_marketplaces(
+def get_capability_marketplaces(
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -747,7 +747,7 @@ async def get_capability_marketplaces(
 
 
 @router.post("/marketplaces")
-async def add_capability_marketplace(
+def add_capability_marketplace(
     body: GitMarketplaceSourceCreateRequest,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -780,7 +780,7 @@ async def add_capability_marketplace(
 
 
 @router.post("/packages/{package_id}/review")
-async def review_portable_package(
+def review_portable_package(
     package_id: str,
     body: PackageReviewRequest,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
@@ -854,7 +854,7 @@ async def review_portable_package(
 
 
 @router.get("/packages/{package_id}/bindings")
-async def get_portable_component_bindings(
+def get_portable_component_bindings(
     package_id: str,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -867,7 +867,7 @@ async def get_portable_component_bindings(
 
 
 @router.post("/packages/{package_id}/bindings")
-async def create_portable_component_binding(
+def create_portable_component_binding(
     package_id: str,
     body: NativeComponentBindingRequest,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
@@ -895,7 +895,7 @@ async def create_portable_component_binding(
 
 
 @router.delete("/packages/{package_id}/bindings/{binding_id}")
-async def delete_portable_component_binding(
+def delete_portable_component_binding(
     package_id: str,
     binding_id: str,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
@@ -915,7 +915,7 @@ async def delete_portable_component_binding(
 
 
 @router.get("/packages/{package_id}/validate")
-async def validate_portable_capability_for_publish(
+def validate_portable_capability_for_publish(
     package_id: str,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -936,7 +936,7 @@ async def validate_portable_capability_for_publish(
 
 
 @router.post("/packages/{package_id}/marketplace-draft")
-async def create_portable_capability_marketplace_draft(
+def create_portable_capability_marketplace_draft(
     package_id: str,
     body: CapabilityMarketplaceDraftRequest,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
@@ -1107,7 +1107,7 @@ async def create_portable_capability_marketplace_draft(
 
 
 @router.post("/packages/{package_id}/prepare-mcp")
-async def prepare_portable_package_mcp(
+def prepare_portable_package_mcp(
     package_id: str,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1182,7 +1182,7 @@ async def sync_capability_marketplace(
 
 
 @router.get("/marketplace-candidates")
-async def get_capability_marketplace_candidates(
+def get_capability_marketplace_candidates(
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
     source_id: str | None = None,
@@ -1201,7 +1201,7 @@ async def get_capability_marketplace_candidates(
 
 
 @router.post("/marketplace-candidates/{candidate_id}/review")
-async def review_capability_marketplace_candidate(
+def review_capability_marketplace_candidate(
     candidate_id: str,
     body: CandidateReviewRequest,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
@@ -1237,7 +1237,7 @@ async def review_capability_marketplace_candidate(
 
 
 @router.post("/marketplace-candidates/{candidate_id}/install")
-async def install_capability_marketplace_candidate(
+def install_capability_marketplace_candidate(
     candidate_id: str,
     admin: Annotated[tuple[dict, str], Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],

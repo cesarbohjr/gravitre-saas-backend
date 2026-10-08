@@ -5,6 +5,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/api/reporting", tags=["reporting-honesty"])
 
 
 @router.get("/honesty-audit")
-async def reporting_honesty_audit(
+def reporting_honesty_audit(
     *,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -29,7 +30,7 @@ async def reporting_honesty_audit(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     findings: list[dict[str, Any]] = []
 
     # Agent hub: stored rates must not invent 100% with zero runs.

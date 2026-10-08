@@ -32,7 +32,7 @@ def _org(member: tuple[dict, str, str]) -> str:
 
 
 @router.get("/api/metrics/business/catalog")
-async def get_business_metric_catalog(
+def get_business_metric_catalog(
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
@@ -40,7 +40,7 @@ async def get_business_metric_catalog(
 
 
 @router.get("/api/metrics/business")
-async def get_business_metrics(
+def get_business_metrics(
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
     range: RangeParam = "30d",
@@ -53,7 +53,7 @@ async def get_business_metrics(
 
 
 @router.get("/api/metrics/business/{metric_key}/evidence")
-async def get_business_metric_evidence(
+def get_business_metric_evidence(
     metric_key: str,
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -96,7 +96,7 @@ def _installed_dashboard_packs(client: Any, org_id: str) -> list[dict[str, Any]]
 
 
 @router.get("/api/dashboard-templates")
-async def list_dashboard_templates(
+def list_dashboard_templates(
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
@@ -116,7 +116,7 @@ async def list_dashboard_templates(
 
 
 @router.get("/api/marketplace/dashboard-packs/installed")
-async def list_installed_dashboard_packs(
+def list_installed_dashboard_packs(
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:

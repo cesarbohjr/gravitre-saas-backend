@@ -157,7 +157,7 @@ def _resolve_current_readiness(
 
 
 @router.get("")
-async def list_plays(
+def list_plays(
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -195,7 +195,7 @@ async def list_plays(
 
 
 @router.get("/impact")
-async def get_play_impact(
+def get_play_impact(
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
     range: Annotated[str | None, Query(pattern="^(7d|30d|90d|365d|all)$")] = None,
@@ -206,7 +206,7 @@ async def get_play_impact(
 
 
 @router.get("/{play_key}/installation")
-async def get_play_installation(
+def get_play_installation(
     play_key: str,
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -227,7 +227,7 @@ async def get_play_installation(
 
 
 @router.put("/{play_key}/installation")
-async def save_play_installation(
+def save_play_installation(
     play_key: str,
     body: SaveInstallationRequest,
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
@@ -322,7 +322,7 @@ async def observe_customer_rescue_play(
 
 
 @router.get("/marketing-performance/observe")
-async def observe_marketing_performance(
+def observe_marketing_performance(
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -356,7 +356,7 @@ async def observe_marketing_performance(
 
 
 @router.get("/revenue-recovery/observe")
-async def observe_revenue_recovery(
+def observe_revenue_recovery(
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -392,7 +392,7 @@ async def observe_revenue_recovery(
 
 
 @router.get("/{play_key}/readiness")
-async def get_play_readiness(
+def get_play_readiness(
     play_key: str,
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
     environment_name: Annotated[str, Depends(get_environment_context)],
@@ -589,7 +589,7 @@ async def run_play(
 
 
 @router.get("/{play_key}/workflow-bindings")
-async def get_play_workflow_bindings(
+def get_play_workflow_bindings(
     play_key: str,
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -609,7 +609,7 @@ async def get_play_workflow_bindings(
 
 
 @router.post("/{play_key}/workflow-bindings")
-async def create_play_workflow_binding(
+def create_play_workflow_binding(
     play_key: str,
     body: BindWorkflowRequest,
     admin: Annotated[tuple, Depends(require_admin)],
@@ -649,7 +649,7 @@ async def create_play_workflow_binding(
 
 
 @router.delete("/{play_key}/workflow-bindings/{workflow_id}")
-async def delete_play_workflow_binding(
+def delete_play_workflow_binding(
     play_key: str,
     workflow_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
@@ -684,7 +684,7 @@ async def delete_play_workflow_binding(
 
 
 @router.get("/{play_key}/outcomes/{outcome_id}/evidence")
-async def get_play_outcome_evidence(
+def get_play_outcome_evidence(
     play_key: str,
     outcome_id: str,
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
@@ -713,7 +713,7 @@ async def get_play_outcome_evidence(
 
 
 @router.get("/{play_key}/outcomes")
-async def get_play_outcomes(
+def get_play_outcomes(
     play_key: str,
     member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],

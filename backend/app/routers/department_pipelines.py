@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -23,7 +24,7 @@ class SyncBackPolicyUpdate(BaseModel):
 
 
 def _client(settings: Settings):
-    return create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return shared_service_client(settings, create_client)
 
 
 def _org_settings(client: Any, org_id: str) -> dict[str, Any]:
@@ -34,7 +35,7 @@ def _org_settings(client: Any, org_id: str) -> dict[str, Any]:
 
 
 @router.get("")
-async def list_pipelines(
+def list_pipelines(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -47,7 +48,7 @@ async def list_pipelines(
 
 
 @router.get("/{pipeline_id}")
-async def get_pipeline(
+def get_pipeline(
     pipeline_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -70,7 +71,7 @@ async def get_pipeline(
 
 
 @router.get("/by-department/{department}")
-async def get_pipeline_by_department(
+def get_pipeline_by_department(
     department: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -93,7 +94,7 @@ async def get_pipeline_by_department(
 
 
 @router.put("/sync-back-policy")
-async def update_sync_back_policy(
+def update_sync_back_policy(
     body: SyncBackPolicyUpdate,
     current_user: Annotated[dict, Depends(require_admin)],
     org_id: Annotated[str | None, Depends(get_org_context)],

@@ -9,6 +9,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.billing.service import get_plan_for_org, require_feature
@@ -160,14 +161,14 @@ def _filter_rows_by_window(rows: list[dict[str, Any]], from_ts: str | None, to_t
 
 
 @router.get("/data-region")
-async def get_data_region(
+def get_data_region(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     org_settings = _org_settings(client, org_id)
     column_region = _org_data_region_column(client, org_id)
     region = get_org_data_region(org_settings, data_region=column_region)
@@ -175,13 +176,13 @@ async def get_data_region(
 
 
 @router.put("/data-region")
-async def update_data_region(
+def update_data_region(
     body: DataRegionUpdate,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     _user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     org_settings = _org_settings(client, org_id)
     region = normalize_region(body.region)
     enterprise = safe_normalize_stored_dict(org_settings, key="enterprise")
@@ -202,21 +203,21 @@ async def update_data_region(
 
 
 @router.get("/execution-region")
-async def get_execution_region(
+def get_execution_region(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     org_settings = _org_settings(client, org_id)
     region = resolve_execution_region(org_settings, data_region=_org_data_region_column(client, org_id))
     return {"region": region, "queueAvailable": is_queue_available()}
 
 
 @router.get("/compliance/soc2-export")
-async def export_soc2_bundle(
+def export_soc2_bundle(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -225,7 +226,7 @@ async def export_soc2_bundle(
 ) -> dict[str, Any]:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     require_feature(get_plan_for_org(client, org_id), "audit_logs")
     audit_logs = client.table("audit_logs").select("*").eq("org_id", org_id).execute().data or []
     audit_logs = _filter_rows_by_window(audit_logs, from_ts, to_ts)
@@ -244,14 +245,14 @@ async def export_soc2_bundle(
 
 
 @router.get("/branding")
-async def get_branding(
+def get_branding(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     raw_settings = _org_settings(client, org_id)
     org_settings = ensure_domain_verification_token(raw_settings)
     if org_settings != raw_settings:
@@ -269,12 +270,12 @@ async def get_branding(
 
 
 @router.get("/branding/domain-instructions")
-async def get_domain_verification_instructions(
+def get_domain_verification_instructions(
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     _user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     raw_settings = _org_settings(client, org_id)
     org_settings = ensure_domain_verification_token(raw_settings)
     if org_settings != raw_settings:
@@ -292,12 +293,12 @@ async def get_domain_verification_instructions(
 
 
 @router.post("/branding/verify-domain")
-async def verify_branding_domain(
+def verify_branding_domain(
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     _user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     raw_settings = _org_settings(client, org_id)
     org_settings = ensure_domain_verification_token(raw_settings)
     if org_settings != raw_settings:
@@ -328,13 +329,13 @@ async def verify_branding_domain(
 
 
 @router.put("/branding")
-async def update_branding(
+def update_branding(
     body: BrandingUpdate,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     _user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     org_settings = _org_settings(client, org_id)
     updates = body.model_dump(by_alias=True, exclude_none=True)
     merged = ensure_domain_verification_token(merge_branding(org_settings, updates))
@@ -352,14 +353,14 @@ async def update_branding(
 
 
 @router.get("/workforce-analytics")
-async def workforce_analytics(
+def workforce_analytics(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     jobs = client.table("agent_jobs").select("status,kind,created_at").eq("org_id", org_id).execute().data or []
     audit_logs = client.table("audit_logs").select("action,details,created_at").eq("org_id", org_id).execute().data or []
     handoffs = [row for row in audit_logs if "handoff" in str(row.get("action") or "")]
@@ -377,7 +378,7 @@ class IntegrationSuggestionScanResponse(BaseModel):
 
 
 @router.get("/integration-suggestions")
-async def get_integration_suggestions(
+def get_integration_suggestions(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -389,7 +390,7 @@ async def get_integration_suggestions(
         raise HTTPException(status_code=403, detail="Organization context required")
     if status not in {"open", "dismissed", "applied", "awaiting_confirm", "actionable"}:
         raise HTTPException(status_code=400, detail="Invalid status filter")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     suggestions = list_integration_suggestions(
         client,
         org_id,
@@ -400,7 +401,7 @@ async def get_integration_suggestions(
 
 
 @router.post("/integration-suggestions/scan", response_model=IntegrationSuggestionScanResponse, response_model_by_alias=True)
-async def scan_integration_suggestions_route(
+def scan_integration_suggestions_route(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -409,7 +410,7 @@ async def scan_integration_suggestions_route(
     """Analyze audit tool usage and persist integration suggestions (STA-123)."""
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     summary = scan_integration_suggestions(
         client,
         org_id,
@@ -420,7 +421,7 @@ async def scan_integration_suggestions_route(
 
 
 @router.post("/integration-suggestions/{suggestion_id}/dismiss")
-async def dismiss_integration_suggestion_route(
+def dismiss_integration_suggestion_route(
     suggestion_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -429,7 +430,7 @@ async def dismiss_integration_suggestion_route(
     """Dismiss an integration suggestion (STA-123)."""
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         suggestion = dismiss_integration_suggestion(client, org_id, suggestion_id)
     except IntegrationSuggestionError as exc:
@@ -453,7 +454,7 @@ async def apply_integration_suggestion_route(
     """
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     peek = (
         client.table("integration_suggestions")
         .select("suggestion_type,status")
@@ -493,7 +494,7 @@ async def confirm_integration_suggestion_route(
     create-workflow / pack-install paths that emit ``tool.invoke.*`` audits.
     """
     current_user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return await confirm_integration_suggestion(
             client,
@@ -525,7 +526,7 @@ class IntegrationHealthResponse(BaseModel):
 
 
 @router.get("/integration-health", response_model=IntegrationHealthResponse, response_model_by_alias=True)
-async def get_integration_health_route(
+def get_integration_health_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -534,13 +535,13 @@ async def get_integration_health_route(
     """Composite integration health score for CS dashboards (STA-124)."""
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     health = get_integration_health_score(client, org_id, lookback_days=lookback_days)
     return IntegrationHealthResponse(**health)
 
 
 @router.post("/integration-health/snapshot")
-async def record_integration_health_snapshot_route(
+def record_integration_health_snapshot_route(
     current_user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -549,7 +550,7 @@ async def record_integration_health_snapshot_route(
     """Persist an integration health snapshot for trend charts (STA-124)."""
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return record_integration_health_snapshot(
         client,
         org_id,
@@ -559,7 +560,7 @@ async def record_integration_health_snapshot_route(
 
 
 @router.get("/integration-health/history")
-async def list_integration_health_history_route(
+def list_integration_health_history_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -568,13 +569,13 @@ async def list_integration_health_history_route(
     """List recorded integration health snapshots (STA-124)."""
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     snapshots = list_integration_health_history(client, org_id, limit=limit)
     return {"snapshots": snapshots, "count": len(snapshots)}
 
 
 @router.get("/cost-attribution")
-async def cost_attribution(
+def cost_attribution(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -582,7 +583,7 @@ async def cost_attribution(
     """Measured LLM spend from model_calls (STA-92), not invented prices."""
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     month_start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     # Prefer measured model_calls.cost_usd (has agent_id). Fall back to usage_events if present.
     model_rows = (
@@ -621,7 +622,7 @@ async def cost_attribution(
 
 
 @router.get("/agent-roi")
-async def agent_roi(
+def agent_roi(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -631,7 +632,7 @@ async def agent_roi(
     """Per-agent ROI: measured cost + operational counts + honestly labeled estimates."""
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return fetch_agent_roi(
         client,
         org_id,
@@ -641,12 +642,12 @@ async def agent_roi(
 
 
 @router.get("/autonomous-run-budgets")
-async def get_autonomous_run_budgets(
+def get_autonomous_run_budgets(
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     _user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return {
         "orgDefaults": get_org_autonomous_budget_defaults(client, org_id),
         "agents": list_operator_budget_statuses(client, org_id),
@@ -654,13 +655,13 @@ async def get_autonomous_run_budgets(
 
 
 @router.put("/autonomous-run-budgets")
-async def update_autonomous_run_budgets(
+def update_autonomous_run_budgets(
     body: AutonomousRunBudgetUpdate,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     org_defaults = update_org_autonomous_budget_defaults(
         client,
         org_id=org_id,
@@ -677,23 +678,23 @@ async def update_autonomous_run_budgets(
 
 
 @router.get("/hipaa")
-async def get_hipaa_status_route(
+def get_hipaa_status_route(
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     _user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     return get_hipaa_status(client, org_id)
 
 
 @router.post("/hipaa/accept-baa")
-async def accept_hipaa_baa_route(
+def accept_hipaa_baa_route(
     body: HipaaAcceptBaaRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return accept_baa(client, org_id=org_id, actor_id=user["user_id"], baa_version=body.baa_version)
     except ValueError as exc:
@@ -701,13 +702,13 @@ async def accept_hipaa_baa_route(
 
 
 @router.put("/hipaa")
-async def update_hipaa_mode_route(
+def update_hipaa_mode_route(
     body: HipaaModeUpdate,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return set_hipaa_enabled(client, org_id=org_id, actor_id=user["user_id"], enabled=body.enabled)
     except ValueError as exc:
@@ -715,14 +716,14 @@ async def update_hipaa_mode_route(
 
 
 @router.put("/connectors/{connector_id}/phi")
-async def update_connector_phi_route(
+def update_connector_phi_route(
     connector_id: UUID,
     body: ConnectorPhiUpdate,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         row = set_connector_phi_capable(
             client,
@@ -737,7 +738,7 @@ async def update_connector_phi_route(
 
 
 @router.get("/transparency-logs")
-async def get_transparency_logs_route(
+def get_transparency_logs_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -747,21 +748,21 @@ async def get_transparency_logs_route(
 ) -> dict[str, Any]:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     require_feature(get_plan_for_org(client, org_id), "audit_logs")
     logs = list_decision_logs(client, org_id, from_ts=from_ts, to_ts=to_ts, limit=limit)
     return {"decisions": logs, "count": len(logs)}
 
 
 @router.get("/transparency-logs/export")
-async def export_transparency_logs_route(
+def export_transparency_logs_route(
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
     from_ts: Annotated[str | None, Query(alias="from")] = None,
     to_ts: Annotated[str | None, Query(alias="to")] = None,
 ) -> dict[str, Any]:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     require_feature(get_plan_for_org(client, org_id), "audit_logs")
     return build_transparency_export_bundle(
         client,
@@ -773,12 +774,12 @@ async def export_transparency_logs_route(
 
 
 @router.get("/siem")
-async def get_siem_config(
+def get_siem_config(
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     _user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     org_settings = _org_settings(client, org_id)
     enterprise = org_settings.get("enterprise") if isinstance(org_settings.get("enterprise"), dict) else {}
     siem = enterprise.get("siem") if isinstance(enterprise.get("siem"), dict) else {}
@@ -791,13 +792,13 @@ async def get_siem_config(
 
 
 @router.put("/siem")
-async def update_siem_config(
+def update_siem_config(
     body: SiemConfigUpdate,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
     _user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     org_settings = _org_settings(client, org_id)
     enterprise = safe_normalize_stored_dict(org_settings, key="enterprise")
     existing_siem = enterprise.get("siem") if isinstance(enterprise.get("siem"), dict) else {}
@@ -826,7 +827,7 @@ async def update_siem_config(
 
 
 @router.post("/siem/test")
-async def test_siem_delivery(
+def test_siem_delivery(
     body: SiemTestRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],

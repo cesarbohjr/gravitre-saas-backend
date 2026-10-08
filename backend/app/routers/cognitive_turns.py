@@ -21,7 +21,7 @@ def _client(settings: Settings) -> Any:
 
 
 @router.get("")
-async def list_cognitive_turn_traces(
+def list_cognitive_turn_traces(
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
@@ -52,7 +52,7 @@ async def list_cognitive_turn_traces(
 
 
 @router.get("/{turn_id}")
-async def get_cognitive_turn_trace(
+def get_cognitive_turn_trace(
     turn_id: str,
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],

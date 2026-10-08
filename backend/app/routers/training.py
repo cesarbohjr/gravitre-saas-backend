@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -173,7 +174,7 @@ def _require_safe_external_dataset_metadata(metadata: dict[str, Any]) -> None:
 
 
 @router.get("/external-datasets/providers")
-async def list_external_dataset_provider_routes(
+def list_external_dataset_provider_routes(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
 ) -> dict:
@@ -189,7 +190,7 @@ async def list_external_dataset_provider_routes(
 
 
 @router.get("/external-datasets/search")
-async def search_external_dataset_routes(
+def search_external_dataset_routes(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     provider: str = Query(..., min_length=1),
@@ -217,7 +218,7 @@ async def search_external_dataset_routes(
 
 
 @router.get("/external-datasets/inspect")
-async def inspect_external_dataset_route(
+def inspect_external_dataset_route(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     provider: str = Query(..., min_length=1),
@@ -245,7 +246,7 @@ async def inspect_external_dataset_route(
 
 
 @router.get("/external-datasets/references")
-async def list_external_dataset_references(
+def list_external_dataset_references(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -254,7 +255,7 @@ async def list_external_dataset_references(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     query = (
         client.table("external_dataset_references")
         .select(
@@ -273,7 +274,7 @@ async def list_external_dataset_references(
 
 
 @router.post("/external-datasets/references", status_code=status.HTTP_201_CREATED)
-async def create_external_dataset_reference(
+def create_external_dataset_reference(
     body: ExternalDatasetReferenceCreateRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -294,7 +295,7 @@ async def create_external_dataset_reference(
             detail=f"Dataset provider inspection failed: {exc}",
         ) from exc
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         require_dataset_target(
             client,
@@ -342,13 +343,13 @@ async def create_external_dataset_reference(
 
 
 @router.delete("/external-datasets/references/{reference_id}")
-async def delete_external_dataset_reference(
+def delete_external_dataset_reference(
     reference_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     response = (
         client.table("external_dataset_references")
         .delete()
@@ -361,14 +362,14 @@ async def delete_external_dataset_reference(
 
 
 @router.get("/datasets")
-async def list_datasets(
+def list_datasets(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return {"datasets": list_training_datasets(client, org_id)}
     except RuntimeError as exc:
@@ -376,7 +377,7 @@ async def list_datasets(
 
 
 @router.get("/datasets/{dataset_id}")
-async def get_dataset(
+def get_dataset(
     dataset_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -384,7 +385,7 @@ async def get_dataset(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     response = (
         client.table("training_datasets")
         .select("id, name, description, type, status, record_count, created_by, created_at, updated_at")
@@ -402,7 +403,7 @@ async def get_dataset(
 
 
 @router.post("/datasets", status_code=status.HTTP_201_CREATED)
-async def create_dataset(
+def create_dataset(
     body: DatasetCreateRequest,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -410,7 +411,7 @@ async def create_dataset(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     # Bug fix (2026-09-12): postgrest-py's SyncQueryRequestBuilder (returned
     # by .insert()) has no .select()/.limit() method — chaining them raised
     # an uncaught AttributeError on every call. .insert() already returns the
@@ -435,7 +436,7 @@ async def create_dataset(
 
 
 @router.get("/datasets/{dataset_id}/bindings")
-async def list_dataset_bindings(
+def list_dataset_bindings(
     dataset_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -443,7 +444,7 @@ async def list_dataset_bindings(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     rows = (
         client.table("training_dataset_bindings")
         .select("id, dataset_id, purpose, target_type, target_id, metadata, created_at")
@@ -458,14 +459,14 @@ async def list_dataset_bindings(
 
 
 @router.post("/datasets/{dataset_id}/bindings", status_code=status.HTTP_201_CREATED)
-async def create_dataset_binding(
+def create_dataset_binding(
     dataset_id: str,
     body: DatasetBindingCreateRequest,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
 
     dataset = (
         client.table("training_datasets")
@@ -517,14 +518,14 @@ async def create_dataset_binding(
 
 
 @router.delete("/datasets/{dataset_id}/bindings/{binding_id}")
-async def delete_dataset_binding(
+def delete_dataset_binding(
     dataset_id: str,
     binding_id: str,
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = admin
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     response = (
         client.table("training_dataset_bindings")
         .delete()
@@ -538,7 +539,7 @@ async def delete_dataset_binding(
 
 
 @router.delete("/datasets/{dataset_id}")
-async def delete_dataset(
+def delete_dataset(
     dataset_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -546,7 +547,7 @@ async def delete_dataset(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     response = (
         client.table("training_datasets")
         .delete()
@@ -561,7 +562,7 @@ async def delete_dataset(
 
 
 @router.post("/datasets/{dataset_id}/records")
-async def upload_dataset_records(
+def upload_dataset_records(
     dataset_id: str,
     body: DatasetRecordsRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -572,7 +573,7 @@ async def upload_dataset_records(
         raise HTTPException(status_code=403, detail="Organization context required")
     if not body.records:
         return {"added": 0}
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     rows = []
     for record in body.records:
         rows.append(
@@ -646,7 +647,7 @@ def _bump_dataset_record_count(client: Any, *, org_id: str, dataset_id: str, inc
 
 
 @router.post("/datasets/{dataset_id}/import-documents")
-async def import_documents(
+def import_documents(
     dataset_id: str,
     body: DocumentImportRequest,
     user: Annotated[dict, Depends(get_current_user)],
@@ -658,7 +659,7 @@ async def import_documents(
         raise HTTPException(status_code=403, detail="Organization context required")
     if not body.documents:
         return {"added": 0}
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     dataset_resp = (
         client.table("training_datasets")
         .select("id, type")
@@ -712,7 +713,7 @@ async def import_documents(
 
 
 @router.post("/datasets/{dataset_id}/import-feedback")
-async def import_feedback(
+def import_feedback(
     dataset_id: str,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -722,7 +723,7 @@ async def import_feedback(
     """Import recent chat feedback into a feedback training dataset."""
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     dataset_resp = (
         client.table("training_datasets")
         .select("id, type")
@@ -878,14 +879,14 @@ async def import_feedback(
 
 
 @router.get("/jobs")
-async def list_jobs(
+def list_jobs(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return {"jobs": list_training_jobs(client, org_id)}
     except RuntimeError as exc:
@@ -893,7 +894,7 @@ async def list_jobs(
 
 
 @router.get("/jobs/{job_id}")
-async def get_job(
+def get_job(
     job_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -901,7 +902,7 @@ async def get_job(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     response = (
         client.table("training_jobs")
         .select("id, dataset_id, model_base, status, progress, metrics, started_at, completed_at, error, created_at")
@@ -928,7 +929,7 @@ async def create_job(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     # Bug fix (2026-09-12): postgrest-py's SyncQueryRequestBuilder (returned
     # by .insert()) has no .select()/.limit() method — chaining them raised
     # an uncaught AttributeError on every call. .insert() already returns the
@@ -960,7 +961,7 @@ async def create_job(
 
 
 @router.post("/jobs/{job_id}/cancel")
-async def cancel_job(
+def cancel_job(
     job_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -971,7 +972,7 @@ async def cancel_job(
     # Bug fix: .update() returns SyncFilterRequestBuilder, which has no
     # .select()/.limit() — chaining them raised AttributeError -> HTTP 500.
     # .update() already returns the full updated row(s) by default.
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     response = (
         client.table("training_jobs")
         .update({"status": "failed", "error": "Cancelled by user"})
@@ -988,14 +989,14 @@ async def cancel_job(
 
 
 @router.get("/instructions")
-async def list_instructions(
+def list_instructions(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return {"instructions": list_custom_instructions(client, org_id)}
     except RuntimeError as exc:
@@ -1003,7 +1004,7 @@ async def list_instructions(
 
 
 @router.get("/instructions/{instruction_id}")
-async def get_instruction(
+def get_instruction(
     instruction_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1011,7 +1012,7 @@ async def get_instruction(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     response = (
         client.table("custom_instructions")
         .select("id, agent_id, name, content, is_active, created_at, updated_at")
@@ -1029,7 +1030,7 @@ async def get_instruction(
 
 
 @router.post("/instructions", status_code=status.HTTP_201_CREATED)
-async def create_instruction(
+def create_instruction(
     body: InstructionCreateRequest,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1037,7 +1038,7 @@ async def create_instruction(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     # Bug fix (2026-09-12): postgrest-py's SyncQueryRequestBuilder (returned
     # by .insert()) has no .select()/.limit() method — chaining them raised
     # an uncaught AttributeError on every call. .insert() already returns the
@@ -1061,7 +1062,7 @@ async def create_instruction(
 
 
 @router.patch("/instructions/{instruction_id}")
-async def update_instruction(
+def update_instruction(
     instruction_id: str,
     body: InstructionUpdateRequest,
     _user: Annotated[dict, Depends(get_current_user)],
@@ -1076,7 +1077,7 @@ async def update_instruction(
     # Bug fix: .update() returns SyncFilterRequestBuilder, which has no
     # .select()/.limit() — chaining them raised AttributeError -> HTTP 500.
     # .update() already returns the full updated row(s) by default.
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     response = (
         client.table("custom_instructions")
         .update(payload)
@@ -1093,7 +1094,7 @@ async def update_instruction(
 
 
 @router.delete("/instructions/{instruction_id}")
-async def delete_instruction(
+def delete_instruction(
     instruction_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1101,7 +1102,7 @@ async def delete_instruction(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     response = (
         client.table("custom_instructions")
         .delete()
@@ -1116,7 +1117,7 @@ async def delete_instruction(
 
 
 @router.get("/workflow-agents")
-async def list_workflow_agents(
+def list_workflow_agents(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1124,7 +1125,7 @@ async def list_workflow_agents(
     """Workflow agents from agents table (STA-99 assignment targets)."""
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return {"agents": list_training_workflow_agents(client, org_id)}
     except RuntimeError as exc:
@@ -1132,7 +1133,7 @@ async def list_workflow_agents(
 
 
 @router.get("/fine-tuned-models")
-async def list_fine_tuned_models_for_agents(
+def list_fine_tuned_models_for_agents(
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -1140,7 +1141,7 @@ async def list_fine_tuned_models_for_agents(
     """List deployable fine-tuned LLM models (STA-99)."""
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     try:
         return {"models": list_deployable_fine_tuned_models(client, org_id)}
     except Exception as exc:  # noqa: BLE001
@@ -1150,7 +1151,7 @@ async def list_fine_tuned_models_for_agents(
 
 
 @router.get("/agents/{agent_id}/fine-tuned-model")
-async def get_agent_fine_tuned_model_assignment(
+def get_agent_fine_tuned_model_assignment(
     agent_id: str,
     _user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
@@ -1158,7 +1159,7 @@ async def get_agent_fine_tuned_model_assignment(
 ) -> dict:
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     agent = get_agent(client, org_id, agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -1170,14 +1171,14 @@ async def get_agent_fine_tuned_model_assignment(
 
 
 @router.put("/agents/{agent_id}/fine-tuned-model")
-async def assign_agent_fine_tuned_model(
+def assign_agent_fine_tuned_model(
     agent_id: str,
     body: AgentFineTunedModelRequest,
     admin_ctx: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin_ctx
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     agent = assign_trained_model_to_agent(
         client,
         org_id=org_id,

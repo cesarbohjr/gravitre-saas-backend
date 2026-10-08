@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from supabase import create_client
+from app.core.db import shared_service_client
 
 import httpx
 
@@ -255,7 +256,7 @@ def _frontend_redirect(settings: Settings, path: str, params: dict[str, str]) ->
 
 
 @router.get("/{provider}/status", response_model=OAuthProviderStatusResponse)
-async def oauth_provider_status(
+def oauth_provider_status(
     provider: str,
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -325,7 +326,7 @@ async def oauth_provider_status(
 
 
 @router.post("/{provider}/start", response_model=OAuthStartResponse)
-async def start_oauth(
+def start_oauth(
     provider: str,
     body: OAuthStartRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
@@ -432,7 +433,7 @@ async def start_oauth(
                 detail=error_detail(str(exc), "OAUTH_PREREQUISITE_REQUIRED"),
             ) from exc
 
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     if vendor in ADVANCED_CONNECTORS:
         try:
             plan = get_plan_for_org(client, org_id)
@@ -751,7 +752,7 @@ async def start_oauth(
 
 
 @router.get("/{provider}/callback")
-async def oauth_callback(
+def oauth_callback(
     provider: str,
     settings: Annotated[Settings, Depends(get_settings)],
     code: str | None = Query(default=None),
@@ -807,7 +808,7 @@ async def oauth_callback(
     redirect_path = str(payload.get("redirect_path") or "/connectors")
     environment_name = str(payload.get("environment") or "production")
     reconnect = bool(payload.get("reconnect"))
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     property_linked = True
 
     try:

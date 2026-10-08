@@ -8,6 +8,7 @@ import uuid
 from typing import Any
 
 from supabase import Client, create_client
+from app.core.db import shared_service_client
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
@@ -245,7 +246,7 @@ def run_worker(
     worker_id: str | None = None,
 ) -> None:
     settings = get_settings()
-    client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+    client = shared_service_client(settings, create_client)
     worker_id = worker_id or f"rag-worker-{uuid.uuid4().hex[:12]}"
     logger.info(
         "rag_worker_started poll_interval_s=%s visibility_timeout_s=%s worker_id=%s",
