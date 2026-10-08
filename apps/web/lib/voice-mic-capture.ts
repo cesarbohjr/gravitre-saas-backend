@@ -8,6 +8,8 @@ import {
   resolveMicFieldProfile,
   type MicFieldProfile,
 } from "@/lib/voice-mic-devices"
+import { VOICE_MIC_CAPTURE_PROCESSOR, loadVoiceWorklets } from "@/lib/voice-worklets"
+import { StreamingResampler, floatArrayToInt16 } from "@/public/voice-worklets/voice-dsp.js"
 
 export type VoiceMicPhase1Flags = {
   agcV2: boolean
@@ -365,14 +367,17 @@ export async function acquireVoiceMicrophoneStream(options: {
 }
 
 export type VoiceMicProcessorHandle = {
-  processor: ScriptProcessorNode
+  /** The capture node (AudioWorkletNode, or ScriptProcessorNode on the fallback path). */
+  processor: AudioNode
+  kind: "worklet" | "script-processor"
   levelTracker: MicLevelTracker
   getLastLevels: () => MicLevelSnapshot | null
   getSpeechGate: () => SpeechGateState
+  /** Stop capture and disconnect every node this handle created. */
+  dispose: () => void
 }
 
-/** Shared ScriptProcessor wiring for Pipecat + HTTP duplex paths. */
-export function createVoiceMicProcessor(options: {
+export type VoiceMicProcessorOptions = {
   ctx: AudioContext
   stream: MediaStream
   tuning: MicCaptureTuning
@@ -384,17 +389,25 @@ export function createVoiceMicProcessor(options: {
   onBargeIn?: () => void
   /** Phase 2: route mic tap through gain=0 to avoid speaker echo leak. */
   silentTapV2?: boolean
-}): VoiceMicProcessorHandle {
-  const source = options.ctx.createMediaStreamSource(options.stream)
-  const processor = options.ctx.createScriptProcessor(4096, 1, 1)
+}
+
+/** Same block size as the old ScriptProcessor, so level/barge-in tuning is unchanged. */
+const MIC_BLOCK_FRAMES = 4096
+const MIC_WIRE_RATE = 16000
+
+/**
+ * Per-block mic handling shared by both capture paths: levels, browser
+ * barge-in energy, pre-roll gate, and PCM16 for the wire.
+ * `raw` is at the context rate; `wire` is already resampled to 16 kHz.
+ */
+function createMicBlockHandler(options: VoiceMicProcessorOptions) {
   const levelTracker = new MicLevelTracker()
   const preroll = new AudioPreRollBuffer(options.tuning.prerollMs)
   let lastLevels: MicLevelSnapshot | null = null
   let speechGate: SpeechGateState = { active: false, prerollFlushed: false }
   let speakingEnergy = 0
 
-  processor.onaudioprocess = (e) => {
-    const input = e.inputBuffer.getChannelData(0)
+  const handle = (input: Float32Array, wire: Float32Array) => {
     const levels = levelTracker.update(input, options.tuning.softwareGain)
     lastLevels = levels
     options.onLevels?.(levels)
@@ -416,7 +429,8 @@ export function createVoiceMicProcessor(options: {
       speakingEnergy = 0
     }
 
-    const pcm = downsampleTo16k(input, options.ctx.sampleRate, options.tuning.softwareGain)
+    if (wire.length === 0) return
+    const pcm = floatArrayToInt16(wire, options.tuning.softwareGain)
 
     if (options.prerollEnabled && options.tuning.prerollMs > 0) {
       preroll.push(pcm)
@@ -438,35 +452,111 @@ export function createVoiceMicProcessor(options: {
     options.onPcm(pcm)
   }
 
-  source.connect(processor)
-  const tapGain = options.ctx.createGain()
-  tapGain.gain.value = options.silentTapV2 !== false ? 0 : 1
-  processor.connect(tapGain)
-  tapGain.connect(options.ctx.destination)
-
   return {
-    processor,
+    handle,
     levelTracker,
     getLastLevels: () => lastLevels,
     getSpeechGate: () => speechGate,
   }
 }
 
-function downsampleTo16k(input: Float32Array, inputRate: number, gain = 1): Int16Array {
-  if (inputRate === 16000) {
-    const out = new Int16Array(input.length)
-    for (let i = 0; i < input.length; i++) {
-      const s = Math.max(-1, Math.min(1, (input[i] ?? 0) * gain))
-      out[i] = s < 0 ? s * 0x8000 : s * 0x7fff
+function connectSilentTap(options: VoiceMicProcessorOptions, node: AudioNode): GainNode {
+  // Capture nodes must reach the destination to be pulled; gain 0 keeps the
+  // mic out of the speakers.
+  const tapGain = options.ctx.createGain()
+  tapGain.gain.value = options.silentTapV2 !== false ? 0 : 1
+  node.connect(tapGain)
+  tapGain.connect(options.ctx.destination)
+  return tapGain
+}
+
+/**
+ * Mic capture on an AudioWorklet (audio thread), falling back to the
+ * ScriptProcessor path when AudioWorklet is unavailable or fails to load.
+ */
+export async function createVoiceMicCapture(
+  options: VoiceMicProcessorOptions,
+): Promise<VoiceMicProcessorHandle> {
+  if (await loadVoiceWorklets(options.ctx)) {
+    try {
+      return createWorkletMicProcessor(options)
+    } catch (err) {
+      if (typeof console !== "undefined") {
+        console.warn("[gravitre-voice] mic worklet failed, using ScriptProcessor", err)
+      }
     }
-    return out
   }
-  const ratio = inputRate / 16000
-  const newLen = Math.max(1, Math.floor(input.length / ratio))
-  const out = new Int16Array(newLen)
-  for (let i = 0; i < newLen; i++) {
-    const s = Math.max(-1, Math.min(1, (input[Math.floor(i * ratio)] ?? 0) * gain))
-    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff
+  return createVoiceMicProcessor(options)
+}
+
+/** Requires loadVoiceWorklets(ctx) to have resolved true. */
+export function createWorkletMicProcessor(options: VoiceMicProcessorOptions): VoiceMicProcessorHandle {
+  const source = options.ctx.createMediaStreamSource(options.stream)
+  const node = new AudioWorkletNode(options.ctx, VOICE_MIC_CAPTURE_PROCESSOR, {
+    numberOfInputs: 1,
+    numberOfOutputs: 1,
+    outputChannelCount: [1],
+    channelCount: 1,
+    channelCountMode: "explicit",
+    processorOptions: { blockFrames: MIC_BLOCK_FRAMES, targetRate: MIC_WIRE_RATE },
+  })
+  const blocks = createMicBlockHandler(options)
+  node.port.onmessage = (event: MessageEvent) => {
+    const data = event.data as { raw?: Float32Array; pcm?: Float32Array }
+    if (data?.raw && data.pcm) blocks.handle(data.raw, data.pcm)
   }
-  return out
+  source.connect(node)
+  const tap = connectSilentTap(options, node)
+  return {
+    processor: node,
+    kind: "worklet",
+    levelTracker: blocks.levelTracker,
+    getLastLevels: blocks.getLastLevels,
+    getSpeechGate: blocks.getSpeechGate,
+    dispose() {
+      try {
+        node.port.postMessage({ type: "dispose" })
+        node.port.onmessage = null
+        source.disconnect()
+        node.disconnect()
+        tap.disconnect()
+      } catch {
+        /* ignore */
+      }
+    },
+  }
+}
+
+/** ScriptProcessor capture (main thread). Fallback for browsers without AudioWorklet. */
+export function createVoiceMicProcessor(options: VoiceMicProcessorOptions): VoiceMicProcessorHandle {
+  const source = options.ctx.createMediaStreamSource(options.stream)
+  const processor = options.ctx.createScriptProcessor(MIC_BLOCK_FRAMES, 1, 1)
+  const blocks = createMicBlockHandler(options)
+  const resampler = new StreamingResampler(options.ctx.sampleRate, MIC_WIRE_RATE)
+
+  processor.onaudioprocess = (e) => {
+    const input = e.inputBuffer.getChannelData(0)
+    blocks.handle(input, resampler.process(input))
+  }
+
+  source.connect(processor)
+  const tap = connectSilentTap(options, processor)
+
+  return {
+    processor,
+    kind: "script-processor",
+    levelTracker: blocks.levelTracker,
+    getLastLevels: blocks.getLastLevels,
+    getSpeechGate: blocks.getSpeechGate,
+    dispose() {
+      processor.onaudioprocess = null
+      try {
+        source.disconnect()
+        processor.disconnect()
+        tap.disconnect()
+      } catch {
+        /* ignore */
+      }
+    },
+  }
 }

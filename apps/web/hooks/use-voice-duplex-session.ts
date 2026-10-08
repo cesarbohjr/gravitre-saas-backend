@@ -31,13 +31,14 @@ import {
   buildPipecatVoiceWsUrl,
   encodePipecatAudioMessage,
   encodePipecatInterrupt,
-  base64ToPcm16,
+  createPcm16StreamDecoder,
   inspectPcm16Energy,
   shouldUsePipecatVoice,
 } from "@/lib/pipecat-voice-client"
 import {
   acquireVoiceMicrophoneStream,
-  createVoiceMicProcessor,
+  createVoiceMicCapture,
+  type VoiceMicProcessorHandle,
   EchoLeakMonitor,
   voiceMicPhase1FlagsFromStatus,
   voiceMicPhase2FlagsFromStatus,
@@ -49,7 +50,11 @@ import {
 import type { MicFieldProfile } from "@/lib/voice-mic-devices"
 import { postMicDiagnostics } from "@/lib/voice-mic-telemetry-client"
 import { postVoiceOutputDiagnostics } from "@/lib/voice-output-telemetry-client"
-import { createPcmJitterState, schedulePcmStart } from "@/lib/voice-pcm-jitter"
+import {
+  createBufferSourcePcmPlayer,
+  createVoicePcmPlayer,
+  type VoicePcmPlayer,
+} from "@/lib/voice-pcm-player"
 import {
   cancelVoiceSessionTurn,
   getVoiceStatus,
@@ -122,25 +127,6 @@ type Options = {
   onConversationId?: (id: string) => void
 }
 
-function downsampleTo16k(input: Float32Array, inputRate: number): Int16Array {
-  if (inputRate === 16000) {
-    const out = new Int16Array(input.length)
-    for (let i = 0; i < input.length; i++) {
-      const s = Math.max(-1, Math.min(1, input[i] ?? 0))
-      out[i] = s < 0 ? s * 0x8000 : s * 0x7fff
-    }
-    return out
-  }
-  const ratio = inputRate / 16000
-  const newLen = Math.max(1, Math.floor(input.length / ratio))
-  const out = new Int16Array(newLen)
-  for (let i = 0; i < newLen; i++) {
-    const s = Math.max(-1, Math.min(1, input[Math.floor(i * ratio)] ?? 0))
-    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff
-  }
-  return out
-}
-
 function normalizeTranscript(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, " ")
 }
@@ -205,13 +191,13 @@ export function useVoiceDuplexSession(options: Options) {
   const voiceStatusRef = useRef<VoiceStatus | null>(null)
   const micSessionIdRef = useRef<string | null>(null)
   const telemetryTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const micProcessorRef = useRef<ReturnType<typeof createVoiceMicProcessor> | null>(null)
+  const micProcessorRef = useRef<VoiceMicProcessorHandle | null>(null)
 
   const wsRef = useRef<WebSocket | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
   const audioCtxSharedRef = useRef(false)
-  const processorRef = useRef<ScriptProcessorNode | null>(null)
+  const processorRef = useRef<AudioNode | null>(null)
   const analyserRef = useRef<VoiceAnalyserHandle | null>(null)
   const rafRef = useRef<number | null>(null)
   const turnStateRef = useRef<Record<string, unknown> | null>(null)
@@ -259,11 +245,11 @@ export function useVoiceDuplexSession(options: Options) {
   // leaves this module: the access token rides in the query string.
   const wsUrlRef = useRef<string | null>(null)
   const orchestrationRef = useRef<"http" | "pipecat">("http")
-  const pcmSourcesRef = useRef<AudioBufferSourceNode[]>([])
+  // Pipecat reply playback (AudioWorklet player, or the buffer-source fallback).
+  const pcmPlayerRef = useRef<VoicePcmPlayer | null>(null)
   const pcmBlockedQueueRef = useRef<Array<{ pcm: Int16Array; sampleRate: number }>>([])
-  const pcmNextTimeRef = useRef(0)
-  const pcmJitterRef = useRef(createPcmJitterState())
-  const pcmPlayOriginRef = useRef<number | null>(null)
+  // One decoder per reply stream, so a sample split across two messages survives.
+  const pcmDecoderRef = useRef(createPcm16StreamDecoder())
   const assistantTextRef = useRef("")
   const lastUserFinalRef = useRef("")
   // Pipecat keeps one websocket alive across many turns. Completion is per turn,
@@ -367,18 +353,11 @@ export function useVoiceDuplexSession(options: Options) {
   }, [clearAudioReplyWatchdog, emitOutputDiagnostic])
 
   const stopPcmPlayback = useCallback(() => {
-    for (const src of pcmSourcesRef.current) {
-      try {
-        src.stop()
-      } catch {
-        /* ignore */
-      }
-    }
-    pcmSourcesRef.current = []
+    // Short fade-out in the player rather than a hard stop: cutting a waveform
+    // mid-cycle is itself a click.
+    pcmPlayerRef.current?.flush()
     pcmBlockedQueueRef.current = []
-    pcmNextTimeRef.current = 0
-    pcmPlayOriginRef.current = null
-    pcmJitterRef.current = createPcmJitterState()
+    pcmDecoderRef.current.reset()
   }, [])
 
   const stopPlayback = useCallback(() => {
@@ -441,6 +420,19 @@ export function useVoiceDuplexSession(options: Options) {
     [],
   )
 
+  // The player drained (or was flushed): the bot is no longer audible.
+  const handlePcmActiveChange = useCallback(
+    (playing: boolean) => {
+      if (playing) return
+      agentSpeakingRef.current = false
+      if (phase2FlagsRef.current.echoTestMode) {
+        emitMicDiagnostics("echo_test")
+      }
+      if (activeRef.current) setPresence("listening")
+    },
+    [emitMicDiagnostics],
+  )
+
   const enqueuePcm = useCallback(
     (pcm: Int16Array, sampleRate: number) => {
       const ctx = audioCtxRef.current
@@ -474,30 +466,17 @@ export function useVoiceDuplexSession(options: Options) {
         setPlaybackBlocked(true)
         return
       }
-      const f32 = new Float32Array(pcm.length)
-      for (let i = 0; i < pcm.length; i++) {
-        f32[i] = (pcm[i] ?? 0) / 32768
+      // Normally created with the session; the fallback covers a frame that
+      // arrives before that (or a player lost to a context swap).
+      let player = pcmPlayerRef.current
+      if (!player) {
+        player = createBufferSourcePcmPlayer(ctx, {
+          onActiveChange: handlePcmActiveChange,
+        })
+        pcmPlayerRef.current = player
       }
-      const buf = ctx.createBuffer(1, f32.length, sampleRate || 16000)
-      buf.copyToChannel(f32, 0)
-      const src = ctx.createBufferSource()
-      src.buffer = buf
       try {
-        if (analyserRef.current) {
-          // Analyser expects MediaElement; for PCM, tap destination via gain.
-        }
-      } catch {
-        /* optional */
-      }
-      src.connect(ctx.destination)
-      const startAt = schedulePcmStart(
-        pcmJitterRef.current,
-        ctx.currentTime,
-        pcmNextTimeRef.current,
-        performance.now(),
-      )
-      try {
-        src.start(startAt)
+        player.enqueue(pcm, sampleRate || 16000)
         if (!browserAudioPlaybackStartedRef.current) {
           emitOutputDiagnostic("playback_started")
           // Once per reply. A state update on every 40 ms chunk re-rendered the
@@ -523,25 +502,10 @@ export function useVoiceDuplexSession(options: Options) {
         }
         return
       }
-      if (pcmPlayOriginRef.current == null) {
-        pcmPlayOriginRef.current = startAt
-      }
-      pcmNextTimeRef.current = startAt + buf.duration
-      pcmSourcesRef.current.push(src)
       agentSpeakingRef.current = true
       setPresence("speaking")
-      src.onended = () => {
-        pcmSourcesRef.current = pcmSourcesRef.current.filter((s) => s !== src)
-        if (pcmSourcesRef.current.length === 0) {
-          agentSpeakingRef.current = false
-          if (phase2FlagsRef.current.echoTestMode) {
-            emitMicDiagnostics("echo_test")
-          }
-          if (activeRef.current) setPresence("listening")
-        }
-      }
     },
-    [emitMicDiagnostics, emitOutputDiagnostic],
+    [emitOutputDiagnostic, handlePcmActiveChange],
   )
 
   const playNext = useCallback(async () => {
@@ -791,6 +755,7 @@ export function useVoiceDuplexSession(options: Options) {
     stopRaf()
     stopMicTelemetry()
     emitMicDiagnostics("session_end")
+    micProcessorRef.current?.dispose()
     micProcessorRef.current = null
     micSessionIdRef.current = null
     try {
@@ -799,6 +764,8 @@ export function useVoiceDuplexSession(options: Options) {
       /* ignore */
     }
     processorRef.current = null
+    pcmPlayerRef.current?.dispose()
+    pcmPlayerRef.current = null
     try {
       const outputCtx = audioCtxRef.current
       const stateHandler = outputContextStateHandlerRef.current
@@ -840,7 +807,7 @@ export function useVoiceDuplexSession(options: Options) {
     // Played-audio reconciliation depends on this boundary; the old order always
     // sent undefined even when audio had been playing.
     const ctxBeforeStop = audioCtxRef.current
-    const pcmOriginBeforeStop = pcmPlayOriginRef.current
+    const pcmOriginBeforeStop = pcmPlayerRef.current?.originTime() ?? null
     const playbackOffsetMs =
       ctxBeforeStop && pcmOriginBeforeStop != null
         ? Math.max(0, Math.round((ctxBeforeStop.currentTime - pcmOriginBeforeStop) * 1000))
@@ -1240,9 +1207,24 @@ export function useVoiceDuplexSession(options: Options) {
         playbackBlockedRef.current = true
         setPlaybackBlocked(true)
       }
-      pcmNextTimeRef.current = 0
+      pcmDecoderRef.current.reset()
+      pcmPlayerRef.current?.dispose()
+      pcmPlayerRef.current = null
+      // The worklet module loads while the mic permission prompt is up.
+      const playerReady = createVoicePcmPlayer(ctx, { onActiveChange: handlePcmActiveChange })
 
       const { stream, tuning, prerollEnabled } = await setupVoiceMicrophone(ctx)
+      const player = await playerReady
+      if (audioCtxRef.current !== ctx) {
+        // Torn down while we waited: release what this attempt acquired.
+        player.dispose()
+        if (streamRef.current === stream) {
+          stream.getTracks().forEach((t) => t.stop())
+          streamRef.current = null
+        }
+        return
+      }
+      pcmPlayerRef.current = player
       // Re-apply a mute the user set before a reconnect dropped the old track.
       if (pendingMuteRestoreRef.current) {
         pendingMuteRestoreRef.current = false
@@ -1382,7 +1364,7 @@ export function useVoiceDuplexSession(options: Options) {
           // The server only sends this for a real barge-in. Drop the audio
           // already queued here (up to the jitter lead) so the bot stops the
           // moment the user cuts in, not after the buffer drains.
-          if (agentSpeakingRef.current || pcmSourcesRef.current.length > 0) {
+          if (agentSpeakingRef.current || pcmPlayerRef.current?.isActive()) {
             stopPcmPlayback()
             agentSpeakingRef.current = false
             if (activeRef.current) setPresence("listening")
@@ -1408,7 +1390,7 @@ export function useVoiceDuplexSession(options: Options) {
           // HTTP TTS owns this turn after the no-audio watchdog fires. A late
           // provider frame must not create overlapping speech.
           if (audioFallbackTriggeredRef.current) return
-          const pcm = base64ToPcm16(msg.pcm16_b64)
+          const pcm = pcmDecoderRef.current.decode(msg.pcm16_b64)
           if (pcm.length > 0) {
             audioFramesReceivedRef.current += 1
             const energy = inspectPcm16Energy(pcm)
@@ -1457,7 +1439,7 @@ export function useVoiceDuplexSession(options: Options) {
         }
       }
 
-      micProcessorRef.current = createVoiceMicProcessor({
+      const mic = await createVoiceMicCapture({
         ctx,
         stream,
         tuning,
@@ -1484,7 +1466,12 @@ export function useVoiceDuplexSession(options: Options) {
         // a genuine interruption. Manual UI bargeIn() remains available.
         agentSpeaking: () => agentSpeakingRef.current,
       })
-      processorRef.current = micProcessorRef.current.processor
+      if (audioCtxRef.current !== ctx) {
+        mic.dispose()
+        return
+      }
+      micProcessorRef.current = mic
+      processorRef.current = mic.processor
     } catch (err) {
       // A throw here is a local setup failure (mic permission, AudioContext), not a
       // transport fault, so it is reported directly and never retried.
@@ -1497,7 +1484,7 @@ export function useVoiceDuplexSession(options: Options) {
         err instanceof Error ? err.message : "Microphone permission denied",
       )
     }
-  }, [applyMicMuted, armAudioReplyWatchdog, bargeIn, cancelReconnect, clearAudioReplyWatchdog, enqueuePcm, handlePipecatSocketFailure, setupVoiceMicrophone, startMicTelemetry, stopPcmPlayback, teardownMic])
+  }, [applyMicMuted, armAudioReplyWatchdog, bargeIn, cancelReconnect, clearAudioReplyWatchdog, enqueuePcm, handlePcmActiveChange, handlePipecatSocketFailure, setupVoiceMicrophone, startMicTelemetry, stopPcmPlayback, teardownMic])
 
   // Assigned after definition so handlePipecatSocketFailure can re-enter these
   // without a circular useCallback dependency.
@@ -1612,7 +1599,7 @@ export function useVoiceDuplexSession(options: Options) {
           if (activeRef.current) setPresence("disconnected")
         }
 
-        micProcessorRef.current = createVoiceMicProcessor({
+        const mic = await createVoiceMicCapture({
           ctx,
           stream,
           tuning,
@@ -1630,7 +1617,12 @@ export function useVoiceDuplexSession(options: Options) {
             }
           },
         })
-        processorRef.current = micProcessorRef.current.processor
+        if (audioCtxRef.current !== ctx) {
+          mic.dispose()
+          return
+        }
+        micProcessorRef.current = mic
+        processorRef.current = mic.processor
       } catch (err) {
         teardownMic()
         activeRef.current = false

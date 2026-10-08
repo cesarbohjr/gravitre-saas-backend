@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest"
 const webRoot = resolve(__dirname, "../..")
 const hook = readFileSync(resolve(webRoot, "hooks/use-voice-duplex-session.ts"), "utf8")
 const aiWorkspace = readFileSync(resolve(webRoot, "app/ai/_components/ai-workspace.tsx"), "utf8")
+const player = readFileSync(resolve(webRoot, "lib/voice-pcm-player.ts"), "utf8")
+const dsp = readFileSync(resolve(webRoot, "public/voice-worklets/voice-dsp.js"), "utf8")
 const agentPlayback = readFileSync(resolve(webRoot, "hooks/use-agent-voice-playback.ts"), "utf8")
 const outputDiagnosticsRoute = readFileSync(
   resolve(webRoot, "app/api/voice/output-diagnostics/route.ts"),
@@ -59,7 +61,7 @@ describe("voice physical-output failure handling", () => {
   })
 
   it("captures Pipecat playback offset before stopping audio on barge-in", () => {
-    const capture = hook.indexOf("const pcmOriginBeforeStop = pcmPlayOriginRef.current")
+    const capture = hook.indexOf("const pcmOriginBeforeStop = pcmPlayerRef.current?.originTime() ?? null")
     const stop = hook.indexOf("stopPlayback()", capture)
     const send = hook.indexOf("encodePipecatInterrupt({ playbackOffsetMs })", capture)
     expect(capture).toBeGreaterThan(-1)
@@ -193,8 +195,12 @@ describe("voice live turn completion lifecycle", () => {
   })
 
   it("schedules streamed PCM through the jitter buffer, not a 10 ms lead", () => {
-    expect(hook).toMatch(/schedulePcmStart\(/)
-    expect(hook).not.toMatch(/Math\.max\(ctx\.currentTime \+ 0\.01, pcmNextTimeRef\.current\)/)
+    // Playback goes through the player (AudioWorklet queue, or the
+    // buffer-source fallback), both of which use the jitter lead policy.
+    expect(hook).toMatch(/player\.enqueue\(pcm, sampleRate \|\| 16000\)/)
+    expect(player).toMatch(/schedulePcmStart\(/)
+    expect(dsp).toMatch(/initialLeadS \?\? 0\.12/)
+    expect(hook).not.toMatch(/Math\.max\(ctx\.currentTime \+ 0\.01/)
   })
 
   it("drops queued reply audio when the server reports a barge-in", () => {

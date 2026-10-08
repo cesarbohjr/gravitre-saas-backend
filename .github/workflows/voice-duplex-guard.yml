@@ -16,6 +16,7 @@ on:
     paths:
       - "apps/web/hooks/use-voice-duplex-session.ts"
       - "apps/web/lib/voice-*.ts"
+      - "apps/web/public/voice-worklets/**"
       - "apps/web/lib/pipecat-voice-client.ts"
       - "apps/web/app/e2e/voice-duplex/**"
       - "apps/web/app/api/voice/**"

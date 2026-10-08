@@ -88,11 +88,58 @@ export function pcm16ToBase64(pcm: Int16Array): string {
   return btoa(binary)
 }
 
-export function base64ToPcm16(b64: string): Int16Array {
+function base64ToBytes(b64: string): Uint8Array {
   const raw = atob(b64)
   const bytes = new Uint8Array(raw.length)
   for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
-  return new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2))
+  return bytes
+}
+
+/** Little-endian PCM16 from bytes; DataView so the host's byte order never matters. */
+function bytesToPcm16(bytes: Uint8Array, start: number, samples: number): Int16Array {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const out = new Int16Array(samples)
+  for (let i = 0; i < samples; i++) out[i] = view.getInt16(start + i * 2, true)
+  return out
+}
+
+/** Decode one self-contained PCM16 message. A trailing odd byte is dropped. */
+export function base64ToPcm16(b64: string): Int16Array {
+  const bytes = base64ToBytes(b64)
+  return bytesToPcm16(bytes, 0, Math.floor(bytes.byteLength / 2))
+}
+
+export type Pcm16StreamDecoder = {
+  /** Decode the next message of a stream; a split sample is completed by the next call. */
+  decode: (b64: string) => Int16Array
+  reset: () => void
+}
+
+/**
+ * Decoder for a stream of PCM16 messages. Decoding each message on its own
+ * drops an odd trailing byte, which shifts every later sample by one byte:
+ * full-scale noise until the next odd message. This carries the byte over.
+ */
+export function createPcm16StreamDecoder(): Pcm16StreamDecoder {
+  let carry: number | null = null
+  return {
+    decode(b64) {
+      let bytes = base64ToBytes(b64)
+      if (carry !== null) {
+        const joined = new Uint8Array(bytes.length + 1)
+        joined[0] = carry
+        joined.set(bytes, 1)
+        bytes = joined
+        carry = null
+      }
+      const samples = Math.floor(bytes.length / 2)
+      if (bytes.length % 2 === 1) carry = bytes[bytes.length - 1] ?? null
+      return bytesToPcm16(bytes, 0, samples)
+    },
+    reset() {
+      carry = null
+    },
+  }
 }
 
 export type PcmEnergy = {
