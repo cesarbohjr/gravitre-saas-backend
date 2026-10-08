@@ -30,7 +30,7 @@ function roleLabel(role: string): string {
 }
 
 export default function PermissionsMatrixPage() {
-  const { isAdmin, loading: adminLoading } = useOrgAdmin()
+  const { showAdmin, loading: adminLoading } = useOrgAdmin()
   const onSectionChange = useSettingsSectionNav("permissions")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { data, error, isLoading } = useSWR<OrgRolePermissionsMatrix>(
@@ -46,7 +46,7 @@ export default function PermissionsMatrixPage() {
     <AppShell title="Settings">
       <SettingsShell
         activeSection="permissions"
-        isAdmin={isAdmin}
+        isAdmin={showAdmin}
         mobileMenuOpen={mobileMenuOpen}
         onMobileMenuOpenChange={setMobileMenuOpen}
         onSectionChange={onSectionChange}

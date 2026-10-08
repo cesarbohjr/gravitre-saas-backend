@@ -152,6 +152,9 @@ def invite_org_member_by_email(
         )
         .execute()
     )
+    from app.core.org_state_cache import invalidate_org_and_users
+
+    invalidate_org_and_users(org_id, [auth_user_id])
     if response_error(upserted):
         raise HTTPException(status_code=500, detail=str(response_error(upserted)))
 

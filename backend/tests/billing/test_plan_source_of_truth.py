@@ -216,7 +216,7 @@ def test_resolve_entitlements_uses_org_billing_not_stale_subscription_tier(monke
     monkeypatch.setattr(
         entitlements_mod,
         "get_plan_for_org",
-        lambda _c, _o: {
+        lambda _c, _o, **_k: {
             "code": "command",
             "workflow_runs_included": 10000,
             "ai_credits_included": 15000,

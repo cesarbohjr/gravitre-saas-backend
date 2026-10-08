@@ -6,7 +6,7 @@ import { lastAssistantMessageId, shouldAutoSpeakReply } from "@/lib/voice-auto-t
 
 const webRoot = resolve(__dirname, "../..")
 const hook = readFileSync(resolve(webRoot, "hooks/use-voice-duplex-session.ts"), "utf8")
-const workspace = readFileSync(resolve(webRoot, "app/ai/_components/ai-workspace.tsx"), "utf8")
+const workspace = readFileSync(resolve(webRoot, "app/(app)/ai/_components/ai-workspace.tsx"), "utf8")
 
 /** Body of the first `marker {` block, matched by brace depth. */
 function blockAfter(source: string, marker: string): string {

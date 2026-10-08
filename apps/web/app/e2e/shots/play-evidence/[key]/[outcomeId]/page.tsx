@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 
-import PlayResultEvidencePage from "@/app/plays/[key]/results/[outcomeId]/page"
+import PlayResultEvidencePage from "@/app/(app)/plays/[key]/results/[outcomeId]/page"
 
 import { ShotAuthProvider } from "../../../shot-auth"
 

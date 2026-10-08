@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 
-import ModelDetailPage from "@/app/models/[id]/page"
+import ModelDetailPage from "@/app/(app)/models/[id]/page"
 
 import { ShotAuthProvider } from "../shot-auth"
 

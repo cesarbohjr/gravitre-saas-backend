@@ -59,7 +59,7 @@ describe("Intelligence › Data uploads", () => {
 
 describe("Intelligence › Data page wiring", () => {
   it("uses the design's header, search and sections on real endpoints", () => {
-    const page = read("app/intelligence/data/page.tsx")
+    const page = read("app/(app)/intelligence/data/page.tsx")
     expect(page).toMatch(/eyebrow=\{copy\.eyebrow\}/)
     expect(page).toMatch(/Upload a file/)
     expect(page).toMatch(/APP_ROUTES\.connectors/)

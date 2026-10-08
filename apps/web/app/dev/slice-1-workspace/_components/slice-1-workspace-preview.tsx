@@ -15,9 +15,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PageIntro } from "@/components/gravitre/page-intro"
-import { GravitreAIFloatBridge } from "@/app/ai/_components/ai-workspace-float-bridge"
-import { GravitreAIWorkspaceShellBridge } from "@/app/ai/_components/ai-workspace-shell-bridge"
-import { GravitreAIMobileSheetBridge } from "@/app/ai/_components/ai-mobile-sheet-bridge"
+import { GravitreAIFloatBridge } from "@/app/(app)/ai/_components/ai-workspace-float-bridge"
+import { GravitreAIWorkspaceShellBridge } from "@/app/(app)/ai/_components/ai-workspace-shell-bridge"
+import { GravitreAIMobileSheetBridge } from "@/app/(app)/ai/_components/ai-mobile-sheet-bridge"
 import {
   GravitreAIWorkspaceProvider,
   useGravitreAIWorkspace,

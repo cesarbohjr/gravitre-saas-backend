@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 
-import BuilderPage from "@/app/workflows/[id]/builder/page"
+import BuilderPage from "@/app/(app)/workflows/[id]/builder/page"
 import { BuilderSeedProvider } from "@/components/workflows/builder-seed-context"
 
 import { ShotAuthProvider } from "../shot-auth"

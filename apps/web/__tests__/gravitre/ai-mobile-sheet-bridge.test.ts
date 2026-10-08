@@ -41,7 +41,7 @@ vi.mock("@/components/gravitre/ai-work-canvas", () => ({ GravitreAIWorkCanvas: (
 vi.mock("@/components/gravitre/assistant/task-side-panel", () => ({ TaskSidePanel: () => null }))
 vi.mock("@/components/gravitre/ai-context-indicator", () => ({ GravitreAIContextIndicator: () => null }))
 
-import { GravitreAIMobileSheetBridge } from "@/app/ai/_components/ai-mobile-sheet-bridge"
+import { GravitreAIMobileSheetBridge } from "@/app/(app)/ai/_components/ai-mobile-sheet-bridge"
 
 let container: HTMLDivElement
 let root: Root | null = null

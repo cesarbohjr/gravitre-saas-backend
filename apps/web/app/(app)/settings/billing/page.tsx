@@ -180,7 +180,7 @@ const colorClasses = {
 }
 
 export default function BillingPage() {
-  const { isAdmin, loading: adminLoading } = useOrgAdmin()
+  const { isAdmin, showAdmin, pending: adminPending } = useOrgAdmin()
   const onSectionChange = useSettingsSectionNav("billing")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -190,19 +190,15 @@ export default function BillingPage() {
       <Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
         <SettingsShell
           activeSection="billing"
-          isAdmin={isAdmin}
+          isAdmin={showAdmin}
           mobileMenuOpen={mobileMenuOpen}
           onMobileMenuOpenChange={setMobileMenuOpen}
           onSectionChange={onSectionChange}
           hideHeader
         >
-          {adminLoading ? (
-            <div className="flex h-64 items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <BillingPageInner isAdmin={isAdmin} />
-          )}
+          {/* Plan and usage render straight away; admin-only billing controls
+              stay disabled until the server confirms the role. */}
+          <BillingPageInner isAdmin={isAdmin} adminChecking={!isAdmin && (adminPending || showAdmin)} />
         </SettingsShell>
       </Suspense>
       </div>
@@ -210,7 +206,7 @@ export default function BillingPage() {
   )
 }
 
-function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
+function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean; adminChecking?: boolean }) {
   const { user } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -816,7 +812,7 @@ function BillingPageInner({ isAdmin }: { isAdmin: boolean }) {
                         </>
                       )}
                     </p>
-                    {!isAdmin ? (
+                    {!isAdmin && !adminChecking ? (
                       <p className="mt-1 text-xs text-muted-foreground">Admin access required to change auto-renew.</p>
                     ) : null}
                   </div>

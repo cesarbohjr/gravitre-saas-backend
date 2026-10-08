@@ -215,7 +215,7 @@ def main() -> int:
     panel_src = (REPO / "apps" / "web" / "components" / "marketplace" / "pack-kpi-panel.tsx").read_text(
         encoding="utf-8"
     )
-    reports = (REPO / "apps" / "web" / "app" / "intelligence" / "reports" / "page.tsx").read_text(
+    reports = (REPO / "apps" / "web" / "app" / "(app)" / "intelligence" / "reports" / "page.tsx").read_text(
         encoding="utf-8"
     )
     surface = (REPO / "apps" / "web" / "lib" / "surface-copy.ts").read_text(encoding="utf-8")

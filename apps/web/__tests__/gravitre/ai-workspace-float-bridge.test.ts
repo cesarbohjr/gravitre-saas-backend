@@ -55,7 +55,7 @@ vi.mock("@/components/gravitre/ai-floating-workspace", () => ({
   GravitreFloatingWorkspace: ({ children }: { children: unknown }) => children,
 }))
 
-import { GravitreAIFloatBridge } from "@/app/ai/_components/ai-workspace-float-bridge"
+import { GravitreAIFloatBridge } from "@/app/(app)/ai/_components/ai-workspace-float-bridge"
 
 let container: HTMLDivElement
 let root: Root | null = null

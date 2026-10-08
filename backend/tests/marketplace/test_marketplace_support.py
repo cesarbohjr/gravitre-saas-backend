@@ -100,18 +100,17 @@ def test_list_org_installs_invalid_status():
 
 
 def test_list_marketplace_categories():
-    assets = MagicMock()
-    assets.select.return_value = assets
-    assets.eq.return_value = assets
-    assets.or_.return_value = assets
-    assets.execute.return_value = MagicMock(
-        data=[
-            {"category": "ai_agent", "department": "Marketing", "asset_type": "ai_agent"},
-            {"category": "workflow", "department": "Sales", "asset_type": "workflow"},
-        ]
-    )
     client = MagicMock()
-    client.table.side_effect = lambda name: assets if name == "marketplace_assets" else MagicMock()
+    client.rpc.return_value.execute.return_value = MagicMock(
+        data={
+            "categories": {"ai_agent": 1, "workflow": 1},
+            "departments": {"Marketing": 1, "Sales": 1},
+            "asset_types": {"ai_agent": 1, "workflow": 1},
+            "total_assets": 2,
+            "total_install_count": 0,
+            "total_clone_count": 0,
+        }
+    )
 
     result = list_marketplace_categories(client, "org-1")
     assert result["totalAssets"] == 2
@@ -123,14 +122,7 @@ def test_marketplace_analytics_summary():
     assets.select.return_value = assets
     assets.eq.return_value = assets
     assets.or_.return_value = assets
-    assets.execute.side_effect = [
-        MagicMock(
-            data=[
-                {"category": "ai_agent", "department": "Marketing", "asset_type": "ai_agent"},
-            ]
-        ),
-        MagicMock(data=[{"install_count": 3, "clone_count": 1}]),
-    ]
+    assets.execute.side_effect = AssertionError("catalog totals come from the RPC, not row reads")
 
     def make_counter(count: int) -> MagicMock:
         mock = MagicMock()
@@ -148,6 +140,16 @@ def test_marketplace_analytics_summary():
     adoption.execute.return_value = MagicMock(data=[], count=0)
 
     client = MagicMock()
+    client.rpc.return_value.execute.return_value = MagicMock(
+        data={
+            "categories": {"ai_agent": 1},
+            "departments": {"Marketing": 1},
+            "asset_types": {"ai_agent": 1},
+            "total_assets": 1,
+            "total_install_count": 3,
+            "total_clone_count": 1,
+        }
+    )
 
     def table(name):
         if name == "marketplace_assets":
@@ -177,10 +179,7 @@ def test_marketplace_analytics_summary_ranks_adoption():
     assets.select.return_value = assets
     assets.eq.return_value = assets
     assets.or_.return_value = assets
-    assets.execute.side_effect = [
-        MagicMock(data=[{"category": "ai_agent", "department": "Sales", "asset_type": "ai_agent"}]),
-        MagicMock(data=[{"install_count": 1, "clone_count": 0}]),
-    ]
+    assets.execute.side_effect = AssertionError("catalog totals come from the RPC, not row reads")
 
     def make_counter(count: int) -> MagicMock:
         mock = MagicMock()
@@ -211,6 +210,16 @@ def test_marketplace_analytics_summary_ranks_adoption():
     )
 
     client = MagicMock()
+    client.rpc.return_value.execute.return_value = MagicMock(
+        data={
+            "categories": {"ai_agent": 1},
+            "departments": {"Sales": 1},
+            "asset_types": {"ai_agent": 1},
+            "total_assets": 1,
+            "total_install_count": 1,
+            "total_clone_count": 0,
+        }
+    )
 
     def table(name):
         if name == "marketplace_assets":

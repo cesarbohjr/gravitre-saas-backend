@@ -103,7 +103,7 @@ def main() -> int:
     kpis = pack_kpi_summary(sb, org_id=ORG, pack_id=PACK)
 
     # UI cohesion: shared component is in reports page source (static check)
-    reports = (REPO / "apps" / "web" / "app" / "intelligence" / "reports" / "page.tsx").read_text(
+    reports = (REPO / "apps" / "web" / "app" / "(app)" / "intelligence" / "reports" / "page.tsx").read_text(
         encoding="utf-8"
     )
     panel_src = (REPO / "apps" / "web" / "components" / "marketplace" / "pack-kpi-panel.tsx").read_text(
@@ -169,7 +169,7 @@ def main() -> int:
             "shared_dashboard_component": {
                 "pass": ui_ok,
                 "component": "apps/web/components/marketplace/pack-kpi-panel.tsx",
-                "mounted_on": "apps/web/app/intelligence/reports/page.tsx (Executive tab)",
+                "mounted_on": "apps/web/app/(app)/intelligence/reports/page.tsx (Executive tab)",
             },
         },
         "note": (

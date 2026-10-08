@@ -159,3 +159,117 @@ def test_sales_scoring_is_weighted_and_explainable(monkeypatch) -> None:
     assert first["signalContributions"]
     assert first["explanations"]
 
+
+class _CountingClient(_Client):
+    def __init__(self, store: dict[str, list[dict[str, Any]]]) -> None:
+        super().__init__(store)
+        self.calls: list[str] = []
+
+    def table(self, name: str) -> _Table:
+        self.calls.append(name)
+        return super().table(name)
+
+    def count(self, name: str) -> int:
+        return sum(1 for n in self.calls if n == name)
+
+
+def _multi_department_store() -> dict[str, list[dict[str, Any]]]:
+    work_objects: list[dict[str, Any]] = []
+    events: list[dict[str, Any]] = []
+    for dept, otype, systems in (
+        ("sales", "opportunity", ("hubspot", "apollo")),
+        ("marketing", "campaign", ("google_analytics", "google_ads")),
+        ("finance", "invoice", ("stripe", "quickbooks")),
+        ("hr", "requisition", ("greenhouse",)),
+        # msp intentionally has no rows (exercises the object_type fallback query).
+    ):
+        for i in range(4):
+            wid = f"{dept}-wo-{i}"
+            work_objects.append(
+                {
+                    "id": wid,
+                    "org_id": "org-1",
+                    "department": dept,
+                    "object_type": otype,
+                    "status": "in_progress",
+                    "title": f"{dept} item {i}",
+                    "last_activity_at": f"2026-09-0{i + 1}T00:00:00Z",
+                }
+            )
+            for j, system in enumerate(systems[: (i % len(systems)) + 1]):
+                events.append(
+                    {
+                        "org_id": "org-1",
+                        "work_object_id": wid,
+                        "system_name": system,
+                        "created_at": f"2026-09-0{i + 1}T00:0{j}:00Z",
+                    }
+                )
+    events.append(
+        {"org_id": "org-2", "work_object_id": "sales-wo-0", "system_name": "hubspot", "created_at": "2026-09-09T00:00:00Z"}
+    )
+    return {
+        "work_objects": work_objects,
+        "work_object_events": events,
+        "external_signals": [
+            {"org_id": "org-1", "vendor": "clay", "signal_type": "enrichment", "detected_at": "2026-09-04T00:00:00Z"},
+            {"org_id": "org-1", "vendor": "stripe", "signal_type": "payment", "detected_at": "2026-09-03T00:00:00Z"},
+            {"org_id": "org-1", "vendor": "nvd", "signal_type": "cve", "detected_at": "2026-09-02T00:00:00Z"},
+        ],
+    }
+
+
+def _strip_timestamps(payload: dict[str, Any]) -> dict[str, Any]:
+    out = dict(payload)
+    out.pop("capturedAt", None)
+    if "departments" in out:
+        out["departments"] = [_strip_timestamps(row) for row in out["departments"]]
+    return out
+
+
+def test_score_all_departments_loads_org_inputs_once_and_matches_per_department(monkeypatch) -> None:
+    connected = {"apollo", "clay", "hubspot", "google_analytics", "google_ads", "stripe", "quickbooks", "greenhouse", "nvd"}
+    engine = _mock_engine(monkeypatch, connected=connected, registered=set())
+    integration_calls: list[str] = []
+
+    def _connected(_client: Any, org_id: str) -> set[str]:
+        integration_calls.append(org_id)
+        return set(connected)
+
+    monkeypatch.setattr(engine, "_connected_integrations", _connected)
+
+    # Legacy behaviour: each department scored independently (inputs re-read per department).
+    legacy_client = _CountingClient(_multi_department_store())
+    legacy = {
+        "departments": [
+            engine.score_department("org-1", client=legacy_client, department=dept, limit=3)
+            for dept in ("sales", "marketing", "finance", "hr", "msp")
+        ]
+    }
+    assert len(integration_calls) == 5
+    assert legacy_client.count("work_object_events") == 4  # every department with work objects
+    assert legacy_client.count("external_signals") == 4
+
+    integration_calls.clear()
+    client = _CountingClient(_multi_department_store())
+    batched = engine.score_all_departments("org-1", client=client, limit_per_department=3)
+
+    assert _strip_timestamps(batched) == _strip_timestamps(legacy)
+    assert len(integration_calls) == 1
+    assert client.count("work_object_events") == 1
+    assert client.count("external_signals") == 1
+    # Work objects stay per-department (bounded, LIMITed queries): unchanged.
+    assert client.count("work_objects") == legacy_client.count("work_objects")
+    assert len(client.calls) == len(legacy_client.calls) - 6
+    sales = next(row for row in batched["departments"] if row["department"] == "sales")
+    assert sales["priorities"]
+
+
+def test_score_all_departments_skips_event_queries_when_no_work_objects(monkeypatch) -> None:
+    engine = _mock_engine(monkeypatch, connected=set(), registered=set())
+    client = _CountingClient({})
+    payload = engine.score_all_departments("org-1", client=client)
+    assert all(not row["priorities"] for row in payload["departments"])
+    assert client.count("work_object_events") == 0
+    assert client.count("external_signals") == 0
+

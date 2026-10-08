@@ -2,9 +2,9 @@
 import React, { act, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { beforeEach, afterEach, expect, it, vi } from "vitest"
-import LiteResultsPage from "@/app/lite/results/page"
-import LiteTasksPage from "@/app/lite/tasks/page"
-import LiteDeliverablesPage from "@/app/lite/deliverables/page"
+import LiteResultsPage from "@/app/(app)/lite/results/page"
+import LiteTasksPage from "@/app/(app)/lite/tasks/page"
+import LiteDeliverablesPage from "@/app/(app)/lite/deliverables/page"
 
 const state = vi.hoisted(() => ({ data: undefined as unknown, error: undefined as unknown, mutate: vi.fn(), cancel: vi.fn() }))
 vi.mock("swr", () => ({ default: () => ({ data: state.data, error: state.error, isLoading: false, mutate: state.mutate }) }))

@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { Suspense } from "react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { RelationshipsWorkspace } from "@/components/intelligence/relationships/relationships-workspace"
-import { PerformanceWaterfall } from "@/app/admin/intelligence/_components/performance-waterfall"
+import { PerformanceWaterfall } from "@/app/(app)/admin/intelligence/_components/performance-waterfall"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { ShotAuthProvider } from "../shot-auth"
 

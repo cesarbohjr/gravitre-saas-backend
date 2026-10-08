@@ -11,7 +11,7 @@
  * Reachable only through the /e2e/shots harness, which 404s in production.
  */
 
-import BillingPage from "@/app/settings/billing/page"
+import BillingPage from "@/app/(app)/settings/billing/page"
 
 import { ShotAuthProvider } from "../shot-auth"
 

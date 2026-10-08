@@ -3,7 +3,7 @@ import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
 const slugPage = readFileSync(
-  resolve(__dirname, "../../app/marketplace/assets/[slug]/page.tsx"),
+  resolve(__dirname, "../../app/(app)/marketplace/assets/[slug]/page.tsx"),
   "utf8",
 )
 

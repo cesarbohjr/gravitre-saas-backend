@@ -6,7 +6,7 @@ const webRoot = resolve(__dirname, "../..")
 
 describe("UX Reset Phase 6 — remaining hub IA flatten", () => {
   it("workflows default to a table, not a card grid", () => {
-    const src = readFileSync(resolve(webRoot, "app/workflows/page.tsx"), "utf8")
+    const src = readFileSync(resolve(webRoot, "app/(app)/workflows/page.tsx"), "utf8")
     expect(src).toMatch(/useState<"grid" \| "table">\("table"\)/)
     expect(src).toMatch(/<PhaseBand/)
     expect(src).not.toMatch(/workflow\{runningCount > 1/)
@@ -14,14 +14,14 @@ describe("UX Reset Phase 6 — remaining hub IA flatten", () => {
   })
 
   it("activity is a list, not a KPI dashboard wrap", () => {
-    const src = readFileSync(resolve(webRoot, "app/activity/page.tsx"), "utf8")
+    const src = readFileSync(resolve(webRoot, "app/(app)/activity/page.tsx"), "utf8")
     expect(src).not.toMatch(/label="Selected"/)
     expect(src).not.toMatch(/hint="Inspector focus"/)
     expect(src).toMatch(/AskGravitreSummonButton/)
   })
 
   it("marketplace type filters are text, not chips, and metrics are closed", () => {
-    const src = readFileSync(resolve(webRoot, "app/marketplace/assets/page.tsx"), "utf8")
+    const src = readFileSync(resolve(webRoot, "app/(app)/marketplace/assets/page.tsx"), "utf8")
     expect(src).toMatch(/Catalog/)
     expect(src).not.toMatch(/FilterChip/)
     expect(src).toMatch(/TYPE_FILTERS\.map/)
@@ -32,8 +32,8 @@ describe("UX Reset Phase 6 — remaining hub IA flatten", () => {
   })
 
   it("connector and workflow detail pages are sections, not card stacks", () => {
-    const connector = readFileSync(resolve(webRoot, "app/connectors/[id]/page.tsx"), "utf8")
-    const workflow = readFileSync(resolve(webRoot, "app/workflows/[id]/page.tsx"), "utf8")
+    const connector = readFileSync(resolve(webRoot, "app/(app)/connectors/[id]/page.tsx"), "utf8")
+    const workflow = readFileSync(resolve(webRoot, "app/(app)/workflows/[id]/page.tsx"), "utf8")
     expect(connector).not.toMatch(/from \"@\/components\/ui\/card\"/)
     expect(connector).toMatch(/Usage metrics and activity logs are not recorded/)
     expect(workflow).not.toMatch(/from \"@\/components\/ui\/card\"/)
@@ -42,7 +42,7 @@ describe("UX Reset Phase 6 — remaining hub IA flatten", () => {
   })
 
   it("agent profile uses text sections, not a pill tab strip", () => {
-    const src = readFileSync(resolve(webRoot, "app/agents/[id]/page.tsx"), "utf8")
+    const src = readFileSync(resolve(webRoot, "app/(app)/agents/[id]/page.tsx"), "utf8")
     expect(src).toMatch(/aria-label="Agent profile"/)
     expect(src).toMatch(/role="tablist"/)
     expect(src).toMatch(/OPERATIONAL_METHODOLOGY_SHORT/)

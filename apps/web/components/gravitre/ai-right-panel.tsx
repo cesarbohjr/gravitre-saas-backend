@@ -16,7 +16,7 @@ import {
 import type { AdvisorBrief } from "@/components/gravitre/assistant/advisor-brief-panel"
 
 const LiveActivityRail = dynamic(
-  () => import("@/app/ai/_components/live-activity-rail").then((module) => ({ default: module.LiveActivityRail })),
+  () => import("@/app/(app)/ai/_components/live-activity-rail").then((module) => ({ default: module.LiveActivityRail })),
   { ssr: false, loading: () => null },
 )
 

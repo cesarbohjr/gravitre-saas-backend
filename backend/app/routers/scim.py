@@ -11,6 +11,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.core.org_state_cache import invalidate_org_state
 from app.middleware.entitlements import resolve_entitlements
 from app.workflows.repository import get_supabase_client
 
@@ -262,6 +263,7 @@ def create_user(
         "updated_at": now,
     }
     result = client.table("users").insert(row).execute()
+    invalidate_org_state(org_id)
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to create user")
     created = dict(result.data[0])
@@ -290,6 +292,7 @@ def replace_user(
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     result = client.table("users").update(payload).eq("id", user_id).eq("org_id", org_id).execute()
+    invalidate_org_state(org_id)
     return SCIMUser.model_validate(_user_to_scim(dict(result.data[0])))
 
 
@@ -330,6 +333,7 @@ def patch_user(
             user_data["external_id"] = str(value) if value is not None else None
     user_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     result = client.table("users").update(user_data).eq("id", user_id).eq("org_id", org_id).execute()
+    invalidate_org_state(org_id)
     return SCIMUser.model_validate(_user_to_scim(dict(result.data[0])))
 
 
@@ -348,6 +352,7 @@ def delete_user(
         .eq("org_id", org_id)
         .execute()
     )
+    invalidate_org_state(org_id)
     if not result.data:
         raise HTTPException(status_code=404, detail="User not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)

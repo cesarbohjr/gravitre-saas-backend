@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 
-import ConnectorDetailPage from "@/app/connectors/[id]/page"
+import ConnectorDetailPage from "@/app/(app)/connectors/[id]/page"
 
 import { ShotAuthProvider } from "../../shot-auth"
 

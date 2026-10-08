@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 const webRoot = resolve(__dirname, "../..")
 const hook = readFileSync(resolve(webRoot, "hooks/use-voice-duplex-session.ts"), "utf8")
-const aiWorkspace = readFileSync(resolve(webRoot, "app/ai/_components/ai-workspace.tsx"), "utf8")
+const aiWorkspace = readFileSync(resolve(webRoot, "app/(app)/ai/_components/ai-workspace.tsx"), "utf8")
 const player = readFileSync(resolve(webRoot, "lib/voice-pcm-player.ts"), "utf8")
 const dsp = readFileSync(resolve(webRoot, "public/voice-worklets/voice-dsp.js"), "utf8")
 const agentPlayback = readFileSync(resolve(webRoot, "hooks/use-agent-voice-playback.ts"), "utf8")

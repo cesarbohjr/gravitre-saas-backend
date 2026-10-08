@@ -44,7 +44,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
                   <OnboardingProvider>
                     <ViewModeProvider>
                       {/*
-                        Mounted once, above every per-page <AppShell> — see
+                        Mounted once, above the app shell (app/(app)/layout.tsx) — see
                         docs/delivery/ai-agent-floating-workspace-architecture-2026-09-07.md
                         Finding A5 / Part B1. Must never move inside a
                         per-page tree, or it loses the one property Phase 2+

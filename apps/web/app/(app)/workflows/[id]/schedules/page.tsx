@@ -12,8 +12,8 @@ import { ArrowLeft, Plus, RefreshCw, CalendarClock } from "lucide-react"
 import { describeCron, type ScheduleKind } from "@/lib/schedules"
 import { useSchedules } from "@/lib/use-schedules"
 import { ScheduleEditorDialog } from "@/components/schedules/schedule-editor-dialog"
-import { SchedulesView } from "@/app/schedules/_components/schedules-view"
-import { monthWindow } from "@/app/schedules/_components/shared"
+import { SchedulesView } from "@/app/(app)/schedules/_components/schedules-view"
+import { monthWindow } from "@/app/(app)/schedules/_components/shared"
 
 export default function WorkflowSchedulesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)

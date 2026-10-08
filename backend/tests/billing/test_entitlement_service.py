@@ -104,9 +104,10 @@ def test_assert_org_not_blocked_raises(monkeypatch):
     )
     monkeypatch.setattr(
         "app.billing.entitlement_service._load_trial_ends_at",
-        lambda client, org_id, billing: datetime.now(timezone.utc) - timedelta(days=1),
+        lambda client, org_id, billing, **_k: datetime.now(timezone.utc) - timedelta(days=1),
     )
-    monkeypatch.setattr("app.billing.entitlement_service._is_sandbox_exempt", lambda client, org_id: False)
+    monkeypatch.setattr("app.billing.entitlement_service._is_sandbox_exempt", lambda client, org_id, **_k: False)
+    monkeypatch.setattr("app.billing.entitlement_service.load_org_settings", lambda client, org_id: None)
 
     with pytest.raises(PlanRequiredError) as exc:
         assert_org_not_blocked(FakeClient(), "org-1")
@@ -129,9 +130,10 @@ def test_get_org_billing_state_integration_shape(monkeypatch):
     )
     monkeypatch.setattr(
         "app.billing.entitlement_service._load_trial_ends_at",
-        lambda client, org_id, billing: datetime.fromisoformat(past_iso.replace("Z", "+00:00")),
+        lambda client, org_id, billing, **_k: datetime.fromisoformat(past_iso.replace("Z", "+00:00")),
     )
-    monkeypatch.setattr("app.billing.entitlement_service._is_sandbox_exempt", lambda client, org_id: False)
+    monkeypatch.setattr("app.billing.entitlement_service._is_sandbox_exempt", lambda client, org_id, **_k: False)
+    monkeypatch.setattr("app.billing.entitlement_service.load_org_settings", lambda client, org_id: None)
 
     state = get_org_billing_state(FakeClient(), "org-1")
     assert state["status"] == "trial_expired"

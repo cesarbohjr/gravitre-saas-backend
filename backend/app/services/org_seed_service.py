@@ -41,6 +41,9 @@ def _load_org_settings(client: Client, org_id: str) -> dict[str, Any]:
 
 def _save_org_settings(client: Client, org_id: str, settings: dict[str, Any]) -> None:
     client.table("organizations").update({"settings": settings}).eq("id", org_id).execute()
+    from app.core.org_state_cache import invalidate_org_state
+
+    invalidate_org_state(org_id)
 
 
 def _count_rows(client: Client, table: str, org_id: str) -> int:

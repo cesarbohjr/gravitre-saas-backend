@@ -56,7 +56,7 @@ describe("3.0 Plus final composition", () => {
   })
 
   it("agent overview is a main field plus a knowledge rail", () => {
-    const src = read("app/agents/[id]/page.tsx")
+    const src = read("app/(app)/agents/[id]/page.tsx")
     expect(src).toMatch(/data-agent-main-field=""/)
     expect(src).toMatch(/data-agent-rail=""/)
     expect(src).toMatch(/<AgentAutonomyPanel agentId=\{agent\.id\} \/>/)
@@ -67,7 +67,7 @@ describe("3.0 Plus final composition", () => {
   })
 
   it("connectors inspector column shows the operating summary when nothing is selected", () => {
-    const src = read("app/connectors/page.tsx")
+    const src = read("app/(app)/connectors/page.tsx")
     expect(src).toMatch(/\) : \(\s*<ConnectorOperatingSummary/)
     expect(src).toMatch(/className="hidden xl:flex"/)
   })
@@ -92,7 +92,7 @@ describe("3.0 Plus final composition", () => {
   })
 
   it("builder never seeds a mock pipeline or mock connector statuses", () => {
-    const src = read("app/workflows/[id]/builder/page.tsx")
+    const src = read("app/(app)/workflows/[id]/builder/page.tsx")
     expect(src).not.toMatch(/Customer Data Pipeline/)
     expect(src).not.toMatch(/connectorLibrary/)
     expect(src).toMatch(/useState<WorkflowNode\[\]>\(\(\) => seedOverride \?\? \[\]\)/)

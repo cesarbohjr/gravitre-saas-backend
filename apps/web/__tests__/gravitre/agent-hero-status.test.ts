@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
-const page = readFileSync(resolve(__dirname, "../../app/agents/[id]/page.tsx"), "utf8")
+const page = readFileSync(resolve(__dirname, "../../app/(app)/agents/[id]/page.tsx"), "utf8")
 
 describe("agent detail identity hero", () => {
   it("shows status once, through the anchored chip, not also as an avatar dot", () => {

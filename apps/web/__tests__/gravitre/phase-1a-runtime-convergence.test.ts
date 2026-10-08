@@ -17,7 +17,7 @@ describe("Phase 1A — no duplicate chat runtimes in entry surfaces", () => {
   })
 
   it("agent chat route does not import or call useChat", () => {
-    const src = source("app/agents/[id]/chat/page.tsx")
+    const src = source("app/(app)/agents/[id]/chat/page.tsx")
     expect(src).not.toMatch(/from ["']@ai-sdk\/react["']/)
     expect(src).not.toMatch(/\buseChat\b/)
     expect(src).toMatch(/agentScope/)
@@ -38,7 +38,7 @@ describe("Phase 1A — no duplicate chat runtimes in entry surfaces", () => {
   it("float kill-switch is XOR: host unmounts when flag is false", () => {
     const host = source("components/gravitre/ai-workspace-host.tsx")
     expect(host).toMatch(/if \(!GRAVITRE_AI_FLOAT_ENABLED \|\| !armed\) return null/)
-    const page = source("app/ai/page.tsx")
+    const page = source("app/(app)/ai/page.tsx")
     expect(page).toMatch(/if \(GRAVITRE_AI_FLOAT_ENABLED\)/)
     expect(page).toMatch(/AiCompatibilityRedirect/)
     expect(page).toMatch(/AiWorkspace/)

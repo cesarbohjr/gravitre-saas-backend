@@ -2,7 +2,7 @@
 import React, { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
-import NotificationsPage from "@/app/notifications/page"
+import NotificationsPage from "@/app/(app)/notifications/page"
 import type { Notification, NotificationListResponse } from "@/types/api"
 
 const mocks = vi.hoisted(() => ({

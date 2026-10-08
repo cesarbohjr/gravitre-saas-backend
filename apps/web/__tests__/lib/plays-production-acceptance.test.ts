@@ -8,7 +8,7 @@ describe("Plays production acceptance", () => {
   it("keeps all six layers discoverable and linked", () => {
     const nav = read("components/gravitre/sidebar-nav-config.ts")
     const routes = read("lib/app-routes.ts")
-    const page = read("app/plays/page.tsx")
+    const page = read("app/(app)/plays/page.tsx")
     expect(routes).toMatch(/plays: "\/plays"/)
     expect(nav).toMatch(/APP_ROUTES\.plays/)
     expect(page).toMatch(/Turn business goals into coordinated action/)
