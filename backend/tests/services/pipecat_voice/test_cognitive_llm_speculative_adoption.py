@@ -5,6 +5,8 @@ execute_task_streaming() from scratch — the actual latency win half of
 """
 from __future__ import annotations
 
+from pipecat.frames.frames import AggregatedTextFrame
+
 import asyncio
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -41,6 +43,9 @@ def _service(coordinator: SpeculativeGenerationCoordinator | None) -> tuple[
     tts_chunks: list[str] = []
 
     async def _capture_push_frame(frame: Any, *_a: Any, **_kw: Any) -> None:
+        if isinstance(frame, AggregatedTextFrame):
+            tts_chunks.append(frame.text)  # a narration handed to TTS as a sentence
+            return
         message = getattr(frame, "message", None)
         if isinstance(message, dict) and message.get("type") == "assistant_text":
             display_deltas.append(str(message.get("delta") or ""))

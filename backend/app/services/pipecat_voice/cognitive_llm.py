@@ -12,15 +12,18 @@ import time
 from typing import Any
 
 from pipecat.frames.frames import (
+    AggregatedTextFrame,
     ErrorFrame,
     Frame,
     LLMContextFrame,
     LLMFullResponseEndFrame,
     LLMFullResponseStartFrame,
+    LLMTextFrame,
     OutputTransportMessageUrgentFrame,
 )
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.llm_service import LLMService
+from pipecat.utils.text.base_text_aggregator import AggregationType
 
 from app.core.logging import get_logger
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
@@ -135,6 +138,9 @@ class GravitreCognitiveLLMService(LLMService):
         # Per-turn latency record (voice_turn_trace.VoiceTurnTrace), set by pipeline.py.
         self._turn_trace: Any | None = None
         self._turn_brain_marks: list[dict[str, Any]] = []
+        # Set once this turn pushed answer text through the TTS sentence
+        # aggregator, which may still be holding its last sentence.
+        self._tts_text_pending = False
 
     async def _ensure_durable_context(self) -> None:
         """Load the durable seed once per socket, off the event loop.
@@ -205,6 +211,7 @@ class GravitreCognitiveLLMService(LLMService):
             return
         if isinstance(frame, LLMContextFrame):
             await self.push_frame(LLMFullResponseStartFrame())
+            self._tts_text_pending = False
             try:
                 await self.start_processing_metrics()
                 self._turn_brain_marks = []
@@ -859,7 +866,31 @@ class GravitreCognitiveLLMService(LLMService):
         )
         spoken = self._sanitize_for_tts(text)
         if spoken:
+            await self._push_narration_speech(spoken)
+
+    async def _push_narration_speech(self, spoken: str) -> None:
+        """Speak a narration sentence now, not when the next text arrives.
+
+        The TTS service's sentence aggregator only releases a sentence once it
+        sees the first character of the next one, so a milestone pushed while
+        the brain works was held until the answer's first token and spoken with
+        it. A narration is a complete sentence: hand it to the TTS as one,
+        unless answer text is already waiting in the aggregator (then the old
+        path keeps the order). The LLMTextFrame still goes downstream for the
+        interrupt reporter's draft, marked not for TTS and not for the context
+        (the TTS's own spoken-text frames carry it there, as before).
+        """
+        if self._tts_text_pending:
             await self._push_spoken_text(spoken)
+            return
+        if self._turn_trace is not None:
+            self._turn_trace.note("tts_requested")
+        draft = LLMTextFrame(spoken + " ")
+        draft.skip_tts = True
+        draft.append_to_context = False
+        await self.push_frame(draft)
+        # Trailing space as for every other pushed segment (see _push_spoken_text).
+        await self.push_frame(AggregatedTextFrame(spoken + " ", AggregationType.SENTENCE))
 
     async def _push_spoken_text(self, spoken: str) -> None:
         """Push one already-sanitized, already-stripped clause of spoken text.
@@ -894,6 +925,7 @@ class GravitreCognitiveLLMService(LLMService):
         """
         if self._turn_trace is not None:
             self._turn_trace.note("tts_requested")
+        self._tts_text_pending = True
         await self._push_llm_text(spoken + " ")
 
     def _finish_turn_trace(self) -> None:

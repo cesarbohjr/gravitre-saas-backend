@@ -34,6 +34,8 @@ own aggregator will actually do with them.
 """
 from __future__ import annotations
 
+from pipecat.frames.frames import AggregatedTextFrame
+
 import asyncio
 import re
 from typing import Any
@@ -74,7 +76,11 @@ def _drive(events: list[Any]) -> list[str]:
     async def _capture_push_llm_text(text: str) -> None:
         tts_chunks.append(text)
 
-    service.push_frame = AsyncMock()
+    async def _capture_push_frame(frame: Any, *_a: Any, **_kw: Any) -> None:
+        if isinstance(frame, AggregatedTextFrame):
+            tts_chunks.append(frame.text)  # a narration handed to TTS as a sentence
+
+    service.push_frame = AsyncMock(side_effect=_capture_push_frame)
     service._push_llm_text = AsyncMock(side_effect=_capture_push_llm_text)
     service.start_ttfb_metrics = AsyncMock()
     service.stop_ttfb_metrics = AsyncMock()
