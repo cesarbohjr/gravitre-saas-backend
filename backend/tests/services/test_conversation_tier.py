@@ -275,3 +275,22 @@ def test_tier_is_carried_on_the_loop_trace_and_latency_audit() -> None:
         None, org_id="", user_id=None, conversation_id=None, turn_id="t1", marks={"a": 5}, conversation_tier="light"
     )
     assert analysis["conversation_tier"] == "light"
+
+
+def test_deep_tier_upgrades_a_pinned_fast_voice_mode() -> None:
+    from app.services.conversation_tier import upgrade_spoken_mode_for_tier
+
+    assert upgrade_spoken_mode_for_tier("fast", "deep", spoken_mode=True) == "agent"
+    assert upgrade_spoken_mode_for_tier("fast", "medium", spoken_mode=True) == "fast"
+    assert upgrade_spoken_mode_for_tier("fast", "deep", spoken_mode=False) == "fast"
+    assert upgrade_spoken_mode_for_tier("agent", "light", spoken_mode=True) == "agent"
+    assert upgrade_spoken_mode_for_tier(None, "deep", spoken_mode=True) is None
+
+
+def test_pending_approval_confirmation_is_deep_even_without_history() -> None:
+    from app.services.conversation_tier import upgrade_spoken_mode_for_tier
+
+    # Voice entry saw no history, so it pinned fast; the brain sees the approval.
+    tier = classify_conversation_tier("yes, do that", history=[], task_state=PENDING_APPROVAL)
+    assert tier.tier == "deep"
+    assert upgrade_spoken_mode_for_tier("fast", tier.tier, spoken_mode=True) == "agent"

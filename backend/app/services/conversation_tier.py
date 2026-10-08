@@ -390,3 +390,16 @@ def classify_conversation_tier(
 def tier_to_execution_mode(tier: str) -> str:
     """Light/medium run in fast mode; deep uses the unified agent engine."""
     return "agent" if tier == "deep" else "fast"
+
+
+def upgrade_spoken_mode_for_tier(mode: str | None, tier: str, *, spoken_mode: bool) -> str | None:
+    """Raise a voice turn's pinned fast mode to agent when the brain's tier is deep.
+
+    Voice entry points pick the mode from socket and durable history only. The
+    brain also sees task state (a pending approval or offered action), so its
+    tier can be deeper; a confirmation like "yes, do that" must then run with
+    the tools the offer needs. Never lowers a mode, and leaves text alone.
+    """
+    if spoken_mode and tier == "deep" and (mode or "").strip().lower() == "fast":
+        return "agent"
+    return mode

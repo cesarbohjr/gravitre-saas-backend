@@ -2642,6 +2642,11 @@ class AgentIntelligence:
             from app.services.operator_task_intent import resolve_default_text_intelligence_mode
 
             mode = resolve_default_text_intelligence_mode(task_text)
+        from app.services.conversation_tier import upgrade_spoken_mode_for_tier
+
+        mode = upgrade_spoken_mode_for_tier(
+            mode, conversation_tier.tier, spoken_mode=bool(spoken_mode)
+        )
         requested_mode = normalize_mode(mode)
         mode_key = resolve_effective_intelligence_mode(
             mode,
