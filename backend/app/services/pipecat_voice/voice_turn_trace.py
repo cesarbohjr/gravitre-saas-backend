@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from app.core.logging import get_logger
+from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
 
@@ -189,7 +190,7 @@ class VoiceTurnTrace:
                 turn.intelligence[key] = data.get(key)
         routing = data.get("routing")
         if isinstance(routing, dict):
-            merged = dict(turn.intelligence.get("routing") or {})
+            merged = safe_normalize_stored_dict(turn.intelligence, key="routing")
             for key in (
                 "reasoningDepth",
                 "modelTtftMs",
