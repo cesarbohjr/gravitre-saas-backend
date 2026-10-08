@@ -1,41 +1,22 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { useSearchParams } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
+import { useRouter, useSearchParams } from "next/navigation"
+import { toast } from "sonner"
+import { AlertTriangle, Lock, MoreHorizontal, RefreshCw, Search, ShieldCheck } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
-import { formatStatusLabel } from "@/components/gravitre/status-badge"
-import { StatusChip } from "@/components/gravitre/visual"
-import { GravitrePageHeader, GravitreEmpty, LiveStatus } from "@/components/gravitre/nodus-product"
 import { Illustration } from "@/components/gravitre/illustration"
-import {
-  OperatingEmpty,
-  PhaseBand,
-  type OperatingPhase,
-} from "@/components/gravitre/operating/operating-primitives"
-
-type QueuePhase = "pending" | "breached" | "approved" | "rejected"
-import { NucleoApproval, NucleoIntelligence } from "@/components/icons/nucleo/semantic"
-import { EvidenceChip } from "@/components/gravitre/creative-grammar"
+import { WsPage } from "@/components/workspace/ws-page"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { STATUS, TYPE } from "@/lib/design-system"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
-import { approvalsApi, settingsApi } from "@/lib/api"
-import type { User as ApiUser } from "@/types/api"
-import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
-import { DataFreshness } from "@/components/gravitre/data-freshness"
-import { ApprovalSlaCountdown } from "@/components/approvals/sla-countdown"
-import { PreActionCard } from "@/components/gravitre/pre-action-card"
-import { preActionFromApproval } from "@/lib/pre-action-card"
-import { ESTIMATED_CONFIDENCE_LABEL, CONFIDENCE_ESTIMATE_METHODOLOGY } from "@/lib/outcome-labels"
-import { toast } from "sonner"
+import { useOrgAdmin } from "@/lib/use-org-admin"
+import { approvalsApi } from "@/lib/api"
+import { cn } from "@/lib/utils"
+import { Textarea } from "@/components/ui/textarea"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,1032 +27,872 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { 
-  Shield, 
-  User, 
-  Workflow, 
-  AlertCircle,
-  ChevronRight,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  ArrowRight,
-  ArrowLeft,
-} from "lucide-react"
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  activity,
+  environmentLabel,
+  formatDate,
+  isExtensionGate,
+  isPastSla,
+  lockNote,
+  matchesQuery,
+  normalizeApprovals,
+  parseTime,
+  policyCopy,
+  slaLine,
+  summarySentence,
+  typeLabel,
+  whatWillHappen,
+  type Approval,
+  type QueueTab,
+  type RiskLevel,
+} from "@/components/approvals/decision-queue/model"
+import "@/components/approvals/decision-queue/decision-queue.css"
 
-interface Approval {
-  id: string
-  title: string
-  description: string
-  type: "workflow" | "connector" | "config" | "access"
-  environment: "production" | "staging"
-  requestedBy: string
-  requestedByEmail?: string | null
-  requestedByAvatarUrl?: string | null
-  requestedByJobTitle?: string | null
-  requestedByDepartment?: string | null
-  requestedAt: string
-  reviewedBy?: string | null
-  reviewedAt?: string | null
-  priority: "high" | "medium" | "low"
-  status: "pending" | "approved" | "rejected"
-  aiRecommendation?: {
-    action: "approve" | "reject" | "review"
-    confidence: number | null
-    reason: string
-  }
-  slaDeadline?: string | null
-  slaMinutesRemaining?: number | null
-  slaBreached?: boolean
-  context: {
-    entity: string
-    action: string
-    impact?: string
-    estimatedImpact?: string
-    riskLevel?: string
-    approvalReason?: string
-    conversationId?: string
-    runId?: string
-  }
+const POLICIES_HREF = "/settings/approvals"
+
+const TABS: Array<{ id: QueueTab; label: string }> = [
+  { id: "pending", label: "Waiting on you" },
+  { id: "breached", label: "Past SLA" },
+  { id: "approved", label: "Approved" },
+  { id: "rejected", label: "Rejected" },
+]
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return "?"
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
-type TeamIdentity = {
-  name: string
-  email?: string | null
-  avatarUrl?: string | null
-  jobTitle?: string | null
-  department?: string | null
+function updatedLabel(at: number | null, now: number): string {
+  if (at == null) return "Not updated yet"
+  const secs = Math.max(0, Math.floor((now - at) / 1000))
+  if (secs < 45) return "Updated just now"
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `Updated ${Math.max(1, mins)} min ago`
+  return `Updated ${Math.floor(mins / 60)} h ago`
 }
 
-function resolveRequesterIdentity(
-  approval: Approval,
-  team: ApiUser[],
-): TeamIdentity {
-  const emailHint = (approval.requestedByEmail || "").trim().toLowerCase()
-  const nameHint = approval.requestedBy.trim().toLowerCase()
-  const match =
-    team.find((member) => (member.email || "").toLowerCase() === emailHint) ||
-    team.find((member) => (member.full_name || "").trim().toLowerCase() === nameHint) ||
-    team.find((member) =>
-      nameHint.length > 1 && (member.full_name || "").toLowerCase().includes(nameHint),
-    )
-
-  return {
-    name: match?.full_name || approval.requestedBy,
-    email: match?.email || approval.requestedByEmail || null,
-    avatarUrl: match?.avatar_url || approval.requestedByAvatarUrl || null,
-    jobTitle: match?.job_title || approval.requestedByJobTitle || null,
-    department: match?.department || approval.requestedByDepartment || null,
-  }
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  if (target.isContentEditable) return true
+  const tag = target.tagName
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT"
 }
 
-function RequesterIdentity({
-  identity,
-  compact = false,
-}: {
-  identity: TeamIdentity
-  compact?: boolean
-}) {
-  const subtitle = [identity.jobTitle, identity.department].filter(Boolean).join(" · ")
-  return (
-    <span className={cn("inline-flex items-center gap-2", compact ? "align-middle" : "")}>
-      <UserAccountAvatar
-        name={identity.name}
-        email={identity.email}
-        avatarUrl={identity.avatarUrl}
-        size="xs"
-      />
-      <span className="min-w-0">
-        <span className="text-foreground">{identity.name}</span>
-        {subtitle ? (
-          <span className="ml-1 text-[11px] text-muted-foreground">· {subtitle}</span>
-        ) : null}
-      </span>
-    </span>
-  )
-}
-
-function formatRelativeTime(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  const diffMs = Date.now() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  if (diffMins < 1) return "Just now"
-  if (diffMins < 60) return `${diffMins}m ago`
-  const diffHours = Math.floor(diffMs / 3600000)
-  if (diffHours < 24) return `${diffHours}h ago`
-  return date.toLocaleDateString()
-}
-
-function formatRequestedBy(value: string): string {
-  const trimmed = value.trim()
-  if (!trimmed || trimmed === "system") return "System"
-  if (/^[0-9a-f-]{36}$/i.test(trimmed)) return `Team member (${trimmed.slice(0, 8)}…)`
-  if (trimmed.includes("@")) return trimmed.split("@")[0].replace(/[._]/g, " ")
-  return trimmed
-}
-
-function normalizeApproval(input: Record<string, unknown>): Approval {
-  const type = String(input.type ?? "config")
-  const priority = String(input.priority ?? "medium")
-  const status = String(input.status ?? "pending")
-  const environment = String(input.environment ?? "staging")
-  const rawRecommendation = input.aiRecommendation ?? input.ai_recommendation
-  const aiRecommendation:
-    | {
-        action: "approve" | "reject" | "review"
-        confidence: number | null
-        reason: string
-      }
-    | undefined =
-    rawRecommendation && typeof rawRecommendation === "object"
-      ? {
-          action: (() => {
-            const action = String((rawRecommendation as Record<string, unknown>).action ?? "review")
-            return action === "approve" || action === "reject" ? action : "review"
-          })(),
-          confidence: (() => {
-            const value = (rawRecommendation as Record<string, unknown>).confidence
-            return typeof value === "number" && Number.isFinite(value) ? value : null
-          })(),
-          reason: String((rawRecommendation as Record<string, unknown>).reason ?? ""),
-        }
-      : undefined
-  const rawContext = input.context
-  return {
-    id: String(input.id ?? ""),
-    title: String(input.title ?? "Approval request"),
-    description: String(input.description ?? ""),
-    type: type === "workflow" || type === "connector" || type === "access" ? type : "config",
-    environment: environment === "production" ? "production" : "staging",
-    requestedBy: formatRequestedBy(
-      String(
-        input.requestedByName ??
-          input.requested_by_name ??
-          input.requestedBy ??
-          input.requested_by ??
-          "system",
-      ),
-    ),
-    requestedByEmail: (() => {
-      const raw = String(
-        input.requestedByEmail ?? input.requested_by_email ?? input.requested_by ?? "",
-      ).trim()
-      return raw.includes("@") ? raw : null
-    })(),
-    requestedByAvatarUrl: (() => {
-      const raw = String(
-        input.requestedByAvatarUrl ??
-          input.requested_by_avatar_url ??
-          input.avatar_url ??
-          "",
-      ).trim()
-      return raw || null
-    })(),
-    requestedByJobTitle: (() => {
-      const raw = String(
-        input.requestedByJobTitle ?? input.requested_by_job_title ?? input.job_title ?? "",
-      ).trim()
-      return raw || null
-    })(),
-    requestedByDepartment: (() => {
-      const raw = String(
-        input.requestedByDepartment ??
-          input.requested_by_department ??
-          input.department ??
-          "",
-      ).trim()
-      return raw || null
-    })(),
-    requestedAt: formatRelativeTime(String(input.requestedAt ?? input.requested_at ?? "recently")),
-    reviewedBy: (() => {
-      const raw = String(
-        input.reviewedByName ??
-          input.reviewed_by_name ??
-          input.reviewedBy ??
-          input.reviewed_by ??
-          "",
-      ).trim()
-      return raw ? formatRequestedBy(raw) : null
-    })(),
-    reviewedAt: input.reviewedAt ?? input.reviewed_at
-      ? formatRelativeTime(String(input.reviewedAt ?? input.reviewed_at))
-      : null,
-    priority: priority === "high" || priority === "low" ? priority : "medium",
-    status: status === "approved" || status === "rejected" ? status : "pending",
-    aiRecommendation,
-    slaDeadline: input.slaDeadline != null ? String(input.slaDeadline) : input.sla_deadline != null ? String(input.sla_deadline) : null,
-    slaMinutesRemaining:
-      input.slaMinutesRemaining != null
-        ? Number(input.slaMinutesRemaining)
-        : input.sla_minutes_remaining != null
-          ? Number(input.sla_minutes_remaining)
-          : null,
-    slaBreached: Boolean(input.slaBreached ?? input.sla_breached),
-    context:
-      rawContext && typeof rawContext === "object"
-        ? {
-            entity: String(
-              (rawContext as Record<string, unknown>).workflow_name ??
-                (rawContext as Record<string, unknown>).entity ??
-                "Workflow run",
-            ),
-            action: String((rawContext as Record<string, unknown>).action ?? "Review request"),
-            impact: (() => {
-              const ctx = rawContext as Record<string, unknown>
-              const raw = ctx.impact ?? ctx.estimated_impact ?? ctx.estimatedImpact
-              return raw !== undefined && raw !== null && String(raw).trim()
-                ? String(raw)
-                : undefined
-            })(),
-            estimatedImpact: (() => {
-              const ctx = rawContext as Record<string, unknown>
-              const raw = ctx.estimated_impact ?? ctx.estimatedImpact ?? ctx.impact
-              return raw !== undefined && raw !== null && String(raw).trim()
-                ? String(raw)
-                : undefined
-            })(),
-            riskLevel: (() => {
-              const ctx = rawContext as Record<string, unknown>
-              const raw = ctx.risk_level ?? ctx.riskLevel
-              return raw !== undefined && raw !== null && String(raw).trim()
-                ? String(raw)
-                : undefined
-            })(),
-            approvalReason: (() => {
-              const ctx = rawContext as Record<string, unknown>
-              const raw = ctx.approval_reason ?? ctx.approvalReason
-              return raw !== undefined && raw !== null && String(raw).trim()
-                ? String(raw)
-                : undefined
-            })(),
-            conversationId: (() => {
-              const ctx = rawContext as Record<string, unknown>
-              const raw = ctx.conversation_id ?? ctx.conversationId
-              return raw ? String(raw) : undefined
-            })(),
-            runId: (() => {
-              const rid = (rawContext as Record<string, unknown>).run_id ?? (rawContext as Record<string, unknown>).runId
-              return rid ? String(rid) : undefined
-            })(),
-          }
-        : {
-            entity: "unknown",
-            action: "Review request",
-          },
-  }
-}
-
-function normalizeApprovalsResponse(payload: unknown): Approval[] {
-  if (!payload || typeof payload !== "object") return []
-  const model = payload as Record<string, unknown>
-  const raw =
-    (Array.isArray(model.approvals) ? model.approvals : null) ??
-    (Array.isArray(model.data) ? model.data : null) ??
-    (Array.isArray(model.items) ? model.items : null)
-  if (!raw) return []
-  const normalized = raw
-    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
-    .map((item) => normalizeApproval(item))
-    .filter((item) => item.id.length > 0)
-  return normalized
-}
-
-const typeIcons = {
-  workflow: Workflow,
-  connector: Shield,
-  config: AlertTriangle,
-  access: User,
-}
-
-const priorityConfig = {
-  high: { bar: "before:bg-destructive", badge: STATUS.rejected },
-  medium: { bar: "before:bg-warning", badge: STATUS.pending },
-  low: { bar: "before:bg-muted-foreground/40", badge: STATUS.idle },
-} as const
-
-// Decision Card Component
-function DecisionCard({ 
-  approval, 
-  isSelected,
-  onSelect,
-  readOnly = false,
-  teamMembers = [],
-}: { 
-  approval: Approval
-  isSelected: boolean
-  onSelect: () => void
-  readOnly?: boolean
-  teamMembers?: ApiUser[]
-}) {
-  const TypeIcon = typeIcons[approval.type]
-  const config = priorityConfig[approval.priority]
-  const requester = resolveRequesterIdentity(approval, teamMembers)
-
-  return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-    <motion.div
-      layout
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      data-path-waiting={approval.status === "pending" ? "1" : "0"}
-      data-path-run-id={approval.context.runId ?? undefined}
-      role="button"
-      tabIndex={0}
-      aria-pressed={isSelected}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault()
-          onSelect()
-        }
-      }}
-      className={cn(
-        "relative cursor-pointer rounded-[4px] bg-background transition-shadow before:absolute before:inset-y-2 before:left-1 before:w-[3px] before:rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        readOnly ? "before:bg-[color:var(--g-border-strong)]" : config.bar,
-        isSelected
-          ? "shadow-[0_0_0_1.5px_var(--g-text-primary)]"
-          : "shadow-[0_0_0_1px_var(--g-border-subtle)] hover:shadow-[0_0_0_1px_var(--g-border-strong)]",
-      )}
-      onClick={onSelect}
-    >
-      <div className="py-3 pl-4 pr-3">
-        {/* Header */}
-        <div className="mb-2 flex items-start gap-2.5">
-          <TypeIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-          <div className="flex-1 min-w-0">
-            <h3 className="mb-0.5 line-clamp-2 text-[13.5px] font-semibold leading-snug text-foreground">
-              {approval.title}
-            </h3>
-            <p className="text-xs text-muted-foreground line-clamp-2">
-              {approval.description}
-            </p>
-          </div>
-          {!readOnly && approval.status === "pending" ? (
-            <span className="mt-px inline-flex shrink-0 items-center gap-0.5 rounded-[4px] px-1.5 py-0.5 text-[11.5px] font-medium text-foreground">
-              Decide
-              <ArrowRight className="size-3" aria-hidden />
-            </span>
-          ) : (
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-          )}
-        </div>
-
-        {/* Badges row */}
-        <div className="mb-2 flex flex-wrap items-center gap-2 pl-[26px]">
-          <EnvironmentBadge environment={approval.environment} />
-          <span className={cn("rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium capitalize", config.badge)}>
-            {approval.priority}
-          </span>
-          {approval.status !== "pending" ? (
-            <StatusChip status={approval.status}>
-              {formatStatusLabel(approval.status)}
-            </StatusChip>
-          ) : null}
-          {approval.status === "pending" && approval.context.runId ? (
-            <EvidenceChip label="Same path continues" tone="waiting" />
-          ) : null}
-          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-secondary text-muted-foreground">
-            {approval.type}
-          </span>
-          <ApprovalSlaCountdown
-            requestedAt={approval.requestedAt}
-            slaMinutesRemaining={approval.slaMinutesRemaining}
-            slaBreached={approval.slaBreached}
-          />
-        </div>
-
-        {/* Context */}
-        <div className="space-y-1 pl-[26px] text-xs text-muted-foreground">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span>Requested by</span>
-            <RequesterIdentity identity={requester} compact />
-            <span className="mx-0.5">&middot;</span>
-            <span>{approval.requestedAt}</span>
-          </div>
-          {approval.status !== "pending" && (
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusChip status={approval.status}>
-                {formatStatusLabel(approval.status)}
-              </StatusChip>
-              {approval.reviewedBy ? (
-                <>
-                  <span>by</span>
-                  <span className="text-foreground">{approval.reviewedBy}</span>
-                </>
-              ) : null}
-              {approval.reviewedAt ? (
-                <>
-                  <span className="mx-0.5">&middot;</span>
-                  <span>{approval.reviewedAt}</span>
-                </>
-              ) : null}
-            </div>
-          )}
-        </div>
-
-        {/* Quick Actions */}
-        {readOnly && approval.context.runId ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="ml-[26px] mt-2 h-8 gap-1.5 text-xs"
-            asChild
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Link href={`/runs/${approval.context.runId}`}>
-              View run details
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </Button>
-        ) : null}
-      </div>
-    </motion.div>
-      </ContextMenuTrigger>
-      <ContextMenuContent className="w-48">
-        <ContextMenuItem onSelect={onSelect}>Open detail</ContextMenuItem>
-        {approval.context.runId ? (
-          <ContextMenuItem asChild>
-            <Link href={`/runs/${approval.context.runId}`}>View run</Link>
-          </ContextMenuItem>
-        ) : null}
-      </ContextMenuContent>
-    </ContextMenu>
-  )
-}
-
-// Detail Panel Component
-function DetailPanel({
-  approval,
-  onApprove,
-  onReject,
-  onBack,
-  isSubmitting,
-  pendingActionId,
-  teamMembers = [],
-}: {
-  approval: Approval | null
-  onApprove: (id: string) => void
-  onReject: (id: string) => void
-  onBack?: () => void
-  isSubmitting?: boolean
-  pendingActionId?: string | null
-  teamMembers?: ApiUser[]
-}) {
-  if (!approval) {
-    return (
-      <GravitreEmpty
-        className="h-full border-0 shadow-none"
-        icon={<NucleoApproval className="h-5 w-5" />}
-        title="Nothing selected"
-        hint="Select a request — inspector stays closed until then."
-      />
-    )
-  }
-
-  const TypeIcon = typeIcons[approval.type]
-  const requester = resolveRequesterIdentity(approval, teamMembers)
-  const actionBusy = Boolean(isSubmitting && pendingActionId === approval.id)
-
-  return (
-    <motion.div
-      key={approval.id}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="h-full flex flex-col"
-    >
-      {/* Header */}
-      <div className="border-b border-border p-4 sm:p-6">
-        {onBack ? (
-          <Button variant="ghost" size="sm" className="mb-3 -ml-2 min-h-11 lg:hidden" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to queue
-          </Button>
-        ) : null}
-        <div className="flex items-start gap-3 sm:gap-4">
-          <div className={cn(
-            "flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-lg sm:rounded-xl",
-            approval.priority === "high" ? "bg-destructive/20" : "bg-secondary"
-          )}>
-            <TypeIcon className={cn(
-              "h-5 w-5 sm:h-6 sm:w-6",
-              approval.priority === "high" ? "text-destructive" : "text-muted-foreground"
-            )} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="break-words font-sans text-xl font-medium text-foreground mb-1 sm:text-2xl">
-              {approval.title}
-            </h2>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              {approval.description}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <PreActionCard
-          payload={preActionFromApproval(approval)}
-          variant="approvals"
-          hideActions
-        />
-
-        {/* AI Recommendation */}
-        {approval.aiRecommendation && (
-          <div className={cn(
-            "rounded-xl p-4 border",
-            approval.aiRecommendation.action === "approve" && "bg-success/5 border-success/20",
-            approval.aiRecommendation.action === "reject" && "bg-destructive/5 border-destructive/20",
-            approval.aiRecommendation.action === "review" && "bg-warning/5 border-warning/20"
-          )}>
-            <div className="flex items-center gap-3 mb-3">
-              <div className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-lg",
-                approval.aiRecommendation.action === "approve" && "bg-success/20",
-                approval.aiRecommendation.action === "reject" && "bg-destructive/20",
-                approval.aiRecommendation.action === "review" && "bg-warning/20"
-              )}>
-                <NucleoIntelligence className={cn(
-                  "h-5 w-5",
-                  approval.aiRecommendation.action === "approve" && "text-success",
-                  approval.aiRecommendation.action === "reject" && "text-destructive",
-                  approval.aiRecommendation.action === "review" && "text-warning"
-                )} />
-              </div>
-              <div>
-                <p className={TYPE.eyebrow}>Heuristic suggestion</p>
-                <p className="mt-1 text-sm font-medium text-foreground">
-                  Suggested next step: {approval.aiRecommendation.action}
-                </p>
-                {approval.aiRecommendation.confidence != null && (
-                  <p className={cn(TYPE.meta, "mt-0.5")}>
-                    {ESTIMATED_CONFIDENCE_LABEL}: {approval.aiRecommendation.confidence}% ·{" "}
-                    {CONFIDENCE_ESTIMATE_METHODOLOGY}
-                  </p>
-                )}
-              </div>
-            </div>
-            <p className="text-sm text-foreground">
-              {approval.aiRecommendation.reason}
-            </p>
-          </div>
-        )}
-
-        {/* Context Details */}
-        <div>
-          <h3 className="mb-3 text-xs font-medium text-muted-foreground">
-            Request details
-          </h3>
-          <div className="space-y-3">
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-start gap-3 py-2 border-b border-border/50 [&>*:last-child]:break-words [&>*:last-child]:text-right">
-              <span className="text-sm text-muted-foreground">Status</span>
-              <StatusChip status={approval.status}>
-                {formatStatusLabel(approval.status)}
-              </StatusChip>
-            </div>
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-start gap-3 py-2 border-b border-border/50 [&>*:last-child]:break-words [&>*:last-child]:text-right">
-              <span className="text-sm text-muted-foreground">Entity</span>
-              <span className="text-sm font-medium text-foreground font-mono">{approval.context.entity}</span>
-            </div>
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-start gap-3 py-2 border-b border-border/50 [&>*:last-child]:break-words [&>*:last-child]:text-right">
-              <span className="text-sm text-muted-foreground">Action</span>
-              <span className="text-sm font-medium text-foreground">{approval.context.action}</span>
-            </div>
-            {approval.context.impact && (
-              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-start gap-3 py-2 border-b border-border/50 [&>*:last-child]:break-words [&>*:last-child]:text-right">
-                <span className="text-sm text-muted-foreground">Impact</span>
-                <span className="text-sm font-medium text-foreground">{approval.context.impact}</span>
-              </div>
-            )}
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] items-start gap-3 py-2 border-b border-border/50 [&>*:last-child]:break-words [&>*:last-child]:text-right">
-              <span className="text-sm text-muted-foreground">Environment</span>
-              <EnvironmentBadge environment={approval.environment} />
-            </div>
-            <div className="flex items-center justify-between gap-3 py-2">
-              <span className="text-sm text-muted-foreground shrink-0">Requested by</span>
-              <RequesterIdentity identity={requester} />
-            </div>
-            {approval.reviewedBy ? (
-              <div className="flex items-center justify-between py-2 border-t border-border/50">
-                <span className="text-sm text-muted-foreground">
-                  {approval.status === "rejected" ? "Rejected by" : "Approved by"}
-                </span>
-                <span className="text-sm font-medium text-foreground">{approval.reviewedBy}</span>
-              </div>
-            ) : null}
-            {approval.context.runId ? (
-              <div className="flex items-center justify-between py-2 border-t border-border/50">
-                <span className="text-sm text-muted-foreground">Run</span>
-                <Link
-                  href={`/runs/${approval.context.runId}`}
-                  className="text-sm font-medium text-primary hover:underline"
-                >
-                  Open execution details
-                </Link>
-              </div>
-            ) : null}
-            <div className="flex items-center justify-between py-2 border-t border-border/50 pt-3">
-              <span className="text-sm text-muted-foreground">SLA</span>
-              <ApprovalSlaCountdown
-                requestedAt={approval.requestedAt}
-                slaMinutesRemaining={approval.slaMinutesRemaining}
-                slaBreached={approval.slaBreached}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer Actions */}
-      <div className="border-t border-divide bg-[color:var(--g-surface-2)] p-6">
-        {approval.status !== "pending" ? (
-          <Button variant="outline" size="lg" className="w-full gap-2 h-11" asChild>
-            <Link href={approval.context.runId ? `/runs/${approval.context.runId}` : "/runs"}>
-              <ArrowRight className="h-4 w-4" />
-              View on execution timeline
-            </Link>
-          </Button>
-        ) : null}
-        <div
-          className={
-            approval.status === "pending"
-              ? "hidden items-center gap-3 lg:flex"
-              : "hidden"
-          }
-        >
-          <Button
-            size="lg"
-            className="flex-1 gap-2 h-11 cursor-pointer"
-            disabled={actionBusy}
-            data-review-cta="approve"
-            onClick={() => onApprove(approval.id)}
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            {actionBusy ? "Approving…" : "Approve"}
-          </Button>
-          <Button
-            variant="ghost"
-            size="lg"
-            className="gap-2 h-11 cursor-pointer text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            disabled={actionBusy}
-            onClick={() => onReject(approval.id)}
-          >
-            <XCircle className="h-4 w-4" />
-            {actionBusy ? "Rejecting…" : "Reject"}
-          </Button>
-        </div>
-      </div>
-    </motion.div>
-  )
-}
+const ALREADY_DONE = /already started|already resolved|not pending approval|already approved|no longer pending/i
 
 export default function ApprovalsPage() {
   return (
     <AppShell title="Approvals">
       <Suspense fallback={null}>
-        <ApprovalsContent />
+        <DecisionQueue />
       </Suspense>
     </AppShell>
   )
 }
 
-function ApprovalsContent() {
+function DecisionQueue() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const { user } = useAuth()
+  const { isAdmin, loading: adminLoading } = useOrgAdmin()
+  const [tab, setTab] = useState<QueueTab>("pending")
+  const [query, setQuery] = useState("")
+  const [oldestFirst, setOldestFirst] = useState(true)
+  const [risk, setRisk] = useState<RiskLevel | "all">("all")
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [pendingActionId, setPendingActionId] = useState<string | null>(null)
-  const [phase, setPhase] = useState<QueuePhase>("pending")
-  const queueTab: "pending" | "history" = phase === "approved" || phase === "rejected" ? "history" : "pending"
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [rejectTarget, setRejectTarget] = useState<Approval | null>(null)
+  const [rejectReason, setRejectReason] = useState("")
+  const [now, setNow] = useState(() => Date.now())
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null)
+  const listRef = useRef<HTMLElement | null>(null)
+  const itemRefs = useRef(new Map<string, HTMLButtonElement>())
 
-  const { data: pendingData, error: pendingError, isValidating: pendingValidating, mutate: mutatePending } = useSWR(
-    user ? "/api/approvals" : null,
-    apiFetcher,
-    {
-      fallbackData: { approvals: [] as Approval[] },
-      revalidateOnFocus: true,
-      refreshInterval: 30000,
-      onError: (err) => console.error("[v0] Approvals fetch error:", err),
-    },
-  )
-  const { data: historyData, error: historyError, isValidating: historyValidating, mutate: mutateHistory } = useSWR(
-    user ? "/api/approvals?status=history" : null,
-    apiFetcher,
-    { revalidateOnFocus: false },
-  )
-  const data = queueTab === "history" ? historyData : pendingData
-  const error = queueTab === "history" ? historyError : pendingError
-  const isValidating = pendingValidating || historyValidating
-  const mutate = async () => {
+  const {
+    data: pendingData,
+    error: pendingError,
+    isValidating: pendingValidating,
+    mutate: mutatePending,
+  } = useSWR(user ? "/api/approvals" : null, apiFetcher, {
+    revalidateOnFocus: true,
+    refreshInterval: 30_000,
+  })
+  const {
+    data: historyData,
+    error: historyError,
+    isValidating: historyValidating,
+    mutate: mutateHistory,
+  } = useSWR(user ? "/api/approvals?status=history" : null, apiFetcher, {
+    revalidateOnFocus: false,
+    refreshInterval: 120_000,
+  })
+  const refreshing = Boolean(pendingValidating || historyValidating)
+  const refresh = useCallback(async () => {
     await Promise.all([mutatePending(), mutateHistory()])
-  }
-  const { data: teamPayload } = useSWR(
-    user ? "/api/settings/team" : null,
-    () => settingsApi.listTeamMembers(),
-    { revalidateOnFocus: false, dedupingInterval: 60_000 },
-  )
-  const teamMembers = teamPayload?.team ?? []
-
-  const pendingApprovals = normalizeApprovalsResponse(pendingData).filter((a) => a.status === "pending")
-  const historyApprovals = historyData
-    ? normalizeApprovalsResponse(historyData).filter((a) => a.status === "approved" || a.status === "rejected")
-    : null
-  const breachedApprovals = pendingApprovals.filter((a) => a.slaBreached)
-  const approvedApprovals = historyApprovals?.filter((a) => a.status === "approved") ?? []
-  const rejectedApprovals = historyApprovals?.filter((a) => a.status === "rejected") ?? []
-  const visibleApprovals =
-    phase === "breached"
-      ? breachedApprovals
-      : phase === "approved"
-        ? approvedApprovals
-        : phase === "rejected"
-          ? rejectedApprovals
-          : pendingApprovals
-  const approvals = [...pendingApprovals, ...(historyApprovals ?? [])]
-  const selectedApproval = approvals.find(a => a.id === selectedId) || null
-  const queuePhases: OperatingPhase[] = [
-    { id: "pending", label: "Waiting on you", count: pendingApprovals.length, tone: "attention" },
-    { id: "breached", label: "Past SLA", count: pendingApprovals.length ? breachedApprovals.length : 0, tone: "risk" },
-    { id: "approved", label: "Approved", count: historyApprovals ? approvedApprovals.length : null, tone: "done" },
-    { id: "rejected", label: "Rejected", count: historyApprovals ? rejectedApprovals.length : null, tone: "neutral" },
-  ]
-  usePublishGravitreAISelection(
-    selectedApproval
-      ? { kind: "approval", id: selectedApproval.id, label: selectedApproval.title }
-      : null,
-  )
+  }, [mutatePending, mutateHistory])
 
   useEffect(() => {
-    const deepLinkId = searchParams.get("id") || searchParams.get("approval")
-    if (deepLinkId) {
-      setSelectedId(deepLinkId)
-    }
-  }, [searchParams])
+    if (pendingData) setLastUpdated(Date.now())
+  }, [pendingData])
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
-  const handleApprove = async (runId: string, comment?: string) => {
-    if (isSubmitting) return
-    setIsSubmitting(true)
-    setPendingActionId(runId)
+  const pending = useMemo(
+    () => normalizeApprovals(pendingData).filter((a) => a.status === "pending"),
+    [pendingData],
+  )
+  const history = useMemo(
+    () =>
+      historyData
+        ? normalizeApprovals(historyData).filter((a) => a.status === "approved" || a.status === "rejected")
+        : null,
+    [historyData],
+  )
+  const breached = useMemo(() => pending.filter((a) => isPastSla(a, now)), [pending, now])
+  const approved = useMemo(() => history?.filter((a) => a.status === "approved") ?? null, [history])
+  const rejected = useMemo(() => history?.filter((a) => a.status === "rejected") ?? null, [history])
+
+  const counts: Record<QueueTab, number | null> = {
+    pending: pendingData ? pending.length : null,
+    breached: pendingData ? breached.length : null,
+    approved: approved ? approved.length : null,
+    rejected: rejected ? rejected.length : null,
+  }
+  const base = useMemo(
+    () =>
+      tab === "pending" ? pending : tab === "breached" ? breached : tab === "approved" ? approved ?? [] : rejected ?? [],
+    [tab, pending, breached, approved, rejected],
+  )
+  const filtersOn = query.trim().length > 0 || risk !== "all"
+  const visible = useMemo(() => {
+    const rows = base.filter((a) => matchesQuery(a, query) && (risk === "all" || a.context.riskLevel === risk))
+    const at = (a: Approval) =>
+      parseTime(tab === "approved" || tab === "rejected" ? a.reviewedAt ?? a.requestedAt : a.requestedAt) ?? 0
+    return [...rows].sort((x, y) => (oldestFirst ? at(x) - at(y) : at(y) - at(x)))
+  }, [base, query, risk, oldestFirst, tab])
+
+  const selected = visible.find((a) => a.id === selectedId) ?? visible[0] ?? null
+  const selectedIndex = selected ? visible.indexOf(selected) : -1
+
+  usePublishGravitreAISelection(
+    selected ? { kind: "approval", id: selected.id, label: selected.title } : null,
+  )
+
+  // Deep link: /approvals?id=<approval or run id> opens that request on its tab.
+  const deepLinkId = searchParams.get("id") || searchParams.get("approval")
+  const deepLinked = useRef<string | null>(null)
+  useEffect(() => {
+    if (!deepLinkId || deepLinked.current === deepLinkId) return
+    const inPending = pending.find((a) => a.id === deepLinkId)
+    const inHistory = history?.find((a) => a.id === deepLinkId)
+    if (!inPending && !inHistory) return
+    deepLinked.current = deepLinkId
+    if (inPending) setTab(isPastSla(inPending) ? "breached" : "pending")
+    else if (inHistory) setTab(inHistory.status === "rejected" ? "rejected" : "approved")
+    setSelectedId(deepLinkId)
+  }, [deepLinkId, pending, history])
+
+  const select = useCallback((id: string, focus = false) => {
+    setSelectedId(id)
+    const node = itemRefs.current.get(id)
+    if (node) {
+      node.scrollIntoView?.({ block: "nearest" })
+      if (focus) node.focus({ preventScroll: true })
+    }
+  }, [])
+
+  const canDecide = (a: Approval) =>
+    adminLoading || isAdmin || (isExtensionGate(a) && Boolean(user?.id) && a.requestedById === user?.id)
+
+  const nextAfter = (id: string) => {
+    const idx = visible.findIndex((a) => a.id === id)
+    return visible[idx + 1]?.id ?? visible[idx - 1]?.id ?? null
+  }
+
+  const approve = async (a: Approval) => {
+    if (busyId || a.status !== "pending") return
+    const following = nextAfter(a.id)
+    setBusyId(a.id)
     try {
-      const result = await approvalsApi.approve(runId, { comment })
-      await mutate()
-      setSelectedId(null)
-      const runStatus = String((result as { status?: string })?.status ?? "")
-      toast.success("Approved successfully", {
+      const result = (await approvalsApi.approve(a.id)) as unknown as Record<string, unknown> | null
+      if (result && result.success === false) {
+        toast.error(String(result.message ?? "The approved action did not run."))
+        await refresh()
+        return
+      }
+      await refresh()
+      setSelectedId(following)
+      const runStatus = String(result?.status ?? "")
+      const runId = a.context.runId
+      toast.success("Approved", {
         description:
           runStatus === "pending_approval"
-            ? "Additional approver still required."
-            : "Execution started. Track progress in Runs.",
-        action: {
-          label: "View run",
-          onClick: () => {
-            window.location.href = `/runs/${runId}`
-          },
-        },
+            ? "Recorded. Another approver is still needed."
+            : typeof result?.message === "string" && result.message
+              ? result.message
+              : "The paused work is continuing.",
+        action: runId
+          ? { label: "View run", onClick: () => router.push(`/runs/${runId}`) }
+          : undefined,
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to approve"
-      if (
-        message.includes("already started") ||
-        message.includes("already resolved") ||
-        message.includes("not pending approval")
-      ) {
-        await mutate()
-        toast.success("Approval already recorded", {
-          description: "This run is no longer waiting in the queue.",
-          action: {
-            label: "View run",
-            onClick: () => {
-              window.location.href = `/runs/${runId}`
-            },
-          },
-        })
+      const message = err instanceof Error ? err.message : "Could not approve"
+      if (ALREADY_DONE.test(message)) {
+        await refresh()
+        setSelectedId(following)
+        toast.success("Already decided", { description: "This request is no longer waiting in the queue." })
         return
       }
-      console.error("[approvals] Approve failed:", err)
       toast.error(message)
     } finally {
-      setIsSubmitting(false)
-      setPendingActionId(null)
+      setBusyId(null)
     }
   }
 
-  const handleReject = async (runId: string, comment?: string) => {
-    if (isSubmitting) return
-    const reason = (comment ?? "Rejected by reviewer").trim()
+  const openReject = (a: Approval) => {
+    if (busyId || a.status !== "pending") return
+    setRejectReason("")
+    setRejectTarget(a)
+  }
+
+  const reject = async () => {
+    const a = rejectTarget
+    const reason = rejectReason.trim()
+    if (!a) return
     if (!reason) {
-      toast.error("Rejection reason is required")
+      toast.error("Add a reason so the requester knows what to change")
       return
     }
-    setIsSubmitting(true)
-    setPendingActionId(runId)
+    const following = nextAfter(a.id)
+    setBusyId(a.id)
     try {
-      await approvalsApi.reject(runId, { comment: reason })
-      await mutate()
-      setSelectedId(null)
-      setRejectTargetId(null)
-      toast.success("Rejected", {
-        description: "The workflow run has been stopped at this step.",
-      })
+      await approvalsApi.reject(a.id, { comment: reason })
+      await refresh()
+      setRejectTarget(null)
+      setSelectedId(following)
+      toast.success("Rejected", { description: "Nothing was run. Your reason is on the record." })
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to reject"
-      if (
-        message.includes("already started") ||
-        message.includes("already resolved") ||
-        message.includes("not pending approval") ||
-        message.includes("already approved")
-      ) {
-        await mutate()
-        setSelectedId(null)
-        setRejectTargetId(null)
-        toast.success("Rejection already recorded", {
-          description: "This run is no longer waiting in the queue.",
-        })
+      const message = err instanceof Error ? err.message : "Could not reject"
+      if (ALREADY_DONE.test(message)) {
+        await refresh()
+        setRejectTarget(null)
+        setSelectedId(following)
+        toast.success("Already decided", { description: "This request is no longer waiting in the queue." })
         return
       }
-      console.error("[approvals] Reject failed:", err)
       toast.error(message)
     } finally {
-      setIsSubmitting(false)
-      setPendingActionId(null)
+      setBusyId(null)
     }
   }
 
-  const handleRejectWithPrompt = (runId: string) => {
-    setRejectTargetId(runId)
-  }
+  // Keyboard: J / K move through the list, A approves, R rejects with a reason.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
+      if (rejectTarget || isTypingTarget(event.target)) return
+      if (document.querySelector('[role="dialog"][data-state="open"],[role="alertdialog"],[role="menu"]')) return
+      const key = event.key.toLowerCase()
+      if (key === "j" || key === "k") {
+        if (visible.length === 0) return
+        event.preventDefault()
+        const step = key === "j" ? 1 : -1
+        const idx = selectedIndex < 0 ? 0 : Math.min(visible.length - 1, Math.max(0, selectedIndex + step))
+        select(visible[idx].id, true)
+        return
+      }
+      if (!selected || selected.status !== "pending" || !canDecide(selected)) return
+      if (key === "a") {
+        event.preventDefault()
+        void approve(selected)
+      } else if (key === "r") {
+        event.preventDefault()
+        openReject(selected)
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  })
+
+  const summary = summarySentence(pending.length, breached.length)
+  const loadError = tab === "approved" || tab === "rejected" ? historyError : pendingError
+  const listLoading = (tab === "approved" || tab === "rejected" ? !historyData : !pendingData) && !loadError
 
   return (
-    <>
-      <div className="flex flex-col lg:flex-row h-full pb-[calc(12rem+env(safe-area-inset-bottom))] lg:pb-0" data-composition="operate">
-        {/* Left: Queue */}
-        <div className={cn(
-          "flex w-full flex-col border-divide",
-          selectedApproval
-            ? "hidden flex-shrink-0 lg:flex lg:w-[360px] lg:border-r"
-            : "flex min-w-0 flex-1",
-        )}>
-          {/* Header */}
-          <div className="flex-shrink-0">
-            <GravitrePageHeader
-              className="border-0"
-              title="Decision queue"
-              status={
-                <LiveStatus tone={pendingApprovals.length > 0 ? "attention" : "idle"}>
-                  {pendingApprovals.length === 0
-                    ? "Nothing is waiting on you"
-                    : `${pendingApprovals.length} waiting on you${breachedApprovals.length ? ` · ${breachedApprovals.length} past SLA` : ""}`}
-                </LiveStatus>
-              }
-              icon={<NucleoApproval className="h-5 w-5" />}
-              actions={
-                <div className="flex items-center gap-3">
-                  <AskGravitreSummonButton />
-                  <DataFreshness
-                    updatedAt={data ? Date.now() : null}
-                    isRefreshing={isValidating}
-                    onRefresh={() => mutate()}
-                  />
-                </div>
-              }
-            />
-            <PhaseBand
-              label="Decision phases"
-              phases={queuePhases}
-              active={phase}
-              onSelect={(next) => {
-                setPhase((next as QueuePhase | null) ?? "pending")
-                setSelectedId(null)
-              }}
-            />
-          </div>
-
-          {/* Error banner */}
-          {error && (
-            <div className="mx-4 mt-4 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-              <AlertCircle className="h-3.5 w-3.5" />
-              Failed to load. Showing cached data.
-            </div>
-          )}
-
-          {/* Queue list */}
-          <div className="flex-1 overflow-auto space-y-2 p-2.5 sm:p-3" data-review-surface="approvals-queue">
-            <AnimatePresence>
-              {visibleApprovals.map((approval) => (
-                <DecisionCard
-                  key={approval.id}
-                  approval={approval}
-                  isSelected={selectedId === approval.id}
-                  onSelect={() => setSelectedId(approval.id)}
-                  readOnly={queueTab === "history"}
-                  teamMembers={teamMembers}
-                />
-              ))}
-            </AnimatePresence>
-
-            {visibleApprovals.length === 0 && (
-              <div>
-              {phase === "pending" || phase === "breached" || historyApprovals ? (
-                <Illustration
-                  name={phase === "pending" || phase === "breached" ? "moment-all-clear" : "moment-focus-time"}
-                  width={160}
-                  className="ml-2 mt-6"
+    <WsPage className={cn(selected?.status === "pending" && "dq-has-dock")}>
+      <header className="dq-head">
+        <div className="dq-head-main">
+          <div className="gv-eyebrow">Human in the loop</div>
+          <h1 className="dq-title">Decision queue</h1>
+          {pendingData ? (
+            <p className={cn("dq-summary", pending.length === 0 && "calm")} aria-live="polite">
+              {pending.length > 0 ? (
+                <span
+                  className="gv-ping"
+                  style={{ background: "var(--gv-amber)", width: 9, height: 9 }}
+                  aria-hidden
                 />
               ) : null}
-              <OperatingEmpty
-                className="px-2 pt-4 sm:px-2"
-                title={
-                  phase === "pending"
-                    ? "Nothing is waiting on you"
-                    : phase === "breached"
-                      ? "No decision is past its SLA"
-                      : phase === "approved"
-                        ? historyApprovals ? "No approved requests yet" : "Loading decisions…"
-                        : historyApprovals ? "No rejected requests yet" : "Loading decisions…"
-                }
-                body={
-                  phase === "pending"
-                    ? "When an agent or workflow needs your decision before it changes a connected system, the request lands here."
-                    : undefined
-                }
-                path={phase === "pending" ? ["Agent proposes an action", "You decide", "Execution continues", "Recorded here"] : undefined}
-              />
-              </div>
-            )}
-          </div>
+              <span>
+                <strong>{summary.lead}</strong>
+                {summary.rest}
+              </span>
+            </p>
+          ) : (
+            <p className="dq-summary">{pendingError ? "Could not load the queue." : "Loading the queue..."}</p>
+          )}
         </div>
+        <div className="dq-head-actions">
+          <span className={cn("dq-fresh", pendingError && "stale")}>
+            <span className="gv-dot" aria-hidden />
+            {pendingError ? "Could not refresh" : updatedLabel(lastUpdated, now)}
+          </span>
+          <button
+            type="button"
+            className="gv-iconbtn"
+            aria-label="Refresh"
+            onClick={() => void refresh()}
+            disabled={refreshing}
+          >
+            <RefreshCw size={18} className={cn(refreshing && "dq-spin")} aria-hidden />
+          </button>
+          <Link className="gv-btn outline" href={POLICIES_HREF}>
+            Approval policies
+          </Link>
+        </div>
+      </header>
 
-        {selectedApproval ? (
-          <div className="flex-1 border-t border-divide bg-[color:var(--g-canvas)] lg:border-t-0" data-review-surface="approvals-inspect">
-            <DetailPanel
-              approval={selectedApproval}
-              onApprove={handleApprove}
-              onReject={handleRejectWithPrompt}
-              onBack={() => setSelectedId(null)}
-              isSubmitting={isSubmitting}
-              pendingActionId={pendingActionId}
-              teamMembers={teamMembers}
-            />
-          </div>
-        ) : null}
-      </div>
+      <nav aria-label="Queue filters" className="gv-card dq-tabs">
+        {TABS.map((t) => {
+          const n = counts[t.id]
+          return (
+            <button
+              key={t.id}
+              type="button"
+              className={cn("dq-tab", tab === t.id && "on", t.id === "breached" && (n ?? 0) > 0 && "sla")}
+              aria-current={tab === t.id ? "true" : undefined}
+              data-tab={t.id}
+              onClick={() => {
+                setTab(t.id)
+                setSelectedId(null)
+              }}
+            >
+              <span className={cn("n", t.id === "breached" && (n ?? 0) > 0 && "hot")}>
+                {n == null ? <span className="gv-skel" aria-label="Loading" /> : n}
+              </span>
+              {t.label}
+            </button>
+          )
+        })}
+      </nav>
 
-      {selectedApproval?.status === "pending" ? (
-        <div data-testid="approval-mobile-actions" data-gravitre-mobile-action-dock className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-divide bg-[color:var(--g-surface-1)]/95 p-3 backdrop-blur lg:hidden">
-          <div className="mx-auto flex max-w-lg items-center gap-2">
-            <Button
-              className="h-11 flex-1 cursor-pointer"
-              disabled={isSubmitting}
-              data-review-cta="approve"
-              onClick={() => void handleApprove(selectedApproval.id)}
-            >
-              Approve
-            </Button>
-            <Button
-              variant="ghost"
-              className="h-11 cursor-pointer text-muted-foreground"
-              disabled={isSubmitting}
-              onClick={() => handleRejectWithPrompt(selectedApproval.id)}
-            >
-              Reject
-            </Button>
-          </div>
+      {loadError ? (
+        <div className="dq-error" role="status">
+          <AlertTriangle size={16} aria-hidden />
+          Could not load the latest requests. Showing what was loaded before.
         </div>
       ) : null}
 
-      <AlertDialog open={Boolean(rejectTargetId)} onOpenChange={(open) => !open && setRejectTargetId(null)}>
+      <div className="dq-body">
+        <section
+          aria-label="Requests"
+          className="dq-list"
+          data-review-surface="approvals-queue"
+          ref={(node) => {
+            listRef.current = node
+          }}
+        >
+          <label className="gv-field">
+            <Search size={18} aria-hidden />
+            <input
+              aria-label="Filter requests"
+              placeholder="Filter by agent, app or action"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          <div className="dq-listbar">
+            <button
+              type="button"
+              className="dq-plain"
+              onClick={() => setOldestFirst((v) => !v)}
+              aria-label={`Sort: ${oldestFirst ? "oldest first" : "newest first"}. Change sort order`}
+            >
+              {oldestFirst ? "Oldest first" : "Newest first"}
+            </button>
+            <select
+              className="dq-plain"
+              aria-label="Filter by risk"
+              value={risk}
+              onChange={(e) => setRisk(e.target.value as RiskLevel | "all")}
+            >
+              <option value="all">Risk: all</option>
+              <option value="high">Risk: high</option>
+              <option value="medium">Risk: medium</option>
+              <option value="low">Risk: low</option>
+            </select>
+          </div>
+
+          {listLoading ? (
+            <div className="gv-card" style={{ padding: 16 }} aria-label="Loading requests">
+              <div className="gv-skel" style={{ width: "40%" }} />
+              <div className="gv-skel" style={{ width: "80%", marginTop: 12, height: 14 }} />
+              <div className="gv-skel" style={{ width: "60%", marginTop: 12 }} />
+            </div>
+          ) : null}
+
+          {visible.map((a) => (
+            <RequestCard
+              key={a.id}
+              approval={a}
+              now={now}
+              selected={selected?.id === a.id}
+              onSelect={() => select(a.id)}
+              registerRef={(node) => {
+                if (node) itemRefs.current.set(a.id, node)
+                else itemRefs.current.delete(a.id)
+              }}
+            />
+          ))}
+
+          {!listLoading && visible.length === 0 && filtersOn && base.length > 0 ? (
+            <div className="gv-empty">
+              No requests match this filter.{" "}
+              <button
+                type="button"
+                className="dq-linkbtn"
+                onClick={() => {
+                  setQuery("")
+                  setRisk("all")
+                }}
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : null}
+
+          {!listLoading && tab === "pending" && pending.length <= 1 && !pendingError ? (
+            <div className="gv-card dq-zero">
+              <Illustration name="moment-inbox-zero" width={320} />
+              <div className="dq-zero-title">
+                {pending.length === 1 ? "One decision from inbox zero" : "Inbox zero"}
+              </div>
+              <div className="dq-zero-body">New requests appear here the moment an agent pauses.</div>
+            </div>
+          ) : null}
+
+          {!listLoading && base.length === 0 && tab !== "pending" ? (
+            <div className="gv-empty">
+              {tab === "breached"
+                ? "No request is past its SLA."
+                : tab === "approved"
+                  ? "No approved requests yet."
+                  : "No rejected requests yet."}
+            </div>
+          ) : null}
+        </section>
+
+        {selected ? (
+          <DetailPane
+            key={selected.id}
+            approval={selected}
+            now={now}
+            busy={busyId === selected.id}
+            canDecide={canDecide(selected)}
+            approvedCount={counts.approved}
+            onApprove={() => void approve(selected)}
+            onReject={() => openReject(selected)}
+            onViewHistory={() => {
+              setTab("approved")
+              setSelectedId(null)
+            }}
+            onBack={() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          />
+        ) : !listLoading ? (
+          <article className="gv-card dq-detail" style={{ padding: "28px" }}>
+            <h2 className="gv-h2">{tab === "pending" ? "Nothing to decide right now" : "Nothing selected"}</h2>
+            <p className="gv-hint" style={{ marginTop: 8 }}>
+              {tab === "pending" || tab === "breached"
+                ? "When an agent or workflow needs your decision before it changes a connected system, the request lands here."
+                : "Decided requests stay here with who decided and when."}
+            </p>
+            {tab !== "approved" ? (
+              <button
+                type="button"
+                className="gv-btn outline sm"
+                style={{ marginTop: 16 }}
+                onClick={() => {
+                  setTab("approved")
+                  setSelectedId(null)
+                }}
+              >
+                View history
+              </button>
+            ) : null}
+          </article>
+        ) : null}
+      </div>
+
+      {selected?.status === "pending" && canDecide(selected) ? (
+        <div className="dq-dock" data-testid="approval-mobile-actions" data-gravitre-mobile-action-dock>
+          <button
+            type="button"
+            className="gv-btn primary"
+            data-review-cta="approve"
+            disabled={Boolean(busyId)}
+            onClick={() => void approve(selected)}
+          >
+            Approve
+          </button>
+          <button
+            type="button"
+            className="gv-btn danger"
+            disabled={Boolean(busyId)}
+            onClick={() => openReject(selected)}
+          >
+            Reject
+          </button>
+        </div>
+      ) : null}
+
+      <AlertDialog open={Boolean(rejectTarget)} onOpenChange={(open) => !open && !busyId && setRejectTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reject this action?</AlertDialogTitle>
+            <AlertDialogTitle>Reject this request?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will stop the workflow run at this step. This action cannot be undone.
+              Nothing will run. Tell the requester why, so they know what to change.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <Textarea
+            aria-label="Reason for rejecting"
+            placeholder="For example: wrong list, use the Q3 segment instead"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            autoFocus
+            rows={4}
+          />
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={Boolean(busyId)}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={isSubmitting}
+              disabled={Boolean(busyId) || !rejectReason.trim()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={(e) => {
                 e.preventDefault()
-                if (rejectTargetId) {
-                  void handleReject(rejectTargetId)
-                }
+                void reject()
               }}
             >
-              Reject
+              {busyId ? "Rejecting..." : "Reject"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </WsPage>
+  )
+}
+
+function RequestCard({
+  approval: a,
+  now,
+  selected,
+  onSelect,
+  registerRef,
+}: {
+  approval: Approval
+  now: number
+  selected: boolean
+  onSelect: () => void
+  registerRef: (node: HTMLButtonElement | null) => void
+}) {
+  const sla = slaLine(a, now)
+  const env = environmentLabel(a.environment)
+  const decided = a.status !== "pending"
+  return (
+    <button
+      type="button"
+      ref={registerRef}
+      className={cn("dq-item", selected && "on", decided && "done")}
+      aria-current={selected ? "true" : undefined}
+      data-path-waiting={a.status === "pending" ? "1" : "0"}
+      data-path-run-id={a.context.runId ?? undefined}
+      onClick={onSelect}
+    >
+      {decided ? (
+        <div className="dq-item-sla quiet">
+          {a.status === "approved" ? "Approved" : "Rejected"}
+          {formatDate(a.reviewedAt, now) ? ` · ${formatDate(a.reviewedAt, now)}` : ""}
+        </div>
+      ) : sla ? (
+        <div className={cn("dq-item-sla", sla.breached && "hot")}>
+          {sla.breached ? <AlertTriangle size={14} aria-hidden /> : null}
+          {sla.text}
+        </div>
+      ) : null}
+      <div className="dq-item-title">{a.title}</div>
+      {a.context.tool ? <div className="dq-item-tool">{a.context.tool}</div> : null}
+      <div className="dq-pills">
+        {env ? <span className={cn("gv-pill", a.environment === "production" ? "brand" : "neutral")}>{env}</span> : null}
+        {a.context.riskLevel ? (
+          <span
+            className={cn(
+              "gv-pill",
+              a.context.riskLevel === "high" ? "red" : a.context.riskLevel === "medium" ? "amber" : "neutral",
+            )}
+          >
+            {a.context.riskLevel.charAt(0).toUpperCase() + a.context.riskLevel.slice(1)} risk
+          </span>
+        ) : null}
+        <span className="gv-pill neutral">{typeLabel(a)}</span>
+      </div>
+      <div className="dq-who">
+        <span className="dq-ini" aria-hidden>
+          {initials(a.requestedBy)}
+        </span>
+        {[a.requestedBy, formatDate(a.requestedAt, now)].filter(Boolean).join(" · ")}
+      </div>
+    </button>
+  )
+}
+
+function DetailPane({
+  approval: a,
+  now,
+  busy,
+  canDecide,
+  approvedCount,
+  onApprove,
+  onReject,
+  onViewHistory,
+  onBack,
+}: {
+  approval: Approval
+  now: number
+  busy: boolean
+  canDecide: boolean
+  approvedCount: number | null
+  onApprove: () => void
+  onReject: () => void
+  onViewHistory: () => void
+  onBack: () => void
+}) {
+  const pending = a.status === "pending"
+  const pastSla = isPastSla(a, now)
+  const rows = whatWillHappen(a)
+  const policy = policyCopy(a)
+  const events = activity(a, now)
+  const raw = useMemo(() => {
+    try {
+      return JSON.stringify(a.rawRequest, null, 2)
+    } catch {
+      return "{}"
+    }
+  }, [a.rawRequest])
+  const runId = a.context.runId
+  const conversationId = a.context.conversationId
+
+  const copyLink = async () => {
+    const url = `${window.location.origin}/approvals?id=${encodeURIComponent(a.id)}`
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success("Link copied")
+    } catch {
+      toast.error("Could not copy the link")
+    }
+  }
+
+  return (
+    <article
+      className="gv-card gv-rise dq-detail"
+      aria-label={a.title}
+      data-review-surface="approvals-inspect"
+    >
+      <div className={cn("dq-hero", !pending && "done")}>
+        <div className="dq-hero-main">
+          <button type="button" className="dq-linkbtn dq-back" onClick={onBack}>
+            Back to the list
+          </button>
+          <div className="dq-pills" style={{ marginTop: 0 }}>
+            {pending ? (
+              <span className="gv-pill amber">
+                <span className="gv-ping" style={{ background: "var(--gv-amber)", width: 7, height: 7 }} aria-hidden />
+                Waiting on you
+              </span>
+            ) : a.status === "approved" ? (
+              <span className="gv-pill brand">Approved</span>
+            ) : (
+              <span className="gv-pill red">Rejected</span>
+            )}
+            {pastSla ? <span className="gv-pill red">SLA breached</span> : null}
+          </div>
+          <h2>{a.title}</h2>
+          {a.description ? <p>{a.description}</p> : null}
+        </div>
+        {pending ? (
+          <div className="gv-hide-sm">
+            <Illustration name="moment-request-waiting" width={200} className="dq-hero-art" />
+          </div>
+        ) : null}
+      </div>
+
+      {pending ? (
+        <div className="dq-actions">
+          <button
+            type="button"
+            className="gv-btn primary"
+            data-review-cta="approve"
+            disabled={busy || !canDecide}
+            onClick={onApprove}
+          >
+            {busy ? "Working..." : "Approve"} <span className="gv-kbd">A</span>
+          </button>
+          <button type="button" className="gv-btn danger" disabled={busy || !canDecide} onClick={onReject}>
+            Reject <span className="gv-kbd">R</span>
+          </button>
+          <MoreMenu runId={runId} conversationId={conversationId} onCopy={copyLink} />
+          <div className="dq-lock">
+            <Lock size={14} aria-hidden />
+            {canDecide ? lockNote(a) : "Only workspace admins can decide this request."}
+          </div>
+        </div>
+      ) : (
+        <div className="dq-actions">
+          {runId ? (
+            <Link className="gv-btn outline" href={`/runs/${encodeURIComponent(runId)}`}>
+              View the run
+            </Link>
+          ) : null}
+          {a.reviewComment ? (
+            <span className="gv-hint">Reason given: &ldquo;{a.reviewComment}&rdquo;</span>
+          ) : null}
+          <MoreMenu runId={runId} conversationId={conversationId} onCopy={copyLink} />
+        </div>
+      )}
+
+      <div className="dq-cols">
+        <section className="dq-col">
+          <h3>{pending ? "What will happen" : "What was requested"}</h3>
+          {rows.length ? (
+            <dl className="gv-dl">
+              {rows.map((row) => (
+                <div key={row.term} style={{ display: "contents" }}>
+                  <dt>{row.term}</dt>
+                  <dd className={cn(row.mono && "gv-mono")}>
+                    {row.href ? <Link href={row.href}>{row.value}</Link> : row.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <p className="gv-hint">The request did not include any details beyond its title.</p>
+          )}
+          <details className="dq-raw">
+            <summary>
+              View raw request <span>JSON</span>
+            </summary>
+            <pre>{raw}</pre>
+          </details>
+        </section>
+        <section className="dq-col">
+          <h3>Why it paused</h3>
+          {policy ? (
+            <div className="dq-policy">
+              <ShieldCheck size={20} aria-hidden />
+              <div>
+                <strong>{policy.title}</strong>
+                <div className="sub">{policy.body}</div>
+                {a.context.approvalReason ? <div className="sub">{a.context.approvalReason}</div> : null}
+                <Link href={POLICIES_HREF}>Review policy &rarr;</Link>
+              </div>
+            </div>
+          ) : (
+            <div className="dq-policy">
+              <ShieldCheck size={20} aria-hidden />
+              <div>
+                <strong>{a.context.approvalReason ?? "This request needs a person to decide before it runs."}</strong>
+                <div className="sub">The policy that paused it was not reported.</div>
+                <Link href={POLICIES_HREF}>Review policies &rarr;</Link>
+              </div>
+            </div>
+          )}
+          <h3 className="next">Activity</h3>
+          <ol className="dq-timeline">
+            {events.map((e) => (
+              <li key={e.key}>
+                <span className={cn("mk", e.tone)} aria-hidden />
+                <div className="t">{e.title}</div>
+                {e.detail ? <div className="d">{e.detail}</div> : null}
+              </li>
+            ))}
+          </ol>
+        </section>
+      </div>
+
+      <div className="dq-foot">
+        <span>
+          <span className="gv-kbd">J</span> <span className="gv-kbd">K</span> Next and previous
+        </span>
+        {pending ? (
+          <>
+            <span>
+              <span className="gv-kbd">A</span> Approve
+            </span>
+            <span>
+              <span className="gv-kbd">R</span> Reject with a reason
+            </span>
+          </>
+        ) : null}
+        <span className="end">
+          <AskGravitreSummonButton
+            selected={{ kind: "approval", id: a.id, label: a.title }}
+            label="Ask Gravitre about this"
+          />
+          <button type="button" className="dq-linkbtn" onClick={onViewHistory}>
+            {approvedCount != null ? `${approvedCount} approved · ` : ""}View history &rarr;
+          </button>
+        </span>
+      </div>
+    </article>
+  )
+}
+
+function MoreMenu({
+  runId,
+  conversationId,
+  onCopy,
+}: {
+  runId: string | null
+  conversationId: string | null
+  onCopy: () => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" className="gv-iconbtn dq-more" aria-label="More actions">
+          <MoreHorizontal size={18} aria-hidden />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        {runId ? (
+          <DropdownMenuItem asChild>
+            <Link href={`/runs/${encodeURIComponent(runId)}`}>Open the run</Link>
+          </DropdownMenuItem>
+        ) : null}
+        {conversationId ? (
+          <DropdownMenuItem asChild>
+            <Link href={`/ai?c=${encodeURIComponent(conversationId)}`}>Open the conversation</Link>
+          </DropdownMenuItem>
+        ) : null}
+        <DropdownMenuItem onSelect={() => onCopy()}>Copy link to this request</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
