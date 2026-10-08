@@ -193,8 +193,37 @@ def spoken_should_stream_live_deltas(*, spoken_mode: bool, message: str) -> bool
     return True
 
 
+def classify_spoken_conversation_tier(message: str) -> str:
+    """Classify speech without splitting the unified conversation or its guardrails.
+
+    Light: unambiguous social exchanges.
+    Medium: other questions and contextual conversation.
+    Deep: operator work, connector writes, and explicit complex analysis.
+    Unknown utterances default to Medium rather than an unsafe lightweight skip.
+    """
+    text = (message or "").strip()
+    if not text:
+        return "medium"
+    if should_keep_full_reasoning_for_spoken(text):
+        return "deep"
+    if re.search(
+        r"(?i)\\b(analy[sz]e|investigate|debug|audit|deploy|merge|"
+        r"run a workflow|across (?:my |our )?(?:apps|systems)|"
+        r"research thoroughly|create an agent|execute|send emails?)\\b",
+        text,
+    ):
+        return "deep"
+    if use_spoken_lite_path(
+        spoken_mode=True, routing_tier="simple", message=text
+    ):
+        return "light"
+    return "medium"
+
+
 def resolve_voice_session_intelligence_mode(message: str) -> str:
-    """Native /voice/session/turn has no mode picker; operator jobs match agent chat."""
-    if should_keep_full_reasoning_for_spoken(message):
-        return "agent"
-    return "fast"
+    """Map three conversational tiers to existing guarded execution modes.
+
+    Light and Medium use fast mode; only Light qualifies for the existing
+    spoken-lite short circuit. Deep uses the unified agent engine.
+    """
+    return "agent" if classify_spoken_conversation_tier(message) == "deep" else "fast"
