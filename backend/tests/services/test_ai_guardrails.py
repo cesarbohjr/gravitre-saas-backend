@@ -382,3 +382,63 @@ class TestModerationOverlapsTheOtherChecks:
         assert response.model_call_id == "mc-1"
         assert len(insert_threads) == 2  # model_calls + guardrail_events
         assert all(t is not loop_thread for t in insert_threads)
+
+
+class TestRepeatedModerationOfTheSameText:
+    """One turn screened the same text several times; a pass is reused briefly."""
+
+    def _settings(self, mock_settings):
+        return mock_settings.model_copy(update={"ai_moderation_enabled": True})
+
+    async def test_a_pass_is_reused_for_the_same_text(self, mock_settings):
+        client = AsyncMock()
+        client.moderations.create = AsyncMock(return_value=SimpleNamespace(results=[SimpleNamespace(flagged=False)]))
+        settings = self._settings(mock_settings)
+        await moderate_input("who is our biggest customer", settings, client)
+        await moderate_input("who is our biggest customer", settings, client)
+        await moderate_input("a different question", settings, client)
+        assert client.moderations.create.await_count == 2
+
+    async def test_concurrent_checks_of_the_same_text_share_one_request(self, mock_settings):
+        import asyncio
+
+        calls = 0
+
+        async def _slow_clean(**_kwargs):
+            nonlocal calls
+            calls += 1
+            await asyncio.sleep(0.05)
+            return SimpleNamespace(results=[SimpleNamespace(flagged=False)])
+
+        client = AsyncMock()
+        client.moderations.create = _slow_clean
+        settings = self._settings(mock_settings)
+        await asyncio.gather(*(moderate_input("same entity prompt", settings, client) for _ in range(4)))
+        assert calls == 1
+
+    async def test_flagged_text_is_never_remembered(self, mock_settings):
+        import asyncio
+
+        client = AsyncMock()
+        client.moderations.create = AsyncMock(return_value=SimpleNamespace(results=[SimpleNamespace(flagged=True)]))
+        settings = self._settings(mock_settings)
+        for _ in range(2):
+            with pytest.raises(AIContentFlaggedError):
+                await moderate_input("bad text", settings, client)
+        assert client.moderations.create.await_count == 2
+
+        # Every concurrent caller of flagged text is blocked, not just the first.
+        results = await asyncio.gather(
+            *(moderate_input("bad text", settings, client) for _ in range(3)), return_exceptions=True
+        )
+        assert all(isinstance(r, AIContentFlaggedError) for r in results)
+
+    async def test_a_failed_check_is_not_remembered_as_a_pass(self, mock_settings):
+        client = AsyncMock()
+        client.moderations.create = AsyncMock(
+            side_effect=[RuntimeError("unavailable"), SimpleNamespace(results=[SimpleNamespace(flagged=True)])]
+        )
+        settings = self._settings(mock_settings)
+        await moderate_input("hello there", settings, client)  # fail-open, unchanged
+        with pytest.raises(AIContentFlaggedError):
+            await moderate_input("hello there", settings, client)
