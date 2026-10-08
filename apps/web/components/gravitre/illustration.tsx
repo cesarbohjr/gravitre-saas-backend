@@ -5,6 +5,7 @@
  *  - spot-*    objects only, top of a feature card
  *  - moment-*  small scene above one line of copy in an empty or error state
  *  - dept-*    department scene beside a short paragraph between data blocks
+ *  - market-*  objects-only marketplace category art (template cards and template hero)
  * Illustrations are decorative: they never carry information the copy lacks.
  */
 import { cn } from "@/lib/utils"
@@ -34,6 +35,34 @@ export const ILLUSTRATIONS = {
   "moment-milestone": { w: 320, h: 230 },
   "moment-focus-time": { w: 320, h: 230 },
   "moment-remote-call": { w: 320, h: 230 },
+  "header-goals-office": { w: 640, h: 220 },
+  "header-empty-desk": { w: 640, h: 220 },
+  "goal-template-marketing": { w: 420, h: 260 },
+  "goal-template-finance": { w: 420, h: 260 },
+  "goal-template-support": { w: 420, h: 260 },
+  "feature-assignment-workflow": { w: 420, h: 260 },
+  "spot-report-easel": { w: 300, h: 190 },
+  "moment-paused-agents": { w: 300, h: 190 },
+  "moment-unplugged": { w: 320, h: 230 },
+  "moment-inbox-zero": { w: 320, h: 190 },
+  "moment-request-waiting": { w: 320, h: 230 },
+  "moment-no-addons": { w: 320, h: 190 },
+  "moment-high-five": { w: 320, h: 230 },
+  "market-prospecting": { w: 300, h: 190 },
+  "market-compliance": { w: 300, h: 190 },
+  "market-security": { w: 300, h: 190 },
+  "market-finance": { w: 300, h: 190 },
+  "market-product": { w: 300, h: 190 },
+  "market-support": { w: 300, h: 190 },
+  "market-onboarding": { w: 300, h: 190 },
+  "market-pipeline": { w: 300, h: 190 },
+  "market-deals": { w: 300, h: 190 },
+  "market-campaigns": { w: 300, h: 190 },
+  "market-site-health": { w: 300, h: 190 },
+  "market-revenue": { w: 300, h: 190 },
+  "market-tickets": { w: 300, h: 190 },
+  "market-new-customers": { w: 300, h: 190 },
+  "market-leads": { w: 300, h: 190 },
 } as const
 
 export type IllustrationName = keyof typeof ILLUSTRATIONS
