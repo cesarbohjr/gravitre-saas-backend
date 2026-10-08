@@ -67,3 +67,70 @@ def test_call_with_resource_retry_retries_wrapped_eagain_text():
 
     assert call_with_resource_retry(_flaky) == "ok"
     assert calls["n"] == 3
+
+
+def test_spawn_background_off_loop_does_not_share_the_bridge_loop(monkeypatch):
+    monkeypatch.delenv("GRAVITRE_DROP_BACKGROUND_TASKS", raising=False)
+    import asyncio
+    import threading
+    import time
+
+    from app.core import async_bridge
+
+    started = threading.Event()
+
+    async def _blocking_background():
+        started.set()
+        time.sleep(0.5)  # a sync supabase call inside a background coroutine
+
+    async def _quick():
+        return "done"
+
+    async_bridge.spawn_background(_blocking_background())
+    assert started.wait(timeout=2)
+
+    async def _from_running_loop():
+        t0 = time.monotonic()
+        result = async_bridge.run_coro_sync(_quick(), timeout=2)
+        return result, time.monotonic() - t0
+
+    result, elapsed = asyncio.run(_from_running_loop())
+    assert result == "done"
+    assert elapsed < 0.3
+
+
+def test_cancel_background_tasks_drops_pending_work(monkeypatch):
+    monkeypatch.delenv("GRAVITRE_DROP_BACKGROUND_TASKS", raising=False)
+    import threading
+
+    from app.core import async_bridge
+
+    ran = threading.Event()
+
+    async def _long():
+        import asyncio
+
+        await asyncio.sleep(30)
+        ran.set()
+
+    future = async_bridge.spawn_background(_long())
+    assert async_bridge.cancel_background_tasks() >= 1
+    try:
+        future.result(timeout=2)
+    except BaseException:  # noqa: BLE001 - CancelledError
+        pass
+    assert future.cancelled() or future.done()
+    assert not ran.is_set()
+
+
+def test_spawn_background_off_loop_is_dropped_in_tests():
+    from app.core import async_bridge
+
+    ran = []
+
+    async def _work():
+        ran.append(1)
+
+    future = async_bridge.spawn_background(_work())
+    assert future.cancelled()
+    assert ran == []

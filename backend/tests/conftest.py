@@ -9,6 +9,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+# Fire-and-forget work spawned from worker threads (sync route handlers) is
+# dropped in tests; left running it keeps calling the fake Supabase host for the
+# rest of the session and stalls later tests. See app.core.async_bridge.
+os.environ.setdefault("GRAVITRE_DROP_BACKGROUND_TASKS", "1")
+
 from app.config import Settings
 
 
