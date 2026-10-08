@@ -84,3 +84,58 @@ async def test_query_pipeline(service: RAGService):
     assert len(response.chunks) == 2
     assert response.metrics["top_k"] == 2
     assert response.metrics["rerank_method"] == "cross_encoder"
+
+
+@pytest.mark.asyncio
+async def test_hybrid_retrieval_reads_run_off_the_event_loop_and_together(service: RAGService):
+    # Voice turns bound retrieval with a time budget; that only works when the
+    # embedding call and the two blocking reads do not hold the event loop.
+    import asyncio
+    import threading
+    import time
+
+    loop_thread = threading.get_ident()
+    threads: dict[str, int] = {}
+    both_started = threading.Barrier(2, timeout=2)
+
+    def embed(*_a, **_k):
+        threads["embed"] = threading.get_ident()
+        return [0.1] * 1536, "openai"
+
+    def search(**_k):
+        threads["search"] = threading.get_ident()
+        both_started.wait()
+        return [{"chunk_id": "a", "content": "Sky is blue", "score": 0.9, "document_title": "Science"}]
+
+    def corpus(*_a, **_k):
+        threads["corpus"] = threading.get_ident()
+        both_started.wait()
+        return [], "fts_filtered"
+
+    ticks = 0
+
+    async def ticker() -> None:
+        nonlocal ticks
+        while True:
+            ticks += 1
+            await asyncio.sleep(0)
+
+    tick_task = asyncio.create_task(ticker())
+    try:
+        with patch("app.services.rag_service.embed_with_failover", side_effect=embed), patch(
+            "app.services.rag_service.search_chunks", side_effect=search
+        ), patch("app.services.rag_service.fetch_bm25_corpus", side_effect=corpus), patch(
+            "app.services.rag_service.rerank_rows", side_effect=lambda q, rows, **_k: (rows, "disabled")
+        ), patch(
+            "app.services.rag_service.fetch_source_reliability_scores", AsyncMock(return_value={})
+        ), patch("app.services.rag_service.get_weight_for_org", AsyncMock(return_value=0.0)):
+            started = time.perf_counter()
+            rows, metrics = await service.retrieve_hybrid_rows(
+                org_id="org-1", query="why is the sky blue", top_k=2
+            )
+    finally:
+        tick_task.cancel()
+    assert time.perf_counter() - started < 2
+    assert rows and metrics["semantic_candidates"] == 1
+    assert all(ident != loop_thread for ident in threads.values()), threads
+    assert ticks > 0
