@@ -5,6 +5,8 @@ reconnect, delete, and API-key flows behave consistently.
 """
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import HTTPException, status
 
 from app.config import Settings
@@ -298,13 +300,23 @@ def store_connector_api_key(
     )
 
 
+_NOT_PRELOADED: Any = object()
+
+
 def read_masked_api_key(
     client,
     connector_id: str,
     row: dict,
     settings: Settings,
+    *,
+    preloaded_secret: Any = _NOT_PRELOADED,
 ) -> str | None:
-    secret = get_decrypted_secret(client, connector_id, "api_key", settings)
+    """Plain API key for masking. ``preloaded_secret`` (from
+    get_decrypted_secrets_bulk) skips the per-connector connector_secrets read."""
+    if preloaded_secret is _NOT_PRELOADED:
+        secret = get_decrypted_secret(client, connector_id, "api_key", settings)
+    else:
+        secret = preloaded_secret
     if secret:
         return secret
     encrypted = row.get("api_key_encrypted")
@@ -321,5 +333,9 @@ def masked_api_key_for_response(
     connector_id: str,
     row: dict,
     settings: Settings,
+    *,
+    preloaded_secret: Any = _NOT_PRELOADED,
 ) -> str | None:
-    return mask_value(read_masked_api_key(client, connector_id, row, settings))
+    return mask_value(
+        read_masked_api_key(client, connector_id, row, settings, preloaded_secret=preloaded_secret)
+    )

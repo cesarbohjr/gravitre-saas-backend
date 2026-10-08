@@ -14,7 +14,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 const WEB = join(ROOT, "apps", "web")
 
 const SCAN_ROOTS = [
-  join(WEB, "app", "intelligence"),
+  join(WEB, "app", "(app)", "intelligence"),
   join(WEB, "components", "intelligence"),
 ]
 

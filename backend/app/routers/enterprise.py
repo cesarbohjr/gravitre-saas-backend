@@ -137,6 +137,9 @@ def _save_org_settings(client: Any, org_id: str, settings: dict[str, Any], *, da
     if data_region is not None:
         payload["data_region"] = data_region
     updated = client.table("organizations").update(payload).eq("id", org_id).execute()
+    from app.core.org_state_cache import invalidate_org_state
+
+    invalidate_org_state(org_id)
     if not updated.data:
         raise HTTPException(status_code=404, detail="Organization not found")
     return updated.data[0].get("settings") or {}

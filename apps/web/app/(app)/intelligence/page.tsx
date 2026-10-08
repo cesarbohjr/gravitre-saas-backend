@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useEffect, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -19,7 +19,8 @@ import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { connectorsApi, intelligenceApi, memoryPromotionApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
-import { ensureSelectedOrg } from "@/lib/org-context"
+import { ensureSelectedOrg, getQuickOrgId } from "@/lib/org-context"
+import { readCachedOrgMembership, writeCachedOrgMembership } from "@/lib/org-gate-cache"
 import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
 import { PAGE_FRAME } from "@/lib/design-system"
 import { SURFACE_COPY } from "@/lib/surface-copy"
@@ -58,25 +59,37 @@ function IntelligenceSectionRedirect() {
 
 function IntelligenceCenterInner() {
   const { user } = useAuth()
+  const userId = user?.id ?? null
   const copy = SURFACE_COPY.insights
-  const [orgReady, setOrgReady] = useState(false)
+  // Org gate, optimistic: when the stored org selection is the one membership
+  // resolution last confirmed for this user, start loading immediately and
+  // revalidate membership in the background (the forced organizations list
+  // used to hold a full-page "Resolving workspace" loader first). `undefined`
+  // = not known yet, `null` = the user has no workspace.
+  const [orgId, setOrgId] = useState<string | null | undefined>(() => {
+    const quick = getQuickOrgId()
+    return quick && userId && readCachedOrgMembership(userId) === quick ? quick : undefined
+  })
   const [selected, setSelected] = useState<GravitreAISelectedEntity | null>(null)
   usePublishGravitreAISelection(selected)
 
   useEffect(() => {
-    if (!user) {
-      setOrgReady(false)
+    if (!userId) {
+      setOrgId(undefined)
       return
     }
     let cancelled = false
-    void ensureSelectedOrg().then((orgId) => {
-      if (!cancelled) setOrgReady(Boolean(orgId))
+    void ensureSelectedOrg().then((resolved) => {
+      if (cancelled) return
+      writeCachedOrgMembership(userId, resolved)
+      setOrgId(resolved)
     })
     return () => {
       cancelled = true
     }
-  }, [user])
+  }, [userId])
 
+  const orgReady = Boolean(orgId)
   const enabled = Boolean(user) && orgReady
 
   const {
@@ -89,12 +102,12 @@ function IntelligenceCenterInner() {
   } = useIntelligenceSnapshot({ enabled, windowHours: 24 })
 
   // Outcome attribution: measured outcomes per agent and how many scoring needs.
-  const { data: outcomes } = useSWR(
+  const { data: outcomes, mutate: mutateOutcomes } = useSWR(
     enabled ? ["intelligence/outcomes", 7] : null,
     () => intelligenceApi.outcomes({ periodDays: 7 }),
     { revalidateOnFocus: false },
   )
-  const { data: trust } = useSWR(enabled ? "intelligence/trust-summary" : null, () =>
+  const { data: trust, mutate: mutateTrust } = useSWR(enabled ? "intelligence/trust-summary" : null, () =>
     intelligenceApi.trustSummary({ periodDays: 7 }),
   )
   const { data: connectorsData, mutate: mutateConnectors } = useSWR(
@@ -103,24 +116,30 @@ function IntelligenceCenterInner() {
     { revalidateOnFocus: false },
   )
   // Patterns still being reinforced (any status; open ones are picked out downstream).
-  const { data: candidatesData } = useSWR(
+  const { data: candidatesData, mutate: mutateCandidates } = useSWR(
     enabled ? "intelligence/overview/memory-candidates" : null,
     () => memoryPromotionApi.candidates({ limit: 50 }),
     { revalidateOnFocus: false },
   )
 
+  // The requests above went out under the optimistic org. If background
+  // membership resolution lands on a different one, refetch under it.
+  const lastOrgRef = useRef(orgId)
+  useEffect(() => {
+    const previous = lastOrgRef.current
+    lastOrgRef.current = orgId
+    if (!previous || !orgId || previous === orgId) return
+    mutateSnapshot()
+    void mutateOutcomes()
+    void mutateTrust()
+    void mutateConnectors()
+    void mutateCandidates()
+  }, [orgId, mutateSnapshot, mutateOutcomes, mutateTrust, mutateConnectors, mutateCandidates])
+
   if (!user) {
     return (
       <AppShell title={copy.title}>
         <EmptyState title="Sign in required" description="Log in to view intelligence." />
-      </AppShell>
-    )
-  }
-
-  if (!orgReady) {
-    return (
-      <AppShell title={copy.title}>
-        <CenteredLoader label="Resolving workspace…" />
       </AppShell>
     )
   }
@@ -181,6 +200,12 @@ function IntelligenceCenterInner() {
           isValidating={isValidating}
           onRefresh={() => mutateSnapshot()}
         >
+          {orgId === null ? (
+            <EmptyState
+              title="No workspace selected"
+              description="Pick an organization in Settings to see what Gravitre is learning."
+            />
+          ) : (
           <IntelligenceBrain
             pageContext={pageContext}
             connectors={connectorsData?.connectors ?? null}
@@ -194,6 +219,7 @@ function IntelligenceCenterInner() {
               mutateSnapshot()
             }}
           />
+          )}
         </IntelligenceShell>
       </div>
     </AppShell>

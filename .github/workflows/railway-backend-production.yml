@@ -161,6 +161,17 @@ jobs:
           match_health "https://gravitre-saas-backend-production.up.railway.app/health" 900
           match_health "https://api.gravitre.app/health" 180
 
+      - name: Report API region and database round trip
+        continue-on-error: true
+        run: |
+          # Every sequential Supabase query on a page load pays this round trip.
+          # A few ms means the API and the database share a region; tens of ms means they don't.
+          for i in 1 2 3 4 5; do
+            curl -fsS https://gravitre-saas-backend-production.up.railway.app/health \
+              | python3 -c 'import sys,json; d=json.load(sys.stdin); print("region=%s database_latency_ms=%s" % (d.get("region"), d.get("database_latency_ms")))' || true
+            sleep 1
+          done
+
       - name: Post-deploy chat smoke (isolated org)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

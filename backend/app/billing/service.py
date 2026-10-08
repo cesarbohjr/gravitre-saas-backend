@@ -245,9 +245,27 @@ def _normalize_plan_row(row: dict[str, Any]) -> dict[str, Any]:
     return merged
 
 
-def get_plan_for_org(client: Client, org_id: str) -> dict[str, Any]:
-    base_plan = get_base_plan_for_org(client, org_id)
-    overrides = get_org_billing_overrides(client, org_id)
+# Sentinel for "row not loaded yet" (None is a valid loaded value: no row).
+UNSET: Any = object()
+
+
+def get_plan_for_org(
+    client: Client,
+    org_id: str,
+    *,
+    billing: dict | None = UNSET,
+    overrides: dict | None = UNSET,
+    base_plan: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Effective plan (base plan + overrides).
+
+    Callers that already loaded the org_billing / org_billing_overrides rows (or
+    the base plan) in this request pass them in so they are not re-queried.
+    """
+    if base_plan is None:
+        base_plan = get_base_plan_for_org(client, org_id, billing=billing)
+    if overrides is UNSET:
+        overrides = get_org_billing_overrides(client, org_id)
     return apply_overrides(base_plan, overrides)
 
 
@@ -409,9 +427,10 @@ def apply_overrides(plan: dict[str, Any], overrides: dict | None) -> dict[str, A
     return merged
 
 
-def get_base_plan_for_org(client: Client, org_id: str) -> dict[str, Any]:
+def get_base_plan_for_org(client: Client, org_id: str, *, billing: dict | None = UNSET) -> dict[str, Any]:
     plans = get_billing_plans(client)
-    billing = get_org_billing(client, org_id)
+    if billing is UNSET:
+        billing = get_org_billing(client, org_id)
     plan_code = normalize_plan_code(billing.get("plan_code") if billing else DEFAULT_PLAN_CODE)
     resolved = _resolve_plan(plans, plan_code)
     if resolved:
@@ -428,6 +447,9 @@ def get_or_create_org_billing(client: Client, org_id: str) -> dict:
     created = client.table("org_billing").insert(
         {"org_id": org_id, "plan_code": DEFAULT_PLAN_CODE, "billing_status": "trialing"}
     ).execute()
+    from app.core.org_state_cache import invalidate_org_state
+
+    invalidate_org_state(org_id)
     if not created.data:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

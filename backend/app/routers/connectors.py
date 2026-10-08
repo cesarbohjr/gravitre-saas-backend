@@ -20,6 +20,7 @@ from app.connectors.repository import (
     create_connector,
     get_connector,
     get_decrypted_secret,
+    get_decrypted_secrets_bulk,
     list_connectors,
     set_secret,
     update_connector,
@@ -260,6 +261,7 @@ def _connector_response_item(
     client,
     org_id: str,
     force_live: bool = False,
+    preloaded_api_key_secrets: dict[str, str | None] | None = None,
 ) -> dict:
     from app.connectors.connector_availability_service import evaluate_connector_availability
 
@@ -297,7 +299,16 @@ def _connector_response_item(
             "source_of_truth": "connectors_list_fallback",
         }
     try:
-        api_key = masked_api_key_for_response(client, connector_id, row, settings)
+        if preloaded_api_key_secrets is not None and connector_id in preloaded_api_key_secrets:
+            api_key = masked_api_key_for_response(
+                client,
+                connector_id,
+                row,
+                settings,
+                preloaded_secret=preloaded_api_key_secrets[connector_id],
+            )
+        else:
+            api_key = masked_api_key_for_response(client, connector_id, row, settings)
     except Exception:  # noqa: BLE001
         logger.exception("connector api key mask failed id=%s", connector_id)
         api_key = None
@@ -584,10 +595,23 @@ def list_connectors_route_alias(
             ),
         )
 
+    visible_rows = [row for row in list(q.data or []) if _visible_on_connectors_hub(row)]
+    # One batched connector_secrets read for every visible connector instead of
+    # one read per connector. On failure fall back to per-connector reads.
+    api_key_secrets: dict[str, str | None] | None
+    try:
+        api_key_secrets = get_decrypted_secrets_bulk(
+            client,
+            [str(row["id"]) for row in visible_rows if row.get("id") is not None],
+            "api_key",
+            settings,
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("connector api key bulk read failed org_id=%s", org_id)
+        api_key_secrets = None
+
     items: list[dict] = []
-    for row in list(q.data or []):
-        if not _visible_on_connectors_hub(row):
-            continue
+    for row in visible_rows:
         try:
             items.append(
                 _connector_response_item(
@@ -597,6 +621,7 @@ def list_connectors_route_alias(
                     client=client,
                     org_id=org_id,
                     force_live=live,
+                    preloaded_api_key_secrets=api_key_secrets,
                 )
             )
         except Exception:  # noqa: BLE001 — isolate poison rows

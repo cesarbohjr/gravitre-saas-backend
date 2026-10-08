@@ -9,7 +9,7 @@ import { GravitreAIWorkspaceHost } from "@/components/gravitre/ai-workspace-host
 
 const state = vi.hoisted(() => ({ pathname: "/e2e/shots/ai", summon: vi.fn() }))
 vi.mock("@/components/gravitre/ai-workspace-provider", () => ({ useGravitreAIWorkspace: () => ({ floatWorkspaceOpen: true, summonWorkspace: state.summon, pageContext: { pathname: state.pathname } }) }))
-vi.mock("@/app/ai/_components/ai-workspace", () => ({ AiWorkspace: () => {
+vi.mock("@/app/(app)/ai/_components/ai-workspace", () => ({ AiWorkspace: () => {
   const auth = useContext(AuthContext)
   return <div data-runtime="" data-user={auth?.user?.id ?? "none"} />
 } }))

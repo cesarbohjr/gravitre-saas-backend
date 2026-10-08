@@ -1,5 +1,6 @@
 """BE-00: Health check. No auth required."""
 import os
+import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request
@@ -17,7 +18,11 @@ def _ai_disabled_flag() -> bool:
         return False
 
 
+_database_latency_ms: float | None = None
+
+
 def _dependency_checks() -> dict[str, str]:
+    global _database_latency_ms
     checks: dict[str, str] = {}
 
     try:
@@ -26,7 +31,11 @@ def _dependency_checks() -> dict[str, str]:
 
         settings = get_settings()
         client = get_supabase_client(settings)
+        started = time.perf_counter()
         client.table("organizations").select("id").limit(1).execute()
+        # Round trip from this host to Supabase. Every sequential query on a page
+        # load pays it, so it shows whether the API and the database share a region.
+        _database_latency_ms = round((time.perf_counter() - started) * 1000, 1)
         checks["database"] = "healthy"
     except Exception as exc:  # noqa: BLE001
         checks["database"] = f"unhealthy: {type(exc).__name__}"
@@ -119,6 +128,8 @@ def health(request: Request) -> dict:
         "git_sha": os.environ.get("RAILWAY_GIT_COMMIT_SHA")
         or os.environ.get("GIT_SHA")
         or "unknown",
+        "region": os.environ.get("RAILWAY_REPLICA_REGION") or os.environ.get("FLY_REGION") or None,
+        "database_latency_ms": _database_latency_ms if checks.get("database") == "healthy" else None,
         "ai_disabled": _ai_disabled_flag(),
         "unified_turn_shadow_enabled": unified_shadow,
         "unified_turn_live_enabled": unified_live,

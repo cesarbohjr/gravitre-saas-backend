@@ -26,7 +26,7 @@ describe("surface action UX regressions", () => {
   })
 
   it("guards and resets profile photo uploads", () => {
-    const profile = readFileSync(resolve(webRoot, "app/settings/profile/page.tsx"), "utf8")
+    const profile = readFileSync(resolve(webRoot, "app/(app)/settings/profile/page.tsx"), "utf8")
     expect(profile).toMatch(/5 \* 1024 \* 1024/)
     expect(profile).toMatch(/setIsUploadingAvatar\(true\)/)
     expect(profile).toMatch(/hasProfilePhoto/)

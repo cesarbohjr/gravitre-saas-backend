@@ -18,7 +18,7 @@ describe("Play outcome UX", () => {
   })
 
   it("provides evidence drill-down", () => {
-    const c = read("app/plays/[key]/results/[outcomeId]/page.tsx")
+    const c = read("app/(app)/plays/[key]/results/[outcomeId]/page.tsx")
     expect(c).toMatch(/Source of record/)
     expect(c).toMatch(/Governance/)
     expect(c).toMatch(/Workflow run/)

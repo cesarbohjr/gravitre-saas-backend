@@ -10,7 +10,7 @@ function source(relative: string) {
 
 describe("Gravitre 3.0 chat surface", () => {
   it("redirects the legacy /ai destination to Home and summons the assistant", () => {
-    const page = source("app/ai/page.tsx")
+    const page = source("app/(app)/ai/page.tsx")
     expect(page).toContain("AiCompatibilityRedirect")
     expect(page).toContain("summonWorkspace")
     expect(page).toContain("router.replace(APP_ROUTES.home)")
@@ -45,14 +45,14 @@ describe("Gravitre 3.0 chat surface", () => {
   })
 
   it("deletes through optimistic cache mutation then the conversations API", () => {
-    const workspace = source("app/ai/_components/ai-workspace.tsx")
+    const workspace = source("app/(app)/ai/_components/ai-workspace.tsx")
     expect(workspace).toContain("optimisticRemoveConversations")
     expect(workspace).toContain("conversationsApi.delete")
     expect(workspace).toContain("conversationsApi.bulkDelete")
   })
 
   it("wires embedded exit controls and persists explicit window-mode changes", () => {
-    const workspace = source("app/ai/_components/ai-workspace.tsx")
+    const workspace = source("app/(app)/ai/_components/ai-workspace.tsx")
     expect(workspace).toContain('surface="embedded"')
     expect(workspace).toContain("openAsFloat")
     expect(workspace).toContain("choosePresentationMode")

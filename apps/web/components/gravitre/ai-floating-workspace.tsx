@@ -16,7 +16,7 @@
  * presence pill, drag, minimize-to-helper) and a fixed default size, and
  * renders whatever `children` it's given. It has no opinion about what
  * conversation is inside it — that's the caller's job (see
- * `apps/web/app/ai/_components/ai-workspace-float-bridge.tsx`, the only
+ * `apps/web/app/(app)/ai/_components/ai-workspace-float-bridge.tsx`, the only
  * current caller). This keeps the shell trivially testable in isolation and
  * keeps "is this really the same conversation" entirely a question about
  * what props the caller passes in, not about this file.

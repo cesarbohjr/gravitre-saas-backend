@@ -10,6 +10,7 @@ from app.billing.seat_context import assert_full_seat, resolve_seat_context
 from app.billing.service import get_org_billing, get_plan_for_org, get_supabase_client
 from app.config import Settings, get_settings
 from app.core.errors import error_detail
+from app.core.org_state_cache import cache_allowed, entitlements_cache, org_tag
 from app.core.safe_dict import safe_normalize_stored_dict
 
 TierName = str
@@ -184,10 +185,30 @@ def _as_bool(value: Any) -> bool:
 
 
 def resolve_entitlements(settings: Settings, org_id: str) -> dict[str, Any]:
-    """Resolve tier/limits from org_billing + billing_plans (same SoT as Billing UI)."""
+    """Resolve tier/limits from org_billing + billing_plans (same SoT as Billing UI).
+
+    Cached per org for ``ORG_STATE_CACHE_TTL_SECONDS`` when using the shared
+    production client; billing/plan/membership writes invalidate the org.
+    """
     client = get_supabase_client(settings)
-    plan = get_plan_for_org(client, org_id)
-    org_billing = get_org_billing(client, org_id) or {}
+    cacheable = entitlements_cache.enabled and cache_allowed(client)
+    cache_key = (str(org_id),)
+    if cacheable:
+        cached = entitlements_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        cache_token = entitlements_cache.token()
+    payload = _compute_entitlements(client, org_id)
+    if cacheable:
+        entitlements_cache.set(cache_key, payload, tags=(org_tag(org_id),), token=cache_token)
+    return payload
+
+
+def _compute_entitlements(client, org_id: str) -> dict[str, Any]:
+    # org_billing is read once and shared with the plan resolution.
+    org_billing_row = get_org_billing(client, org_id)
+    plan = get_plan_for_org(client, org_id, billing=org_billing_row)
+    org_billing = org_billing_row or {}
     subscription = _select_latest_subscription(client, org_id)
 
     tier = _normalize_tier(str(plan.get("code") or org_billing.get("plan_code") or "free"))

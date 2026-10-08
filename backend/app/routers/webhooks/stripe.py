@@ -21,6 +21,7 @@ from app.billing.webhook_idempotency import (
 )
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.core.org_state_cache import clear_org_state_caches, invalidate_org_state
 
 logger = get_logger(__name__)
 
@@ -268,6 +269,27 @@ def _process_stripe_event(
     event: Any,
 ) -> None:
     org_id = org_id or _resolve_org_id(client, data, metadata)
+    try:
+        _apply_stripe_event(client, settings, event_type, data, metadata, org_id, event)
+    finally:
+        # Billing/plan rows may have changed (even on a partial failure): drop the
+        # org's cached billing status / entitlements / me / billing-gate entries.
+        if org_id:
+            invalidate_org_state(org_id)
+        elif event_type == "customer.subscription.deleted":
+            # Fallback path matched rows by subscription id; the org is unknown.
+            clear_org_state_caches()
+
+
+def _apply_stripe_event(
+    client,
+    settings: Settings,
+    event_type: str,
+    data: dict[str, Any],
+    metadata: dict[str, Any],
+    org_id: str | None,
+    event: Any,
+) -> None:
 
     if event_type == "checkout.session.completed":
         from app.marketplace.entitlements import fulfill_entitlement_from_checkout

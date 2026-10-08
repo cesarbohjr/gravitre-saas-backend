@@ -14,6 +14,13 @@ from app.core.db import shared_service_client
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
 from app.core.logging import get_logger, request_id_ctx
+from app.core.sql_aggregates import (
+    UnexpectedRpcPayload,
+    fetch_all_rows,
+    is_missing_function_error,
+    log_fallback_once,
+    rpc_object,
+)
 from app.metrics.service import (
     connector_health_latency,
     connector_metrics,
@@ -39,31 +46,86 @@ def _validate_range(range_str: str | None) -> str:
     return r
 
 
+_OVERVIEW_COUNTS_RPC = "metrics_overview_counts"
+_OVERVIEW_COUNT_KEYS = (
+    "total_workflows",
+    "active_workflows",
+    "total_runs",
+    "completed_runs",
+    "failed_runs",
+    "duration_count",
+    "duration_sum_ms",
+    "total_connectors",
+    "active_connectors",
+)
+
+
+def _overview_counts_python(client: Client, org_id: str, start_at: Any, end_at: Any) -> dict[str, Any]:
+    """Fallback when the SQL function is not deployed: page every row (no 1000 cap)."""
+    wf_rows = fetch_all_rows(
+        lambda: client.table("workflow_defs").select("id, status").eq("org_id", org_id).order("id")
+    )
+    runs_rows = fetch_all_rows(
+        lambda: client.table("workflow_runs")
+        .select("id, status, duration_ms")
+        .eq("org_id", org_id)
+        .gte("created_at", start_at.isoformat())
+        .lt("created_at", end_at.isoformat())
+        .order("id")
+    )
+    connector_rows = fetch_all_rows(
+        lambda: client.table("connectors").select("id, status").eq("org_id", org_id).order("id")
+    )
+    durations = [float(r.get("duration_ms") or 0) for r in runs_rows if r.get("duration_ms") is not None]
+    return {
+        "total_workflows": len(wf_rows),
+        "active_workflows": len([w for w in wf_rows if w.get("status") == "active"]),
+        "total_runs": len(runs_rows),
+        "completed_runs": len([r for r in runs_rows if r.get("status") == "completed"]),
+        "failed_runs": len([r for r in runs_rows if r.get("status") == "failed"]),
+        "duration_count": len(durations),
+        "duration_sum_ms": sum(durations),
+        "total_connectors": len(connector_rows),
+        "active_connectors": len([c for c in connector_rows if (c.get("status") or "") == "active"]),
+    }
+
+
+def _overview_counts(client: Client, org_id: str, start_at: Any, end_at: Any) -> dict[str, Any]:
+    """Workflow/run/connector aggregates, computed in SQL when the RPC exists."""
+    try:
+        data = rpc_object(
+            client,
+            _OVERVIEW_COUNTS_RPC,
+            {"p_org_id": org_id, "p_start_at": start_at.isoformat(), "p_end_at": end_at.isoformat()},
+        )
+        counts: dict[str, Any] = {}
+        for key in _OVERVIEW_COUNT_KEYS:
+            raw = data.get(key)
+            if not isinstance(raw, (int, float)) or isinstance(raw, bool):
+                raise UnexpectedRpcPayload(f"{_OVERVIEW_COUNTS_RPC}.{key}={raw!r}")
+            counts[key] = raw
+        return counts
+    except UnexpectedRpcPayload as exc:
+        log_fallback_once(_OVERVIEW_COUNTS_RPC, f"unexpected_payload: {exc}")
+    except Exception as exc:
+        if not is_missing_function_error(exc):
+            raise
+        log_fallback_once(_OVERVIEW_COUNTS_RPC, "function_not_found")
+    return _overview_counts_python(client, org_id, start_at, end_at)
+
+
 def _build_dashboard_overview(client: Client, org_id: str, settings: Settings, rng: str) -> dict[str, Any]:
     """Flatten service metrics plus connector/run aggregates for the dashboard cards."""
     _, start_at, end_at = parse_range(rng)
     data = overview_metrics(settings, org_id, rng)
-    wf_rows = client.table("workflow_defs").select("id, status").eq("org_id", org_id).execute().data or []
-    runs_rows = (
-        client.table("workflow_runs")
-        .select("id, status, duration_ms, created_at")
-        .eq("org_id", org_id)
-        .gte("created_at", start_at.isoformat())
-        .lt("created_at", end_at.isoformat())
-        .execute()
-        .data
-        or []
-    )
-    connector_rows = (
-        client.table("connectors").select("id, status").eq("org_id", org_id).execute().data or []
-    )
+    counts = _overview_counts(client, org_id, start_at, end_at)
 
-    total_runs = len(runs_rows)
-    completed = len([r for r in runs_rows if r.get("status") == "completed"])
-    failed = len([r for r in runs_rows if r.get("status") == "failed"])
+    total_runs = int(counts["total_runs"])
+    completed = int(counts["completed_runs"])
+    failed = int(counts["failed_runs"])
     success_rate = round((completed / (completed + failed)) * 100, 2) if (completed + failed) > 0 else None
-    durations = [float(r.get("duration_ms") or 0) for r in runs_rows if r.get("duration_ms") is not None]
-    avg_duration = round(sum(durations) / len(durations), 2) if durations else 0
+    duration_count = int(counts["duration_count"])
+    avg_duration = round(float(counts["duration_sum_ms"]) / duration_count, 2) if duration_count else 0
 
     ingestion = data.get("ingestion") if isinstance(data.get("ingestion"), dict) else {}
     rag = data.get("rag") if isinstance(data.get("rag"), dict) else {}
@@ -71,7 +133,7 @@ def _build_dashboard_overview(client: Client, org_id: str, settings: Settings, r
     rag_total = int(rag.get("retrieval_requests_total") or 0)
     avg_latency = round(float(rag.get("avg_latency_ms") or 0), 2) if rag_total > 0 else avg_duration
 
-    active_connectors = len([c for c in connector_rows if (c.get("status") or "") == "active"])
+    active_connectors = int(counts["active_connectors"])
     health_latency = connector_health_latency(client, org_id)
     dashboard = dashboard_run_stats(
         client,
@@ -103,15 +165,15 @@ def _build_dashboard_overview(client: Client, org_id: str, settings: Settings, r
 
     data.update(
         {
-            "totalWorkflows": len(wf_rows),
-            "activeWorkflows": len([w for w in wf_rows if w.get("status") == "active"]),
+            "totalWorkflows": int(counts["total_workflows"]),
+            "activeWorkflows": int(counts["active_workflows"]),
             "totalRuns": total_runs,
             "successRate": success_rate,
             "avgDuration": avg_duration,
             "recordsProcessed": records_processed,
             "avgLatency": avg_latency,
             "activeConnectors": active_connectors,
-            "totalConnectors": len(connector_rows),
+            "totalConnectors": int(counts["total_connectors"]),
             "changes": dashboard.get("changes", {}),
             "trends": dashboard.get("trends", {}),
             "connectorHealthLatencyMs": health_latency.get("avg_latency_ms", 0.0),

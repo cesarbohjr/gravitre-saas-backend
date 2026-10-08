@@ -1,6 +1,6 @@
 "use client"
 
-import AgentChatPage from "@/app/agents/[id]/chat/page"
+import AgentChatPage from "@/app/(app)/agents/[id]/chat/page"
 
 /** Playwright harness: real agent-chat orchestrator with a fixture agent id. */
 export default function AgentChatProofPage() {

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import { RootProviders } from '@/components/root-providers'
 import { interDisplay } from '@/fonts/inter-display/inter'
 import { interDisplayMarketing } from '@/fonts/inter-display/inter-marketing'
@@ -77,6 +78,7 @@ export default async function RootLayout({
       <body className="font-sans antialiased">
         <RootProviders>{children}</RootProviders>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )

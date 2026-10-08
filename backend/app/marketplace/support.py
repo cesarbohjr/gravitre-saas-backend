@@ -11,6 +11,13 @@ from app.marketplace.browse import (
     resolve_browsable_asset,
 )
 from app.core.safe_dict import safe_normalize_stored_dict
+from app.core.sql_aggregates import (
+    UnexpectedRpcPayload,
+    fetch_all_rows,
+    is_missing_function_error,
+    log_fallback_once,
+    rpc_object,
+)
 
 _INSTALL_STATUSES = frozenset({"active", "failed", "uninstalled"})
 
@@ -198,10 +205,10 @@ def _refresh_asset_review_stats(client: Any, asset_id: str) -> None:
     ).eq("id", asset_id).execute()
 
 
-def _published_catalog_query(client: Any, org_id: str):
+def _published_catalog_query(client: Any, org_id: str, columns: str = BROWSE_LIST_COLUMNS):
     return (
         client.table("marketplace_assets")
-        .select(BROWSE_LIST_COLUMNS)
+        .select(columns)
         .eq("status", "published")
         .or_(f"visibility.eq.public,and(visibility.eq.internal,org_id.eq.{org_id})")
     )
@@ -680,23 +687,72 @@ def unsave_asset(
     return {"saved": False, "assetId": asset["id"]}
 
 
-def list_marketplace_categories(client: Any, org_id: str) -> dict[str, Any]:
-    result = (
-        _published_catalog_query(client, org_id)
-        .select("category, department, asset_type")
-        .execute()
+_CATEGORY_COUNTS_RPC = "marketplace_category_counts"
+_CATEGORY_COUNT_GROUPS = ("categories", "departments", "asset_types")
+_CATEGORY_COUNT_TOTALS = ("total_assets", "total_install_count", "total_clone_count")
+
+
+def _category_counts_python(client: Any, org_id: str) -> dict[str, Any]:
+    """Fallback when the SQL function is not deployed: page every row (no 1000 cap)."""
+    rows = fetch_all_rows(
+        lambda: _published_catalog_query(
+            client, org_id, "id, category, department, asset_type, install_count, clone_count"
+        ).order("id")
     )
     by_category: dict[str, int] = {}
     by_department: dict[str, int] = {}
     by_asset_type: dict[str, int] = {}
-    for row in result.data or []:
+    for row in rows:
         category = str(row.get("category") or "uncategorized")
         department = str(row.get("department") or "general")
         asset_type = str(row.get("asset_type") or "unknown")
         by_category[category] = by_category.get(category, 0) + 1
         by_department[department] = by_department.get(department, 0) + 1
         by_asset_type[asset_type] = by_asset_type.get(asset_type, 0) + 1
+    return {
+        "categories": by_category,
+        "departments": by_department,
+        "asset_types": by_asset_type,
+        "total_assets": len(rows),
+        "total_install_count": sum(int(row.get("install_count") or 0) for row in rows),
+        "total_clone_count": sum(int(row.get("clone_count") or 0) for row in rows),
+    }
 
+
+def _category_counts_rpc(client: Any, org_id: str) -> dict[str, Any]:
+    data = rpc_object(client, _CATEGORY_COUNTS_RPC, {"p_org_id": org_id})
+    out: dict[str, Any] = {}
+    for group in _CATEGORY_COUNT_GROUPS:
+        raw = data.get(group)
+        if not isinstance(raw, dict):
+            raise UnexpectedRpcPayload(f"{_CATEGORY_COUNTS_RPC}.{group} is {type(raw).__name__}")
+        counts: dict[str, int] = {}
+        for key, value in raw.items():
+            if not isinstance(value, int) or isinstance(value, bool):
+                raise UnexpectedRpcPayload(f"{_CATEGORY_COUNTS_RPC}.{group}[{key!r}]={value!r}")
+            counts[str(key)] = value
+        out[group] = counts
+    for key in _CATEGORY_COUNT_TOTALS:
+        total = data.get(key)
+        if not isinstance(total, int) or isinstance(total, bool):
+            raise UnexpectedRpcPayload(f"{_CATEGORY_COUNTS_RPC}.{key}={total!r}")
+        out[key] = total
+    return out
+
+
+def _category_counts(client: Any, org_id: str) -> dict[str, Any]:
+    try:
+        return _category_counts_rpc(client, org_id)
+    except UnexpectedRpcPayload as exc:
+        log_fallback_once(_CATEGORY_COUNTS_RPC, f"unexpected_payload: {exc}")
+    except Exception as exc:
+        if not is_missing_function_error(exc):
+            raise
+        log_fallback_once(_CATEGORY_COUNTS_RPC, "function_not_found")
+    return _category_counts_python(client, org_id)
+
+
+def _format_category_counts(counts: dict[str, Any]) -> dict[str, Any]:
     def _sorted_counts(values: dict[str, int]) -> list[dict[str, Any]]:
         return [
             {"key": key, "count": count}
@@ -704,15 +760,20 @@ def list_marketplace_categories(client: Any, org_id: str) -> dict[str, Any]:
         ]
 
     return {
-        "categories": _sorted_counts(by_category),
-        "departments": _sorted_counts(by_department),
-        "assetTypes": _sorted_counts(by_asset_type),
-        "totalAssets": len(result.data or []),
+        "categories": _sorted_counts(counts["categories"]),
+        "departments": _sorted_counts(counts["departments"]),
+        "assetTypes": _sorted_counts(counts["asset_types"]),
+        "totalAssets": counts["total_assets"],
     }
 
 
+def list_marketplace_categories(client: Any, org_id: str) -> dict[str, Any]:
+    return _format_category_counts(_category_counts(client, org_id))
+
+
 def marketplace_analytics_summary(client: Any, org_id: str) -> dict[str, Any]:
-    categories = list_marketplace_categories(client, org_id)
+    catalog_counts = _category_counts(client, org_id)
+    categories = _format_category_counts(catalog_counts)
 
     installs = (
         client.table("marketplace_installs")
@@ -734,13 +795,8 @@ def marketplace_analytics_summary(client: Any, org_id: str) -> dict[str, Any]:
         .execute()
     )
 
-    catalog_assets = (
-        _published_catalog_query(client, org_id)
-        .select("install_count, clone_count")
-        .execute()
-    )
-    total_install_count = sum(int(row.get("install_count") or 0) for row in (catalog_assets.data or []))
-    total_clone_count = sum(int(row.get("clone_count") or 0) for row in (catalog_assets.data or []))
+    total_install_count = catalog_counts["total_install_count"]
+    total_clone_count = catalog_counts["total_clone_count"]
 
     return {
         "catalog": {

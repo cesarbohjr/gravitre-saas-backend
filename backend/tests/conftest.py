@@ -114,12 +114,15 @@ def _clear_org_context_caches():
     """
     from app.auth.dependencies import clear_cached_service_client
     from app.auth.org_context_cache import clear_org_context_cache
+    from app.core.org_state_cache import clear_org_state_caches
 
     clear_org_context_cache()
     clear_cached_service_client()
+    clear_org_state_caches()
     yield
     clear_org_context_cache()
     clear_cached_service_client()
+    clear_org_state_caches()
 
 
 @pytest.fixture(autouse=True)

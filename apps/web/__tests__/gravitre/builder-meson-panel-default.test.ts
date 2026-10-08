@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
-const src = readFileSync(resolve(__dirname, "../../app/workflows/[id]/builder/page.tsx"), "utf8")
+const src = readFileSync(resolve(__dirname, "../../app/(app)/workflows/[id]/builder/page.tsx"), "utf8")
 
 describe("Workflow Builder inspector modes", () => {
   it("defaults the right inspector to Configure; Meson is a mode, not a permanent column", () => {

@@ -245,7 +245,7 @@ Known prod issue from audit risk table.`,
 Wire \`GET /categories\` facet counts to filter UI on browse page.
 
 ## Technical requirements
-- \`apps/web/app/marketplace/assets/page.tsx\`
+- \`apps/web/app/(app)/marketplace/assets/page.tsx\`
 - \`marketplaceApi.listAssets({ department, category, pricingType })\`
 
 ## Acceptance criteria
@@ -267,7 +267,7 @@ API client already supports filters; UI missing per v0 handoff spec.`,
 Shareable asset detail route; sync URL when drawer opens/closes.
 
 ## Technical requirements
-- \`apps/web/app/marketplace/assets/[slug]/page.tsx\` or parallel route
+- \`apps/web/app/(app)/marketplace/assets/[slug]/page.tsx\` or parallel route
 - Reuse detail drawer component from browse page
 
 ## Acceptance criteria
@@ -290,7 +290,7 @@ Wire \`GET /api/marketplace/analytics/summary\` proxy to a marketplace analytics
 
 ## Technical requirements
 - Add \`marketplaceApi.analyticsSummary\` in \`apps/web/lib/api.ts\`
-- New page under \`apps/web/app/marketplace/analytics/page.tsx\`
+- New page under \`apps/web/app/(app)/marketplace/analytics/page.tsx\`
 
 ## Acceptance criteria
 - [ ] Admin/org admin can view catalog + org install aggregates
@@ -449,7 +449,7 @@ Distinct from Stage 3 Gravitre public review queue.`,
 Internal marketplace admin queue (unified assets) — not partner connector admin page.
 
 ## Technical requirements
-- New page e.g. \`apps/web/app/marketplace/org-admin/page.tsx\`
+- New page e.g. \`apps/web/app/(app)/marketplace/org-admin/page.tsx\`
 - Lists \`pending_review\` org assets; approve/reject actions
 
 ## Dependencies

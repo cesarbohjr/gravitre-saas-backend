@@ -2,7 +2,7 @@
 import React, { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
-import AuditPage from "@/app/audit/page"
+import AuditPage from "@/app/(app)/audit/page"
 import type { AuditListResponse, AuditSummary } from "@/types/api"
 
 const mocks = vi.hoisted(() => ({

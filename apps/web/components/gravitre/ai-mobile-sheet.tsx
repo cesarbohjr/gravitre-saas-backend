@@ -14,7 +14,7 @@
  * mapping) — exactly like `GravitreFloatingWorkspace` (Phase 2) and
  * `GravitreAIWorkspaceShell` (Phase 3), which it mirrors structurally. It
  * has no opinion about what conversation is inside it; see
- * `apps/web/app/ai/_components/ai-mobile-sheet-bridge.tsx` for the only
+ * `apps/web/app/(app)/ai/_components/ai-mobile-sheet-bridge.tsx` for the only
  * current caller, which supplies the real, live `/ai` conversation.
  *
  * Snap points (`vaul`'s native mechanism, NOT custom touch handling — per

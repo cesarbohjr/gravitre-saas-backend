@@ -38,7 +38,7 @@ type Member = User & { role: string }
 export default function ManageOrganizationsPage() {
   const { user } = useAuth()
   // Controls which tiers the settings rail exposes.
-  const { isAdmin } = useOrgAdmin()
+  const { showAdmin } = useOrgAdmin()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showMembersDialog, setShowMembersDialog] = useState(false)
   // Bug fix (2026-09-11): this used to start at `null` and fall back to
@@ -220,7 +220,7 @@ export default function ManageOrganizationsPage() {
   if (!user) {
     return (
       <AppShell title="Settings">
-        <SettingsShell activeSection="organizations" isAdmin={isAdmin} hideHeader>
+        <SettingsShell activeSection="organizations" isAdmin={showAdmin} hideHeader>
           <div className="px-6 py-12">
             <p className={TYPE.sectionTitle}>Sign in required</p>
             <p className={cn(TYPE.pageLead, "mt-2")}>Sign in to manage organizations and members.</p>
@@ -232,7 +232,7 @@ export default function ManageOrganizationsPage() {
 
   return (
     <AppShell title="Settings">
-      <SettingsShell activeSection="organizations" isAdmin={isAdmin} hideHeader>
+      <SettingsShell activeSection="organizations" isAdmin={showAdmin} hideHeader>
       <GravitrePageHeader
         className="!px-0 border-b-0 mb-6"
         title="Organizations"

@@ -8,7 +8,7 @@ from fastapi import Depends, HTTPException, status
 from supabase import Client
 
 from app.auth.dependencies import get_org_context
-from app.billing.service import get_org_billing, get_supabase_client, normalize_plan_code
+from app.billing.service import UNSET, get_org_billing, get_supabase_client, normalize_plan_code
 from app.config import Settings, get_settings
 
 PLAN_REQUIRED_ERROR = "plan_required"
@@ -72,10 +72,8 @@ def _parse_iso_datetime(value: Any) -> datetime | None:
     return dt.astimezone(timezone.utc)
 
 
-def _load_trial_ends_at(client: Client, org_id: str, billing: dict[str, Any]) -> datetime | None:
-    trial_ends_at = _parse_iso_datetime(billing.get("current_period_end"))
-    if trial_ends_at:
-        return trial_ends_at
+def load_org_settings(client: Client, org_id: str) -> dict[str, Any] | None:
+    """organizations.settings for ``org_id`` (None when the org row is missing)."""
     org_row = (
         client.table("organizations")
         .select("settings")
@@ -88,32 +86,52 @@ def _load_trial_ends_at(client: Client, org_id: str, billing: dict[str, Any]) ->
     if not org_row:
         return None
     settings = org_row[0].get("settings") or {}
-    billing_settings = settings.get("billing") if isinstance(settings, dict) else {}
+    return settings if isinstance(settings, dict) else {}
+
+
+def _trial_ends_at_from_settings(org_settings: dict[str, Any] | None) -> datetime | None:
+    if not org_settings:
+        return None
+    billing_settings = org_settings.get("billing")
     if isinstance(billing_settings, dict):
         return _parse_iso_datetime(billing_settings.get("trial_ends_at"))
     return None
 
 
-def _is_sandbox_exempt(client: Client, org_id: str) -> bool:
-    org_row = (
-        client.table("organizations")
-        .select("settings")
-        .eq("id", org_id)
-        .limit(1)
-        .execute()
-        .data
-        or []
-    )
-    if not org_row:
+def _sandbox_exempt_from_settings(org_settings: dict[str, Any] | None) -> bool:
+    if not isinstance(org_settings, dict):
         return False
-    settings = org_row[0].get("settings") or {}
-    if not isinstance(settings, dict):
-        return False
-    billing_settings = settings.get("billing") or {}
+    billing_settings = org_settings.get("billing") or {}
     if isinstance(billing_settings, dict) and billing_settings.get("sandbox_exempt"):
         return True
-    marketplace = settings.get("marketplace") or {}
+    marketplace = org_settings.get("marketplace") or {}
     return isinstance(marketplace, dict) and bool(marketplace.get("sandbox"))
+
+
+def _load_trial_ends_at(
+    client: Client,
+    org_id: str,
+    billing: dict[str, Any],
+    *,
+    org_settings: dict[str, Any] | None = UNSET,
+) -> datetime | None:
+    trial_ends_at = _parse_iso_datetime(billing.get("current_period_end"))
+    if trial_ends_at:
+        return trial_ends_at
+    if org_settings is UNSET:
+        org_settings = load_org_settings(client, org_id)
+    return _trial_ends_at_from_settings(org_settings)
+
+
+def _is_sandbox_exempt(
+    client: Client,
+    org_id: str,
+    *,
+    org_settings: dict[str, Any] | None = UNSET,
+) -> bool:
+    if org_settings is UNSET:
+        org_settings = load_org_settings(client, org_id)
+    return _sandbox_exempt_from_settings(org_settings)
 
 
 # Authoritative block-reason precedence when multiple signals apply (highest wins first):
@@ -193,13 +211,29 @@ def resolve_billing_state(
     }
 
 
-def get_org_billing_state(client: Client, org_id: str) -> dict[str, Any]:
-    billing = get_org_billing(client, org_id) or {
+def get_org_billing_state(
+    client: Client,
+    org_id: str,
+    *,
+    billing: dict[str, Any] | None = UNSET,
+    org_settings: dict[str, Any] | None = UNSET,
+) -> dict[str, Any]:
+    """Authoritative billing state.
+
+    ``billing`` (the org_billing row, or None for no row) and ``org_settings``
+    (organizations.settings, or None for no org row) may be passed when the
+    caller already loaded them in this request; otherwise each is read once.
+    """
+    if billing is UNSET:
+        billing = get_org_billing(client, org_id)
+    billing = billing or {
         "plan_code": "node",
         "billing_status": "trialing",
     }
-    trial_ends_at = _load_trial_ends_at(client, org_id, billing)
-    sandbox_exempt = _is_sandbox_exempt(client, org_id)
+    if org_settings is UNSET:
+        org_settings = load_org_settings(client, org_id)
+    trial_ends_at = _load_trial_ends_at(client, org_id, billing, org_settings=org_settings)
+    sandbox_exempt = _is_sandbox_exempt(client, org_id, org_settings=org_settings)
     return resolve_billing_state(
         billing_row=billing,
         trial_ends_at=trial_ends_at,

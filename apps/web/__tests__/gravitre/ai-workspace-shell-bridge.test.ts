@@ -67,7 +67,7 @@ vi.mock("@/components/gravitre/ai-workspace-shell", () => ({
 import {
   GravitreAIWorkspaceShellBridge,
   type GravitreAIWorkspaceShellBridgeProps,
-} from "@/app/ai/_components/ai-workspace-shell-bridge"
+} from "@/app/(app)/ai/_components/ai-workspace-shell-bridge"
 
 let container: HTMLDivElement
 let root: Root | null = null

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, startTransition } from "react"
+import { useState, useEffect, useRef, startTransition } from "react"
 import useSWR, { mutate } from "swr"
 import Link from "next/link"
 import { Sidebar } from "./sidebar"
@@ -22,6 +22,12 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { clearCachedBillingStatus, readCachedBillingStatus, writeCachedBillingStatus } from "@/lib/billing-status-cache"
 import { familyHidesTopBar, resolvePageFamily } from "@/lib/page-family"
+import {
+  AppShellHostProvider,
+  useAppShellHost,
+  useAppShellOptions,
+  useInsideAppShell,
+} from "@/components/gravitre/app-shell-context"
 import type { OnboardingProgress } from "@/types/api"
 import { TrialExpiredBanner } from "@/components/billing/trial-expired-banner"
 import { UpgradeModal } from "@/components/billing/upgrade-modal"
@@ -94,8 +100,54 @@ function readNavExpandedPreference(): boolean {
   return localStorage.getItem(NAV_EXPANDED_STORAGE_KEY) === "true"
 }
 
-export function AppShell({ children, title, fillViewport = false }: AppShellProps) {
+/**
+ * Per-page shell declaration.
+ *
+ * Under `app/(app)/layout.tsx` the chrome is already mounted once by
+ * `PersistentAppShell`; here we only register this page's options (title,
+ * breadcrumb vendor, full-viewport mode) and render the page body, so the
+ * sidebar, top bar and their fetches survive navigation and no page can render
+ * a second shell. Outside a persistent host (e.g. the /e2e screenshot harness,
+ * which renders real pages under its own layout) it falls back to rendering the
+ * full chrome itself, exactly as before.
+ */
+export function AppShell({ children, title, breadcrumbVendor, fillViewport = false }: AppShellProps) {
+  const insideHost = useInsideAppShell()
+  useAppShellOptions({ title, breadcrumbVendor, fillViewport })
+  if (insideHost) return <>{children}</>
+  return (
+    <AppShellFrame title={title} fillViewport={fillViewport}>
+      {children}
+    </AppShellFrame>
+  )
+}
+
+/**
+ * The signed-in chrome, mounted once for every route in the `(app)` group.
+ * Pages set its options through `<AppShell …>` / `useAppShellOptions`.
+ */
+export function PersistentAppShell({ children }: { children: React.ReactNode }) {
+  const { host, options } = useAppShellHost()
+  return (
+    <AppShellHostProvider host={host}>
+      <AppShellFrame title={options.title} fillViewport={options.fillViewport ?? false} persistent>
+        {children}
+      </AppShellFrame>
+    </AppShellHostProvider>
+  )
+}
+
+interface AppShellFrameProps {
+  children: React.ReactNode
+  title?: string
+  fillViewport: boolean
+  /** Mounted by the route-group layout and kept across navigations. */
+  persistent?: boolean
+}
+
+function AppShellFrame({ children, title, fillViewport, persistent = false }: AppShellFrameProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const mainRef = useRef<HTMLElement>(null)
   const [navExpanded, setNavExpanded] = useState(false)
   const [goalWizardOpen, setGoalWizardOpen] = useState(false)
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(
@@ -135,6 +187,14 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
   const { user, loading } = useAuth()
 
   useGlobalWorkShortcuts()
+
+  // The persistent shell outlives pages: close the mobile drawer and reset the
+  // scroll container on a route change, as a fresh per-page shell used to.
+  useEffect(() => {
+    if (!persistent) return
+    setSidebarOpen(false)
+    mainRef.current?.scrollTo?.({ top: 0 })
+  }, [pathname, persistent])
 
   useEffect(() => {
     setNavExpanded(readNavExpandedPreference())
@@ -493,6 +553,7 @@ export function AppShell({ children, title, fillViewport = false }: AppShellProp
           )}
 
           <main
+            ref={mainRef}
             className={cn(
               // min-w-0 + overflow-x-hidden stop any wide inner child (tables,
               // flex rows, charts) from forcing the whole viewport wider than

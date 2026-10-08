@@ -2,7 +2,7 @@
 import React, { act } from "react"
 import { createRoot } from "react-dom/client"
 import { expect, it, vi } from "vitest"
-import ApprovalsPage from "@/app/approvals/page"
+import ApprovalsPage from "@/app/(app)/approvals/page"
 import { SHOT_FIXTURES } from "@/lib/e2e-shot-fixtures"
 const state = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }))
 vi.mock("next/navigation", () => {

@@ -64,7 +64,7 @@ export default function FederationPage() {
 
 function FederationContent() {
   const { user, loading: authLoading } = useAuth()
-  const { isAdmin, loading: adminLoading } = useOrgAdmin()
+  const { isAdmin, showAdmin, loading: adminLoading } = useOrgAdmin()
   const currentOrgId = getSelectedOrgFromStorage()?.id
   const [inviteOpen, setInviteOpen] = useState(false)
   const [handoffOpen, setHandoffOpen] = useState(false)
@@ -209,7 +209,7 @@ function FederationContent() {
   ]
 
   return (
-    <SettingsShell activeSection="federation" isAdmin={isAdmin} hideHeader>
+    <SettingsShell activeSection="federation" isAdmin={showAdmin} hideHeader>
     <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       <GravitrePageHeader
         title="Federation & B2B"

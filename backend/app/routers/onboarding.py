@@ -159,6 +159,11 @@ def _save_org_settings(client, org_id: str, settings_value: dict) -> None:
     except Exception as exc:  # noqa: BLE001
         if not _is_missing_table_error(exc):
             raise HTTPException(status_code=500, detail=str(exc)) from exc
+    finally:
+        # Onboarding / billing settings feed /api/auth/me and /api/billing/status.
+        from app.core.org_state_cache import invalidate_org_state
+
+        invalidate_org_state(org_id)
 
 
 @router.get("")

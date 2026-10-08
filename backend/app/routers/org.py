@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from supabase import create_client
 from app.core.db import shared_service_client
+from app.core.org_state_cache import invalidate_org_and_users, invalidate_org_state, invalidate_user_state
 
 from app.auth.dependencies import get_current_user, require_admin
 from app.auth.platform_admin import is_org_admin_role
@@ -230,6 +231,7 @@ def update_member(
             )
 
     client.table("organization_members").update({"role": body.role}).eq("id", mid).execute()
+    invalidate_org_and_users(org_id, [str(row["user_id"])])
     write_audit_event(
         client,
         org_id=org_id,
@@ -279,6 +281,7 @@ def remove_member(
             )
 
     client.table("organization_members").delete().eq("id", mid).execute()
+    invalidate_org_and_users(org_id, [str(row["user_id"])])
     write_audit_event(
         client,
         org_id=org_id,
@@ -364,6 +367,7 @@ def create_organization(
     client.table("organization_members").insert(
         {"id": str(uuid4()), "org_id": org_id, "user_id": current_user["user_id"], "role": "owner"}
     ).execute()
+    invalidate_org_and_users(org_id, [current_user["user_id"]])
     return _normalize_org_row(org_row)
 
 
@@ -403,6 +407,7 @@ def update_organization(
         .eq("id", org_id_str)
         .execute()
     )
+    invalidate_org_state(org_id_str)
     if not updated.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
     return _normalize_org_row(updated.data[0])
@@ -418,6 +423,7 @@ def delete_organization(
     client = shared_service_client(settings, create_client)
     _require_org_admin(client, org_id_str, current_user["user_id"])
     client.table("organizations").delete().eq("id", org_id_str).execute()
+    invalidate_org_and_users(org_id_str, [current_user["user_id"]])
     return {"ok": True}
 
 
@@ -430,6 +436,8 @@ def switch_organization(
     org_id_str = str(org_id)
     client = shared_service_client(settings, create_client)
     _require_org_member(client, org_id_str, current_user["user_id"])
+    # The selected org changes what /api/auth/me reports for this user.
+    invalidate_user_state(current_user["user_id"])
 
     now = datetime.now(timezone.utc)
     token = jwt.encode(
@@ -555,6 +563,7 @@ def update_organization_member_role(
         .eq("user_id", member_user_id)
         .execute()
     )
+    invalidate_org_and_users(org_id_str, [member_user_id])
     if not updated.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
     return {"ok": True}
@@ -572,6 +581,7 @@ def remove_organization_member(
     client = shared_service_client(settings, create_client)
     _require_org_admin(client, org_id_str, current_user["user_id"])
     client.table("organization_members").delete().eq("org_id", org_id_str).eq("user_id", member_user_id).execute()
+    invalidate_org_and_users(org_id_str, [member_user_id])
     return {"ok": True}
 
 
@@ -594,4 +604,5 @@ def transfer_organization_ownership(
         client.table("organization_members").update({"role": "member"}).eq("org_id", org_id_str).eq(
             "user_id", current_user["user_id"]
         ).execute()
+    invalidate_org_and_users(org_id_str, [body.new_owner_id, current_user["user_id"]])
     return {"ok": True}
