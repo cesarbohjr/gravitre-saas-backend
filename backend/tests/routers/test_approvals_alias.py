@@ -126,3 +126,59 @@ def test_approvals_reject_alias_forwards_environment(monkeypatch: pytest.MonkeyP
 
     assert response.status_code == 200
     assert captured["environment_name"] == "production"
+
+
+class _ChatApprovalTable:
+    def __init__(self, store: dict) -> None:
+        self.store = store
+        self._update: dict | None = None
+
+    def select(self, *_a, **_k):
+        return self
+
+    def update(self, values: dict):
+        self._update = values
+        return self
+
+    def eq(self, *_a, **_k):
+        return self
+
+    def limit(self, *_a, **_k):
+        return self
+
+    def execute(self):
+        if self._update is not None:
+            self.store["update"] = self._update
+            return type("R", (), {"data": []})()
+        return type("R", (), {"data": [self.store["row"]]})()
+
+
+class _ChatApprovalClient:
+    def __init__(self, store: dict) -> None:
+        self.store = store
+
+    def table(self, name: str):
+        assert name == "approvals"
+        return _ChatApprovalTable(self.store)
+
+
+def test_approvals_reject_alias_closes_chat_connector_write(monkeypatch: pytest.MonkeyPatch):
+    run_id = uuid4()
+    store = {"row": {"id": str(run_id), "type": "connector_chat", "status": "pending", "context": {}}}
+
+    async def must_not_run(*_a, **_k):
+        raise AssertionError("workflow reject must not run for chat writes")
+
+    monkeypatch.setattr(workflows_module, "reject_run", must_not_run)
+    monkeypatch.setattr(workflows_module, "get_supabase_client", lambda _settings: _ChatApprovalClient(store))
+    monkeypatch.setattr(workflows_module, "get_plan_for_org", lambda _client, _org: {"features": {"approvals": True}})
+    monkeypatch.setattr(workflows_module, "require_feature", lambda _plan, _feature: None)
+    monkeypatch.setattr("app.workflows.policy.get_user_role", lambda *_a, **_k: "admin")
+
+    _authenticate()
+    response = client.post(f"/api/approvals/{run_id}/reject", json={"comment": "Wrong list"})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "rejected"
+    assert store["update"]["status"] == "rejected"
+    assert store["update"]["context"] == {"rejection_reason": "Wrong list"}

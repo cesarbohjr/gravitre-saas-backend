@@ -3932,6 +3932,55 @@ async def reject_run_alias(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = get_supabase_client(settings)
     require_feature(get_plan_for_org(client, org_id), "approvals")
+
+    # Chat connector writes share this URL shape; rejecting one closes it without running.
+    chat_rows: list[dict] = []
+    try:
+        chat_rows = (
+            client.table("approvals")
+            .select("id, type, status, context")
+            .eq("id", str(run_id))
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:  # noqa: BLE001 — workflow-run mocks may not expose approvals table
+        chat_rows = []
+    if chat_rows and str(chat_rows[0].get("type") or "") == "connector_chat":
+        from app.auth.platform_admin import is_org_admin_role
+        from app.workflows.policy import PolicyResolutionError, get_user_role
+
+        if str(chat_rows[0].get("status") or "") != "pending":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Approval already resolved")
+        try:
+            role = get_user_role(client, org_id, str(current_user.get("user_id") or ""))
+        except PolicyResolutionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+        if not is_org_admin_role(role):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin approval required")
+        ctx = chat_rows[0].get("context") if isinstance(chat_rows[0].get("context"), dict) else {}
+        update: dict = {
+            "status": "rejected",
+            "reviewed_by": str(current_user.get("user_id") or ""),
+            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if body.comment:
+            update["context"] = {**ctx, "rejection_reason": body.comment}
+        client.table("approvals").update(update).eq("id", str(run_id)).eq("org_id", org_id).execute()
+        conversation_id = str(ctx.get("conversation_id") or "")
+        if conversation_id:
+            from app.services.conversation_state_service import get_conversation_state_service
+
+            await get_conversation_state_service(settings).update_task_state(
+                conversation_id,
+                org_id,
+                {"pending_task": None},
+                client=client,
+            )
+        return {"success": True, "approval_id": str(run_id), "status": "rejected", "message": "Rejected. Nothing was written."}
+
     extension = _decide_extension_approval_or_none(
         client,
         settings,
