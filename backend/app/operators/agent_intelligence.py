@@ -3846,6 +3846,7 @@ class AgentIntelligence:
                 # Already resolved above (off-thread, cache-backed for spoken
                 # non-write turns); re-deriving it here cost a blocking 1.6s.
                 connected_integrations=list(connected_early or []),
+                spoken_tier=conversation_tier.tier if spoken_mode else None,
             )
 
         # LIVE is discarded on ~48% of turns (audit: unified_turn.live.fallthrough,
@@ -4934,6 +4935,7 @@ class AgentIntelligence:
                 mode=requested_mode,
                 research_scope=research_scope,
                 connected_integrations=list(connected_early or []),
+                spoken_tier=conversation_tier.tier if spoken_mode else None,
             )
 
         turn_ctx, _compiled_meta = await compile_assistant_turn_context(
