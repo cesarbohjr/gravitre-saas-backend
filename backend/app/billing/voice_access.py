@@ -89,4 +89,7 @@ def set_voice_org_enabled(client, *, org_id: str, enabled: bool) -> dict[str, An
             ).execute()
     except Exception:
         pass
+    from app.core.org_state_cache import invalidate_org_state
+
+    invalidate_org_state(org_id)
     return load_voice_org_settings(client, org_id=org_id)

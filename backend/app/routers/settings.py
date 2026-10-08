@@ -12,6 +12,7 @@ from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
+from app.core.org_state_cache import invalidate_org_state
 from app.core.supabase_response import response_error
 from app.services.org_member_invite_service import invite_org_member_by_email
 from app.services.model_policy_service import load_org_model_policy, normalize_model_policy, save_org_model_policy
@@ -138,6 +139,7 @@ def update_settings_route(
     _user, org_id = _admin
     client = shared_service_client(settings, create_client)
     updated = client.table("organizations").update({"settings": body.settings}).eq("id", org_id).execute()
+    invalidate_org_state(org_id)
     if not updated.data:
         raise HTTPException(status_code=404, detail="Organization not found")
     write_audit_event(
@@ -803,6 +805,7 @@ def update_meson_addons_route(
         .upsert({"org_id": org_id, "meson_addons": sorted(enabled)}, on_conflict="org_id")
         .execute()
     )
+    invalidate_org_state(org_id)
     if response_error(updated):
         raise HTTPException(status_code=500, detail=str(response_error(updated)))
     if not updated.data:
@@ -855,6 +858,7 @@ def update_voice_access_route(
                 detail="Enable org voice before turning on auto top-up",
             )
         client.table("subscriptions").upsert(patch, on_conflict="org_id").execute()
+        invalidate_org_state(org_id)
     return {"voice": load_voice_org_settings(client, org_id=org_id)}
 
 

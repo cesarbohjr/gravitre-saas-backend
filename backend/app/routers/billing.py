@@ -40,6 +40,12 @@ from app.billing.stripe import (
 from app.config import Settings, get_settings
 from app.core.errors import error_detail
 from app.core.logging import get_logger
+from app.core.org_state_cache import (
+    billing_status_cache,
+    cache_allowed,
+    invalidate_org_state,
+    org_tag,
+)
 from app.workflows.audit import write_audit_event
 
 logger = get_logger(__name__)
@@ -77,6 +83,7 @@ def _create_stripe_customer(settings: Settings, client, org_id: str, user_id: st
             "billing_status": "trialing",
         }
     ).execute()
+    invalidate_org_state(org_id)
     return customer_id
 
 
@@ -318,12 +325,14 @@ def _reconcile_plan_from_stripe(
             ).eq("org_id", org_id).execute()
             client.table("org_billing").upsert(org_billing_payload, on_conflict="org_id").execute()
         except Exception as exc:  # noqa: BLE001
+            invalidate_org_state(org_id)
             logger.error(
                 "stripe reconcile cancel upsert failed org_id=%s error=%s",
                 org_id,
                 exc,
             )
             return None
+        invalidate_org_state(org_id)
         return DEFAULT_PLAN_CODE
 
     plan_code = _resolve_plan_code(settings, data, metadata)
@@ -360,6 +369,7 @@ def _reconcile_plan_from_stripe(
         ).eq("org_id", org_id).execute()
         client.table("org_billing").upsert(org_billing_payload, on_conflict="org_id").execute()
     except Exception as exc:  # noqa: BLE001
+        invalidate_org_state(org_id)
         logger.error(
             "stripe reconcile upsert failed org_id=%s plan=%s price=%s error=%s",
             org_id,
@@ -368,6 +378,7 @@ def _reconcile_plan_from_stripe(
             exc,
         )
         return None
+    invalidate_org_state(org_id)
     return plan_code
 
 
@@ -561,10 +572,13 @@ def _persist_subscription_status(
     if period_end:
         payload["current_period_end"] = period_end
 
-    _execute_billing_query(
-        client.table("subscriptions").upsert(payload, on_conflict="org_id"),
-        action="subscriptions.upsert",
-    )
+    try:
+        _execute_billing_query(
+            client.table("subscriptions").upsert(payload, on_conflict="org_id"),
+            action="subscriptions.upsert",
+        )
+    finally:
+        invalidate_org_state(org_id)
     response = _execute_billing_query(
         client.table("subscriptions").select("*").eq("org_id", org_id).limit(1),
         action="subscriptions.select",
@@ -701,6 +715,7 @@ async def billing_overview(
                 "stripe_subscription_id": billing_row.get("stripe_subscription_id"),
             }
             insert_resp = client.table("subscriptions").insert(seed).execute()
+            invalidate_org_state(org_id)
             subscription_row = (insert_resp.data or [seed])[0]
         else:
             seed = {
@@ -711,6 +726,7 @@ async def billing_overview(
                 "lite_seats": 0,
             }
             insert_resp = client.table("subscriptions").insert(seed).execute()
+            invalidate_org_state(org_id)
             subscription_row = (insert_resp.data or [seed])[0]
 
     canonical_tier = _canonical_plan_code(client, org_id, subscription_row)
@@ -744,6 +760,7 @@ async def billing_overview(
             client.table("subscriptions").update(
                 {"tier": canonical_tier, "updated_at": datetime.now(timezone.utc).isoformat()}
             ).eq("org_id", org_id).execute()
+            invalidate_org_state(org_id)
             subscription_row = {**(subscription_row or {}), "tier": canonical_tier}
         except Exception:
             subscription_row = {**(subscription_row or {}), "tier": canonical_tier}
@@ -759,6 +776,7 @@ async def billing_overview(
                         "updated_at": datetime.now(timezone.utc).isoformat(),
                     }
                 ).eq("org_id", org_id).execute()
+                invalidate_org_state(org_id)
             except Exception:
                 pass
             subscription_row = {**(subscription_row or {}), "status": "canceled"}
@@ -810,10 +828,27 @@ def get_billing_status(
     if org_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     client = get_supabase_client(settings)
-    billing = get_org_billing(client, org_id) or {"plan_code": DEFAULT_PLAN_CODE, "billing_status": "trialing"}
-    base_plan = get_base_plan_for_org(client, org_id)
+    cacheable = billing_status_cache.enabled and cache_allowed(client)
+    cache_key = (org_id, environment)
+    if cacheable:
+        cached = billing_status_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        cache_token = billing_status_cache.token()
+    payload = _compute_billing_status(client, org_id, environment)
+    if cacheable:
+        billing_status_cache.set(cache_key, payload, tags=(org_tag(org_id),), token=cache_token)
+    return payload
+
+
+def _compute_billing_status(client, org_id: str, environment: str) -> dict:
+    # Each row is read once per request and handed to the helpers (they used to
+    # re-read org_billing ~4x and organizations ~3x).
+    billing_row = get_org_billing(client, org_id)
+    billing = billing_row or {"plan_code": DEFAULT_PLAN_CODE, "billing_status": "trialing"}
+    base_plan = get_base_plan_for_org(client, org_id, billing=billing_row)
     overrides = get_org_billing_overrides(client, org_id)
-    plan = get_plan_for_org(client, org_id)
+    plan = get_plan_for_org(client, org_id, base_plan=base_plan, overrides=overrides)
     period_start, period_end = get_current_period()
     usage = get_usage_totals(client, org_id, period_start, period_end, environment)
     ai_used = usage.get("ai_credits", 0)
@@ -824,25 +859,17 @@ def get_billing_status(
     run_warn = usage_warning(runs_used, runs_included)
     billing_status = normalize_billing_status(billing.get("billing_status"))
     plan_code = (billing.get("plan_code") or DEFAULT_PLAN_CODE).strip().lower()
+    from app.billing.entitlement_service import load_org_settings
+
+    org_settings = load_org_settings(client, org_id)
     trial_ends_at = billing.get("current_period_end")
-    if billing_status == "trialing" and not trial_ends_at:
-        org_row = (
-            client.table("organizations")
-            .select("settings")
-            .eq("id", org_id)
-            .limit(1)
-            .execute()
-            .data
-            or []
-        )
-        if org_row:
-            org_settings = org_row[0].get("settings") or {}
-            billing_settings = org_settings.get("billing") if isinstance(org_settings, dict) else {}
-            if isinstance(billing_settings, dict):
-                trial_ends_at = billing_settings.get("trial_ends_at")
+    if billing_status == "trialing" and not trial_ends_at and org_settings:
+        billing_settings = org_settings.get("billing")
+        if isinstance(billing_settings, dict):
+            trial_ends_at = billing_settings.get("trial_ends_at")
     from app.billing.entitlement_service import get_org_billing_state
 
-    billing_state = get_org_billing_state(client, org_id)
+    billing_state = get_org_billing_state(client, org_id, billing=billing_row, org_settings=org_settings)
     if billing_state["is_blocked"]:
         reason = (
             "trial_expired"
@@ -1200,6 +1227,7 @@ def update_seats(
         .upsert({"org_id": org_id, "seat_count": body.quantity, "updated_at": datetime.now(timezone.utc).isoformat()}, on_conflict="org_id")
         .execute()
     )
+    invalidate_org_state(org_id)
     resp_err = getattr(response, "error", None)
     if resp_err:
         raise HTTPException(status_code=500, detail=str(resp_err))
@@ -1269,6 +1297,7 @@ async def cancel_subscription(
         client.table("org_billing").upsert(org_update, on_conflict="org_id"),
         action="org_billing.upsert_cancel",
     )
+    invalidate_org_state(org_id)
     upsert_err = _supabase_response_error(upsert_resp)
     if upsert_err:
         raise HTTPException(
@@ -1360,6 +1389,7 @@ async def reactivate_subscription(
         ),
         action="org_billing.upsert_reactivate",
     )
+    invalidate_org_state(org_id)
     reactivate_err = _supabase_response_error(reactivate_resp)
     if reactivate_err:
         raise HTTPException(

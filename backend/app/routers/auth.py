@@ -12,9 +12,16 @@ from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.billing.entitlements import compute_app_access, normalize_billing_status
-from app.billing.service import DEFAULT_PLAN_CODE, get_org_billing
+from app.billing.service import DEFAULT_PLAN_CODE, UNSET, get_org_billing
 from app.config import Settings, get_settings
 from app.services.org_membership import load_user_organizations, pick_default_org_id, load_user_primary_org_id
+from app.core.org_state_cache import (
+    auth_me_cache,
+    cache_allowed,
+    invalidate_user_state,
+    org_tag,
+    user_tag,
+)
 from app.core.supabase_response import response_error
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -59,9 +66,7 @@ def _resolve_role(client, org_id: str | None, user_id: str) -> str | None:
     return None
 
 
-def _load_onboarding_summary(client, org_id: str | None) -> dict:
-    if not org_id:
-        return {"seeded": False, "completed_at": None, "checklist_dismissed": False}
+def _load_org_settings_row(client, org_id: str) -> dict | None:
     org_resp = (
         client.table("organizations")
         .select("settings")
@@ -70,8 +75,18 @@ def _load_onboarding_summary(client, org_id: str | None) -> dict:
         .execute()
     )
     if not org_resp.data:
+        return None
+    return org_resp.data[0].get("settings") or {}
+
+
+def _load_onboarding_summary(client, org_id: str | None, *, org_settings=UNSET) -> dict:
+    if not org_id:
         return {"seeded": False, "completed_at": None, "checklist_dismissed": False}
-    settings = org_resp.data[0].get("settings") or {}
+    if org_settings is UNSET:
+        org_settings = _load_org_settings_row(client, org_id)
+    if org_settings is None:
+        return {"seeded": False, "completed_at": None, "checklist_dismissed": False}
+    settings = org_settings
     onboarding = settings.get("onboarding") if isinstance(settings, dict) else {}
     if not isinstance(onboarding, dict):
         onboarding = {}
@@ -82,14 +97,15 @@ def _load_onboarding_summary(client, org_id: str | None) -> dict:
     }
 
 
-def _load_billing_summary(client, org_id: str | None) -> dict:
+def _load_billing_summary(client, org_id: str | None, *, org_settings=UNSET) -> dict:
     if not org_id:
         return {
             "status": "inactive",
             "plan_code": DEFAULT_PLAN_CODE,
             "can_access_app": False,
         }
-    billing = get_org_billing(client, org_id) or {
+    billing_row = get_org_billing(client, org_id)
+    billing = billing_row or {
         "plan_code": DEFAULT_PLAN_CODE,
         "billing_status": "trialing",
     }
@@ -97,7 +113,12 @@ def _load_billing_summary(client, org_id: str | None) -> dict:
     trial_ends_at = billing.get("current_period_end")
     from app.billing.entitlement_service import get_org_billing_state
 
-    billing_state = get_org_billing_state(client, org_id)
+    state_kwargs: dict = {"billing": billing_row}
+    if org_settings is not UNSET:
+        state_kwargs["org_settings"] = (
+            org_settings if isinstance(org_settings, dict) or org_settings is None else {}
+        )
+    billing_state = get_org_billing_state(client, org_id, **state_kwargs)
     if billing_state["is_blocked"]:
         access = {
             "can_access_app": False,
@@ -156,14 +177,42 @@ def me(
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    """GET /api/auth/me — returns backwards-compatible + structured user payload."""
+    """GET /api/auth/me — returns backwards-compatible + structured user payload.
+
+    Cached per (user, org selection, email) for ORG_STATE_CACHE_TTL_SECONDS on
+    the shared production client; profile, membership, org and billing writes
+    invalidate the user's / org's entries.
+    """
+    client = shared_service_client(settings, create_client)
+    auth_user_id = str(current_user["user_id"])
+    cacheable = auth_me_cache.enabled and cache_allowed(client)
+    cache_key = (auth_user_id, str(org_id or ""), str(current_user.get("email") or ""))
+    if cacheable:
+        cached = auth_me_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        cache_token = auth_me_cache.token()
+    payload = _compute_me(client, current_user, org_id)
+    if cacheable:
+        tags = {user_tag(auth_user_id)}
+        if payload.get("org_id"):
+            tags.add(org_tag(payload["org_id"]))
+        if org_id:
+            tags.add(org_tag(org_id))
+        for org in payload.get("organizations") or []:
+            if org.get("id"):
+                tags.add(org_tag(org["id"]))
+        auth_me_cache.set(cache_key, payload, tags=tags, token=cache_token)
+    return payload
+
+
+def _compute_me(client, current_user: dict, org_id: str | None) -> dict:
     from app.auth.platform_admin import is_platform_admin
     from app.services.org_membership import ensure_founder_admin_access
 
-    client = shared_service_client(settings, create_client)
     auth_user_id = current_user["user_id"]
     user_row = _resolve_user_row(client, auth_user_id)
-    organizations = load_user_organizations(client, auth_user_id)
+    organizations = load_user_organizations(client, auth_user_id, include_settings=True)
     resolved_org_id = org_id or pick_default_org_id(
         [org["id"] for org in organizations],
         primary_org_id=str(user_row.get("org_id")) if user_row.get("org_id") else load_user_primary_org_id(client, auth_user_id),
@@ -176,8 +225,15 @@ def me(
     )
     if promoted:
         # Reload after founder promotion so role reflects owner.
-        organizations = load_user_organizations(client, auth_user_id)
-    role = _resolve_role(client, resolved_org_id, auth_user_id)
+        organizations = load_user_organizations(client, auth_user_id, include_settings=True)
+    # organizations already carries the membership role and org settings; only
+    # fall back to dedicated reads when the resolved org is not among them
+    # (e.g. a platform admin viewing another org).
+    current_org_row = next((org for org in organizations if org.get("id") == resolved_org_id), None)
+    if current_org_row is not None and current_org_row.get("role"):
+        role = str(current_org_row.get("role") or "").strip().lower() or None
+    else:
+        role = _resolve_role(client, resolved_org_id, auth_user_id)
 
     merged_user = {
         "id": auth_user_id,
@@ -197,8 +253,13 @@ def me(
         if resolved_org_id
         else None
     )
-    onboarding = _load_onboarding_summary(client, resolved_org_id)
-    billing = _load_billing_summary(client, resolved_org_id)
+    org_settings = UNSET
+    if current_org_row is not None and "settings" in current_org_row:
+        org_settings = current_org_row.get("settings") or {}
+    if resolved_org_id and org_settings is UNSET:
+        org_settings = _load_org_settings_row(client, resolved_org_id)
+    onboarding = _load_onboarding_summary(client, resolved_org_id, org_settings=org_settings)
+    billing = _load_billing_summary(client, resolved_org_id, org_settings=org_settings)
 
     return {
         "user_id": auth_user_id,
@@ -244,6 +305,7 @@ def update_me(
         .eq("auth_user_id", current_user["user_id"])
         .execute()
     )
+    invalidate_user_state(current_user["user_id"])
     update_error = response_error(update_resp)
     if _is_missing_error(update_error):
         return {
@@ -376,6 +438,7 @@ def delete_avatar(
         ).execute()
     except Exception:
         pass
+    invalidate_user_state(current_user["user_id"])
     return {"avatar_url": None}
 
 
@@ -401,4 +464,5 @@ async def upload_avatar(
         ).execute()
     except Exception:
         pass
+    invalidate_user_state(current_user["user_id"])
     return {"avatar_url": avatar_data_url}

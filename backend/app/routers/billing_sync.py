@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel
 
 from app.auth.dependencies import require_admin, require_platform_admin
+from app.core.org_state_cache import invalidate_org_state
 from app.billing.service import (
     DEFAULT_PLAN_CODE,
     get_current_period,
@@ -268,6 +269,7 @@ def _set_hard_budget_override(settings: Settings, org_id: str, enabled: bool | N
         },
         on_conflict="org_id",
     ).execute()
+    invalidate_org_state(org_id)
     logger.info("budget enforcement override org_id=%s enabled=%s", org_id, enabled)
     return {"org_id": org_id, "hard_budget_enabled": enabled}
 
@@ -528,21 +530,24 @@ def admin_set_org_plan(
     }
     if stripe_result and stripe_result.get("price_id"):
         billing_payload["stripe_price_id"] = stripe_result["price_id"]
-    client.table("org_billing").upsert(billing_payload, on_conflict="org_id").execute()
-    client.table("subscriptions").upsert(
-        {
-            "org_id": org_id,
-            "tier": plan_code,
-            "status": "active",
-            "updated_at": now,
-            **(
-                {"stripe_subscription_id": before["stripe_subscription_id"]}
-                if before.get("stripe_subscription_id")
-                else {}
-            ),
-        },
-        on_conflict="org_id",
-    ).execute()
+    try:
+        client.table("org_billing").upsert(billing_payload, on_conflict="org_id").execute()
+        client.table("subscriptions").upsert(
+            {
+                "org_id": org_id,
+                "tier": plan_code,
+                "status": "active",
+                "updated_at": now,
+                **(
+                    {"stripe_subscription_id": before["stripe_subscription_id"]}
+                    if before.get("stripe_subscription_id")
+                    else {}
+                ),
+            },
+            on_conflict="org_id",
+        ).execute()
+    finally:
+        invalidate_org_state(org_id)
 
     actor_id = str(platform_admin.get("user_id") or platform_admin.get("id") or "")
     write_audit_event(

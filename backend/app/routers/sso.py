@@ -613,6 +613,9 @@ async def _provision_user(client, user_info: dict[str, Any], config: dict[str, A
         if full_name:
             update_payload["full_name"] = full_name
         update_result = client.table("users").update(update_payload).eq("id", user["id"]).execute()
+        from app.core.org_state_cache import invalidate_org_and_users
+
+        invalidate_org_and_users(org_id, [user.get("auth_user_id")])
         update_result_err = response_error(update_result)
         if update_result_err:
             raise HTTPException(status_code=500, detail=str(update_result_err))
@@ -654,6 +657,9 @@ async def _provision_user(client, user_info: dict[str, Any], config: dict[str, A
         )
         .execute()
     )
+    from app.core.org_state_cache import invalidate_org_and_users
+
+    invalidate_org_and_users(org_id, [auth_user_id])
     member_result_err = response_error(member_result)
     if member_result_err:
         raise HTTPException(status_code=500, detail=str(member_result_err))

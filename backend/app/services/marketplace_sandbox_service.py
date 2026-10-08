@@ -246,6 +246,9 @@ def _seed_sandbox_data(client: Any, org_id: str, settings: Settings) -> dict[str
         "completed_steps": ["sandbox"],
     }
     client.table("organizations").update({"settings": settings_doc}).eq("id", org_id).execute()
+    from app.core.org_state_cache import invalidate_org_state
+
+    invalidate_org_state(org_id)
 
     return {
         "agents_created": len(payload["agents"]),
@@ -325,6 +328,9 @@ def provision_sandbox(
     client.table("organization_members").insert(
         {"id": str(uuid4()), "org_id": sandbox_org_id, "user_id": user_id, "role": "admin"}
     ).execute()
+    from app.core.org_state_cache import invalidate_org_and_users
+
+    invalidate_org_and_users(sandbox_org_id, [user_id])
 
     # Bug fix (2026-09-12): same root cause as _create_sandbox_org above —
     # postgrest-py's SyncQueryRequestBuilder (returned by .insert()) has no

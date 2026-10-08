@@ -33,6 +33,13 @@ def _slugify(value: str) -> str:
     return normalized or "workspace"
 
 
+def _invalidate_state(org_id: str | None, user_id: str | None) -> None:
+    """Membership/profile/billing rows changed: drop cached /me, billing, entitlements."""
+    from app.core.org_state_cache import invalidate_org_and_users
+
+    invalidate_org_and_users(org_id, [user_id])
+
+
 def list_member_org_ids(client: Client, user_id: str) -> list[str]:
     """Return org ids for which user_id is a member (auth.users id).
 
@@ -91,8 +98,17 @@ def pick_default_org_id(
     return member_org_ids[0]
 
 
-def load_user_organizations(client: Client, user_id: str) -> list[dict[str, Any]]:
-    """Organizations the user belongs to, with role."""
+def load_user_organizations(
+    client: Client,
+    user_id: str,
+    *,
+    include_settings: bool = False,
+) -> list[dict[str, Any]]:
+    """Organizations the user belongs to, with role.
+
+    ``include_settings`` adds each org's raw ``settings`` dict (already
+    selected here) so callers like /api/auth/me need not re-read organizations.
+    """
     try:
         memberships = (
             client.table("organization_members")
@@ -143,19 +159,20 @@ def load_user_organizations(client: Client, user_id: str) -> list[dict[str, Any]
         # column, fall back to branding, and report absence rather than a stand-in.
         enterprise = settings.get("enterprise") if isinstance(settings.get("enterprise"), dict) else {}
         branding = enterprise.get("branding") if isinstance(enterprise.get("branding"), dict) else {}
-        rows.append(
-            {
-                "id": org_id,
-                "name": row.get("name"),
-                "slug": row.get("slug"),
-                "logo_url": row.get("logo_url") or branding.get("logoUrl"),
-                # No `plan` anywhere in the schema or settings. Left as None rather
-                # than inventing a tier a customer could mistake for real.
-                "plan": settings.get("plan"),
-                "created_at": row.get("created_at"),
-                "role": roles_by_org.get(org_id, "member"),
-            }
-        )
+        entry: dict[str, Any] = {
+            "id": org_id,
+            "name": row.get("name"),
+            "slug": row.get("slug"),
+            "logo_url": row.get("logo_url") or branding.get("logoUrl"),
+            # No `plan` anywhere in the schema or settings. Left as None rather
+            # than inventing a tier a customer could mistake for real.
+            "plan": settings.get("plan"),
+            "created_at": row.get("created_at"),
+            "role": roles_by_org.get(org_id, "member"),
+        }
+        if include_settings:
+            entry["settings"] = settings
+        rows.append(entry)
     return rows
 
 
@@ -230,6 +247,7 @@ def ensure_user_workspace(
         ensure_default_production_environment(client, org_id)
     except Exception as exc:  # noqa: BLE001
         logger.error("ensure_user_workspace membership failed user_id=%s org_id=%s error=%s", user_id, org_id, exc)
+    _invalidate_state(org_id, user_id)
 
     logger.info("ensure_user_workspace created org_id=%s user_id=%s", org_id, user_id)
     return org_id
@@ -303,6 +321,7 @@ def promote_user_to_org_owner(client: Client, org_id: str, user_id: str) -> None
         ensure_default_production_environment(client, org)
     except Exception as exc:  # noqa: BLE001
         logger.warning("promote_user_to_org_owner failed org_id=%s user_id=%s error=%s", org, uid, exc)
+    _invalidate_state(org, uid)
 
 
 # Master accounts that must always have org owner + platform_admins access.
@@ -351,6 +370,8 @@ def ensure_founder_admin_access(
         logger.warning("ensure_founder_admin_access platform_admins failed user_id=%s error=%s", uid, exc)
     if org_id:
         promote_user_to_org_owner(client, org_id, uid)
+    else:
+        _invalidate_state(None, uid)
     if memoize:
         _founder_access_ensured.add(memo_key)
     return True
