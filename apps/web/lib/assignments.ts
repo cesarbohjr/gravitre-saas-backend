@@ -92,3 +92,26 @@ export async function createAssignment(
 }
 
 export { avatarGradient }
+
+async function jobActionError(response: Response, fallback: string): Promise<string> {
+  const payload = await response.json().catch(() => ({}))
+  if (payload && typeof payload === "object" && "detail" in payload) {
+    const detail = (payload as { detail?: unknown }).detail
+    if (typeof detail === "string" && detail.trim()) return detail
+  }
+  return `${fallback} (${response.status})`
+}
+
+/** Re-queue a failed, cancelled or paused assignment (POST /api/agent-jobs/{id}/retry). */
+export async function retryAssignmentJob(id: string): Promise<AgentJob> {
+  const response = await apiFetch(`/api/agent-jobs/${id}/retry`, { method: "POST" })
+  if (!response.ok) throw new Error(await jobActionError(response, "Retry failed"))
+  return (await response.json()) as AgentJob
+}
+
+/** Cancel a queued, running or paused assignment (POST /api/agent-jobs/{id}/cancel). */
+export async function cancelAssignmentJob(id: string): Promise<AgentJob> {
+  const response = await apiFetch(`/api/agent-jobs/${id}/cancel`, { method: "POST" })
+  if (!response.ok) throw new Error(await jobActionError(response, "Cancel failed"))
+  return (await response.json()) as AgentJob
+}

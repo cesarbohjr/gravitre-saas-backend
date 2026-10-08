@@ -1,5 +1,6 @@
 import type { AgentJob } from "@/hooks/use-async-job"
 import { apiFetch } from "@/lib/fetcher"
+import { actionStats, assignmentFlag, reportedConfidencePercent, reportedIssueText } from "@/lib/assignment-signals"
 import {
   type DemoAssignment,
   inferAgentIconForRole,
@@ -158,16 +159,20 @@ function mapJobToAssignment(job: AgentJob): DemoAssignment {
     completedAt: job.finishedAt ?? undefined,
     outputTypes: ["Task"],
     destination: "Review",
-    confidence: result?.confidence ? Math.round(result.confidence * 100) : undefined,
+    confidence: reportedConfidencePercent(result?.confidence) ?? undefined,
     evidence: {
       toolCalls: countOrNull(result?.tool_call_count ?? result?.toolCallCount ?? result?.tool_calls),
       sources: countOrNull(result?.rag_sources),
       mode: mode ?? null,
       verified: typeof verified === "boolean" ? verified : null,
     },
-    blocker: job.error?.trim() || result?.error?.trim() || undefined,
+    blocker: reportedIssueText(job) || undefined,
     approvalPrompt: result?.human_input_prompt?.trim() || undefined,
     resultSummary: resultSummaryFor(status, result?.summary, title, brief),
+    agentId: result?.agent_id?.trim() || undefined,
+    flag: assignmentFlag(job),
+    actions: actionStats(result?.tool_calls),
+    jobStatus: job.status,
   }
 }
 
