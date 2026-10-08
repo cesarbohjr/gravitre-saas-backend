@@ -223,14 +223,18 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(src).toMatch(/data-review-surface="approvals-inspect"/)
     expect(src).toMatch(/data-review-cta="approve"/)
     expect(src).not.toMatch(/requestsToday|dataFlowRate|usedByWorkflows|triggeredByAgents/)
-    expect(src).toMatch(/Decide/)
-    expect(src).toMatch(/<PhaseBand/)
-    expect(src).toMatch(/hidden items-center gap-3 lg:flex/)
-    expect(src).toMatch(/ESTIMATED_CONFIDENCE_LABEL/)
+    // Workspace redesign v1: stat tabs (Waiting on you / Past SLA / Approved / Rejected)
+    // replace the PhaseBand, and the detail pane leads with Approve / Reject plus a
+    // reason-required reject dialog. The heuristic suggestion card is gone because
+    // /api/approvals never sends one.
+    expect(src).toMatch(/Waiting on you/)
+    expect(src).toMatch(/Past SLA/)
+    expect(src).toMatch(/Reject with a reason/)
+    expect(src).toMatch(/approvalsApi\.reject\(a\.id, \{ comment: reason \}\)/)
     expect(src).not.toMatch(/AI-approved/)
     expect(src).not.toMatch(/hidden lg:block/)
-    expect(src).toMatch(/hideActions/)
-    expect(src).toMatch(/selectedApproval \? \(/)
+    expect(src).toMatch(/data-testid="approval-mobile-actions"/)
+    expect(src).toMatch(/selected \? \(/)
     const harness = readFileSync(
       resolve(webRoot, "app/dev/ai-workspace-preview/_components/design-exploration-shell.tsx"),
       "utf8",

@@ -3466,6 +3466,7 @@ def list_approvals_alias(
             "sla_deadline": deadline.isoformat(),
             "sla_minutes_remaining": max(0, round(remaining, 1)),
             "sla_breached": remaining < 0,
+            "sla_minutes": max(1, sla_minutes),
         }
 
     q = (
@@ -3527,6 +3528,7 @@ def list_approvals_alias(
             else:
                 user_labels[uid] = f"Member ({uid[:8]}…)"
     approvals = []
+    run_meta: dict[str, dict[str, object]] = {}
     for run in runs:
         required = run.get("required_approvals") or 0
         pri = "high" if required >= 2 else "medium"
@@ -3588,12 +3590,17 @@ def list_approvals_alias(
                     "run_id": str(run["id"]),
                     "conversation_id": params.get("conversation_id"),
                 },
+                # Raw request shown behind "View raw request": the run's own parameters.
+                "request": params,
+                "required_approvals": required,
                 "environment": environment_name,
                 "sla_deadline": sla["sla_deadline"],
                 "sla_minutes_remaining": sla["sla_minutes_remaining"],
                 "sla_breached": sla["sla_breached"],
+                "sla_minutes": sla["sla_minutes"],
             }
         )
+        run_meta[str(run["id"])] = {"workflow_id": workflow_id, "required_approvals": required}
     # Chat connector writes queued for org admins (not workflow_runs).
     if not type or type in {"connector", "connector_chat"}:
         try:
@@ -3717,6 +3724,7 @@ def list_approvals_alias(
                     "sla_deadline": sla["sla_deadline"],
                     "sla_minutes_remaining": sla["sla_minutes_remaining"],
                     "sla_breached": sla["sla_breached"],
+                    "sla_minutes": sla["sla_minutes"],
                 }
             )
 
@@ -3738,6 +3746,9 @@ def list_approvals_alias(
 
     approvals.sort(key=lambda item: item["requested_at"] or "", reverse=True)
     approvals.sort(key=lambda item: 0 if item["priority"] == "high" else 1)
+    from app.services.decision_queue_enrichment import enrich_decision_queue
+
+    enrich_decision_queue(client, org_id, approvals, run_meta=run_meta, user_labels=user_labels)
     return {"approvals": approvals}
 
 
