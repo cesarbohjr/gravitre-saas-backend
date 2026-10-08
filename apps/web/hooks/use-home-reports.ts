@@ -50,7 +50,6 @@ export function useHomeReportsData(enabled: boolean, range: ReportsRange) {
   return useSWR<HomeReports>(enabled ? `home/reports:${range}` : null, () => fetchReports(range), {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
-    keepPreviousData: true,
     refreshInterval: 60_000,
   })
 }
@@ -71,7 +70,9 @@ export function useHomeReportsLayout(orgId: string | null, userId: string | null
       .then((body) => {
         const remote = parseReportsLayout(body?.layout)
         if (cancelled || !remote) return
-        if (!local || (remote.updatedAt ?? "") >= (local.updatedAt ?? "")) {
+        // Re-read storage: edits made while this request was in flight are newer than the snapshot.
+        const current = readLocal(key)
+        if (!current || (remote.updatedAt ?? "") > (current.updatedAt ?? "")) {
           setLayout(remote)
           writeLocal(key, remote)
         }

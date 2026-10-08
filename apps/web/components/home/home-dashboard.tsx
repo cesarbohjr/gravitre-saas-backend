@@ -49,7 +49,10 @@ function useAiNativeData(enabled: boolean, hasCustomReports: boolean) {
   const pending = (approvals.data?.approvals ?? []).filter((a) => String(a.status ?? "pending") === "pending")
   const data: AiNativeData = {
     agents: agents.data?.agents ?? [],
-    agentsLoaded: Boolean(agents.data) || Boolean(agents.error),
+    agentsLoaded: Boolean(agents.data),
+    agentsFailed: !agents.data && Boolean(agents.error),
+    decisionsLoaded:
+      (Boolean(approvals.data) || Boolean(approvals.error)) && (Boolean(assignments.data) || Boolean(assignments.error)),
     approvals: pending.map((a) => readApproval(a as unknown as Record<string, unknown>)),
     assignments: assignments.data,
     runsThisWeek: metrics ? metrics.totalRuns ?? 0 : null,

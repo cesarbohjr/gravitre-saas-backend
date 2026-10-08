@@ -29,7 +29,11 @@ export type PendingApproval = {
 
 export type AiNativeData = {
   agents: Agent[]
+  /** The agents list arrived; false while loading or after a failed fetch. */
   agentsLoaded: boolean
+  agentsFailed: boolean
+  /** Both the approval queue and assignments arrived (or failed), so an empty list really is empty. */
+  decisionsLoaded: boolean
   approvals: PendingApproval[]
   assignments: DemoAssignment[] | undefined
   runsThisWeek: number | null
@@ -314,9 +318,11 @@ export function AiNativeView({
   const pausedWho = [...decidingAgents, ...(workflowDecisions ? [`${workflowDecisions} workflow${workflowDecisions === 1 ? "" : "s"}`] : [])]
   const subline = decisions.length
     ? `${joinNames(pausedWho)} ${pausedWho.length === 1 && !/workflows$/.test(pausedWho[0]) ? "is" : "are"} paused for your approval. ${available} ${available === 1 ? "agent" : "agents"} available.`
-    : data.agents.length
-      ? `Nothing needs your decision. ${executing} executing, ${available} available.`
-      : "Nothing needs your decision. Hire an agent to start delegating work."
+    : !data.agentsLoaded
+      ? "Nothing needs your decision right now."
+      : data.agents.length
+        ? `Nothing needs your decision. ${executing} executing, ${available} available.`
+        : "Nothing needs your decision. Hire an agent to start delegating work."
 
   const segments = sorted.map((l) => ({ id: l.agent.id, name: l.agent.name, state: l.state }))
   const legend = [
@@ -379,7 +385,12 @@ export function AiNativeView({
             {greeting()}
             {name ? `, ${name}` : ""}
           </div>
-          {decisions.length ? (
+          {!data.decisionsLoaded ? (
+            <div style={{ display: "grid", gap: 12 }} aria-label="Loading decisions">
+              <div className="gv-skel" style={{ width: "70%", height: 40 }} />
+              <div className="gv-skel" style={{ width: "85%" }} />
+            </div>
+          ) : decisions.length ? (
             <h2 style={{ margin: 0, fontSize: 44, lineHeight: 1.1, fontWeight: 600, letterSpacing: "-0.025em" }}>
               <span style={{ color: "var(--gv-amber-text)" }}>{decisions.length === 1 ? "1 decision" : `${decisions.length} decisions`}</span> need{decisions.length === 1 ? "s" : ""} you.
             </h2>
@@ -388,7 +399,9 @@ export function AiNativeView({
               <span style={{ color: "var(--gv-brand)" }}>All clear.</span>
             </h2>
           )}
-          <p style={{ margin: "14px 0 0", fontSize: 18, lineHeight: 1.5, color: "var(--gv-muted)", maxWidth: 520 }}>{subline}</p>
+          {data.decisionsLoaded ? (
+            <p style={{ margin: "14px 0 0", fontSize: 18, lineHeight: 1.5, color: "var(--gv-muted)", maxWidth: 520 }}>{subline}</p>
+          ) : null}
 
           <div style={{ marginTop: 32 }}>
             <div style={{ display: "flex", gap: 6, height: 12 }} aria-hidden>
@@ -450,9 +463,14 @@ export function AiNativeView({
         <div className="gv-card gv-rise" style={{ padding: 24, animationDelay: "260ms" }} data-dashboard-decisions="">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Needs your decision</h3>
-            <span className="gv-mono" style={{ fontSize: 13, color: "var(--gv-muted)" }}>{decisions.length} open</span>
+            <span className="gv-mono" style={{ fontSize: 13, color: "var(--gv-muted)" }}>{data.decisionsLoaded ? `${decisions.length} open` : ""}</span>
           </div>
-          {decisions.length ? (
+          {!data.decisionsLoaded ? (
+            <div style={{ display: "grid", gap: 14, padding: "14px 0" }}>
+              <div className="gv-skel" style={{ width: "90%", height: 96 }} />
+              <div className="gv-skel" style={{ width: "90%", height: 96 }} />
+            </div>
+          ) : decisions.length ? (
             <div style={{ display: "grid", gap: 14 }}>
               {decisions.slice(0, 3).map((d) => (
                 <article key={d.id} className="gv-rise" style={{ border: "1px solid var(--gv-amber-border)", background: "var(--gv-amber-bg)", borderRadius: 14, padding: 18 }}>
@@ -507,7 +525,10 @@ export function AiNativeView({
               </Link>
             </div>
           ) : null}
-          {!data.agentsLoaded ? (
+          {data.agentsFailed ? (
+            <div style={{ fontSize: 14, color: "var(--gv-muted)", padding: "14px 8px" }}>Agents could not load. Refresh the page to try again.</div>
+          ) : null}
+          {!data.agentsLoaded && !data.agentsFailed ? (
             <div style={{ display: "grid", gap: 14, padding: "14px 8px" }}>
               <div className="gv-skel" style={{ width: "80%" }} />
               <div className="gv-skel" style={{ width: "65%" }} />
