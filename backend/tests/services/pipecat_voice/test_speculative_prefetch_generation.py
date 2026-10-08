@@ -228,3 +228,27 @@ class TestFluxEagerEndOfTurnStartsTheRunEarly:
 
         assert coordinator.has_pending_run is False
         assert proc._last_speculative_text == ""
+
+
+class TestSpeculativeRunCarriesBrainCheckpoints:
+    @pytest.mark.asyncio
+    async def test_run_exposes_the_marks_dict_the_brain_writes(self):
+        """An adopted run's pre-LLM checkpoints reach the turn's latency record."""
+        coordinator = SpeculativeGenerationCoordinator()
+        proc = await _processor(min_chars=5, speculative_coordinator=coordinator)
+        await proc.process_frame(_interim("what is two plus two"), FrameDirection.DOWNSTREAM)
+        intelligence = MagicMock()
+
+        async def _stream(**kwargs):
+            kwargs["latency_marks"]["intent_gateway"] = 42
+            yield "ok"
+
+        intelligence.execute_task_streaming = _stream
+        with patch("app.operators.agent_intelligence.get_agent_intelligence", return_value=intelligence):
+            await proc.process_frame(ProposedUserStoppedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+            run = coordinator.adopt("what is two plus two")
+            assert run is not None
+            events = [e async for e in run.events()]
+
+        assert events == ["ok"]
+        assert run.latency_marks == {"intent_gateway": 42}

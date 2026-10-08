@@ -32,6 +32,7 @@ import {
   encodePipecatAudioMessage,
   encodePipecatInterrupt,
   createPcm16StreamDecoder,
+  encodePipecatPlaybackStarted,
   inspectPcm16Energy,
   shouldUsePipecatVoice,
 } from "@/lib/pipecat-voice-client"
@@ -262,6 +263,8 @@ export function useVoiceDuplexSession(options: Options) {
   // delivered anything to the browser.
   const audioReplyWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const audioFramesReceivedRef = useRef(0)
+  // performance.now() of the reply's first audio frame, for the playback.started report.
+  const firstAudioReceivedAtRef = useRef<number | null>(null)
   // A non-empty PCM frame can still be digital silence. Keep transport receipt
   // separate from audible-energy receipt so silent provider output cannot disable
   // the recovery watchdog.
@@ -479,6 +482,25 @@ export function useVoiceDuplexSession(options: Options) {
         player.enqueue(pcm, sampleRate || 16000)
         if (!browserAudioPlaybackStartedRef.current) {
           emitOutputDiagnostic("playback_started")
+          const receivedAt = firstAudioReceivedAtRef.current
+          const ws = wsRef.current
+          if (
+            receivedAt != null &&
+            orchestrationRef.current === "pipecat" &&
+            ws &&
+            ws.readyState === WebSocket.OPEN
+          ) {
+            // The player's scheduled start (worklet: its initial lead until
+            // it reports the real start) on top of the time already queued.
+            const origin = player.originTime()
+            const leadMs = origin != null ? Math.max(0, origin - ctx.currentTime) * 1000 : 0
+            const message = encodePipecatPlaybackStarted(performance.now() - receivedAt + leadMs)
+            try {
+              if (message) ws.send(message)
+            } catch {
+              /* latency evidence only */
+            }
+          }
           // Once per reply. A state update on every 40 ms chunk re-rendered the
           // voice UI ~25 times a second on the same thread that plays audio.
           setLatency((prev) => ({ ...prev, browser_audio_playback_started: true }))
@@ -1310,6 +1332,7 @@ export function useVoiceDuplexSession(options: Options) {
             setPresence("thinking")
             clearAudioReplyWatchdog()
             audioFramesReceivedRef.current = 0
+            firstAudioReceivedAtRef.current = null
             audibleAudioFramesRef.current = 0
             maxPcmPeakRef.current = 0
             assistantTextRef.current = ""
@@ -1392,6 +1415,9 @@ export function useVoiceDuplexSession(options: Options) {
           if (audioFallbackTriggeredRef.current) return
           const pcm = pcmDecoderRef.current.decode(msg.pcm16_b64)
           if (pcm.length > 0) {
+            if (firstAudioReceivedAtRef.current == null) {
+              firstAudioReceivedAtRef.current = performance.now()
+            }
             audioFramesReceivedRef.current += 1
             const energy = inspectPcm16Energy(pcm)
             maxPcmPeakRef.current = Math.max(maxPcmPeakRef.current, energy.peak)

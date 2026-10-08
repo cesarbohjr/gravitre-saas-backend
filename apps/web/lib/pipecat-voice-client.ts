@@ -196,3 +196,16 @@ export function encodePipecatInterrupt(options?: { playbackOffsetMs?: number | n
   }
   return JSON.stringify(payload)
 }
+
+/**
+ * Latency evidence for the server's per-turn trace: time from the first audio
+ * frame of a reply arriving to that audio being scheduled audibly, measured on
+ * the browser clock (a delta, so no clock sync is needed).
+ */
+export function encodePipecatPlaybackStarted(receiveToPlaybackMs: number): string | null {
+  if (!Number.isFinite(receiveToPlaybackMs) || receiveToPlaybackMs < 0) return null
+  return JSON.stringify({
+    type: "playback.started",
+    receive_to_playback_ms: Math.round(receiveToPlaybackMs),
+  })
+}

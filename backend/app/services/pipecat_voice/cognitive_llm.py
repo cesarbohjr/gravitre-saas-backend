@@ -132,6 +132,9 @@ class GravitreCognitiveLLMService(LLMService):
         # builds (persona, org context, agent memory). Built once per socket.
         self._base_prompt: str | None = None
         self._base_prompt_lock = asyncio.Lock()
+        # Per-turn latency record (voice_turn_trace.VoiceTurnTrace), set by pipeline.py.
+        self._turn_trace: Any | None = None
+        self._turn_brain_marks: list[dict[str, Any]] = []
 
     async def _ensure_durable_context(self) -> None:
         """Load the durable seed once per socket, off the event loop.
@@ -204,6 +207,7 @@ class GravitreCognitiveLLMService(LLMService):
             await self.push_frame(LLMFullResponseStartFrame())
             try:
                 await self.start_processing_metrics()
+                self._turn_brain_marks = []
                 await self._run_gravitre_turn(frame.context)
             except Exception as exc:  # noqa: BLE001
                 # str(exc) stays in the log, which is where a stack-shaped string
@@ -225,6 +229,7 @@ class GravitreCognitiveLLMService(LLMService):
             finally:
                 await self.stop_processing_metrics()
                 await self.push_frame(LLMFullResponseEndFrame())
+                self._finish_turn_trace()
             return
         await self.push_frame(frame, direction)
 
@@ -251,6 +256,9 @@ class GravitreCognitiveLLMService(LLMService):
             # Backstop for UtteranceGateProcessor: a hesitation is not a request.
             logger.info("pipecat_voice_filler_turn_skipped org_id=%s", self._org_id)
             return
+        trace = self._turn_trace
+        if trace is not None:
+            trace.begin_turn()
         if self._interrupt_reporter is not None:
             # A confirmed new user turn ends the interrupted one: let its
             # bookkeeping finish and release the stop marker it armed, so this
@@ -259,6 +267,8 @@ class GravitreCognitiveLLMService(LLMService):
             if self._interrupt_reporter.conversation_id:
                 self._conversation_id = self._interrupt_reporter.conversation_id
         await self._ensure_durable_context()
+        if trace is not None:
+            trace.note("durable_ready")
         history = self._merge_durable_and_socket_history(self._durable_history, history)
         user_text = reconstitute_spoken_identity_fields(user_text)
         if self._interrupt_reporter is not None:
@@ -277,6 +287,8 @@ class GravitreCognitiveLLMService(LLMService):
             return
         intelligence = get_agent_intelligence()
         turn_inputs = await self.shared_turn_inputs(user_text)
+        if trace is not None:
+            trace.note("prompt_ready")
         # Same helper and inputs (final text + merged history) as the
         # speculative run, so an adopted run was produced under the same tier.
         voice_tier, voice_mode = resolve_voice_turn_routing(user_text, history=history)
@@ -306,6 +318,8 @@ class GravitreCognitiveLLMService(LLMService):
         # A barge-in can cancel this turn before the guard is awaited; retrieve
         # its result anyway so a refusal never surfaces as an unhandled task error.
         guard_task.add_done_callback(lambda t: t.cancelled() or t.exception())
+        if trace is not None:
+            guard_task.add_done_callback(lambda _t: trace.note("guard_done"))
 
         async def _guard_refused() -> bool:
             nonlocal guard_task
@@ -391,6 +405,14 @@ class GravitreCognitiveLLMService(LLMService):
             else None
         )
         speculative_outcome = "adopted" if speculative_run is not None else "fresh"
+        # The brain writes its pre-LLM checkpoints here (execute_task_streaming
+        # latency_marks); an adopted speculative run brought its own.
+        fresh_brain_marks: dict[str, Any] = {}
+        self._turn_brain_marks = [fresh_brain_marks]
+        if speculative_run is not None:
+            self._turn_brain_marks.append(getattr(speculative_run, "latency_marks", None) or {})
+        if trace is not None:
+            trace.set_turn_meta(speculative_outcome=speculative_outcome)
         if speculative_run is not None:
             logger.info(
                 "pipecat_voice_speculative_generation_adopted org_id=%s chars=%s prefix_adopt=%s",
@@ -411,6 +433,7 @@ class GravitreCognitiveLLMService(LLMService):
                 conversation_id=self._conversation_id,
                 spoken_mode=True,
                 mode=voice_mode,
+                latency_marks=fresh_brain_marks,
                 **turn_inputs,
             )
 
@@ -482,6 +505,8 @@ class GravitreCognitiveLLMService(LLMService):
                 # never sent to the client, zero behavior change.
                 payload = event.payload if isinstance(event.payload, dict) else {}
                 data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+                if isinstance(data, dict) and trace is not None:
+                    trace.attach_intelligence(data)
                 if isinstance(data, dict):
                     routing = data.get("routing") if isinstance(data.get("routing"), dict) else {}
                     logger.info(
@@ -537,6 +562,8 @@ class GravitreCognitiveLLMService(LLMService):
                 continue
             if first_delta_at is None:
                 first_delta_at = time.perf_counter()
+                if trace is not None:
+                    trace.note("first_token", first_delta_at)
                 await self.stop_ttfb_metrics()
                 logger.info(
                     "pipecat_voice_turn_latency org_id=%s first_text_delta_ms=%s",
@@ -565,6 +592,8 @@ class GravitreCognitiveLLMService(LLMService):
                 if spoken:
                     if first_speakable_chunk_at is None:
                         first_speakable_chunk_at = time.perf_counter()
+                        if trace is not None:
+                            trace.note("first_speakable", first_speakable_chunk_at)
                     await self._push_spoken_text(spoken)
                     if tts_requested_at is None:
                         tts_requested_at = time.perf_counter()
@@ -582,6 +611,8 @@ class GravitreCognitiveLLMService(LLMService):
         if tail:
             if first_speakable_chunk_at is None:
                 first_speakable_chunk_at = time.perf_counter()
+                if trace is not None:
+                    trace.note("first_speakable", first_speakable_chunk_at)
             await self._push_spoken_text(tail)
             if tts_requested_at is None:
                 tts_requested_at = time.perf_counter()
@@ -604,6 +635,8 @@ class GravitreCognitiveLLMService(LLMService):
             speculative_v2=spec_tuning.v2_enabled,
             tts_chunk_v2=chunk_tuning.v2_enabled,
         )
+        if complete_event is not None and trace is not None:
+            trace.set_turn_meta(turn_id=str(getattr(complete_event, "message_id", None) or "") or None)
         if complete_event is not None:
             durable_assistant_text = str(getattr(complete_event, "full_content", None) or "").strip()
             if durable_assistant_text:
@@ -856,7 +889,22 @@ class GravitreCognitiveLLMService(LLMService):
         this can never produce a double space; the next chunk's own leading
         strip means no chunk ever contributes a space of its own.
         """
+        if self._turn_trace is not None:
+            self._turn_trace.note("tts_requested")
         await self._push_llm_text(spoken + " ")
+
+    def _finish_turn_trace(self) -> None:
+        """Hand the turn's brain checkpoints to the trace and close the turn."""
+        trace = self._turn_trace
+        if trace is None:
+            return
+        try:
+            marks = next((m for m in self._turn_brain_marks if m), None)
+            if marks:
+                trace.attach_brain_marks(marks)
+            trace.end_turn()
+        except Exception as exc:  # noqa: BLE001 - latency evidence must never break a turn
+            logger.debug("pipecat_voice_turn_trace_finish_failed error=%s", exc)
 
     def _sanitize_for_tts(self, chunk: str) -> str:
         """Security gate + spoken-format normalization before text reaches TTS.

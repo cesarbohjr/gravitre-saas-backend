@@ -168,7 +168,20 @@ def build_pipecat_voice_task(
         voice_session.set_origin(normalize_origin(query_origin, default=voice_session.origin))
     if voice_session.origin != "user_mic":
         voice_session.tts_warming = True
+    from app.services.pipecat_voice.voice_turn_trace import VoiceTurnTrace, audit_writer
+
+    # One latency record per spoken turn (observer + LLM bridge + browser report).
+    # The bridge can move the turn to a new conversation; read it at write time.
+    turn_trace = VoiceTurnTrace(
+        writer=audit_writer(
+            settings,
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id_getter=lambda: getattr(llm, "_conversation_id", None) or conversation_id,
+        )
+    )
     serializer = GravitreJsonAudioSerializer(
+        turn_trace=turn_trace,
         session=voice_session,
         default_origin=voice_session.origin,
     )
@@ -269,6 +282,7 @@ def build_pipecat_voice_task(
     # Share active durable turn identity so mid-generation interruption can
     # persist/update the exact current turn rather than targeting a prior row.
     llm._interrupt_reporter = interrupt_reporter
+    llm._turn_trace = turn_trace
     speculative.before_run = interrupt_reporter.settle_barge_in
 
     # Flux: native EOT — do not stack Silero VAD turn machine alongside it.
@@ -335,7 +349,7 @@ def build_pipecat_voice_task(
         ]
     )
 
-    latency_observer = GravitreVoiceLatencyObserver()
+    latency_observer = GravitreVoiceLatencyObserver(turn_trace=turn_trace)
     task = PipelineTask(
         pipeline,
         params=PipelineParams(
@@ -401,25 +415,10 @@ def build_pipecat_voice_task(
                     source="duplex_first_speech",
                     composed=True,
                 )
-            from app.services.turn_latency_trace import (
-                build_voice_pipecat_turn_marks,
-                record_voice_turn_critical_path,
-            )
-
-            voice_marks = build_voice_pipecat_turn_marks(
-                end_to_end_ms=e2e_ms,
-                user_turn_finalization_ms=user_turn_finalization_ms,
-                ttfb_by_processor_ms=ttfb_by_processor_ms,
-            )
-            await asyncio.to_thread(
-                record_voice_turn_critical_path,
-                settings,
-                org_id=org_id,
-                user_id=user_id,
-                conversation_id=conversation_id,
-                turn_id=None,
-                marks=voice_marks,
-                transport="pipecat_duplex",
+            # The turn's critical-path row is written by turn_trace once the
+            # whole turn (bridge + browser playback report) is in.
+            turn_trace.on_observer_breakdown(
+                e2e_ms=e2e_ms, ttfb_by_processor_ms=ttfb_by_processor_ms
             )
         except Exception as exc:  # noqa: BLE001
             logger.debug("pipecat_voice_latency_breakdown_sample_failed error=%s", exc)

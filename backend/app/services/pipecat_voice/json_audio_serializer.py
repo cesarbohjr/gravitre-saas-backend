@@ -4,6 +4,7 @@ Binary protobuf is awkward for the existing duplex FE; we use text JSON frames:
   inbound:  {"type":"audio","pcm16_b64":"...","sample_rate":16000,"num_channels":1}
   inbound:  {"type":"interrupt"}
   inbound:  {"type":"text","text":"..."}   # smoke / text ingress without mic
+  inbound:  {"type":"playback.started","receive_to_playback_ms":120}  # latency evidence only
   outbound: {"type":"audio","pcm16_b64":"...","sample_rate":16000,"num_channels":1}
   outbound: {"type":"event","event":"...","payload":{...}}
 """
@@ -30,10 +31,17 @@ from pipecat.serializers.base_serializer import FrameSerializer
 
 
 class GravitreJsonAudioSerializer(FrameSerializer):
-    def __init__(self, *, default_origin: str = "user_mic", session: Any | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        default_origin: str = "user_mic",
+        session: Any | None = None,
+        turn_trace: Any | None = None,
+    ) -> None:
         self._default_origin = default_origin
         self._session_origin: str | None = None
         self._voice_session = session
+        self._turn_trace = turn_trace
 
     async def setup(self, frame: StartFrame) -> None:
         pass
@@ -132,6 +140,13 @@ class GravitreJsonAudioSerializer(FrameSerializer):
                 timestamp=str(msg.get("timestamp") or ""),
                 finalized=True,
             )
+        if kind == "playback.started":
+            # Browser: first audio of the reply received -> audible playback
+            # scheduled, on the browser's own clock. Recorded on the turn's
+            # latency trace; never becomes a pipeline frame.
+            if self._turn_trace is not None:
+                self._turn_trace.on_client_playback_started(msg.get("receive_to_playback_ms"))
+            return None
         if kind == "input_text":
             text = str(msg.get("text") or "").strip()
             if not text:

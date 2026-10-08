@@ -79,6 +79,9 @@ class SpeculativeGenerationRun:
     # Conversation tier the run computed for its own text + history; set by
     # the runner once known. Used to refuse a prefix adoption across tiers.
     tier: str | None = None
+    # The brain's pre-LLM checkpoints for this run (execute_task_streaming
+    # latency_marks), read by the confirmed turn's latency record on adoption.
+    latency_marks: dict[str, Any] = field(default_factory=dict)
 
     def matches(
         self,

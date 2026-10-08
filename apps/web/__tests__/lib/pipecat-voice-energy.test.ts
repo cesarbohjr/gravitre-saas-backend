@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { inspectPcm16Energy } from "@/lib/pipecat-voice-client"
+import { encodePipecatPlaybackStarted, inspectPcm16Energy } from "@/lib/pipecat-voice-client"
 
 describe("Pipecat PCM audible-energy detection", () => {
   it("classifies empty and digital-silence PCM as inaudible", () => {
@@ -40,5 +40,19 @@ describe("Pipecat PCM audible-energy detection", () => {
     expect(result.peak).toBe(300)
     expect(result.rms).toBeLessThan(24)
     expect(result.audible).toBe(false)
+  })
+})
+
+describe("encodePipecatPlaybackStarted", () => {
+  it("reports the browser-side receive-to-playback delta in whole milliseconds", () => {
+    expect(JSON.parse(encodePipecatPlaybackStarted(119.6) as string)).toEqual({
+      type: "playback.started",
+      receive_to_playback_ms: 120,
+    })
+  })
+
+  it("sends nothing for a negative or non-finite delta", () => {
+    expect(encodePipecatPlaybackStarted(-1)).toBeNull()
+    expect(encodePipecatPlaybackStarted(Number.NaN)).toBeNull()
   })
 })

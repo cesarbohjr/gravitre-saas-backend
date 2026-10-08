@@ -1750,6 +1750,7 @@ class AgentIntelligence:
         composer_failure_probe: str | None = None,
     interrupt_payload: dict[str, Any] | None = None,
     workspace_focus: dict[str, Any] | None = None,
+    latency_marks: dict[str, Any] | None = None,
 ) -> AsyncIterator[AssistantStreamEvent | AssistantStreamComplete]:
         """Streaming variant for assistant / agent chat surfaces.
 
@@ -1770,9 +1771,16 @@ class AgentIntelligence:
 
         begin_p2_marks(_pre_kernel_t0)
 
+        # Caller-owned copy of the checkpoints (the voice bridge's per-turn
+        # latency record); "_t0_perf" anchors them on the caller's clock.
+        if latency_marks is not None:
+            latency_marks["_t0_perf"] = _pre_kernel_t0
+
         def _mark(name: str) -> None:
             _pre_kernel_checkpoints[name] = int((time.perf_counter() - _pre_kernel_t0) * 1000)
             record_p2_mark(name)
+            if latency_marks is not None:
+                latency_marks[name] = _pre_kernel_checkpoints[name]
 
         if client is None:
             from app.workflows.repository import get_supabase_client

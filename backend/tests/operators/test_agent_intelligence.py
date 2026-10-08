@@ -724,6 +724,65 @@ async def test_shared_kernel_typed_and_spoken_plan_hold_both_complete(intelligen
 
 
 @pytest.mark.asyncio
+async def test_spoken_turn_hands_its_checkpoints_to_the_caller(intelligence: AgentIntelligence):
+    """The voice bridge's per-turn latency record reads the brain's own
+    checkpoints from ``latency_marks``, anchored on the caller's clock."""
+    from app.services.intent_gateway import GatewayDecision
+
+    state_svc = MagicMock()
+    state_svc.get_task_state = AsyncMock(return_value={})
+    state_svc.update_task_state = AsyncMock(return_value=None)
+
+    async def fake_streaming(**kwargs):
+        yield SimpleNamespace(
+            kind="done",
+            react_result=ReActResult(status=ReActStatus.COMPLETED, answer="Acme is the priority."),
+        )
+
+    intelligence.react_engine.run_streaming = fake_streaming
+    marks: dict = {}
+    before = time.perf_counter()
+    with (
+        patch(
+            "app.services.intent_gateway.evaluate_intent_gateway",
+            AsyncMock(
+                return_value=GatewayDecision(
+                    action="fallthrough", reason="operator", candidate_id="kernel", confidence=0.4
+                )
+            ),
+        ),
+        patch("app.services.mcp_client_service.get_mcp_client_service") as mcp_svc,
+        patch("app.services.risk_approval_evaluator.assert_org_not_blocked"),
+        patch(
+            "app.services.conversation_state_service.get_conversation_state_service",
+            return_value=state_svc,
+        ),
+        patch(
+            "app.operators.agent_intelligence.compose_reply_events",
+            AsyncMock(return_value=_packed_reply("Acme is the priority.", "txt-m", "success")),
+        ),
+        patch_agent_streaming_dialogue_pipeline(),
+    ):
+        mcp_svc.return_value.get_enabled_tools_for_org = AsyncMock(return_value=[])
+        async for _event in intelligence.execute_task_streaming(
+            org_id="org-1",
+            user_id="user-1",
+            query="which account is our priority this quarter",
+            mode="fast",
+            conversation_id="conv-marks",
+            client=MagicMock(),
+            spoken_mode=True,
+            latency_marks=marks,
+        ):
+            pass
+
+    assert before <= marks["_t0_perf"] <= time.perf_counter()
+    for name in ("client_ready", "intent_gateway", "pre_kernel_entry"):
+        assert isinstance(marks[name], int), name
+    assert marks["client_ready"] <= marks["intent_gateway"] <= marks["pre_kernel_entry"]
+
+
+@pytest.mark.asyncio
 async def test_shared_runtime_typed_normal_turn_emits_composer_and_complete(
     intelligence: AgentIntelligence,
 ):

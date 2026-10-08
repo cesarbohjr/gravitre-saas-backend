@@ -226,6 +226,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
         query = reconstitute_spoken_identity_fields(text)
         self._last_speculative_text = text
         run_holder: list[SpeculativeGenerationRun] = []
+        latency_marks: dict[str, Any] = {}
 
         async def _runner():
             from app.operators.agent_intelligence import get_agent_intelligence
@@ -260,6 +261,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                 conversation_id=conversation_id,
                 spoken_mode=True,
                 mode=spec_mode,
+                latency_marks=latency_marks,
                 **turn_inputs,
             )
             async for event in stream:
@@ -271,6 +273,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             create_task=self.create_task,
         )
         run_holder.append(run)
+        run.latency_marks = latency_marks
         self._speculative_coordinator.set_run(run)
         logger.info(
             "pipecat_voice_speculative_generation_started org_id=%s chars=%s",
