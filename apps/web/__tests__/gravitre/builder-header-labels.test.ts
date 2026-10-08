@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
-const page = readFileSync(resolve(__dirname, "../../app/workflows/[id]/builder/page.tsx"), "utf8")
+const page = readFileSync(resolve(__dirname, "../../app/(app)/workflows/[id]/builder/page.tsx"), "utf8")
 
 describe("Workflow Builder header", () => {
   it("splits identity (name, environment, status, version) from the workflow toolbar", () => {

@@ -2,7 +2,7 @@
 import React, { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
-import SourceDetailPage from "@/app/sources/[id]/page"
+import SourceDetailPage from "@/app/(app)/sources/[id]/page"
 import { formatReportedCount, reportedNumber, sourceSyncFeedback } from "@/lib/source-evidence"
 
 const state = vi.hoisted(() => ({

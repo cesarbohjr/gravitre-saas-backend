@@ -46,7 +46,7 @@ vi.mock("@/components/gravitre/ai-floating-workspace", () => ({
   },
 }))
 
-import { GravitreAIFloatBridge } from "@/app/ai/_components/ai-workspace-float-bridge"
+import { GravitreAIFloatBridge } from "@/app/(app)/ai/_components/ai-workspace-float-bridge"
 import {
   GravitreAIWorkspaceProvider,
   useGravitreAIWorkspace,

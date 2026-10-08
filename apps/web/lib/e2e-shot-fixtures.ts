@@ -160,7 +160,7 @@ const businessOutcomes = [
 ]
 
 /**
- * Shape must match normalizeAgent() in app/agents/page.tsx.
+ * Shape must match normalizeAgent() in app/(app)/agents/page.tsx.
  *
  * Traps that cost real debugging time here:
  *  - `department` is validated against an exact allow-list (Marketing, Sales,
@@ -342,7 +342,7 @@ const agents = [
 ]
 
 /**
- * Shape must match normalizeWorkflow() in app/workflows/page.tsx.
+ * Shape must match normalizeWorkflow() in app/(app)/workflows/page.tsx.
  *
  * `successRate` and `lastRun` are STRINGS rendered verbatim into the table, so
  * they carry their own units — a bare number would print "98.2" with no percent
@@ -558,7 +558,7 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   __supabaseUser: supabaseUser,
   __orgId: DEMO_ORG_ID,
 
-  // Shape must match the `Connector` interface in app/connectors/page.tsx.
+  // Shape must match the `Connector` interface in app/(app)/connectors/page.tsx.
   // Requested as /api/connectors?org=…&live=1; the harness matches on pathname
   // only, so the query string is irrelevant here.
   "/api/connectors": {
@@ -696,7 +696,7 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     ],
   },
 
-  // Shape must match the `Approval` interface in app/approvals/page.tsx;
+  // Shape must match the `Approval` interface in app/(app)/approvals/page.tsx;
   // normalizeApprovalsResponse drops any entry without an `id`.
   "/api/approvals": {
     approvals: [
@@ -1073,7 +1073,7 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     ],
   },
   // Source detail (/e2e/shots/source-detail/src_warehouse). Shapes follow
-  // app/sources/[id]/page.tsx: `{ source }`, `{ tables }`, `{ history }`.
+  // app/(app)/sources/[id]/page.tsx: `{ source }`, `{ tables }`, `{ history }`.
   "/api/sources/src_warehouse": {
     source: {
       id: "src_warehouse",

@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 
-import AgentProfilePage from "@/app/agents/[id]/page"
+import AgentProfilePage from "@/app/(app)/agents/[id]/page"
 
 import { ShotAuthProvider } from "../shot-auth"
 

@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 
-import GoalDetailPage from "@/app/goals/[id]/page"
+import GoalDetailPage from "@/app/(app)/goals/[id]/page"
 
 import { ShotAuthProvider } from "../../shot-auth"
 

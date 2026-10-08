@@ -11,10 +11,10 @@ import { AssetOutcomeEditor } from "@/components/marketplace/asset-outcome-edito
 import { AssetVersionHistory } from "@/components/marketplace/asset-version-history"
 import { MarketplaceDecisionDialog } from "@/components/marketplace/marketplace-decision-dialog"
 import { AssetReviewsSection } from "@/components/marketplace/asset-reviews-section"
-import PublisherPage from "@/app/marketplace/publisher/page"
-import OrgAdminPage from "@/app/marketplace/org-admin/page"
-import AssetDetailPage from "@/app/marketplace/assets/[slug]/page"
-import { EngineSettingsTab } from "@/app/admin/intelligence/_components/engine-settings-tab"
+import PublisherPage from "@/app/(app)/marketplace/publisher/page"
+import OrgAdminPage from "@/app/(app)/marketplace/org-admin/page"
+import AssetDetailPage from "@/app/(app)/marketplace/assets/[slug]/page"
+import { EngineSettingsTab } from "@/app/(app)/admin/intelligence/_components/engine-settings-tab"
 import { fetchGoalList } from "@/lib/goals-list"
 const state = vi.hoisted(() => ({
   fetch: vi.fn(),

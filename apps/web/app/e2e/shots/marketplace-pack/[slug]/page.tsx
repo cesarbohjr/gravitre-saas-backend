@@ -1,4 +1,4 @@
-import MarketplaceAssetDetailPage from "@/app/marketplace/assets/[slug]/page"
+import MarketplaceAssetDetailPage from "@/app/(app)/marketplace/assets/[slug]/page"
 
 import { ShotAuthProvider } from "../../shot-auth"
 

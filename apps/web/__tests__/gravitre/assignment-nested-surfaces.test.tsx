@@ -4,8 +4,8 @@ import { createRoot, type Root } from "react-dom/client"
 import { beforeEach, afterEach, expect, it, vi } from "vitest"
 import { NewAssignmentPageContent } from "@/components/assignments/assignment-create-workspace"
 import { AgentCapabilitiesCard } from "@/components/gravitre/agent-capabilities-card"
-import ModelDetailPage from "@/app/models/[id]/page"
-import ModelProfilePage from "@/app/intelligence/models/[name]/page"
+import ModelDetailPage from "@/app/(app)/models/[id]/page"
+import ModelProfilePage from "@/app/(app)/intelligence/models/[name]/page"
 import { MemoryCard } from "@/components/agents/agent-memory-row"
 const state = vi.hoisted(() => ({
   data: {} as Record<string, unknown>,

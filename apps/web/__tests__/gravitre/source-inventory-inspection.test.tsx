@@ -2,7 +2,7 @@
 import React, { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { beforeEach, afterEach, expect, it, vi } from "vitest"
-import SourcesPage from "@/app/sources/page"
+import SourcesPage from "@/app/(app)/sources/page"
 import { normalizeSource } from "@/lib/source-inventory"
 
 const mocks = vi.hoisted(() => ({ refresh: vi.fn(), sync: vi.fn(), remove: vi.fn(), error: undefined as Error | undefined }))

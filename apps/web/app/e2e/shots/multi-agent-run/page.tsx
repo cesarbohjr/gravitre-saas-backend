@@ -1,4 +1,4 @@
-import MultiAgentRunPage from "@/app/multi-agent-run/page"
+import MultiAgentRunPage from "@/app/(app)/multi-agent-run/page"
 
 import { ShotAuthProvider } from "../shot-auth"
 

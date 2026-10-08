@@ -60,7 +60,7 @@ export default function ProfilePage() {
   const { user, loading } = useAuth()
   // Drives which tiers the settings rail shows; admin-only sections stay hidden
   // for non-admins.
-  const { isAdmin } = useOrgAdmin()
+  const { showAdmin } = useOrgAdmin()
   const { profile, updateProfile, setAvatarImage: setContextAvatarImage } = useUserProfile()
   const account = useAccountProfile()
   const hasProfilePhoto = Boolean(account.avatarUrl)
@@ -212,7 +212,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <AppShell title="Settings">
-        <SettingsShell activeSection="profile" isAdmin={isAdmin} hideHeader>
+        <SettingsShell activeSection="profile" isAdmin={showAdmin} hideHeader>
           <CenteredLoader fill="parent" label="Loading profile" />
         </SettingsShell>
       </AppShell>
@@ -221,7 +221,7 @@ export default function ProfilePage() {
 
   return (
     <AppShell title="Settings">
-      <SettingsShell activeSection="profile" isAdmin={isAdmin} hideHeader>
+      <SettingsShell activeSection="profile" isAdmin={showAdmin} hideHeader>
         <input
           type="file"
           ref={fileInputRef}

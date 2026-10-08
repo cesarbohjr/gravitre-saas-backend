@@ -6,7 +6,7 @@ const webRoot = resolve(__dirname, "../..")
 
 describe("UX Reset Phase 2 — visual simplification", () => {
   it("empty landing is identity + composer + text suggestions, not a mode dashboard", () => {
-    const src = readFileSync(resolve(webRoot, "app/ai/_components/ai-landing.tsx"), "utf8")
+    const src = readFileSync(resolve(webRoot, "app/(app)/ai/_components/ai-landing.tsx"), "utf8")
     expect(src).toMatch(/What do you want to get done/)
     expect(src).not.toMatch(/One surface, three modes/)
     expect(src).not.toMatch(/AI_MODES\.map/)
@@ -23,7 +23,7 @@ describe("UX Reset Phase 2 — visual simplification", () => {
   })
 
   it("expanded/fullscreen default with history and context rails collapsed", () => {
-    const src = readFileSync(resolve(webRoot, "app/ai/_components/ai-workspace.tsx"), "utf8")
+    const src = readFileSync(resolve(webRoot, "app/(app)/ai/_components/ai-workspace.tsx"), "utf8")
     expect(src).toMatch(/useState\(true\)/)
     expect(src).toMatch(/GravitreAIContextIndicator/)
     expect(src).toMatch(/const closeToHelper = minimizeToHelper/)
@@ -31,13 +31,13 @@ describe("UX Reset Phase 2 — visual simplification", () => {
 
   it("header Ask Gravitre exists on Activity, Agents, Workflows, Connectors, Performance, Approvals", () => {
     const pages = [
-      "app/activity/page.tsx",
-      "app/agents/page.tsx",
-      "app/workflows/page.tsx",
-      "app/connectors/page.tsx",
+      "app/(app)/activity/page.tsx",
+      "app/(app)/agents/page.tsx",
+      "app/(app)/workflows/page.tsx",
+      "app/(app)/connectors/page.tsx",
       // Impact summons Ask Gravitre from its "How these numbers are worked out" disclosure.
       "components/intelligence/impact/by-agent-table.tsx",
-      "app/approvals/page.tsx",
+      "app/(app)/approvals/page.tsx",
     ]
     for (const rel of pages) {
       const src = readFileSync(resolve(webRoot, rel), "utf8")

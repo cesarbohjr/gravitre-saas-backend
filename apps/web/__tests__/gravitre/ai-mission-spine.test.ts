@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { UIMessage } from "ai"
-import { deriveMissionStages } from "@/app/ai/_components/ai-mission-spine"
+import { deriveMissionStages } from "@/app/(app)/ai/_components/ai-mission-spine"
 import type { ChatExecutionResult } from "@/components/gravitre/assistant/chat-execution-panel"
 
 const user = (text: string, id = "u1"): UIMessage => ({ id, role: "user", parts: [{ type: "text", text }] }) as UIMessage

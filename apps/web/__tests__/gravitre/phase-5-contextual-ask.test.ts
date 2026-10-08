@@ -22,13 +22,13 @@ describe("UX Reset Phase 5 — contextual Ask Gravitre", () => {
     expect(operatingFlow).toMatch(/useGravitreAIWorkspace/)
     expect(operatingFlow).toMatch(/data-ask-prompt/)
     const pages = [
-      "app/marketplace/assets/page.tsx",
-      "app/agents/[id]/page.tsx",
-      "app/workflows/[id]/page.tsx",
-      "app/connectors/[id]/page.tsx",
+      "app/(app)/marketplace/assets/page.tsx",
+      "app/(app)/agents/[id]/page.tsx",
+      "app/(app)/workflows/[id]/page.tsx",
+      "app/(app)/connectors/[id]/page.tsx",
       "components/training/training-workbench.tsx",
-      "app/models/page.tsx",
-      "app/intelligence/model-studio/page.tsx",
+      "app/(app)/models/page.tsx",
+      "app/(app)/intelligence/model-studio/page.tsx",
     ]
     for (const rel of pages) {
       const src = readFileSync(resolve(webRoot, rel), "utf8")
@@ -38,13 +38,13 @@ describe("UX Reset Phase 5 — contextual Ask Gravitre", () => {
 
   it("product lists publish the selected object into pageContext", () => {
     const files = [
-      "app/agents/page.tsx",
-      "app/activity/page.tsx",
-      "app/approvals/page.tsx",
-      "app/connectors/page.tsx",
-      "app/intelligence/page.tsx",
+      "app/(app)/agents/page.tsx",
+      "app/(app)/activity/page.tsx",
+      "app/(app)/approvals/page.tsx",
+      "app/(app)/connectors/page.tsx",
+      "app/(app)/intelligence/page.tsx",
       "components/intelligence/pages/performance-stage.tsx",
-      "app/marketplace/assets/page.tsx",
+      "app/(app)/marketplace/assets/page.tsx",
     ]
     for (const rel of files) {
       const src = readFileSync(resolve(webRoot, rel), "utf8")

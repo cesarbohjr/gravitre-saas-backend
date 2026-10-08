@@ -11,7 +11,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(DEFAULT_AGENTS_FLEET_PREFS.view).toBe("team")
     expect(normalizeAgentsFleetPrefs({ version: 1, view: "list" }).view).toBe("team")
     expect(normalizeAgentsFleetPrefs({ version: 2, view: "list" }).view).toBe("list")
-    const src = readFileSync(resolve(webRoot, "app/agents/page.tsx"), "utf8")
+    const src = readFileSync(resolve(webRoot, "app/(app)/agents/page.tsx"), "utf8")
     expect(src).not.toMatch(/ConnectorsAtmosphere/)
     expect(src).not.toMatch(/NucleoAgent/)
     const identity = readFileSync(resolve(webRoot, "components/agents/fleet-v4/identity-tokens.ts"), "utf8")
@@ -35,7 +35,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
   })
 
   it("connectors default to discovery then a compact management list", () => {
-    const src = readFileSync(resolve(webRoot, "app/connectors/page.tsx"), "utf8")
+    const src = readFileSync(resolve(webRoot, "app/(app)/connectors/page.tsx"), "utf8")
     expect(src).toMatch(/useState<"topology" \| "grid">\("grid"\)/)
     expect(src).toMatch(/<ConnectorOperatingRow/)
     expect(src).toMatch(/\{selectedConnector \? \(\s*<ResponsiveConnectorInspector/)
@@ -52,7 +52,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
   })
 
   it("sources retain the desktop table with compact disclosure below tablet cutover", () => {
-    const src = readFileSync(resolve(webRoot, "app/sources/page.tsx"), "utf8")
+    const src = readFileSync(resolve(webRoot, "app/(app)/sources/page.tsx"), "utf8")
     expect(src).toMatch(/<table/)
     expect(src).not.toMatch(/xl:grid-cols-4/)
     expect(src).toMatch(/Last sync/)
@@ -63,7 +63,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
   })
 
   it("relationships map is not wrapped in a permanent evidence dashboard", () => {
-    const src = readFileSync(resolve(webRoot, "app/intelligence/page.tsx"), "utf8")
+    const src = readFileSync(resolve(webRoot, "app/(app)/intelligence/page.tsx"), "utf8")
     // The overview is the v2 design: one core view (stats, flow map, activity, learnings), no evidence dashboard below it.
     expect(src).toMatch(/<IntelligenceBrain/)
     expect(src).not.toMatch(/Attention, learnings, and impact/)
@@ -104,7 +104,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     // No in-stage view switcher: the only segmented control is the 7/30/90 day period in the header.
     expect(src).not.toMatch(/SegmentedControl/)
     expect(src).not.toMatch(/AgentContributionCard/)
-    const page = readFileSync(resolve(webRoot, "app/intelligence/performance/page.tsx"), "utf8")
+    const page = readFileSync(resolve(webRoot, "app/(app)/intelligence/performance/page.tsx"), "utf8")
     expect(page).toMatch(/ariaLabel="Period"/)
     expect(page).toMatch(/getAgentRoi\(\{ periodDays: period \}\)/)
     const flowSrc = readFileSync(
@@ -117,7 +117,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
   })
 
   it("settings preference chrome uses rows, not elevated cards", () => {
-    const page = readFileSync(resolve(webRoot, "app/settings/page.tsx"), "utf8")
+    const page = readFileSync(resolve(webRoot, "app/(app)/settings/page.tsx"), "utf8")
     expect(page).toMatch(/from \"@\/components\/settings\/organization-settings\"/)
     expect(page).toMatch(/from \"@\/components\/settings\/notification-settings\"/)
     expect(page).toMatch(/from \"@\/components\/settings\/security-settings\"/)
@@ -171,14 +171,14 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
   })
 
   it("settings organizations are a list with inspector on selection", () => {
-    const src = readFileSync(resolve(webRoot, "app/settings/organizations/page.tsx"), "utf8")
+    const src = readFileSync(resolve(webRoot, "app/(app)/settings/organizations/page.tsx"), "utf8")
     expect(src).toMatch(/data-review-surface="settings-orgs-queue"/)
     expect(src).toMatch(/data-review-surface="settings-orgs-inspect"/)
     expect(src).not.toMatch(/requestsToday|dataFlowRate|usedByWorkflows|triggeredByAgents/)
     expect(src).toMatch(/data-review-cta="switch-org"/)
     expect(src).not.toMatch(/from \"@\/components\/ui\/card\"/)
     expect(src).not.toMatch(/org\.plan \?\? \"Free\"/)
-    const prefs = readFileSync(resolve(webRoot, "app/settings/page.tsx"), "utf8")
+    const prefs = readFileSync(resolve(webRoot, "app/(app)/settings/page.tsx"), "utf8")
     expect(prefs).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
     const harness = readFileSync(
       resolve(webRoot, "app/dev/ai-workspace-preview/_components/design-exploration-shell.tsx"),
@@ -186,16 +186,16 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     )
     expect(harness).toMatch(/\"settings\"/)
     expect(harness).toMatch(/SelectedSettings/)
-    const enterprise = readFileSync(resolve(webRoot, "app/settings/enterprise/page.tsx"), "utf8")
+    const enterprise = readFileSync(resolve(webRoot, "app/(app)/settings/enterprise/page.tsx"), "utf8")
     expect(enterprise).toMatch(/aria-label="Enterprise settings"/)
     expect(enterprise).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
-    const federation = readFileSync(resolve(webRoot, "app/settings/federation/page.tsx"), "utf8")
+    const federation = readFileSync(resolve(webRoot, "app/(app)/settings/federation/page.tsx"), "utf8")
     expect(federation).not.toMatch(/TabsList/)
     expect(federation).toMatch(/aria-label="Federation activity"/)
   })
 
   it("workflow builder states intent then canvas and inspects config on the node", () => {
-    const src = readFileSync(resolve(webRoot, "app/workflows/[id]/builder/page.tsx"), "utf8")
+    const src = readFileSync(resolve(webRoot, "app/(app)/workflows/[id]/builder/page.tsx"), "utf8")
     expect(src).toMatch(/data-review-surface="workflow-intent"/)
     expect(src).toMatch(/traceOverlay/)
     expect(src).toMatch(/Inspect ·/)
@@ -204,21 +204,21 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
   })
 
   it("runs lead with outcome evidence and keep TRACE as a drill-down", () => {
-    const run = readFileSync(resolve(webRoot, "app/runs/[id]/page.tsx"), "utf8")
+    const run = readFileSync(resolve(webRoot, "app/(app)/runs/[id]/page.tsx"), "utf8")
     const outcome = run.indexOf('data-review-surface="run-outcome"')
     const trace = run.indexOf('data-review-surface="run-trace"')
     expect(outcome).toBeGreaterThan(0)
     expect(trace).toBeGreaterThan(outcome)
     expect(run).toMatch(/eyebrow="Outcome"/)
     expect(run).toMatch(/Drill-down into this run/)
-    const activity = readFileSync(resolve(webRoot, "app/activity/page.tsx"), "utf8")
+    const activity = readFileSync(resolve(webRoot, "app/(app)/activity/page.tsx"), "utf8")
     expect(activity).not.toMatch(/selectedOutcomeExplicit \?\? outcomes\[0\]/)
     expect(activity).toMatch(/inspector stays closed until then/)
     expect(activity).toMatch(/\?trace=1/)
   })
 
   it("approvals queue is decision-first with one primary CTA after selection", () => {
-    const src = readFileSync(resolve(webRoot, "app/approvals/page.tsx"), "utf8")
+    const src = readFileSync(resolve(webRoot, "app/(app)/approvals/page.tsx"), "utf8")
     expect(src).toMatch(/data-review-surface="approvals-queue"/)
     expect(src).toMatch(/data-review-surface="approvals-inspect"/)
     expect(src).toMatch(/data-review-cta="approve"/)
@@ -306,12 +306,12 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(studio).toMatch(/inspector stays closed until then/)
     expect(studio).not.toMatch(/sm:grid-cols-2 lg:grid-cols-3/)
 
-    const training = readFileSync(resolve(webRoot, "app/training/page.tsx"), "utf8")
+    const training = readFileSync(resolve(webRoot, "app/(app)/training/page.tsx"), "utf8")
     expect(training).not.toMatch(/from-emerald-500 to-teal-500/)
   })
 
   it("marketplace keeps authorized discovery tiles and treats installed as ops", () => {
-    const catalog = readFileSync(resolve(webRoot, "app/marketplace/assets/page.tsx"), "utf8")
+    const catalog = readFileSync(resolve(webRoot, "app/(app)/marketplace/assets/page.tsx"), "utf8")
     expect(catalog).toMatch(/data-review-surface="marketplace-discovery"/)
     expect(catalog).toMatch(/data-review-surface="marketplace-ops"/)
     expect(catalog).toMatch(/PriceBadge/)
@@ -320,7 +320,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(catalog).not.toMatch(/2xl:grid-cols-4/)
     expect(catalog).not.toMatch(/FilterChip/)
 
-    const installed = readFileSync(resolve(webRoot, "app/marketplace/installed/page.tsx"), "utf8")
+    const installed = readFileSync(resolve(webRoot, "app/(app)/marketplace/installed/page.tsx"), "utf8")
     expect(installed).toMatch(/data-review-surface="marketplace-ops"/)
     expect(installed).toMatch(/data-review-surface="marketplace-ops-inspect"/)
     expect(installed).toMatch(/inspector stays closed until then/)

@@ -2,7 +2,7 @@
 import React, { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
-import { ScheduleItemDialog } from "@/app/schedules/_components/schedule-item-dialog"
+import { ScheduleItemDialog } from "@/app/(app)/schedules/_components/schedule-item-dialog"
 import type { ScheduleOccurrence } from "@/lib/schedules"
 
 const actions = vi.hoisted(() => ({ remove: vi.fn(), close: vi.fn(), refresh: vi.fn() }))

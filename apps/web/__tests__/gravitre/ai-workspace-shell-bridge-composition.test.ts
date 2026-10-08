@@ -38,7 +38,7 @@ vi.mock("@/components/gravitre/ai-workspace-shell", () => ({
 import {
   GravitreAIWorkspaceShellBridge,
   type GravitreAIWorkspaceShellBridgeProps,
-} from "@/app/ai/_components/ai-workspace-shell-bridge"
+} from "@/app/(app)/ai/_components/ai-workspace-shell-bridge"
 import { writeCompositionPreference } from "@/lib/gravitre-ai-composition"
 
 let container: HTMLDivElement

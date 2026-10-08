@@ -8,7 +8,7 @@ const readDatasetSurfaces = () =>
   [
     "components/intelligence/external-datasets-section.tsx",
     "components/intelligence/pages/model-studio-stage.tsx",
-    "app/intelligence/data/page.tsx",
+    "app/(app)/intelligence/data/page.tsx",
     "lib/surface-copy.ts",
   ]
     .map((file) => readFileSync(resolve(webRoot, file), "utf8"))

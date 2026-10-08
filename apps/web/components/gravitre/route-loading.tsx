@@ -1,5 +1,8 @@
+"use client"
+
 import { cn } from "@/lib/utils"
 import { CenteredLoader, type CenteredLoaderFill } from "@/components/gravitre/gravitre-loader"
+import { useInsideAppShell } from "@/components/gravitre/app-shell-context"
 
 /**
  * Layout hint kept for backwards compatibility: all `loading.tsx` files pass a
@@ -13,20 +16,26 @@ type RouteLoadingProps = {
   className?: string
   /** Optional label under the loader. */
   label?: string
-  /** Use `parent` when RouteLoading renders inside AppShell `<main>`. */
+  /**
+   * `parent` fills the AppShell `<main>`; `viewport` fills the screen. Defaults
+   * to `parent` under the persistent shell (route-group `loading.tsx` renders
+   * inside it, with the sidebar and top bar still visible) and `viewport`
+   * elsewhere.
+   */
   fill?: CenteredLoaderFill
 }
 
 export function RouteLoading({
   className,
   label = "Loading…",
-  fill = "viewport",
+  fill,
 }: RouteLoadingProps) {
+  const insideShell = useInsideAppShell()
   return (
     <CenteredLoader
       size="lg"
       label={label}
-      fill={fill}
+      fill={fill ?? (insideShell ? "parent" : "viewport")}
       showLabel={Boolean(label)}
       className={cn(className)}
     />

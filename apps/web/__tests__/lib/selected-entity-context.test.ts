@@ -22,7 +22,7 @@ describe("selected entity must not be smuggled through research_scope", () => {
   })
 
   it("canonical chat transport body sends workspace_focus and not selected entity on research_scope", () => {
-    const src = readFileSync(resolve(__dirname, "../../app/ai/_components/ai-workspace.tsx"), "utf8")
+    const src = readFileSync(resolve(__dirname, "../../app/(app)/ai/_components/ai-workspace.tsx"), "utf8")
     const start = src.indexOf("body: () => {")
     const end = src.indexOf("useChat({")
     const bodyFn = src.slice(start, end)

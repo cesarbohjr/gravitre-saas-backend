@@ -2,12 +2,12 @@
 import React, { act, Suspense } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
-import NewWorkflowPage from "@/app/workflows/new/builder/page"
-import WorkflowDetailPage from "@/app/workflows/[id]/page"
-import CapabilitiesPage from "@/app/marketplace/capabilities/page"
+import NewWorkflowPage from "@/app/(app)/workflows/new/builder/page"
+import WorkflowDetailPage from "@/app/(app)/workflows/[id]/page"
+import CapabilitiesPage from "@/app/(app)/marketplace/capabilities/page"
 import { WorkflowIntelligenceDrawer } from "@/components/workflows/intelligence-drawer"
-import { ConnectorOpsCard } from "@/app/admin/intelligence/_components/connector-ops-card"
-import { ScoreBar } from "@/app/admin/intelligence/_components/shared"
+import { ConnectorOpsCard } from "@/app/(app)/admin/intelligence/_components/connector-ops-card"
+import { ScoreBar } from "@/app/(app)/admin/intelligence/_components/shared"
 import {
   formatSimulationDuration,
   simulationDuration,

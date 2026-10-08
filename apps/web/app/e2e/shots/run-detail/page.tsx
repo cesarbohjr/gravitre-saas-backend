@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 
-import RunDetailPage from "@/app/runs/[id]/page"
+import RunDetailPage from "@/app/(app)/runs/[id]/page"
 
 import { ShotAuthProvider } from "../shot-auth"
 

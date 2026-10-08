@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 
 const webRoot = resolve(__dirname, "../..")
 const duplex = readFileSync(resolve(webRoot, "hooks/use-voice-duplex-session.ts"), "utf8")
-const workspace = readFileSync(resolve(webRoot, "app/ai/_components/ai-workspace.tsx"), "utf8")
+const workspace = readFileSync(resolve(webRoot, "app/(app)/ai/_components/ai-workspace.tsx"), "utf8")
 
 describe("ChatGPT/Claude-class live voice interaction contract", () => {
   it("commits turns inside a persistent duplex session", () => {

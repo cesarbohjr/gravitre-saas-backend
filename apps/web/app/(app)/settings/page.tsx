@@ -614,8 +614,11 @@ function BillingUsageSettings() {
 function SettingsContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
-  const { isAdmin, loading: adminLoading } = useOrgAdmin()
+  const { user } = useAuth()
+  // `isAdmin` is server-confirmed and gates every admin-only control below;
+  // `showAdmin` may come from the last confirmed answer cached for this
+  // user + org, so the admin nav renders immediately and corrects itself.
+  const { isAdmin, showAdmin, pending: adminPending } = useOrgAdmin()
   const sectionParam = (searchParams.get("section") || "organization") as SettingsSectionId
   const [activeSection, setActiveSection] = useState<SettingsSectionId>(sectionParam)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -677,39 +680,19 @@ function SettingsContent() {
 
   const organization = (orgData as { organization?: Record<string, unknown> } | undefined)?.organization
   const team = ((teamData as { team?: User[] } | undefined)?.team ?? []) as User[]
-  // Prompt3 click-audit: bare spinner with zero copy looks like a blank empty state.
-  // Cap auth/admin wait and surface a recoverable message instead of spinning forever.
-  const [bootWaitMs, setBootWaitMs] = useState(0)
-  useEffect(() => {
-    if (!(authLoading || adminLoading)) {
-      setBootWaitMs(0)
-      return
-    }
-    const started = Date.now()
-    const id = window.setInterval(() => setBootWaitMs(Date.now() - started), 500)
-    return () => window.clearInterval(id)
-  }, [authLoading, adminLoading])
-  if (authLoading || adminLoading) {
-    const stuck = bootWaitMs >= 12_000
-    return (
-      <div className="flex flex-col items-center justify-center gap-3 h-64 px-6 text-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          {stuck
-            ? "Settings is taking longer than usual to load. Check your connection, then refresh — or open Profile / Organizations from the sidebar."
-            : "Loading settings…"}
-        </p>
-        {stuck ? (
-          <Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()}>
-            Refresh settings
-          </Button>
-        ) : null}
-      </div>
-    )
-  }
 
   const renderContent = () => {
     if (!canAccessSettingsSection(activeSection, isAdmin)) {
+      // Admin-only section before the role is confirmed: keep the settings
+      // layout up and wait inline, instead of flashing "permission required"
+      // at an admin (or blocking the whole page on the role round trip).
+      if (adminPending || showAdmin) {
+        return (
+          <p role="status" className="py-6 text-sm text-muted-foreground">
+            Checking admin access…
+          </p>
+        )
+      }
       return (
         <div className="border-b border-divide py-3 text-sm text-muted-foreground">
           Admin or owner permission is required to manage this section.
@@ -803,7 +786,7 @@ function SettingsContent() {
       <SettingsShell
       activeSection={activeSection}
       onSectionChange={handleSectionChange}
-      isAdmin={isAdmin}
+      isAdmin={showAdmin}
       mobileMenuOpen={mobileMenuOpen}
       onMobileMenuOpenChange={setMobileMenuOpen}
     >

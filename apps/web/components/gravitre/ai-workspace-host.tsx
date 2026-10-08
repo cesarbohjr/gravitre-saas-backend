@@ -20,7 +20,7 @@ import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provi
 // static import put it in the bundle of every page even though it only mounts
 // on /ai, agent chat, or when the float is opened.
 const AiWorkspace = dynamic(
-  () => import("@/app/ai/_components/ai-workspace").then((m) => ({ default: m.AiWorkspace })),
+  () => import("@/app/(app)/ai/_components/ai-workspace").then((m) => ({ default: m.AiWorkspace })),
   { ssr: false },
 )
 

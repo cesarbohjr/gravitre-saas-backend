@@ -15,7 +15,7 @@
  * Like `GravitreFloatingWorkspace` (Phase 2), this component is "dumb": it
  * owns window chrome, panel collapse toggles, focus-trap wiring, and the
  * Escape key — not conversation state. See
- * `apps/web/app/ai/_components/ai-workspace-shell-bridge.tsx` for the only
+ * `apps/web/app/(app)/ai/_components/ai-workspace-shell-bridge.tsx` for the only
  * current caller, which supplies the real Left/Center/Right content.
  *
  * Accessibility (B9):

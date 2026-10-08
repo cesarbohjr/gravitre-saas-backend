@@ -30,7 +30,7 @@ describe("UX Reset Phase 4 — shared workspace motion", () => {
       resolve(webRoot, "components/gravitre/ai-workspace-host.tsx"),
       "utf8",
     )
-    const workspace = readFileSync(resolve(webRoot, "app/ai/_components/ai-workspace.tsx"), "utf8")
+    const workspace = readFileSync(resolve(webRoot, "app/(app)/ai/_components/ai-workspace.tsx"), "utf8")
     expect(host).toMatch(/LayoutGroup id="gravitre-ai-workspace"/)
     expect(workspace).toMatch(/key="gravitre-ai-shell"/)
     expect(workspace).toMatch(/key="gravitre-ai-float"/)

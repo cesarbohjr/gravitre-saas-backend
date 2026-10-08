@@ -7,7 +7,7 @@ const read = (relative: string) => readFileSync(resolve(webRoot, relative), "utf
 
 describe("reported values stay reported", () => {
   it("metrics overview does not invent zeros for omitted payloads", () => {
-    const src = read("app/metrics/page.tsx")
+    const src = read("app/(app)/metrics/page.tsx")
     expect(src).toMatch(/function parseReportedNumber/)
     expect(src).toMatch(/function normalizeOverview\(payload: unknown\): MetricsOverview \| null/)
     expect(src).toMatch(/if \(!payload \|\| typeof payload !== "object"\) return null/)
@@ -17,7 +17,7 @@ describe("reported values stay reported", () => {
   })
 
   it("environments do not invent health, resource counts, or timestamps", () => {
-    const src = read("app/environments/page.tsx")
+    const src = read("app/(app)/environments/page.tsx")
     expect(src).toMatch(/health: parseReportedCount/)
     expect(src).toMatch(/Not reported/)
     expect(src).not.toMatch(/health: 100/)
@@ -26,7 +26,7 @@ describe("reported values stay reported", () => {
   })
 
   it("play evidence does not treat missing approvals as zero", () => {
-    const src = read("app/plays/[key]/results/[outcomeId]/page.tsx")
+    const src = read("app/(app)/plays/[key]/results/[outcomeId]/page.tsx")
     expect(src).toMatch(/Required approvals/)
     expect(src).toMatch(/Not reported/)
     expect(src).not.toMatch(/requiredApprovals \?\? 0/)
