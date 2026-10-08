@@ -144,8 +144,28 @@ def use_spoken_lite_path(
     routing_tier: str,
     message: str,
 ) -> bool:
-    """Absorbed by the Intent Gateway. Spoken no longer skips kernel enrichments."""
-    return False
+    """Use low-latency processing for simple spoken turns after Gateway fallthrough.
+
+    Operator tasks and connector writes still use the full guarded pipeline.
+    """
+    if not spoken_mode or not (message or "").strip():
+        return False
+    if (routing_tier or "").lower() not in {"simple", "fast", "low"}:
+        return False
+    if should_keep_full_reasoning_for_spoken(message):
+        return False
+
+    # Fail closed: the route skips understanding and action classification.
+    # Route only clear social turns here; factual, connector, and action requests
+    # must retain the full kernel, even if their routing tier is "simple".
+    text = re.sub(r"[.!?]+$", "", message.strip().lower())
+    social = (
+        r"(?:hi|hello|hey|good morning|good evening|good afternoon|"
+        r"how are you|how's it going|what's up|thanks|thank you|"
+        r"you're welcome|nice to meet you|goodbye|bye|"
+        r"can you hear me|are you there)"
+    )
+    return re.fullmatch(social, text) is not None
 
 
 def should_skip_unified_live_guards(
@@ -173,8 +193,33 @@ def spoken_should_stream_live_deltas(*, spoken_mode: bool, message: str) -> bool
     return True
 
 
+def classify_spoken_conversation_tier(message: str) -> str:
+    """Route voice conservatively within the shared guarded intelligence engine.
+
+    Light only handles clear social exchanges. Medium handles questions and
+    contextual discussion. Deep handles explicit operational work or analysis.
+    """
+    text = (message or "").strip()
+    if not text:
+        return "medium"
+    if should_keep_full_reasoning_for_spoken(text):
+        return "deep"
+    deep_intent = re.compile(
+        r"\b(analy[sz]e|investigate|debug|audit|deploy|merge|"
+        r"run a workflow|across (?:my |our )?(?:apps|systems)|"
+        r"research thoroughly|create an agent|execute|send emails?)\b",
+        re.IGNORECASE,
+    )
+    if deep_intent.search(text):
+        return "deep"
+    if use_spoken_lite_path(spoken_mode=True, routing_tier="simple", message=text):
+        return "light"
+    return "medium"
+
 def resolve_voice_session_intelligence_mode(message: str) -> str:
-    """Native /voice/session/turn has no mode picker; operator jobs match agent chat."""
-    if should_keep_full_reasoning_for_spoken(message):
-        return "agent"
-    return "fast"
+    """Map three conversational tiers to existing guarded execution modes.
+
+    Light and Medium use fast mode; only Light qualifies for the existing
+    spoken-lite short circuit. Deep uses the unified agent engine.
+    """
+    return "agent" if classify_spoken_conversation_tier(message) == "deep" else "fast"
