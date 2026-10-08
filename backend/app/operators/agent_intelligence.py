@@ -5650,6 +5650,9 @@ class AgentIntelligence:
             plan_runtime=_react_plan_runtime,
             conversation_history=prepared_context.messages,
             interrupt=live_interrupt,
+            # Spoken turns hear the answer while it is generated; text chat
+            # keeps the whole-call path.
+            stream_answer=bool(spoken_mode),
         ):
             if event.kind == "routing_escalation":
                 esc = event.result if isinstance(event.result, dict) else {}

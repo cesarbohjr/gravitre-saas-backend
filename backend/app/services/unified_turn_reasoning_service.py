@@ -201,8 +201,14 @@ async def _complete_unified_turn_stream(
     model_start: float,
     timeout_s: float = 20.0,
     on_text_delta: Any | None = None,
+    on_tool_call_delta: Any | None = None,
 ) -> _StreamedCompletion:
-    """Stream the shadow completion; record wall TTFT and model-only TTFT."""
+    """Stream the shadow completion; record wall TTFT and model-only TTFT.
+
+    ``on_tool_call_delta`` (optional, sync) is told each time a tool-call delta
+    arrives, so a caller releasing text as it streams can stop when the
+    response turns out to be a tool round.
+    """
 
     async def _run() -> _StreamedCompletion:
         stream_kwargs = {
@@ -260,6 +266,11 @@ async def _complete_unified_turn_stream(
                     except Exception:  # noqa: BLE001
                         pass
             for tc_delta in getattr(delta, "tool_calls", None) or []:
+                if on_tool_call_delta is not None:
+                    try:
+                        on_tool_call_delta()
+                    except Exception:  # noqa: BLE001
+                        pass
                 if first_token_ms is None:
                     now = time.perf_counter()
                     first_token_ms = int((now - wall_start) * 1000)
