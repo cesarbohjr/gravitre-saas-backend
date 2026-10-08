@@ -152,7 +152,20 @@ def use_spoken_lite_path(
         return False
     if (routing_tier or "").lower() not in {"simple", "fast", "low"}:
         return False
-    return not should_keep_full_reasoning_for_spoken(message)
+    if should_keep_full_reasoning_for_spoken(message):
+        return False
+
+    # Fail closed: the route skips understanding and action classification.
+    # Route only clear social turns here; factual, connector, and action requests
+    # must retain the full kernel, even if their routing tier is "simple".
+    text = re.sub(r"[.!?]+$", "", message.strip().lower())
+    social = (
+        r"(?:hi|hello|hey|good morning|good evening|good afternoon|"
+        r"how are you|how's it going|what's up|thanks|thank you|"
+        r"you're welcome|nice to meet you|goodbye|bye|"
+        r"can you hear me|are you there)"
+    )
+    return re.fullmatch(social, text) is not None
 
 
 def should_skip_unified_live_guards(
