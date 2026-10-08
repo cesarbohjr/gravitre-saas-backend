@@ -2918,13 +2918,16 @@ function ConnectorsPageContent() {
 
   const vendorCapabilities = useVendorCapabilities(Boolean(user && orgId))
   const agentsByVendor = useAgentsByVendor(Boolean(user && orgId))
+  const departmentConnectors = useMemo(
+    () => connectors.filter((c) => connectorInDepartment(c.category, activeDepartment)),
+    [connectors, activeDepartment],
+  )
   const attentionItems = useMemo(
     () =>
-      connectors
-        .filter((c) => connectorInDepartment(c.category, activeDepartment))
+      departmentConnectors
         .map((c) => deriveConnectorAttention(c))
         .filter((x): x is ConnectorAttention => x !== null),
-    [connectors, activeDepartment],
+    [departmentConnectors],
   )
   const attentionIds = useMemo(() => new Set(attentionItems.map((x) => x.connector.id)), [attentionItems])
   const selectedConnector = focusedConnector
@@ -3456,7 +3459,7 @@ function ConnectorsPageContent() {
                 ) : (
                   <ConnectorOperatingSummary
                     className="hidden xl:flex"
-                    connectors={connectors}
+                    connectors={departmentConnectors}
                     attention={attentionItems}
                     capabilities={vendorCapabilities}
                     isExecutable={(c) => connectorIsExecutable(c as Connector)}
