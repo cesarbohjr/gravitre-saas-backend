@@ -5,6 +5,7 @@
  *  - spot-*    objects only, top of a feature card
  *  - moment-*  small scene above one line of copy in an empty or error state
  *  - dept-*    department scene beside a short paragraph between data blocks
+ *  - roster-*  Agents team view: tall department card beside its agents, plus the standout card
  *  - market-*  objects-only marketplace category art (template cards and template hero)
  * Illustrations are decorative: they never carry information the copy lacks.
  */
@@ -19,8 +20,14 @@ export const ILLUSTRATIONS = {
   "dept-finance": { w: 420, h: 260 },
   "dept-support": { w: 420, h: 260 },
   "dept-engineering": { w: 420, h: 260 },
-  "dept-security": { w: 420, h: 260 },
-  "dept-general": { w: 420, h: 260 },
+  "roster-sales": { w: 320, h: 260 },
+  "roster-marketing": { w: 320, h: 260 },
+  "roster-customer-success": { w: 320, h: 260 },
+  "roster-operations": { w: 320, h: 260 },
+  "roster-finance": { w: 320, h: 260 },
+  "roster-security": { w: 320, h: 260 },
+  "roster-general": { w: 320, h: 260 },
+  "roster-standout": { w: 320, h: 260 },
   "spot-agents": { w: 300, h: 190 },
   "spot-workflows": { w: 300, h: 190 },
   "spot-connectors": { w: 300, h: 190 },

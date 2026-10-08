@@ -11,7 +11,7 @@ import {
   groupByDepartment,
   needsYou,
   standoutAgent,
-  weekStandoutAgent,
+  yesterdayBestAgent,
   type DepartmentGroup,
   type RosterAgent,
 } from "@/lib/agents-roster"
@@ -103,90 +103,128 @@ function DepartmentBand({ group, starId }: { group: DepartmentGroup; starId: str
         {meta.illustration ? (
           <div className="rs-band-art">
             {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
-            <img src={`/illustrations/${meta.illustration}.svg`} alt={meta.alt} width={420} height={260} decoding="async" />
+            <img src={`/illustrations/${meta.illustration}.svg`} alt={meta.alt} width={320} height={260} decoding="async" />
           </div>
         ) : null}
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="rs-band-copy">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span className="rs-dsq" />
             <h2 id={`dept-${meta.id}`}>{meta.name}</h2>
             <span className="rs-cnt">{agents.length}</span>
           </div>
           <p>{meta.blurb}</p>
-        </div>
-        <div className="rs-band-actions">
-          <Link className="gv-btn outline sm" href={giveTaskHref(lead.id)}>
+          <Link className="gv-btn outline rs-band-job" href={giveTaskHref(lead.id)}>
             Give {meta.name} a job
           </Link>
-          {hidden > 0 ? (
-            <Link className="gv-link rs-viewall" href={departmentListHref(meta.id)}>
-              View all {agents.length}
-              <span className="sr-only"> {meta.name} agents</span> →
-            </Link>
-          ) : null}
         </div>
       </div>
-      <div className="rs-band-grid">
-        {shown.map((agent) => (
-          <AgentCard key={agent.id} agent={agent} star={agent.id === starId} />
-        ))}
+      <div className="rs-band-main">
+        <div className="rs-band-grid">
+          {shown.map((agent) => (
+            <AgentCard key={agent.id} agent={agent} star={agent.id === starId} />
+          ))}
+        </div>
+        {hidden > 0 ? (
+          <div className="rs-band-more">
+            <span>
+              Showing {shown.length} of {agents.length} {meta.name} agents
+            </span>
+            <Link className="gv-btn outline rs-viewall" href={departmentListHref(meta.id)}>
+              View all {agents.length} in list view
+              <ArrowIcon />
+            </Link>
+          </div>
+        ) : null}
       </div>
     </section>
+  )
+}
+
+function ArrowIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  )
+}
+
+/** Shown when nobody has finished a task today (v2 "warming up" card). */
+function WarmingUp({
+  starter,
+  yesterday,
+}: {
+  starter: RosterAgent | null
+  /** Busiest agent yesterday; the "See yesterday's best" button only appears when there is one. */
+  yesterday: { agent: RosterAgent; tasks: number } | null
+}) {
+  const [showYesterday, setShowYesterday] = useState(false)
+  if (showYesterday && yesterday) {
+    const { agent, tasks } = yesterday
+    return (
+      <aside className="rs-standout" aria-labelledby="standout-heading">
+        <span className="eb">Yesterday&apos;s best</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <AgentAvatar agent={agent} />
+          <div style={{ minWidth: 0 }}>
+            <h2 id="standout-heading" className="nm">
+              {agent.name}
+            </h2>
+            <div className="sub">{agent.role || agent.departmentLabel}</div>
+          </div>
+        </div>
+        <div>
+          <div className="num">{tasks}</div>
+          <div className="lbl">{tasks === 1 ? "task" : "tasks"} finished yesterday</div>
+        </div>
+        <div className="rs-standout-actions">
+          <Link className="rs-sbtn primary" href={giveTaskHref(agent.id)}>
+            Give it today&apos;s first task
+          </Link>
+          <button type="button" className="rs-sbtn" onClick={() => setShowYesterday(false)}>
+            Back to today
+          </button>
+        </div>
+      </aside>
+    )
+  }
+  return (
+    <aside className="rs-standout" aria-labelledby="standout-heading">
+      <span className="eb">Today&apos;s standout</span>
+      <div className="rs-standout-art">
+        {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
+        <img src="/illustrations/roster-standout.svg" alt="" width={320} height={260} decoding="async" />
+      </div>
+      <h2 id="standout-heading" className="nm">
+        Your team is warming up
+      </h2>
+      <p className="sub">Nothing finished yet today. The first task an agent completes will be featured right here.</p>
+      <div className="rs-standout-actions">
+        <Link className="rs-sbtn primary" href={starter ? giveTaskHref(starter.id) : newAgentHref()}>
+          Give a task
+        </Link>
+        {yesterday ? (
+          <button type="button" className="rs-sbtn" onClick={() => setShowYesterday(true)}>
+            See yesterday&apos;s best
+          </button>
+        ) : null}
+      </div>
+    </aside>
   )
 }
 
 function Standout({
   agent,
   days,
-  week,
+  yesterday,
   starter,
 }: {
   agent: RosterAgent | null
   days: number
-  /** Busiest agent of the last 7 days, shown when nobody has finished a task today. */
-  week: { agent: RosterAgent; tasks: number } | null
+  yesterday: { agent: RosterAgent; tasks: number } | null
   /** Agent to hand a first task to when nothing has run yet. */
   starter: RosterAgent | null
 }) {
-  if (!agent && week) {
-    const rate = formatRate(week.agent.success7d)
-    return (
-      <aside className="rs-standout" aria-label="This week's standout">
-        <span className="eb">This week&apos;s standout</span>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <AgentAvatar agent={week.agent} />
-          <div style={{ minWidth: 0 }}>
-            <div className="nm">{week.agent.name}</div>
-            <div className="sub">{week.agent.role || week.agent.departmentLabel}</div>
-          </div>
-        </div>
-        <div className="sub">Quiet so far today. Here is who carried the last 7 days.</div>
-        <div style={{ display: "flex", gap: 24 }}>
-          <div>
-            <div className="num">{week.tasks}</div>
-            <div className="lbl">tasks this week</div>
-          </div>
-          <div>
-            <div className="num">{rate ?? "Not reported"}</div>
-            <div className="lbl">success</div>
-          </div>
-        </div>
-        <Link href={giveTaskHref(week.agent.id)}>Give it today&apos;s first task →</Link>
-      </aside>
-    )
-  }
-  if (!agent) {
-    return (
-      <aside className="rs-standout quiet" aria-label="Today's standout">
-        <span className="eb">Today&apos;s standout</span>
-        {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
-        <img src="/illustrations/moment-focus-time.svg" alt="" width={260} height={170} />
-        <div className="nm">Your crew is ready for its first job</div>
-        <div className="sub">Hand any agent a task and the top performer of the day shows up here.</div>
-        {starter ? <Link href={giveTaskHref(starter.id)}>Give {starter.name} a task →</Link> : null}
-      </aside>
-    )
-  }
+  if (!agent) return <WarmingUp starter={starter} yesterday={yesterday} />
   const daily = agent.stats?.daily ?? []
   const recent = daily.slice(-Math.min(SPARK_DAYS, days || SPARK_DAYS))
   const peak = Math.max(1, ...recent)
@@ -246,7 +284,7 @@ export function RosterTeamView({
   const groups = useMemo(() => groupByDepartment(agents), [agents])
   const empty = useMemo(() => emptyDepartments(agents), [agents])
   const star = useMemo(() => standoutAgent(agents), [agents])
-  const week = useMemo(() => (star ? null : weekStandoutAgent(agents)), [agents, star])
+  const yesterday = useMemo(() => (star ? null : yesterdayBestAgent(agents)), [agents, star])
   const blocked = useMemo(() => needsYou(agents), [agents])
   const available = agents.filter((a) => a.state !== "blocked" && a.state !== "not_set_up").length
   const tasksToday = agents.reduce((sum, a) => sum + a.tasksToday, 0)
@@ -309,7 +347,7 @@ export function RosterTeamView({
             )}
           </div>
         </div>
-        <Standout agent={star} days={days} week={statsAvailable ? week : null} starter={starter} />
+        <Standout agent={star} days={days} yesterday={statsAvailable ? yesterday : null} starter={starter} />
       </section>
 
       <div className="rs-chips" role="group" aria-label="Filter by department" style={{ marginTop: 28 }}>

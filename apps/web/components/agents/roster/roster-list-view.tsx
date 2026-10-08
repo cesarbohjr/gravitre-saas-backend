@@ -10,6 +10,7 @@ import { models as MODEL_OPTIONS } from "@/components/gravitre/model-selector"
 import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
 import type { Agent as ApiAgent } from "@/types/api"
 import {
+  DEPARTMENT_BY_ID,
   ROSTER_DEPARTMENTS,
   blockedReason,
   emptyDepartments,
@@ -226,6 +227,12 @@ export function RosterListView({
   const pageRows = showAll ? rows : rows.slice((current - 1) * LIST_PAGE_SIZE, current * LIST_PAGE_SIZE)
   const firstShown = rows.length === 0 ? 0 : showAll ? 1 : (current - 1) * LIST_PAGE_SIZE + 1
   const lastShown = showAll ? rows.length : Math.min(rows.length, current * LIST_PAGE_SIZE)
+  const rangeLabel =
+    rows.length === 0
+      ? `No agents match (${agents.length} in total)`
+      : showAll || rows.length <= LIST_PAGE_SIZE
+        ? `Showing all ${rows.length} ${rows.length === 1 ? "agent" : "agents"}`
+        : `Showing ${firstShown} to ${lastShown} of ${rows.length} agents`
 
   const selected = agents.filter((a) => sel.includes(a.id))
   const visibleIds = pageRows.map((r) => r.id)
@@ -276,7 +283,19 @@ export function RosterListView({
   return (
     <>
       <Insights agents={agents} statsAvailable={statsAvailable} />
-      <section className="gv-card rs-listcard">
+      <section className="gv-card rs-listcard" aria-labelledby="rs-list-heading">
+        <div className="rs-listhead">
+          <div>
+            <h2 id="rs-list-heading">{dept === "all" ? "All agents" : `${DEPARTMENT_BY_ID.get(dept)?.name ?? "Department"} agents`}</h2>
+            <span>{rangeLabel}</span>
+          </div>
+          <Link className="gv-btn outline rs-backteam" href="/agents?view=team" replace scroll={false}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M19 12H5M11 6l-6 6 6 6" />
+            </svg>
+            Back to team view
+          </Link>
+        </div>
         <div className="rs-listbar">
           <label className="gv-field">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
@@ -530,39 +549,36 @@ export function RosterListView({
             </tbody>
           </table>
         </div>
-        <div className="rs-listfoot">
-          <span>
-            {rows.length === 0
-              ? `Showing 0 of ${agents.length} agents`
-              : `Showing ${firstShown}–${lastShown} of ${rows.length}${rows.length !== agents.length ? ` (${agents.length} in total)` : ""}`}
-          </span>
-          {rows.length > LIST_PAGE_SIZE ? (
-            <nav className="rs-pager" aria-label="Agent pages">
+        {rows.length > LIST_PAGE_SIZE ? (
+          <nav className="rs-listfoot" aria-label="Pagination">
+            <span>{showAll ? "Showing every agent on one page" : `Page ${current} of ${pages}, ${LIST_PAGE_SIZE} per page`}</span>
+            <div className="rs-pager">
               {showAll ? (
-                <button type="button" className="gv-btn plain sm" onClick={() => setShowAll(false)}>
+                <button
+                  type="button"
+                  className="rs-pg"
+                  onClick={() => {
+                    setShowAll(false)
+                    setPage(1)
+                  }}
+                >
                   Show {LIST_PAGE_SIZE} per page
                 </button>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    className="rs-pg"
-                    aria-label="Previous page"
-                    disabled={current === 1}
-                    onClick={() => setPage(current - 1)}
-                  >
-                    ‹
+                  <button type="button" className="rs-pg" disabled={current === 1} onClick={() => setPage(current - 1)}>
+                    Previous
                   </button>
                   {pageItems(current, pages).map((item, i) =>
                     item === "gap" ? (
                       <span key={`gap-${i}`} className="rs-pg-gap" aria-hidden>
-                        …
+                        ...
                       </span>
                     ) : (
                       <button
                         key={item}
                         type="button"
-                        className={cn("rs-pg", item === current && "on")}
+                        className={cn("rs-pg num", item === current && "on")}
                         aria-label={`Page ${item}`}
                         aria-current={item === current ? "page" : undefined}
                         onClick={() => setPage(item)}
@@ -571,25 +587,22 @@ export function RosterListView({
                       </button>
                     ),
                   )}
-                  <button
-                    type="button"
-                    className="rs-pg"
-                    aria-label="Next page"
-                    disabled={current === pages}
-                    onClick={() => setPage(current + 1)}
-                  >
-                    ›
+                  <button type="button" className="rs-pg" disabled={current === pages} onClick={() => setPage(current + 1)}>
+                    Next
                   </button>
-                  <button type="button" className="gv-btn plain sm" onClick={() => setShowAll(true)}>
+                  <span className="rs-pg-sep" aria-hidden />
+                  <button type="button" className="rs-pg on" onClick={() => setShowAll(true)}>
                     View all {rows.length}
                   </button>
                 </>
               )}
-            </nav>
-          ) : (
+            </div>
+          </nav>
+        ) : (
+          <div className="rs-listfoot">
             <span>Tip: select several agents to move or brief them together</span>
-          )}
-        </div>
+          </div>
+        )}
       </section>
     </>
   )

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="260" viewBox="0 0 320 260" preserveAspectRatio="xMidYMid slice">
+<defs><filter id="art-grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch"></feTurbulence><feColorMatrix values="0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0 0.1 0.9 0 0 0 -0.38"></feColorMatrix></filter></defs>
+<rect width="320" height="260" fill="#DEDAD0"></rect>
+<ellipse cx="160" cy="128" rx="130" ry="96" fill="#C7D3EC"></ellipse>
+<rect x="208" y="54" width="64" height="42" rx="12" fill="#F5F2EA"></rect>
+<polygon points="220,94 212,110 232,96" fill="#F5F2EA"></polygon>
+<path d="M240 86 C229 78 231 66 237 66 C239 66 240 68 240 69 C240 68 241 66 243 66 C249 66 251 78 240 86 Z" fill="#B0573F"></path>
+<rect x="94" y="122" width="6" height="52" rx="2" fill="#4A4F58"></rect>
+<rect x="94" y="168" width="42" height="6" rx="2" fill="#4A4F58"></rect>
+<line x1="116" y1="174" x2="116" y2="212" stroke="#4A4F58" stroke-width="3"></line>
+<line x1="100" y1="213" x2="132" y2="213" stroke="#4A4F58" stroke-width="3" stroke-linecap="round"></line>
+<rect x="150" y="156" width="112" height="8" rx="2" fill="#8A6A4E"></rect>
+<rect x="158" y="164" width="5" height="50" fill="#8A6A4E"></rect>
+<rect x="249" y="164" width="5" height="50" fill="#8A6A4E"></rect>
+<rect x="184" y="126" width="40" height="28" rx="3" fill="#3B4250"></rect>
+<rect x="176" y="152" width="54" height="4" rx="2" fill="#3B4250"></rect>
+<rect x="238" y="142" width="11" height="14" rx="2" fill="#B0573F"></rect>
+<g transform="translate(118 0)">
+<rect x="18" y="166" width="7" height="48" rx="3" fill="#1E2024"></rect>
+<rect x="-8" y="162" width="36" height="9" rx="4" fill="#26282C"></rect>
+<rect x="23" y="166" width="7" height="48" rx="3" fill="#26282C"></rect>
+<path d="M-13 128 Q0 120 13 128 L14 168 L-14 168 Z" fill="#6E8BC7"></path>
+<path d="M8 132 L30 146 L52 148" fill="none" stroke="#6E8BC7" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="54" cy="148" r="3.2" fill="#C99572"></circle>
+<circle cx="0" cy="110" r="10" fill="#C99572"></circle>
+<path d="M-10.5 109 A10.5 10.5 0 0 1 10.5 109 Q2 101 -10.5 109 Z" fill="#2E231D"></path><circle cx="-8" cy="101" r="4.5" fill="#2E231D"></circle>
+<path d="M-11 108 A11 11 0 0 1 11 106" fill="none" stroke="#26282C" stroke-width="2.5"></path>
+<rect x="-4" y="105" width="7" height="10" rx="3" fill="#26282C"></rect>
+<path d="M2 114 Q7 120 13 117" fill="none" stroke="#26282C" stroke-width="2" stroke-linecap="round"></path>
+</g>
+<line x1="28" y1="214" x2="292" y2="214" stroke="#9C8C74" stroke-width="2"></line>
+<rect width="320" height="260" filter="url(#art-grain)" opacity="0.55"></rect>
+</svg>

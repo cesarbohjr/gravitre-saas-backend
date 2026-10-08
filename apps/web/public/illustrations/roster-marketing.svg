@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="260" viewBox="0 0 320 260" preserveAspectRatio="xMidYMid slice">
+<defs><filter id="art-grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch"></feTurbulence><feColorMatrix values="0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0 0.1 0.9 0 0 0 -0.38"></feColorMatrix></filter></defs>
+<rect width="320" height="260" fill="#DEDAD0"></rect>
+<ellipse cx="160" cy="128" rx="130" ry="96" fill="#E8D8C2"></ellipse>
+<line x1="172" y1="140" x2="160" y2="214" stroke="#3A3530" stroke-width="3" stroke-linecap="round"></line>
+<line x1="240" y1="140" x2="252" y2="214" stroke="#3A3530" stroke-width="3" stroke-linecap="round"></line>
+<rect x="150" y="60" width="112" height="84" rx="4" fill="#F5F2EA" stroke="#3A3530" stroke-width="2"></rect>
+<rect x="162" y="72" width="18" height="18" fill="#E2B04A"></rect>
+<rect x="186" y="72" width="18" height="18" fill="#7C8F6B"></rect>
+<rect x="210" y="72" width="18" height="18" fill="#6E8BC7"></rect>
+<rect x="162" y="98" width="18" height="18" fill="#6E8BC7"></rect>
+<rect x="186" y="98" width="18" height="18" fill="#E2B04A"></rect>
+<polyline points="214,128 224,112 234,118 250,94" fill="none" stroke="#B8875A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+<g transform="translate(124 0)">
+<rect x="-8" y="164" width="7" height="50" rx="3" fill="#26282C"></rect><rect x="1" y="164" width="7" height="50" rx="3" fill="#26282C"></rect>
+<path d="M-13 124 Q0 116 13 124 L15 168 L-15 168 Z" fill="#C9A24B"></path>
+<path d="M-10 128 L-12 160" stroke="#C9A24B" stroke-width="6" stroke-linecap="round"></path><circle cx="-12" cy="162" r="3.2" fill="#C99572"></circle>
+<path d="M9 127 L20 112 L28 100" fill="none" stroke="#C9A24B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="29" cy="98" r="3.4" fill="#C99572"></circle>
+<circle cx="0" cy="106" r="10" fill="#C99572"></circle>
+<path d="M-10.5 106 A10.5 10.5 0 0 1 10.5 106 L10 102 Q0 96 -10.5 106 Z" fill="#1F1A17"></path>
+</g>
+<g transform="translate(78 0)">
+<rect x="-8" y="164" width="7" height="50" rx="3" fill="#26282C"></rect><rect x="1" y="164" width="7" height="50" rx="3" fill="#26282C"></rect>
+<path d="M-13 124 Q0 116 13 124 L15 168 L-15 168 Z" fill="#3F5A7A"></path>
+<path d="M-10 128 L-12 160" stroke="#3F5A7A" stroke-width="6" stroke-linecap="round"></path><circle cx="-12" cy="162" r="3.2" fill="#D6AB86"></circle>
+<rect x="16" y="128" width="16" height="22" rx="2" fill="#2E3440"></rect>
+<path d="M9 128 L16 144 L22 142" fill="none" stroke="#3F5A7A" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="23" cy="141" r="3.2" fill="#D6AB86"></circle>
+<circle cx="0" cy="106" r="10" fill="#D6AB86"></circle>
+<path d="M-10.5 105 A10.5 10.5 0 0 1 10.5 105 Q2 97 -10.5 105 Z" fill="#2E231D"></path><circle cx="-8" cy="97" r="4.5" fill="#2E231D"></circle>
+</g>
+<line x1="28" y1="214" x2="292" y2="214" stroke="#9C8C74" stroke-width="2"></line>
+<rect width="320" height="260" filter="url(#art-grain)" opacity="0.55"></rect>
+</svg>
