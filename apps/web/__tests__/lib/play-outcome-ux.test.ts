@@ -6,7 +6,7 @@ const read = (p: string) => fs.readFileSync(path.join(process.cwd(), p), "utf8")
 
 describe("Play outcome UX", () => {
   it("labels dashboard impact as verified and rejects workflow-completion ROI", () => {
-    const c = read("components/home/home-dashboard.tsx")
+    const c = read("components/home/v3/play-outcomes.tsx")
     expect(c).toMatch(/Verified Play impact/)
     expect(c).toMatch(/Workflow completion is not counted as impact/)
   })

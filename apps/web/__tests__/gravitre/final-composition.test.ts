@@ -14,16 +14,11 @@ describe("3.0 Plus final composition", () => {
     expect(src).not.toMatch(/overflow-y-auto/)
   })
 
-  it("system outcomes are a collapsible preview in the AI Native view, linked to Activity", () => {
-    const src = read("components/home/home-dashboard.tsx")
-    const ai = src.indexOf('data-dashboard-view="ai"')
-    const reports = src.indexOf('data-dashboard-view="reports"')
-    const outcomes = src.indexOf("<SystemOutcomes />")
-    expect(outcomes).toBeGreaterThan(ai)
-    expect(outcomes).toBeLessThan(reports)
-    const outcomesSrc = read("components/home/system-outcomes.tsx")
-    expect(outcomesSrc).toMatch(/aria-expanded=\{!collapsed\}/)
-    expect(outcomesSrc).toMatch(/href=\{APP_ROUTES\.activity\}/)
+  it("the AI Native view leads with decisions, live agents, changes and next steps", () => {
+    const src = read("components/home/v3/ai-native-view.tsx")
+    const order = ["Needs your decision", "Agents, live", "What changed", "Start next"].map((t) => src.indexOf(`>${t}</h3>`))
+    order.forEach((i) => expect(i).toBeGreaterThan(-1))
+    expect(order).toEqual([...order].sort((x, y) => x - y))
   })
 
   it("system outcomes show counts and backend pass rate only", () => {

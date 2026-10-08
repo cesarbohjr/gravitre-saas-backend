@@ -1,0 +1,149 @@
+/* Home dashboard v3 (Gravitre Dashboard Redesign v3). Scoped to .gv-home. */
+.gv-home {
+  --gv-canvas: #f4f4f1;
+  --gv-card: #ffffff;
+  --gv-border: #e4e4df;
+  --gv-text: #141513;
+  --gv-muted: #55564f;
+  --gv-faint: #6a6b64;
+  --gv-subtle: #efefea;
+  --gv-hover: #f7f7f4;
+  --gv-ghost-hover: #e2e2dc;
+  --gv-brand: #0b8a5c;
+  --gv-brand-strong: #0a6b47;
+  --gv-accent: #19c37d;
+  --gv-mint: #ddf3e8;
+  --gv-mint-2: #cdebdc;
+  --gv-brand-surface: #f3fbf7;
+  --gv-amber: #e2a33a;
+  --gv-amber-bg: #fbf1dc;
+  --gv-amber-border: #f1ddb0;
+  --gv-amber-text: #8a5a06;
+  --gv-blue: #2b59e0;
+  --gv-blue-bg: #eef2ff;
+  --gv-red: #c2412d;
+  --gv-red-bg: #fbe7e2;
+  --gv-dark: #141513;
+  --gv-dark-hover: #262826;
+  --gv-paper: #f3eee4;
+  --gv-paper-border: #e6ded0;
+  font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--gv-text);
+  background: var(--gv-canvas);
+  min-height: 100%;
+}
+.dark .gv-home {
+  --gv-canvas: #0f100f;
+  --gv-card: #171917;
+  --gv-border: #2a2c29;
+  --gv-text: #ededE8;
+  --gv-muted: #a3a49c;
+  --gv-faint: #8a8b85;
+  --gv-subtle: #232522;
+  --gv-hover: #1d1f1c;
+  --gv-ghost-hover: #2c2e2b;
+  --gv-brand-strong: #3fd99a;
+  --gv-mint: #123a2a;
+  --gv-mint-2: #1b4d38;
+  --gv-brand-surface: #10261c;
+  --gv-amber-bg: #2c2312;
+  --gv-amber-border: #4a3a17;
+  --gv-amber-text: #f0c070;
+  --gv-blue-bg: #18213d;
+  --gv-red-bg: #3a1a14;
+  --gv-dark: #ededE8;
+  --gv-dark-hover: #d6d6d0;
+  --gv-paper-border: #2a2c29;
+}
+.gv-home *, .gv-home *::before, .gv-home *::after { box-sizing: border-box; }
+.gv-home a { color: var(--gv-brand); }
+.gv-home a:hover { color: var(--gv-brand-strong); }
+.gv-home .gv-mono { font-family: var(--font-mono), ui-monospace, monospace; }
+.gv-home .gv-wrap { max-width: 1360px; margin: 0 auto; padding: 0 32px 64px; }
+@media (max-width: 760px) { .gv-home .gv-wrap { padding: 0 16px 48px; } }
+
+.gv-home .gv-seg { border: 0; background: transparent; font: inherit; font-size: 15px; font-weight: 500; color: var(--gv-muted); padding: 9px 18px; border-radius: 999px; cursor: pointer; text-decoration: none; display: inline-block; }
+.gv-home .gv-seg:hover { color: var(--gv-text); background: var(--gv-subtle); }
+.gv-home .gv-seg.on { background: var(--gv-brand); color: #fff; }
+.gv-home .gv-card { background: var(--gv-card); border: 1px solid var(--gv-border); border-radius: 14px; }
+.gv-home .gv-chip { border: 1px solid var(--gv-border); background: var(--gv-card); color: var(--gv-text); font: inherit; font-size: 14px; padding: 9px 14px; border-radius: 999px; cursor: pointer; min-height: 40px; display: inline-flex; align-items: center; gap: 8px; }
+.gv-home .gv-chip:hover { border-color: var(--gv-brand); color: var(--gv-brand-strong); background: var(--gv-brand-surface); }
+.gv-home .gv-btn { border: 0; font: inherit; font-weight: 600; font-size: 14px; border-radius: 10px; padding: 0 16px; min-height: 40px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+.gv-home .gv-btn:disabled { opacity: .6; cursor: progress; }
+.gv-home .gv-btn.primary { background: var(--gv-brand); color: #fff; }
+.gv-home .gv-btn.primary:hover { background: #0a6b47; color: #fff; }
+.gv-home .gv-btn.ghost { background: var(--gv-subtle); color: var(--gv-text); }
+.gv-home .gv-btn.ghost:hover { background: var(--gv-ghost-hover); color: var(--gv-text); }
+.gv-home .gv-btn.dark { background: var(--gv-dark); color: var(--gv-canvas); }
+.gv-home .gv-btn.dark:hover { background: var(--gv-dark-hover); }
+.gv-home .gv-btn.line { background: var(--gv-card); color: var(--gv-text); border: 1px solid var(--gv-border); min-height: 44px; }
+.gv-home .gv-btn.line:hover { border-color: var(--gv-brand); color: var(--gv-brand-strong); }
+.gv-home .gv-btn.text { background: transparent; color: var(--gv-text); min-height: 44px; }
+.gv-home .gv-btn.text:hover { background: var(--gv-subtle); }
+.gv-home .gv-btn.tall { min-height: 44px; }
+.gv-home .gv-btn:focus-visible, .gv-home .gv-seg:focus-visible, .gv-home .gv-chip:focus-visible, .gv-home .gv-rng:focus-visible, .gv-home .gv-ctl:focus-visible, .gv-home .gv-lib:focus-visible, .gv-home a:focus-visible { outline: 2px solid var(--gv-brand); outline-offset: 2px; }
+.gv-home .gv-input { flex: 1 1 auto; min-width: 0; border: 0; outline: none; font: inherit; font-size: 18px; color: var(--gv-text); background: transparent; }
+.gv-home .gv-input::placeholder { color: var(--gv-faint); }
+.gv-home .gv-composer { box-shadow: 0 1px 2px rgba(20,22,21,.04), 0 12px 32px -16px rgba(20,22,21,.18); }
+.gv-home .gv-composer:focus-within { border-color: var(--gv-brand); box-shadow: 0 0 0 4px rgba(25,195,125,.14); }
+.gv-home .gv-ping { position: relative; display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.gv-home .gv-ping::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: inherit; animation: gvPulse 1.8s ease-out infinite; }
+.gv-home .gv-rise { animation: gvRise .7s cubic-bezier(.22,1,.36,1) both; }
+.gv-home .gv-seg-exec { background: linear-gradient(90deg, #19c37d 0%, #6ed6a5 50%, #19c37d 100%); background-size: 240px 100%; animation: gvShimmer 1.6s linear infinite; }
+.gv-home .gv-skel { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--gv-subtle) 0%, var(--gv-hover) 50%, var(--gv-subtle) 100%); background-size: 400px 100%; animation: gvShimmer 1.4s linear infinite; }
+.gv-home .gv-heart { stroke-dasharray: 240; animation: gvDraw 2.4s ease-in-out infinite; }
+.gv-home .gv-row { text-decoration: none; color: inherit; }
+.gv-home .gv-row:hover { background: var(--gv-hover); color: inherit; }
+.gv-home .gv-trace { stroke-dasharray: 8 92; animation: gvTrace 3.2s linear infinite; }
+.gv-home .gv-lift { transform: translateY(-6px); transition: transform .32s cubic-bezier(.22,1,.36,1); }
+.gv-home .gv-node { transition: transform .32s cubic-bezier(.22,1,.36,1); }
+.gv-home .gv-start { padding: 20px; text-decoration: none; color: var(--gv-text); display: block; transition: border-color .2s, box-shadow .2s; }
+.gv-home .gv-start:hover { color: var(--gv-text); border-color: var(--gv-brand); box-shadow: 0 1px 2px rgba(20,22,21,.04), 0 14px 34px -18px rgba(20,22,21,.22); }
+
+/* Reports */
+.gv-home .gv-rng { border: 0; background: transparent; font: inherit; font-size: 14px; font-weight: 500; color: var(--gv-muted); padding: 0 14px; min-height: 36px; border-radius: 8px; cursor: pointer; }
+.gv-home .gv-rng:hover { background: var(--gv-subtle); }
+.gv-home .gv-rng.on { background: var(--gv-dark); color: var(--gv-canvas); }
+.gv-home .gv-select { font: inherit; font-size: 14px; min-height: 44px; border: 1px solid var(--gv-border); border-radius: 10px; background: var(--gv-card); padding: 0 12px; color: var(--gv-text); }
+.gv-home .gv-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+.gv-home .gv-w { background: var(--gv-card); border: 1px solid var(--gv-border); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; min-width: 0; transition: box-shadow .2s, border-color .2s, transform .2s, opacity .2s; animation: gvRise .6s cubic-bezier(.22,1,.36,1) both; }
+.gv-home .gv-w:hover { box-shadow: 0 1px 2px rgba(20,22,21,.04), 0 14px 34px -18px rgba(20,22,21,.22); }
+.gv-home .gv-w.edit { border-style: dashed; border-color: #cbcbc3; cursor: grab; }
+.gv-home .gv-w.over { border-color: var(--gv-brand); box-shadow: 0 0 0 4px rgba(25,195,125,.16); }
+.gv-home .gv-w.dragging { opacity: .45; transform: scale(.98); }
+.gv-home .gv-ctl { width: 36px; height: 36px; border: 1px solid var(--gv-border); background: var(--gv-card); border-radius: 8px; display: grid; place-items: center; cursor: pointer; color: var(--gv-muted); font: inherit; font-size: 12px; font-family: var(--font-mono), ui-monospace, monospace; }
+.gv-home .gv-ctl:hover { border-color: var(--gv-brand); color: var(--gv-brand-strong); }
+.gv-home .gv-col { position: relative; flex: 1 1 0; display: flex; flex-direction: column-reverse; align-items: stretch; height: 100%; min-width: 0; }
+.gv-home .gv-col:hover .gv-seg-bar { filter: brightness(1.08); }
+.gv-home .gv-seg-bar { transition: height .9s cubic-bezier(.22,1,.36,1); }
+.gv-home .gv-tip { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: #141513; color: #fff; font-size: 12px; padding: 6px 8px; border-radius: 6px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 3; }
+.gv-home .gv-col:hover .gv-tip { opacity: 1; }
+.gv-home .gv-heat { border-radius: 4px; transition: transform .15s; }
+.gv-home .gv-heat:hover { transform: scale(1.25); outline: 2px solid var(--gv-text); }
+.gv-home .gv-lib { border: 1px dashed #cbcbc3; background: var(--gv-card); border-radius: 12px; padding: 14px; text-align: left; font: inherit; cursor: pointer; display: flex; gap: 12px; align-items: center; min-height: 64px; color: var(--gv-text); }
+.gv-home .gv-lib:hover { border-color: var(--gv-brand); background: var(--gv-brand-surface); }
+.gv-home .gv-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 760px; }
+.gv-home .gv-table tbody tr td { border-top: 1px solid var(--gv-subtle); }
+.gv-home .gv-table tbody tr:hover td { background: var(--gv-hover); }
+.gv-home .gv-draw { transition: stroke-dashoffset 1.4s cubic-bezier(.22,1,.36,1); }
+.gv-home .gv-grow { transition: width 1s cubic-bezier(.22,1,.36,1); }
+
+@media (max-width: 1100px) {
+  .gv-home .gv-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gv-home .gv-grid > .gv-w { grid-column: span 2 !important; }
+  .gv-home .gv-grid > .gv-w.k1 { grid-column: span 1 !important; }
+}
+@media (max-width: 760px) {
+  .gv-home .gv-hide-sm { display: none !important; }
+  .gv-home .gv-grid { grid-template-columns: minmax(0, 1fr); }
+  .gv-home .gv-grid > .gv-w, .gv-home .gv-grid > .gv-w.k1 { grid-column: span 1 !important; }
+}
+
+@keyframes gvPulse { 0% { transform: scale(1); opacity: .55; } 100% { transform: scale(2.8); opacity: 0; } }
+@keyframes gvRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes gvShimmer { from { background-position: -240px 0; } to { background-position: 240px 0; } }
+@keyframes gvDraw { 0% { stroke-dashoffset: 240; } 55% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -240; } }
+@keyframes gvTrace { to { stroke-dashoffset: -100; } }
+@media (prefers-reduced-motion: reduce) {
+  .gv-home *, .gv-home *::before, .gv-home *::after { animation: none !important; transition: none !important; }
+}

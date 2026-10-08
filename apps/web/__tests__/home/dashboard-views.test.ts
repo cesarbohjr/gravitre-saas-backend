@@ -14,14 +14,16 @@ describe("dashboard views", () => {
     expect(parseDashboardView("reports")).toBe("reports")
   })
 
-  it("renders the KPI board only in the Reports view, and Customize switches to it", () => {
+  it("renders the Reports board only in the Reports view and the AI Native briefing otherwise", () => {
     const src = read("components/home/home-dashboard.tsx")
-    expect(src).toMatch(/<DashboardViewToggle/)
-    expect(src).toMatch(/const showReports = view === "reports" \|\| editMode/)
-    expect(src).toMatch(/onClick=\{startCustomize\}/)
-    const reports = src.indexOf('data-dashboard-view="reports"')
-    expect(src.indexOf("{/* Desktop / tablet grid */}")).toBeGreaterThan(reports)
-    expect(src.indexOf("<OperatingFlow")).toBeLessThan(reports)
+    expect(src).toMatch(/data-dashboard-view-toggle/)
+    expect(src).toMatch(/const showReports = view === "reports"/)
+    const reports = src.indexOf("<ReportsView")
+    const ai = src.indexOf("<AiNativeView")
+    expect(reports).toBeGreaterThan(-1)
+    expect(ai).toBeGreaterThan(reports)
+    // Reports data loads only while the Reports view is open.
+    expect(src).toMatch(/useHomeReportsData\(enabled && showReports/)
   })
 })
 
