@@ -222,6 +222,7 @@ function AgentsRoster() {
           agents={agents}
           statsAvailable={statsAvailable}
           initialStatus={searchParams.get("status")}
+          initialDept={searchParams.get("dept")}
           onChanged={refresh}
           onSelectionChange={setSelected}
         />

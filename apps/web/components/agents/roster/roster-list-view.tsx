@@ -154,22 +154,51 @@ function Insights({ agents, statsAvailable }: { agents: RosterAgent[]; statsAvai
   )
 }
 
+/** Rows per page; "View all" lifts the limit. */
+export const LIST_PAGE_SIZE = 10
+
+/** Page numbers to show: all when few, otherwise first, last and a window around the current page. */
+export function pageItems(page: number, pages: number): Array<number | "gap"> {
+  if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1)
+  const out: Array<number | "gap"> = [1]
+  const from = Math.max(2, page - 1)
+  const to = Math.min(pages - 1, page + 1)
+  if (from > 2) out.push("gap")
+  for (let n = from; n <= to; n++) out.push(n)
+  if (to < pages - 1) out.push("gap")
+  out.push(pages)
+  return out
+}
+
+function isDepartment(value: string | null | undefined): value is AgentDepartmentId {
+  return Boolean(value) && ROSTER_DEPARTMENTS.some((d) => d.id === value)
+}
+
 export function RosterListView({
   agents,
   statsAvailable,
   initialStatus,
+  initialDept,
   onChanged,
   onSelectionChange,
 }: {
   agents: RosterAgent[]
   statsAvailable: boolean
   initialStatus?: string | null
+  /** Department to filter by on arrival, e.g. from a team band's View all. */
+  initialDept?: string | null
   onChanged: () => Promise<unknown>
   onSelectionChange?: (agent: RosterAgent | null) => void
 }) {
   const router = useRouter()
   const [query, setQuery] = useState("")
-  const [dept, setDept] = useState<AgentDepartmentId | "all">("all")
+  const [dept, setDeptState] = useState<AgentDepartmentId | "all">(isDepartment(initialDept) ? initialDept : "all")
+  const [page, setPage] = useState(1)
+  const [showAll, setShowAll] = useState(false)
+  const setDept = (next: AgentDepartmentId | "all") => {
+    setDeptState(next)
+    setPage(1)
+  }
   const [needsOnly, setNeedsOnly] = useState(initialStatus === "needs")
   const [sort, setSort] = useState<SortKey>("tasks")
   const [sel, setSel] = useState<string[]>([])
@@ -192,9 +221,15 @@ export function RosterListView({
     )
   }, [agents, dept, needsOnly, q, sort])
 
+  const pages = Math.max(1, Math.ceil(rows.length / LIST_PAGE_SIZE))
+  const current = Math.min(page, pages)
+  const pageRows = showAll ? rows : rows.slice((current - 1) * LIST_PAGE_SIZE, current * LIST_PAGE_SIZE)
+  const firstShown = rows.length === 0 ? 0 : showAll ? 1 : (current - 1) * LIST_PAGE_SIZE + 1
+  const lastShown = showAll ? rows.length : Math.min(rows.length, current * LIST_PAGE_SIZE)
+
   const selected = agents.filter((a) => sel.includes(a.id))
-  const visibleIds = rows.map((r) => r.id)
-  const allOn = rows.length > 0 && visibleIds.every((id) => sel.includes(id))
+  const visibleIds = pageRows.map((r) => r.id)
+  const allOn = pageRows.length > 0 && visibleIds.every((id) => sel.includes(id))
   const maxTasks = Math.max(1, ...agents.map((a) => a.tasksToday))
 
   const setSelection = (next: string[]) => {
@@ -253,7 +288,10 @@ export function RosterListView({
               aria-label="Search agents"
               placeholder="Search agents, roles or apps"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                setPage(1)
+              }}
             />
           </label>
           <div className="rs-chips" role="group" aria-label="Filter by department" style={{ gap: 6 }}>
@@ -279,7 +317,10 @@ export function RosterListView({
               </button>
             ))}
             {needsOnly ? (
-              <button type="button" className="gv-fchip on" aria-pressed onClick={() => setNeedsOnly(false)}>
+              <button type="button" className="gv-fchip on" aria-pressed onClick={() => {
+                setNeedsOnly(false)
+                setPage(1)
+              }}>
                 Needs you ✕
               </button>
             ) : null}
@@ -387,7 +428,7 @@ export function RosterListView({
               </tr>
             </thead>
             <tbody>
-              {rows.map((a) => {
+              {pageRows.map((a) => {
                 const on = sel.includes(a.id)
                 const pill = STATUS_PILL[a.state]
                 const rate = formatRate(a.success7d)
@@ -491,9 +532,63 @@ export function RosterListView({
         </div>
         <div className="rs-listfoot">
           <span>
-            Showing {rows.length} of {agents.length} agents
+            {rows.length === 0
+              ? `Showing 0 of ${agents.length} agents`
+              : `Showing ${firstShown}–${lastShown} of ${rows.length}${rows.length !== agents.length ? ` (${agents.length} in total)` : ""}`}
           </span>
-          <span>Tip: select several agents to move or brief them together</span>
+          {rows.length > LIST_PAGE_SIZE ? (
+            <nav className="rs-pager" aria-label="Agent pages">
+              {showAll ? (
+                <button type="button" className="gv-btn plain sm" onClick={() => setShowAll(false)}>
+                  Show {LIST_PAGE_SIZE} per page
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="rs-pg"
+                    aria-label="Previous page"
+                    disabled={current === 1}
+                    onClick={() => setPage(current - 1)}
+                  >
+                    ‹
+                  </button>
+                  {pageItems(current, pages).map((item, i) =>
+                    item === "gap" ? (
+                      <span key={`gap-${i}`} className="rs-pg-gap" aria-hidden>
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={item}
+                        type="button"
+                        className={cn("rs-pg", item === current && "on")}
+                        aria-label={`Page ${item}`}
+                        aria-current={item === current ? "page" : undefined}
+                        onClick={() => setPage(item)}
+                      >
+                        {item}
+                      </button>
+                    ),
+                  )}
+                  <button
+                    type="button"
+                    className="rs-pg"
+                    aria-label="Next page"
+                    disabled={current === pages}
+                    onClick={() => setPage(current + 1)}
+                  >
+                    ›
+                  </button>
+                  <button type="button" className="gv-btn plain sm" onClick={() => setShowAll(true)}>
+                    View all {rows.length}
+                  </button>
+                </>
+              )}
+            </nav>
+          ) : (
+            <span>Tip: select several agents to move or brief them together</span>
+          )}
         </div>
       </section>
     </>

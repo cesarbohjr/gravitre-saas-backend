@@ -84,11 +84,21 @@
 /* Department bands */
 .gv-ws .rs-band { margin-top: 20px; display: flex; flex-wrap: wrap; overflow: hidden; }
 .gv-ws .rs-band-side { flex: 0 1 280px; min-width: 240px; background: var(--gv-paper-soft); border-right: 1px solid var(--gv-subtle); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-.gv-ws .rs-band-side img { display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--gv-paper-border); }
+/* Department art fills the side column so a 2x2 band has no dead space under it. */
+.gv-ws .rs-band-art { flex: 1 1 auto; min-height: 150px; max-height: 360px; border-radius: 10px; border: 1px solid var(--gv-paper-border); overflow: hidden; background: var(--gv-paper); display: flex; }
+.gv-ws .rs-band-art img { display: block; width: 100%; height: 100%; min-height: 150px; object-fit: cover; object-position: var(--art-x, 50%) 60%; }
+.dark .gv-ws .rs-band-art img { opacity: 0.9; }
+.gv-ws .rs-band-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.gv-ws .rs-viewall { font-size: 14px; font-weight: 500; }
+/* Focal point of each department scene when it is cropped to the tall side column. */
+.gv-ws .rs-d-marketing, .gv-ws .rs-d-customer_success, .gv-ws .rs-d-operations, .gv-ws .rs-d-engineering { --art-x: 30%; }
+.gv-ws .rs-d-finance, .gv-ws .rs-d-security { --art-x: 70%; }
+.gv-ws .rs-d-general { --art-x: 63%; }
 .gv-ws .rs-band-side h2 { margin: 0; font-size: 20px; font-weight: 600; }
 .gv-ws .rs-band-side p { margin: 8px 0 0; font-size: 14px; color: var(--gv-muted); line-height: 1.5; }
-.gv-ws .rs-band-grid { flex: 999 1 480px; min-width: 0; padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 14px; align-content: start; }
-@media (max-width: 760px) { .gv-ws .rs-band-side { border-right: 0; border-bottom: 1px solid var(--gv-subtle); flex-basis: 100%; } }
+.gv-ws .rs-band-grid { flex: 999 1 480px; min-width: 0; padding: 20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-content: start; }
+@media (max-width: 1100px) { .gv-ws .rs-band-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { .gv-ws .rs-band-side { border-right: 0; border-bottom: 1px solid var(--gv-subtle); flex-basis: 100%; } .gv-ws .rs-band-art { max-height: 220px; } }
 
 /* Agent card */
 .gv-ws .rs-ag { background: var(--gv-card); border: 1px solid var(--gv-border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
@@ -266,3 +276,11 @@
 .gv-ws .rs-empty img { width: 240px; max-width: 100%; }
 .gv-ws .rs-empty h2 { margin: 0; font-size: 20px; font-weight: 600; }
 .gv-ws .rs-empty p { margin: 0; color: var(--gv-muted); font-size: 14px; max-width: 420px; }
+
+/* List pagination */
+.gv-ws .rs-pager { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.gv-ws .rs-pg { min-width: 32px; height: 32px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--gv-border); background: var(--gv-card); color: var(--gv-text); font: inherit; font-size: 13px; cursor: pointer; }
+.gv-ws .rs-pg:hover:not(:disabled) { border-color: var(--gv-border-strong); }
+.gv-ws .rs-pg.on { background: var(--gv-dark); border-color: var(--gv-dark); color: var(--gv-on-dark); font-weight: 600; }
+.gv-ws .rs-pg:disabled { opacity: 0.4; cursor: default; }
+.gv-ws .rs-pg-gap { padding: 0 4px; color: var(--gv-faint); }

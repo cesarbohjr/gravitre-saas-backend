@@ -19,6 +19,8 @@ export const ILLUSTRATIONS = {
   "dept-finance": { w: 420, h: 260 },
   "dept-support": { w: 420, h: 260 },
   "dept-engineering": { w: 420, h: 260 },
+  "dept-security": { w: 420, h: 260 },
+  "dept-general": { w: 420, h: 260 },
   "spot-agents": { w: 300, h: 190 },
   "spot-workflows": { w: 300, h: 190 },
   "spot-connectors": { w: 300, h: 190 },

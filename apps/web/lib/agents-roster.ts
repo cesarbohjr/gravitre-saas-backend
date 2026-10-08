@@ -125,16 +125,16 @@ export const ROSTER_DEPARTMENTS: DepartmentMeta[] = [
     id: "security",
     name: "Security",
     blurb: "Watches access, vulnerabilities and compliance evidence.",
-    illustration: null,
-    alt: "",
+    illustration: "dept-security",
+    alt: "A person at a desk with a locked screen beside a shield",
     emptyHint: "No agents yet. Add one to watch access and vulnerabilities.",
   },
   {
     id: "general",
     name: "General",
     blurb: "Helpers that work across the whole workspace.",
-    illustration: null,
-    alt: "",
+    illustration: "dept-general",
+    alt: "Two helpers by a toolbox and a board of sticky notes",
     emptyHint: "No agents yet. Add a general helper for everyday requests.",
   },
 ]
@@ -359,6 +359,22 @@ export function standoutAgent(agents: RosterAgent[]): RosterAgent | null {
   for (const a of agents) {
     if (a.tasksToday <= 0) continue
     if (!best || a.tasksToday > best.tasksToday) best = a
+  }
+  return best
+}
+
+/** Tasks an agent finished over the last `days` reported days (today included). */
+export function recentTasks(agent: RosterAgent, days = 7): number {
+  return (agent.stats?.daily ?? []).slice(-days).reduce((sum, n) => sum + n, 0)
+}
+
+/** Busiest agent over the last week; null when nobody finished anything in that window. */
+export function weekStandoutAgent(agents: RosterAgent[], days = 7): { agent: RosterAgent; tasks: number } | null {
+  let best: { agent: RosterAgent; tasks: number } | null = null
+  for (const a of agents) {
+    const tasks = recentTasks(a, days)
+    if (tasks <= 0) continue
+    if (!best || tasks > best.tasks) best = { agent: a, tasks }
   }
   return best
 }

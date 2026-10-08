@@ -11,6 +11,7 @@ import {
   groupByDepartment,
   needsYou,
   standoutAgent,
+  weekStandoutAgent,
   type DepartmentGroup,
   type RosterAgent,
 } from "@/lib/agents-roster"
@@ -25,8 +26,13 @@ import {
   newAgentHref,
 } from "./agent-bits"
 
-const BAND_COUNT = 3
+/** Agents shown per department band; the rest are one click away in the list view. */
+export const TEAM_BAND_LIMIT = 4
 const SPARK_DAYS = 9
+
+export function departmentListHref(dept: AgentDepartmentId): string {
+  return `/agents?view=list&dept=${encodeURIComponent(dept)}`
+}
 
 function plural(n: number, one: string, many = `${one}s`) {
   return `${n} ${n === 1 ? one : many}`
@@ -89,12 +95,16 @@ function AgentCard({ agent, star }: { agent: RosterAgent; star: boolean }) {
 function DepartmentBand({ group, starId }: { group: DepartmentGroup; starId: string | null }) {
   const { meta, agents } = group
   const lead = agents.find((a) => a.state !== "blocked" && a.state !== "not_set_up") ?? agents[0]
+  const shown = agents.slice(0, TEAM_BAND_LIMIT)
+  const hidden = agents.length - shown.length
   return (
     <section className={cn("gv-card gv-rise rs-band", `rs-d-${meta.id}`)} aria-labelledby={`dept-${meta.id}`}>
       <div className="rs-band-side">
         {meta.illustration ? (
-          // eslint-disable-next-line @next/next/no-img-element -- static library scene
-          <img src={`/illustrations/${meta.illustration}.svg`} alt={meta.alt} width={420} height={260} loading="lazy" />
+          <div className="rs-band-art">
+            {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
+            <img src={`/illustrations/${meta.illustration}.svg`} alt={meta.alt} width={420} height={260} decoding="async" />
+          </div>
         ) : null}
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -104,12 +114,20 @@ function DepartmentBand({ group, starId }: { group: DepartmentGroup; starId: str
           </div>
           <p>{meta.blurb}</p>
         </div>
-        <Link className="gv-btn outline sm" href={giveTaskHref(lead.id)} style={{ alignSelf: "flex-start" }}>
-          Give {meta.name} a job
-        </Link>
+        <div className="rs-band-actions">
+          <Link className="gv-btn outline sm" href={giveTaskHref(lead.id)}>
+            Give {meta.name} a job
+          </Link>
+          {hidden > 0 ? (
+            <Link className="gv-link rs-viewall" href={departmentListHref(meta.id)}>
+              View all {agents.length}
+              <span className="sr-only"> {meta.name} agents</span> →
+            </Link>
+          ) : null}
+        </div>
       </div>
       <div className="rs-band-grid">
-        {agents.map((agent) => (
+        {shown.map((agent) => (
           <AgentCard key={agent.id} agent={agent} star={agent.id === starId} />
         ))}
       </div>
@@ -117,15 +135,55 @@ function DepartmentBand({ group, starId }: { group: DepartmentGroup; starId: str
   )
 }
 
-function Standout({ agent, days }: { agent: RosterAgent | null; days: number }) {
+function Standout({
+  agent,
+  days,
+  week,
+  starter,
+}: {
+  agent: RosterAgent | null
+  days: number
+  /** Busiest agent of the last 7 days, shown when nobody has finished a task today. */
+  week: { agent: RosterAgent; tasks: number } | null
+  /** Agent to hand a first task to when nothing has run yet. */
+  starter: RosterAgent | null
+}) {
+  if (!agent && week) {
+    const rate = formatRate(week.agent.success7d)
+    return (
+      <aside className="rs-standout" aria-label="This week's standout">
+        <span className="eb">This week&apos;s standout</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <AgentAvatar agent={week.agent} />
+          <div style={{ minWidth: 0 }}>
+            <div className="nm">{week.agent.name}</div>
+            <div className="sub">{week.agent.role || week.agent.departmentLabel}</div>
+          </div>
+        </div>
+        <div className="sub">Quiet so far today. Here is who carried the last 7 days.</div>
+        <div style={{ display: "flex", gap: 24 }}>
+          <div>
+            <div className="num">{week.tasks}</div>
+            <div className="lbl">tasks this week</div>
+          </div>
+          <div>
+            <div className="num">{rate ?? "Not reported"}</div>
+            <div className="lbl">success</div>
+          </div>
+        </div>
+        <Link href={giveTaskHref(week.agent.id)}>Give it today&apos;s first task →</Link>
+      </aside>
+    )
+  }
   if (!agent) {
     return (
       <aside className="rs-standout quiet" aria-label="Today's standout">
         <span className="eb">Today&apos;s standout</span>
         {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
         <img src="/illustrations/moment-focus-time.svg" alt="" width={260} height={170} />
-        <div className="nm">No finished tasks yet today</div>
-        <div className="sub">The first agent to finish a task today shows up here.</div>
+        <div className="nm">Your crew is ready for its first job</div>
+        <div className="sub">Hand any agent a task and the top performer of the day shows up here.</div>
+        {starter ? <Link href={giveTaskHref(starter.id)}>Give {starter.name} a task →</Link> : null}
       </aside>
     )
   }
@@ -188,15 +246,15 @@ export function RosterTeamView({
   const groups = useMemo(() => groupByDepartment(agents), [agents])
   const empty = useMemo(() => emptyDepartments(agents), [agents])
   const star = useMemo(() => standoutAgent(agents), [agents])
+  const week = useMemo(() => (star ? null : weekStandoutAgent(agents)), [agents, star])
   const blocked = useMemo(() => needsYou(agents), [agents])
   const available = agents.filter((a) => a.state !== "blocked" && a.state !== "not_set_up").length
   const tasksToday = agents.reduce((sum, a) => sum + a.tasksToday, 0)
   const anyGated = agents.some((a) => a.gated)
   const covered = groups.length
 
-  const visible = dept === "all" ? groups : groups.filter((g) => g.meta.id === dept)
-  const bands = dept === "all" ? visible.slice(0, BAND_COUNT) : visible
-  const rest = dept === "all" ? visible.slice(BAND_COUNT) : []
+  const bands = dept === "all" ? groups : groups.filter((g) => g.meta.id === dept)
+  const starter = agents.find((a) => a.state === "ready") ?? agents.find((a) => a.state !== "not_set_up") ?? null
   const showEmpty = dept === "all" ? empty : empty.filter((d) => d.id === dept)
 
   const needsHref = blocked.length === 1 ? agentHref(blocked[0].id) : "/agents?view=list&status=needs"
@@ -251,7 +309,7 @@ export function RosterTeamView({
             )}
           </div>
         </div>
-        <Standout agent={star} days={days} />
+        <Standout agent={star} days={days} week={statsAvailable ? week : null} starter={starter} />
       </section>
 
       <div className="rs-chips" role="group" aria-label="Filter by department" style={{ marginTop: 28 }}>
@@ -282,41 +340,10 @@ export function RosterTeamView({
         <DepartmentBand key={group.meta.id} group={group} starId={star?.id ?? null} />
       ))}
 
-      {rest.length > 0 || showEmpty.length > 0 ? (
-        <section className="rs-rest" aria-label="More of your team">
-          {rest.length > 0 ? <h2>More of your team</h2> : null}
+      {showEmpty.length > 0 ? (
+        <section className="rs-rest" aria-label="Departments without agents">
+          <h2>Open seats</h2>
           <div className="rs-rest-grid">
-            {rest.map(({ meta, agents: list }) => (
-              <div key={meta.id} className={cn("gv-card rs-mini", `rs-d-${meta.id}`)}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span className="rs-dsq" />
-                  <strong style={{ fontWeight: 600 }}>{meta.name}</strong>
-                  <span className="cnt">{list.length}</span>
-                </div>
-                <ul>
-                  {list.map((a) => (
-                    <li key={a.id}>
-                      <Link href={agentHref(a.id)}>
-                        <AgentAvatar agent={a} size="sm" dot={false} />
-                        <span style={{ flex: "1 1 auto", minWidth: 0 }}>{a.name}</span>
-                        <span
-                          className="gv-dot"
-                          aria-label={a.state === "blocked" ? "Needs you" : a.state === "not_set_up" ? "Not set up" : "Ready"}
-                          style={{
-                            background:
-                              a.state === "blocked"
-                                ? "var(--gv-amber)"
-                                : a.state === "not_set_up"
-                                  ? "var(--gv-border-strong)"
-                                  : "var(--gv-accent)",
-                          }}
-                        />
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
             {showEmpty.map((meta) => (
               <div key={meta.id} className={cn("rs-emptydept", `rs-d-${meta.id}`)}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
