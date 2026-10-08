@@ -67,7 +67,25 @@ STAGE_CANONICAL = {
     "tts_requested_ms": "TTS_BUFFER",
     "ttfa_ms": "TTS_BUFFER",
     "ttft_ms": "MODEL_TTFT",
+    # Per-turn voice trace (voice_turn_trace.py), cumulative from end of speech.
+    "eager_end_of_turn": "STT_ENDPOINTING",
+    "user_stopped": "STT_ENDPOINTING",
+    "turn_committed": "STT_ENDPOINTING",
+    "durable_context_ready": "CONTEXT_BUILD",
+    "prompt_assembled": "CONTEXT_BUILD",
+    "moderation_guard_done": "GUARDRAILS",
+    "brain_started": "CONTEXT_BUILD",
+    "brain_pre_llm_done": "PLANNING",
+    "first_speakable_chunk": "MODEL_TTFT",
+    "tts_first_audio": "TTS_BUFFER",
+    "server_first_audio_out": "TTS_BUFFER",
+    "client_first_audio_est": "NETWORK",
+    "browser_playback_started": "PLAYBACK",
 }
+
+# Minimum sample count before a percentile is reported at all. A p95 over a
+# handful of turns is one outlier, not a percentile.
+PERCENTILE_MIN_SAMPLES: dict[str, int] = {"p50": 5, "p95": 20, "p99": 100}
 
 
 def build_voice_http_turn_marks(
@@ -139,13 +157,30 @@ def record_voice_turn_critical_path(
     turn_id: str | None,
     marks: dict[str, int] | None,
     transport: str,
+    tier: str | None = None,
+    stage_durations_ms: dict[str, int | None] | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Voice-specific critical-path write (spoken_mode=True, transport label)."""
+    """Voice-specific critical-path write (spoken_mode=True, transport label).
+
+    ``tier`` (light / medium / deep, when known) and ``stage_durations_ms``
+    (per-stage durations, not cumulative) are what ``aggregate_stage_percentiles``
+    and ``scripts/voice_latency_report.py`` read back.
+    """
     payload_marks = dict(marks or {})
     analysis = analyze_cumulative_checkpoints(payload_marks)
     analysis["turn_id"] = turn_id
     analysis["spoken_mode"] = True
     analysis["voice_transport"] = str(transport or "")
+    if tier:
+        analysis["tier"] = str(tier)
+    if stage_durations_ms:
+        analysis["stage_durations_ms"] = {
+            str(k): int(v) for k, v in stage_durations_ms.items() if v is not None
+        }
+    if extra:
+        for key, value in extra.items():
+            analysis.setdefault(str(key), value)
     if not org_id or not user_id:
         logger.debug("voice_turn_critical_path_skipped reason=missing_org_or_user")
         return analysis
@@ -166,6 +201,58 @@ def record_voice_turn_critical_path(
     except Exception as exc:  # noqa: BLE001
         logger.debug("voice_turn_critical_path_write_failed error=%s", exc)
     return analysis
+
+
+def _percentile(sorted_values: list[float], pct: float) -> float:
+    """Nearest-rank percentile of an ascending list."""
+    import math
+
+    rank = max(1, math.ceil(pct / 100.0 * len(sorted_values)))
+    return sorted_values[min(rank, len(sorted_values)) - 1]
+
+
+def aggregate_stage_percentiles(
+    rows: list[dict[str, Any]],
+    *,
+    min_samples: dict[str, int] | None = None,
+) -> dict[str, dict[str, dict[str, Any]]]:
+    """p50/p95/p99 per stage per tier over voice critical-path payloads.
+
+    ``rows`` are the payloads ``record_voice_turn_critical_path`` writes (the
+    audit_events ``metadata``). A percentile is reported only when the stage
+    has at least ``min_samples[pct]`` samples for that tier; otherwise it is
+    ``None`` and ``n`` says why. Rows without a tier count under "unknown";
+    every row also counts under "all".
+    """
+    need = dict(PERCENTILE_MIN_SAMPLES)
+    if min_samples:
+        need.update(min_samples)
+    samples: dict[str, dict[str, list[float]]] = {}
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        durations = row.get("stage_durations_ms")
+        if not isinstance(durations, dict):
+            continue
+        tier = str(row.get("tier") or "unknown")
+        for bucket in (tier, "all"):
+            per_stage = samples.setdefault(bucket, {})
+            for stage, value in durations.items():
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    per_stage.setdefault(str(stage), []).append(float(value))
+    out: dict[str, dict[str, dict[str, Any]]] = {}
+    for bucket, per_stage in samples.items():
+        out[bucket] = {}
+        for stage, values in per_stage.items():
+            values.sort()
+            n = len(values)
+            stats: dict[str, Any] = {"n": n}
+            for pct_name, pct in (("p50", 50.0), ("p95", 95.0), ("p99", 99.0)):
+                stats[pct_name] = (
+                    round(_percentile(values, pct)) if n >= int(need.get(pct_name, 1)) else None
+                )
+            out[bucket][stage] = stats
+    return out
 
 
 def map_stage(name: str) -> str:
@@ -228,18 +315,21 @@ def record_critical_path(
         logger.debug("turn_latency_critical_path_skipped reason=missing_org_or_user")
         return analysis
     try:
-        from app.workflows.audit import write_audit_event
+        from app.workflows.audit import submit_audit_off_loop, write_audit_event
         from app.workflows.repository import get_supabase_client
 
         client = get_supabase_client(settings)
-        write_audit_event(
+        # Called from the turn's compose step on the event loop: the inserts
+        # must not hold up the reply (or audio of other sessions).
+        submit_audit_off_loop(
+            write_audit_event,
             client,
             org_id,
             user_id,
             AUDIT_ACTION,
             "conversation",
             conversation_id or org_id,
-            analysis,
+            dict(analysis),
         )
     except Exception as exc:  # noqa: BLE001
         logger.debug("turn_latency_critical_path_write_failed error=%s", exc)

@@ -12,6 +12,8 @@ Notes:
 """
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import re
 import threading
 import time
@@ -335,6 +337,58 @@ def enforce_budget(org_id: str | None, settings: Settings) -> None:
 # ---------------------------------------------------------------------------
 
 
+# One turn screened the same text several times (the same entity-lookup prompt
+# from four context builders running at once, each a separate round trip in
+# front of the spoken reply). A passing verdict for exactly the same text and
+# moderation model is reused for a short time, and concurrent checks of the
+# same text share one request. Flagged text is never remembered: it is sent to
+# the endpoint again every time. Only a hash of the text is kept.
+MODERATION_PASS_TTL_S = 120.0
+_MODERATION_PASS_MAX = 4096
+_moderation_passed: dict[str, float] = {}
+_moderation_inflight: dict[tuple[int, str], "asyncio.Future[bool | None]"] = {}
+_moderation_lock = threading.Lock()
+
+
+def _moderation_key(model: str, text: str, client: object) -> str:
+    digest = hashlib.sha256(f"{model}\0{text}".encode("utf-8", "surrogatepass")).hexdigest()
+    return f"{id(client)}:{digest}"
+
+
+def clear_moderation_cache() -> None:
+    """Forget remembered passes (tests, or after changing the moderation model)."""
+    with _moderation_lock:
+        _moderation_passed.clear()
+    _moderation_inflight.clear()
+
+
+def _remember_moderation_pass(key: str) -> None:
+    now = time.monotonic()
+    with _moderation_lock:
+        if len(_moderation_passed) >= _MODERATION_PASS_MAX:
+            for stale in [k for k, exp in _moderation_passed.items() if exp <= now]:
+                _moderation_passed.pop(stale, None)
+            if len(_moderation_passed) >= _MODERATION_PASS_MAX:
+                _moderation_passed.clear()
+        _moderation_passed[key] = now + MODERATION_PASS_TTL_S
+
+
+def _moderation_recently_passed(key: str) -> bool:
+    with _moderation_lock:
+        expiry = _moderation_passed.get(key)
+    return expiry is not None and expiry > time.monotonic()
+
+
+async def _moderation_flagged(text: str, model: str, client) -> bool | None:
+    """True / False from the endpoint; None when the call failed."""
+    try:
+        result = await client.moderations.create(model=model, input=text)
+        return bool(result.results and result.results[0].flagged)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("moderation check skipped error=%s", str(exc))
+        return None
+
+
 async def _moderate(text: str, settings: Settings, client, *, message: str) -> None:
     """Raise AIContentFlaggedError if `text` is flagged. No-op when disabled or
     when the moderation call fails (fail-open for availability).
@@ -344,13 +398,27 @@ async def _moderate(text: str, settings: Settings, client, *, message: str) -> N
         return
     if not text or not text.strip() or client is None:
         return
-    try:
-        model = getattr(settings, "ai_moderation_model", "omni-moderation-latest")
-        result = await client.moderations.create(model=model, input=text)
-        flagged = bool(result.results and result.results[0].flagged)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("moderation check skipped error=%s", str(exc))
+    model = getattr(settings, "ai_moderation_model", "omni-moderation-latest")
+    key = _moderation_key(str(model), text, client)
+    if _moderation_recently_passed(key):
         return
+    loop_key = (id(asyncio.get_running_loop()), key)
+    shared = _moderation_inflight.get(loop_key)
+    flagged: bool | None = None
+    if shared is not None:
+        flagged = await asyncio.shield(shared)
+    if shared is None or flagged is None:
+        future: "asyncio.Future[bool | None]" = asyncio.get_running_loop().create_future()
+        _moderation_inflight.setdefault(loop_key, future)
+        try:
+            flagged = await _moderation_flagged(text, str(model), client)
+        finally:
+            if _moderation_inflight.get(loop_key) is future:
+                _moderation_inflight.pop(loop_key, None)
+            if not future.done():
+                future.set_result(flagged)
+        if flagged is False:
+            _remember_moderation_pass(key)
     if flagged:
         raise AIContentFlaggedError(message)
 

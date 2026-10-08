@@ -11,6 +11,8 @@ clarify outcomes are always model-composed from the typed envelope.
 """
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import re
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Iterable
@@ -31,7 +33,7 @@ from app.services.first_token_honesty import (
 from app.services.module_d_unified_voice_spec import MODULE_D_UNIFIED_SYSTEM_SPEC
 from app.services.response_envelope import coerce_user_envelope, envelope_kind
 from app.services.user_facing_copy_guard import finalize_user_facing_message
-from app.workflows.audit import write_audit_event
+from app.workflows.audit import submit_audit_off_loop, write_audit_event
 
 logger = get_logger(__name__)
 
@@ -527,22 +529,18 @@ def _fallback_text(kind: str, envelope: dict[str, Any] | None = None) -> str:
     return _FALLBACK_BY_KIND.get(kind) or _FALLBACK_BY_KIND["error"]
 
 
-async def compose_user_reply(
-    envelope: dict[str, Any] | None = None,
+def _compose_inputs(
+    envelope: dict[str, Any] | None,
     *,
-    kind: str | None = None,
-    draft: str | None = None,
-    spoken: bool = False,
-    history: list[dict[str, Any]] | None = None,
-    user_message: str = "",
-    settings: Any = None,
-    org_id: str = "",
-    compose_fn: ComposeFn | None = None,
-    client: Any = None,
-    user_id: str | None = None,
-    conversation_id: str | None = None,
-) -> str:
-    """Return the only user-visible prose for this outcome."""
+    kind: str | None,
+    draft: str | None,
+    settings: Any,
+) -> tuple[dict[str, Any], str, bool, str, int]:
+    """Decide whether this outcome needs the Composer LLM.
+
+    Returns the coerced envelope, the resolved kind, ``must_compose``, the text
+    the outcome uses without a model call, and the structured block count.
+    """
     env = coerce_user_envelope(envelope or {"success": True, "data": {"text": draft or ""}})
     resolved_kind = kind or envelope_kind(env)
     from app.services.structured_assistant_response import (
@@ -661,57 +659,43 @@ async def compose_user_reply(
     if system_state_only:
         must_compose = True
 
-    used_model = False
-    fallback = False
     text = (draft or "").strip()
     if structured_blocks:
         text = merge_blocks_with_prose(structured_blocks, text)
         must_compose = must_compose and looks_like_raw_backend(text)
 
     text = align_draft_to_compiled_timeframe(text, env)
+    return env, resolved_kind, must_compose, text, len(structured_blocks)
 
-    if must_compose or not text:
-        composed = await _llm_compose(
-            kind=resolved_kind,
-            envelope=env,
-            user_message=user_message,
-            spoken=spoken,
-            history=history,
-            draft=draft,
-            settings=settings,
-            org_id=org_id,
-            compose_fn=compose_fn,
-        )
-        if composed and not looks_like_raw_backend(composed):
-            text = composed
-            used_model = True
-        elif resolved_kind == "progress" and draft and not looks_like_raw_backend(draft):
-            text = draft.strip()
-            fallback = True
-            used_model = False
-        else:
-            text = _fallback_text(resolved_kind, env)
-            fallback = True
-            used_model = False
-    elif looks_like_raw_backend(text):
-        composed = await _llm_compose(
-            kind=resolved_kind if resolved_kind != "success" else "error",
-            envelope=env,
-            user_message=user_message,
-            spoken=spoken,
-            history=history,
-            draft=None,
-            settings=settings,
-            org_id=org_id,
-            compose_fn=compose_fn,
-        )
-        if composed and not looks_like_raw_backend(composed):
-            text = composed
-            used_model = True
-        else:
-            text = _fallback_text("error")
-            fallback = True
 
+def _resolve_composed(
+    composed: str,
+    *,
+    draft: str | None,
+    resolved_kind: str,
+    env: dict[str, Any],
+) -> tuple[str, bool, bool]:
+    """(text, used_model, fallback) for a Composer LLM result (empty = failed)."""
+    if composed and not looks_like_raw_backend(composed):
+        return composed, True, False
+    if resolved_kind == "progress" and draft and not looks_like_raw_backend(draft):
+        return draft.strip(), False, True
+    return _fallback_text(resolved_kind, env), False, True
+
+
+def _postprocess_composed_text(
+    text: str,
+    *,
+    env: dict[str, Any],
+    resolved_kind: str,
+    draft: str | None,
+) -> tuple[str, bool]:
+    """Every check composed prose passes before anyone sees or hears it.
+
+    Pure (no I/O), so a spoken stream can run it on each sentence prefix.
+    Returns the text and whether a fallback replaced it.
+    """
+    fallback = False
     try:
         identity = env.get("identity_literals")
         if not identity and isinstance(env.get("data"), dict):
@@ -743,25 +727,6 @@ async def compose_user_reply(
             text = _fallback_text(resolved_kind, env)
         fallback = True
 
-    turn_id = None
-    trace = env.get("cognitive_turn_trace")
-    if isinstance(trace, dict):
-        turn_id = trace.get("turn_id")
-    elif isinstance(env.get("data"), dict):
-        turn_id = env["data"].get("turn_id")
-    _emit_composer_audit(
-        client=client,
-        org_id=org_id,
-        user_id=user_id,
-        conversation_id=conversation_id,
-        kind=resolved_kind,
-        used_model=used_model,
-        fallback=fallback,
-        success=bool(env.get("success")),
-        error_code=env.get("error_code"),
-        turn_id=turn_id,
-        structured_blocks=len(structured_blocks),
-    )
     if resolved_kind == "success":
         text = reject_premature_done(
             text,
@@ -785,6 +750,89 @@ async def compose_user_reply(
 
     text = apply_provider_result_grounding(text, env)
     text = align_composed_text_to_lifecycle(text, env, draft=draft)
+    return text, fallback
+
+
+def _composer_turn_id(env: dict[str, Any]) -> Any:
+    trace = env.get("cognitive_turn_trace")
+    if isinstance(trace, dict):
+        return trace.get("turn_id")
+    if isinstance(env.get("data"), dict):
+        return env["data"].get("turn_id")
+    return None
+
+
+async def compose_user_reply(
+    envelope: dict[str, Any] | None = None,
+    *,
+    kind: str | None = None,
+    draft: str | None = None,
+    spoken: bool = False,
+    history: list[dict[str, Any]] | None = None,
+    user_message: str = "",
+    settings: Any = None,
+    org_id: str = "",
+    compose_fn: ComposeFn | None = None,
+    client: Any = None,
+    user_id: str | None = None,
+    conversation_id: str | None = None,
+) -> str:
+    """Return the only user-visible prose for this outcome."""
+    env, resolved_kind, must_compose, text, n_blocks = _compose_inputs(
+        envelope, kind=kind, draft=draft, settings=settings
+    )
+    used_model = False
+    fallback = False
+    if must_compose or not text:
+        composed = await _llm_compose(
+            kind=resolved_kind,
+            envelope=env,
+            user_message=user_message,
+            spoken=spoken,
+            history=history,
+            draft=draft,
+            settings=settings,
+            org_id=org_id,
+            compose_fn=compose_fn,
+        )
+        text, used_model, fallback = _resolve_composed(
+            composed, draft=draft, resolved_kind=resolved_kind, env=env
+        )
+    elif looks_like_raw_backend(text):
+        composed = await _llm_compose(
+            kind=resolved_kind if resolved_kind != "success" else "error",
+            envelope=env,
+            user_message=user_message,
+            spoken=spoken,
+            history=history,
+            draft=None,
+            settings=settings,
+            org_id=org_id,
+            compose_fn=compose_fn,
+        )
+        if composed and not looks_like_raw_backend(composed):
+            text = composed
+            used_model = True
+        else:
+            text = _fallback_text("error")
+            fallback = True
+
+    text, post_fallback = _postprocess_composed_text(
+        text, env=env, resolved_kind=resolved_kind, draft=draft
+    )
+    _emit_composer_audit(
+        client=client,
+        org_id=org_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        kind=resolved_kind,
+        used_model=used_model,
+        fallback=fallback or post_fallback,
+        success=bool(env.get("success")),
+        error_code=env.get("error_code"),
+        turn_id=_composer_turn_id(env),
+        structured_blocks=n_blocks,
+    )
     return text
 
 
@@ -805,7 +853,8 @@ def _emit_composer_audit(
     if client is None or not org_id:
         return
     try:
-        write_audit_event(
+        submit_audit_off_loop(
+            write_audit_event,
             client,
             org_id=org_id,
             actor_id=str(user_id or org_id),
@@ -888,3 +937,260 @@ async def compose_reply_events(
     )
     text_id, events = events_for_text(text, existing_text_id=existing_text_id, close=close)
     return ComposerPacked(text=text, text_id=text_id, events=events, kind=kind, used_model=True)
+
+
+# Sentence boundary for spoken streaming: terminal punctuation (optionally
+# closed by a quote or bracket) followed by whitespace.
+_SPOKEN_SENTENCE_BOUNDARY = re.compile(r"[.!?][\"')\]]*\s+")
+
+
+def _squash(text: str) -> str:
+    return re.sub(r"\s+", " ", text or "").strip()
+
+
+@dataclass
+class StreamedComposerReply:
+    """Filled in by ``stream_compose_reply_events`` once its events are drained."""
+
+    text: str = ""
+    text_id: str | None = None
+    streamed: bool = False
+
+
+async def stream_compose_reply_events(
+    envelope: dict[str, Any] | None = None,
+    *,
+    result: StreamedComposerReply,
+    kind: str = "canned",
+    draft: str | None = None,
+    history: list[dict[str, Any]] | None = None,
+    user_message: str = "",
+    settings: Any = None,
+    org_id: str = "",
+    client: Any = None,
+    user_id: str | None = None,
+    conversation_id: str | None = None,
+    existing_text_id: str | None = None,
+    close: bool = True,
+):
+    """Spoken ``compose_reply_events``: the Composer LLM's reply, sentence by sentence.
+
+    Same decision, prompts, guardrails and checks as ``compose_user_reply``;
+    only the delivery changes. The model call goes through the router's
+    streaming path (``prepare_stream``: kill switch, rate limit, budget, input
+    moderation). A sentence is released only when
+
+    - ``_postprocess_composed_text`` leaves everything released so far plus
+      this sentence unchanged (so no whole-text check would rewrite it), and
+    - output moderation passes for that sentence.
+
+    The first sentence that fails either stops the release. When the model is
+    done, the full text runs through the full pipeline exactly as before: if
+    nothing was released it is sent whole (the old behavior); if it still
+    begins with what was released, the rest follows; otherwise nothing more is
+    said and the turn's text is what was released. Unchecked text never leaves.
+    Outcomes that need no model call (or any failure before a sentence is
+    released) take the existing non-streamed path.
+    """
+    env, resolved_kind, must_compose, text, n_blocks = _compose_inputs(
+        envelope, kind=kind, draft=draft, settings=settings
+    )
+    if not (must_compose or not text) or getattr(settings, "disable_ai", False):
+        packed = await compose_reply_events(
+            envelope,
+            kind=kind,
+            draft=draft,
+            spoken=True,
+            history=history,
+            user_message=user_message,
+            settings=settings,
+            org_id=org_id,
+            client=client,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            existing_text_id=existing_text_id,
+            close=close,
+        )
+        result.text, result.text_id = packed.text, packed.text_id
+        for event in packed.events:
+            yield event
+        return
+
+    from app.services.ai_guardrails import AIContentFlaggedError, moderate_output
+    from app.services.model_router import TaskType, get_model_router
+
+    router = get_model_router()
+    history_block = _history_excerpt(history)
+    prompt = _user_prompt(kind=resolved_kind, envelope=env, user_message=user_message, draft=draft)
+    if history_block:
+        prompt = f"Recent conversation:\n{history_block}\n\n{prompt}"
+
+    text_id = existing_text_id
+    released = ""
+    accepted = ""  # released + sentences waiting on moderation
+    pending: list[tuple[str, asyncio.Task[None]]] = []
+    stopped = False  # no further sentence is accepted
+    blocked = False  # moderation flagged a sentence: nothing more is released
+    buffer = ""
+    composed = ""
+
+    def _start_text() -> AssistantStreamEvent | None:
+        nonlocal text_id
+        if text_id is not None:
+            return None
+        text_id, start = emit_text_start()
+        return start
+
+    def _accept(sentence: str) -> None:
+        nonlocal accepted, stopped
+        candidate = accepted + sentence
+        checked, _ = _postprocess_composed_text(
+            candidate, env=env, resolved_kind=resolved_kind, draft=draft
+        )
+        if looks_like_raw_backend(sentence) or _squash(checked) != _squash(candidate):
+            stopped = True
+            return
+        accepted = candidate
+        task = asyncio.ensure_future(moderate_output(sentence, settings, router._openai))
+        task.add_done_callback(lambda t: t.cancelled() or t.exception())
+        pending.append((sentence, task))
+
+    async def _release(*, wait: bool):
+        """Yield moderated sentences in order; stop at the first flagged one."""
+        nonlocal released, stopped, blocked
+        while pending:
+            sentence, task = pending[0]
+            if not task.done():
+                if not wait:
+                    return
+                await asyncio.wait({task})
+            pending.pop(0)
+            if blocked or task.cancelled() or task.exception() is not None:
+                if not task.cancelled() and isinstance(task.exception(), AIContentFlaggedError):
+                    logger.warning("response_composer_spoken_sentence_flagged org_id=%s", org_id)
+                stopped = blocked = True
+                continue
+            start = _start_text()
+            if start is not None:
+                yield start
+            released += sentence
+            yield emit_text_delta(text_id, sentence)
+
+    def _take_sentences(delta: str) -> None:
+        nonlocal buffer
+        buffer += delta
+        if stopped:
+            return
+        cut = 0
+        for match in _SPOKEN_SENTENCE_BOUNDARY.finditer(buffer):
+            cut = match.end()
+        if not cut:
+            return
+        ready, buffer = buffer[:cut], buffer[cut:]
+        for sentence in re.findall(r".+?[.!?][\"')\]]*\s+", ready, flags=re.S):
+            if stopped:
+                return
+            piece = sentence if accepted else sentence.lstrip()
+            if piece:
+                _accept(piece)
+
+    stream_iter = None
+    next_chunk: asyncio.Future[Any] | None = None
+    try:
+        prepared = await router.prepare_stream(
+            TaskType.CONTENT_GENERATION,
+            prompt,
+            system_prompt=_system_prompt(spoken=True),
+            temperature=0.4,
+            max_tokens=220,
+            org_id=org_id,
+        )
+        stream_iter = router.stream(prepared).__aiter__()
+        next_chunk = asyncio.ensure_future(stream_iter.__anext__())
+        while True:
+            # Wake for the next token or for the oldest sentence's moderation,
+            # so a checked sentence is spoken as soon as it clears.
+            waiters: set[asyncio.Future[Any]] = {next_chunk}
+            if pending and not pending[0][1].done():
+                waiters.add(pending[0][1])
+            await asyncio.wait(waiters, return_when=asyncio.FIRST_COMPLETED)
+            async for event in _release(wait=False):
+                yield event
+            if not next_chunk.done():
+                continue
+            try:
+                chunk = next_chunk.result()
+            except StopAsyncIteration:
+                next_chunk = None
+                break
+            next_chunk = asyncio.ensure_future(stream_iter.__anext__())
+            if chunk.response is not None:
+                composed = str(chunk.response.content or "").strip()
+            elif chunk.delta:
+                _take_sentences(chunk.delta)
+            async for event in _release(wait=False):
+                yield event
+    except Exception as exc:  # noqa: BLE001 - same contract as _llm_compose: failure = no model text
+        logger.warning("response_composer_stream_failed kind=%s error=%s", resolved_kind, type(exc).__name__)
+        composed = ""
+        stopped = blocked = True
+        for _sentence, task in pending:
+            task.cancel()
+    finally:
+        if next_chunk is not None and not next_chunk.done():
+            next_chunk.cancel()
+            await asyncio.wait({next_chunk})
+        aclose = getattr(stream_iter, "aclose", None)
+        if aclose is not None:
+            with contextlib.suppress(Exception):
+                await aclose()
+    async for event in _release(wait=True):
+        yield event
+
+    text, used_model, fallback = _resolve_composed(
+        composed, draft=draft, resolved_kind=resolved_kind, env=env
+    )
+    text, post_fallback = _postprocess_composed_text(
+        text, env=env, resolved_kind=resolved_kind, draft=draft
+    )
+    _emit_composer_audit(
+        client=client,
+        org_id=org_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        kind=resolved_kind,
+        used_model=used_model,
+        fallback=fallback or post_fallback,
+        success=bool(env.get("success")),
+        error_code=env.get("error_code"),
+        turn_id=_composer_turn_id(env),
+        structured_blocks=n_blocks,
+    )
+    if not released:
+        # Nothing was spoken early: deliver exactly what the old path would.
+        start = _start_text()
+        if start is not None:
+            yield start
+        if text:
+            yield emit_text_delta(text_id, text)
+        result.text = text
+    else:
+        result.streamed = True
+        head, final = _squash(released), _squash(text)
+        if not blocked and final.startswith(head):
+            # The rest passed the whole-text checks and the router's output
+            # moderation of the full reply (a flag there raises above).
+            rest = final[len(head) :].strip()
+            if rest:
+                yield emit_text_delta(text_id, rest)
+            result.text = f"{head} {rest}".strip()
+        else:
+            logger.info(
+                "response_composer_spoken_stream_truncated kind=%s released_chars=%s",
+                resolved_kind,
+                len(head),
+            )
+            result.text = head
+    result.text_id = text_id
+    if close and text_id is not None:
+        yield emit_text_end(text_id)

@@ -60,6 +60,52 @@ from app.services.operational_intelligence_layer import get_operational_intellig
 
 logger = get_logger(__name__)
 
+# Spoken medium turns wait at most this long for the parallel retrieval block
+# (RAG, org bundle, company, entity graph, signals); late results are dropped.
+DEFAULT_SPOKEN_MEDIUM_RETRIEVAL_BUDGET_MS = 700
+
+
+def spoken_medium_retrieval_budget_s(settings: Any) -> float:
+    raw = getattr(settings, "voice_medium_retrieval_budget_ms", None)
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)) or raw <= 0:
+        raw = DEFAULT_SPOKEN_MEDIUM_RETRIEVAL_BUDGET_MS
+    return float(raw) / 1000.0
+
+
+async def gather_within_budget(
+    awaitables: list[Any],
+    defaults: list[Any],
+    *,
+    budget_s: float | None,
+) -> tuple[list[Any], list[int]]:
+    """Await independent reads together; past ``budget_s`` use the defaults.
+
+    Returns the results (a default stands in for each late read, which is
+    cancelled) and the indexes that missed the budget. Without a budget this
+    is a plain ``asyncio.gather``.
+    """
+    if budget_s is None:
+        return list(await asyncio.gather(*awaitables)), []
+    tasks = [asyncio.ensure_future(aw) for aw in awaitables]
+    try:
+        await asyncio.wait(tasks, timeout=budget_s)
+    except BaseException:
+        for task in tasks:
+            task.cancel()
+        raise
+    results: list[Any] = []
+    late: list[int] = []
+    for index, task in enumerate(tasks):
+        if task.done():
+            results.append(task.result())
+        else:
+            task.cancel()
+            # A cancelled read must never surface as "exception never retrieved".
+            task.add_done_callback(lambda t: t.cancelled() or t.exception())
+            results.append(defaults[index])
+            late.append(index)
+    return results, late
+
 
 @dataclass
 class AssistantTurnContext:
@@ -137,8 +183,17 @@ class IntelligenceOrchestrator:
         mode: str | None = None,
         research_scope: str | None = None,
         connected_integrations: list[str] | None = None,
+        spoken_tier: str | None = None,
     ) -> AssistantTurnContext:
+        """``spoken_tier`` is the conversation tier of a spoken turn (None for text).
+
+        Spoken light/medium turns skip the explainability and advisor-brief
+        work: both only feed UI metadata that the voice bridge never shows, so
+        they cannot change a spoken answer. Spoken medium turns also bound the
+        parallel retrieval block. Deep and text turns assemble everything.
+        """
         _ = conversation_history, persona
+        spoken_light_or_medium = spoken_tier in {"light", "medium"}
         # This function was the single largest unattributed block on a spoken
         # tool turn (~4.7s of 12.3s) and is a long chain of sequential I/O, so
         # each boundary is timed. Log-only, zero behavior change.
@@ -353,49 +408,59 @@ class IntelligenceOrchestrator:
         async def _empty_signals() -> dict[str, Any]:
             return {"signals": []}
 
-        retrieval, org_bundle, company_block, entity_block, signals_payload = await asyncio.gather(
-            self._retrieval.retrieve(
-                org_id=org_id,
-                query=query,
-                client=client,
-                agent=agent,
-                parameters={
-                    "surface": "assistant",
-                    "include_task_history": False,
-                    "rag_top_k": registry_plan.rag_top_k if registry_plan.slice_enabled("rag") else 0,
-                    "knowledge_assignments": knowledge_assignments if registry_plan.slice_enabled("rag") else [],
-                    "classification": classification,
-                    "research_scope": research_scope,
-                },
-                environment_name=environment_name,
-                user_id=user_id,
-            ),
-            run_io(
-                get_org_context_service().get_context_bundle,
-                client,
-                org_id,
-                user_id=user_id,
-                depth="standard",
-                environment_name=environment_name,
-            )
-            if registry_plan.slice_enabled("company")
-            else _empty_org_bundle(),
-            get_company_intelligence_orchestrator().get_context_for_prompt(org_id)
-            if registry_plan.slice_enabled("company")
-            else _empty_text(),
-            build_entity_context_section(org_id, query, settings=self.settings, client=client)
-            if registry_plan.slice_enabled("graph")
-            else _empty_text(),
-            self._signals.collect_signals(
-                org_id,
-                department=str(classification.get("department") or ""),
-                query=query if classification.get("requires_graph") else None,
-                client=client,
-            )
-            if registry_plan.slice_enabled("signals")
-            else _empty_signals(),
+        (retrieval, org_bundle, company_block, entity_block, signals_payload), late_reads = await gather_within_budget(
+            [
+                self._retrieval.retrieve(
+                    org_id=org_id,
+                    query=query,
+                    client=client,
+                    agent=agent,
+                    parameters={
+                        "surface": "assistant",
+                        "include_task_history": False,
+                        "rag_top_k": registry_plan.rag_top_k if registry_plan.slice_enabled("rag") else 0,
+                        "knowledge_assignments": knowledge_assignments if registry_plan.slice_enabled("rag") else [],
+                        "classification": classification,
+                        "research_scope": research_scope,
+                    },
+                    environment_name=environment_name,
+                    user_id=user_id,
+                ),
+                run_io(
+                    get_org_context_service().get_context_bundle,
+                    client,
+                    org_id,
+                    user_id=user_id,
+                    depth="standard",
+                    environment_name=environment_name,
+                )
+                if registry_plan.slice_enabled("company")
+                else _empty_org_bundle(),
+                get_company_intelligence_orchestrator().get_context_for_prompt(org_id)
+                if registry_plan.slice_enabled("company")
+                else _empty_text(),
+                build_entity_context_section(org_id, query, settings=self.settings, client=client)
+                if registry_plan.slice_enabled("graph")
+                else _empty_text(),
+                self._signals.collect_signals(
+                    org_id,
+                    department=str(classification.get("department") or ""),
+                    query=query if classification.get("requires_graph") else None,
+                    client=client,
+                )
+                if registry_plan.slice_enabled("signals")
+                else _empty_signals(),
+            ],
+            [UnifiedRetrievalBundle(), (None, ""), "", "", {"signals": []}],
+            budget_s=spoken_medium_retrieval_budget_s(self.settings) if spoken_tier == "medium" else None,
         )
         _mark("retrieval_gather")
+        if late_reads:
+            logger.info(
+                "orchestrator_spoken_retrieval_budget_exceeded org_id=%s late=%s",
+                org_id,
+                [("retrieval", "org_bundle", "company", "entity", "signals")[i] for i in late_reads],
+            )
         try:
             _, org_context_block = org_bundle
         except Exception:  # noqa: BLE001
@@ -523,33 +588,31 @@ class IntelligenceOrchestrator:
             for row in profile.to_explanation_dict().get("sourcesUsed") or []
             if isinstance(row, dict)
         ]
-        generated = await self._explainability.explain_turn(
-            response_type="answer",
-            org_id=org_id,
-            sources=mapped_sources,
-            model_output={"reasoning_trace": []},
-            classification=classification,
-            context_profile=profile.to_explanation_dict(),
-            confidence={"score": pre_confidence.get("confidence"), "missing_context": pre_confidence.get("missing_context")},
-        )
-        _mark("explainability")
-        context_explanation = generated.get("summary") or explanation
-        # Module C: fabric provenance (incl. content_mode / fetch_status) must reach citation UI
-        if fabric_provenance:
-            generated = {
-                **generated,
-                "knowledge_citations": list(fabric_provenance)[:6],
-                "sources": list(fabric_provenance)[:6],
-            }
-        explainability = generated
 
-        advisor_brief = None
-        if classification.get("requires_graph") or classification.get("requires_action") or await self._planning.should_plan(
-            classification,
-            query,
-        ):
+        async def _explain() -> dict[str, Any]:
+            if spoken_light_or_medium:
+                return {}
+            return await self._explainability.explain_turn(
+                response_type="answer",
+                org_id=org_id,
+                sources=mapped_sources,
+                model_output={"reasoning_trace": []},
+                classification=classification,
+                context_profile=profile.to_explanation_dict(),
+                confidence={"score": pre_confidence.get("confidence"), "missing_context": pre_confidence.get("missing_context")},
+            )
+
+        async def _advisor_brief() -> dict[str, Any] | None:
+            if spoken_light_or_medium:
+                return None
+            if not (
+                classification.get("requires_graph")
+                or classification.get("requires_action")
+                or await self._planning.should_plan(classification, query)
+            ):
+                return None
             try:
-                advisor_brief = await self._advisor.generate_brief(
+                return await self._advisor.generate_brief(
                     org_id,
                     user_id,
                     department=str(classification.get("department") or ""),
@@ -558,17 +621,13 @@ class IntelligenceOrchestrator:
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.debug("orchestrator advisor brief skipped org_id=%s error=%s", org_id, exc)
+                return None
 
-        _mark("advisor_brief")
-        execution_gate = self._confidence_engine.assess_execution_gate(
-            pre_confidence=pre_confidence,
-            risk_evaluation={"requires_approval": bool(classification.get("requires_action"))},
-        )
-
-        strategic_plan = None
-        if await self._planning.should_plan(classification, query):
+        async def _strategic_plan() -> Any:
+            if not await self._planning.should_plan(classification, query):
+                return None
             try:
-                strategic_plan = await self._planning.create_plan(
+                return await self._planning.create_plan(
                     org_id,
                     user_id,
                     conversation_id,
@@ -581,6 +640,29 @@ class IntelligenceOrchestrator:
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.debug("orchestrator strategic plan skipped org_id=%s error=%s", org_id, exc)
+                return None
+
+        # Independent of each other: run together rather than back to back.
+        generated, advisor_brief, strategic_plan = await asyncio.gather(
+            _explain(), _advisor_brief(), _strategic_plan()
+        )
+        generated = generated or {}
+        _mark("explainability")
+        context_explanation = generated.get("summary") or explanation
+        # Module C: fabric provenance (incl. content_mode / fetch_status) must reach citation UI
+        if fabric_provenance:
+            generated = {
+                **generated,
+                "knowledge_citations": list(fabric_provenance)[:6],
+                "sources": list(fabric_provenance)[:6],
+            }
+        explainability = generated
+
+        _mark("advisor_brief")
+        execution_gate = self._confidence_engine.assess_execution_gate(
+            pre_confidence=pre_confidence,
+            risk_evaluation={"requires_approval": bool(classification.get("requires_action"))},
+        )
 
         memory_block = (
             sections.get("conversation_memory")

@@ -8,10 +8,12 @@ import asyncio
 import contextvars
 import json
 import os
+import re
 import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from enum import StrEnum
+from types import SimpleNamespace
 from typing import Any
 
 # Phase 2 A/B — when set, consecutive reads run serially (baseline latency).
@@ -230,6 +232,100 @@ def _parse_tool_arguments(raw: str | None) -> dict[str, Any]:
     return parsed if isinstance(parsed, dict) else {}
 
 
+# A sentence ends at terminal punctuation (optionally closed by a quote or
+# bracket) followed by whitespace.
+_SENTENCE_BOUNDARY = re.compile(r"[.!?][\"')\]]*\s+")
+
+
+def _streams_with_tools(model: str) -> bool:
+    """Streamed tool rounds reuse the OpenAI streaming completion only."""
+    from app.services.providers.provider_tool_router import resolve_provider_for_model
+
+    return resolve_provider_for_model(model) == "openai"
+
+
+def _unstreamed_remainder(final_answer: str, streamed: str) -> str:
+    """The part of ``final_answer`` not already yielded while streaming."""
+    if not streamed:
+        return final_answer
+    head = streamed.rstrip()
+    if final_answer.startswith(head):
+        return final_answer[len(head) :].lstrip()
+    # Cannot happen (both come from the same tokens); never repeat speech.
+    logger.warning("react_streamed_answer_mismatch streamed_chars=%s", len(streamed))
+    return ""
+
+
+class _SpokenAnswerStream:
+    """Releases a streamed ReAct answer whole sentences at a time.
+
+    Nothing is released once a tool-call delta arrives (a tool round's text
+    stays internal, exactly as without streaming), nor while the text could
+    still be the NEEDS_HUMAN_INPUT marker (that answer is reshaped before it is
+    shown). Whatever is not released here is emitted by the loop afterwards.
+    """
+
+    def __init__(self) -> None:
+        self._pending = ""
+        self.released = ""
+        self._tool_round = False
+        self._held = False
+        self._queue: asyncio.Queue[str | None] = asyncio.Queue()
+
+    def tool_round(self) -> None:
+        self._tool_round = True
+
+    def feed(self, piece: str) -> None:
+        self._pending += piece
+        if self._tool_round or self._held:
+            return
+        if not self.released:
+            head = self._pending.lstrip().upper()
+            marker = _NEEDS_HUMAN_PREFIX.upper()
+            if head.startswith(marker):
+                self._held = True
+                return
+            if marker.startswith(head):
+                return
+        cut = 0
+        for match in _SENTENCE_BOUNDARY.finditer(self._pending):
+            cut = match.end()
+        if not cut:
+            return
+        ready, self._pending = self._pending[:cut], self._pending[cut:]
+        if not self.released:
+            ready = ready.lstrip()
+        if ready:
+            self.released += ready
+            self._queue.put_nowait(ready)
+
+    def close(self) -> None:
+        self._queue.put_nowait(None)
+
+    async def drain_while(self, call: "asyncio.Future[Any]") -> AsyncIterator[str]:
+        """Yield released sentences until the streaming call has finished."""
+        while True:
+            getter = asyncio.ensure_future(self._queue.get())
+            try:
+                await asyncio.wait({getter, call}, return_when=asyncio.FIRST_COMPLETED)
+            finally:
+                if not getter.done():
+                    getter.cancel()
+            if getter.done() and not getter.cancelled():
+                item = getter.result()
+                if item is None:
+                    return
+                yield item
+                continue
+            # The call ended (or failed) first: flush what it released.
+            while not self._queue.empty():
+                item = self._queue.get_nowait()
+                if item is None:
+                    return
+                yield item
+            return
+
+
 class ReActEngine:
     """Reason + Act + Observe loop backed by ToolRegistry and OpenAI tool calling."""
 
@@ -304,8 +400,14 @@ class ReActEngine:
         plan_runtime: Any | None = None,
         conversation_history: list[dict[str, Any]] | None = None,
         interrupt: dict[str, Any] | None = None,
+        stream_answer: bool = False,
     ) -> AsyncIterator[ReActStreamEvent]:
-        """Streaming variant — same reasoning loop as run(), yields progress events."""
+        """Streaming variant — same reasoning loop as run(), yields progress events.
+
+        ``stream_answer`` (spoken turns) streams the model call of each round
+        before the first tool runs and yields the answer sentence by sentence
+        while it is generated, instead of after the whole call returns.
+        """
         async for event in self._react_loop(
             ctx=ctx,
             task=task,
@@ -325,6 +427,7 @@ class ReActEngine:
             plan_runtime=plan_runtime,
             conversation_history=conversation_history,
             interrupt=interrupt,
+            stream_answer=stream_answer,
         ):
             yield event
 
@@ -349,6 +452,7 @@ class ReActEngine:
         plan_runtime: Any | None = None,
         conversation_history: list[dict[str, Any]] | None = None,
         interrupt: dict[str, Any] | None = None,
+        stream_answer: bool = False,
     ) -> AsyncIterator[ReActStreamEvent]:
         """Shared ReAct implementation for run() and run_streaming()."""
         import uuid
@@ -535,6 +639,7 @@ class ReActEngine:
                 phase=phase,
                 routing_tier=routing_tier,
             )
+            streamed_answer = ""
             try:
                 _llm_started = time.perf_counter()
                 from app.services.live_classical_handoff import consume_handoff, fake_tool_choice_response
@@ -552,7 +657,27 @@ class ReActEngine:
                         response=response,
                     )
                 else:
-                    response = await self._chat_with_tools(messages, tools, resolved_model)
+                    answer_stream: _SpokenAnswerStream | None = None
+                    if (
+                        stream_answer
+                        and emit_text_deltas
+                        and not tool_calls_log
+                        and _streams_with_tools(resolved_model)
+                    ):
+                        answer_stream = _SpokenAnswerStream()
+                        call = asyncio.ensure_future(
+                            self._stream_chat_with_tools(messages, tools, resolved_model, answer_stream)
+                        )
+                        try:
+                            async for sentence in answer_stream.drain_while(call):
+                                yield ReActStreamEvent(kind="text_delta", content=sentence)
+                        finally:
+                            if not call.done():
+                                call.cancel()
+                        response = call.result()
+                        streamed_answer = answer_stream.released
+                    else:
+                        response = await self._chat_with_tools(messages, tools, resolved_model)
                     _log_react_llm_round(
                         org_id=getattr(ctx, "org_id", None),
                         iteration=iteration,
@@ -648,8 +773,11 @@ class ReActEngine:
                     tool_calls=tool_calls_log,
                 )
                 if emit_text_deltas:
-                    for piece in chunk_text_deltas(final_answer):
-                        yield ReActStreamEvent(kind="text_delta", content=piece)
+                    # Sentences already streamed are not repeated.
+                    remainder = _unstreamed_remainder(final_answer, streamed_answer)
+                    if remainder:
+                        for piece in chunk_text_deltas(remainder):
+                            yield ReActStreamEvent(kind="text_delta", content=piece)
                 yield ReActStreamEvent(kind="done", react_result=result)
                 return
 
@@ -1161,6 +1289,57 @@ class ReActEngine:
             tool_choice="auto",
             temperature=temp,
         )
+
+    async def _stream_chat_with_tools(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        model: str,
+        answer_stream: "_SpokenAnswerStream",
+    ) -> Any:
+        """Same request as ``_chat_with_tools``, streamed (OpenAI models only).
+
+        Reuses the unified LIVE path's streaming completion; text deltas go to
+        ``answer_stream``, which releases whole sentences only while the
+        response is not a tool round.
+        """
+        from app.services.model_router import OPENAI_REQUEST_TIMEOUT_S
+        from app.services.narrowed_tools import assert_tools_narrowed
+        from app.services.unified_turn_reasoning_service import _complete_unified_turn_stream
+
+        assert_tools_narrowed(tools, where="react_engine._stream_chat_with_tools")
+        client = getattr(self.router, "_openai", None)
+        if client is None:
+            raise RuntimeError("OPENAI_API_KEY is not configured")
+        kwargs: dict[str, Any] = {"model": model, "messages": messages}
+        if tools:
+            kwargs["tools"] = list(tools)
+            kwargs["tool_choice"] = "auto"
+        if _supports_custom_temperature(model):
+            kwargs["temperature"] = 0.2
+        started = time.perf_counter()
+        try:
+            completion = await _complete_unified_turn_stream(
+                client,
+                kwargs=kwargs,
+                wall_start=started,
+                model_start=started,
+                timeout_s=OPENAI_REQUEST_TIMEOUT_S,
+                on_text_delta=answer_stream.feed,
+                on_tool_call_delta=answer_stream.tool_round,
+            )
+        finally:
+            answer_stream.close()
+        message = SimpleNamespace(
+            content=completion.content or None,
+            tool_calls=list(completion.tool_calls) or None,
+        )
+        usage = SimpleNamespace(
+            prompt_tokens=completion.prompt_tokens,
+            completion_tokens=completion.completion_tokens,
+            prompt_tokens_details=SimpleNamespace(cached_tokens=completion.cached_tokens),
+        )
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=usage)
 
     async def _run_reasoning_only(
         self,

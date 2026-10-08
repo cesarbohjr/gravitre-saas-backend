@@ -1,6 +1,7 @@
 """Model selection across ML catalog and model_router LLM tiers."""
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -102,13 +103,26 @@ class ModelSelector:
         return apply_model_selection_policy(selection, classification)
 
     async def _list_deployed_ml_models(self, org_id: str) -> list[str]:
-        deployed: list[str] = []
-        for name, meta in GRAVITRE_ML_CATALOG.items():
-            if meta.get("status") != ModelStatus.TRAINED:
-                continue
-            if await self._org_has_deployed_model(org_id, name):
-                deployed.append(name)
-        return deployed
+        # One read of the org's deployed/ready models for the whole catalog; it
+        # was two identical registry queries per catalog entry, one after another.
+        try:
+            models = await self._deployed_and_ready_models(org_id)
+        except Exception:  # noqa: BLE001
+            return []
+        return [
+            name
+            for name, meta in GRAVITRE_ML_CATALOG.items()
+            if meta.get("status") == ModelStatus.TRAINED and _matches_catalog_name(models, name)
+        ]
+
+    @staticmethod
+    async def _deployed_and_ready_models(org_id: str) -> list[Any]:
+        registry = get_model_registry()
+        deployed, ready = await asyncio.gather(
+            registry.list_models(org_id, status=ModelStatus.DEPLOYED),
+            registry.list_models(org_id, status=ModelStatus.READY),
+        )
+        return [*deployed, *ready]
 
     async def _ledger_preferred_ml(
         self,
@@ -148,12 +162,25 @@ class ModelSelector:
         tiers = ("fast", "standard", "reasoning")
         default_key = f"llm:{base.get('llm_tier') or 'standard'}"
         candidate_keys = [f"llm:{tier}" for tier in tiers]
-        pref = await get_strategy_performance_ledger(self.settings).choose_preferred_strategy(
-            org_id,
-            default_key,
-            candidate_keys,
-            segment_key=segment_key,
-            fallback_segment_key=fallback_segment_key,
+        provider_keys = list(PROVIDER_STRATEGY_KEYS)
+        default_provider = str(getattr(self.settings, "preferred_ai_provider", "openai") or "openai")
+        ledger = get_strategy_performance_ledger(self.settings)
+        # The tier and provider preferences are independent ledger reads.
+        pref, provider_pref = await asyncio.gather(
+            ledger.choose_preferred_strategy(
+                org_id,
+                default_key,
+                candidate_keys,
+                segment_key=segment_key,
+                fallback_segment_key=fallback_segment_key,
+            ),
+            ledger.choose_preferred_strategy(
+                org_id,
+                f"provider:{default_provider}",
+                provider_keys,
+                segment_key=segment_key,
+                fallback_segment_key=fallback_segment_key,
+            ),
         )
         selected = str(pref.get("selected_key") or default_key)
         if selected.startswith("llm:"):
@@ -162,15 +189,6 @@ class ModelSelector:
                 base["llm_tier"] = tier
                 if pref.get("reason") == "ledger_win_rate":
                     base["reason"] = f"Ledger preferred LLM tier {tier} for {task_type}"
-        provider_keys = list(PROVIDER_STRATEGY_KEYS)
-        default_provider = str(getattr(self.settings, "preferred_ai_provider", "openai") or "openai")
-        provider_pref = await get_strategy_performance_ledger(self.settings).choose_preferred_strategy(
-            org_id,
-            f"provider:{default_provider}",
-            provider_keys,
-            segment_key=segment_key,
-            fallback_segment_key=fallback_segment_key,
-        )
         provider_selected = str(provider_pref.get("selected_key") or f"provider:{default_provider}")
         if provider_selected.startswith("provider:"):
             base["preferred_provider"] = provider_selected.split(":", 1)[1]
@@ -193,22 +211,11 @@ class ModelSelector:
         return base
 
     async def _org_has_deployed_model(self, org_id: str, catalog_name: str) -> bool:
-        aliases = BASE_MODEL_ALIASES.get(catalog_name, (catalog_name,))
         try:
-            registry = get_model_registry()
-            models = await registry.list_models(org_id, status=ModelStatus.DEPLOYED)
-            for model in models:
-                base = str(getattr(model, "base_model", "") or "")
-                if base in aliases or model.name in aliases:
-                    return True
-            models_ready = await registry.list_models(org_id, status=ModelStatus.READY)
-            for model in models_ready:
-                base = str(getattr(model, "base_model", "") or "")
-                if base in aliases or model.name in aliases:
-                    return True
+            models = await self._deployed_and_ready_models(org_id)
         except Exception:  # noqa: BLE001
             return False
-        return False
+        return _matches_catalog_name(models, catalog_name)
 
     def _llm_selection(
         self,
@@ -233,6 +240,16 @@ class ModelSelector:
             "fallback": "llm_fast",
             "reason": reason or f"No trained ML model for {task_type} — using LLM {tier} tier",
         }
+
+
+def _matches_catalog_name(models: list[Any], catalog_name: str) -> bool:
+    """True when a deployed or ready model is (or is based on) this catalog entry."""
+    aliases = BASE_MODEL_ALIASES.get(catalog_name, (catalog_name,))
+    for model in models:
+        base = str(getattr(model, "base_model", "") or "")
+        if base in aliases or getattr(model, "name", None) in aliases:
+            return True
+    return False
 
 
 _model_selector: ModelSelector | None = None

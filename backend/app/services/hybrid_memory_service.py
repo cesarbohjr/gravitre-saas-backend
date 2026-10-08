@@ -5,6 +5,7 @@ import asyncio
 from typing import Any
 
 from app.config import Settings, get_settings
+from app.core.io_pool import run_io
 from app.services.query_normalization import normalize_query
 from app.workflows.repository import get_supabase_client
 
@@ -39,7 +40,7 @@ class HybridMemoryService:
         )
         if agent_id:
             q = q.eq("agent_id", agent_id)
-        rows = q.execute().data or []
+        rows = (await run_io(q.execute)).data or []
         needle = normalize_query(query).lower()
         scored = []
         for row in rows:
@@ -56,14 +57,14 @@ class HybridMemoryService:
         client: Any,
     ) -> list[dict[str, Any]]:
         rows = (
-            client.table("org_entity_relationships")
-            .select("source_entity_type, source_entity_id, target_entity_type, target_entity_id, relationship_type, confidence")
-            .eq("org_id", org_id)
-            .limit(50)
-            .execute()
-            .data
-            or []
-        )
+            await run_io(
+                client.table("org_entity_relationships")
+                .select("source_entity_type, source_entity_id, target_entity_type, target_entity_id, relationship_type, confidence")
+                .eq("org_id", org_id)
+                .limit(50)
+                .execute
+            )
+        ).data or []
         needle = normalize_query(query).lower()
         matches = [
             row
@@ -87,14 +88,14 @@ class HybridMemoryService:
         client: Any,
     ) -> list[dict[str, Any]]:
         rows = (
-            client.table("org_glossary_terms")
-            .select("term, term_type, associated_department, status")
-            .eq("org_id", org_id)
-            .limit(100)
-            .execute()
-            .data
-            or []
-        )
+            await run_io(
+                client.table("org_glossary_terms")
+                .select("term, term_type, associated_department, status")
+                .eq("org_id", org_id)
+                .limit(100)
+                .execute
+            )
+        ).data or []
         needle = normalize_query(query).lower()
         return [row for row in rows if needle and needle in str(row.get("term") or "").lower()][:10]
 
@@ -106,21 +107,25 @@ class HybridMemoryService:
         top_k: int = 5,
     ) -> dict[str, Any]:
         client = self._client()
-        results = await asyncio.gather(
-            self._query_agent_memories(org_id, agent_id, query, top_k, client),
-            self._query_entity_relationships(org_id, query, client),
-            self._query_glossary_terms(org_id, query, client),
-            return_exceptions=True,
-        )
-        cluster_rows = (
+        # The four reads are synchronous Supabase calls: each runs on the I/O
+        # pool so they really overlap and none of them stalls the event loop.
+        cluster_read = run_io(
             client.table("org_query_clusters")
             .select("cluster_label, representative_queries, member_query_count")
             .eq("org_id", org_id)
             .limit(top_k)
-            .execute()
-            .data
-            or []
+            .execute
         )
+        *results, cluster_resp = await asyncio.gather(
+            self._query_agent_memories(org_id, agent_id, query, top_k, client),
+            self._query_entity_relationships(org_id, query, client),
+            self._query_glossary_terms(org_id, query, client),
+            cluster_read,
+            return_exceptions=True,
+        )
+        if isinstance(cluster_resp, BaseException):
+            raise cluster_resp
+        cluster_rows = cluster_resp.data or []
         return {
             "episodic_memories": results[0] if not isinstance(results[0], Exception) else [],
             "graph_context": results[1] if not isinstance(results[1], Exception) else [],

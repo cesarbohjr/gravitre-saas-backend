@@ -31,6 +31,7 @@ from app.services.latency_tracking import log_pipeline_latency
 from app.services.rag_cache_helpers import EMBEDDING_TTL_SECONDS, RETRIEVAL_TTL_SECONDS, retrieval_cache_parts
 from app.workflows.repository import get_supabase_client
 from app.core.safe_dict import safe_normalize_stored_dict
+from app.core.io_pool import run_io
 
 logger = get_logger(__name__)
 
@@ -141,14 +142,17 @@ class RAGService:
         department_id = filters.get("department_id")
         resolved_agent_id = filters.get("agent_id")
         if scope == "department" or scope == "agent":
-            resolved_dept, resolved_agent = resolve_department_id_for_agent(
-                client, org_id, str(resolved_agent_id) if resolved_agent_id else None
+            resolved_dept, resolved_agent = await run_io(
+                resolve_department_id_for_agent,
+                client,
+                org_id,
+                str(resolved_agent_id) if resolved_agent_id else None,
             )
             department_id = department_id or resolved_dept
             resolved_agent_id = resolved_agent_id or resolved_agent
         elif resolved_agent_id and not department_id:
-            department_id, resolved_agent_id = resolve_department_id_for_agent(
-                client, org_id, str(resolved_agent_id)
+            department_id, resolved_agent_id = await run_io(
+                resolve_department_id_for_agent, client, org_id, str(resolved_agent_id)
             )
         embedding_method = "none"
         embedding_model = str(getattr(self.settings, "embedding_model", None) or EMBEDDING_MODEL)
@@ -160,7 +164,9 @@ class RAGService:
                 await cache.record_hit("embedding")
             else:
                 await cache.record_miss("embedding")
-                query_embedding, embedding_method = embed_with_failover(query, self.settings, org_id=org_id)
+                query_embedding, embedding_method = await run_io(
+                    embed_with_failover, query, self.settings, org_id=org_id
+                )
                 cache.set_sync(
                     "embedding",
                     {"vector": query_embedding, "method": embedding_method},
@@ -195,33 +201,38 @@ class RAGService:
 
         candidate_k = hybrid_candidate_k(self.settings)
         merge_k = candidate_k * 2
-        semantic_rows = search_chunks(
-            settings=self.settings,
-            org_id=org_id,
-            query_embedding=query_embedding,
-            top_k=candidate_k,
-            source_id=(filters or {}).get("source_id"),
-            document_id=(filters or {}).get("document_id"),
-            environment_name=environment,
-            department_id=str(department_id) if department_id else None,
-            agent_id=str(resolved_agent_id) if resolved_agent_id else None,
+        # The vector search and the keyword corpus read are independent blocking
+        # reads; run them together off the event loop.
+        semantic_rows, (bm25_corpus, keyword_reach) = await asyncio.gather(
+            run_io(
+                search_chunks,
+                settings=self.settings,
+                org_id=org_id,
+                query_embedding=query_embedding,
+                top_k=candidate_k,
+                source_id=(filters or {}).get("source_id"),
+                document_id=(filters or {}).get("document_id"),
+                environment_name=environment,
+                department_id=str(department_id) if department_id else None,
+                agent_id=str(resolved_agent_id) if resolved_agent_id else None,
+            ),
+            run_io(
+                fetch_bm25_corpus,
+                self.settings,
+                org_id,
+                # Previously omitted, which is the whole defect: the corpus fetch was
+                # query-blind, so BM25 ranked an arbitrary slice bounded only by row
+                # order. With the terms passed through, Postgres selects candidates
+                # on the keyword index and the corpus-size ceiling disappears.
+                query_text=query,
+                environment_name=environment,
+                source_id=(filters or {}).get("source_id"),
+                document_id=(filters or {}).get("document_id"),
+                department_id=str(department_id) if department_id else None,
+                agent_id=str(resolved_agent_id) if resolved_agent_id else None,
+            ),
         )
         semantic_rows = [normalize_chunk_row(row) for row in semantic_rows]
-
-        bm25_corpus, keyword_reach = fetch_bm25_corpus(
-            self.settings,
-            org_id,
-            # Previously omitted, which is the whole defect: the corpus fetch was
-            # query-blind, so BM25 ranked an arbitrary slice bounded only by row
-            # order. With the terms passed through, Postgres selects candidates
-            # on the keyword index and the corpus-size ceiling disappears.
-            query_text=query,
-            environment_name=environment,
-            source_id=(filters or {}).get("source_id"),
-            document_id=(filters or {}).get("document_id"),
-            department_id=str(department_id) if department_id else None,
-            agent_id=str(resolved_agent_id) if resolved_agent_id else None,
-        )
         keyword_rows = bm25_rank_rows(query, bm25_corpus, top_k=candidate_k)
         merged = rrf_merge(semantic_rows, keyword_rows, top_k=merge_k)
         retrieval_ms = int((time.monotonic() - retrieval_started) * 1000)

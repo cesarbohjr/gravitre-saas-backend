@@ -10,7 +10,10 @@ stream already proven for the text plan-bar, not a hand-rolled shortcut.
 """
 from __future__ import annotations
 
+from pipecat.frames.frames import AggregatedTextFrame
+
 import asyncio
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -36,7 +39,10 @@ def _drive(events: list[Any]) -> tuple[list[str], list[str]]:
     )()
 
     service = GravitreCognitiveLLMService(
-        app_settings=object(),
+        # These tests are about tool narration only; the deep-turn
+        # acknowledgement (its own tests) is switched off so a slow test
+        # machine cannot add an acknowledgement to the spoken output.
+        app_settings=SimpleNamespace(voice_deep_ack_seconds=0),
         org_id="00000000-0000-4000-8000-000000000001",
         user_id="00000000-0000-4000-8000-000000000002",
     )
@@ -45,6 +51,9 @@ def _drive(events: list[Any]) -> tuple[list[str], list[str]]:
     tts_chunks: list[str] = []
 
     async def _capture_push_frame(frame: Any, *_a: Any, **_kw: Any) -> None:
+        if isinstance(frame, AggregatedTextFrame):
+            tts_chunks.append(frame.text)  # a narration handed to TTS as a sentence
+            return
         message = getattr(frame, "message", None)
         if isinstance(message, dict) and message.get("type") == "assistant_text":
             display_deltas.append(str(message.get("delta") or ""))

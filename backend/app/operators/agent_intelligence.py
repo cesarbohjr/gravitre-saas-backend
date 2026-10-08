@@ -60,6 +60,8 @@ from app.services.response_composer import (
     emit_text_end,
     emit_text_start,
     looks_like_raw_backend,
+    StreamedComposerReply,
+    stream_compose_reply_events,
 )
 from app.operators.react_engine import ReActEngine, ReActStatus, get_react_engine, resolve_permitted_tools
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
@@ -102,7 +104,7 @@ from app.services.sync_confidence import compute_sync_confidence
 from app.services.unified_retrieval_service import UnifiedRetrievalService, get_unified_retrieval_service
 from app.services.tool_registry import get_tool_registry
 from app.services.tool_types import ToolContext
-from app.workflows.audit import write_audit_event
+from app.workflows.audit import submit_audit_off_loop, write_audit_event
 from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
@@ -1750,6 +1752,7 @@ class AgentIntelligence:
         composer_failure_probe: str | None = None,
     interrupt_payload: dict[str, Any] | None = None,
     workspace_focus: dict[str, Any] | None = None,
+    latency_marks: dict[str, Any] | None = None,
 ) -> AsyncIterator[AssistantStreamEvent | AssistantStreamComplete]:
         """Streaming variant for assistant / agent chat surfaces.
 
@@ -1770,9 +1773,16 @@ class AgentIntelligence:
 
         begin_p2_marks(_pre_kernel_t0)
 
+        # Caller-owned copy of the checkpoints (the voice bridge's per-turn
+        # latency record); "_t0_perf" anchors them on the caller's clock.
+        if latency_marks is not None:
+            latency_marks["_t0_perf"] = _pre_kernel_t0
+
         def _mark(name: str) -> None:
             _pre_kernel_checkpoints[name] = int((time.perf_counter() - _pre_kernel_t0) * 1000)
             record_p2_mark(name)
+            if latency_marks is not None:
+                latency_marks[name] = _pre_kernel_checkpoints[name]
 
         if client is None:
             from app.workflows.repository import get_supabase_client
@@ -2049,6 +2059,54 @@ class AgentIntelligence:
                 close=close,
             )
             return packed
+
+        async def _composed_reply_stream(
+            draft: str,
+            *,
+            reply: StreamedComposerReply,
+            kind: str,
+            extra: dict[str, Any] | None = None,
+            existing_text_id: str | None = None,
+            close: bool = True,
+        ):
+            """``_composed_reply`` whose spoken model reply streams sentence by sentence.
+
+            Spoken turns start speaking the first checked, moderated sentence
+            instead of waiting for the whole Composer call; text chat keeps the
+            whole reply. ``reply`` holds the final text and text id afterwards.
+            """
+            if not spoken_mode:
+                packed = await _composed_reply(
+                    draft, kind=kind, extra=extra, existing_text_id=existing_text_id, close=close
+                )
+                reply.text, reply.text_id = packed.text, packed.text_id
+                for ev in packed.events:
+                    yield ev
+                return
+            env = _trace_compose_extra(
+                extra,
+                state=task_state if isinstance(task_state, dict) else _canonical_task_state,
+                draft=draft,
+            )
+            env["data"].setdefault("text", draft)
+            if kind == "canned":
+                _mark("compose_canned")
+            async for ev in stream_compose_reply_events(
+                env,
+                result=reply,
+                kind=kind,
+                draft=draft,
+                history=conversation_history if isinstance(conversation_history, list) else None,
+                user_message=task_text,
+                settings=active_settings,
+                org_id=org_id,
+                client=client,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                existing_text_id=existing_text_id,
+                close=close,
+            ):
+                yield ev
 
         async def _emit_compiled_operational_short_circuit(_analytics_turn: dict[str, Any]):
             nonlocal task_state
@@ -3838,6 +3896,7 @@ class AgentIntelligence:
                 # Already resolved above (off-thread, cache-backed for spoken
                 # non-write turns); re-deriving it here cost a blocking 1.6s.
                 connected_integrations=list(connected_early or []),
+                spoken_tier=conversation_tier.tier if spoken_mode else None,
             )
 
         # LIVE is discarded on ~48% of turns (audit: unified_turn.live.fallthrough,
@@ -4853,7 +4912,8 @@ class AgentIntelligence:
         # fixes. rewriteAttempted separates them; modelRan then separates a
         # dormant call from a model that declined to rewrite.
         try:
-            write_audit_event(
+            submit_audit_off_loop(
+                write_audit_event,
                 client,
                 org_id=org_id,
                 actor_id=user_id,
@@ -4925,6 +4985,7 @@ class AgentIntelligence:
                 mode=requested_mode,
                 research_scope=research_scope,
                 connected_integrations=list(connected_early or []),
+                spoken_tier=conversation_tier.tier if spoken_mode else None,
             )
 
         turn_ctx, _compiled_meta = await compile_assistant_turn_context(
@@ -5078,14 +5139,15 @@ class AgentIntelligence:
                 question = str(clarification.get("question") or "Could you clarify?")
             # Preserve mixed-turn social ack on clarify exits (e.g. connector not Connected).
             question = _with_social(question)
-            packed = await _composed_reply(
+            clarify_reply = StreamedComposerReply()
+            async for ev in _composed_reply_stream(
                 question,
+                reply=clarify_reply,
                 kind="clarify",
                 extra={"success": False, "error_code": "validation_error", "data": {"text": question}},
-            )
-            question = packed.text
-            for ev in packed.events:
+            ):
                 yield ev
+            question = clarify_reply.text
             # Routing wave — early clarify exits still emit classified tier (Trace C).
             yield sse_intelligence_metadata(
                 message_id=message_id,
@@ -5639,6 +5701,9 @@ class AgentIntelligence:
             plan_runtime=_react_plan_runtime,
             conversation_history=prepared_context.messages,
             interrupt=live_interrupt,
+            # Spoken turns hear the answer while it is generated; text chat
+            # keeps the whole-call path.
+            stream_answer=bool(spoken_mode),
         ):
             if event.kind == "routing_escalation":
                 esc = event.result if isinstance(event.result, dict) else {}
@@ -6262,39 +6327,43 @@ class AgentIntelligence:
                 and looks_like_tool_payload(str(getattr(react_result, "answer", "") or ""))
             )
         ):
-            packed = await _composed_reply(
-                str((tool_env.get("data") or {}).get("text") or ""),
-                kind=_envelope_kind(tool_env),
-                extra={**tool_env, **_compose_extra},
-            )
-            full_content = packed.text
             if text_id is not None:
                 yield emit_text_end(text_id)
-            for ev in packed.events:
+            final_reply = StreamedComposerReply()
+            async for ev in _composed_reply_stream(
+                str((tool_env.get("data") or {}).get("text") or ""),
+                reply=final_reply,
+                kind=_envelope_kind(tool_env),
+                extra={**tool_env, **_compose_extra},
+            ):
                 yield ev
-            text_id = packed.text_id
+            full_content = final_reply.text
+            text_id = final_reply.text_id
         elif looks_like_raw_backend(full_content):
-            packed = await _composed_reply(
+            if text_id is not None:
+                yield emit_text_end(text_id)
+            final_reply = StreamedComposerReply()
+            async for ev in _composed_reply_stream(
                 full_content,
+                reply=final_reply,
                 kind="error",
                 extra={
                     "success": False,
                     "error_code": "tool_error",
                     "error_detail": full_content,
                 },
-            )
-            full_content = packed.text
-            if text_id is not None:
-                yield emit_text_end(text_id)
-            for ev in packed.events:
+            ):
                 yield ev
-            text_id = packed.text_id
+            full_content = final_reply.text
+            text_id = final_reply.text_id
         elif full_content.strip() and text_id is None:
-            packed = await _composed_reply(full_content, kind="success", extra=_compose_extra)
-            full_content = packed.text
-            text_id = packed.text_id
-            for ev in packed.events:
+            final_reply = StreamedComposerReply()
+            async for ev in _composed_reply_stream(
+                full_content, reply=final_reply, kind="success", extra=_compose_extra
+            ):
                 yield ev
+            full_content = final_reply.text
+            text_id = final_reply.text_id
         elif text_id is not None:
             already_closed = False
             if full_content.strip() and full_content.strip() != streamed_content.strip():

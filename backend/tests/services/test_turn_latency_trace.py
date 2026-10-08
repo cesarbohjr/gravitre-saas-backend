@@ -56,3 +56,103 @@ def test_build_voice_pipecat_turn_marks_maps_processors() -> None:
     assert marks["llm_first_token_ms"] == 650
     assert marks["tts_first_byte"] == 180
     assert marks["terminal"] == 4200
+
+
+def test_aggregate_reports_percentiles_only_with_enough_samples() -> None:
+    from app.services.turn_latency_trace import aggregate_stage_percentiles
+
+    rows = [
+        {"tier": "light", "stage_durations_ms": {"model_ttft_ms": ms, "tts_ttfb_ms": 150}}
+        for ms in range(1, 21)
+    ] + [{"tier": "deep", "stage_durations_ms": {"model_ttft_ms": 900}}] * 3
+    rows.append({"no": "durations"})
+    out = aggregate_stage_percentiles(rows)
+    light = out["light"]["model_ttft_ms"]
+    assert light == {"n": 20, "p50": 10, "p95": 19, "p99": None}
+    # Three samples is not enough for any percentile.
+    assert out["deep"]["model_ttft_ms"] == {"n": 3, "p50": None, "p95": None, "p99": None}
+    assert out["all"]["model_ttft_ms"]["n"] == 23
+    assert out["light"]["tts_ttfb_ms"]["p95"] == 150
+
+
+def test_aggregate_p99_needs_one_hundred_samples() -> None:
+    from app.services.turn_latency_trace import aggregate_stage_percentiles
+
+    rows = [{"stage_durations_ms": {"x": float(i)}} for i in range(1, 101)]
+    out = aggregate_stage_percentiles(rows)
+    assert out["unknown"]["x"]["p99"] == 99
+    assert out["unknown"]["x"]["p50"] == 50
+
+
+def test_voice_critical_path_carries_tier_and_durations(monkeypatch) -> None:
+    from app.services import turn_latency_trace
+
+    captured: dict = {}
+
+    def _write(_client, org_id, user_id, action, resource_type, resource_id, payload):
+        captured.update(payload)
+
+    monkeypatch.setattr("app.workflows.audit.write_audit_event", _write)
+    monkeypatch.setattr("app.workflows.repository.get_supabase_client", lambda _s: object())
+    analysis = turn_latency_trace.record_voice_turn_critical_path(
+        None,
+        org_id="00000000-0000-4000-8000-000000000001",
+        user_id="00000000-0000-4000-8000-000000000002",
+        conversation_id=None,
+        turn_id="t-1",
+        marks={"client_ready": 0, "turn_committed": 400, "llm_first_token_ms": 1200},
+        transport="pipecat_duplex",
+        tier="light",
+        stage_durations_ms={"eot_detection_ms": 400, "model_ttft_ms": None},
+        extra={"speculative_outcome": "adopted"},
+    )
+    assert captured["tier"] == "light"
+    assert captured["stage_durations_ms"] == {"eot_detection_ms": 400}
+    assert captured["speculative_outcome"] == "adopted"
+    assert analysis["dominant_checkpoint"] == "llm_first_token_ms"
+
+
+async def test_critical_path_audit_does_not_block_the_event_loop(monkeypatch) -> None:
+    import asyncio
+    import threading
+    import time
+
+    from app.services import turn_latency_trace
+
+    loop_thread = threading.current_thread()
+    seen: list[threading.Thread] = []
+    done = threading.Event()
+
+    def _slow_write(*_args, **_kwargs):
+        time.sleep(0.2)  # a blocking Supabase insert
+        seen.append(threading.current_thread())
+        done.set()
+
+    monkeypatch.setattr("app.workflows.audit.write_audit_event", _slow_write)
+    monkeypatch.setattr("app.workflows.repository.get_supabase_client", lambda _s: object())
+    started = time.perf_counter()
+    analysis = turn_latency_trace.record_critical_path(
+        None,
+        org_id="00000000-0000-4000-8000-000000000001",
+        user_id="00000000-0000-4000-8000-000000000002",
+        conversation_id=None,
+        turn_id="t-1",
+        marks={"client_ready": 0, "compose": 900},
+    )
+    assert time.perf_counter() - started < 0.1
+    assert analysis["turn_id"] == "t-1"
+    await asyncio.get_running_loop().run_in_executor(None, done.wait, 2)
+    assert seen and seen[0] is not loop_thread
+
+
+def test_off_loop_audit_is_a_plain_call_without_a_loop_and_never_raises() -> None:
+    from app.workflows.audit import submit_audit_off_loop
+
+    calls: list[tuple] = []
+    submit_audit_off_loop(lambda *a, **k: calls.append((a, k)), "c", org_id="o")
+    assert calls == [(("c",), {"org_id": "o"})]
+
+    def _boom(*_a, **_k):
+        raise RuntimeError("insert failed")
+
+    submit_audit_off_loop(_boom)  # must not raise

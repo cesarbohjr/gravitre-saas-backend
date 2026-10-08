@@ -646,6 +646,15 @@ class Settings(BaseSettings):
             "voice_pipecat_flux_eot",
         ),
     )
+    # Seconds of silence on a deep spoken turn before a short "one moment"
+    # acknowledgement is spoken; 0 turns it off.
+    voice_deep_ack_seconds: float = Field(
+        default=0.6,
+        validation_alias=AliasChoices(
+            "VOICE_DEEP_ACK_SECONDS",
+            "voice_deep_ack_seconds",
+        ),
+    )
     # Voice 3.0 Phase 1 — mic capture (default OFF until explicitly enabled).
     voice_agc_v2: bool = Field(
         default=False,

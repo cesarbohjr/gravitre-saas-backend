@@ -6,6 +6,7 @@ from typing import Any
 from datetime import datetime, timezone
 
 from app.config import Settings, get_settings
+from app.core.io_pool import run_io
 from app.workflows.repository import get_supabase_client
 
 
@@ -20,8 +21,9 @@ class OrgLearningProfileService:
 
     async def load_profile(self, org_id: str) -> dict[str, Any]:
         try:
-            row = (
-                self._client()
+            # Sync Supabase read, run off the event loop.
+            row = await run_io(
+                lambda: self._client()
                 .table("organizations")
                 .select("settings")
                 .eq("id", org_id)

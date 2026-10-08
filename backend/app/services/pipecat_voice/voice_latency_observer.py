@@ -20,10 +20,16 @@ first-bot-speech measurement) untouched.
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from pipecat.frames.frames import (
+    BotStartedSpeakingFrame,
+    EagerTranscriptionFrame,
+    InterimTranscriptionFrame,
     ProposedUserStartedSpeakingFrame,
     ProposedUserStoppedSpeakingFrame,
+    TranscriptionFrame,
+    TTSAudioRawFrame,
 )
 from pipecat.observers.base_observer import FramePushed
 from pipecat.observers.user_bot_latency_observer import UserBotLatencyObserver
@@ -31,9 +37,39 @@ from pipecat.processors.frame_processor import FrameDirection
 
 
 class GravitreVoiceLatencyObserver(UserBotLatencyObserver):
-    """UserBotLatencyObserver, made to actually fire on the live Flux path."""
+    """UserBotLatencyObserver, made to actually fire on the live Flux path.
+
+    With a ``turn_trace`` (voice_turn_trace.VoiceTurnTrace) it also stamps the
+    user-speech, TTS and first-audio-out moments of each turn onto that trace.
+    """
+
+    def __init__(self, *args: Any, turn_trace: Any | None = None, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._turn_trace = turn_trace
+
+    def _stamp_turn_trace(self, frame: Any) -> None:
+        trace = self._turn_trace
+        if trace is None:
+            return
+        # Observers see a frame once per hop; the trace keeps the first stamp.
+        if isinstance(frame, TTSAudioRawFrame):
+            trace.on_tts_audio()
+        elif isinstance(frame, InterimTranscriptionFrame):
+            trace.on_interim()
+        elif isinstance(frame, EagerTranscriptionFrame):
+            trace.on_eager_end_of_turn()
+        elif isinstance(frame, TranscriptionFrame):
+            trace.on_stt_final()
+        elif isinstance(frame, ProposedUserStoppedSpeakingFrame):
+            trace.on_user_stopped()
+        elif isinstance(frame, BotStartedSpeakingFrame):
+            trace.on_bot_started_speaking()
 
     async def on_push_frame(self, data: FramePushed):
+        try:
+            self._stamp_turn_trace(data.frame)
+        except Exception:  # noqa: BLE001 - latency evidence must never break the pipeline
+            pass
         if data.direction == FrameDirection.DOWNSTREAM:
             if isinstance(data.frame, ProposedUserStartedSpeakingFrame):
                 # Mirror the stock class's VADUserStartedSpeakingFrame reset:

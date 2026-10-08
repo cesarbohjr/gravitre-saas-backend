@@ -90,7 +90,16 @@ def _client_taking_sync_calls(fn: ast.AST) -> list[str]:
         # A coroutine handed to gather/create_task is awaited, just not directly.
         # prepare_assistant_turn gathers five of them, so without this every one
         # reads as a bare blocking call.
-        if runner in {"gather", "create_task", "ensure_future", "wait", "wait_for", "as_completed"}:
+        # gather_within_budget (intelligence_orchestrator) awaits its members too.
+        if runner in {
+            "gather",
+            "gather_within_budget",
+            "create_task",
+            "ensure_future",
+            "wait",
+            "wait_for",
+            "as_completed",
+        }:
             # Descend into each argument rather than only matching a bare Call:
             # gather members here are written as conditional expressions
             # (`retrieve(...) if slice_enabled else _empty()`), so the coroutine
