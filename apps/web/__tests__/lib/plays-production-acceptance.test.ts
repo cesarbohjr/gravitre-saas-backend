@@ -22,7 +22,7 @@ describe("Plays production acceptance", () => {
 
   it("keeps outcome truth visible to users", () => {
     const results = read("components/plays/play-results.tsx")
-    const dashboard = read("components/home/home-dashboard.tsx")
+    const dashboard = read("components/home/v3/play-outcomes.tsx")
     expect(results).toMatch(/completed action is not counted as business impact/)
     expect(dashboard).toMatch(/Verified Play impact/)
   })

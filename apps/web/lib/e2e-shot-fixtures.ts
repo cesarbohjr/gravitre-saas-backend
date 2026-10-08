@@ -15,6 +15,7 @@
 
 import shotActionCatalog from "./e2e-shot-action-catalog.json"
 import { MARKETPLACE_SHOT_FIXTURES } from "./e2e-shot-marketplace-fixtures"
+import { homeReportsShotFixture } from "./e2e-shot-home-reports-fixture"
 
 const DEMO_ORG_ID = "00000000-0000-0000-0000-000000000001"
 
@@ -1145,6 +1146,9 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     latencySpikeTime: "10:00",
   },
   "/api/metrics/insights": { insights: [] },
+  "/api/metrics/home-reports": homeReportsShotFixture(),
+  "/api/settings/home-reports-layout": { layout: null },
+  "/api/settings/hitl-policies": { policies: [] },
   "/api/metrics/weekly-throughput": {
     target: 2400,
     days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => ({ day, records: [1800, 2200, 2600, 2100, 2800, 1500, 1200][index], target: 2400 })),

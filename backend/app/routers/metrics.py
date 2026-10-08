@@ -259,6 +259,34 @@ def export_metrics(
     )
 
 
+@router.get("/home-reports")
+def home_reports(
+    *,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    range: Annotated[str | None, Query()] = "7d",
+    tz: Annotated[int, Query(ge=-840, le=840, description="Viewer offset from UTC in minutes")] = 0,
+) -> dict:
+    """Home dashboard Reports view: runs stacked by agent, trends, heatmap, utilization."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.metrics.home_reports import build_home_reports
+
+    start = time.perf_counter()
+    rng = _validate_range(range)
+    client = shared_service_client(settings, create_client)
+    data = build_home_reports(client, org_id, rng, tz)
+    logger.info(
+        "metrics_home_reports request_id=%s org_id=%s range=%s latency_ms=%s",
+        request_id_ctx.get(),
+        org_id,
+        rng,
+        int((time.perf_counter() - start) * 1000),
+    )
+    return data
+
+
 @router.get("/workflows")
 def workflows(
     *,
