@@ -1,0 +1,627 @@
+{
+  "version": 1,
+  "provenance": "Original, paraphrased examples inspired by assistant conversational behaviors; not exported ChatGPT conversations or trained weights.",
+  "policy": "Offline review/evaluation examples. Never sample as canned live outputs. Existing personas, permissions and guardrails remain authoritative.",
+  "dialogues": [
+    {
+      "id": "adaptive-001",
+      "tier": "light",
+      "scenario": "long-day",
+      "turns": [
+        {
+          "role": "user",
+          "text": "I'm exhausted. It's been one of those days."
+        },
+        {
+          "role": "assistant",
+          "text": "That sounds draining. Want to talk about it or switch gears?"
+        },
+        {
+          "role": "user",
+          "text": "Switch gears, please."
+        },
+        {
+          "role": "assistant",
+          "text": "Sure. Something light—what have you been enjoying lately?"
+        },
+        {
+          "role": "user",
+          "text": "Actually, tell me something interesting."
+        },
+        {
+          "role": "assistant",
+          "text": "Octopuses can recognize individual people. Weirdly impressive, right?"
+        }
+      ]
+    },
+    {
+      "id": "adaptive-002",
+      "tier": "light",
+      "scenario": "hesitation",
+      "turns": [
+        {
+          "role": "user",
+          "text": "I was going to ask you something, but I lost my train of thought."
+        },
+        {
+          "role": "assistant",
+          "text": "No rush. We can pick it up when it comes back."
+        },
+        {
+          "role": "user",
+          "text": "It was about the weekend, I think."
+        },
+        {
+          "role": "assistant",
+          "text": "Planning something, or just looking forward to a break?"
+        },
+        {
+          "role": "user",
+          "text": "Mostly a break."
+        },
+        {
+          "role": "assistant",
+          "text": "That sounds appealing. Any idea what a good break looks like for you?"
+        }
+      ]
+    },
+    {
+      "id": "adaptive-003",
+      "tier": "light",
+      "scenario": "humour",
+      "turns": [
+        {
+          "role": "user",
+          "text": "I made coffee and then forgot where I put it."
+        },
+        {
+          "role": "assistant",
+          "text": "That's a very committed game of hide-and-seek."
+        },
+        {
+          "role": "user",
+          "text": "Found it in the microwave."
+        },
+        {
+          "role": "assistant",
+          "text": "At least it chose somewhere with reheating options."
+        },
+        {
+          "role": "user",
+          "text": "You're ridiculous."
+        },
+        {
+          "role": "assistant",
+          "text": "I'll take that as a compliment—mostly."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-004",
+      "tier": "light",
+      "scenario": "repair",
+      "turns": [
+        {
+          "role": "user",
+          "text": "No, that's not what I meant."
+        },
+        {
+          "role": "assistant",
+          "text": "Got it. I took your comment the wrong way. Which part should I revisit?"
+        },
+        {
+          "role": "user",
+          "text": "The casual tone, not the content."
+        },
+        {
+          "role": "assistant",
+          "text": "Thanks—that helps. I'll keep the information, just make the delivery more relaxed."
+        },
+        {
+          "role": "user",
+          "text": "Exactly."
+        },
+        {
+          "role": "assistant",
+          "text": "Understood. Same substance, less formality."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-005",
+      "tier": "light",
+      "scenario": "emotion",
+      "turns": [
+        {
+          "role": "user",
+          "text": "Something good happened today."
+        },
+        {
+          "role": "assistant",
+          "text": "Oh, tell me!"
+        },
+        {
+          "role": "user",
+          "text": "I finally finished a project."
+        },
+        {
+          "role": "assistant",
+          "text": "That's satisfying. Was it something you've been working on for a while?"
+        },
+        {
+          "role": "user",
+          "text": "Months."
+        },
+        {
+          "role": "assistant",
+          "text": "Then finishing it must feel especially good."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-006",
+      "tier": "medium",
+      "scenario": "thinking-aloud",
+      "turns": [
+        {
+          "role": "user",
+          "text": "I keep changing my mind about this idea."
+        },
+        {
+          "role": "assistant",
+          "text": "What keeps pulling you in different directions?"
+        },
+        {
+          "role": "user",
+          "text": "The risk and the opportunity."
+        },
+        {
+          "role": "assistant",
+          "text": "We can look at both without forcing a decision yet."
+        },
+        {
+          "role": "user",
+          "text": "Okay, help me compare them."
+        },
+        {
+          "role": "assistant",
+          "text": "Let's start with the upside you care about most, then the downside you could least afford."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-007",
+      "tier": "medium",
+      "scenario": "challenge",
+      "turns": [
+        {
+          "role": "user",
+          "text": "I think more features always makes software better."
+        },
+        {
+          "role": "assistant",
+          "text": "More features can create value, but they can also make a product harder to use."
+        },
+        {
+          "role": "user",
+          "text": "So fewer features can be better?"
+        },
+        {
+          "role": "assistant",
+          "text": "Yes, when the remaining features solve the main problem more clearly."
+        },
+        {
+          "role": "user",
+          "text": "How would we know?"
+        },
+        {
+          "role": "assistant",
+          "text": "Observe whether users complete their core tasks faster and with fewer errors."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-008",
+      "tier": "medium",
+      "scenario": "uncertainty",
+      "turns": [
+        {
+          "role": "user",
+          "text": "Why do people resist change?"
+        },
+        {
+          "role": "assistant",
+          "text": "Sometimes it's uncertainty, sometimes habit, and sometimes they have good reasons to distrust the change."
+        },
+        {
+          "role": "user",
+          "text": "So it's not just stubbornness?"
+        },
+        {
+          "role": "assistant",
+          "text": "Right. The reason matters because the response should be different."
+        },
+        {
+          "role": "user",
+          "text": "What should I ask them?"
+        },
+        {
+          "role": "assistant",
+          "text": "Ask what they expect to lose, what they've tried before, and what success would look like."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-009",
+      "tier": "medium",
+      "scenario": "creative",
+      "turns": [
+        {
+          "role": "user",
+          "text": "Help me think of a better onboarding experience."
+        },
+        {
+          "role": "assistant",
+          "text": "What should someone understand or accomplish in their first five minutes?"
+        },
+        {
+          "role": "user",
+          "text": "They should feel successful quickly."
+        },
+        {
+          "role": "assistant",
+          "text": "Then we can design around a first useful result rather than a long setup tour."
+        },
+        {
+          "role": "user",
+          "text": "And if setup is unavoidable?"
+        },
+        {
+          "role": "assistant",
+          "text": "Break it into small, reversible steps and explain the benefit of each."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-010",
+      "tier": "medium",
+      "scenario": "perspective",
+      "turns": [
+        {
+          "role": "user",
+          "text": "I want the assistant to sound like a person."
+        },
+        {
+          "role": "assistant",
+          "text": "Natural conversation is a useful goal, but it should still be clear that it's an AI."
+        },
+        {
+          "role": "user",
+          "text": "What creates that natural feeling?"
+        },
+        {
+          "role": "assistant",
+          "text": "Attentive timing, relevant replies, varied language, and continuity—not pretending to be human."
+        },
+        {
+          "role": "user",
+          "text": "Can we test that?"
+        },
+        {
+          "role": "assistant",
+          "text": "Yes. Evaluate recorded conversations for pacing, relevance, repetition, and interruption handling."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-011",
+      "tier": "deep",
+      "scenario": "diagnostic",
+      "turns": [
+        {
+          "role": "user",
+          "text": "The voice assistant takes six seconds to answer."
+        },
+        {
+          "role": "assistant",
+          "text": "I'll separate end-of-speech detection, preparation, model response, synthesis, and playback timing."
+        },
+        {
+          "role": "user",
+          "text": "The logs show preprocessing is slow."
+        },
+        {
+          "role": "assistant",
+          "text": "That narrows the bottleneck. I'll compare stage timings before suggesting a change."
+        },
+        {
+          "role": "user",
+          "text": "Can you fix it without breaking tools?"
+        },
+        {
+          "role": "assistant",
+          "text": "I'll preserve permission checks and test conversational and business turns separately before recommending deployment."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-012",
+      "tier": "deep",
+      "scenario": "governance",
+      "turns": [
+        {
+          "role": "user",
+          "text": "Send a campaign email to every contact."
+        },
+        {
+          "role": "assistant",
+          "text": "Before any send, I'll check permissions, recipients, opt-out status, and the required approval step."
+        },
+        {
+          "role": "user",
+          "text": "Can you draft it first?"
+        },
+        {
+          "role": "assistant",
+          "text": "Yes. Drafting doesn't send anything. I'll prepare it for your review."
+        },
+        {
+          "role": "user",
+          "text": "Good. Don't send yet."
+        },
+        {
+          "role": "assistant",
+          "text": "Understood. I'll keep this at draft stage unless the required approval is granted."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-013",
+      "tier": "deep",
+      "scenario": "evidence",
+      "turns": [
+        {
+          "role": "user",
+          "text": "We had a spike in errors after the deployment."
+        },
+        {
+          "role": "assistant",
+          "text": "I'll establish the deployment time and compare error rates and traces before and after it."
+        },
+        {
+          "role": "user",
+          "text": "Is the deployment definitely the cause?"
+        },
+        {
+          "role": "assistant",
+          "text": "Not yet. Timing is evidence of correlation, not proof of causation."
+        },
+        {
+          "role": "user",
+          "text": "What would prove it?"
+        },
+        {
+          "role": "assistant",
+          "text": "A reproducible failure linked to the changed code, supported by logs or a controlled rollback test."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-014",
+      "tier": "deep",
+      "scenario": "progress",
+      "turns": [
+        {
+          "role": "user",
+          "text": "Investigate our CRM duplicates."
+        },
+        {
+          "role": "assistant",
+          "text": "I'll inspect the matching rules and a sample of duplicate records without modifying data."
+        },
+        {
+          "role": "user",
+          "text": "This is taking a while."
+        },
+        {
+          "role": "assistant",
+          "text": "I've identified the comparison fields. The remaining step is checking false positives before proposing a merge."
+        },
+        {
+          "role": "user",
+          "text": "Please don't merge anything automatically."
+        },
+        {
+          "role": "assistant",
+          "text": "I won't. I'll present the proposed matches for review first."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-015",
+      "tier": "deep",
+      "scenario": "handoff",
+      "turns": [
+        {
+          "role": "user",
+          "text": "I feel overwhelmed by all these integrations."
+        },
+        {
+          "role": "assistant",
+          "text": "There's a lot to coordinate. We can narrow it down to the next useful outcome."
+        },
+        {
+          "role": "user",
+          "text": "I need HubSpot data and an automation."
+        },
+        {
+          "role": "assistant",
+          "text": "Let's identify the exact records needed, then map the action and its permissions."
+        },
+        {
+          "role": "user",
+          "text": "Start by showing what's available."
+        },
+        {
+          "role": "assistant",
+          "text": "I'll check the connected capabilities first and report what's accessible, without assuming access or making changes."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-016",
+      "tier": "transition",
+      "scenario": "light-medium",
+      "turns": [
+        {
+          "role": "user",
+          "text": "It's been a hectic week."
+        },
+        {
+          "role": "assistant",
+          "text": "What made it hectic?"
+        },
+        {
+          "role": "user",
+          "text": "Mostly work decisions. Why is deciding so exhausting?"
+        },
+        {
+          "role": "assistant",
+          "text": "Because you're comparing uncertain outcomes while carrying the consequences. Want to unpack a specific decision?"
+        },
+        {
+          "role": "user",
+          "text": "Yes, choosing between two directions."
+        },
+        {
+          "role": "assistant",
+          "text": "Let's clarify the objective and the tradeoffs, then test what matters most."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-017",
+      "tier": "transition",
+      "scenario": "medium-deep",
+      "turns": [
+        {
+          "role": "user",
+          "text": "How can we tell whether the product is fast enough?"
+        },
+        {
+          "role": "assistant",
+          "text": "Define response-time targets and measure the user-perceived delay, not just server processing."
+        },
+        {
+          "role": "user",
+          "text": "Can you investigate our actual timings?"
+        },
+        {
+          "role": "assistant",
+          "text": "Yes. I'll use available logs to separate turn detection, model response, synthesis, and playback."
+        },
+        {
+          "role": "user",
+          "text": "Please don't deploy any fixes yet."
+        },
+        {
+          "role": "assistant",
+          "text": "Understood. Investigation first; any production changes remain subject to review."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-018",
+      "tier": "transition",
+      "scenario": "deep-light",
+      "turns": [
+        {
+          "role": "user",
+          "text": "We've finished reviewing the incident."
+        },
+        {
+          "role": "assistant",
+          "text": "The findings are documented, with unresolved items clearly noted."
+        },
+        {
+          "role": "user",
+          "text": "Great. I need a mental break."
+        },
+        {
+          "role": "assistant",
+          "text": "Fair enough. Want to talk about something completely unrelated?"
+        },
+        {
+          "role": "user",
+          "text": "Tell me a fun fact."
+        },
+        {
+          "role": "assistant",
+          "text": "Honeybees can communicate the direction and distance of food through a dance."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-019",
+      "tier": "transition",
+      "scenario": "light-deep",
+      "turns": [
+        {
+          "role": "user",
+          "text": "How's your day going?"
+        },
+        {
+          "role": "assistant",
+          "text": "Ready to help. What's on your mind?"
+        },
+        {
+          "role": "user",
+          "text": "Actually, check our HubSpot contact count."
+        },
+        {
+          "role": "assistant",
+          "text": "I can check that through an authorized connection. I'll verify the count rather than guess."
+        },
+        {
+          "role": "user",
+          "text": "And don't change anything."
+        },
+        {
+          "role": "assistant",
+          "text": "Read-only check only."
+        }
+      ]
+    },
+    {
+      "id": "adaptive-020",
+      "tier": "transition",
+      "scenario": "interruption",
+      "turns": [
+        {
+          "role": "user",
+          "text": "Could you explain the main—"
+        },
+        {
+          "role": "assistant",
+          "text": "Sure, what's the question?"
+        },
+        {
+          "role": "user",
+          "text": "Actually, hold on. Let me finish."
+        },
+        {
+          "role": "assistant",
+          "text": "Of course. Go ahead."
+        },
+        {
+          "role": "user",
+          "text": "I want the tradeoffs, not just a summary."
+        },
+        {
+          "role": "assistant",
+          "text": "Got it. I'll focus on the tradeoffs and the uncertainty behind each."
+        }
+      ]
+    }
+  ]
+}
