@@ -1,6 +1,8 @@
 """Build the Pipecat pipeline: transport → STT → speculative → Cognitive → ElevenLabs."""
 from __future__ import annotations
 
+import asyncio
+
 from typing import Any
 
 from pipecat.pipeline.pipeline import Pipeline
@@ -266,6 +268,7 @@ def build_pipecat_voice_task(
     # Share active durable turn identity so mid-generation interruption can
     # persist/update the exact current turn rather than targeting a prior row.
     llm._interrupt_reporter = interrupt_reporter
+    speculative.before_run = interrupt_reporter.settle_barge_in
 
     # Flux: native EOT — do not stack Silero VAD turn machine alongside it.
     vad = None if use_flux else _optional_silero_vad()
@@ -356,7 +359,11 @@ def build_pipecat_voice_task(
                 if breakdown.user_turn_secs is not None
                 else None
             )
-            record_voice_e2e_latency_sample(
+            # These are blocking Supabase inserts, and this fires the moment
+            # the bot starts speaking: on the event loop they cut into the
+            # first second of every reply's audio. Write from a worker thread.
+            await asyncio.to_thread(
+                record_voice_e2e_latency_sample,
                 settings,
                 org_id=org_id,
                 user_id=user_id,
@@ -372,7 +379,8 @@ def build_pipecat_voice_task(
                 )
                 from app.services.voice_slo import METRIC_A_ID
 
-                record_voice_slo_metric(
+                await asyncio.to_thread(
+                    record_voice_slo_metric,
                     settings,
                     metric=METRIC_A_ID,
                     org_id=org_id,
@@ -392,7 +400,8 @@ def build_pipecat_voice_task(
                 user_turn_finalization_ms=user_turn_finalization_ms,
                 ttfb_by_processor_ms=ttfb_by_processor_ms,
             )
-            record_voice_turn_critical_path(
+            await asyncio.to_thread(
+                record_voice_turn_critical_path,
                 settings,
                 org_id=org_id,
                 user_id=user_id,
@@ -458,4 +467,6 @@ def build_pipecat_voice_task(
         except Exception as exc:  # noqa: BLE001
             logger.warning("pipecat_tts_warmup_hook_failed error=%s", exc)
 
+    # The router releases this socket's stop marker when the socket closes.
+    task.gravitre_interrupt_reporter = interrupt_reporter
     return task, session_meta

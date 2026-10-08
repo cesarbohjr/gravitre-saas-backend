@@ -36,6 +36,7 @@ no delay is introduced on the common case of a normal, non-overlapping turn.
 from __future__ import annotations
 
 import asyncio
+import functools
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -71,7 +72,16 @@ logger = get_logger(__name__)
 # indefinitely). Chosen to comfortably cover a short backchannel word's STT
 # finalization time without adding perceptible extra latency to a genuine
 # interruption - Phase 6 instruments the real, live distribution of this.
-DEFAULT_GRACE_PERIOD_S = 0.9
+DEFAULT_GRACE_PERIOD_S = 0.6
+
+# Interim text that is unambiguous enough to stop the bot before Flux finalizes.
+_CLEAR_INTERRUPTIONS = frozenset(
+    {
+        BackchannelClassification.STOP_COMMAND,
+        BackchannelClassification.CORRECTION,
+        BackchannelClassification.NEW_QUESTION,
+    }
+)
 
 
 @dataclass
@@ -191,8 +201,18 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             return ProcessFrameResult.CONTINUE
 
         if isinstance(frame, InterimTranscriptionFrame) and self._pending:
-            # Interim text is noisy/unstable - use it only as a liveness
-            # signal (still speaking), never to resolve a final decision.
+            # Interim text is unstable, so it never decides "backchannel". It
+            # can decide "real interruption" though: Flux only finalizes at end
+            # of turn, so waiting for the final kept the bot talking over a
+            # new request for the whole grace window.
+            interim = f"{self._buffer_text} {frame.text}".strip()
+            interim_class = classify_user_utterance(interim)
+            if interim and (
+                interim_class in _CLEAR_INTERRUPTIONS
+                or (not is_backchannel(interim_class) and len(interim.split()) > 3)
+            ):
+                self._buffer_text = interim
+                await self._resolve(interim_class, resolved_by_timeout=False)
             return ProcessFrameResult.CONTINUE
 
         if isinstance(frame, ProposedUserStoppedSpeakingFrame) and self._pending:
@@ -265,6 +285,10 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
 
         decision_latency_ms = (time.monotonic() - self._pending_started_at) * 1000.0
         backchannel = is_backchannel(classification)
+        if backchannel and self._voice_session is not None and self._voice_session.expects_answer():
+            # The bot just asked something; "yes" / "sure" is the answer.
+            backchannel = False
+            classification = BackchannelClassification.INTERRUPTION
 
         logger.info(
             "voice_turn_taking_classification classification=%s backchannel=%s "
@@ -326,15 +350,21 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             user_id = getattr(self, "_gravitre_user_id", None)
             conversation_id = getattr(self, "_gravitre_conversation_id", None)
             if settings is not None and org_id:
-                record_interrupt_outcome(
-                    settings,
-                    org_id=org_id,
-                    user_id=str(user_id) if user_id else None,
-                    conversation_id=str(conversation_id) if conversation_id else None,
-                    classification=classification,
-                    text=self._buffer_text,
-                    decision_latency_ms=decision_latency_ms,
-                    resolved_by_timeout=resolved_by_timeout,
+                # Audit write in a worker thread, not awaited: it is a blocking
+                # Supabase insert and this runs while the bot is mid-sentence.
+                asyncio.get_running_loop().run_in_executor(
+                    None,
+                    functools.partial(
+                        record_interrupt_outcome,
+                        settings,
+                        org_id=org_id,
+                        user_id=str(user_id) if user_id else None,
+                        conversation_id=str(conversation_id) if conversation_id else None,
+                        classification=classification,
+                        text=self._buffer_text,
+                        decision_latency_ms=decision_latency_ms,
+                        resolved_by_timeout=resolved_by_timeout,
+                    ),
                 )
         except Exception:  # noqa: BLE001
             pass

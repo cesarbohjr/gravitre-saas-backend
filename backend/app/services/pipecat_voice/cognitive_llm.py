@@ -54,6 +54,36 @@ from app.services.chat_turn_cancel_service import is_stop_requested
 
 logger = get_logger(__name__)
 
+# How often a streaming voice turn re-checks the conversation stop marker.
+STOP_POLL_INTERVAL_S = 0.25
+
+
+async def adopt_or_fresh(adopted: Any, fresh: Any):
+    """Drain an adopted speculative run; if it was cancelled empty, run fresh.
+
+    A speculative run that hit a stop marker (or any other early cancel) ends
+    with an empty ``cancelled`` completion and no text. Adopting that verbatim
+    meant the user's turn got no answer at all, so the confirmed turn falls
+    back to the same fresh call it would have made without speculation.
+    """
+    produced_text = False
+    async for event in adopted:
+        if isinstance(event, AssistantStreamComplete):
+            if (
+                not produced_text
+                and str(getattr(event, "model", "") or "") == "cancelled"
+                and not str(getattr(event, "full_content", "") or "").strip()
+            ):
+                logger.info("pipecat_voice_speculative_cancelled_fallback_fresh")
+                async for fresh_event in fresh():
+                    yield fresh_event
+                return
+            yield event
+            continue
+        if isinstance(event, AssistantStreamEvent) and event.sse_type == "text-delta":
+            produced_text = True
+        yield event
+
 
 class GravitreCognitiveLLMService(LLMService):
     """Pipecat LLMService that delegates to Gravitre One Brain."""
@@ -336,9 +366,9 @@ class GravitreCognitiveLLMService(LLMService):
                 len(user_text),
                 prefix_extra > 0,
             )
-            events_source = speculative_run.events()
-        else:
-            events_source = intelligence.execute_task_streaming(
+
+        def _fresh_stream():
+            return intelligence.execute_task_streaming(
                 settings=self._app_settings,
                 org_id=self._org_id,
                 user_id=self._user_id,
@@ -351,11 +381,17 @@ class GravitreCognitiveLLMService(LLMService):
                 mode=voice_mode,
                 **turn_inputs,
             )
+
+        if speculative_run is not None:
+            events_source = adopt_or_fresh(speculative_run.events(), _fresh_stream)
+        else:
+            events_source = _fresh_stream()
         # Dead-air guard: while one slow tool call keeps the stream silent, say
         # (honestly) that it is still running instead of leaving the line quiet.
         notice_interval_s = slow_tool_notice_seconds(self._app_settings)
         slow_tool_notices = SlowToolNotices(notice_interval_s)
         events_source = with_silence_ticks(events_source, interval_s=notice_interval_s)
+        last_stop_poll = time.perf_counter()
         async for event in events_source:
             if guard_task is not None and await _guard_refused():
                 aclose = getattr(events_source, "aclose", None)
@@ -364,7 +400,15 @@ class GravitreCognitiveLLMService(LLMService):
                         await aclose()
                 await self.stop_ttfb_metrics()
                 return
-            if is_stop_requested(
+            # A Redis GET per stream event, run on the event loop, stalled the
+            # audio pacing of every live session. Check off-loop, at most every
+            # STOP_POLL_INTERVAL_S (barge-in also cancels this task directly).
+            now = time.perf_counter()
+            poll_stop = now - last_stop_poll >= STOP_POLL_INTERVAL_S
+            if poll_stop:
+                last_stop_poll = now
+            if poll_stop and await asyncio.to_thread(
+                is_stop_requested,
                 str(self._org_id or ""),
                 self._conversation_id,
                 settings=self._app_settings,
@@ -511,7 +555,10 @@ class GravitreCognitiveLLMService(LLMService):
         def _ms(at: float | None) -> int | None:
             return int((at - turn_start) * 1000) if at is not None else None
 
-        record_voice_llm_stage_sample(
+        # Audit inserts block; the reply is still being spoken, so they run in
+        # a worker thread instead of pausing its audio.
+        await asyncio.to_thread(
+            record_voice_llm_stage_sample,
             self._app_settings,
             org_id=self._org_id,
             user_id=self._user_id,
@@ -581,7 +628,8 @@ class GravitreCognitiveLLMService(LLMService):
                 loop_stage_spoken=bool(complete_event.pending_task),
                 tool_results=complete_event.tool_results,
             ):
-                record_voice_slo_metric(
+                await asyncio.to_thread(
+                    record_voice_slo_metric,
                     self._app_settings,
                     metric=METRIC_B_ID,
                     org_id=self._org_id,

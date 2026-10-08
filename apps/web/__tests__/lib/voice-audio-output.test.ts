@@ -191,4 +191,14 @@ describe("voice live turn completion lifecycle", () => {
     expect(aiWorkspace).toMatch(/duplexOwnsTurn/)
     expect(aiWorkspace).toMatch(/spokeDuringTurn \|\| duplexOwnsTurn \|\| recoveryOwnsTurn/)
   })
+
+  it("schedules streamed PCM through the jitter buffer, not a 10 ms lead", () => {
+    expect(hook).toMatch(/schedulePcmStart\(/)
+    expect(hook).not.toMatch(/Math\.max\(ctx\.currentTime \+ 0\.01, pcmNextTimeRef\.current\)/)
+  })
+
+  it("drops queued reply audio when the server reports a barge-in", () => {
+    const handler = hook.slice(hook.indexOf('kind === "speech.interrupted"'))
+    expect(handler.slice(0, 600)).toMatch(/stopPcmPlayback\(\)/)
+  })
 })

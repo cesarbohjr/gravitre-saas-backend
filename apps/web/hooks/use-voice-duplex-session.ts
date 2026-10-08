@@ -49,6 +49,7 @@ import {
 import type { MicFieldProfile } from "@/lib/voice-mic-devices"
 import { postMicDiagnostics } from "@/lib/voice-mic-telemetry-client"
 import { postVoiceOutputDiagnostics } from "@/lib/voice-output-telemetry-client"
+import { createPcmJitterState, schedulePcmStart } from "@/lib/voice-pcm-jitter"
 import {
   cancelVoiceSessionTurn,
   getVoiceStatus,
@@ -261,6 +262,7 @@ export function useVoiceDuplexSession(options: Options) {
   const pcmSourcesRef = useRef<AudioBufferSourceNode[]>([])
   const pcmBlockedQueueRef = useRef<Array<{ pcm: Int16Array; sampleRate: number }>>([])
   const pcmNextTimeRef = useRef(0)
+  const pcmJitterRef = useRef(createPcmJitterState())
   const pcmPlayOriginRef = useRef<number | null>(null)
   const assistantTextRef = useRef("")
   const lastUserFinalRef = useRef("")
@@ -376,6 +378,7 @@ export function useVoiceDuplexSession(options: Options) {
     pcmBlockedQueueRef.current = []
     pcmNextTimeRef.current = 0
     pcmPlayOriginRef.current = null
+    pcmJitterRef.current = createPcmJitterState()
   }, [])
 
   const stopPlayback = useCallback(() => {
@@ -487,14 +490,21 @@ export function useVoiceDuplexSession(options: Options) {
         /* optional */
       }
       src.connect(ctx.destination)
-      const startAt = Math.max(ctx.currentTime + 0.01, pcmNextTimeRef.current)
+      const startAt = schedulePcmStart(
+        pcmJitterRef.current,
+        ctx.currentTime,
+        pcmNextTimeRef.current,
+        performance.now(),
+      )
       try {
         src.start(startAt)
         if (!browserAudioPlaybackStartedRef.current) {
           emitOutputDiagnostic("playback_started")
+          // Once per reply. A state update on every 40 ms chunk re-rendered the
+          // voice UI ~25 times a second on the same thread that plays audio.
+          setLatency((prev) => ({ ...prev, browser_audio_playback_started: true }))
         }
         browserAudioPlaybackStartedRef.current = true
-        setLatency((prev) => ({ ...prev, browser_audio_playback_started: true }))
       } catch {
         // A WebAudio scheduling failure used to drop this chunk silently even
         // though the server had delivered valid PCM. Hold the chunk and move the
@@ -1369,6 +1379,14 @@ export function useVoiceDuplexSession(options: Options) {
           return
         }
         if (kind === "speech.interrupted") {
+          // The server only sends this for a real barge-in. Drop the audio
+          // already queued here (up to the jitter lead) so the bot stops the
+          // moment the user cuts in, not after the buffer drains.
+          if (agentSpeakingRef.current || pcmSourcesRef.current.length > 0) {
+            stopPcmPlayback()
+            agentSpeakingRef.current = false
+            if (activeRef.current) setPresence("listening")
+          }
           // Phase 5: reconcile the visible/stored assistant text down to the
           // portion that was actually spoken aloud. Without this the drafted
           // tail the user never heard is replayed as history next turn.
@@ -1479,7 +1497,7 @@ export function useVoiceDuplexSession(options: Options) {
         err instanceof Error ? err.message : "Microphone permission denied",
       )
     }
-  }, [applyMicMuted, armAudioReplyWatchdog, bargeIn, cancelReconnect, clearAudioReplyWatchdog, enqueuePcm, handlePipecatSocketFailure, setupVoiceMicrophone, startMicTelemetry, teardownMic])
+  }, [applyMicMuted, armAudioReplyWatchdog, bargeIn, cancelReconnect, clearAudioReplyWatchdog, enqueuePcm, handlePipecatSocketFailure, setupVoiceMicrophone, startMicTelemetry, stopPcmPlayback, teardownMic])
 
   // Assigned after definition so handlePipecatSocketFailure can re-enter these
   // without a circular useCallback dependency.

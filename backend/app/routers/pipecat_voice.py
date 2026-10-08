@@ -1,6 +1,7 @@
 """Pipecat WebSocket voice surface — flag-gated Phase 1 orchestration."""
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
@@ -41,6 +42,65 @@ def _ws_error(detail: Any) -> str:
     if isinstance(detail, dict):
         return str(detail.get("message") or detail.get("error") or detail)[:300]
     return str(detail)[:300]
+
+
+def _resolve_session_access(
+    settings: Any,
+    *,
+    user_id: str,
+    requested_org: str,
+    agent_id: str | None,
+) -> dict[str, Any]:
+    """Blocking org/seat/agent checks for one voice socket (run in a worker thread).
+
+    Returns {"error", "error_class"} on refusal, else {"client", "org_id", "agent"}.
+    """
+    client = get_supabase_client(settings)
+    try:
+        member_org_ids = list_member_org_ids(client, user_id)
+    except Exception:  # noqa: BLE001
+        member_org_ids = []
+    platform_admin = is_platform_admin(client, user_id)
+    if requested_org:
+        if requested_org not in member_org_ids and not platform_admin:
+            return {"error": "Not a member of the requested organization", "error_class": "forbidden"}
+        resolved_org = requested_org
+    else:
+        primary = load_user_primary_org_id(client, user_id)
+        resolved_org = pick_default_org_id(
+            member_org_ids,
+            primary_org_id=primary,
+            requested_org_id=None,
+        ) or ""
+    if not resolved_org:
+        return {"error": "Organization required", "error_class": "auth"}
+
+    try:
+        assert_voice_org_enabled(client, org_id=resolved_org)
+        seat = resolve_seat_context(client, org_id=resolved_org, user_id=user_id)
+        assert_agent_voice_use(client, seat, org_id=resolved_org, agent_id=agent_id)
+    except HTTPException as exc:
+        return {"error": _ws_error(exc.detail), "error_class": "forbidden"}
+    except Exception as exc:  # noqa: BLE001
+        return {"error": str(exc)[:300], "error_class": "forbidden"}
+
+    agent: dict[str, Any] | None = None
+    if agent_id:
+        try:
+            rows = (
+                client.table("agents")
+                .select("id,name,voice_profile,department")
+                .eq("org_id", resolved_org)
+                .eq("id", agent_id)
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+            agent = rows[0] if rows else {"id": agent_id}
+        except Exception:  # noqa: BLE001
+            agent = {"id": agent_id}
+    return {"client": client, "org_id": resolved_org, "agent": agent}
 
 
 @router.websocket("/ws")
@@ -95,76 +155,26 @@ async def pipecat_voice_ws(
         await websocket.close(code=1008)
         return
 
-    client = get_supabase_client(settings)
     requested_org = (org_id or websocket.headers.get("x-org-id") or "").strip()
-    try:
-        member_org_ids = list_member_org_ids(client, user_id)
-    except Exception:  # noqa: BLE001
-        member_org_ids = []
-    platform_admin = is_platform_admin(client, user_id)
-    if requested_org:
-        if requested_org not in member_org_ids and not platform_admin:
-            await websocket.send_json(
-                {
-                    "type": "error",
-                    "error": "Not a member of the requested organization",
-                    "error_class": "forbidden",
-                }
-            )
-            await websocket.close(code=1008)
-            return
-        resolved_org = requested_org
-    else:
-        primary = load_user_primary_org_id(client, user_id)
-        resolved_org = pick_default_org_id(
-            member_org_ids,
-            primary_org_id=primary,
-            requested_org_id=None,
-        ) or ""
-    if not resolved_org:
+    # Membership, seat and agent lookups are blocking Supabase calls. On the
+    # event loop they stall audio pacing for every live voice session on this
+    # worker while someone connects, so they run in a worker thread.
+    access = await asyncio.to_thread(
+        _resolve_session_access,
+        settings,
+        user_id=user_id,
+        requested_org=requested_org,
+        agent_id=agent_id,
+    )
+    if access.get("error"):
         await websocket.send_json(
-            {"type": "error", "error": "Organization required", "error_class": "auth"}
+            {"type": "error", "error": access["error"], "error_class": access["error_class"]}
         )
         await websocket.close(code=1008)
         return
-
-    try:
-        assert_voice_org_enabled(client, org_id=resolved_org)
-        seat = resolve_seat_context(client, org_id=resolved_org, user_id=user_id)
-        assert_agent_voice_use(client, seat, org_id=resolved_org, agent_id=agent_id)
-    except HTTPException as exc:
-        await websocket.send_json(
-            {
-                "type": "error",
-                "error": _ws_error(exc.detail),
-                "error_class": "forbidden",
-            }
-        )
-        await websocket.close(code=1008)
-        return
-    except Exception as exc:  # noqa: BLE001
-        await websocket.send_json(
-            {"type": "error", "error": str(exc)[:300], "error_class": "forbidden"}
-        )
-        await websocket.close(code=1008)
-        return
-
-    agent: dict[str, Any] | None = None
-    if agent_id:
-        try:
-            rows = (
-                client.table("agents")
-                .select("id,name,voice_profile,department")
-                .eq("org_id", resolved_org)
-                .eq("id", agent_id)
-                .limit(1)
-                .execute()
-                .data
-                or []
-            )
-            agent = rows[0] if rows else {"id": agent_id}
-        except Exception:  # noqa: BLE001
-            agent = {"id": agent_id}
+    client = access["client"]
+    resolved_org = str(access["org_id"])
+    agent: dict[str, Any] | None = access.get("agent")
 
     keyterms: list[str] = []
     keyterm_meta: dict[str, Any] = {"keyterms_enabled": False}
@@ -218,6 +228,18 @@ async def pipecat_voice_ws(
     if fallback_enabled and fallback != primary:
         providers.append((fallback, primary, "primary_pipeline_failed"))
 
+    if conversation_id:
+        # A stop marker left by an earlier socket on this conversation (barge-in
+        # just before a reconnect, or Talk reopened within its 120 s TTL) would
+        # make every turn on this socket return without answering.
+        from app.services.chat_turn_cancel_service import clear_stop
+
+        try:
+            await asyncio.to_thread(clear_stop, resolved_org, conversation_id, settings=settings)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("pipecat_voice_stop_marker_clear_failed error=%s", exc)
+
+    reporters: list[Any] = []
     try:
         last_exc: Exception | None = None
         for idx, (prov, fb_from, fb_reason) in enumerate(providers):
@@ -250,6 +272,9 @@ async def pipecat_voice_ws(
                     keyterms=keyterms or None,
                     keyterm_meta=keyterm_meta,
                 )
+                reporter = getattr(task, "gravitre_interrupt_reporter", None)
+                if reporter is not None:
+                    reporters.append(reporter)
                 runner = PipelineRunner(handle_sigint=False)
                 await runner.run(task)
                 last_exc = None
@@ -283,6 +308,11 @@ async def pipecat_voice_ws(
     except WebSocketDisconnect:
         logger.info("pipecat_voice_ws_disconnected org_id=%s", resolved_org)
     finally:
+        for reporter in reporters:
+            try:
+                await reporter.release_stop_marker()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("pipecat_voice_stop_marker_release_failed error=%s", exc)
         if websocket.client_state == WebSocketState.CONNECTED:
             try:
                 await websocket.close()

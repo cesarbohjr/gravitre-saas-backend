@@ -48,6 +48,25 @@ from app.services.pipecat_voice.voice_latency_tuning import (
 logger = get_logger(__name__)
 
 
+# Quiet time an interim transcript must hold before its read-only warm-up runs.
+PREFETCH_DEBOUNCE_S = 0.15
+
+
+def _warm_knowledge_blocking(settings: Any, org_id: str, query: str, agent_id: str | None) -> None:
+    """Worker-thread knowledge warm: its own event loop, so blocking I/O stays off the voice loop."""
+    from app.services.unified_retrieval_service import UnifiedRetrievalService
+
+    svc = UnifiedRetrievalService(settings)
+    asyncio.run(svc.retrieve_knowledge_rows(org_id=org_id, query=query, top_k=4, agent_id=agent_id))
+
+
+def _load_dialogue_settings_blocking(org_id: str, settings: Any, client: Any) -> Any:
+    """Worker-thread wrapper: load_chat_dialogue_settings is async but never awaits."""
+    from app.services.chat_dialogue_settings import load_chat_dialogue_settings
+
+    return asyncio.run(load_chat_dialogue_settings(org_id, settings, client=client))
+
+
 def _looks_write_shaped(text: str) -> bool:
     """Conservative gate — speculative path must never touch write execution."""
     try:
@@ -120,6 +139,11 @@ class SpeculativePrefetchProcessor(FrameProcessor):
         # so adopting a speculative answer never changes which prompt produced it.
         self._turn_inputs_provider = turn_inputs_provider
         self._last_speculative_text = ""
+        # Awaited before a speculative run calls the brain: releases the stop
+        # marker an interrupted previous turn armed (interrupt_reporter
+        # settle_barge_in). Without it the run read that marker, returned an
+        # empty "cancelled" answer, was adopted, and the user heard nothing.
+        self.before_run = None
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -176,6 +200,8 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             from app.operators.agent_intelligence import get_agent_intelligence
             from app.services.operator_task_intent import resolve_voice_session_intelligence_mode
 
+            if self.before_run is not None:
+                await self.before_run()
             intelligence = get_agent_intelligence()
             _, socket_history = messages_from_context(self._llm_context) if self._llm_context else ("", [])
             history = socket_history
@@ -218,7 +244,10 @@ class SpeculativePrefetchProcessor(FrameProcessor):
 
     async def _prefetch(self, text: str) -> None:
         try:
-            from app.services.chat_dialogue_settings import load_chat_dialogue_settings
+            # Interims arrive every ~200 ms while the user talks and each one
+            # cancels the previous prefetch. Worker threads cannot be cancelled,
+            # so wait briefly first: only a partial that holds still is warmed.
+            await asyncio.sleep(PREFETCH_DEBOUNCE_S)
             from app.services.sentiment_friction_service import get_sentiment_friction_service
             from app.services.unified_turn_tool_retrieval import (
                 is_task_shaped_for_retrieval,
@@ -226,9 +255,14 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             )
             from app.workflows.repository import get_supabase_client
 
+            # Runs on every interim transcript. Both calls are blocking (a
+            # Supabase read and a classifier), and on the event loop they stall
+            # the real-time audio pacing of every session on this worker.
             client = get_supabase_client(self._app_settings)
-            await load_chat_dialogue_settings(self._org_id, self._app_settings, client=client)
-            get_sentiment_friction_service().analyze(text, None)
+            await asyncio.to_thread(
+                _load_dialogue_settings_blocking, self._org_id, self._app_settings, client
+            )
+            await asyncio.to_thread(get_sentiment_friction_service().analyze, text, None)
 
             use_emb, shape, query = is_task_shaped_for_retrieval(text)
             write_shaped = _looks_write_shaped(text)
@@ -260,14 +294,16 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             # READ knowledge warm only when not write-shaped (still no tool exec).
             if use_emb and not write_shaped and len((query or "").strip()) >= self._min_chars:
                 try:
-                    from app.services.unified_retrieval_service import UnifiedRetrievalService
-
-                    svc = UnifiedRetrievalService(self._app_settings)
-                    await svc.retrieve_knowledge_rows(
-                        org_id=self._org_id,
-                        query=query,
-                        top_k=4,
-                        agent_id=str(self._agent.get("id") or "") or None,
+                    # The retrieval stack is async in name only: the embedding
+                    # call and both Supabase reads block. Awaited on the event
+                    # loop, each interim transcript froze the voice pipeline for
+                    # the whole round trip (seconds when the provider retries).
+                    await asyncio.to_thread(
+                        _warm_knowledge_blocking,
+                        self._app_settings,
+                        self._org_id,
+                        query,
+                        str(self._agent.get("id") or "") or None,
                     )
                     knowledge_warmed = True
                 except Exception as exc:  # noqa: BLE001
