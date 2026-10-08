@@ -20,7 +20,10 @@ from postgrest.exceptions import APIError
 
 from app.core import sql_aggregates
 from app.core.sql_aggregates import fetch_all_rows, is_missing_function_error
-from app.marketplace.support import list_marketplace_categories
+from app.marketplace.support import (
+    list_marketplace_categories,
+    marketplace_analytics_summary,
+)
 from app.routers.metrics import _overview_counts
 from tests.support.build_insights import authenticate, clear_overrides
 from tests.support.build_insights import client as http_client
@@ -54,6 +57,7 @@ class FakeQuery:
         self.bounds: tuple[int, int] | None = None
 
     def select(self, *_cols: str, **_kw: Any) -> FakeQuery:
+        self.store.select_calls.append(self.table)
         return self
 
     def eq(self, col: str, val: Any) -> FakeQuery:
@@ -102,6 +106,7 @@ class FakeClient:
         self._rpc = rpc
         self.rpc_calls: list[tuple[str, dict]] = []
         self.selects: list[tuple[str, tuple[int, int] | None]] = []
+        self.select_calls: list[str] = []
 
     def table(self, name: str) -> FakeQuery:
         return FakeQuery(self, name)
@@ -165,6 +170,8 @@ def _sql_semantics_rpc(tables: dict[str, list[dict[str, Any]]]) -> Callable[[str
                     key = a[col] or default
                     out[group][key] = out[group].get(key, 0) + 1
             out["total_assets"] = len(visible)
+            out["total_install_count"] = sum(a["install_count"] for a in visible)
+            out["total_clone_count"] = sum(a["clone_count"] for a in visible)
             return out
         raise AssertionError(name)
 
@@ -199,24 +206,30 @@ def _dataset() -> dict[str, list[dict[str, Any]]]:
             "department": None if i % 9 == 0 else ("Sales", "Marketing", "Ops")[i % 3],
             "visibility": "public",
             "status": "published",
+            "install_count": i % 5,
+            "clone_count": i % 3,
         }
         for i in range(2300)
     ]
     assets += [
         {"id": f"int-a-{i}", "org_id": ORG_A, "asset_type": "workflow", "category": "internal_a",
-         "department": "Sales", "visibility": "internal", "status": "published"}
+         "department": "Sales", "visibility": "internal", "status": "published",
+         "install_count": 2, "clone_count": 1}
         for i in range(40)
     ]
     assets += [
         {"id": f"int-b-{i}", "org_id": ORG_B, "asset_type": "workflow", "category": "internal_b",
-         "department": "Sales", "visibility": "internal", "status": "published"}
+         "department": "Sales", "visibility": "internal", "status": "published",
+         "install_count": 2, "clone_count": 1}
         for i in range(25)
     ]
     assets += [
         {"id": "priv-a", "org_id": ORG_A, "asset_type": "workflow", "category": "private_a",
-         "department": "Sales", "visibility": "private", "status": "published"},
+         "department": "Sales", "visibility": "private", "status": "published",
+         "install_count": 100, "clone_count": 100},
         {"id": "draft-pub", "org_id": None, "asset_type": "workflow", "category": "draft",
-         "department": "Sales", "visibility": "public", "status": "draft"},
+         "department": "Sales", "visibility": "public", "status": "draft",
+         "install_count": 100, "clone_count": 100},
     ]
     return {
         "workflow_defs": [
@@ -416,3 +429,75 @@ def test_categories_rpc_list_wrapped_payload_accepted():
     fake = FakeClient(tables, rpc=lambda n, p: [rpc(n, p)])
     assert list_marketplace_categories(fake, ORG_A) == _expected_categories(tables, ORG_A)
     assert fake.selects == []
+
+
+# ---------------------------------------------------------------------------
+# marketplace_analytics_summary (catalog install/clone totals)
+# ---------------------------------------------------------------------------
+
+
+def _with_org_tables(tables: dict[str, list[dict[str, Any]]]) -> dict[str, list[dict[str, Any]]]:
+    tables["marketplace_installs"] = [
+        {"id": f"i-{i}", "org_id": ORG_A, "status": "active" if i % 2 else "uninstalled"} for i in range(6)
+    ]
+    tables["marketplace_saves"] = [{"id": "s-1", "org_id": ORG_A}, {"id": "s-2", "org_id": ORG_B}]
+    tables["marketplace_reviews"] = [{"id": "r-1", "org_id": ORG_A}]
+    return tables
+
+
+def _expected_totals(tables: dict[str, list[dict[str, Any]]], org: str) -> tuple[int, int]:
+    counts = _sql_semantics_rpc(tables)("marketplace_category_counts", {"p_org_id": org})
+    return counts["total_install_count"], counts["total_clone_count"]
+
+
+@pytest.mark.parametrize("use_rpc", [True, False])
+def test_analytics_summary_catalog_totals_both_paths(use_rpc):
+    tables = _with_org_tables(_dataset())
+    fake = FakeClient(tables, rpc=_sql_semantics_rpc(tables) if use_rpc else None)
+    with (
+        patch("app.marketplace.support.count_adoption_events", return_value=0),
+        patch("app.marketplace.support.top_assets_by_adoption", return_value=[]),
+    ):
+        result = marketplace_analytics_summary(fake, ORG_A)
+
+    installs, clones = _expected_totals(tables, ORG_A)
+    # 2300 public (sum i%5, i%3) + 40 internal (2/1 each); private and draft excluded.
+    assert installs == sum(i % 5 for i in range(2300)) + 80
+    assert clones == sum(i % 3 for i in range(2300)) + 40
+    catalog = result["catalog"]
+    assert catalog["totalInstallCount"] == installs
+    assert catalog["totalCloneCount"] == clones
+    assert catalog["totalAssets"] == 2340
+    assert catalog["byCategory"] == _expected_categories(tables, ORG_A)["categories"]
+    assert result["org"]["activeInstalls"] == 3
+    assert result["org"]["savedAssets"] == 1
+    assert result["org"]["reviewsSubmitted"] == 1
+    # one catalog aggregation (RPC, or one paged scan), never a second select on the same builder
+    assert fake.select_calls.count("marketplace_assets") == (0 if use_rpc else 3)
+    if use_rpc:
+        assert fake.rpc_calls == [("marketplace_category_counts", {"p_org_id": ORG_A})]
+
+
+def test_analytics_summary_rpc_and_fallback_match():
+    tables = _with_org_tables(_dataset())
+    with (
+        patch("app.marketplace.support.count_adoption_events", return_value=0),
+        patch("app.marketplace.support.top_assets_by_adoption", return_value=[]),
+    ):
+        via_rpc = marketplace_analytics_summary(FakeClient(tables, rpc=_sql_semantics_rpc(tables)), ORG_A)
+        via_fallback = marketplace_analytics_summary(FakeClient(tables, rpc=None), ORG_A)
+    assert via_rpc == via_fallback
+
+
+def test_category_rpc_missing_totals_falls_back():
+    tables = _dataset()
+    rpc = _sql_semantics_rpc(tables)
+
+    def _old_shape(name: str, params: dict) -> Any:
+        payload = rpc(name, params)
+        payload.pop("total_install_count")
+        return payload
+
+    fake = FakeClient(tables, rpc=_old_shape)
+    assert list_marketplace_categories(fake, ORG_A) == _expected_categories(tables, ORG_A)
+    assert fake.selects  # fell back to paged reads

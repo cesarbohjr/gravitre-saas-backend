@@ -17,6 +17,8 @@
 --       AND (visibility = 'public' OR (visibility = 'internal' AND org_id = p_org_id))
 --     NULL or '' category/department/asset_type bucket as
 --     'uncategorized' / 'general' / 'unknown' (Python's `value or default`).
+--     Also sums install_count / clone_count over the same rows for
+--     /api/marketplace/analytics/summary (totalInstallCount / totalCloneCount).
 --
 -- Both are read-only, STABLE, SECURITY INVOKER (callers use the service-role key,
 -- which already bypasses RLS), pinned search_path, and executable by service_role only.
@@ -89,7 +91,9 @@ AS $$
   WITH visible AS (
     SELECT coalesce(nullif(a.category, ''), 'uncategorized') AS category,
            coalesce(nullif(a.department, ''), 'general') AS department,
-           coalesce(nullif(a.asset_type, ''), 'unknown') AS asset_type
+           coalesce(nullif(a.asset_type, ''), 'unknown') AS asset_type,
+           a.install_count,
+           a.clone_count
       FROM public.marketplace_assets a
      WHERE a.status = 'published'
        AND (
@@ -99,6 +103,8 @@ AS $$
   )
   SELECT jsonb_build_object(
     'total_assets', (SELECT count(*) FROM visible),
+    'total_install_count', (SELECT coalesce(sum(v.install_count), 0) FROM visible v),
+    'total_clone_count', (SELECT coalesce(sum(v.clone_count), 0) FROM visible v),
     'categories', coalesce(
       (SELECT jsonb_object_agg(g.k, g.n)
          FROM (SELECT v.category AS k, count(*) AS n FROM visible v GROUP BY v.category) g),
@@ -122,4 +128,4 @@ REVOKE ALL ON FUNCTION public.marketplace_category_counts(uuid) FROM anon, authe
 GRANT EXECUTE ON FUNCTION public.marketplace_category_counts(uuid) TO service_role;
 
 COMMENT ON FUNCTION public.marketplace_category_counts(uuid) IS
-  'Published marketplace catalog counts by category/department/asset_type visible to one org.';
+  'Published marketplace catalog visible to one org: counts by category/department/asset_type, total assets, summed install_count/clone_count.';

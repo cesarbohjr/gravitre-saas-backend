@@ -107,6 +107,8 @@ def test_list_marketplace_categories():
             "departments": {"Marketing": 1, "Sales": 1},
             "asset_types": {"ai_agent": 1, "workflow": 1},
             "total_assets": 2,
+            "total_install_count": 0,
+            "total_clone_count": 0,
         }
     )
 
@@ -120,9 +122,7 @@ def test_marketplace_analytics_summary():
     assets.select.return_value = assets
     assets.eq.return_value = assets
     assets.or_.return_value = assets
-    assets.execute.side_effect = [
-        MagicMock(data=[{"install_count": 3, "clone_count": 1}]),
-    ]
+    assets.execute.side_effect = AssertionError("catalog totals come from the RPC, not row reads")
 
     def make_counter(count: int) -> MagicMock:
         mock = MagicMock()
@@ -146,6 +146,8 @@ def test_marketplace_analytics_summary():
             "departments": {"Marketing": 1},
             "asset_types": {"ai_agent": 1},
             "total_assets": 1,
+            "total_install_count": 3,
+            "total_clone_count": 1,
         }
     )
 
@@ -177,9 +179,7 @@ def test_marketplace_analytics_summary_ranks_adoption():
     assets.select.return_value = assets
     assets.eq.return_value = assets
     assets.or_.return_value = assets
-    assets.execute.side_effect = [
-        MagicMock(data=[{"install_count": 1, "clone_count": 0}]),
-    ]
+    assets.execute.side_effect = AssertionError("catalog totals come from the RPC, not row reads")
 
     def make_counter(count: int) -> MagicMock:
         mock = MagicMock()
@@ -216,6 +216,8 @@ def test_marketplace_analytics_summary_ranks_adoption():
             "departments": {"Sales": 1},
             "asset_types": {"ai_agent": 1},
             "total_assets": 1,
+            "total_install_count": 1,
+            "total_clone_count": 0,
         }
     )
 
