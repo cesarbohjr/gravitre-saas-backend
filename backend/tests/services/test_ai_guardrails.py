@@ -271,3 +271,114 @@ class TestModelRouterGuardrails:
             response = await router.complete(task_type=TaskType.CLASSIFICATION, prompt="classify")
         assert response.input_tokens > 0
         assert response.output_tokens > 0
+
+
+class TestModerationOverlapsTheOtherChecks:
+    """Input moderation is sent before the policy / rate / budget lookups finish,
+    but every check still gates the model call, in the original order."""
+
+    @staticmethod
+    def _router(mock_settings):
+        router = ModelRouter(settings=mock_settings.model_copy(update={"ai_moderation_enabled": True}))
+        router._openai = AsyncMock()  # noqa: SLF001
+        router._openai.chat.completions.create = AsyncMock(  # noqa: SLF001
+            return_value=_mock_openai_content("ok", prompt_tokens=1, completion_tokens=1)
+        )
+        return router
+
+    @pytest.mark.asyncio
+    async def test_moderation_runs_while_rate_and_budget_are_checked(self, mock_settings):
+        import asyncio
+        import time as _time
+
+        router = self._router(mock_settings)
+        events: list[str] = []
+
+        async def _moderations_create(**_kwargs):
+            if "moderation_sent" not in events:  # input; the output check is instant
+                events.append("moderation_sent")
+                await asyncio.sleep(0.2)
+            return SimpleNamespace(results=[SimpleNamespace(flagged=False)])
+
+        def _limits(_org_id):
+            _time.sleep(0.2)
+            events.append("limits_done")
+
+        router._openai.moderations.create = _moderations_create  # noqa: SLF001
+        with (
+            patch.object(router, "_enforce_rate_and_budget", _limits),
+            patch.object(router, "_assert_model_policy", lambda *_a: None),
+            patch.object(router, "_log_model_call", AsyncMock()),
+            patch.object(router, "_log_guardrail_event", AsyncMock()),
+        ):
+            started = _time.perf_counter()
+            await router.complete(task_type=TaskType.CLASSIFICATION, prompt="hi", org_id="org-1")
+            elapsed = _time.perf_counter() - started
+        assert events.index("moderation_sent") < events.index("limits_done")
+        assert elapsed < 0.38  # overlapped, not 0.2 + 0.2
+        router._openai.chat.completions.create.assert_awaited_once()  # noqa: SLF001
+
+    @pytest.mark.asyncio
+    async def test_flagged_input_still_blocks_the_model_call(self, mock_settings):
+        router = self._router(mock_settings)
+
+        async def _flagged(**_kwargs):
+            return SimpleNamespace(results=[SimpleNamespace(flagged=True)])
+
+        router._openai.moderations.create = _flagged  # noqa: SLF001
+        with (
+            patch.object(router, "_enforce_rate_and_budget", lambda _o: None),
+            patch.object(router, "_assert_model_policy", lambda *_a: None),
+            patch.object(router, "_log_guardrail_event", AsyncMock()),
+        ):
+            with pytest.raises(AIContentFlaggedError):
+                await router.prepare_stream(task_type=TaskType.CLASSIFICATION, prompt="bad", org_id="org-1")
+        router._openai.chat.completions.create.assert_not_awaited()  # noqa: SLF001
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_refusal_still_wins_over_moderation(self, mock_settings):
+        router = self._router(mock_settings)
+
+        async def _flagged(**_kwargs):
+            return SimpleNamespace(results=[SimpleNamespace(flagged=True)])
+
+        def _limited(_org_id):
+            raise AIRateLimitError("slow down")
+
+        router._openai.moderations.create = _flagged  # noqa: SLF001
+        with (
+            patch.object(router, "_enforce_rate_and_budget", _limited),
+            patch.object(router, "_assert_model_policy", lambda *_a: None),
+            patch.object(router, "_log_guardrail_event", AsyncMock()),
+        ):
+            with pytest.raises(AIRateLimitError):
+                await router.complete(task_type=TaskType.CLASSIFICATION, prompt="bad", org_id="org-1")
+        router._openai.chat.completions.create.assert_not_awaited()  # noqa: SLF001
+
+    @pytest.mark.asyncio
+    async def test_call_logging_inserts_run_off_the_event_loop(self, mock_settings):
+        import threading
+
+        router = self._router(mock_settings)
+
+        async def _clean(**_kwargs):
+            return SimpleNamespace(results=[SimpleNamespace(flagged=False)])
+
+        router._openai.moderations.create = _clean  # noqa: SLF001
+        loop_thread = threading.current_thread()
+        insert_threads: list[threading.Thread] = []
+
+        class _Table:
+            def insert(self, _row):
+                return self
+
+            def execute(self):
+                insert_threads.append(threading.current_thread())
+                return SimpleNamespace(data=[{"id": "mc-1"}])
+
+        fake_client = SimpleNamespace(table=lambda _name: _Table())
+        with patch("app.services.model_router.get_supabase_client", lambda _s: fake_client):
+            response = await router.complete(task_type=TaskType.CLASSIFICATION, prompt="hi", org_id="org-1")
+        assert response.model_call_id == "mc-1"
+        assert len(insert_threads) == 2  # model_calls + guardrail_events
+        assert all(t is not loop_thread for t in insert_threads)

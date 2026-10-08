@@ -200,6 +200,7 @@ class ModelRouter:
     ) -> ModelResponse:
         complexity = TASK_COMPLEXITY.get(task_type.value, "medium")
         model = model_override or self._resolve_model(task_type)  # primary model, for cache key
+        moderation = self._start_input_moderation(f"{system_prompt or ''}\n{prompt}")
 
         if org_id:
             # The policy read, rate limit and budget checks are blocking
@@ -250,7 +251,8 @@ class ModelRouter:
             if getattr(self.settings, "disable_ai", False):
                 raise AIServiceDisabledError()
             await asyncio.to_thread(self._enforce_rate_and_budget, org_id)
-            await moderate_input(f"{system_prompt or ''}\n{prompt}", self.settings, self._openai)
+            if moderation is not None:
+                await moderation
         except AIGuardrailError as exc:
             code = getattr(exc, "code", "AI_GUARDRAIL")
             logger.warning(
@@ -402,6 +404,25 @@ class ModelRouter:
         )
         return final
 
+    def _start_input_moderation(self, text: str) -> "asyncio.Future[None] | None":
+        """Start the input moderation round trip now; it is awaited in its usual place.
+
+        The policy read and the rate-limit / budget checks in front of it are
+        independent lookups, so waiting for them before even sending the
+        moderation request added a network round trip to every model call (and
+        to the gate in front of every spoken reply). Every check still has to
+        pass before the model is called, and a refusal surfaces in the same
+        order as before: policy, kill switch, rate limit / budget, moderation.
+        The only difference is that the moderation request is also sent when an
+        earlier check refuses.
+        """
+        if getattr(self.settings, "disable_ai", False):
+            return None
+        task = asyncio.ensure_future(moderate_input(text, self.settings, self._openai))
+        # An earlier refusal skips the await; retrieve the outcome anyway.
+        task.add_done_callback(lambda t: t.cancelled() or t.exception())
+        return task
+
     def _assert_model_policy(self, org_id: str, model: str) -> None:
         try:
             client = get_supabase_client(self.settings)
@@ -436,6 +457,7 @@ class ModelRouter:
         """Run guardrails and build messages before opening an HTTP stream."""
         complexity = TASK_COMPLEXITY.get(task_type.value, "medium")
         model = model_override or self._resolve_model(task_type)
+        moderation = self._start_input_moderation(f"{system_prompt or ''}\n{prompt}")
 
         if org_id:
             # The policy read, rate limit and budget checks are blocking
@@ -483,7 +505,8 @@ class ModelRouter:
             if getattr(self.settings, "disable_ai", False):
                 raise AIServiceDisabledError()
             await asyncio.to_thread(self._enforce_rate_and_budget, org_id)
-            await moderate_input(f"{system_prompt or ''}\n{prompt}", self.settings, self._openai)
+            if moderation is not None:
+                await moderation
         except AIGuardrailError as exc:
             code = getattr(exc, "code", "AI_GUARDRAIL")
             logger.warning(
@@ -799,7 +822,9 @@ class ModelRouter:
                 "trained_model_version": trained_model_version,
                 "used_fallback": used_fallback,
             }
-            resp = client.table("model_calls").insert(row).execute()
+            # Blocking Supabase insert after every model call, including the
+            # classification calls in front of a spoken reply: off the event loop.
+            resp = await asyncio.to_thread(lambda: client.table("model_calls").insert(row).execute())
             if resp.data:
                 return str(resp.data[0].get("id"))
             return None
@@ -831,19 +856,19 @@ class ModelRouter:
             return
         try:
             client = get_supabase_client(self.settings)
-            client.table("guardrail_events").insert(
-                {
-                    "org_id": org_id,
-                    "event_type": event_type,
-                    "detail": {
-                        "task_type": task_type.value,
-                        "attempts": [{"provider": n, "outcome": o} for n, o in attempts],
-                        "final_provider": final_provider,
-                        "latency_ms": latency_ms,
-                        "summary": summary,
-                    },
-                }
-            ).execute()
+            # Blocking insert after every model call: off the event loop.
+            row = {
+                "org_id": org_id,
+                "event_type": event_type,
+                "detail": {
+                    "task_type": task_type.value,
+                    "attempts": [{"provider": n, "outcome": o} for n, o in attempts],
+                    "final_provider": final_provider,
+                    "latency_ms": latency_ms,
+                    "summary": summary,
+                },
+            }
+            await asyncio.to_thread(lambda: client.table("guardrail_events").insert(row).execute())
         except Exception as exc:  # noqa: BLE001
             logger.warning("guardrail_events insert failed: %s", str(exc))
 
