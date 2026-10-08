@@ -38,9 +38,13 @@ from app.services.pipecat_voice.voice_latency_tuning import (
     resolve_voice_tts_chunk_tuning,
 )
 from app.services.pipecat_voice.voice_silence_guard import (
+    ACK_DUE,
     SILENCE_TICK,
     SlowToolNotices,
+    deep_ack_seconds,
+    pick_deep_acknowledgement,
     slow_tool_notice_seconds,
+    with_ack_deadline,
     with_silence_ticks,
 )
 from app.services.pipecat_voice.voice_tool_narration import (
@@ -141,6 +145,10 @@ class GravitreCognitiveLLMService(LLMService):
         # Set once this turn pushed answer text through the TTS sentence
         # aggregator, which may still be holding its last sentence.
         self._tts_text_pending = False
+        # Whether anything was spoken in the current turn, and the last early
+        # acknowledgement (so consecutive deep turns do not repeat it).
+        self._turn_spoke = False
+        self._last_ack: str | None = None
 
     async def _ensure_durable_context(self) -> None:
         """Load the durable seed once per socket, off the event loop.
@@ -266,6 +274,7 @@ class GravitreCognitiveLLMService(LLMService):
         trace = self._turn_trace
         if trace is not None:
             trace.begin_turn()
+        self._turn_spoke = False
         if self._interrupt_reporter is not None:
             # A confirmed new user turn ends the interrupted one: let its
             # bookkeeping finish and release the stop marker it armed, so this
@@ -456,6 +465,10 @@ class GravitreCognitiveLLMService(LLMService):
         notice_interval_s = slow_tool_notice_seconds(self._app_settings)
         slow_tool_notices = SlowToolNotices(notice_interval_s)
         events_source = with_silence_ticks(events_source, interval_s=notice_interval_s)
+        # Deep turns run the full pipeline before their first token: if nothing
+        # has been said shortly after the turn is confirmed, acknowledge it.
+        if voice_tier.tier == "deep":
+            events_source = with_ack_deadline(events_source, delay_s=deep_ack_seconds(self._app_settings))
         last_stop_poll = time.perf_counter()
         async for event in events_source:
             if guard_task is not None and await _guard_refused():
@@ -484,6 +497,15 @@ class GravitreCognitiveLLMService(LLMService):
                     self._conversation_id,
                 )
                 break
+            if event is ACK_DUE:
+                # The guard was settled at the top of this loop, so a refused
+                # turn never gets here. Only when nothing was said yet.
+                if first_delta_at is None and not self._turn_spoke:
+                    ack = pick_deep_acknowledgement(self._last_ack)
+                    self._last_ack = ack
+                    logger.info("pipecat_voice_deep_ack org_id=%s", self._org_id)
+                    await self._speak_narration(ack)
+                continue
             if event is SILENCE_TICK:
                 due = slow_tool_notices.due(
                     tool_call_started_at,
@@ -866,6 +888,7 @@ class GravitreCognitiveLLMService(LLMService):
         )
         spoken = self._sanitize_for_tts(text)
         if spoken:
+            self._turn_spoke = True
             await self._push_narration_speech(spoken)
 
     async def _push_narration_speech(self, spoken: str) -> None:
@@ -926,6 +949,7 @@ class GravitreCognitiveLLMService(LLMService):
         if self._turn_trace is not None:
             self._turn_trace.note("tts_requested")
         self._tts_text_pending = True
+        self._turn_spoke = True
         await self._push_llm_text(spoken + " ")
 
     def _finish_turn_trace(self) -> None:

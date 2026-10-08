@@ -107,3 +107,93 @@ class SlowToolNotices:
             self._said[call_id] = (count + 1, now)
             return tool_name, count > 0
         return None
+
+
+# --------------------------------------------------------------------------
+# Early acknowledgement for deep spoken turns.
+#
+# A deep turn (connector reads, operator tasks, research) runs routing, the
+# kernel and context assembly before its first token, which leaves several
+# seconds of silence after the caller stops talking. When nothing has been
+# said shortly after the turn is confirmed, the bridge speaks one short
+# acknowledgement. It claims nothing about progress or results and carries no
+# data: it only tells the caller they were heard. Tool narration and the
+# answer follow as before.
+
+DEFAULT_DEEP_ACK_SECONDS = 0.6
+
+DEEP_ACKNOWLEDGEMENTS: tuple[str, ...] = (
+    "One moment.",
+    "Give me a second.",
+    "Okay, one moment.",
+    "Hmm, give me a moment.",
+    "Okay, give me a second.",
+)
+
+
+class _AckDue:
+    __slots__ = ()
+
+    def __repr__(self) -> str:  # pragma: no cover - debugging aid
+        return "ACK_DUE"
+
+
+ACK_DUE = _AckDue()
+
+
+def deep_ack_seconds(settings: Any) -> float:
+    """Seconds after a deep turn is confirmed before an acknowledgement (0 disables)."""
+    raw = getattr(settings, "voice_deep_ack_seconds", None)
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        return DEFAULT_DEEP_ACK_SECONDS
+    return max(0.0, float(raw))
+
+
+def pick_deep_acknowledgement(previous: str | None = None) -> str:
+    """A short acknowledgement, never the same one twice in a row."""
+    import random
+
+    choices = [line for line in DEEP_ACKNOWLEDGEMENTS if line != previous] or list(DEEP_ACKNOWLEDGEMENTS)
+    return random.choice(choices)
+
+
+async def with_ack_deadline(source: AsyncIterator[Any], *, delay_s: float) -> AsyncIterator[Any]:
+    """Yield every event from ``source``, plus ``ACK_DUE`` once ``delay_s`` after the start.
+
+    The pending read is never cancelled by the deadline; ``delay_s <= 0`` is a
+    plain pass-through. The turn loop decides whether the acknowledgement is
+    still owed (nothing said yet) when ``ACK_DUE`` arrives.
+    """
+    it = source.__aiter__()
+    if delay_s <= 0:
+        async for event in it:
+            yield event
+        return
+    loop = asyncio.get_running_loop()
+    deadline: float | None = loop.time() + delay_s
+    pending: asyncio.Future[Any] | None = None
+    try:
+        while True:
+            if pending is None:
+                pending = asyncio.ensure_future(it.__anext__())
+            timeout = None if deadline is None else max(0.0, deadline - loop.time())
+            done, _ = await asyncio.wait({pending}, timeout=timeout)
+            if not done:
+                deadline = None
+                yield ACK_DUE
+                continue
+            finished, pending = pending, None
+            try:
+                event = finished.result()
+            except StopAsyncIteration:
+                return
+            yield event
+    finally:
+        if pending is not None:
+            pending.cancel()
+            with contextlib.suppress(BaseException):
+                await pending
+        aclose = getattr(source, "aclose", None)
+        if aclose is not None:
+            with contextlib.suppress(Exception):
+                await aclose()
