@@ -28,7 +28,7 @@ function resolveCssColorToRGB(color: string): [number, number, number] {
 
 export const MeshGradient: React.FC<MeshGradientProps> = ({
   className,
-  colors = ["var(--color-brand)", "#2762E7", "#3ECF8E", "#FFB86B"],
+  colors = ["var(--color-brand)", "var(--chart-2)", "var(--success)", "var(--chart-3)"],
   speed = 1,
   resolutionScale = 1,
   paused = false,

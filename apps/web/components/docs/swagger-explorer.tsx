@@ -56,23 +56,23 @@ export function SwaggerExplorer({ specUrl }: { specUrl: string }) {
   return (
     <div>
       {state === "loading" && (
-        <div className="flex items-center justify-center gap-2 py-20 text-sm text-zinc-500">
+        <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading API explorer…
         </div>
       )}
 
       {state === "unavailable" && (
-        <div className="mx-auto my-12 max-w-md rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
-          <AlertCircle className="mx-auto h-6 w-6 text-amber-600" />
-          <h2 className="mt-3 font-medium text-zinc-900">API explorer temporarily unavailable</h2>
-          <p className="mt-1 text-sm text-zinc-600">
+        <div className="mx-auto my-12 max-w-md rounded-xl border border-warning/30 bg-warning/10 p-6 text-center">
+          <AlertCircle className="mx-auto h-6 w-6 text-warning-text" />
+          <h2 className="mt-3 font-medium text-foreground">API explorer temporarily unavailable</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             The live OpenAPI specification could not be loaded right now. You can still view the{" "}
-            <a className="font-medium text-emerald-700 hover:underline" href={specUrl}>
+            <a className="font-medium text-brand-text hover:underline" href={specUrl}>
               raw spec
             </a>{" "}
             or read the{" "}
-            <Link className="font-medium text-emerald-700 hover:underline" href="/docs/api/quickstart">
+            <Link className="font-medium text-brand-text hover:underline" href="/docs/api/quickstart">
               API quickstart
             </Link>
             .

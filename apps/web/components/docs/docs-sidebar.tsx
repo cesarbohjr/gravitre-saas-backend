@@ -57,10 +57,10 @@ function SidebarSection({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 transition-colors hover:text-zinc-900"
+        className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
       >
         <span className="flex items-center gap-2">
-          <CategoryIcon category={section.title} className="h-3.5 w-3.5 text-zinc-400" />
+          <CategoryIcon category={section.title} className="h-3.5 w-3.5 text-muted-foreground" />
           {section.title}
         </span>
         <ChevronRight
@@ -68,7 +68,7 @@ function SidebarSection({
         />
       </button>
       {open ? (
-        <ul className="mt-1 space-y-0.5 border-l border-zinc-200 pl-3">
+        <ul className="mt-1 space-y-0.5 border-l border-border pl-3">
           {section.items.map((item) => {
             const active = item.href === activeHref
             return (
@@ -78,8 +78,8 @@ function SidebarSection({
                   aria-current={active ? "page" : undefined}
                   className={`block rounded-md px-2 py-1.5 text-sm transition-colors ${
                     active
-                      ? "bg-emerald-50 font-medium text-emerald-700"
-                      : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+                      ? "bg-brand-soft font-medium text-brand-text"
+                      : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
                   }`}
                 >
                   {item.title}
@@ -103,8 +103,8 @@ export function DocsSidebar({ sections }: { sections: DocsNavSection[] }) {
         href="/docs"
         className={`mb-4 block rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${
           pathname === "/docs"
-            ? "bg-emerald-50 text-emerald-700"
-            : "text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
+            ? "bg-brand-soft text-brand-text"
+            : "text-foreground hover:bg-surface-hover hover:text-foreground"
         }`}
       >
         Documentation home

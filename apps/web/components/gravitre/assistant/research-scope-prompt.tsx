@@ -20,7 +20,7 @@ export function ResearchScopePrompt({ cascade, onSelectScope, className }: Resea
   return (
     <div
       className={cn(
-        "rounded-xl border border-emerald-500/20 bg-emerald-50/40 px-4 py-3 text-sm dark:bg-emerald-950/20",
+        "rounded-xl border border-brand/20 bg-brand/[0.06] px-4 py-3 text-sm",
         className,
       )}
     >
@@ -39,7 +39,7 @@ export function ResearchScopePrompt({ cascade, onSelectScope, className }: Resea
             className={cn(
               "rounded-full border px-3 py-1.5 text-left text-xs transition-colors",
               option.enabled
-                ? "border-emerald-600/30 bg-white hover:bg-emerald-50 dark:bg-card dark:hover:bg-emerald-950/40"
+                ? "border-brand/30 bg-card hover:bg-brand/10"
                 : "cursor-not-allowed border-border/60 bg-muted/40 text-muted-foreground opacity-70",
             )}
           >

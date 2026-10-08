@@ -268,7 +268,7 @@ export function ChatTranscript({
             <div key={message.id || `msg-${sourceIndex}`} className="contents">
             {showDay && dayLabel ? (
               <div className="flex justify-center py-1">
-                <span className="rounded-full bg-[color:var(--chat-surface,#e9e7e3)] px-2.5 py-0.5 text-[10px] text-[color:var(--chat-surface-muted,#a19a91)] dark:bg-[color:var(--chat-surface,#1c1c1c)]">
+                <span className="rounded-full bg-[color:var(--chat-surface,var(--muted))] px-2.5 py-0.5 text-[10px] text-[color:var(--chat-surface-muted,var(--g-text-muted))]">
                   {dayLabel}
                 </span>
               </div>

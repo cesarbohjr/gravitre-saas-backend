@@ -74,11 +74,11 @@ export function GravitreDepartmentNode({
         onMouseLeave={interactive ? onLeave : undefined}
         onClick={interactive ? onClick : undefined}
         className={cn(
-          "relative z-20 flex max-w-[11.5rem] items-center gap-2.5 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand,#16a374)]/40",
-          isActive && "border-[color:var(--color-brand,#16a374)] shadow-md",
-          isResolved && "border-[color:var(--color-blue-500)]",
-          !isActive && !isResolved && "border-[color:var(--color-line,#eaedf1)]",
+          "relative z-20 flex max-w-[11.5rem] items-center gap-2.5 rounded-xl border bg-card px-3 py-2.5 text-left shadow-sm",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
+          isActive && "border-brand shadow-md",
+          isResolved && "border-[color:var(--info)]",
+          !isActive && !isResolved && "border-line",
           isMuted && "opacity-40",
           !interactive && "cursor-default",
         )}
@@ -88,9 +88,9 @@ export function GravitreDepartmentNode({
       >
         <span
           className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--g-surface-2,#f5f6f8)] text-[color:var(--g-text-secondary)]",
-            isActive && "text-[color:var(--color-brand,#16a374)]",
-            isResolved && "text-[color:var(--color-blue-500)]",
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--g-surface-2)] text-[color:var(--g-text-secondary)]",
+            isActive && "text-brand",
+            isResolved && "text-[color:var(--info)]",
           )}
         >
           <Icon className="h-4 w-4" />
@@ -107,16 +107,16 @@ export function GravitreDepartmentNode({
           className={cn(
             "absolute right-2 top-2 h-1.5 w-1.5 rounded-full",
             isActive
-              ? "bg-[color:var(--color-brand,#16a374)]"
+              ? "bg-brand"
               : isResolved
-                ? "bg-[color:var(--color-blue-500)]"
-                : "bg-[color:var(--color-line,#eaedf1)]",
+                ? "bg-[color:var(--info)]"
+                : "bg-line",
           )}
         />
         {isActive ? (
           <motion.span
             aria-hidden
-            className="pointer-events-none absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[color:var(--color-brand,#16a374)]"
+            className="pointer-events-none absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-brand"
             animate={{ scale: [1, 2.4], opacity: [0.7, 0] }}
             transition={{ duration: 1.2, repeat: Infinity, ease: "easeOut" }}
           />

@@ -81,8 +81,8 @@ export function ConnectorDemo() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-amber-100 flex items-center justify-center">
-            <Database className="h-4 w-4 text-amber-600" />
+          <div className="h-8 w-8 rounded-lg bg-warning/15 flex items-center justify-center">
+            <Database className="h-4 w-4 text-warning-text" />
           </div>
           <span className="font-medium text-sm text-foreground">Connect Integration</span>
         </div>
@@ -118,13 +118,13 @@ export function ConnectorDemo() {
                     className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
                       connector.status === "connected"
                         ? "border-primary/20 bg-primary/10"
-                        : "border-border hover:border-amber-500/50 hover:bg-amber-50/30"
+                        : "border-border hover:border-warning/50 hover:bg-warning/5"
                     }`}
                   >
                     <div className={`h-10 w-10 rounded-lg flex items-center justify-center text-xs font-bold ${
-                      connector.id === "salesforce" ? "bg-blue-100 text-blue-600" :
-                      connector.id === "hubspot" ? "bg-orange-100 text-orange-600" :
-                      connector.id === "slack" ? "bg-purple-100 text-purple-600" :
+                      connector.id === "salesforce" ? "bg-info/15 text-info" :
+                      connector.id === "hubspot" ? "bg-warning/15 text-warning-text" :
+                      connector.id === "slack" ? "bg-intelligence-text/15 text-intelligence-text" :
                       "bg-muted text-muted-foreground"
                     }`}>
                       {connector.icon}
@@ -159,9 +159,9 @@ export function ConnectorDemo() {
             >
               <div className="flex items-center gap-3 mb-4">
                 <div className={`h-10 w-10 rounded-lg flex items-center justify-center text-xs font-bold ${
-                  currentConnector.id === "salesforce" ? "bg-blue-100 text-blue-600" :
-                  currentConnector.id === "hubspot" ? "bg-orange-100 text-orange-600" :
-                  currentConnector.id === "slack" ? "bg-purple-100 text-purple-600" :
+                  currentConnector.id === "salesforce" ? "bg-info/15 text-info" :
+                  currentConnector.id === "hubspot" ? "bg-warning/15 text-warning-text" :
+                  currentConnector.id === "slack" ? "bg-intelligence-text/15 text-intelligence-text" :
                   "bg-muted text-muted-foreground"
                 }`}>
                   {currentConnector.icon}
@@ -184,7 +184,7 @@ export function ConnectorDemo() {
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
                       placeholder="Enter your API key"
-                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-warning/20 focus:border-warning"
                     />
                   </div>
                 </div>
@@ -199,7 +199,7 @@ export function ConnectorDemo() {
                 <button
                   onClick={handleAuth}
                   disabled={!apiKey}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-warning text-warning-foreground text-sm font-medium hover:bg-warning/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <Lock className="h-4 w-4" />
                   Connect Securely
@@ -226,15 +226,15 @@ export function ConnectorDemo() {
             >
               <div className="relative mb-4">
                 <div className={`h-16 w-16 rounded-xl flex items-center justify-center text-lg font-bold ${
-                  currentConnector.id === "salesforce" ? "bg-blue-100 text-blue-600" :
-                  currentConnector.id === "hubspot" ? "bg-orange-100 text-orange-600" :
-                  currentConnector.id === "slack" ? "bg-purple-100 text-purple-600" :
+                  currentConnector.id === "salesforce" ? "bg-info/15 text-info" :
+                  currentConnector.id === "hubspot" ? "bg-warning/15 text-warning-text" :
+                  currentConnector.id === "slack" ? "bg-intelligence-text/15 text-intelligence-text" :
                   "bg-muted text-muted-foreground"
                 }`}>
                   {currentConnector.icon}
                 </div>
-                <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-amber-100 flex items-center justify-center">
-                  <RefreshCw className="h-3 w-3 text-amber-600 animate-spin" />
+                <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-warning/15 flex items-center justify-center">
+                  <RefreshCw className="h-3 w-3 text-warning-text animate-spin" />
                 </div>
               </div>
               <h3 className="font-medium text-foreground mb-1">Syncing {currentConnector.name}</h3>
@@ -242,7 +242,7 @@ export function ConnectorDemo() {
               
               <div className="w-48 h-1 bg-muted rounded-full overflow-hidden mt-4">
                 <motion.div
-                  className="h-full bg-amber-500"
+                  className="h-full bg-warning"
                   initial={{ width: "0%" }}
                   animate={{ width: "100%" }}
                   transition={{ duration: 2.5, ease: "linear" }}

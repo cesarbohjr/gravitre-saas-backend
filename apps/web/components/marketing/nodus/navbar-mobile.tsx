@@ -8,7 +8,7 @@ import { Logo } from "./logo"
 import { Button } from "./button"
 
 const MENU_BUTTON =
-  "flex size-11 items-center justify-center rounded-lg text-gray-700 transition-colors hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-neutral-200 dark:hover:bg-neutral-800"
+  "flex size-11 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-gray-100 active:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 
 export function MobileNav({ items }: { items: ReadonlyArray<{ title: string; href: string }> }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -32,7 +32,7 @@ export function MobileNav({ items }: { items: ReadonlyArray<{ title: string; hre
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[60] h-full w-full bg-white shadow-lg"
+            className="fixed inset-0 z-[60] h-full w-full bg-[color:var(--g-marketing-canvas)] shadow-lg"
           >
             <div className="flex items-center justify-between p-2">
               <Logo />
@@ -50,7 +50,7 @@ export function MobileNav({ items }: { items: ReadonlyArray<{ title: string; hre
                 <Link
                   href={item.href}
                   key={item.title}
-                  className="px-4 py-2 font-medium text-gray-600 transition duration-200 hover:text-neutral-900"
+                  className="px-4 py-2 font-medium text-gray-600 transition duration-200 hover:text-foreground"
                   onClick={() => setIsOpen(false)}
                 >
                   <motion.div

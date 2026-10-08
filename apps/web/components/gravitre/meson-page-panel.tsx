@@ -71,11 +71,11 @@ function MesonLogo({ compact }: { compact?: boolean }) {
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-xl bg-[color:var(--g-electric)]",
+        "flex shrink-0 items-center justify-center rounded-xl bg-chart-4",
         compact ? "h-8 w-8" : "h-9 w-9",
       )}
     >
-      <Blocks className={cn("text-white", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
+      <Blocks className={cn("text-info-foreground", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
     </div>
   )
 }
@@ -109,7 +109,7 @@ function MesonBannerBody({
           className="min-h-[4.5rem]"
         >
           <div className="flex items-start gap-2.5">
-            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400">
+            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-chart-4/15 text-intelligence-text">
               <Lightbulb className="h-3.5 w-3.5" />
             </div>
             <div className="min-w-0 flex-1">
@@ -117,7 +117,7 @@ function MesonBannerBody({
                 <button
                   type="button"
                   onClick={() => onSuggestionClick(suggestion)}
-                  className="text-left text-sm font-medium leading-snug text-foreground hover:text-violet-600 dark:hover:text-violet-400"
+                  className="text-left text-sm font-medium leading-snug text-foreground hover:text-intelligence-text"
                 >
                   {suggestion.label}
                 </button>
@@ -130,7 +130,7 @@ function MesonBannerBody({
                 </p>
               ) : null}
               {extraSuggestions > 0 ? (
-                <p className="mt-1.5 text-[10px] font-medium text-violet-600/80 dark:text-violet-400/80">
+                <p className="mt-1.5 text-[10px] font-medium text-intelligence-text/80">
                   +{extraSuggestions} more suggestion{extraSuggestions === 1 ? "" : "s"}
                 </p>
               ) : null}
@@ -149,7 +149,7 @@ function MesonBannerBody({
           className="min-h-[4.5rem]"
         >
           <div className="flex items-start gap-2.5">
-            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400">
+            <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-chart-4/15 text-intelligence-text">
               <TrendingUp className="h-3.5 w-3.5" />
             </div>
             <div className="min-w-0 flex-1">
@@ -158,7 +158,7 @@ function MesonBannerBody({
                 {insight.summary}
               </p>
               {extraInsights > 0 ? (
-                <p className="mt-1.5 text-[10px] font-medium text-violet-600/80 dark:text-violet-400/80">
+                <p className="mt-1.5 text-[10px] font-medium text-intelligence-text/80">
                   +{extraInsights} more insight{extraInsights === 1 ? "" : "s"}
                 </p>
               ) : null}
@@ -251,12 +251,12 @@ export function MesonPagePanel({
             <div className="mb-2 flex items-center gap-2">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-foreground">Meson</p>
-                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400">
+                <p className="text-xs font-semibold text-intelligence-text">
                   {slideLabel}
                 </p>
               </div>
               {advisorBrief?.confidence != null ? (
-                <span className="shrink-0 rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400">
+                <span className="shrink-0 rounded-full border border-chart-4/20 bg-chart-4/10 px-2 py-0.5 text-[10px] font-medium text-intelligence-text">
                   {advisorBrief.confidenceIsEstimate !== false &&
                   advisorBrief.confidence_is_estimate !== false
                     ? `${ESTIMATED_CONFIDENCE_SHORT} `
@@ -268,9 +268,9 @@ export function MesonPagePanel({
 
             {showInitialLoad ? (
               <div className="space-y-2">
-                <Skeleton className="h-4 w-3/4 bg-violet-500/10" />
-                <Skeleton className="h-3 w-full bg-violet-500/10" />
-                <Skeleton className="h-3 w-5/6 bg-violet-500/10" />
+                <Skeleton className="h-4 w-3/4 bg-chart-4/10" />
+                <Skeleton className="h-3 w-full bg-chart-4/10" />
+                <Skeleton className="h-3 w-5/6 bg-chart-4/10" />
               </div>
             ) : showEmpty ? (
               <p className="text-xs leading-relaxed text-muted-foreground">
@@ -303,7 +303,7 @@ export function MesonPagePanel({
                 onClick={() => setActiveSlide(slide)}
                 className={cn(
                   "h-1.5 rounded-full transition-all",
-                  activeSlide === slide ? "w-4 bg-violet-500" : "w-1.5 bg-violet-500/30 hover:bg-violet-500/50",
+                  activeSlide === slide ? "w-4 bg-chart-4" : "w-1.5 bg-chart-4/30 hover:bg-chart-4/50",
                 )}
               />
             ))}
@@ -311,7 +311,7 @@ export function MesonPagePanel({
         ) : null}
 
         {showBackgroundRefresh ? (
-          <div className="relative mt-2 flex items-center gap-1.5 text-[10px] text-violet-600/70 dark:text-violet-400/70">
+          <div className="relative mt-2 flex items-center gap-1.5 text-[10px] text-intelligence-text/70">
             <Loader2 className="h-3 w-3 animate-spin" />
             Refreshing…
           </div>
@@ -321,7 +321,7 @@ export function MesonPagePanel({
       {!compact ? (
         <p className="mt-2 text-[10px] text-muted-foreground">
           Advisory only — review before acting.{" "}
-          <Link href={APP_ROUTES.intelligence} className="text-violet-600 underline-offset-4 hover:underline dark:text-violet-400">
+          <Link href={APP_ROUTES.intelligence} className="text-intelligence-text underline-offset-4 hover:underline">
             {SURFACE_COPY.insights.title}
           </Link>
         </p>

@@ -12,13 +12,13 @@ export function FloatingNav({ items }: { items: ReadonlyArray<{ title: string; h
   return (
     <motion.div
       style={{ y }}
-      className="shadow-aceternity fixed inset-x-0 top-0 z-50 mx-auto hidden max-w-[calc(80rem-4rem)] items-center justify-between bg-white/80 px-2 py-2 backdrop-blur-sm md:flex xl:rounded-2xl"
+      className="shadow-aceternity fixed inset-x-0 top-0 z-50 mx-auto hidden max-w-[calc(80rem-4rem)] items-center justify-between bg-card/80 px-2 py-2 backdrop-blur-sm md:flex xl:rounded-2xl"
     >
       <Logo />
       <div className="flex items-center gap-10">
         {items.map((item) => (
           <Link
-            className="font-medium text-gray-600 transition duration-200 hover:text-neutral-900"
+            className="font-medium text-gray-600 transition duration-200 hover:text-foreground"
             href={item.href}
             key={item.title}
           >
@@ -27,7 +27,7 @@ export function FloatingNav({ items }: { items: ReadonlyArray<{ title: string; h
         ))}
       </div>
       <div className="flex items-center gap-2">
-        <Link href="/login" className="px-3 text-sm font-medium text-gray-600 hover:text-neutral-900">
+        <Link href="/login" className="px-3 text-sm font-medium text-gray-600 hover:text-foreground">
           Log in
         </Link>
         <Button as={Link} href="/get-started">

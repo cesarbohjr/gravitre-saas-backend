@@ -148,7 +148,7 @@ function PackHealthCard({ pack }: { pack: KnowledgeFabricPackQuality }) {
           {gaps.slice(0, 3).map((g) => (
             <li key={g} className="flex gap-2 text-pretty">
               <WarningCircle
-                className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300"
+                className="mt-0.5 h-4 w-4 shrink-0 text-warning"
                 weight="duotone"
                 aria-hidden
               />

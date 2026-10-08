@@ -19,7 +19,7 @@ function SourceStatusDot({ status }: { status?: SourceStatus }) {
     return <CheckCircle className="h-3 w-3 text-[color:var(--g-success)]" weight="duotone" aria-hidden />
   }
   if (status === "missing") {
-    return <WarningCircle className="h-3 w-3 text-amber-500" weight="duotone" aria-hidden />
+    return <WarningCircle className="h-3 w-3 text-warning" weight="duotone" aria-hidden />
   }
   return <Circle className="h-3 w-3 text-[color:var(--g-text-muted)]" weight="duotone" aria-hidden />
 }
@@ -48,10 +48,10 @@ function GraphNode({
     >
       <div
         className={cn(
-          "max-w-[9rem] rounded-[10px] border bg-background px-2.5 py-2 text-center shadow-[0_12px_30px_-26px_rgba(16,24,22,.5)]",
+          "max-w-[9rem] rounded-[10px] border bg-background px-2.5 py-2 text-center shadow-[0_12px_30px_-26px_color-mix(in_srgb,var(--g-carbon)_50%,transparent)]",
           isInsight && "max-w-[11rem] border-[color:var(--g-brand-border)] bg-[color:var(--g-intelligence-surface)] px-3 py-2.5",
           node.kind === "signal" && "border-[color:var(--g-emerald)]/40",
-          node.kind === "source" && node.status === "missing" && "border-dashed border-amber-500/50 opacity-70",
+          node.kind === "source" && node.status === "missing" && "border-dashed border-warning/50 opacity-70",
           isGap && "max-w-none border-dashed border-divide bg-[color:var(--g-surface-2)]/80 px-3 py-1",
           selected && "ring-2 ring-[color:var(--g-brand)]",
           node.emphasis < 0.5 && !isGap && "opacity-60",
@@ -128,7 +128,7 @@ export function EvidenceGraphCanvas({
               x2={to.x}
               y2={to.y}
               stroke={
-                edge.dashed ? "var(--color-line,#cbd5e1)" : "var(--g-emerald)"
+                edge.dashed ? "var(--line)" : "var(--g-emerald)"
               }
               strokeWidth={edge.dashed ? 1 : 1.5}
               strokeDasharray={edge.dashed ? "4 4" : undefined}

@@ -16,7 +16,7 @@ import { TabSkeleton } from "./enterprise-skeletons"
 const STATUS_STYLE: Record<string, string> = {
   completed: "bg-success/15 text-success",
   failed: "bg-destructive/15 text-destructive",
-  pending_approval: "bg-amber-500/15 text-amber-600",
+  pending_approval: "bg-warning/15 text-warning",
   in_progress: "bg-primary/15 text-primary",
   blocked: "bg-muted text-muted-foreground",
   cancelled: "bg-muted text-muted-foreground",
@@ -131,6 +131,6 @@ export function TransparencyTab({ isAdmin }: { isAdmin: boolean }) {
 function StatusIcon({ status }: { status: string }) {
   if (status === "completed") return <CheckCircle2 className="h-4 w-4 text-success" />
   if (status === "failed") return <AlertTriangle className="h-4 w-4 text-destructive" />
-  if (status === "pending_approval") return <Clock className="h-4 w-4 text-amber-500" />
+  if (status === "pending_approval") return <Clock className="h-4 w-4 text-warning" />
   return <ScrollText className="h-4 w-4 text-muted-foreground" />
 }

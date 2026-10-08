@@ -61,7 +61,7 @@ export function GravitreMetric({
 
   const classes = cn(
     "group flex items-start gap-3 rounded-[var(--np-radius-lg)] border bg-[color:var(--g-surface-1)] p-3 shadow-[var(--np-shadow)] transition-colors",
-    warning ? "border-amber-300/70" : "border-divide",
+    warning ? "border-warning/40" : "border-divide",
     href && "hover:bg-[color:var(--g-surface-2)]",
     className,
   )

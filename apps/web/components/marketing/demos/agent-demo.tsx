@@ -227,7 +227,7 @@ export function AgentDemo() {
             <button
               onClick={() => setStep(step + 1)}
               disabled={step === 1 && !agentName}
-              className="flex items-center gap-1 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Continue
               <ChevronRight className="h-4 w-4" />
@@ -236,11 +236,11 @@ export function AgentDemo() {
             <button
               onClick={handleCreate}
               disabled={isCreating}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/100 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/100 disabled:opacity-50 transition-colors"
             >
               {isCreating ? (
                 <>
-                  <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className="h-4 w-4 border-2 border-card/30 border-t-card rounded-full animate-spin" />
                   Creating...
                 </>
               ) : (

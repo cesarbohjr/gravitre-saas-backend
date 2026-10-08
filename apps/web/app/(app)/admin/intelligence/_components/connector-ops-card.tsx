@@ -42,11 +42,11 @@ export function ConnectorOpsCard() {
           {hasSpike ? (
             <div
               role="status"
-              className="flex items-start gap-3 rounded-[8px] border border-rose-500/30 bg-rose-500/10 px-3 py-2.5"
+              className="flex items-start gap-3 rounded-[8px] border border-destructive/30 bg-destructive/10 px-3 py-2.5"
             >
-              <WarningCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" weight="duotone" aria-hidden />
+              <WarningCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" weight="duotone" aria-hidden />
               <div className="min-w-0 space-y-1">
-                <p className="text-sm font-medium text-rose-700 dark:text-rose-300">
+                <p className="text-sm font-medium text-destructive">
                   Failure spike: more than 10% of recent calls failed
                 </p>
                 <ul className="space-y-0.5 text-xs text-muted-foreground">
@@ -86,7 +86,7 @@ export function ConnectorOpsCard() {
                       key={`${row.vendor}:${row.action}`}
                       className={cn(
                         "border-b border-border/40 last:border-0",
-                        row.spike && "bg-rose-500/5",
+                        row.spike && "bg-destructive/5",
                       )}
                     >
                       <td className="px-3 py-2 font-medium">{row.vendor}</td>

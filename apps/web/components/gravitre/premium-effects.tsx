@@ -24,7 +24,6 @@ interface Particle {
   opacity: number
   speedX: number
   speedY: number
-  hue: number
 }
 
 function seededUnit(seed: number) {
@@ -58,12 +57,13 @@ function ParticleFieldImpl({
   const smoothX = useSpring(mouseX, { stiffness: 50, damping: 20 })
   const smoothY = useSpring(mouseY, { stiffness: 50, damping: 20 })
 
+  // Theme tokens (app/globals.css) so particles follow light/dark themes.
   const colorMap = {
-    emerald: { h: 160, s: 84, l: 39 },
-    violet: { h: 270, s: 76, l: 60 },
-    blue: { h: 217, s: 91, l: 60 },
-    amber: { h: 38, s: 92, l: 50 },
-    cyan: { h: 186, s: 94, l: 50 },
+    emerald: "var(--g-brand)",
+    violet: "var(--chart-4)",
+    blue: "var(--info)",
+    amber: "var(--warning)",
+    cyan: "var(--g-signal)",
   }
 
   const particles = useMemo<Particle[]>(
@@ -76,7 +76,6 @@ function ParticleFieldImpl({
         opacity: seededUnit(i + 301) * 0.5 + 0.2,
         speedX: (seededUnit(i + 401) - 0.5) * 0.02,
         speedY: (seededUnit(i + 501) - 0.5) * 0.02,
-        hue: colorMap[color].h + (seededUnit(i + 601) - 0.5) * 20,
       })),
     [count, color]
   )
@@ -107,8 +106,8 @@ function ParticleFieldImpl({
             top: `${particle.y}%`,
             width: particle.size,
             height: particle.size,
-            backgroundColor: `hsla(${particle.hue}, ${colorMap[color].s}%, ${colorMap[color].l}%, ${particle.opacity})`,
-            boxShadow: `0 0 ${particle.size * 2}px hsla(${particle.hue}, ${colorMap[color].s}%, ${colorMap[color].l}%, ${particle.opacity * 0.5})`,
+            backgroundColor: `color-mix(in srgb, ${colorMap[color]} ${Math.round(particle.opacity * 100)}%, transparent)`,
+            boxShadow: `0 0 ${particle.size * 2}px color-mix(in srgb, ${colorMap[color]} ${Math.round(particle.opacity * 50)}%, transparent)`,
           }}
           animate={{
             x: [0, seededUnit(particle.id + 701) * 20 - 10, 0],
@@ -142,10 +141,10 @@ export function PulseRing({
   className?: string
 }) {
   const colorClasses = {
-    emerald: "border-emerald-500/50",
-    violet: "border-violet-500/50",
-    blue: "border-blue-500/50",
-    amber: "border-amber-500/50",
+    emerald: "border-success/50",
+    violet: "border-chart-4/50",
+    blue: "border-info/50",
+    amber: "border-warning/50",
   }
 
   return (
@@ -192,11 +191,11 @@ export function GlowOrb({
   className?: string
 }) {
   const gradients = {
-    emerald: "from-emerald-400 via-emerald-500 to-teal-600",
-    violet: "from-[#315CFF] via-[#315CFF] to-[#6B8AFF]",
-    blue: "from-blue-400 via-blue-500 to-cyan-600",
-    amber: "from-amber-400 via-orange-500 to-red-500",
-    mixed: "from-emerald-400 via-[#315CFF] to-blue-600",
+    emerald: "from-success via-success to-success",
+    violet: "from-chart-4 via-chart-4 to-[color:var(--g-intelligence-bright)]",
+    blue: "from-info via-info to-info",
+    amber: "from-warning via-warning to-destructive",
+    mixed: "from-success via-chart-4 to-info",
   }
 
   return (
@@ -276,10 +275,10 @@ function NeuralNetworkImpl({
   }, [nodeCount])
 
   const colorClasses = {
-    emerald: { node: "bg-emerald-400", line: "stroke-emerald-500/30" },
-    violet: { node: "bg-violet-400", line: "stroke-violet-500/30" },
-    blue: { node: "bg-blue-400", line: "stroke-blue-500/30" },
-    cyan: { node: "bg-cyan-400", line: "stroke-cyan-500/30" },
+    emerald: { node: "bg-success", line: "stroke-success/30" },
+    violet: { node: "bg-chart-4", line: "stroke-chart-4/30" },
+    blue: { node: "bg-info", line: "stroke-info/30" },
+    cyan: { node: "bg-info", line: "stroke-info/30" },
   }
 
   return (
@@ -359,10 +358,10 @@ function DataStreamImpl({
   )
 
   const colorClasses = {
-    emerald: "bg-gradient-to-b from-transparent via-emerald-400 to-transparent",
-    violet: "bg-gradient-to-b from-transparent via-violet-400 to-transparent",
-    blue: "bg-gradient-to-b from-transparent via-blue-400 to-transparent",
-    amber: "bg-gradient-to-b from-transparent via-amber-400 to-transparent",
+    emerald: "bg-gradient-to-b from-transparent via-success to-transparent",
+    violet: "bg-gradient-to-b from-transparent via-chart-4 to-transparent",
+    blue: "bg-gradient-to-b from-transparent via-info to-transparent",
+    amber: "bg-gradient-to-b from-transparent via-warning to-transparent",
   }
 
   return (
@@ -416,11 +415,11 @@ export function StatusBeacon({
   }
 
   const colorClasses = {
-    active: "bg-emerald-400 shadow-emerald-400/50",
-    processing: "bg-blue-400 shadow-blue-400/50",
-    warning: "bg-amber-400 shadow-amber-400/50",
-    error: "bg-red-400 shadow-red-400/50",
-    idle: "bg-zinc-400 shadow-zinc-400/50",
+    active: "bg-success shadow-success/50",
+    processing: "bg-info shadow-info/50",
+    warning: "bg-warning shadow-warning/50",
+    error: "bg-destructive shadow-destructive/50",
+    idle: "bg-status-idle shadow-status-idle/50",
   }
 
   return (
@@ -473,11 +472,11 @@ function MorphingBackgroundImpl({
   className,
 }: MorphingBackgroundProps) {
   const colorValues = {
-    emerald: "rgba(16, 185, 129, 0.15)",
-    violet: "rgba(139, 92, 246, 0.15)",
-    blue: "rgba(59, 130, 246, 0.15)",
-    amber: "rgba(245, 158, 11, 0.15)",
-    cyan: "rgba(6, 182, 212, 0.15)",
+    emerald: "color-mix(in srgb, var(--g-brand) 15%, transparent)",
+    violet: "color-mix(in srgb, var(--chart-4) 15%, transparent)",
+    blue: "color-mix(in srgb, var(--info) 15%, transparent)",
+    amber: "color-mix(in srgb, var(--warning) 15%, transparent)",
+    cyan: "color-mix(in srgb, var(--g-signal) 15%, transparent)",
   }
 
   return (
@@ -534,10 +533,10 @@ export function FloatingCard({
   }
 
   const glowColors = {
-    emerald: "shadow-emerald-500/20",
-    violet: "shadow-violet-500/20",
-    blue: "shadow-blue-500/20",
-    amber: "shadow-amber-500/20",
+    emerald: "shadow-success/20",
+    violet: "shadow-chart-4/20",
+    blue: "shadow-info/20",
+    amber: "shadow-warning/20",
   }
 
   return (
@@ -581,10 +580,10 @@ export function ActivityIndicator({
   const circumference = 2 * Math.PI * radius
 
   const colorClasses = {
-    emerald: { stroke: "stroke-emerald-500", text: "text-emerald-400", bg: "stroke-emerald-500/10" },
-    violet: { stroke: "stroke-violet-500", text: "text-violet-400", bg: "stroke-violet-500/10" },
-    blue: { stroke: "stroke-blue-500", text: "text-blue-400", bg: "stroke-blue-500/10" },
-    amber: { stroke: "stroke-amber-500", text: "text-amber-400", bg: "stroke-amber-500/10" },
+    emerald: { stroke: "stroke-success", text: "text-success", bg: "stroke-success/10" },
+    violet: { stroke: "stroke-chart-4", text: "text-intelligence-text", bg: "stroke-chart-4/10" },
+    blue: { stroke: "stroke-info", text: "text-info", bg: "stroke-info/10" },
+    amber: { stroke: "stroke-warning", text: "text-warning", bg: "stroke-warning/10" },
   }
 
   return (
@@ -650,9 +649,9 @@ export function TypingIndicator({
   className?: string
 }) {
   const colorClasses = {
-    emerald: "bg-emerald-400",
-    violet: "bg-violet-400",
-    blue: "bg-blue-400",
+    emerald: "bg-success",
+    violet: "bg-chart-4",
+    blue: "bg-info",
   }
 
   return (
@@ -770,9 +769,9 @@ export function GridPattern({
 }) {
   const colorClasses = {
     default: "stroke-border/30",
-    emerald: "stroke-emerald-500/10",
-    violet: "stroke-violet-500/10",
-    blue: "stroke-blue-500/10",
+    emerald: "stroke-success/10",
+    violet: "stroke-chart-4/10",
+    blue: "stroke-info/10",
   }
 
   return (

@@ -5,7 +5,10 @@ import { Bot, Sparkles, Zap, Database, Workflow, BarChart3, User } from "lucide-
 import { cn } from "@/lib/utils"
 import { useUserProfile } from "@/lib/user-profile-context"
 
-// Agent avatar configurations matching the actual agents in the platform
+// Agent avatar configurations matching the actual agents in the platform.
+// The per-agent hues are an identity palette (each agent keeps a distinct,
+// recognisable colour) and are intentionally not mapped to theme tokens; the
+// neutral default uses the themed assistant-avatar token.
 export const agentAvatars = {
   operator: {
     name: "AI Operator",
@@ -45,9 +48,9 @@ export const agentAvatars = {
   default: {
     name: "Gravitre AI",
     icon: Bot,
-    gradient: "from-zinc-600 to-zinc-800",
-    bgColor: "bg-zinc-500/10",
-    textColor: "text-zinc-500",
+    gradient: "from-[color:var(--assistant-avatar)] to-[color:var(--assistant-avatar)]",
+    bgColor: "bg-muted",
+    textColor: "text-muted-foreground",
   },
 }
 
@@ -139,7 +142,7 @@ export function UserAvatar({ name, image, size = "md", className, useProfile = t
   return (
     <div
       className={cn(
-        "rounded-xl flex items-center justify-center overflow-hidden bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-800",
+        "rounded-xl flex items-center justify-center overflow-hidden bg-gradient-to-br from-muted to-secondary",
         sizeClasses[size],
         className
       )}
@@ -147,7 +150,7 @@ export function UserAvatar({ name, image, size = "md", className, useProfile = t
       {displayImage ? (
         <img src={displayImage} alt={displayName} className="h-full w-full object-cover" />
       ) : (
-        <span className={cn("font-semibold text-zinc-600 dark:text-zinc-300", {
+        <span className={cn("font-semibold text-muted-foreground", {
           "text-[10px]": size === "xs",
           "text-xs": size === "sm",
           "text-sm": size === "md",

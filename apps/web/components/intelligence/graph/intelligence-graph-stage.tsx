@@ -651,7 +651,7 @@ export function IntelligenceGraphStage({
                       className={cn(
                         "relative rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)] hover:ring-2 hover:ring-[color:var(--g-brand)]/50",
                         isHighlighted && "ring-2 ring-[color:var(--g-brand)]",
-                        isPinned && "ring-1 ring-amber-500/60",
+                        isPinned && "ring-1 ring-warning/60",
                         isDimmed && "grayscale",
                       )}
                       onClick={() => toggleSelection(node)}
@@ -680,7 +680,7 @@ export function IntelligenceGraphStage({
                     {warning && lens === "predicts" ? (
                       <button
                         type="button"
-                        className="absolute -right-1 -top-1 z-30 flex h-6 w-6 items-center justify-center rounded-full border border-amber-500/50 bg-amber-50 text-amber-700"
+                        className="absolute -right-1 -top-1 z-30 flex h-6 w-6 items-center justify-center rounded-full border border-warning/50 bg-warning/10 text-warning"
                         onClick={(event) => {
                           event.stopPropagation()
                           onSelectionChange?.({ kind: "signal", signal: warning })
@@ -736,11 +736,11 @@ export function IntelligenceGraphStage({
         <div
           aria-hidden
           className={cn(
-            "pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-black/35 transition-opacity duration-200",
+            "pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-[color:var(--overlay)] transition-opacity duration-200",
             wheelHint ? "opacity-100" : "opacity-0",
           )}
         >
-          <p className="rounded-md bg-black/70 px-3 py-1.5 text-xs font-medium text-white">
+          <p className="rounded-md bg-foreground/80 px-3 py-1.5 text-xs font-medium text-background">
             Hold Ctrl (⌘ on Mac) and scroll to zoom
           </p>
         </div>

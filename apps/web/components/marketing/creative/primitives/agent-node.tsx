@@ -21,19 +21,19 @@ export function GravitreAgentNode({
   return (
     <div
       className={cn(
-        "flex min-w-[6.5rem] flex-col items-center gap-1.5 rounded-xl border bg-white px-2.5 py-2 text-center shadow-sm",
-        waiting && "border-amber-400",
-        failed && "border-red-400",
-        active && !waiting && !failed && "border-[color:var(--color-brand,#16a374)]",
-        !active && !waiting && !failed && "border-[color:var(--color-line,#eaedf1)] opacity-70",
+        "flex min-w-[6.5rem] flex-col items-center gap-1.5 rounded-xl border bg-card px-2.5 py-2 text-center shadow-sm",
+        waiting && "border-warning/60",
+        failed && "border-destructive/60",
+        active && !waiting && !failed && "border-brand",
+        !active && !waiting && !failed && "border-line opacity-70",
       )}
     >
       <Icon
         className={cn(
           "h-4 w-4 text-[color:var(--g-text-secondary)]",
-          active && "text-[color:var(--color-brand,#16a374)]",
-          waiting && "text-amber-600",
-          failed && "text-red-600",
+          active && "text-brand",
+          waiting && "text-warning-text",
+          failed && "text-danger-text",
         )}
         aria-hidden
       />

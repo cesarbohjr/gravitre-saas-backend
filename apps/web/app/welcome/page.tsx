@@ -212,7 +212,7 @@ export default function WelcomePage() {
                     className={cn(
                       "rounded-xl border p-3 text-left transition-colors",
                       role === entry.id
-                        ? "border-emerald-500/40 bg-emerald-500/10"
+                        ? "border-brand/40 bg-brand/10"
                         : "border-border hover:bg-muted/40",
                     )}
                   >
@@ -231,7 +231,7 @@ export default function WelcomePage() {
                     value={jobTitle}
                     onChange={(event) => setJobTitle(event.target.value)}
                     placeholder="e.g. Operations Manager"
-                    className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-emerald-500/50"
+                    className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-brand/50"
                   />
                 </label>
                 <label className="space-y-1.5 text-left">
@@ -243,7 +243,7 @@ export default function WelcomePage() {
                     value={department}
                     onChange={(event) => setDepartment(event.target.value)}
                     placeholder="e.g. Operations"
-                    className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-emerald-500/50"
+                    className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-brand/50"
                   />
                 </label>
               </div>
@@ -269,7 +269,7 @@ export default function WelcomePage() {
                     className={cn(
                       "rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition-colors",
                       selectedConnector === connector.type
-                        ? "border-emerald-500/40 bg-emerald-500/10 text-foreground"
+                        ? "border-brand/40 bg-brand/10 text-foreground"
                         : "border-border bg-background/60 text-foreground hover:bg-muted/40",
                     )}
                   >
@@ -438,7 +438,7 @@ function StepShell({
     >
       <div className="flex items-start gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-[10px] bg-[color:color-mix(in_oklab,var(--g-emerald)_14%,var(--g-surface-1))] ring-1 ring-[color:var(--g-emerald)]/25">
-          <Icon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+          <Icon className="h-6 w-6 text-brand-text" />
         </div>
         <div>
           <h1 className="text-xl font-semibold text-foreground">{title}</h1>

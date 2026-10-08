@@ -114,7 +114,7 @@ export function ExtensionPage() {
             ] as const
           ).map(({ label, Icon }) => (
             <li key={label} className="flex flex-col items-center gap-2.5">
-              <span className="border-divide flex h-14 w-14 items-center justify-center rounded-2xl border bg-gray-50">
+              <span className="border-divide flex h-14 w-14 items-center justify-center rounded-2xl border bg-[color:var(--g-marketing-surface)]">
                 <Icon className="h-7 w-7" />
               </span>
               <span className="text-xs font-medium text-gray-600">{label}</span>
@@ -158,7 +158,7 @@ export function ExtensionPage() {
               <li key={step.n}>
                 <GravitreFlow
                   delay={i * 0.05}
-                  className="rounded-lg border border-divide bg-gray-50 p-5"
+                  className="rounded-lg border border-divide bg-[color:var(--g-marketing-surface)] p-5"
                 >
                   <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-sm font-bold text-primary">
                     {step.n}
@@ -309,7 +309,7 @@ export function ExtensionPage() {
             </p>
           </div>
           <div className="space-y-4">
-            <div className="rounded-lg border border-divide bg-gray-50 p-5">
+            <div className="rounded-lg border border-divide bg-[color:var(--g-marketing-surface)] p-5">
               <NucleoApproval className="mb-3 h-6 w-6 text-primary" />
               <h3 className="font-semibold text-foreground">Same governance as chat</h3>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -318,7 +318,7 @@ export function ExtensionPage() {
                 not a side channel.
               </p>
             </div>
-            <div className="rounded-lg border border-divide bg-gray-50 p-5">
+            <div className="rounded-lg border border-divide bg-[color:var(--g-marketing-surface)] p-5">
               <NucleoIntelligence className="mb-3 h-6 w-6 text-primary" />
               <h3 className="font-semibold text-foreground">What it will not do</h3>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -327,7 +327,7 @@ export function ExtensionPage() {
                 call it.
               </p>
             </div>
-            <div className="rounded-lg border border-divide bg-gray-50 p-5">
+            <div className="rounded-lg border border-divide bg-[color:var(--g-marketing-surface)] p-5">
               <NucleoAgent className="mb-3 h-6 w-6 text-primary" />
               <h3 className="font-semibold text-foreground">Quick chat on the page</h3>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -346,7 +346,7 @@ export function ExtensionPage() {
                 .
               </p>
             </div>
-            <div className="rounded-lg border border-divide bg-gray-50 p-5">
+            <div className="rounded-lg border border-divide bg-[color:var(--g-marketing-surface)] p-5">
               <NucleoWorkflow className="mb-3 h-6 w-6 text-primary" />
               <h3 className="font-semibold text-foreground">Workflows from the overlay</h3>
               <p className="mt-2 text-sm text-muted-foreground">

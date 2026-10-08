@@ -339,7 +339,7 @@ export function SharedChatComposerControls({
             aria-pressed={effectiveListening}
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#16a374]/40",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
               voiceEntitled
                 ? "hover:bg-muted/60"
                 : "cursor-not-allowed opacity-50",
@@ -469,7 +469,7 @@ export function SharedChatComposerControls({
               className={cn(
                 "mb-0.5 h-11 w-11 shrink-0 rounded-full",
                 canSubmit && !disabled
-                  ? "bg-[color:var(--g-brand)] text-white hover:bg-[color:var(--g-brand-hover)]"
+                  ? "bg-[color:var(--g-brand)] text-brand-foreground hover:bg-[color:var(--g-brand-hover)]"
                   : "disabled:opacity-40",
               )}
               aria-label="Send message"

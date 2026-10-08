@@ -254,7 +254,7 @@ function StatusTile({ label, ok, detail }: { label: string; ok: boolean; detail:
         {ok ? (
           <CheckCircle2 className="h-4 w-4 text-success" />
         ) : (
-          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          <AlertTriangle className="h-4 w-4 text-warning" />
         )}
         <span className="text-sm font-medium text-foreground">{label}</span>
       </div>

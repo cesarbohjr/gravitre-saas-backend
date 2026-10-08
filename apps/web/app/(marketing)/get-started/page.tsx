@@ -47,8 +47,8 @@ function getPasswordStrength(password: string): { label: string; color: string }
   const hasSpecial = /[^a-zA-Z0-9]/.test(password)
   const score = [hasLower, hasUpper, hasNumber, hasSpecial].filter(Boolean).length
   if (password.length >= 12 && score >= 3) return { label: "Strong", color: "bg-primary/100" }
-  if (password.length >= 8 && score >= 2) return { label: "Fair", color: "bg-amber-500" }
-  return { label: "Weak", color: "bg-red-400" }
+  if (password.length >= 8 && score >= 2) return { label: "Fair", color: "bg-warning" }
+  return { label: "Weak", color: "bg-destructive/70" }
 }
 
 export default function GetStartedPage() {
@@ -181,7 +181,7 @@ export default function GetStartedPage() {
   const anyLoading = isLoading || loadingProvider !== null
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[color:var(--g-marketing-canvas)]">
       <Container className="border-divide min-h-screen border-x py-10 md:py-16">
         <div className="grid grid-cols-1 gap-10 px-4 md:grid-cols-2 md:px-8 lg:gap-16">
           <div className="hidden md:block">
@@ -207,7 +207,7 @@ export default function GetStartedPage() {
             </p>
           </div>
 
-          <div className="shadow-aceternity rounded-2xl border border-divide bg-white p-6 sm:p-8">
+          <div className="shadow-aceternity rounded-2xl border border-divide bg-card p-6 sm:p-8">
             {/* Success message */}
             {successMessage && (
               <div className="mb-6 p-4 rounded-xl bg-primary/10 border border-primary/20 text-sm text-primary flex items-start gap-3">
@@ -218,10 +218,10 @@ export default function GetStartedPage() {
 
             {/* Error message */}
             {authError && (
-              <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700" role="alert">
+              <div className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-sm text-danger-text" role="alert">
                 {authError}
                 {authError.includes("already exists") && (
-                  <Link href="/login" className="block mt-2 text-red-800 underline font-medium">
+                  <Link href="/login" className="block mt-2 text-danger-text underline font-medium">
                     Sign in instead
                   </Link>
                 )}
@@ -358,7 +358,7 @@ export default function GetStartedPage() {
               <button
                 type="submit"
                 disabled={anyLoading}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 min-h-[48px] text-sm font-medium text-white transition-all hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 min-h-[48px] text-sm font-medium text-background transition-all hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <>

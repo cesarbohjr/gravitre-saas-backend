@@ -636,8 +636,8 @@ export function ChatExecutionPanel({
         className={cn(
           "mt-3 rounded-xl border px-4 py-3 text-sm",
           unverifiable
-            ? "border-amber-500/25 bg-amber-500/5"
-            : "border-red-500/25 bg-red-500/5",
+            ? "border-warning/25 bg-warning/5"
+            : "border-destructive/25 bg-destructive/5",
           className,
         )}
       >
@@ -645,7 +645,7 @@ export function ChatExecutionPanel({
           <ShieldAlert
             className={cn(
               "mt-0.5 h-4 w-4 shrink-0",
-              unverifiable ? "text-amber-600" : "text-red-600",
+              unverifiable ? "text-warning-text" : "text-danger-text",
             )}
           />
           <div className="min-w-0 flex-1">
@@ -790,7 +790,7 @@ export function ChatExecutionPanel({
           </p>
         ) : null}
         {assumptions.length > 0 ? (
-          <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-2.5 py-2 text-xs text-amber-900 dark:text-amber-200">
+          <div className="mt-2 rounded-lg border border-warning/20 bg-warning/5 px-2.5 py-2 text-xs text-warning-text">
             <p className="font-medium">I assumed</p>
             <ul className="mt-1 list-disc space-y-0.5 pl-4">
               {assumptions.slice(0, 4).map((note) => (

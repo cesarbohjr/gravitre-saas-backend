@@ -100,14 +100,14 @@ function CompactControls({
     >
       <button
         type="button"
-        className="rounded-md border border-[color:var(--color-line,#eaedf1)] bg-white px-2 py-1 text-[11px] font-semibold text-[color:var(--g-text-secondary)] disabled:opacity-40"
+        className="rounded-md border border-line bg-card px-2 py-1 text-[11px] font-semibold text-[color:var(--g-text-secondary)] disabled:opacity-40"
         onClick={onBack}
         disabled={beatIndex === 0}
         aria-label="Step back"
       >
         ←
       </button>
-      <span className="min-w-[6.5rem] text-center text-[11px] font-semibold text-[color:var(--color-brand,#16a374)]">
+      <span className="min-w-[6.5rem] text-center text-[11px] font-semibold text-brand">
         {BEAT_LABEL[beat]}
         <span className="ml-1 font-normal text-[color:var(--g-text-muted)]">
           {beatIndex + 1}/{total}
@@ -115,7 +115,7 @@ function CompactControls({
       </span>
       <button
         type="button"
-        className="rounded-md border border-[color:var(--color-line,#eaedf1)] bg-white px-2 py-1 text-[11px] font-semibold text-[color:var(--g-text-secondary)] disabled:opacity-40"
+        className="rounded-md border border-line bg-card px-2 py-1 text-[11px] font-semibold text-[color:var(--g-text-secondary)] disabled:opacity-40"
         onClick={onForward}
         disabled={beatIndex >= total - 1}
         aria-label="Step forward"
@@ -124,7 +124,7 @@ function CompactControls({
       </button>
       <button
         type="button"
-        className="rounded-md border border-[color:var(--color-line,#eaedf1)] bg-white px-2 py-1 text-[11px] font-medium text-[color:var(--g-text-muted)]"
+        className="rounded-md border border-line bg-card px-2 py-1 text-[11px] font-medium text-[color:var(--g-text-muted)]"
         onClick={onReplay}
         aria-label="Replay from start"
       >
@@ -132,7 +132,7 @@ function CompactControls({
       </button>
       <button
         type="button"
-        className="rounded-md border border-[color:var(--color-line,#eaedf1)] bg-white px-2 py-1 text-[11px] font-medium text-[color:var(--g-text-muted)]"
+        className="rounded-md border border-line bg-card px-2 py-1 text-[11px] font-medium text-[color:var(--g-text-muted)]"
         onClick={onReset}
         aria-label="Reset selection and step"
       >
@@ -258,7 +258,7 @@ export function EntityConvergenceWorkbench({ className }: { className?: string }
 
       {/* Single structured field — mentions live here only */}
       <div
-        className="relative overflow-hidden rounded-2xl border border-[color:var(--color-line,#eaedf1)] bg-[color:color-mix(in_srgb,#fafbfc_92%,white)]"
+        className="relative overflow-hidden rounded-2xl border border-line bg-[color:color-mix(in_srgb,var(--g-marketing-surface)_92%,var(--card))]"
         data-testid="kf-a-field"
       >
         <svg
@@ -268,7 +268,7 @@ export function EntityConvergenceWorkbench({ className }: { className?: string }
           aria-label="Knowledge field — illustrative entity convergence"
         >
           {/* Column guides — fine technical linework, not wallpaper grid */}
-          <line x1="200" y1="28" x2="200" y2="220" stroke="#e4e7ec" strokeWidth="1" strokeDasharray="2 4" />
+          <line x1="200" y1="28" x2="200" y2="220" stroke="var(--line)" strokeWidth="1" strokeDasharray="2 4" />
           <text x="72" y="24" textAnchor="middle" fontSize="9" fontWeight="600" fill="var(--g-text-muted)">
             CRM
           </text>
@@ -397,17 +397,17 @@ export function EntityConvergenceWorkbench({ className }: { className?: string }
                   r={isSelected || isConverged ? 8 : 6.5}
                   fill={
                     isRejected
-                      ? "color-mix(in srgb, var(--g-intelligence) 22%, white)"
+                      ? "color-mix(in srgb, var(--g-intelligence) 22%, var(--card))"
                       : isConverged || (inMatch && showMatch)
                         ? CREATIVE_TOKENS.brand
-                        : "#fff"
+                        : "var(--card)"
                   }
                   stroke={
                     isRejected
                       ? "var(--g-intelligence)"
                       : isSelected || isConverged || (inMatch && showMatch)
                         ? CREATIVE_TOKENS.brand
-                        : "#b8bec8"
+                        : "var(--g-border-strong)"
                   }
                   strokeWidth="1.5"
                   className={transition}
@@ -469,7 +469,7 @@ export function EntityConvergenceWorkbench({ className }: { className?: string }
                 width="148"
                 height={showEvidence ? 52 : 40}
                 rx="8"
-                fill="#fff"
+                fill="var(--card)"
                 stroke={CREATIVE_TOKENS.brand}
                 strokeWidth="1.75"
               />
@@ -493,7 +493,7 @@ export function EntityConvergenceWorkbench({ className }: { className?: string }
                     height="16"
                     rx="3"
                     fill="var(--g-intelligence-soft)"
-                    stroke="color-mix(in oklch, var(--g-intelligence) 35%, #eaedf1)"
+                    stroke="color-mix(in oklch, var(--g-intelligence) 35%, var(--line))"
                   />
                   <circle cx="8" cy="8" r="2.5" fill="var(--g-intelligence)" />
                   <text x="16" y="11" fontSize="8" fontWeight="600" fill="var(--g-intelligence)">
@@ -536,7 +536,7 @@ export function EntityConvergenceWorkbench({ className }: { className?: string }
         {/* Inline inspect — contextual under field, not permanent sidebar */}
         {selected ? (
           <div
-            className="border-t border-[color:var(--color-line,#eaedf1)] bg-white/90 px-4 py-2.5"
+            className="border-t border-line bg-card/90 px-4 py-2.5"
             data-testid="kf-a-inspect"
           >
             <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--g-text-muted)]">
@@ -576,8 +576,8 @@ export function EntityConvergenceWorkbench({ className }: { className?: string }
             className={cn(
               "rounded-md border px-2.5 py-1 text-[11px] font-semibold",
               !compareResolved
-                ? "border-[color:var(--color-brand,#16a374)] text-[color:var(--color-brand,#16a374)]"
-                : "border-[color:var(--color-line,#eaedf1)] text-[color:var(--g-text-muted)]",
+                ? "border-brand text-brand"
+                : "border-line text-[color:var(--g-text-muted)]",
             )}
             onClick={() => setCompareResolved(false)}
             aria-pressed={!compareResolved}
@@ -589,8 +589,8 @@ export function EntityConvergenceWorkbench({ className }: { className?: string }
             className={cn(
               "rounded-md border px-2.5 py-1 text-[11px] font-semibold",
               compareResolved
-                ? "border-[color:var(--color-brand,#16a374)] text-[color:var(--color-brand,#16a374)]"
-                : "border-[color:var(--color-line,#eaedf1)] text-[color:var(--g-text-muted)]",
+                ? "border-brand text-brand"
+                : "border-line text-[color:var(--g-text-muted)]",
             )}
             onClick={() => setCompareResolved(true)}
             aria-pressed={compareResolved}

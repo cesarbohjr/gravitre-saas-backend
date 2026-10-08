@@ -56,7 +56,7 @@ function WaveformBars({ active }: { active: boolean }) {
             width="8"
             height={active ? h : 4}
             rx="2"
-            fill={active ? "#16a374" : "#c8cdd4"}
+            fill={active ? "var(--brand)" : "var(--g-border-strong)"}
             opacity={active ? 0.85 : 0.45}
           />
         )
@@ -105,11 +105,11 @@ function VoiceIntentFieldImpl({ className }: { className?: string }) {
       }
     >
       {reduced ? (
-        <div className="rounded-2xl border border-divide bg-white p-5" data-testid="voice-reduced">
+        <div className="rounded-2xl border border-divide bg-card p-5" data-testid="voice-reduced">
           <ReducedModel />
         </div>
       ) : (
-        <div className="rounded-2xl border border-divide bg-white p-4 md:p-6" data-testid="voice-desktop">
+        <div className="rounded-2xl border border-divide bg-card p-4 md:p-6" data-testid="voice-desktop">
           <p className="text-center text-sm text-[color:var(--g-text-secondary)]">{ILLUSTRATIVE_CONTEXT}</p>
 
           <div className="mt-4 flex justify-center">
@@ -125,7 +125,7 @@ function VoiceIntentFieldImpl({ className }: { className?: string }) {
               {STRUCTURE_CHIPS.map((chip) => (
                 <span
                   key={chip}
-                  className="rounded-full border border-divide bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-[color:var(--g-text-secondary)]"
+                  className="rounded-full border border-divide bg-[color:var(--g-marketing-surface)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--g-text-secondary)]"
                 >
                   {chip}
                 </span>
@@ -141,7 +141,7 @@ function VoiceIntentFieldImpl({ className }: { className?: string }) {
                   <div
                     className={cn(
                       "min-w-[4.25rem] rounded-xl border px-2.5 py-2 text-center",
-                      on && "border-[color:var(--color-brand,#16a374)]",
+                      on && "border-brand",
                       !on && "border-divide opacity-60",
                     )}
                     data-testid={`voice-stage-${stage.id}`}

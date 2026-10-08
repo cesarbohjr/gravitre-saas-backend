@@ -42,10 +42,10 @@ export function DocsToc({ headings }: { headings: TocHeading[] }) {
 
   return (
     <nav aria-label="On this page" className="text-sm">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         On this page
       </p>
-      <ul className="space-y-1.5 border-l border-zinc-200">
+      <ul className="space-y-1.5 border-l border-border">
         {headings.map((heading) => {
           const active = heading.id === activeId
           return (
@@ -56,8 +56,8 @@ export function DocsToc({ headings }: { headings: TocHeading[] }) {
                   heading.depth === 3 ? "pl-6" : "pl-3"
                 } ${
                   active
-                    ? "border-emerald-500 font-medium text-emerald-700"
-                    : "border-transparent text-zinc-500 hover:border-zinc-300 hover:text-zinc-900"
+                    ? "border-brand font-medium text-brand-text"
+                    : "border-transparent text-muted-foreground hover:border-border-control hover:text-foreground"
                 }`}
               >
                 {heading.text}
@@ -80,18 +80,18 @@ export function DocsTocMobile({ headings }: { headings: TocHeading[] }) {
     <details
       open={open}
       onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
-      className="mb-8 rounded-xl border border-zinc-200 bg-zinc-50/60 p-3 xl:hidden"
+      className="mb-8 rounded-xl border border-border bg-muted/60 p-3 xl:hidden"
     >
-      <summary className="cursor-pointer list-none text-sm font-medium text-zinc-700">
+      <summary className="cursor-pointer list-none text-sm font-medium text-foreground">
         On this page
       </summary>
-      <ul className="mt-3 space-y-1.5 border-l border-zinc-200">
+      <ul className="mt-3 space-y-1.5 border-l border-border">
         {headings.map((heading) => (
           <li key={heading.id}>
             <a
               href={`#${heading.id}`}
               onClick={() => setOpen(false)}
-              className={`block py-0.5 text-sm text-zinc-600 hover:text-emerald-700 ${
+              className={`block py-0.5 text-sm text-muted-foreground hover:text-brand-text ${
                 heading.depth === 3 ? "pl-6" : "pl-3"
               }`}
             >

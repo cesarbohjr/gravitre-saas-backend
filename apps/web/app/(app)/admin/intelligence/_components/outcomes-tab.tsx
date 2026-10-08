@@ -58,18 +58,18 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
               <p className="mt-1 text-2xl font-semibold tabular-nums">{summaries.length}</p>
             </div>
             <div className="rounded-[8px] border border-[color:var(--g-emerald)]/20 bg-[color:var(--g-emerald-pale)] px-4 py-3">
-              <p className="text-xs font-medium text-emerald-800 dark:text-emerald-200">
+              <p className="text-xs font-medium text-success">
                 Ready to read
               </p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-success">
                 {ready.length}
               </p>
             </div>
-            <div className="rounded-[8px] border border-amber-500/20 bg-amber-500/5 px-4 py-3">
-              <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
+            <div className="rounded-[8px] border border-warning/20 bg-warning/5 px-4 py-3">
+              <p className="text-xs font-medium text-warning">
                 Still collecting
               </p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums text-amber-700 dark:text-amber-300">
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-warning">
                 {building.length}
               </p>
             </div>
@@ -117,7 +117,7 @@ export function OutcomesTab({ enabled }: { enabled: boolean }) {
                         <h3 className="font-medium text-foreground text-pretty">
                           {summary.agentName ?? "Agent"}
                         </h3>
-                        <Badge className="bg-emerald-500/15 text-emerald-800 hover:bg-emerald-500/15 dark:text-emerald-200">
+                        <Badge className="bg-success/15 text-success hover:bg-success/15">
                           {(readNumber(summary.winRate) * 100).toFixed(0)}% win rate
                         </Badge>
                       </div>

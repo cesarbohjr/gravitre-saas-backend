@@ -228,9 +228,9 @@ export function WorkflowCard({
 
           {/* Connector Dependencies Warning */}
           {hasDisconnected && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 mb-3">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-              <span className="text-xs text-amber-500">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/20 mb-3">
+              <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />
+              <span className="text-xs text-warning-text">
                 Depends on {dependencies.filter(d => d.status !== "connected").map(d => d.name).join(", ")} (disconnected)
               </span>
             </div>
@@ -276,7 +276,7 @@ export function WorkflowCard({
             <div className="flex items-center gap-4">
               {/* Success rate */}
               <div className="flex items-center gap-1.5">
-                <Icon name="chartLine" size="xs" className="text-emerald-700 dark:text-emerald-400" />
+                <Icon name="chartLine" size="xs" className="text-success-text" />
                 <span className="text-xs text-muted-foreground">{successRate}</span>
               </div>
               

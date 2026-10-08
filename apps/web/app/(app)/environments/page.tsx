@@ -127,7 +127,7 @@ function HealthRing({ health, size = 48 }: { health: number | null; size?: numbe
   const circumference = 2 * Math.PI * radius
   const offset = health == null ? circumference : circumference - (health / 100) * circumference
   
-  const color = health == null ? "stroke-muted-foreground" : health >= 90 ? "stroke-[color:var(--g-emerald)]" : health >= 70 ? "stroke-amber-500" : "stroke-red-500"
+  const color = health == null ? "stroke-muted-foreground" : health >= 90 ? "stroke-[color:var(--g-emerald)]" : health >= 70 ? "stroke-warning" : "stroke-destructive"
   
   return (
     <div className="relative" style={{ width: size, height: size }}>
@@ -206,8 +206,8 @@ function EnvironmentNode({
 
   const statusConfig = {
     active: { color: "border-[color:var(--g-emerald)]/50", bg: "bg-[color:var(--g-emerald-pale)]" },
-    inactive: { color: "border-zinc-500/50", bg: "bg-zinc-500/5" },
-    degraded: { color: "border-amber-500/50", bg: "bg-amber-500/5" },
+    inactive: { color: "border-muted-foreground/50", bg: "bg-muted-foreground/5" },
+    degraded: { color: "border-warning/50", bg: "bg-warning/5" },
   }
   const cfg = statusConfig[environment.status]
 
@@ -231,18 +231,18 @@ function EnvironmentNode({
             <div className={cn(
               "flex h-14 w-14 items-center justify-center rounded-xl",
               environment.name === "Production" 
-                ? "bg-emerald-500/20" 
+                ? "bg-success/20" 
                 : environment.name === "Staging"
-                  ? "bg-blue-500/20"
-                  : "bg-amber-500/20"
+                  ? "bg-info/20"
+                  : "bg-warning/20"
             )}>
               <Server className={cn(
                 "h-7 w-7",
                 environment.name === "Production" 
-                  ? "text-emerald-700 dark:text-emerald-400" 
+                  ? "text-success" 
                   : environment.name === "Staging"
-                    ? "text-blue-600 dark:text-blue-400"
-                    : "text-amber-700 dark:text-amber-400"
+                    ? "text-info"
+                    : "text-warning"
               )} />
             </div>
             <div>
@@ -451,7 +451,7 @@ export default function EnvironmentsPage() {
           }
         >
           {error && (
-            <div className="mb-3 rounded-[var(--np-radius-md)] border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
+            <div className="mb-3 rounded-[var(--np-radius-md)] border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               Failed to load environments. Showing latest available data.
             </div>
           )}
@@ -494,7 +494,7 @@ export default function EnvironmentsPage() {
           {!adminLoading && !isAdmin ? (
             <GravitreSurface className="p-3" padded={false}>
               <div className="flex items-center gap-3">
-                <Shield className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                <Shield className="h-4 w-4 text-warning" />
                 <p className="text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">Admin access required.</span>
                   {" "}Ask an organization owner to grant you admin before changing environments.

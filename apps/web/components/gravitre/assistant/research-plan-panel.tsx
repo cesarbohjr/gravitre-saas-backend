@@ -26,7 +26,7 @@ type ResearchPlanPanelProps = {
 function StageIcon({ status }: { status: CascadeStageProgress["status"] }) {
   switch (status) {
     case "completed":
-      return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
+      return <CheckCircle2 className="h-3.5 w-3.5 text-success-text" aria-hidden />
     case "empty":
       return <MinusCircle className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
     case "skipped":

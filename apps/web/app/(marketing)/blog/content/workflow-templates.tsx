@@ -49,7 +49,7 @@ export const workflowTemplatesPost: BlogPost = {
   ...createBlogDates("2026-07-15"),
   readTime: "12 min read",
   heroImage: "/images/blog/workflow-templates-hero.jpg",
-  heroGradient: "from-amber-50 via-white to-primary/10",
+  heroGradient: "from-warning/10 via-[color:var(--g-marketing-canvas)] to-primary/10",
   heroAlt:
     "Stylized Gravitre Marketplace illustration with department pack cards for Customer Success, RevOps, Support, and Marketing, plus Browse, Connect, and Install steps.",
   keywords: [

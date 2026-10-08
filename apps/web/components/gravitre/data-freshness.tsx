@@ -69,7 +69,7 @@ export function DataFreshness({
       <span
         className={cn(
           "h-1.5 w-1.5 rounded-full",
-          isRefreshing ? "bg-amber-500 animate-pulse" : isValid ? "bg-emerald-500" : "bg-muted-foreground/40",
+          isRefreshing ? "bg-warning animate-pulse" : isValid ? "bg-success" : "bg-muted-foreground/40",
         )}
         aria-hidden="true"
       />

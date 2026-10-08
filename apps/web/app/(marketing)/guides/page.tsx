@@ -189,7 +189,7 @@ const guides = [
 
 const difficultyColors: Record<string, string> = {
   Beginner: "text-primary bg-primary/15",
-  Intermediate: "text-amber-700 bg-amber-100",
+  Intermediate: "text-warning-text bg-warning/15",
   Advanced: "text-[color:var(--g-carbon)] bg-[color:var(--g-emerald-pale)]",
 }
 
@@ -275,7 +275,7 @@ export default function GuidesPage() {
                 href={guideHref(guide.title)}
                 className="group relative block overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg"
               >
-                <div className="aspect-video bg-gradient-to-br from-primary/10 via-white to-muted/50 p-6 flex items-center justify-center">
+                <div className="aspect-video bg-gradient-to-br from-primary/10 via-card to-muted/50 p-6 flex items-center justify-center">
                   <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Play className="h-8 w-8 text-muted-foreground" />
                   </div>
@@ -317,7 +317,7 @@ export default function GuidesPage() {
                     inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all
                     ${
                       activeCategory === cat.id
-                        ? "bg-primary text-white"
+                        ? "bg-primary text-primary-foreground"
                         : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground border border-border"
                     }
                   `}
@@ -367,7 +367,7 @@ export default function GuidesPage() {
           </GravitreReveal>
 
           <div className="relative">
-            <div className="absolute left-6 top-8 bottom-8 w-px bg-gradient-to-b from-primary/100 via-emerald-300 to-transparent hidden sm:block" />
+            <div className="absolute left-6 top-8 bottom-8 w-px bg-gradient-to-b from-primary/100 via-brand/50 to-transparent hidden sm:block" />
 
             <div className="space-y-6">
               {learningPath.map((item, i) => (
@@ -429,7 +429,7 @@ export default function GuidesPage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href="/get-started"
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
               >
                 Get started
                 <ArrowRight className="h-4 w-4" />

@@ -397,7 +397,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
 
           {/* Admin/Lite Mode Toggle */}
           {!chromeQuiet ? (
-          <div className="mr-1 hidden items-center gap-px rounded-[4px] bg-white/[0.04] p-0.5 sm:flex">
+          <div className="mr-1 hidden items-center gap-px rounded-[4px] bg-foreground/[0.04] p-0.5 sm:flex">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -405,7 +405,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                   className={cn(
                     "rounded-[2px] px-2 py-0.5 text-xs font-medium transition-colors duration-150",
                     mode === "admin"
-                      ? "bg-white/[0.12] text-foreground"
+                      ? "bg-foreground/[0.12] text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -423,7 +423,7 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                   className={cn(
                     "rounded-[2px] px-2 py-0.5 text-xs font-medium transition-colors duration-150",
                     mode === "lite"
-                      ? "bg-white/[0.12] text-foreground"
+                      ? "bg-foreground/[0.12] text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >

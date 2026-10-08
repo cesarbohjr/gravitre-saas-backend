@@ -137,9 +137,9 @@ export function VoiceSessionPresence({
           : isError
             ? "border-border/70 bg-muted/40"
             : isListening || isUnderstanding
-              ? "border-[#16a374]/30 bg-[#16a374]/[0.08]"
+              ? "border-brand/30 bg-brand/[0.08]"
               : isSpeaking || isThinking
-                ? "border-[#3f5b52]/25 bg-[#3f5b52]/[0.06] dark:border-[#e9e9e6]/20 dark:bg-[#e9e9e6]/[0.06]"
+                ? "border-foreground/20 bg-foreground/[0.06]"
                 : "border-border/70 bg-muted/30",
         className,
       )}

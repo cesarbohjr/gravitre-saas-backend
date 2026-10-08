@@ -126,7 +126,7 @@ export default async function DocsSlugPage({
           </div>
         </DocPageMotion>
 
-        <article className="prose prose-zinc mt-8 max-w-none">{content}</article>
+        <article className="prose mt-8 max-w-none">{content}</article>
 
         {(frontmatter.prev || frontmatter.next) && (
           <div className="mt-16 border-t border-border pt-8">
@@ -174,7 +174,7 @@ export default async function DocsSlugPage({
           <div className="flex items-center justify-center gap-3">
             <Link
               href="/contact"
-              className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-foreground/90"
+              className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90"
             >
               Contact Support
             </Link>

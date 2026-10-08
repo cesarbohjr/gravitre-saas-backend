@@ -19,7 +19,7 @@ export function SwarmVerificationLabel({
     <Badge
       variant="outline"
       className={cn(
-        "font-normal border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300",
+        "font-normal border-warning/40 bg-warning/10 text-warning",
         compact ? "text-[10px] px-1.5 py-0" : "text-xs",
         className,
       )}

@@ -693,14 +693,14 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
         {/* Ambient background scoped to billing content — never covers the settings rail */}
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <div className="absolute inset-0 opacity-40">
-            <div className="absolute inset-0 opacity-35 [background-image:radial-gradient(rgba(0,168,120,.18)_1px,transparent_1px)] [background-size:20px_20px]" aria-hidden />
+            <div className="absolute inset-0 opacity-35 [background-image:radial-gradient(color-mix(in_srgb,var(--brand)_18%,transparent)_1px,transparent_1px)] [background-size:20px_20px]" aria-hidden />
           </div>
           <div className="absolute inset-0 bg-[color:var(--g-surface-1)]/90" />
         </div>
         
         {/* Hero Header */}
         <div className="relative z-10 overflow-hidden border-b border-divide/50">
-          <div className="absolute inset-0 [background-image:linear-gradient(90deg,transparent,rgba(0,168,120,.08),transparent)]" />
+          <div className="absolute inset-0 [background-image:linear-gradient(90deg,transparent,color-mix(in_srgb,var(--brand)_8%,transparent),transparent)]" />
           <div className="absolute top-0 right-0 pointer-events-none">
 
           </div>
@@ -1516,7 +1516,7 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
           <AlertDialogFooter>
             <AlertDialogCancel>Keep subscription</AlertDialogCancel>
             <AlertDialogAction 
-              className="bg-destructive text-white hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleCancelSubscription}
               disabled={isProcessing}
             >

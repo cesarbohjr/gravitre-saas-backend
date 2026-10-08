@@ -79,23 +79,23 @@ function MobileNode({
   return (
     <div
       className={cn(
-        "flex w-full max-w-[14rem] items-center gap-3 rounded-xl border bg-white px-3 py-2.5 shadow-sm",
-        active && "border-[color:var(--color-brand,#16a374)]",
-        resolved && "border-[color:var(--color-blue-500)]",
-        !active && !resolved && "border-[color:var(--color-line,#eaedf1)]",
+        "flex w-full max-w-[14rem] items-center gap-3 rounded-xl border bg-card px-3 py-2.5 shadow-sm",
+        active && "border-brand",
+        resolved && "border-[color:var(--info)]",
+        !active && !resolved && "border-line",
       )}
     >
       <Icon
         className={cn(
           "h-4 w-4 shrink-0 text-[color:var(--g-text-secondary)]",
-          active && "text-[color:var(--color-brand,#16a374)]",
+          active && "text-brand",
         )}
       />
       <span className="text-sm font-semibold text-[color:var(--g-text-secondary)]">{LABELS[id]}</span>
       <span
         className={cn(
           "ml-auto h-2 w-2 rounded-full",
-          active ? "bg-[color:var(--color-brand,#16a374)]" : "bg-[color:var(--color-line,#eaedf1)]",
+          active ? "bg-brand" : "bg-line",
         )}
       />
     </div>
@@ -110,10 +110,10 @@ function MobileCore({ label, coreState, reduced }: { label: string; coreState: C
     <div className="flex flex-col items-center gap-2" data-testid="mobile-topology-core" data-core-state={coreState}>
       <div
         className={cn(
-          "relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border bg-white shadow-sm",
+          "relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border bg-card shadow-sm",
           learned
-            ? "border-[color:var(--color-brand,#16a374)]"
-            : "border-[color:var(--color-line,#eaedf1)]",
+            ? "border-brand"
+            : "border-line",
         )}
       >
         <svg viewBox="0 0 80 72" className="absolute inset-0 h-full w-full" aria-hidden data-testid="mobile-topology-svg">
@@ -136,7 +136,7 @@ function MobileCore({ label, coreState, reduced }: { label: string; coreState: C
                     ? CREATIVE_TOKENS.signal
                     : isOutbound || learned
                       ? CREATIVE_TOKENS.action
-                      : "color-mix(in srgb, var(--g-intelligence) 45%, #c5c9d0)"
+                      : "color-mix(in srgb, var(--g-intelligence) 45%, var(--g-border-strong))"
                 }
                 strokeWidth={isOutbound || isInbound ? 1.5 : 1.1}
                 strokeLinecap="round"
@@ -157,17 +157,17 @@ function MobileCore({ label, coreState, reduced }: { label: string; coreState: C
                     ? CREATIVE_TOKENS.brand
                     : learned
                       ? CREATIVE_TOKENS.action
-                      : "color-mix(in srgb, var(--g-intelligence) 55%, #9aa0a8)"
+                      : "color-mix(in srgb, var(--g-intelligence) 55%, var(--muted-foreground))"
                 }
               />
             )
           })}
         </svg>
-        <div className="relative z-10 text-[color:var(--color-brand,#16a374)]">
+        <div className="relative z-10 text-brand">
           <LogoSVG className="size-5 opacity-90" />
         </div>
       </div>
-      <span className="rounded-md border border-[color:var(--color-line,#eaedf1)] bg-white px-2 py-0.5 text-[10px] font-semibold text-[color:var(--color-brand,#16a374)]">
+      <span className="rounded-md border border-line bg-card px-2 py-0.5 text-[10px] font-semibold text-brand">
         {label}
       </span>
     </div>
@@ -221,8 +221,8 @@ export function DepartmentNetworkMobile({ reduced }: { reduced: boolean }) {
             className={cn(
               "h-8 w-px",
               phase === "from" || phase === "back"
-                ? "bg-[color:var(--color-blue-500)]"
-                : "bg-[color:var(--color-brand,#16a374)]",
+                ? "bg-[color:var(--info)]"
+                : "bg-brand",
             )}
             aria-hidden
           />
@@ -231,8 +231,8 @@ export function DepartmentNetworkMobile({ reduced }: { reduced: boolean }) {
             className={cn(
               "h-8 w-px",
               phase === "to" || phase === "back"
-                ? "bg-[color:var(--color-brand,#16a374)]"
-                : "bg-[color:var(--color-line,#eaedf1)]",
+                ? "bg-brand"
+                : "bg-line",
             )}
             aria-hidden
           />

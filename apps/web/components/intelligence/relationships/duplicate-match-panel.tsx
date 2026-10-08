@@ -19,11 +19,11 @@ export function DuplicateMatchPanel({
 
   return (
     <div
-      className="space-y-3 rounded-[var(--np-radius-md)] border border-amber-500/30 bg-amber-500/5 p-3"
+      className="space-y-3 rounded-[var(--np-radius-md)] border border-warning/30 bg-warning/5 p-3"
       data-testid="duplicate-match-panel"
     >
       <div className="flex items-start gap-2">
-        <Warning className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" weight="duotone" aria-hidden />
+        <Warning className="mt-0.5 h-4 w-4 shrink-0 text-warning" weight="duotone" aria-hidden />
         <div className="min-w-0 space-y-1">
           <p className="text-sm font-medium text-[color:var(--g-text-primary)]">Possible match found</p>
           <p className="text-xs leading-relaxed text-[color:var(--g-text-muted)]">

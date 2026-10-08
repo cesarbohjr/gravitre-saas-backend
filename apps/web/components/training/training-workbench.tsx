@@ -55,13 +55,13 @@ import { STARTER_DATASET, STARTER_EXAMPLES } from "@/components/training/starter
 
 function statusClasses(status: string): string {
   if (status === "ready" || status === "completed") {
-    return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+    return "bg-success/10 text-success border-success/20"
   }
   if (status === "training" || status === "processing" || status === "queued") {
-    return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+    return "bg-info/10 text-info border-info/20"
   }
   if (status === "failed") {
-    return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
+    return "bg-destructive/10 text-destructive border-destructive/20"
   }
   return "bg-secondary text-muted-foreground border-border"
 }
@@ -1429,7 +1429,7 @@ export function TrainingWorkbench({
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="hover:border-emerald-500/40 hover:text-emerald-800 dark:hover:text-emerald-400"
+                                className="hover:border-success/40 hover:text-success"
                                 disabled={busy}
                                 onClick={() => {
                                   chooseMaterial(isOpen ? null : dataset.id)
@@ -1444,7 +1444,7 @@ export function TrainingWorkbench({
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="hover:border-blue-500/40 hover:text-blue-800 dark:hover:text-blue-400"
+                                className="hover:border-info/40 hover:text-info"
                                 disabled={
                                   busy ||
                                   !(
@@ -1464,7 +1464,7 @@ export function TrainingWorkbench({
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="hover:border-red-500/40 hover:text-red-800 dark:hover:text-red-400"
+                                className="hover:border-destructive/40 hover:text-destructive"
                                 disabled={busy}
                                 onClick={() => {
                                   setMutationError(null)
@@ -1631,7 +1631,7 @@ export function TrainingWorkbench({
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="hover:border-red-500/40 hover:text-red-800 dark:hover:text-red-400"
+                                className="hover:border-destructive/40 hover:text-destructive"
                                 disabled={mutatingJobId === job.id}
                                 onClick={() => {
                                   setMutationError(null)
@@ -1779,7 +1779,7 @@ export function TrainingWorkbench({
                             className={cn(
                               "rounded-full border px-2 py-0.5 text-xs font-medium",
                               instruction.is_active
-                                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
+                                ? "bg-success/10 text-success border-success/20"
                                 : "bg-secondary text-muted-foreground border-border",
                             )}
                           >
@@ -1797,7 +1797,7 @@ export function TrainingWorkbench({
                           <Button
                             size="sm"
                             variant="outline"
-                            className="hover:border-blue-500/40 hover:text-blue-800 dark:hover:text-blue-400"
+                            className="hover:border-info/40 hover:text-info"
                             disabled={mutatingInstructionId === instruction.id}
                             onClick={() =>
                               void handleToggleInstruction(instruction)
@@ -1808,7 +1808,7 @@ export function TrainingWorkbench({
                           <Button
                             size="sm"
                             variant="outline"
-                            className="hover:border-red-500/40 hover:text-red-800 dark:hover:text-red-400"
+                            className="hover:border-destructive/40 hover:text-destructive"
                             disabled={mutatingInstructionId === instruction.id}
                             onClick={() => {
                               setMutationError(null)

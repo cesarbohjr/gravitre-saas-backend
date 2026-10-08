@@ -60,9 +60,9 @@ export function ReadAloudButton({
       title={label}
       className={cn(
         compact
-          ? "flex items-center gap-1 rounded px-2 py-1 text-xs text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
-          : "inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background/70 px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-emerald-500/30 hover:bg-emerald-500/5 hover:text-foreground",
-        isSpeaking && "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+          ? "flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          : "inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background/70 px-2 py-1 text-xs text-muted-foreground transition-colors hover:border-brand/30 hover:bg-brand/5 hover:text-foreground",
+        isSpeaking && "border-brand/30 bg-brand/10 text-brand-text",
         className,
       )}
     >

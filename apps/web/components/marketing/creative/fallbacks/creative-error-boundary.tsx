@@ -6,7 +6,7 @@ import { NucleoError } from "@/components/icons/nucleo/semantic"
 export function CreativeSceneFallback({ scene }: { scene?: string }) {
   return (
     <div
-      className="mx-auto w-full max-w-3xl rounded-2xl border border-divide bg-white p-5 text-center"
+      className="mx-auto w-full max-w-3xl rounded-2xl border border-divide bg-card p-5 text-center"
       data-testid="creative-scene-fallback"
       data-creative-fallback={scene ?? "unknown"}
       role="status"

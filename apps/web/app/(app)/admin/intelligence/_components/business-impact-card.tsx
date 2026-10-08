@@ -17,8 +17,8 @@ function severityVariant(severity: string): "destructive" | "secondary" | "outli
 function scoreTone(score: number | null | undefined): string {
   if (score == null) return "text-foreground"
   if (score >= 80) return "text-[color:var(--g-emerald-deep)]"
-  if (score >= 60) return "text-amber-600 dark:text-amber-400"
-  return "text-rose-600 dark:text-rose-400"
+  if (score >= 60) return "text-warning"
+  return "text-destructive"
 }
 
 function DimensionBar({ label, value, delay }: { label: string; value: number; delay: number }) {
@@ -58,11 +58,11 @@ export function BusinessImpactCard() {
         transition={{ duration: 0.4 }}
         className="relative overflow-hidden rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]"
       >
-        <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl" />
+        <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-brand/10 blur-2xl" />
         <div className="relative space-y-4">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] bg-[color:var(--g-emerald-pale)] ring-1 ring-[color:var(--g-emerald)]/20">
-              <Gauge className="h-5 w-5 text-emerald-600 dark:text-emerald-400" weight="duotone" aria-hidden />
+              <Gauge className="h-5 w-5 text-success" weight="duotone" aria-hidden />
             </span>
             <div>
               <h3 className="text-base font-semibold text-foreground">{SURFACE_COPY.learningAdmin.businessImpactTitle}</h3>
@@ -105,13 +105,13 @@ export function BusinessImpactCard() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.06 }}
-        className="relative overflow-hidden rounded-[10px] border border-amber-500/20 bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]"
+        className="relative overflow-hidden rounded-[10px] border border-warning/20 bg-[color:var(--g-surface-1)] p-5 shadow-[var(--np-shadow)]"
       >
-        <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-amber-500/10 blur-2xl" />
+        <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-warning/10 blur-2xl" />
         <div className="relative space-y-4">
           <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 ring-1 ring-amber-500/20">
-              <WarningCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" weight="duotone" aria-hidden />
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warning/10 ring-1 ring-warning/20">
+              <WarningCircle className="h-5 w-5 text-warning" weight="duotone" aria-hidden />
             </span>
             <div>
               <section id="revenue-risk" className="scroll-mt-24">
@@ -140,7 +140,7 @@ export function BusinessImpactCard() {
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] p-3 transition-colors hover:border-amber-500/25 hover:bg-[color:var(--g-surface-1)]"
+                  className="rounded-[8px] border border-divide bg-[color:var(--g-surface-2)] p-3 transition-colors hover:border-warning/25 hover:bg-[color:var(--g-surface-1)]"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-sm">{item.title}</span>

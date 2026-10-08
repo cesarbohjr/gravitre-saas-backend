@@ -99,9 +99,9 @@ export function LiveActivityRail({
       className={cn(
         // Mobile/tablet: slide-in overlay drawer anchored to the right edge,
         // matching the chat-history sidebar pattern so the panel icon works.
-        "fixed inset-y-0 right-0 z-50 flex w-[86%] max-w-sm flex-col overflow-y-auto border-l border-emerald-500/10 bg-card shadow-2xl",
+        "fixed inset-y-0 right-0 z-50 flex w-[86%] max-w-sm flex-col overflow-y-auto border-l border-brand/10 bg-card shadow-2xl",
         // xl+: static inline sidebar with the branded gradient.
-        "xl:static xl:z-auto xl:w-80 xl:max-w-none xl:shrink-0 xl:max-h-full xl:shadow-none xl:bg-gradient-to-b xl:from-card/50 xl:via-card/30 xl:to-emerald-500/5",
+        "xl:static xl:z-auto xl:w-80 xl:max-w-none xl:shrink-0 xl:max-h-full xl:shadow-none xl:bg-gradient-to-b xl:from-card/50 xl:via-card/30 xl:to-brand/5",
       )}
     >
       <div className="flex flex-col gap-6 p-5">
@@ -119,11 +119,11 @@ export function LiveActivityRail({
         </div>
         <MesonPagePanel page="ai-chat" compact advisorBrief={advisorBrief} />
 
-        <div className="border-t border-emerald-500/10 pt-4">
+        <div className="border-t border-brand/10 pt-4">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/70" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success/70" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
           </span>
           <h2 className="text-sm font-semibold text-foreground">Live activity</h2>
         </div>
@@ -131,13 +131,13 @@ export function LiveActivityRail({
 
         {/* Summary tiles */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/8 p-3">
+          <div className="rounded-xl border border-success/20 bg-success/8 p-3">
             <p
               className={cn(
                 "text-2xl font-semibold tabular-nums",
                 systemsUnavailable
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-emerald-600 dark:text-emerald-400",
+                  ? "text-warning"
+                  : "text-success",
               )}
             >
               {systemsDisplay}
@@ -154,8 +154,8 @@ export function LiveActivityRail({
               </Button>
             ) : null}
           </div>
-          <div className="rounded-xl border border-blue-500/20 bg-blue-500/8 p-3">
-            <p className="text-2xl font-semibold tabular-nums text-blue-600 dark:text-blue-400">{active.length}</p>
+          <div className="rounded-xl border border-info/20 bg-info/8 p-3">
+            <p className="text-2xl font-semibold tabular-nums text-info">{active.length}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">Active runs</p>
           </div>
         </div>
@@ -173,7 +173,7 @@ export function LiveActivityRail({
                 <li key={run.id}>
                   <Link
                     href={`/runs/${run.id}`}
-                    className="block rounded-xl border border-blue-500/15 bg-background/80 p-3 transition-all hover:border-blue-500/35 hover:bg-blue-500/5"
+                    className="block rounded-xl border border-info/15 bg-background/80 p-3 transition-all hover:border-info/35 hover:bg-info/5"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate text-sm font-medium text-foreground">{runName(run)}</span>
@@ -223,7 +223,7 @@ export function LiveActivityRail({
 
         <Link
           href="/runs"
-          className="mt-auto inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+          className="mt-auto inline-flex items-center gap-1.5 text-xs font-medium text-success hover:underline"
         >
           <Activity className="h-3.5 w-3.5" aria-hidden />
           View all runs

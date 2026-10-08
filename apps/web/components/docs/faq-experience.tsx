@@ -52,7 +52,7 @@ export function FaqExperience({ sections }: { sections: FaqClientSection[] }) {
       {/* Section jump nav */}
       <aside className="hidden lg:block">
         <div className="sticky top-24">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Categories
           </p>
           <nav className="flex flex-col gap-1">
@@ -60,7 +60,7 @@ export function FaqExperience({ sections }: { sections: FaqClientSection[] }) {
               <a
                 key={section.id}
                 href={`#${section.id}`}
-                className="rounded-md px-2 py-1.5 text-sm text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+                className="rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 {section.title}
               </a>
@@ -72,21 +72,21 @@ export function FaqExperience({ sections }: { sections: FaqClientSection[] }) {
       <div>
         {/* Search */}
         <div className="relative mb-8">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search frequently asked questions…"
             aria-label="Search FAQ"
-            className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-11 pr-10 text-sm text-zinc-900 shadow-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+            className="w-full rounded-xl border border-border bg-card py-3 pl-11 pr-10 text-sm text-foreground shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-brand focus:ring-2 focus:ring-brand-soft"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery("")}
               aria-label="Clear search"
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
@@ -94,7 +94,7 @@ export function FaqExperience({ sections }: { sections: FaqClientSection[] }) {
         </div>
 
         {isSearching && (
-          <p className="mb-6 text-sm text-zinc-500">
+          <p className="mb-6 text-sm text-muted-foreground">
             {totalMatches === 0
               ? "No matching questions."
               : `${totalMatches} ${totalMatches === 1 ? "result" : "results"} for "${query}"`}
@@ -102,10 +102,10 @@ export function FaqExperience({ sections }: { sections: FaqClientSection[] }) {
         )}
 
         {totalMatches === 0 && isSearching ? (
-          <div className="rounded-xl border border-dashed border-zinc-300 px-6 py-12 text-center">
-            <p className="text-sm text-zinc-600">
+          <div className="rounded-xl border border-dashed border-border-control px-6 py-12 text-center">
+            <p className="text-sm text-muted-foreground">
               Nothing here matches your search. Try different keywords, or{" "}
-              <a href="/contact" className="font-medium text-emerald-600 hover:text-emerald-700">
+              <a href="/contact" className="font-medium text-brand-text hover:text-brand-text/80">
                 contact support
               </a>
               .
@@ -115,11 +115,11 @@ export function FaqExperience({ sections }: { sections: FaqClientSection[] }) {
           <div className="flex flex-col gap-10">
             {filteredSections.map((section) => (
               <section key={section.id} id={section.id} className="scroll-mt-24">
-                <h2 className="mb-4 text-lg font-semibold text-zinc-900">{section.title}</h2>
+                <h2 className="mb-4 text-lg font-semibold text-foreground">{section.title}</h2>
                 {section.intro ? (
-                  <div className="prose prose-zinc prose-sm mb-4 max-w-none">{section.intro}</div>
+                  <div className="prose prose-sm mb-4 max-w-none">{section.intro}</div>
                 ) : null}
-                <div className="divide-y divide-zinc-200 overflow-hidden rounded-xl border border-zinc-200 bg-white">
+                <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
                   {section.questions.map((q) => {
                     const open = isOpen(q.id)
                     return (
@@ -128,17 +128,17 @@ export function FaqExperience({ sections }: { sections: FaqClientSection[] }) {
                           type="button"
                           onClick={() => toggle(q.id)}
                           aria-expanded={open}
-                          className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-zinc-50"
+                          className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-surface-hover"
                         >
-                          <span className="text-sm font-medium text-zinc-900">{q.question}</span>
+                          <span className="text-sm font-medium text-foreground">{q.question}</span>
                           <ChevronDown
-                            className={`h-4 w-4 shrink-0 text-zinc-400 transition-transform ${
+                            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
                               open ? "rotate-180" : ""
                             }`}
                           />
                         </button>
                         {open && (
-                          <div className="prose prose-zinc prose-sm max-w-none px-5 pb-5 pt-0 text-zinc-600">
+                          <div className="prose prose-sm max-w-none px-5 pb-5 pt-0 text-muted-foreground">
                             {q.answer}
                           </div>
                         )}

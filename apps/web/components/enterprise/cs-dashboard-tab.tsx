@@ -69,7 +69,7 @@ const DIMENSION_ICONS: Record<string, typeof Plug> = {
 
 function gradeBadgeClass(grade: IntegrationHealthGrade): string {
   if (grade === "healthy") return "border-success/30 bg-success/10 text-success"
-  if (grade === "at_risk") return "border-amber-500/30 bg-amber-500/10 text-amber-500"
+  if (grade === "at_risk") return "border-warning/30 bg-warning/10 text-warning"
   return "border-destructive/30 bg-destructive/10 text-destructive"
 }
 
@@ -87,13 +87,13 @@ function gradeBeaconStatus(grade: IntegrationHealthGrade): "active" | "warning" 
 
 function scoreColor(score: number): string {
   if (score >= 85) return "var(--success)"
-  if (score >= 65) return "#f59e0b"
+  if (score >= 65) return "var(--warning)"
   return "var(--destructive)"
 }
 
 function barColor(score: number): string {
   if (score >= 85) return "bg-success"
-  if (score >= 65) return "bg-amber-500"
+  if (score >= 65) return "bg-warning"
   return "bg-destructive"
 }
 
@@ -683,7 +683,7 @@ export function CsDashboardTab() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" aria-hidden />
+              <AlertTriangle className="h-4 w-4 text-warning" aria-hidden />
               <CardTitle className="text-base">Active risks</CardTitle>
             </div>
             <CardDescription>Dimensions scoring below 70 need CS follow-up.</CardDescription>

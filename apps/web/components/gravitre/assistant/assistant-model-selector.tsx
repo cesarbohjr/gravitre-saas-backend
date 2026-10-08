@@ -53,8 +53,8 @@ const modes: {
     label: "Fast",
     description: "Quick questions",
     icon: Zap,
-    color: "text-amber-500",
-    activeBg: "bg-amber-500/10 border-amber-500/30",
+    color: "text-warning",
+    activeBg: "bg-warning/10 border-warning/30",
     placeholder: "Ask a quick question...",
   },
   {
@@ -160,10 +160,10 @@ export function AssistantModelSelector({
               >
                 <div className="flex items-center gap-2">
                   <ModeIcon className={cn("h-4 w-4 shrink-0", m.color)} />
-                  <span className={cn("flex-1 text-sm", selected && "font-semibold text-emerald-700 dark:text-emerald-300")}>
+                  <span className={cn("flex-1 text-sm", selected && "font-semibold text-brand-text")}>
                     {m.label}
                   </span>
-                  {selected && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
+                  {selected && <Check className="h-3.5 w-3.5 shrink-0 text-brand-text" />}
                 </div>
                 <span className="pl-6 text-[11px] leading-snug text-muted-foreground">{m.description}</span>
               </DropdownMenuItem>
@@ -210,7 +210,7 @@ export function AssistantModelSelector({
                     >
                       <div className="flex items-center gap-2">
                         <span className="flex-1 text-sm">{model.label}</span>
-                        {selected && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
+                        {selected && <Check className="h-3.5 w-3.5 shrink-0 text-brand-text" />}
                       </div>
                       {"description" in model && model.description ? (
                         <span className="text-[10px] text-muted-foreground">{model.description}</span>

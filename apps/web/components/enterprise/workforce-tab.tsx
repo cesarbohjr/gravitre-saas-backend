@@ -30,7 +30,7 @@ const toneClasses: Record<Tone, { icon: string; value: string }> = {
   success: { icon: "text-success", value: "text-foreground" },
   danger: { icon: "text-destructive", value: "text-foreground" },
   info: { icon: "text-primary", value: "text-foreground" },
-  warning: { icon: "text-amber-500", value: "text-foreground" },
+  warning: { icon: "text-warning", value: "text-foreground" },
   default: { icon: "text-muted-foreground", value: "text-foreground" },
 }
 
@@ -44,7 +44,7 @@ function Sparkline({ tone }: { tone: Tone }) {
       : tone === "danger"
         ? "var(--destructive)"
         : tone === "warning"
-          ? "#f59e0b"
+          ? "var(--warning)"
           : "var(--primary)"
   const w = 100
   const h = 32
@@ -151,7 +151,7 @@ export function WorkforceTab() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertTriangle className="h-4 w-4 text-warning" />
             <CardTitle className="text-base">SLA breaches</CardTitle>
           </div>
           <CardDescription>

@@ -308,7 +308,7 @@ function MetricCard({
           {change !== undefined && (
             <div className={cn(
               "flex items-center gap-1 text-xs font-medium",
-              isPositive ? "text-emerald-700 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+              isPositive ? "text-success" : "text-destructive"
             )}>
               {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
               {isPositive ? "+" : ""}{change}%
@@ -350,8 +350,8 @@ function MetricCard({
 function InsightCard({ insight, onClick }: { insight: MetricInsight; onClick?: () => void }) {
   const router = useRouter()
   const config = {
-    anomaly: { icon: AlertTriangle, color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
-    trend: { icon: TrendingUp, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+    anomaly: { icon: AlertTriangle, color: "text-warning", bg: "bg-warning/10", border: "border-warning/20" },
+    trend: { icon: TrendingUp, color: "text-info", bg: "bg-info/10", border: "border-info/20" },
     optimization: { icon: Activity, color: "text-[color:var(--g-emerald-deep)]", bg: "bg-[color:var(--g-emerald-pale)]", border: "border-[color:var(--g-emerald)]/25" },
   }
   const cfg = config[insight.type as keyof typeof config]
@@ -398,8 +398,8 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
   if (!active || !payload?.length) return null
   
   return (
-    <div role="tooltip" className="rounded-lg border border-white/10 bg-[color:var(--g-carbon)] px-3 py-2 text-white shadow-lg">
-      <p className="mb-1 text-xs text-white/70">{label}</p>
+    <div role="tooltip" className="rounded-lg border border-[color:var(--g-bone)]/10 bg-[color:var(--g-carbon)] px-3 py-2 text-[color:var(--g-bone)] shadow-lg">
+      <p className="mb-1 text-xs text-[color:var(--g-bone)]/70">{label}</p>
       {(payload as { name: string; value: number; color: string }[]).map((entry, i) => (
         <p key={i} className="flex items-center gap-2 text-xs font-medium">
           <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: entry.color }} aria-hidden />{entry.name}: {entry.value.toLocaleString()}
@@ -629,11 +629,11 @@ export default function MetricsPage() {
                   <h3 className="text-sm font-medium text-foreground">Execution volume</h3>
                   <div className="flex items-center gap-4 text-xs">
                     <div className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      <span className="h-2 w-2 rounded-full bg-success" />
                       <span className="text-muted-foreground">Completed</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-red-500" />
+                      <span className="h-2 w-2 rounded-full bg-destructive" />
                       <span className="text-muted-foreground">Failed</span>
                     </div>
                   </div>
@@ -699,9 +699,9 @@ export default function MetricsPage() {
                 <div className="flex items-center justify-between border-b border-divide px-4 py-3">
                   <h3 className="text-sm font-medium text-foreground">Latency distribution</h3>
                   {latencySpikeTime ? (
-                    <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10">
-                      <AlertTriangle className="h-3 w-3 text-amber-700 dark:text-amber-400" />
-                      <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-warning/10">
+                      <AlertTriangle className="h-3 w-3 text-warning" />
+                      <span className="text-[10px] font-medium text-warning">
                         Spike detected at {latencySpikeTime}
                       </span>
                     </div>

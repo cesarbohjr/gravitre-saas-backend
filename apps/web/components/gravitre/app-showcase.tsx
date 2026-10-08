@@ -44,6 +44,19 @@ const features: Feature[] = [
   },
 ]
 
+// Feature accents resolve to global theme tokens so the showcase follows light/dark themes.
+const toneVar: Record<string, string> = {
+  emerald: "var(--brand)",
+  blue: "var(--info)",
+  purple: "var(--g-intelligence)",
+  amber: "var(--warning)",
+}
+
+function tone(color: string, percent?: number) {
+  const base = toneVar[color] ?? toneVar.emerald
+  return percent === undefined ? base : `color-mix(in srgb, ${base} ${percent}%, transparent)`
+}
+
 // Mock app screen content based on feature
 function AppScreen({ featureId }: { featureId: string }) {
   const colorMap: Record<string, string> = {
@@ -56,21 +69,21 @@ function AppScreen({ featureId }: { featureId: string }) {
   const color = colorMap[featureId] || "emerald"
   
   return (
-    <div className="h-full bg-zinc-950 rounded-lg overflow-hidden">
+    <div className="h-full bg-card rounded-lg overflow-hidden">
       {/* App Header */}
-      <div className="flex items-center justify-between border-b border-zinc-800/50 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className={`h-8 w-8 rounded-lg bg-${color}-500/20 flex items-center justify-center`}>
-            <Sparkles className={`h-4 w-4 text-${color}-400`} />
+          <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: tone(color, 20) }}>
+            <Sparkles className="h-4 w-4" style={{ color: tone(color) }} />
           </div>
           <div>
-            <div className="h-2 w-24 bg-zinc-700 rounded" />
-            <div className="h-1.5 w-16 bg-zinc-800 rounded mt-1" />
+            <div className="h-2 w-24 bg-muted-foreground/40 rounded" />
+            <div className="h-1.5 w-16 bg-muted rounded mt-1" />
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-full bg-zinc-800" />
-          <div className="h-6 w-6 rounded-full bg-zinc-800" />
+          <div className="h-6 w-6 rounded-full bg-muted" />
+          <div className="h-6 w-6 rounded-full bg-muted" />
         </div>
       </div>
       
@@ -88,10 +101,10 @@ function AppScreen({ featureId }: { featureId: string }) {
             >
               <div className="max-w-[75%]">
                 <div className="flex items-center gap-1.5 mb-1 justify-end">
-                  <span className="text-[9px] text-zinc-500">Sarah Chen</span>
-                  <span className="text-[8px] text-zinc-600">2m ago</span>
+                  <span className="text-[9px] text-muted-foreground">Sarah Chen</span>
+                  <span className="text-[8px] text-muted-foreground/80">2m ago</span>
                 </div>
-                <div className="bg-emerald-600 text-white text-[10px] px-2.5 py-1.5 rounded-xl rounded-br-sm">
+                <div className="bg-brand text-brand-foreground text-[10px] px-2.5 py-1.5 rounded-xl rounded-br-sm">
                   Why did the last customer sync fail?
                 </div>
               </div>
@@ -108,10 +121,10 @@ function AppScreen({ featureId }: { featureId: string }) {
               <AgentAvatar agent="operator" size="xs" showPulse />
               <div className="max-w-[75%]">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-[9px] text-emerald-400">Gravitre AI</span>
-                  <span className="text-[8px] text-zinc-600">2m ago</span>
+                  <span className="text-[9px] text-brand-text">Gravitre AI</span>
+                  <span className="text-[8px] text-muted-foreground/80">2m ago</span>
                 </div>
-                <div className="bg-zinc-800 text-zinc-200 text-[10px] px-2.5 py-1.5 rounded-xl rounded-bl-sm">
+                <div className="bg-muted text-foreground text-[10px] px-2.5 py-1.5 rounded-xl rounded-bl-sm">
                   The sync failed at step 3 due to a connection timeout after 30s during peak hours.
                 </div>
               </div>
@@ -125,7 +138,7 @@ function AppScreen({ featureId }: { featureId: string }) {
               transition={{ delay: 0.5 }}
             >
               <div className="max-w-[75%]">
-                <div className="bg-emerald-600 text-white text-[10px] px-2.5 py-1.5 rounded-xl rounded-br-sm">
+                <div className="bg-brand text-brand-foreground text-[10px] px-2.5 py-1.5 rounded-xl rounded-br-sm">
                   Can you fix it and retry?
                 </div>
               </div>
@@ -140,10 +153,10 @@ function AppScreen({ featureId }: { featureId: string }) {
               transition={{ delay: 0.7 }}
             >
               <AgentAvatar agent="operator" size="xs" showPulse />
-              <div className="bg-zinc-800 text-zinc-400 text-[10px] px-3 py-2 rounded-xl rounded-bl-sm flex items-center gap-1">
-                <motion.div className="h-1 w-1 rounded-full bg-zinc-500" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1, repeat: Infinity, delay: 0 }} />
-                <motion.div className="h-1 w-1 rounded-full bg-zinc-500" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1, repeat: Infinity, delay: 0.2 }} />
-                <motion.div className="h-1 w-1 rounded-full bg-zinc-500" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1, repeat: Infinity, delay: 0.4 }} />
+              <div className="bg-muted text-muted-foreground text-[10px] px-3 py-2 rounded-xl rounded-bl-sm flex items-center gap-1">
+                <motion.div className="h-1 w-1 rounded-full bg-muted-foreground" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1, repeat: Infinity, delay: 0 }} />
+                <motion.div className="h-1 w-1 rounded-full bg-muted-foreground" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1, repeat: Infinity, delay: 0.2 }} />
+                <motion.div className="h-1 w-1 rounded-full bg-muted-foreground" animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 1, repeat: Infinity, delay: 0.4 }} />
               </div>
             </motion.div>
           </div>
@@ -158,17 +171,17 @@ function AppScreen({ featureId }: { featureId: string }) {
             ]).map((item, i) => (
               <motion.div 
                 key={i}
-                className="flex items-center gap-3 p-3 rounded-lg border border-zinc-800 bg-zinc-900/50"
+                className="flex items-center gap-3 p-3 rounded-lg border border-border bg-secondary/50"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.15 }}
               >
                 <AgentAvatar agent={item.agent} size="sm" showPulse={i === 0} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-[11px] font-medium text-white truncate">{item.name}</div>
-                  <div className="text-[9px] text-zinc-500 truncate">{item.desc}</div>
+                  <div className="text-[11px] font-medium text-foreground truncate">{item.name}</div>
+                  <div className="text-[9px] text-muted-foreground truncate">{item.desc}</div>
                 </div>
-                <div className={`px-2 py-1 rounded-full text-[9px] font-medium shrink-0 ${i === 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-700 text-zinc-400'}`}>
+                <div className={`px-2 py-1 rounded-full text-[9px] font-medium shrink-0 ${i === 0 ? 'bg-success/20 text-success-text' : 'bg-muted text-muted-foreground'}`}>
                   {item.status}
                 </div>
               </motion.div>
@@ -183,12 +196,12 @@ function AppScreen({ featureId }: { featureId: string }) {
               {[1, 2, 3, 4].map((i) => (
                 <motion.div
                   key={i}
-                  className={`h-12 w-12 rounded-xl border ${i === 2 ? 'border-purple-500/50 bg-purple-500/10' : 'border-zinc-700 bg-zinc-800/50'} flex items-center justify-center`}
+                  className={`h-12 w-12 rounded-xl border ${i === 2 ? 'border-[color:var(--g-intelligence)]/50 bg-[color:var(--g-intelligence)]/10' : 'border-border bg-muted/50'} flex items-center justify-center`}
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: i * 0.1, type: "spring" }}
                 >
-                  <Zap className={`h-5 w-5 ${i === 2 ? 'text-purple-400' : 'text-zinc-500'}`} />
+                  <Zap className={`h-5 w-5 ${i === 2 ? 'text-intelligence-text' : 'text-muted-foreground'}`} />
                 </motion.div>
               ))}
             </div>
@@ -199,7 +212,7 @@ function AppScreen({ featureId }: { featureId: string }) {
                 y1="50%"
                 x2="100%"
                 y2="50%"
-                stroke="rgb(113 113 122)"
+                stroke="var(--g-text-muted)"
                 strokeWidth="2"
                 strokeDasharray="8 4"
                 initial={{ pathLength: 0 }}
@@ -217,7 +230,7 @@ function AppScreen({ featureId }: { featureId: string }) {
               {[40, 65, 45, 80, 55, 70, 90].map((height, i) => (
                 <motion.div
                   key={i}
-                  className="flex-1 bg-gradient-to-t from-amber-500 to-amber-400 rounded-t"
+                  className="flex-1 bg-gradient-to-t from-warning to-warning/80 rounded-t"
                   initial={{ height: 0 }}
                   animate={{ height: `${height}%` }}
                   transition={{ delay: i * 0.1, duration: 0.5 }}
@@ -231,9 +244,9 @@ function AppScreen({ featureId }: { featureId: string }) {
                 { label: "Tasks", value: "Tracked" },
                 { label: "Hours saved", value: "Estimate" },
               ].map((stat, i) => (
-                <div key={i} className="p-2 rounded-lg bg-zinc-800/50 text-center">
-                  <div className="text-xs text-zinc-500">{stat.label}</div>
-                  <div className="text-sm font-semibold text-white">{stat.value}</div>
+                <div key={i} className="p-2 rounded-lg bg-muted/50 text-center">
+                  <div className="text-xs text-muted-foreground">{stat.label}</div>
+                  <div className="text-sm font-semibold text-foreground">{stat.value}</div>
                 </div>
               ))}
             </div>
@@ -276,7 +289,7 @@ export function AppShowcase() {
       className="relative"
     >
       {/* Background glow */}
-      <div className={`absolute -inset-20 bg-${currentFeature.color}-500/10 blur-3xl rounded-full transition-colors duration-500`} />
+      <div className="absolute -inset-20 blur-3xl rounded-full transition-colors duration-500" style={{ backgroundColor: tone(currentFeature.color, 10) }} />
       
       <div className="relative grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
         {/* Feature list */}
@@ -294,12 +307,12 @@ export function AppShowcase() {
                 }}
                 className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 ${
                   isActive
-                    ? `border-${feature.color}-500/50 bg-${feature.color}-500/10`
-                    : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10"
+                    ? ""
+                    : "border-border bg-muted/30 hover:border-border hover:bg-muted/60"
                 }`}
                 style={isActive ? { 
-                  borderColor: `rgb(${feature.color === 'emerald' ? '16 185 129' : feature.color === 'blue' ? '59 130 246' : feature.color === 'purple' ? '168 85 247' : '245 158 11'} / 0.5)`,
-                  backgroundColor: `rgb(${feature.color === 'emerald' ? '16 185 129' : feature.color === 'blue' ? '59 130 246' : feature.color === 'purple' ? '168 85 247' : '245 158 11'} / 0.1)`
+                  borderColor: tone(feature.color, 50),
+                  backgroundColor: tone(feature.color, 10)
                 } : {}}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -307,27 +320,27 @@ export function AppShowcase() {
                 <div className="flex items-start gap-4">
                   <div className={`h-12 w-12 rounded-xl flex items-center justify-center transition-colors ${
                     isActive 
-                      ? `bg-${feature.color}-500/20` 
-                      : "bg-zinc-800"
+                      ? "" 
+                      : "bg-muted"
                   }`}
-                  style={isActive ? { backgroundColor: `rgb(${feature.color === 'emerald' ? '16 185 129' : feature.color === 'blue' ? '59 130 246' : feature.color === 'purple' ? '168 85 247' : '245 158 11'} / 0.2)` } : {}}
+                  style={isActive ? { backgroundColor: tone(feature.color, 20) } : {}}
                   >
                     <Icon className={`h-6 w-6 transition-colors ${
                       isActive 
-                        ? `text-${feature.color}-400` 
-                        : "text-zinc-500"
+                        ? "" 
+                        : "text-muted-foreground"
                     }`}
-                    style={isActive ? { color: `rgb(${feature.color === 'emerald' ? '52 211 153' : feature.color === 'blue' ? '96 165 250' : feature.color === 'purple' ? '192 132 252' : '251 191 36'})` } : {}}
+                    style={isActive ? { color: tone(feature.color) } : {}}
                     />
                   </div>
                   <div className="flex-1">
                     <h3 className={`font-semibold transition-colors ${
-                      isActive ? "text-white" : "text-zinc-400"
+                      isActive ? "text-foreground" : "text-muted-foreground"
                     }`}>
                       {feature.title}
                     </h3>
                     <p className={`mt-1 text-sm transition-colors ${
-                      isActive ? "text-zinc-300" : "text-zinc-500"
+                      isActive ? "text-muted-foreground" : "text-muted-foreground/80"
                     }`}>
                       {feature.description}
                     </p>
@@ -335,8 +348,8 @@ export function AppShowcase() {
                   {isActive && (
                     <motion.div
                       layoutId="activeIndicator"
-                      className={`h-full w-1 rounded-full bg-${feature.color}-500`}
-                      style={{ backgroundColor: `rgb(${feature.color === 'emerald' ? '16 185 129' : feature.color === 'blue' ? '59 130 246' : feature.color === 'purple' ? '168 85 247' : '245 158 11'})` }}
+                      className="h-full w-1 rounded-full"
+                      style={{ backgroundColor: tone(feature.color) }}
                     />
                   )}
                 </div>
@@ -353,12 +366,12 @@ export function AppShowcase() {
                   setActiveFeature(index)
                   setIsAutoPlaying(false)
                 }}
-                className="relative h-1 flex-1 bg-zinc-800 rounded-full overflow-hidden"
+                className="relative h-1 flex-1 bg-muted rounded-full overflow-hidden"
               >
                 {index === activeFeature && isAutoPlaying && (
                   <motion.div
-                    className={`absolute inset-y-0 left-0 bg-${currentFeature.color}-500`}
-                    style={{ backgroundColor: `rgb(${currentFeature.color === 'emerald' ? '16 185 129' : currentFeature.color === 'blue' ? '59 130 246' : currentFeature.color === 'purple' ? '168 85 247' : '245 158 11'})` }}
+                    className="absolute inset-y-0 left-0"
+                    style={{ backgroundColor: tone(currentFeature.color) }}
                     initial={{ width: "0%" }}
                     animate={{ width: "100%" }}
                     transition={{ duration: 4, ease: "linear" }}
@@ -366,20 +379,20 @@ export function AppShowcase() {
                 )}
                 {index <= activeFeature && !isAutoPlaying && (
                   <div 
-                    className={`absolute inset-0 bg-${currentFeature.color}-500`}
-                    style={{ backgroundColor: `rgb(${features[index].color === 'emerald' ? '16 185 129' : features[index].color === 'blue' ? '59 130 246' : features[index].color === 'purple' ? '168 85 247' : '245 158 11'})` }}
+                    className="absolute inset-0"
+                    style={{ backgroundColor: tone(features[index].color) }}
                   />
                 )}
               </button>
             ))}
             <button
               onClick={() => setIsAutoPlaying(!isAutoPlaying)}
-              className="ml-2 p-2 rounded-full bg-zinc-800 hover:bg-zinc-700 transition-colors"
+              className="ml-2 p-2 rounded-full bg-muted hover:bg-secondary transition-colors"
             >
               {isAutoPlaying ? (
-                <Pause className="h-4 w-4 text-zinc-400" />
+                <Pause className="h-4 w-4 text-muted-foreground" />
               ) : (
-                <Play className="h-4 w-4 text-zinc-400" />
+                <Play className="h-4 w-4 text-muted-foreground" />
               )}
             </button>
           </div>
@@ -387,16 +400,16 @@ export function AppShowcase() {
 
         {/* App preview */}
         <motion.div style={{ y }} className="relative">
-          <div className="relative rounded-2xl border border-white/10 bg-zinc-900/80 p-2 shadow-2xl backdrop-blur-xl overflow-hidden">
+          <div className="relative rounded-2xl border border-border bg-card/80 p-2 shadow-2xl backdrop-blur-xl overflow-hidden">
             {/* Browser chrome */}
-            <div className="flex items-center gap-2 border-b border-zinc-800 px-4 py-3">
+            <div className="flex items-center gap-2 border-b border-border px-4 py-3">
               <div className="flex gap-1.5">
-                <div className="h-3 w-3 rounded-full bg-red-500/80" />
-                <div className="h-3 w-3 rounded-full bg-yellow-500/80" />
-                <div className="h-3 w-3 rounded-full bg-green-500/80" />
+                <div className="h-3 w-3 rounded-full bg-destructive/80" />
+                <div className="h-3 w-3 rounded-full bg-warning/80" />
+                <div className="h-3 w-3 rounded-full bg-success/80" />
               </div>
               <div className="flex-1 text-center">
-                <span className="text-xs text-zinc-500 font-mono">gravitre.app/{currentFeature.id}</span>
+                <span className="text-xs text-muted-foreground font-mono">gravitre.app/{currentFeature.id}</span>
               </div>
             </div>
             
@@ -417,8 +430,8 @@ export function AppShowcase() {
           
           {/* Floating badge */}
           <motion.div
-            className={`absolute -top-4 -right-4 px-3 py-1.5 rounded-full bg-${currentFeature.color}-500 text-white text-xs font-semibold shadow-lg`}
-            style={{ backgroundColor: `rgb(${currentFeature.color === 'emerald' ? '16 185 129' : currentFeature.color === 'blue' ? '59 130 246' : currentFeature.color === 'purple' ? '168 85 247' : '245 158 11'})` }}
+            className="absolute -top-4 -right-4 px-3 py-1.5 rounded-full bg-[color:var(--brand)] text-background text-xs font-semibold shadow-lg"
+            style={{ backgroundColor: tone(currentFeature.color) }}
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", delay: 0.2 }}
@@ -454,23 +467,23 @@ export function ProductScreenshot({
       style={{ y, opacity }}
       className={`relative ${className}`}
     >
-      <div className="absolute -inset-4 rounded-3xl bg-gradient-to-b from-emerald-500/20 via-transparent to-transparent blur-2xl" />
-      <div className="relative rounded-2xl border border-white/10 bg-zinc-900/80 p-2 shadow-2xl backdrop-blur-xl overflow-hidden">
+      <div className="absolute -inset-4 rounded-3xl bg-gradient-to-b from-brand/20 via-transparent to-transparent blur-2xl" />
+      <div className="relative rounded-2xl border border-border bg-card/80 p-2 shadow-2xl backdrop-blur-xl overflow-hidden">
         {/* Browser chrome */}
-        <div className="flex items-center gap-2 border-b border-zinc-800 px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <div className="flex gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-red-500/80" />
-            <div className="h-3 w-3 rounded-full bg-yellow-500/80" />
-            <div className="h-3 w-3 rounded-full bg-green-500/80" />
+            <div className="h-3 w-3 rounded-full bg-destructive/80" />
+            <div className="h-3 w-3 rounded-full bg-warning/80" />
+            <div className="h-3 w-3 rounded-full bg-success/80" />
           </div>
           <div className="flex-1 text-center">
-            <span className="text-xs text-zinc-500 font-mono">gravitre.app</span>
+            <span className="text-xs text-muted-foreground font-mono">gravitre.app</span>
           </div>
         </div>
         
         {/* Placeholder for actual screenshot */}
-        <div className="aspect-[16/9] bg-gradient-to-br from-zinc-900 to-zinc-950 flex items-center justify-center">
-          <div className="text-center text-zinc-600">
+        <div className="aspect-[16/9] bg-gradient-to-br from-secondary to-card flex items-center justify-center">
+          <div className="text-center text-muted-foreground">
             <Sparkles className="h-12 w-12 mx-auto mb-2" />
             <p className="text-sm">App screenshot</p>
           </div>
@@ -478,7 +491,7 @@ export function ProductScreenshot({
       </div>
       
       {caption && (
-        <p className="mt-4 text-center text-sm text-zinc-500">{caption}</p>
+        <p className="mt-4 text-center text-sm text-muted-foreground">{caption}</p>
       )}
     </motion.div>
   )

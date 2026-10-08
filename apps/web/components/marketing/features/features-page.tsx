@@ -72,7 +72,7 @@ export function FeaturesPage() {
           {hero.pills.map((pill) => (
             <span
               key={pill}
-              className="rounded-full border border-divide bg-gray-50 px-3.5 py-2 text-sm font-medium text-charcoal-700"
+              className="rounded-full border border-divide bg-[color:var(--g-marketing-surface)] px-3.5 py-2 text-sm font-medium text-charcoal-700"
             >
               {pill}
             </span>
@@ -216,7 +216,7 @@ function AuthorizedUseCases() {
                   {useCase.surfaces.map((surface) => (
                     <span
                       key={surface}
-                      className="rounded-full border border-divide bg-white px-2.5 py-1 text-xs font-medium text-gray-600"
+                      className="rounded-full border border-divide bg-card px-2.5 py-1 text-xs font-medium text-gray-600"
                     >
                       {surface}
                     </span>

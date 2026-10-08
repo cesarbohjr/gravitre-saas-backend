@@ -16,7 +16,7 @@ export async function MarketingChrome({ children }: { children: ReactNode }) {
   const slimFooter = AUTH_FOOTER_SLIM_PATHS.has(pathname)
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-white text-charcoal-900" data-marketing-canvas="daylight">
+    <div className="min-h-screen overflow-x-hidden bg-[color:var(--g-marketing-canvas)] text-charcoal-900" data-marketing-canvas="daylight">
       <MarketingThemeLock />
       <Navbar />
       <DivideX />

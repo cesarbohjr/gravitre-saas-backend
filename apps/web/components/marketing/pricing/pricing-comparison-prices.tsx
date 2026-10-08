@@ -25,8 +25,8 @@ export function PricingComparisonPrices() {
           >
             {planMeta.highlighted && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[var(--brand)] to-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-sm">
-                  <Star className="h-3 w-3 fill-white text-white" />
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[var(--brand)] to-[color:var(--g-brand-hover)] px-3 py-1 text-xs font-semibold text-brand-foreground shadow-sm">
+                  <Star className="h-3 w-3 fill-primary-foreground text-primary-foreground" />
                   Popular
                 </span>
               </div>

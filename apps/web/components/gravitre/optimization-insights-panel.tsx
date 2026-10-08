@@ -171,16 +171,16 @@ function RecommendationCard({
   const [expanded, setExpanded] = useState(false)
   
   const riskColors = {
-    low: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
-    medium: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
-    high: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30",
+    low: "bg-success/10 text-success-text border-success/30",
+    medium: "bg-warning/10 text-warning-text border-warning/30",
+    high: "bg-destructive/10 text-danger-text border-destructive/30",
   }
   
   const categoryColors = {
-    performance: "text-blue-600 dark:text-blue-400",
-    reliability: "text-emerald-700 dark:text-emerald-400",
-    cost: "text-violet-600 dark:text-violet-400",
-    quality: "text-amber-700 dark:text-amber-400",
+    performance: "text-info",
+    reliability: "text-success-text",
+    cost: "text-intelligence-text",
+    quality: "text-warning-text",
   }
   
   return (
@@ -231,7 +231,7 @@ function RecommendationCard({
                     <ul className="space-y-1">
                       {recommendation.evidence.map((item, i) => (
                         <li key={i} className="flex items-start gap-2 text-xs text-foreground">
-                          <CheckCircle className="h-3 w-3 text-emerald-700 dark:text-emerald-400 mt-0.5 shrink-0" />
+                          <CheckCircle className="h-3 w-3 text-success-text mt-0.5 shrink-0" />
                           {item}
                         </li>
                       ))}
@@ -337,46 +337,46 @@ function PreviewOptimizationDialog({
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 text-xs">
-                  <div className="h-6 w-6 rounded bg-blue-500/20 flex items-center justify-center">
-                    <span className="text-[10px] text-blue-600 dark:text-blue-400">1</span>
+                  <div className="h-6 w-6 rounded bg-info/20 flex items-center justify-center">
+                    <span className="text-[10px] text-info">1</span>
                   </div>
                   Data enrichment
                 </div>
                 <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 text-xs">
-                  <div className="h-6 w-6 rounded bg-blue-500/20 flex items-center justify-center">
-                    <span className="text-[10px] text-blue-600 dark:text-blue-400">2</span>
+                  <div className="h-6 w-6 rounded bg-info/20 flex items-center justify-center">
+                    <span className="text-[10px] text-info">2</span>
                   </div>
                   HubSpot Sync
                 </div>
-                <div className="flex items-center gap-2 p-2 rounded bg-red-500/10 border border-red-500/20 text-xs text-red-600 dark:text-red-400">
+                <div className="flex items-center gap-2 p-2 rounded bg-destructive/10 border border-destructive/20 text-xs text-danger-text">
                   <AlertTriangle className="h-4 w-4" />
                   28% failure rate
                 </div>
               </div>
             </div>
             
-            <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+            <div className="p-4 rounded-lg bg-success/5 border border-success/20">
               <div className="flex items-center gap-2 mb-3">
-                <div className="h-2 w-2 rounded-full bg-emerald-400" />
-                <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Proposed</span>
+                <div className="h-2 w-2 rounded-full bg-success" />
+                <span className="text-xs font-medium text-success-text">Proposed</span>
               </div>
               <div className="space-y-2">
-                <div className="flex items-center gap-2 p-2 rounded bg-emerald-500/10 border border-emerald-500/20 text-xs">
-                  <div className="h-6 w-6 rounded bg-emerald-500/20 flex items-center justify-center">
-                    <Sparkles className="h-3 w-3 text-emerald-700 dark:text-emerald-400" />
+                <div className="flex items-center gap-2 p-2 rounded bg-success/10 border border-success/20 text-xs">
+                  <div className="h-6 w-6 rounded bg-success/20 flex items-center justify-center">
+                    <Sparkles className="h-3 w-3 text-success-text" />
                   </div>
-                  <span className="text-emerald-700 dark:text-emerald-400">Data validation</span>
-                  <Badge className="ml-auto text-[9px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">NEW</Badge>
+                  <span className="text-success-text">Data validation</span>
+                  <Badge className="ml-auto text-[9px] bg-success/20 text-success-text">NEW</Badge>
                 </div>
                 <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 text-xs">
-                  <div className="h-6 w-6 rounded bg-blue-500/20 flex items-center justify-center">
-                    <span className="text-[10px] text-blue-600 dark:text-blue-400">2</span>
+                  <div className="h-6 w-6 rounded bg-info/20 flex items-center justify-center">
+                    <span className="text-[10px] text-info">2</span>
                   </div>
                   Data enrichment
                 </div>
                 <div className="flex items-center gap-2 p-2 rounded bg-secondary/50 text-xs">
-                  <div className="h-6 w-6 rounded bg-blue-500/20 flex items-center justify-center">
-                    <span className="text-[10px] text-blue-600 dark:text-blue-400">3</span>
+                  <div className="h-6 w-6 rounded bg-info/20 flex items-center justify-center">
+                    <span className="text-[10px] text-info">3</span>
                   </div>
                   HubSpot Sync
                 </div>
@@ -389,15 +389,15 @@ function PreviewOptimizationDialog({
             <h4 className="text-xs font-medium text-muted-foreground mb-3">Expected impact</h4>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">-24%</div>
+                <div className="text-2xl font-bold text-success-text">-24%</div>
                 <div className="text-[10px] text-muted-foreground">Failed runs</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">+6</div>
+                <div className="text-2xl font-bold text-info">+6</div>
                 <div className="text-[10px] text-muted-foreground">Health score</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-amber-700 dark:text-amber-400">87%</div>
+                <div className="text-2xl font-bold text-warning-text">87%</div>
                 <div className="text-[10px] text-muted-foreground">Confidence</div>
               </div>
             </div>
@@ -439,7 +439,7 @@ function AIExplanationDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+            <Sparkles className="h-5 w-5 text-intelligence-text" />
             AI Explanation
           </DialogTitle>
           <DialogDescription>
@@ -461,7 +461,7 @@ function AIExplanationDialog({
             <ul className="space-y-2">
               {recommendation.evidence.map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                  <CheckCircle className="h-4 w-4 text-emerald-700 dark:text-emerald-400 mt-0.5 shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-success-text mt-0.5 shrink-0" />
                   {item}
                 </li>
               ))}
@@ -472,20 +472,20 @@ function AIExplanationDialog({
             <h4 className="text-xs font-medium text-muted-foreground mb-2">What could go wrong?</h4>
             <ul className="space-y-2">
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
-                <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-400 mt-0.5 shrink-0" />
+                <AlertTriangle className="h-4 w-4 text-warning-text mt-0.5 shrink-0" />
                 Additional validation step may slightly increase processing time (+0.3s avg)
               </li>
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
-                <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-400 mt-0.5 shrink-0" />
+                <AlertTriangle className="h-4 w-4 text-warning-text mt-0.5 shrink-0" />
                 Some edge cases may be flagged as invalid when they are actually valid
               </li>
             </ul>
           </div>
           
-          <div className="p-3 rounded-lg bg-violet-500/5 border border-violet-500/20">
+          <div className="p-3 rounded-lg bg-chart-4/5 border border-chart-4/20">
             <div className="flex items-center gap-2 mb-1">
-              <Activity className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-              <span className="text-xs font-medium text-violet-600 dark:text-violet-400">Confidence Level: {recommendation.confidence}%</span>
+              <Activity className="h-4 w-4 text-intelligence-text" />
+              <span className="text-xs font-medium text-intelligence-text">Confidence Level: {recommendation.confidence}%</span>
             </div>
             <p className="text-xs text-muted-foreground">
               This recommendation is based on strong evidence from recent workflow executions. 
@@ -553,7 +553,7 @@ export function OptimizationInsightsPanel({
               <span className="text-xs text-muted-foreground">Health:</span>
               <span className={cn(
                 "text-sm font-bold",
-                healthScore >= 80 ? "text-emerald-700 dark:text-emerald-400" : healthScore >= 60 ? "text-amber-700 dark:text-amber-400" : "text-red-600 dark:text-red-400"
+                healthScore >= 80 ? "text-success-text" : healthScore >= 60 ? "text-warning-text" : "text-danger-text"
               )}>
                 {healthScore}/100
               </span>
@@ -615,12 +615,12 @@ export function OptimizationInsightsPanel({
                               <span className="text-xs text-muted-foreground flex-1">{dim.name}</span>
                               <span className={cn(
                                 "text-xs font-medium",
-                                dim.score >= 80 ? "text-emerald-700 dark:text-emerald-400" : dim.score >= 60 ? "text-amber-700 dark:text-amber-400" : "text-red-600 dark:text-red-400"
+                                dim.score >= 80 ? "text-success-text" : dim.score >= 60 ? "text-warning-text" : "text-danger-text"
                               )}>
                                 {dim.score}
                               </span>
-                              {dim.trend === "up" && <TrendingUp className="h-3 w-3 text-emerald-700 dark:text-emerald-400" />}
-                              {dim.trend === "down" && <TrendingDown className="h-3 w-3 text-red-600 dark:text-red-400" />}
+                              {dim.trend === "up" && <TrendingUp className="h-3 w-3 text-success-text" />}
+                              {dim.trend === "down" && <TrendingDown className="h-3 w-3 text-danger-text" />}
                             </div>
                           ))}
                         </div>
@@ -696,7 +696,7 @@ export function OptimizationInsightsPanel({
                         className={cn(
                           "p-4 rounded-lg border transition-colors",
                           version.status === "active"
-                            ? "bg-emerald-500/5 border-emerald-500/30"
+                            ? "bg-success/5 border-success/30"
                             : "bg-secondary/30 border-border"
                         )}
                       >
@@ -704,15 +704,15 @@ export function OptimizationInsightsPanel({
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm">Version {version.version}</span>
                             {version.status === "active" && (
-                              <Badge className="text-[10px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">Active</Badge>
+                              <Badge className="text-[10px] bg-success/20 text-success-text">Active</Badge>
                             )}
                             {version.status === "testing" && (
-                              <Badge className="text-[10px] bg-blue-500/20 text-blue-600 dark:text-blue-400">Testing</Badge>
+                              <Badge className="text-[10px] bg-info/20 text-info">Testing</Badge>
                             )}
                           </div>
                           <span className={cn(
                             "text-sm font-medium",
-                            version.healthScore >= 80 ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
+                            version.healthScore >= 80 ? "text-success-text" : "text-warning-text"
                           )}>
                             {version.healthScore}/100
                           </span>
@@ -747,11 +747,11 @@ export function OptimizationInsightsPanel({
                 
                 {activeTab === "testing" && (
                   <div className="space-y-4">
-                    <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                    <div className="p-4 rounded-lg bg-info/5 border border-info/20">
                       <div className="flex items-center gap-2 mb-3">
-                        <FlaskConical className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        <FlaskConical className="h-5 w-5 text-info" />
                         <span className="font-medium text-sm">A/B Test: Validation Optimization</span>
-                        <Badge className="text-[10px] bg-blue-500/20 text-blue-600 dark:text-blue-400">Running</Badge>
+                        <Badge className="text-[10px] bg-info/20 text-info">Running</Badge>
                       </div>
                       
                       <div className="grid grid-cols-2 gap-4 mb-4">
@@ -763,12 +763,12 @@ export function OptimizationInsightsPanel({
                           <div className="text-xl font-bold text-foreground mb-1">82%</div>
                           <div className="text-[10px] text-muted-foreground">Success rate (124 runs)</div>
                         </div>
-                        <div className="p-3 rounded bg-emerald-500/10 border border-emerald-500/20">
+                        <div className="p-3 rounded bg-success/10 border border-success/20">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs text-emerald-700 dark:text-emerald-400">Version 4 (Test)</span>
+                            <span className="text-xs text-success-text">Version 4 (Test)</span>
                             <span className="text-xs text-muted-foreground">50% traffic</span>
                           </div>
-                          <div className="text-xl font-bold text-emerald-700 dark:text-emerald-400 mb-1">91%</div>
+                          <div className="text-xl font-bold text-success-text mb-1">91%</div>
                           <div className="text-[10px] text-muted-foreground">Success rate (118 runs)</div>
                         </div>
                       </div>

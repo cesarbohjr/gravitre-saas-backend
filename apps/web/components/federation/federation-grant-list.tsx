@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils"
 import type { FederationConnectorGrant } from "@/types/api"
 
 const STATUS_CLASS: Record<string, string> = {
-  pending: "border-amber-500/30 text-amber-600",
-  active: "border-emerald-500/30 text-emerald-600",
+  pending: "border-warning/30 text-warning",
+  active: "border-success/30 text-success",
   rejected: "border-border text-muted-foreground",
   revoked: "border-border text-muted-foreground",
 }

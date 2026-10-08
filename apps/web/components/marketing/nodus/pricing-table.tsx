@@ -77,10 +77,10 @@ export function PricingTable() {
     <section>
       <Container className="border-divide md:border-x px-4 py-10 md:px-8">
         <p className="text-brand text-center text-sm font-normal">Compare plans</p>
-        <h2 className="text-charcoal-700 mt-2 text-center text-2xl font-medium tracking-tight md:text-3xl dark:text-neutral-100">
+        <h2 className="text-charcoal-700 mt-2 text-center text-2xl font-medium tracking-tight md:text-3xl">
           Compare all features
         </h2>
-        <p className="mx-auto mt-3 max-w-xl text-center text-sm text-gray-600 dark:text-neutral-400">
+        <p className="mx-auto mt-3 max-w-xl text-center text-sm text-gray-600">
           {MARKETING_COPY.pricing.comparisonIntro}
         </p>
       </Container>
@@ -90,11 +90,11 @@ export function PricingTable() {
           <table className="w-full min-w-[720px] text-left">
             <thead>
               <tr className="border-divide divide-divide divide-x border-b">
-                <th className="min-w-[200px] px-4 pt-10 pb-8 align-bottom text-sm font-medium text-gray-600 dark:text-neutral-200">
-                  <div className="mb-2 text-sm font-normal text-gray-600 dark:text-neutral-200">
+                <th className="min-w-[200px] px-4 pt-10 pb-8 align-bottom text-sm font-medium text-gray-600">
+                  <div className="mb-2 text-sm font-normal text-gray-600">
                     Select a preferred cycle
                   </div>
-                  <div className="inline-flex rounded-md bg-gray-100 p-1 dark:bg-neutral-800">
+                  <div className="inline-flex rounded-md bg-gray-100 p-1">
                     {(
                       [
                         { label: "Monthly", value: "monthly" as const },
@@ -106,9 +106,9 @@ export function PricingTable() {
                         type="button"
                         onClick={() => setIsAnnual(opt.value === "yearly")}
                         className={cn(
-                          "relative z-10 rounded-md px-3 py-1 text-sm text-gray-800 dark:text-white",
+                          "relative z-10 rounded-md px-3 py-1 text-sm text-foreground",
                           cycle === opt.value &&
-                            "shadow-aceternity bg-white dark:bg-neutral-900 dark:text-white",
+                            "shadow-aceternity bg-card",
                         )}
                         aria-pressed={cycle === opt.value}
                       >
@@ -121,8 +121,8 @@ export function PricingTable() {
                   const tier = tiers.find((t) => t.name === name)!
                   return (
                     <th key={`hdr-${name}`} className="min-w-[180px] px-4 pt-10 pb-8 align-bottom">
-                      <div className="text-charcoal-700 text-lg font-medium dark:text-neutral-100">{name}</div>
-                      <div className="mt-1 flex items-center text-sm font-normal text-gray-600 dark:text-neutral-300">
+                      <div className="text-charcoal-700 text-lg font-medium">{name}</div>
+                      <div className="mt-1 flex items-center text-sm font-normal text-gray-600">
                         $<SlidingNumber value={titleToPrice[name]?.[cycle === "yearly" ? "yearly" : "monthly"]} />
                         /month billed {cycle === "monthly" ? "monthly" : "annually"}
                       </div>
@@ -142,10 +142,10 @@ export function PricingTable() {
             <tbody>
               {sections.map((section) => (
                 <React.Fragment key={section.label}>
-                  <tr className="border-divide border-b bg-gray-50 dark:bg-neutral-900">
+                  <tr className="border-divide border-b bg-[color:var(--g-marketing-surface)]">
                     <td
                       colSpan={4}
-                      className="text-charcoal-700 px-4 py-3 text-xs font-semibold tracking-wider uppercase dark:text-neutral-300"
+                      className="text-charcoal-700 px-4 py-3 text-xs font-semibold tracking-wider uppercase"
                     >
                       {section.label}
                     </td>
@@ -155,14 +155,14 @@ export function PricingTable() {
                       key={row.title}
                       className={cn(
                         "border-divide divide-divide divide-x border-b",
-                        index % 2 === 0 && "bg-gray-50/70 dark:bg-neutral-800/40",
+                        index % 2 === 0 && "bg-[color:var(--g-marketing-surface)]/70",
                       )}
                     >
-                      <td className="text-charcoal-700 px-4 py-5 text-sm dark:text-neutral-100">{row.title}</td>
+                      <td className="text-charcoal-700 px-4 py-5 text-sm">{row.title}</td>
                       {(["node", "control", "command"] as const).map((key) => (
                         <td
                           key={`${row.title}-${key}`}
-                          className="text-charcoal-700 px-4 py-5 text-center text-sm dark:text-neutral-100"
+                          className="text-charcoal-700 px-4 py-5 text-center text-sm"
                         >
                           <CellValue value={row[key]} />
                         </td>
@@ -186,7 +186,7 @@ function CellValue({ value }: { value: PlanComparisonCell }) {
         <CheckIcon className="h-4 w-4" />
       </span>
     ) : (
-      <span className="text-gray-400 dark:text-neutral-600">—</span>
+      <span className="text-gray-400">—</span>
     )
   }
   return <span>{value}</span>

@@ -111,8 +111,8 @@ export function NodeHandles(props: Omit<NodeHandleProps, "side">) {
 /** Node surface: quiet at rest; Emerald means selected/connected intelligence. */
 export function nodeSurfaceClass(selected: boolean): string {
   return selected
-    ? "border-[var(--g-emerald)] bg-[color:var(--g-emerald-pale)] shadow-[0_14px_34px_-30px_rgba(0,127,95,.6)] dark:bg-[var(--graphite-800)]"
-    : "border-[color:var(--g-border-default)] bg-card transition-[border-color,box-shadow] duration-200 hover:border-[color:var(--g-emerald)] hover:shadow-[0_14px_34px_-32px_rgba(16,24,22,.5)]"
+    ? "border-[var(--g-emerald)] bg-[color:var(--g-emerald-pale)] shadow-[0_14px_34px_-30px_color-mix(in_srgb,var(--g-brand-active)_60%,transparent)] dark:bg-[var(--graphite-800)]"
+    : "border-[color:var(--g-border-default)] bg-card transition-[border-color,box-shadow] duration-200 hover:border-[color:var(--g-emerald)] hover:shadow-[0_14px_34px_-32px_color-mix(in_srgb,var(--g-carbon)_50%,transparent)]"
 }
 
 /** 2px Signal edge on the leading side of a selected node. */

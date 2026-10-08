@@ -17,10 +17,10 @@ export function PricingFaqAccordion() {
             <button
               type="button"
               onClick={() => setExpandedFaq(open ? null : i)}
-              className="flex w-full items-center justify-between gap-4 px-4 py-5 text-left transition-colors hover:bg-gray-50 md:px-6 dark:hover:bg-neutral-900"
+              className="flex w-full items-center justify-between gap-4 px-4 py-5 text-left transition-colors hover:bg-[color:var(--g-marketing-surface)] md:px-6"
               aria-expanded={open}
             >
-              <span className="text-charcoal-700 text-sm font-medium md:text-base dark:text-neutral-100">
+              <span className="text-charcoal-700 text-sm font-medium md:text-base">
                 {faq.question}
               </span>
               <span
@@ -34,7 +34,7 @@ export function PricingFaqAccordion() {
               </span>
             </button>
             {open ? (
-              <div className="border-divide border-t px-4 py-4 text-sm leading-relaxed text-gray-600 md:px-6 dark:text-neutral-400">
+              <div className="border-divide border-t px-4 py-4 text-sm leading-relaxed text-gray-600 md:px-6">
                 {faq.answer}
               </div>
             ) : null}

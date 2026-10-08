@@ -102,7 +102,7 @@ export function ResearchCascadePanel({ cascade, className }: ResearchCascadePane
                   ) : null}
                 </div>
                 {action.requires_approval ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-medium text-amber-900 dark:text-amber-100">
+                  <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-medium text-warning-text">
                     <ShieldAlert className="h-3 w-3" aria-hidden />
                     Approval required
                   </span>

@@ -28,17 +28,17 @@ export function CoreHubNode({
         animate={{ scale: pulsing ? 1.03 : resolved ? 1.02 : 1 }}
         transition={{ duration: 0.35 }}
         className={cn(
-          "relative h-20 w-20 overflow-hidden rounded-md bg-gray-200 p-px shadow-xl dark:bg-neutral-700 sm:h-24 sm:w-24",
-          resolved && "ring-1 ring-[color:var(--color-brand,#16a374)]",
+          "relative h-20 w-20 overflow-hidden rounded-md bg-border p-px shadow-xl sm:h-24 sm:w-24",
+          resolved && "ring-1 ring-brand",
         )}
       >
         {!reduced ? (
           <>
-            <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-blue-500)_20%,transparent_30%)]" />
-            <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-delay:1s] [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--color-brand,#16a374)_20%,transparent_30%)]" />
+            <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--info)_20%,transparent_30%)]" />
+            <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [animation-delay:1s] [animation-duration:2s] [background-image:conic-gradient(at_center,transparent,var(--brand)_20%,transparent_30%)]" />
           </>
         ) : null}
-        <div className="relative z-20 flex h-full w-full flex-col items-center justify-center rounded-[5px] bg-white text-[color:var(--color-brand,#16a374)] dark:bg-neutral-900 dark:text-white">
+        <div className="relative z-20 flex h-full w-full flex-col items-center justify-center rounded-[5px] bg-card text-brand dark:text-foreground">
           <NucleoIntelligence className="size-7 sm:size-8" />
           <span className="mt-0.5 text-[8px] font-bold text-[color:var(--g-text-muted)]">
             Core
@@ -52,7 +52,7 @@ export function CoreHubNode({
           initial={reduced ? false : { opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           exit={reduced ? undefined : { opacity: 0 }}
-          className="relative z-30 whitespace-nowrap rounded-sm border border-blue-500 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-500 shadow-sm dark:bg-blue-900 dark:text-white"
+          className="relative z-30 whitespace-nowrap rounded-sm border border-info bg-info/10 px-2 py-0.5 text-[10px] font-semibold text-info shadow-sm"
         >
           {label}
         </motion.span>

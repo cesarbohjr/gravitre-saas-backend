@@ -74,15 +74,15 @@ function AuthCallbackCompleteContent() {
   }, [callbackContext.nextPath, router])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50 px-6">
-      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-8 text-center shadow-sm">
+    <div className="min-h-screen flex items-center justify-center bg-background px-6">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
         {errorMessage ? (
           <>
-            <h1 className="text-lg font-semibold text-zinc-900">Authentication error</h1>
-            <p className="mt-2 text-sm text-zinc-600">{errorMessage}</p>
+            <h1 className="text-lg font-semibold text-foreground">Authentication error</h1>
+            <p className="mt-2 text-sm text-muted-foreground">{errorMessage}</p>
             <button
               type="button"
-              className="mt-5 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white"
+              className="mt-5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
               onClick={() => router.replace(callbackContext.fallbackDestination)}
             >
               Back to sign in
@@ -90,9 +90,9 @@ function AuthCallbackCompleteContent() {
           </>
         ) : (
           <>
-            <Loader2 className="mx-auto h-6 w-6 animate-spin text-emerald-600" />
-            <h1 className="mt-4 text-lg font-semibold text-zinc-900">Finishing sign in</h1>
-            <p className="mt-2 text-sm text-zinc-600">Please wait while we secure your session.</p>
+            <Loader2 className="mx-auto h-6 w-6 animate-spin text-brand" />
+            <h1 className="mt-4 text-lg font-semibold text-foreground">Finishing sign in</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Please wait while we secure your session.</p>
           </>
         )}
       </div>
@@ -102,8 +102,8 @@ function AuthCallbackCompleteContent() {
 
 function AuthCallbackFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-50">
-      <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Loader2 className="h-8 w-8 animate-spin text-brand" />
     </div>
   )
 }

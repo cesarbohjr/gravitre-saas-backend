@@ -93,7 +93,7 @@ export function OrgMonogram({
       role="img"
       aria-label={name}
       className={cn(
-        "flex shrink-0 items-center justify-center bg-gradient-to-br font-semibold uppercase leading-none tracking-tight text-white shadow-sm ring-1 ring-black/10 dark:ring-white/15",
+        "flex shrink-0 items-center justify-center bg-gradient-to-br font-semibold uppercase leading-none tracking-tight text-white shadow-sm ring-1 ring-foreground/10",
         orgGradient(name),
         sizeClasses[size],
         className,
@@ -139,7 +139,7 @@ export function OrganizationLogoAvatar({
     <div
       className={cn(
         boxClass,
-        "border-transparent bg-gradient-to-br font-semibold uppercase tracking-tight text-white shadow-sm ring-1 ring-black/10 dark:ring-white/15",
+        "border-transparent bg-gradient-to-br font-semibold uppercase tracking-tight text-white shadow-sm ring-1 ring-foreground/10",
         orgGradient(name),
       )}
       role="img"

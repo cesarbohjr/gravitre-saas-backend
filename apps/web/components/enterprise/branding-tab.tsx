@@ -443,7 +443,7 @@ export function BrandingTab({ isAdmin }: { isAdmin: boolean }) {
                     className={cn(
                       "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
                       currentStep > step.n
-                        ? "bg-success text-white"
+                        ? "bg-success text-success-foreground"
                         : currentStep === step.n
                           ? "bg-primary text-primary-foreground"
                           : "bg-secondary text-muted-foreground",

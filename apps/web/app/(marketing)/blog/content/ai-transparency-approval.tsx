@@ -15,7 +15,7 @@ export const aiTransparencyApprovalPost: BlogPost = {
   ...createBlogDates("2026-07-17", "2026-07-18"),
   readTime: "6 min read",
   heroImage: "/images/blog/ai-transparency-governance-hero.jpg",
-  heroGradient: "from-primary/10 via-white to-slate-100",
+  heroGradient: "from-primary/10 via-[color:var(--g-marketing-canvas)] to-muted",
   heroAlt:
     "Governance flow diagram showing chat, guided task, and workflow paths converging on a human approval gate, with verification outcomes, assumptions notes, and an audit log",
   keywords: [

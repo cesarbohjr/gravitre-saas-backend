@@ -1,12 +1,12 @@
 import type { DocTier } from "@/lib/docs/types"
 
 const TIER_STYLES: Record<DocTier, { label: string; className: string }> = {
-  all: { label: "All plans", className: "border-zinc-200 bg-zinc-100 text-zinc-600" },
-  free: { label: "Free", className: "border-zinc-200 bg-zinc-100 text-zinc-600" },
-  node: { label: "Node", className: "border-sky-200 bg-sky-50 text-sky-700" },
-  control: { label: "Control", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-  command: { label: "Command", className: "border-amber-200 bg-amber-50 text-amber-700" },
-  enterprise: { label: "Enterprise", className: "border-zinc-700 bg-zinc-900 text-zinc-50" },
+  all: { label: "All plans", className: "border-border bg-muted text-muted-foreground" },
+  free: { label: "Free", className: "border-border bg-muted text-muted-foreground" },
+  node: { label: "Node", className: "border-info/30 bg-info/10 text-info" },
+  control: { label: "Control", className: "border-brand/30 bg-brand-soft text-brand-text" },
+  command: { label: "Command", className: "border-warning/30 bg-warning/10 text-warning-text" },
+  enterprise: { label: "Enterprise", className: "border-foreground bg-foreground text-background" },
 }
 
 export function PlanBadge({ tier, label }: { tier: DocTier; label?: string }) {

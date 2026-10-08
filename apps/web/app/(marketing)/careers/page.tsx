@@ -86,7 +86,7 @@ export default function CareersPage() {
             </Button>
           </div>
           <div className="flex flex-col justify-center gap-4 px-4 py-10 md:px-8">
-            <p className="font-mono text-xs tracking-tight text-neutral-500 uppercase">
+            <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
               How we work
             </p>
             {howWeWork.map((line, i) => (
@@ -143,7 +143,7 @@ export default function CareersPage() {
           {why.map((item) => (
             <div
               key={item.title}
-              className="relative z-10 rounded-lg border border-divide bg-gray-50 p-4 transition duration-200 md:p-5"
+              className="relative z-10 rounded-lg border border-divide bg-[color:var(--g-marketing-surface)] p-4 transition duration-200 md:p-5"
             >
               <div className="flex items-center gap-2">{item.icon}</div>
               <h3 className="mt-4 mb-2 text-lg font-medium">{item.title}</h3>

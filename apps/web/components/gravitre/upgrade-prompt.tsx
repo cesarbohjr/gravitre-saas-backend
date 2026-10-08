@@ -26,8 +26,9 @@ const featureDetails = {
     title: "Meson",
     icon: Blocks,
     description: "Build agents, training, and workflows from a single request.",
-    color: "electric",
-    gradient: "from-[#315CFF] to-[#315CFF]",
+    tint: "var(--chart-4)",
+    gradient: "from-chart-4 to-chart-4",
+    onGradient: "text-info-foreground",
     requiredPlans: ["control", "command"],
     benefits: [
       "Create agents automatically",
@@ -40,8 +41,9 @@ const featureDetails = {
     title: "More agents",
     icon: Sparkles,
     description: "Scale your AI workforce with additional agent capacity.",
-    color: "blue",
-    gradient: "from-blue-500 to-indigo-500",
+    tint: "var(--info)",
+    gradient: "from-info to-chart-4",
+    onGradient: "text-info-foreground",
     requiredPlans: ["control", "command"],
     benefits: [
       "Run multiple agents simultaneously",
@@ -54,8 +56,9 @@ const featureDetails = {
     title: "More outputs",
     icon: Zap,
     description: "Increase your monthly output capacity for more work.",
-    color: "emerald",
-    gradient: "from-emerald-500 to-teal-500",
+    tint: "var(--success)",
+    gradient: "from-success to-chart-1",
+    onGradient: "text-success-foreground",
     requiredPlans: ["control", "command"],
     benefits: [
       "Higher monthly limits",
@@ -68,8 +71,9 @@ const featureDetails = {
     title: "Advanced integrations",
     icon: Crown,
     description: "Connect to enterprise tools and advanced data sources.",
-    color: "amber",
-    gradient: "from-amber-500 to-orange-500",
+    tint: "var(--warning)",
+    gradient: "from-warning to-chart-3",
+    onGradient: "text-warning-foreground",
     requiredPlans: ["command"],
     benefits: [
       "Enterprise CRM systems",
@@ -113,7 +117,7 @@ export function UpgradePrompt({ open, onClose, feature, currentPlan = "node" }: 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+          className="absolute inset-0 bg-[color:var(--overlay)] backdrop-blur-sm"
           onClick={onClose}
         />
 
@@ -126,7 +130,7 @@ export function UpgradePrompt({ open, onClose, feature, currentPlan = "node" }: 
         >
           {/* Header with gradient */}
           <div className={`relative p-6 bg-gradient-to-br ${featureInfo.gradient} bg-opacity-10`}
-            style={{ background: `linear-gradient(to bottom right, rgb(${featureInfo.color === 'electric' ? '49 92 255' : featureInfo.color === 'blue' ? '59 130 246' : featureInfo.color === 'emerald' ? '16 185 129' : '245 158 11'} / 0.1), transparent)` }}
+            style={{ background: `linear-gradient(to bottom right, color-mix(in srgb, ${featureInfo.tint} 10%, transparent), transparent)` }}
           >
             <button
               onClick={onClose}
@@ -136,7 +140,7 @@ export function UpgradePrompt({ open, onClose, feature, currentPlan = "node" }: 
             </button>
 
             <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${featureInfo.gradient} flex items-center justify-center mb-4`}>
-              <Icon className="h-7 w-7 text-white" />
+              <Icon className={`h-7 w-7 ${featureInfo.onGradient}`} />
             </div>
             
             <h2 className="text-xl font-semibold text-foreground">
@@ -156,7 +160,7 @@ export function UpgradePrompt({ open, onClose, feature, currentPlan = "node" }: 
               {featureInfo.benefits.map((benefit, i) => (
                 <li key={i} className="flex items-center gap-3">
                   <div className={`h-5 w-5 rounded-full bg-gradient-to-br ${featureInfo.gradient} flex items-center justify-center`}>
-                    <Check className="h-3 w-3 text-white" />
+                    <Check className={`h-3 w-3 ${featureInfo.onGradient}`} />
                   </div>
                   <span className="text-sm text-foreground">{benefit}</span>
                 </li>

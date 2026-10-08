@@ -13,18 +13,18 @@ export function scoreColor(score: number): { bar: string; text: string; glow: st
   if (score >= 0.75)
     return {
       bar: "bg-[color:var(--g-emerald)]",
-      text: "text-emerald-600",
+      text: "text-success",
       glow: "",
     }
   if (score >= 0.5)
     return {
-      bar: "bg-amber-500",
-      text: "text-amber-600",
+      bar: "bg-warning",
+      text: "text-warning",
       glow: "",
     }
   return {
-    bar: "bg-rose-500",
-    text: "text-rose-600",
+    bar: "bg-destructive",
+    text: "text-destructive",
     glow: "",
   }
 }
@@ -126,7 +126,7 @@ export function SectionCard({
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay }}
       className={cn(
         "group relative overflow-hidden rounded-2xl border border-border/70 bg-card p-5 shadow-sm",
-        "transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-500/30 hover:shadow-md hover:shadow-emerald-500/5",
+        "transition-all duration-300 hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md hover:shadow-brand/5",
         className,
       )}
     >

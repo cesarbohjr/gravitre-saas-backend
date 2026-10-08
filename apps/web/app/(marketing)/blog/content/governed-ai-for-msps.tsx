@@ -25,7 +25,7 @@ export const governedAiForMspsPost: BlogPost = {
   displayDate: "October 3, 2026",
   readTime: "7 min read",
   heroImage: "/images/blog/governed-ai-for-msps-hero.jpg",
-  heroGradient: "from-sky-50 via-white to-primary/10",
+  heroGradient: "from-info/10 via-[color:var(--g-marketing-canvas)] to-primary/10",
   heroAlt: "Close-up of blue-lit server blade drives in a data center rack, representing the infrastructure layer MSPs already manage for clients.",
   keywords: [
     "MSP AI monetization",

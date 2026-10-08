@@ -5,9 +5,9 @@ import { motion } from "framer-motion"
 import type { PacketKind } from "./types"
 
 const KIND_MID: Record<PacketKind, string> = {
-  signal: "var(--color-blue-500)",
-  action: "var(--color-brand, #16a374)",
-  learn: "color-mix(in oklch, var(--g-intelligence) 55%, #7c6af5)",
+  signal: "var(--info)",
+  action: "var(--brand)",
+  learn: "var(--g-intelligence)",
 }
 
 /**
@@ -36,7 +36,7 @@ export function GravitreSignalPath({
       <path
         d={d}
         fill="none"
-        stroke="var(--color-line, #eaedf1)"
+        stroke="var(--line)"
         strokeWidth={1.25}
         strokeLinecap="round"
         opacity={muted ? 0.2 : 0.65}
@@ -45,7 +45,7 @@ export function GravitreSignalPath({
         <path
           d={d}
           fill="none"
-          stroke="var(--color-brand, #16a374)"
+          stroke="var(--brand)"
           strokeWidth={1.75}
           strokeLinecap="round"
           opacity={0.55}
@@ -64,9 +64,9 @@ export function GravitreSignalPath({
           <defs>
             {reduced ? (
               <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1="0%" x2="100%">
-                <stop stopColor="var(--color-line, #EAEDF1)" />
+                <stop stopColor="var(--line)" />
                 <stop offset="0.5" stopColor={KIND_MID[activeKind]} />
-                <stop offset="1" stopColor="var(--color-line, #EAEDF1)" />
+                <stop offset="1" stopColor="var(--line)" />
               </linearGradient>
             ) : (
               <motion.linearGradient
@@ -82,9 +82,9 @@ export function GravitreSignalPath({
                   repeatDelay: 0.4,
                 }}
               >
-                <stop stopColor="var(--color-line, #EAEDF1)" />
+                <stop stopColor="var(--line)" />
                 <stop offset="0.5" stopColor={KIND_MID[activeKind]} />
-                <stop offset="1" stopColor="var(--color-line, #EAEDF1)" />
+                <stop offset="1" stopColor="var(--line)" />
               </motion.linearGradient>
             )}
           </defs>

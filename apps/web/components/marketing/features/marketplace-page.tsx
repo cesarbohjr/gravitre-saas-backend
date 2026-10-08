@@ -80,7 +80,7 @@ const ASSETS: Asset[] = [
     description: "Pipeline review, executive summaries, and CRM-connected RevOps rituals.",
     availability: "Included",
     icon: TrendingUp,
-    tone: "text-blue-600 bg-blue-100",
+    tone: "text-info bg-info/15",
   },
   {
     name: "Support Operations Pack",
@@ -98,7 +98,7 @@ const ASSETS: Asset[] = [
     description: "Multi-agent marketing production, attribution analysis, and campaign digests.",
     availability: "Included",
     icon: Megaphone,
-    tone: "text-amber-600 bg-amber-100",
+    tone: "text-warning-text bg-warning/15",
   },
   {
     name: "Ticket Triage Agent",
@@ -116,7 +116,7 @@ const ASSETS: Asset[] = [
     description: "Enrich records, summarize pipeline, and draft follow-ups from connected CRM data.",
     availability: "Included",
     icon: NucleoAgent,
-    tone: "text-blue-600 bg-blue-100",
+    tone: "text-info bg-info/15",
   },
   {
     name: "Deal Desk Workflow",
@@ -134,7 +134,7 @@ const ASSETS: Asset[] = [
     description: "Parse invoices, match POs, and queue exceptions for human review before writes.",
     availability: "Included",
     icon: FileSpreadsheet,
-    tone: "text-amber-600 bg-amber-100",
+    tone: "text-warning-text bg-warning/15",
   },
   {
     name: "Security Knowledge Base",
@@ -143,7 +143,7 @@ const ASSETS: Asset[] = [
     description: "Curated threat-intel and policy docs, ready for agents with routing traces.",
     availability: "Included",
     icon: NucleoApproval,
-    tone: "text-rose-600 bg-rose-100",
+    tone: "text-danger-text bg-destructive/15",
   },
   {
     name: "Onboarding Playbook",
@@ -152,7 +152,7 @@ const ASSETS: Asset[] = [
     description: "Structured onboarding checklists and request routing for new hires.",
     availability: "Included",
     icon: BookOpen,
-    tone: "text-teal-600 bg-teal-100",
+    tone: "text-brand-text bg-brand/15",
   },
 ]
 
@@ -171,7 +171,7 @@ function CatalogCard({ asset, index }: { asset: Asset; index: number }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.24) }}
-      className="flex flex-col rounded-2xl border border-divide bg-gray-50 p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/20 hover:bg-white hover:shadow-md"
+      className="flex flex-col rounded-2xl border border-divide bg-[color:var(--g-marketing-surface)] p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/20 hover:bg-card hover:shadow-md"
     >
       <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${asset.tone}`}>
         <Icon className="h-6 w-6" />
@@ -183,7 +183,7 @@ function CatalogCard({ asset, index }: { asset: Asset; index: number }) {
         <span className="text-sm font-semibold text-primary">{asset.availability}</span>
         <Link
           href="/get-started"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/100"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/100"
         >
           Install
         </Link>
@@ -216,8 +216,8 @@ export function MarketplacePage() {
               onClick={() => setActive(cat)}
               className={`rounded-full border px-5 py-2 text-sm font-medium transition-all ${
                 active === cat
-                  ? "border-charcoal-900 bg-charcoal-900 text-white"
-                  : "border-divide bg-white text-gray-600 hover:text-charcoal-700"
+                  ? "border-charcoal-900 bg-charcoal-900 text-background"
+                  : "border-divide bg-card text-gray-600 hover:text-charcoal-700"
               }`}
             >
               {cat}
@@ -263,7 +263,7 @@ export function MarketplacePage() {
               return (
                 <div
                   key={step.n}
-                  className="border-divide flex min-w-[220px] flex-1 items-center gap-3 rounded-lg border bg-gray-50 px-5 py-4 sm:max-w-xs"
+                  className="border-divide flex min-w-[220px] flex-1 items-center gap-3 rounded-lg border bg-[color:var(--g-marketing-surface)] px-5 py-4 sm:max-w-xs"
                 >
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color:var(--brand-soft)] text-sm font-bold text-[color:var(--brand)]">
                     {step.n}
@@ -289,7 +289,7 @@ export function MarketplacePage() {
               <GravitreReveal
                 key={stat.label}
                 delay={i * 0.08}
-                className="border-divide rounded-lg border bg-gray-50 p-6 text-center"
+                className="border-divide rounded-lg border bg-[color:var(--g-marketing-surface)] p-6 text-center"
               >
                 <div className="text-3xl font-bold text-foreground">{stat.value}</div>
                 <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
@@ -300,7 +300,7 @@ export function MarketplacePage() {
             {WHY_GUARANTEES.map((item) => (
               <li
                 key={item}
-                className="border-divide flex items-center gap-2 rounded-lg border bg-white px-4 py-3 text-sm text-foreground"
+                className="border-divide flex items-center gap-2 rounded-lg border bg-card px-4 py-3 text-sm text-foreground"
               >
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-[color:var(--brand)]" />
                 {item}

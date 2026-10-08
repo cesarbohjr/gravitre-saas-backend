@@ -239,7 +239,7 @@ export function RelationshipToolbar({
       ) : null}
       {showTestData ? (
         <p
-          className="rounded-md border border-amber-500/25 bg-amber-500/5 px-3 py-2 text-xs leading-relaxed text-[color:var(--g-text-secondary)]"
+          className="rounded-md border border-warning/25 bg-warning/5 px-3 py-2 text-xs leading-relaxed text-[color:var(--g-text-secondary)]"
           data-testid="smoke-data-callout"
         >
           {RELATIONSHIPS_SMOKE_DATA.visibleCallout}

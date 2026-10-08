@@ -147,7 +147,7 @@ function statusBadgeClass(status: string): string {
     return "bg-success/10 text-success"
   }
   if (normalized.includes("run")) {
-    return "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+    return "bg-info/10 text-info"
   }
   return "bg-secondary text-muted-foreground"
 }
@@ -199,7 +199,7 @@ function SearchResultRow({
       >
         <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary/80">
           {result.entity_type === "run" ? (
-            <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <Zap className="h-4 w-4 text-info" />
           ) : result.entity_type === "agent" ? (
             <Bot className="h-4 w-4 text-[color:var(--g-emerald-deep)]" />
           ) : result.entity_type === "connector" ? (
@@ -207,7 +207,7 @@ function SearchResultRow({
           ) : result.entity_type === "workflow" ? (
             <Workflow className="h-4 w-4 text-warning" />
           ) : result.entity_type === "source" ? (
-            <Database className="h-4 w-4 text-cyan-700 dark:text-cyan-400" />
+            <Database className="h-4 w-4 text-info" />
           ) : (
             <FileText className="h-4 w-4 text-muted-foreground" />
           )}
@@ -216,7 +216,7 @@ function SearchResultRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-foreground group-hover:text-blue-400 transition-colors">
+              <p className="truncate text-sm font-semibold text-foreground group-hover:text-info transition-colors">
                 {result.title}
               </p>
               {secondaryLine ? (
@@ -343,7 +343,7 @@ function SearchTypeaheadDropdown({
                   item.kind === "workflow" && "bg-warning/10 text-warning",
                   item.kind === "connector" && "bg-success/10 text-success",
                   item.kind === "history" && "bg-secondary text-muted-foreground",
-                  item.kind === "search" && "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+                  item.kind === "search" && "bg-info/10 text-info",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -589,7 +589,7 @@ export default function ChatPage() {
       <form onSubmit={onSubmit}>
         <div className={cn(
           "flex items-center gap-2 rounded-lg border bg-card p-2.5 pl-3 transition-all",
-          "border-border hover:border-foreground/20 focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/20"
+          "border-border hover:border-foreground/20 focus-within:border-info/50 focus-within:ring-2 focus-within:ring-info/20"
         )}>
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input
@@ -740,7 +740,7 @@ export default function ChatPage() {
                   className="flex flex-col items-center justify-center py-16 text-center"
                 >
                   <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-[10px] border border-divide bg-[color:var(--g-surface-2)]">
-                    <Search className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                    <Search className="h-8 w-8 text-info" />
                   </div>
                   <h2 className="text-lg font-semibold text-foreground mb-2">Sign in required</h2>
                   <p className="text-sm text-muted-foreground max-w-md">
@@ -971,14 +971,14 @@ export default function ChatPage() {
                     className={cn(
                       "group w-full rounded-lg border p-2.5 text-left transition-colors",
                       isActive
-                        ? "border-blue-500/30 bg-blue-500/5"
+                        ? "border-info/30 bg-info/5"
                         : "border-transparent hover:border-border/60 hover:bg-secondary/50",
                     )}
                   >
                     <div className="flex items-start gap-2.5">
-                      <Search className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-blue-400 transition-colors" />
+                      <Search className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-info transition-colors" />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground group-hover:text-blue-400 transition-colors">
+                        <p className="truncate text-sm font-medium text-foreground group-hover:text-info transition-colors">
                           {entry.query}
                         </p>
                         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">

@@ -99,7 +99,7 @@ export function HomeNarrativeSections() {
         <IntelligenceField variant="section" atmosphere="outcome" className="opacity-18" />
         <div className="relative mx-auto max-w-7xl px-6">
           <div className="mx-auto mb-12 max-w-2xl text-center">
-            <p className="text-sm font-bold uppercase tracking-[0.22em] text-amber-400">
+            <p className="text-sm font-bold uppercase tracking-[0.22em] text-warning">
               {n.demo.eyebrow}
             </p>
             <h2 className="mt-5 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">

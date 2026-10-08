@@ -100,10 +100,10 @@ function OperatorScreen() {
               <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                 msg.type === 'user' 
                   ? 'bg-muted text-foreground rounded-tl-sm' 
-                  : 'bg-gradient-to-br from-emerald-600 to-emerald-700 text-white rounded-tr-sm'
+                  : 'bg-gradient-to-br from-[color:var(--g-brand-hover)] to-[color:var(--g-brand-active)] text-primary-foreground rounded-tr-sm'
               }`}>
                 {msg.type === 'ai' && (
-                  <div className="flex items-center gap-2 mb-1.5 text-emerald-200/80">
+                  <div className="flex items-center gap-2 mb-1.5 text-primary-foreground/80">
                     <Sparkles className="h-3 w-3" />
                     <span className="text-[10px] font-medium">via {msg.agent}</span>
                   </div>
@@ -111,8 +111,8 @@ function OperatorScreen() {
                 <p className="text-sm">{msg.text}</p>
               </div>
               {msg.type === 'ai' && (
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/100 to-emerald-600 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
-                  <Sparkles className="h-4 w-4 text-white" />
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/100 to-[color:var(--g-brand-hover)] flex items-center justify-center shrink-0 shadow-lg shadow-brand/20">
+                  <Sparkles className="h-4 w-4 text-primary-foreground" />
                 </div>
               )}
             </motion.div>
@@ -149,7 +149,7 @@ function OperatorScreen() {
             readOnly
           />
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <ArrowRight className="h-4 w-4 text-white" />
+            <ArrowRight className="h-4 w-4 text-primary-foreground" />
           </div>
         </div>
       </div>
@@ -179,7 +179,7 @@ function AgentsScreen() {
           </div>
           <span className="text-sm font-medium text-muted-foreground">Agents</span>
         </div>
-        <div className="px-2.5 py-1 rounded-md bg-primary/100/10 border border-primary/20 text-emerald-400 text-xs font-medium">
+        <div className="px-2.5 py-1 rounded-md bg-primary/100/10 border border-primary/20 text-brand text-xs font-medium">
           + New Agent
         </div>
       </div>
@@ -377,8 +377,8 @@ function AnalyticsScreen() {
             <div className="text-xs text-muted-foreground mb-1">{stat.label}</div>
             <div className="text-lg font-bold text-foreground leading-tight">{stat.value}</div>
             <div className={`text-xs mt-1 ${
-              stat.color === 'emerald' ? 'text-emerald-400' :
-              stat.color === 'blue' ? 'text-blue-400' : 'text-[color:var(--g-electric)]'
+              stat.color === 'emerald' ? 'text-brand' :
+              stat.color === 'blue' ? 'text-info' : 'text-[color:var(--g-electric)]'
             }`}>
               {stat.change}
             </div>
@@ -395,7 +395,7 @@ function AnalyticsScreen() {
               initial={{ height: 0 }}
               animate={{ height: `${height}%` }}
               transition={{ delay: 0.5 + i * 0.1, duration: 0.5, ease: "easeOut" }}
-              className="flex-1 bg-gradient-to-t from-emerald-600 to-primary/100 rounded-t-sm"
+              className="flex-1 bg-gradient-to-t from-[color:var(--g-brand-hover)] to-primary/100 rounded-t-sm"
             />
           ))}
         </div>
@@ -504,7 +504,7 @@ export function HowItWorks({ steps }: { steps: HowItWorksStep[] }) {
             <div className="flex items-start gap-4">
               <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
                 activeStep === i
-                  ? "bg-primary text-white"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-muted text-muted-foreground"
               }`}>
                 {step.number}
@@ -596,7 +596,7 @@ function TestimonialsCarouselActive({ testimonials }: { testimonials: Testimonia
             &ldquo;{testimonials[activeIndex].quote}&rdquo;
           </blockquote>
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary/100 to-teal-500 flex items-center justify-center text-white font-semibold">
+            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary/100 to-brand flex items-center justify-center text-primary-foreground font-semibold">
               {testimonials[activeIndex].author.charAt(0)}
             </div>
             <div>

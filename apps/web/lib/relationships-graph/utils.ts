@@ -13,9 +13,9 @@ export function seededNodeKey(nodeId: string): string {
 }
 
 export function confidenceTone(value: number): string {
-  if (value >= 0.75) return "border-emerald-300 text-emerald-700 dark:text-emerald-300"
-  if (value >= 0.5) return "border-amber-300 text-amber-700 dark:text-amber-300"
-  return "border-rose-300 text-rose-700 dark:text-rose-300"
+  if (value >= 0.75) return "border-success/40 text-success-text"
+  if (value >= 0.5) return "border-warning/40 text-warning-text"
+  return "border-destructive/40 text-danger-text"
 }
 
 export function confidenceLabel(value: number): string {

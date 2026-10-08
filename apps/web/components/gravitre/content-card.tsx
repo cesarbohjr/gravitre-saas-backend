@@ -36,18 +36,18 @@ const sizeStyles = {
 
 const variantStyles = {
   default: "border border-border bg-card",
-  elevated: "border border-border bg-card shadow-lg shadow-black/5",
+  elevated: "border border-border bg-card shadow-[var(--elevation-2)]",
   ghost: "border-transparent bg-transparent hover:bg-secondary/50",
   interactive: "border border-border bg-card cursor-pointer hover:border-muted-foreground/40 hover:bg-accent/50",
   highlight: "border border-primary/20 bg-primary/5",
 }
 
 const glowColors = {
-  blue: "shadow-blue-500/10 hover:shadow-blue-500/20",
-  emerald: "shadow-emerald-500/10 hover:shadow-emerald-500/20",
-  violet: "shadow-violet-500/10 hover:shadow-violet-500/20",
-  amber: "shadow-amber-500/10 hover:shadow-amber-500/20",
-  rose: "shadow-rose-500/10 hover:shadow-rose-500/20",
+  blue: "shadow-info/10 hover:shadow-info/20",
+  emerald: "shadow-success/10 hover:shadow-success/20",
+  violet: "shadow-chart-4/10 hover:shadow-chart-4/20",
+  amber: "shadow-warning/10 hover:shadow-warning/20",
+  rose: "shadow-destructive/10 hover:shadow-destructive/20",
 }
 
 export const ContentCard = forwardRef<HTMLDivElement, ContentCardProps>(
@@ -247,18 +247,18 @@ interface MetricCardProps {
 
 const metricVariantStyles = {
   default: "border-border",
-  success: "border-emerald-500/20 bg-emerald-500/5",
-  warning: "border-amber-500/20 bg-amber-500/5",
-  error: "border-red-500/20 bg-red-500/5",
-  info: "border-blue-500/20 bg-blue-500/5",
+  success: "border-success/20 bg-success/5",
+  warning: "border-warning/20 bg-warning/5",
+  error: "border-destructive/20 bg-destructive/5",
+  info: "border-info/20 bg-info/5",
 }
 
 const metricValueColors = {
   default: "text-foreground",
-  success: "text-emerald-500",
-  warning: "text-amber-500",
-  error: "text-red-500",
-  info: "text-blue-500",
+  success: "text-success",
+  warning: "text-warning",
+  error: "text-destructive",
+  info: "text-info",
 }
 
 export function MetricCard({
@@ -297,8 +297,8 @@ export function MetricCard({
           {change && (
             <div className={cn(
               "flex items-center gap-1 mt-1 text-xs",
-              change.trend === "up" && "text-emerald-500",
-              change.trend === "down" && "text-red-500",
+              change.trend === "up" && "text-success",
+              change.trend === "down" && "text-destructive",
               change.trend === "neutral" && "text-muted-foreground"
             )}>
               <Icon 

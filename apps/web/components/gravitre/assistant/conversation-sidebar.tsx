@@ -265,7 +265,7 @@ export function ConversationSidebar({
           header; tapping the scrim or the in-sidebar close button dismisses it. */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/40 md:hidden backdrop-blur-sm"
+          className="fixed inset-0 z-30 bg-[color:var(--overlay)] md:hidden backdrop-blur-sm"
           onClick={onToggle}
         />
       )}
@@ -723,7 +723,7 @@ export function ConversationSidebar({
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
-                                    className="text-red-600 focus:bg-destructive/10 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+                                    className="text-danger-text focus:bg-destructive/10 focus:text-danger-text"
                                     onClick={() => {
                                       setConversationToDelete(conv.id)
                                       setDeleteDialogOpen(true)
@@ -767,7 +767,7 @@ export function ConversationSidebar({
                 void confirmDelete()
               }}
               disabled={isDeleting}
-              className="bg-red-500 hover:bg-red-600"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
@@ -800,7 +800,7 @@ export function ConversationSidebar({
                 void confirmBulkDelete()
               }}
               disabled={isBulkDeleting}
-              className="bg-red-500 hover:bg-red-600"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isBulkDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>

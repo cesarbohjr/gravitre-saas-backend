@@ -93,12 +93,12 @@ export function GravitreDepartmentNetwork({
 
       <div className="relative hidden md:block">
         <div
-          className="relative w-full rounded-xl bg-white p-4 sm:p-5"
+          className="relative w-full rounded-xl bg-card p-4 sm:p-5"
           style={{ aspectRatio: `${NETWORK_VB.w} / ${NETWORK_VB.h}` }}
         >
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-xl bg-[radial-gradient(var(--color-dots,#eaedf1)_1px,transparent_1px)] mask-radial-from-10% [background-size:10px_10px]"
+            className="pointer-events-none absolute inset-0 rounded-xl bg-[radial-gradient(var(--dots)_1px,transparent_1px)] mask-radial-from-10% [background-size:10px_10px]"
           />
 
           {/* Paths behind the grid */}

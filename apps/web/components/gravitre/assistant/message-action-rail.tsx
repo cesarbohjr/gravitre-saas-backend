@@ -83,7 +83,7 @@ export function MessageActionRail({
         title={copied ? "Copied" : "Copy"}
       >
         {copied ? (
-          <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" strokeWidth={2.5} />
+          <Check className="h-4 w-4 text-brand-text" strokeWidth={2.5} />
         ) : (
           <Copy className="h-4 w-4" />
         )}
@@ -95,7 +95,7 @@ export function MessageActionRail({
           <button
             type="button"
             onClick={handleSpeak}
-            className={cn(btn, speaking && "text-emerald-600 dark:text-emerald-400")}
+            className={cn(btn, speaking && "text-brand-text")}
             aria-label={speaking ? "Stop reading" : "Read aloud"}
             title={speaking ? "Stop reading" : "Read aloud"}
           >

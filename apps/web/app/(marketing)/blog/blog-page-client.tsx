@@ -46,7 +46,7 @@ function PostCard({ post, index }: { post: BlogCard; index: number }) {
     <GravitreFlow delay={index * 0.06}>
       <Link
         href={`/blog/${post.slug}`}
-        className="group flex flex-col p-6 transition-colors hover:bg-gray-50"
+        className="group flex flex-col p-6 transition-colors hover:bg-[color:var(--g-marketing-surface)]"
       >
         <span className="text-xs font-medium uppercase tracking-wider text-primary">{post.category}</span>
         <h3 className="mt-2 line-clamp-2 text-lg font-medium text-foreground transition-colors group-hover:text-primary">
@@ -100,7 +100,7 @@ export function BlogPageClient({ featuredPost, listingPosts, categories }: BlogP
                 onClick={() => setActiveCategory(category)}
                 className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
                   isActive
-                    ? "bg-foreground text-white"
+                    ? "bg-foreground text-background"
                     : "border border-border text-muted-foreground hover:border-border hover:text-foreground"
                 }`}
               >
@@ -136,10 +136,10 @@ export function BlogPageClient({ featuredPost, listingPosts, categories }: BlogP
         <GravitreResolve className="mb-16">
           <Link
             href={`/blog/${featuredPost.slug}`}
-            className="group block overflow-hidden border border-border divide-y hover:bg-gray-50 transition-colors"
+            className="group block overflow-hidden border border-border divide-y hover:bg-[color:var(--g-marketing-surface)] transition-colors"
           >
             <div className="grid lg:grid-cols-2">
-              <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-primary/15 to-gray-50 lg:aspect-auto">
+              <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-primary/15 to-[color:var(--g-marketing-surface)] lg:aspect-auto">
                 {featuredPost.heroImage ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
@@ -149,7 +149,7 @@ export function BlogPageClient({ featuredPost, listingPosts, categories }: BlogP
                   />
                 ) : (
                   <div
-                    className={`absolute inset-0 bg-gradient-to-br ${featuredPost.heroGradient ?? "from-primary/10 to-gray-50"}`}
+                    className={`absolute inset-0 bg-gradient-to-br ${featuredPost.heroGradient ?? "from-primary/10 to-[color:var(--g-marketing-surface)]"}`}
                     role="img"
                     aria-label={featuredPost.heroAlt}
                   />
@@ -166,7 +166,7 @@ export function BlogPageClient({ featuredPost, listingPosts, categories }: BlogP
                 <div className="mt-6 flex items-center gap-4">
                   <span
                     aria-hidden
-                    className="grid h-10 w-10 place-items-center rounded-full bg-primary text-sm font-semibold text-white"
+                    className="grid h-10 w-10 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
                   >
                     {authorInitials(featuredPost.author.name)}
                   </span>

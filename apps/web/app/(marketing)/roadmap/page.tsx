@@ -94,7 +94,7 @@ const roadmapItems = {
 const StatusBadge = ({ status }: { status: string }) => {
   const styles = {
     shipped: "bg-primary/15 text-primary border-primary/20",
-    inProgress: "bg-amber-100 text-amber-700 border-amber-200",
+    inProgress: "bg-warning/15 text-warning-text border-warning/30",
     planned: "bg-muted text-charcoal border-border",
     exploring: "bg-muted text-charcoal border-border",
   }
@@ -122,7 +122,7 @@ export default function RoadmapPage() {
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
             href="mailto:product@gravitre.app?subject=Gravitre%20feature%20suggestion"
-            className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-white transition-all hover:bg-foreground/90"
+            className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-all hover:bg-foreground/90"
           >
             Suggest a feature
             <ArrowRight className="h-4 w-4" />
@@ -170,7 +170,7 @@ export default function RoadmapPage() {
             <span className="text-sm text-muted-foreground">Shipped</span>
           </div>
           <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-amber-500" />
+            <Clock className="h-4 w-4 text-warning" />
             <span className="text-sm text-muted-foreground">In progress</span>
           </div>
           <div className="flex items-center gap-2">
@@ -196,7 +196,7 @@ export default function RoadmapPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {roadmapItems.shipped.map((item, i) => (
             <GravitreResolve key={item.title} delay={i * 0.04}>
-              <div className="rounded-xl border border-border bg-gray-50 p-5 h-full">
+              <div className="rounded-xl border border-border bg-[color:var(--g-marketing-surface)] p-5 h-full">
                 <div className="flex items-start justify-between gap-4 mb-2">
                   <h3 className="font-medium text-foreground">{item.title}</h3>
                   <StatusBadge status="shipped" />
@@ -220,7 +220,7 @@ export default function RoadmapPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {roadmapItems.inProgress.map((item, i) => (
             <GravitreFlow key={item.title} delay={i * 0.04}>
-              <div className="rounded-xl border border-border bg-gray-50 p-5 h-full">
+              <div className="rounded-xl border border-border bg-[color:var(--g-marketing-surface)] p-5 h-full">
                 <div className="flex items-start justify-between gap-4 mb-2">
                   <h3 className="font-medium text-foreground">{item.title}</h3>
                   <StatusBadge status="inProgress" />
@@ -244,7 +244,7 @@ export default function RoadmapPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {roadmapItems.planned.map((item, i) => (
             <GravitreFlow key={item.title} delay={i * 0.04}>
-              <div className="rounded-xl border border-border bg-gray-50 p-5 h-full">
+              <div className="rounded-xl border border-border bg-[color:var(--g-marketing-surface)] p-5 h-full">
                 <div className="flex items-start justify-between gap-4 mb-2">
                   <h3 className="font-medium text-foreground">{item.title}</h3>
                   <StatusBadge status="planned" />
@@ -268,7 +268,7 @@ export default function RoadmapPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {roadmapItems.exploring.map((item, i) => (
             <GravitreFlow key={item.title} delay={i * 0.04}>
-              <div className="rounded-xl border border-border bg-gray-50 p-5 h-full">
+              <div className="rounded-xl border border-border bg-[color:var(--g-marketing-surface)] p-5 h-full">
                 <div className="flex items-start justify-between gap-4 mb-2">
                   <h3 className="font-medium text-foreground">{item.title}</h3>
                   <StatusBadge status="exploring" />
@@ -283,7 +283,7 @@ export default function RoadmapPage() {
       <DivideX />
 
       <MarketingRails>
-        <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-gray-50 px-6 py-10 text-center">
+        <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-[color:var(--g-marketing-surface)] px-6 py-10 text-center">
           <h2 className="text-xl font-semibold text-foreground">Have a feature idea?</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Tell us what would help your team — email product or use Contact. No public vote board.
@@ -291,7 +291,7 @@ export default function RoadmapPage() {
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <a
               href="mailto:product@gravitre.app?subject=Gravitre%20feature%20suggestion"
-              className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-white hover:bg-foreground/90"
+              className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background hover:bg-foreground/90"
             >
               Email product@gravitre.app
             </a>

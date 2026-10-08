@@ -143,7 +143,7 @@ export const CTAOrbit: React.FC<CTAOrbitProps> = ({
                 <div style={{ transform: `rotate(${-angleDeg}deg)` }}>
                   <div
                     className={cn(
-                      "shadow-aceternity flex size-14 items-center justify-center rounded-md bg-white dark:bg-neutral-950",
+                      "shadow-aceternity flex size-14 items-center justify-center rounded-md bg-card",
                       reverse ? "animate-orbit" : "animate-counter-orbit",
                     )}
                     style={{ "--duration": `${duration}s` } as CSSProperties}
@@ -177,10 +177,10 @@ export const CTAOrbit: React.FC<CTAOrbitProps> = ({
                   key={`bg-ring-${i}`}
                   className={cn(
                     "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-inner",
-                    i === 0 && "bg-neutral-300 dark:bg-neutral-500",
-                    i === 1 && "bg-neutral-200 dark:bg-neutral-600",
-                    i === 2 && "bg-neutral-100 dark:bg-neutral-700",
-                    i === 3 && "bg-neutral-50 dark:bg-neutral-800",
+                    i === 0 && "bg-border",
+                    i === 1 && "bg-muted",
+                    i === 2 && "bg-muted",
+                    i === 3 && "bg-[color:var(--g-marketing-surface)]",
                   )}
                   style={{
                     width: diameter,

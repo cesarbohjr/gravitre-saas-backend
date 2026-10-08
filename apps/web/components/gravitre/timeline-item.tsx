@@ -42,36 +42,36 @@ const statusConfig: Record<Status, {
   glowColor: string
 }> = {
   success: {
-    color: "bg-emerald-500",
-    bgColor: "bg-emerald-500/10",
-    pulseColor: "bg-emerald-500/30",
+    color: "bg-success",
+    bgColor: "bg-success/10",
+    pulseColor: "bg-success/30",
     label: "Completed",
     icon: CheckCircle,
-    glowColor: "shadow-emerald-500/20",
+    glowColor: "shadow-success/20",
   },
   failed: {
-    color: "bg-red-500",
-    bgColor: "bg-red-500/10",
-    pulseColor: "bg-red-500/30",
+    color: "bg-destructive",
+    bgColor: "bg-destructive/10",
+    pulseColor: "bg-destructive/30",
     label: "Failed",
     icon: AlertCircle,
-    glowColor: "shadow-red-500/20",
+    glowColor: "shadow-destructive/20",
   },
   running: {
-    color: "bg-blue-500",
-    bgColor: "bg-blue-500/10",
-    pulseColor: "bg-blue-500/30",
+    color: "bg-info",
+    bgColor: "bg-info/10",
+    pulseColor: "bg-info/30",
     label: "Running",
     icon: Loader2,
-    glowColor: "shadow-blue-500/20",
+    glowColor: "shadow-info/20",
   },
   pending: {
-    color: "bg-amber-500",
-    bgColor: "bg-amber-500/10",
-    pulseColor: "bg-amber-500/30",
+    color: "bg-warning",
+    bgColor: "bg-warning/10",
+    pulseColor: "bg-warning/30",
     label: "Pending",
     icon: Clock,
-    glowColor: "shadow-amber-500/20",
+    glowColor: "shadow-warning/20",
   },
 }
 
@@ -116,10 +116,10 @@ export function TimelineItem({
               statusStyle.color,
               isActive && "ring-4 ring-offset-2 ring-offset-background shadow-lg",
               isActive && statusStyle.glowColor,
-              isActive && status === "success" && "ring-emerald-500/30",
-              isActive && status === "failed" && "ring-red-500/30",
-              isActive && status === "running" && "ring-blue-500/30",
-              isActive && status === "pending" && "ring-amber-500/30"
+              isActive && status === "success" && "ring-success/30",
+              isActive && status === "failed" && "ring-destructive/30",
+              isActive && status === "running" && "ring-info/30",
+              isActive && status === "pending" && "ring-warning/30"
             )}
             whileHover={{ scale: 1.2 }}
             transition={{ duration: timing.micro }}
@@ -222,10 +222,10 @@ export function TimelineItem({
                     {onDelete && (
                       <button
                         onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                        className="p-1 rounded hover:bg-red-500/10 transition-colors"
+                        className="p-1 rounded hover:bg-destructive/10 transition-colors"
                         title="Delete"
                       >
-                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-800 dark:hover:text-red-400" />
+                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-danger-text" />
                       </button>
                     )}
                   </motion.div>
@@ -245,10 +245,10 @@ export function TimelineItem({
             )}>
               <div className={cn("h-1 w-1 rounded-full", statusStyle.color)} />
               <span className={cn(
-                status === "success" && "text-emerald-700 dark:text-emerald-400",
-                status === "failed" && "text-red-600 dark:text-red-400",
-                status === "running" && "text-blue-600 dark:text-blue-400",
-                status === "pending" && "text-amber-700 dark:text-amber-400"
+                status === "success" && "text-success-text",
+                status === "failed" && "text-danger-text",
+                status === "running" && "text-info",
+                status === "pending" && "text-warning-text"
               )}>
                 {statusStyle.label}
               </span>

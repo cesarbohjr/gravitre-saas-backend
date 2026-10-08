@@ -154,9 +154,9 @@ function ProviderMark({
 
   const swapsInDark = theme === "auto" && entry.srcDark && entry.srcDark !== entry.src
   const lightPlate = entry.lightPlate
-    ? cn("bg-zinc-900", theme === "auto" && "dark:bg-transparent dark:p-0", plate)
+    ? cn("bg-[color:var(--g-carbon)]", theme === "auto" && "dark:bg-transparent dark:p-0", plate)
     : undefined
-  const darkPlate = entry.darkPlate && theme === "auto" ? cn("dark:bg-zinc-100", plate) : undefined
+  const darkPlate = entry.darkPlate && theme === "auto" ? cn("dark:bg-[color:var(--g-bone)]", plate) : undefined
 
   return (
     <span className={cn("flex h-full w-full items-center justify-center", lightPlate, darkPlate)}>

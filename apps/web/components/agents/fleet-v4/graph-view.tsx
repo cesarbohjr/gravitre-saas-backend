@@ -36,7 +36,7 @@ function FleetEdgePath({
       <path
         d={d}
         fill="none"
-        stroke="var(--color-line, #eaedf1)"
+        stroke="var(--line)"
         strokeWidth={active ? 2 : 1.5}
         strokeDasharray={dashed ? "5 4" : undefined}
         strokeLinecap="round"
@@ -64,12 +64,12 @@ function FleetEdgePath({
                 repeatDelay: active ? 0.4 : 1,
               }}
             >
-              <stop stopColor="var(--color-line, #EAEDF1)" />
+              <stop stopColor="var(--line)" />
               <stop
                 offset="0.5"
-                stopColor={active ? "var(--color-blue-500, #3b82f6)" : "var(--color-brand, #2563eb)"}
+                stopColor={active ? "var(--info)" : "var(--brand)"}
               />
-              <stop offset="1" stopColor="var(--color-line, #EAEDF1)" />
+              <stop offset="1" stopColor="var(--line)" />
             </motion.linearGradient>
           </defs>
         </>

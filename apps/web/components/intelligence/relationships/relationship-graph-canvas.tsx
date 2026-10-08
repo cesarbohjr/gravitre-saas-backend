@@ -32,7 +32,7 @@ import type { RelationshipsWorkspaceState } from "./use-relationships-workspace"
 
 function edgeStyle(rel: RelationshipRow, confidence: number): CSSProperties | undefined {
   if (rel.archived_at) return { opacity: 0.4, strokeDasharray: "5 4" }
-  if (confidence < 0.5) return { strokeDasharray: "4 3", stroke: "var(--g-warning, #d97706)" }
+  if (confidence < 0.5) return { strokeDasharray: "4 3", stroke: "var(--g-warning)" }
   return undefined
 }
 
@@ -238,7 +238,7 @@ function RelationshipGraphCanvasInner({ workspace }: { workspace: RelationshipsW
           pannable
           zoomable
           className="!rounded-[var(--np-radius-md)] !border-divide !bg-[color:var(--g-surface-1)]/95 !shadow-[var(--np-shadow)]"
-          maskColor="rgba(0,0,0,0.06)"
+          maskColor="color-mix(in srgb, var(--foreground) 6%, transparent)"
         />
       </ReactFlow>
       <RelationshipLegend />

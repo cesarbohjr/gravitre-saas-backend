@@ -162,7 +162,7 @@ export function GravitreAIMobileSheet({
     >
       <Drawer.Portal>
         {isFullscreen ? (
-          <Drawer.Overlay className="fixed inset-0 z-[84] bg-black/40" data-gravitre-mobile-sheet-overlay="" />
+          <Drawer.Overlay className="fixed inset-0 z-[84] bg-[color:var(--overlay)]" data-gravitre-mobile-sheet-overlay="" />
         ) : null}
         <Drawer.Content
           ref={contentRef}

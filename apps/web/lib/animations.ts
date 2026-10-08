@@ -140,10 +140,10 @@ export const buttonVariants: Variants = {
 
 // Primary action button with glow
 export const primaryButtonVariants: Variants = {
-  initial: { scale: 1, boxShadow: "0 0 0 rgba(16, 185, 129, 0)" },
+  initial: { scale: 1, boxShadow: "0 0 0px color-mix(in srgb, var(--brand) 0%, transparent)" },
   hover: { 
     scale: 1.02,
-    boxShadow: "0 0 20px rgba(16, 185, 129, 0.3)",
+    boxShadow: "0 0 20px color-mix(in srgb, var(--brand) 30%, transparent)",
     transition: { 
       duration: timing.micro 
     }
@@ -279,7 +279,7 @@ export const nodeVariants: Variants = {
   },
   selected: {
     scale: 1.02,
-    boxShadow: "0 0 0 2px var(--info), 0 0 20px rgba(59, 130, 246, 0.3)",
+    boxShadow: "0 0 0 2px var(--info), 0 0 20px color-mix(in srgb, var(--info) 30%, transparent)",
     transition: { 
       duration: timing.micro 
     }

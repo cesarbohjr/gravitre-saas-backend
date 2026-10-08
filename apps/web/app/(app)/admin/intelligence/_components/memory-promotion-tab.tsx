@@ -41,7 +41,7 @@ function CandidateRow({
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="secondary">{category}</Badge>
         {meets ? (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
             <Lightning className="h-3.5 w-3.5" weight="duotone" aria-hidden />
             Ready to promote automatically
           </span>

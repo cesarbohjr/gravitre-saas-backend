@@ -33,10 +33,10 @@ export function GravitreIntelligenceCore({
         animate={{ scale: resolved ? 1.02 : 1 }}
         transition={{ duration: 0.35 }}
         className={cn(
-          "relative flex h-[7.25rem] w-[7.25rem] items-center justify-center overflow-hidden rounded-2xl border bg-white shadow-[var(--shadow-aceternity)]",
+          "relative flex h-[7.25rem] w-[7.25rem] items-center justify-center overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-aceternity)]",
           resolved
-            ? "border-[color:var(--color-brand,#16a374)]"
-            : "border-[color:var(--color-line,#eaedf1)]",
+            ? "border-brand"
+            : "border-line",
         )}
       >
         <svg viewBox="0 0 80 72" className="absolute inset-0 h-full w-full" aria-hidden>
@@ -62,7 +62,7 @@ export function GravitreIntelligenceCore({
                       ? CREATIVE_TOKENS.action
                       : resolved
                         ? CREATIVE_TOKENS.action
-                        : "color-mix(in srgb, var(--g-intelligence) 45%, #c5c9d0)"
+                        : "color-mix(in srgb, var(--g-intelligence) 45%, var(--g-border-strong))"
                 }
                 strokeWidth={isOutbound || isInbound ? 1.6 : 1.15}
                 strokeLinecap="round"
@@ -85,12 +85,12 @@ export function GravitreIntelligenceCore({
                 r={r}
                 fill={
                   isCenter
-                    ? "var(--color-brand, #16a374)"
+                    ? "var(--brand)"
                     : isInbound
-                      ? "var(--color-blue-500)"
+                      ? "var(--info)"
                       : isOutbound
-                        ? "var(--color-brand, #16a374)"
-                        : "color-mix(in srgb, var(--g-intelligence) 35%, #9aa3ad)"
+                        ? "var(--brand)"
+                        : "color-mix(in srgb, var(--g-intelligence) 35%, var(--muted-foreground))"
                 }
                 initial={reduced ? false : { scale: 0.6, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -100,7 +100,7 @@ export function GravitreIntelligenceCore({
           })}
         </svg>
 
-        <div className="relative z-10 flex flex-col items-center justify-center rounded-lg bg-white/90 px-2 py-1 text-[color:var(--color-brand,#16a374)] shadow-sm backdrop-blur-[1px]">
+        <div className="relative z-10 flex flex-col items-center justify-center rounded-lg bg-card/90 px-2 py-1 text-brand shadow-sm backdrop-blur-[1px]">
           <LogoSVG className="size-5" />
           <span className="mt-0.5 text-[7px] font-bold uppercase tracking-[0.08em] text-[color:var(--g-text-muted)]">
             Core
@@ -115,7 +115,7 @@ export function GravitreIntelligenceCore({
             initial={reduced ? false : { opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduced ? undefined : { opacity: 0 }}
-            className="relative z-30 rounded-md border border-[color:var(--color-line,#eaedf1)] bg-white px-2.5 py-1 text-[10px] font-semibold text-[color:var(--color-brand,#16a374)] shadow-sm"
+            className="relative z-30 rounded-md border border-line bg-card px-2.5 py-1 text-[10px] font-semibold text-brand shadow-sm"
           >
             {label}
           </motion.span>

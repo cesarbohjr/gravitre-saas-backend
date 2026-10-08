@@ -77,7 +77,7 @@ export const HowItWorks = () => {
             {tabs.map((tab, index) => (
               <button
                 key={tab.title}
-                className="group relative flex w-full flex-col items-start overflow-hidden px-12 py-8 hover:bg-gray-100 dark:hover:bg-neutral-800"
+                className="group relative flex w-full flex-col items-start overflow-hidden px-12 py-8 hover:bg-gray-100"
                 onClick={() => setActiveTab(tab)}
               >
                 {tab.id === activeTab.id && (
@@ -86,7 +86,7 @@ export const HowItWorks = () => {
                 {tab.id === activeTab.id && <Loader duration={DURATION} />}
                 <div
                   className={cn(
-                    "text-charcoal-700 relative z-20 flex items-center gap-2 font-medium dark:text-neutral-100",
+                    "text-charcoal-700 relative z-20 flex items-center gap-2 font-medium",
                     activeTab.id !== tab.id && "group-hover:text-brand",
                   )}
                 >
@@ -94,7 +94,7 @@ export const HowItWorks = () => {
                 </div>
                 <p
                   className={cn(
-                    "relative z-20 mt-2 text-left text-sm text-gray-600 dark:text-neutral-300",
+                    "relative z-20 mt-2 text-left text-sm text-gray-600",
                     activeTab.id === tab.id && "text-charcoal-700",
                   )}
                 >
@@ -125,10 +125,10 @@ export const HowItWorks = () => {
               key={tab.title + "mobile"}
               className="group relative flex w-full flex-col items-start overflow-hidden px-4 py-4 md:px-12 md:py-8"
             >
-              <div className="text-charcoal-700 relative z-20 flex items-center gap-2 font-medium dark:text-neutral-100">
+              <div className="text-charcoal-700 relative z-20 flex items-center gap-2 font-medium">
                 <tab.icon className="shrink-0" /> {tab.title}
               </div>
-              <p className="relative z-20 mt-2 text-left text-sm text-gray-600 dark:text-neutral-300">
+              <p className="relative z-20 mt-2 text-left text-sm text-gray-600">
                 {tab.description}
               </p>
               <div className="relative mx-auto h-80 w-full max-w-full overflow-hidden mask-t-from-90% mask-r-from-90% mask-b-from-90% mask-l-from-90% sm:h-80 sm:max-w-160">
@@ -162,7 +162,7 @@ const Canvas = ({
 }) => {
   return (
     <>
-      <div className="absolute inset-x-0 z-20 h-full w-full bg-white mask-t-from-50% dark:bg-neutral-900" />
+      <div className="absolute inset-x-0 z-20 h-full w-full bg-[color:var(--g-marketing-canvas)] mask-t-from-50%" />
       <PixelatedCanvas
         key={activeTab.id}
         isActive={true}

@@ -21,7 +21,7 @@ export const CardTitle = ({
   return (
     <h3
       className={cn(
-        "text-charcoal-700 min-w-0 text-lg font-medium break-words dark:text-neutral-100",
+        "text-charcoal-700 min-w-0 text-lg font-medium break-words",
         className,
       )}
     >

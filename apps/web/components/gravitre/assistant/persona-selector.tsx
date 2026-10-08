@@ -56,7 +56,7 @@ export function PersonaSelector({
               ? "h-7 gap-1 rounded-full px-2 text-[11px] font-medium"
               : "h-8 gap-1.5 rounded-full px-3 text-xs font-medium",
             surface === "light"
-              ? "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50"
+              ? "border-border bg-card text-card-foreground hover:bg-muted"
               : "border-border bg-background text-foreground",
             className,
           )}

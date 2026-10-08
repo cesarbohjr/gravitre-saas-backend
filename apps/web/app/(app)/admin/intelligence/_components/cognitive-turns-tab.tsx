@@ -75,7 +75,7 @@ function StagesTimeline({ stages }: { stages: TraceRow["stages"] }) {
                 "rounded-md border px-1.5 py-0.5 text-[11px] font-medium tabular-nums",
                 ok
                   ? "border-border/70 bg-secondary/50 text-foreground"
-                  : "border-rose-500/40 bg-rose-500/10 text-rose-700",
+                  : "border-destructive/40 bg-destructive/10 text-destructive",
               )}
               title={typeof stage.ms === "number" ? `${stage.ms} ms` : undefined}
             >

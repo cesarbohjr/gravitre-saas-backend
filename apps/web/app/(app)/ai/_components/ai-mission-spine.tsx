@@ -144,7 +144,7 @@ const STATE_UI: Record<MissionStageState, { label: string; icon: LucideIcon; mar
   active: {
     label: "Active",
     icon: Loader2,
-    marker: "bg-[color:var(--g-brand)] text-white border-[color:var(--g-brand)]",
+    marker: "bg-[color:var(--g-brand)] text-primary-foreground border-[color:var(--g-brand)]",
     text: "text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]",
     spin: true,
   },
@@ -181,7 +181,7 @@ const STATE_UI: Record<MissionStageState, { label: string; icon: LucideIcon; mar
   failed: {
     label: "Failed",
     icon: X,
-    marker: "bg-destructive text-white border-destructive",
+    marker: "bg-destructive text-destructive-foreground border-destructive",
     text: "text-destructive",
   },
   not_needed: {

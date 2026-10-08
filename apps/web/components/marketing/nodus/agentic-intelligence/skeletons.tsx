@@ -46,13 +46,13 @@ export const LLMModelSelectorSkeleton = () => {
     },
   ];
   return (
-    <motion.div className="relative mx-auto mt-20 h-full max-h-70 min-h-40 w-[85%] max-w-full rounded-2xl border-t border-gray-300 bg-white p-4 shadow-2xl dark:border-neutral-700 dark:bg-neutral-800">
+    <motion.div className="relative mx-auto mt-20 h-full max-h-70 min-h-40 w-[85%] max-w-full rounded-2xl border-t border-gray-300 bg-card p-4 shadow-2xl">
       <motion.div
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 1, delay: 1.5 }}
-        className="shadow-aceternity absolute -top-10 right-0 z-20 flex w-36 shrink-0 flex-col items-start rounded-lg bg-white text-xs sm:-right-6 sm:w-40 md:-right-10 dark:bg-neutral-900"
+        className="shadow-aceternity absolute -top-10 right-0 z-20 flex w-36 shrink-0 flex-col items-start rounded-lg bg-card text-xs sm:-right-6 sm:w-40 md:-right-10"
       >
         <div className="flex w-full items-center justify-between p-2">
           <div className="flex items-center gap-2 font-medium">
@@ -62,21 +62,21 @@ export const LLMModelSelectorSkeleton = () => {
           <p className="font-mono text-gray-600">GPT 5</p>
         </div>
         <DivideX />
-        <div className="m-2 rounded-sm border border-blue-500 bg-blue-50 px-2 py-0.5 text-blue-500 dark:bg-blue-50/10">
+        <div className="m-2 rounded-sm border border-info bg-info/10 px-2 py-0.5 text-info">
           Connected
         </div>
       </motion.div>
       <div className="mb-4 flex gap-2">
-        <div className="h-3 w-3 rounded-full bg-red-500"></div>
-        <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
-        <div className="h-3 w-3 rounded-full bg-green-500"></div>
+        <div className="h-3 w-3 rounded-full bg-destructive"></div>
+        <div className="h-3 w-3 rounded-full bg-warning"></div>
+        <div className="h-3 w-3 rounded-full bg-brand"></div>
       </div>
       <div className="mt-12 flex items-center gap-2">
         <IntegrationsLogo />
-        <span className="text-charcoal-700 text-sm font-medium dark:text-neutral-200">
+        <span className="text-charcoal-700 text-sm font-medium">
           All Models
         </span>
-        <span className="text-charcoal-700 rounded-lg border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-200">
+        <span className="text-charcoal-700 rounded-lg border border-gray-200 bg-muted/50 px-2 py-0.5 text-xs">
           69,420
         </span>
       </div>
@@ -97,7 +97,7 @@ export const LLMModelSelectorSkeleton = () => {
           >
             <div className="flex items-center gap-2">
               <model.logo className="h-4 w-4 shrink-0" />
-              <span className="text-charcoal-700 text-sm font-medium dark:text-neutral-200">
+              <span className="text-charcoal-700 text-sm font-medium">
                 {model.name}
               </span>
             </div>
@@ -106,11 +106,11 @@ export const LLMModelSelectorSkeleton = () => {
               className={cn(
                 "rounded-sm border px-2 py-0.5 text-xs",
                 model.variant === "success" &&
-                  "border-emerald-500 bg-emerald-50 text-emerald-500 dark:bg-emerald-50/10",
+                  "border-brand bg-brand/10 text-brand",
                 model.variant === "warning" &&
-                  "border-yellow-500 bg-yellow-50 text-yellow-500 dark:bg-yellow-50/10",
+                  "border-warning bg-warning/10 text-warning",
                 model.variant === "danger" &&
-                  "border-red-500 bg-red-50 text-red-500 dark:bg-red-50/10",
+                  "border-destructive bg-destructive/10 text-destructive",
               )}
             >
               {model.status}
@@ -138,7 +138,7 @@ export const LLMModelSelectorSkeleton = () => {
                 ease: "easeInOut",
               },
             }}
-            className="absolute inset-y-0 left-0 h-full w-[2px] bg-gradient-to-t from-transparent via-blue-500 to-transparent"
+            className="absolute inset-y-0 left-0 h-full w-[2px] bg-gradient-to-t from-transparent via-info to-transparent"
           >
             {Array.from({ length: 8 }).map((_, sparkleIndex) => {
               const randomX = Math.random() * 100 - 50;
@@ -169,7 +169,7 @@ export const LLMModelSelectorSkeleton = () => {
                     delay: index * 1 + randomDelay,
                     ease: "easeOut",
                   }}
-                  className="absolute top-1/2 left-1/2 h-1 w-1 text-xs text-blue-400"
+                  className="absolute top-1/2 left-1/2 h-1 w-1 text-xs text-info"
                 >
                   ✨
                 </motion.div>
@@ -280,13 +280,13 @@ export const TextToWorkflowBuilderSkeleton = () => {
 
   return (
     <motion.div className="relative mx-auto mt-2 h-full max-h-70 min-h-40 w-[85%] max-w-full p-4">
-      <div className="absolute inset-x-0 -bottom-4 mx-auto flex w-[min(85%,100%)] max-w-full items-center justify-between rounded-lg border border-gray-300 bg-white shadow-[0px_2px_12px_0px_rgba(0,0,0,0.08)] dark:border-neutral-700 dark:bg-neutral-800">
+      <div className="absolute inset-x-0 -bottom-4 mx-auto flex w-[min(85%,100%)] max-w-full items-center justify-between rounded-lg border border-gray-300 bg-card shadow-[0px_2px_12px_0px_rgba(0,0,0,0.08)]">
         <input
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyPress={handleKeyPress}
-          className="min-w-0 flex-1 border-none px-3 py-4 text-xs placeholder-neutral-600 focus:outline-none sm:px-4"
+          className="min-w-0 flex-1 border-none px-3 py-4 text-xs placeholder-muted-foreground focus:outline-none sm:px-4"
           placeholder="Ask Gravitre"
         />
         <div className="mr-3 flex shrink-0 items-center gap-2 sm:mr-4">
@@ -298,7 +298,7 @@ export const TextToWorkflowBuilderSkeleton = () => {
       </div>
       <div
         ref={setChatContainerRef}
-        className="mask-bg-gradient-to-b flex max-h-[calc(100%-1rem)] flex-col gap-4 overflow-y-auto from-white to-transparent mask-t-from-70% mask-b-from-70% pt-4 pb-16 dark:from-neutral-900 dark:to-transparent"
+        className="mask-bg-gradient-to-b flex max-h-[calc(100%-1rem)] flex-col gap-4 overflow-y-auto from-card to-transparent mask-t-from-70% mask-b-from-70% pt-4 pb-16 dark:to-transparent"
         style={{
           scrollbarWidth: "none",
           msOverflowStyle: "none",
@@ -355,12 +355,12 @@ const UserMessage = ({
   return (
     <div className="flex justify-end gap-3">
       <div className="flex min-w-0 max-w-[min(20rem,calc(100%-2.5rem))] flex-col gap-1">
-        <div className="rounded-2xl rounded-br-md bg-blue-500 px-4 py-2 text-sm break-words text-white">
+        <div className="rounded-2xl rounded-br-md bg-info px-4 py-2 text-sm break-words text-info-foreground">
           {isActive ? displayText : content}
           {isActive && !isComplete && <span className="animate-pulse">|</span>}
         </div>
       </div>
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-xs font-medium text-white">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-info text-xs font-medium text-info-foreground">
         U
       </div>
     </div>
@@ -389,7 +389,7 @@ const AssistantMessage = ({
 
   return (
     <div className="flex gap-3 px-1">
-      <div className="shadow-aceternity flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white p-1.5 text-black dark:bg-neutral-900 dark:text-white">
+      <div className="shadow-aceternity flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-card p-1.5 text-foreground">
         <LogoSVG className="size-4" />
       </div>
       <div className="flex min-w-0 max-w-[min(20rem,calc(100%-2.5rem))] flex-col gap-1">
@@ -403,10 +403,10 @@ const AssistantMessage = ({
 };
 
 const NativeToolsHubLogo = () => (
-  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-gray-200 p-px shadow-xl dark:bg-neutral-700">
-    <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full bg-conic [background-image:conic-gradient(at_center,transparent,var(--color-blue-500)_20%,transparent_30%)] [animation-duration:2s]"></div>
+  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-gray-200 p-px shadow-xl">
+    <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full bg-conic [background-image:conic-gradient(at_center,transparent,var(--info)_20%,transparent_30%)] [animation-duration:2s]"></div>
     <div className="absolute inset-0 scale-[1.4] animate-spin rounded-full [background-image:conic-gradient(at_center,transparent,var(--color-brand)_20%,transparent_30%)] [animation-delay:1s] [animation-duration:2s]"></div>
-    <div className="relative z-20 flex h-full w-full items-center justify-center rounded-[5px] bg-white p-3.5 text-black dark:bg-neutral-900 dark:text-white">
+    <div className="relative z-20 flex h-full w-full items-center justify-center rounded-[5px] bg-card p-3.5 text-foreground">
       <LogoSVG className="size-6" />
     </div>
   </div>
@@ -423,7 +423,7 @@ export const NativeToolsIntegrationSkeleton = () => {
           <TextIconBlock icon={<PhoneIcon />} text="Customer Support" />
         </div>
         <NativeToolsHubLogo />
-        <span className="rounded-sm border border-blue-500 bg-blue-50 px-2 py-0.5 text-xs text-blue-500 dark:bg-blue-900 dark:text-white">
+        <span className="rounded-sm border border-info bg-info/10 px-2 py-0.5 text-xs text-info">
           Connected
         </span>
         <div className="flex flex-wrap items-center justify-center gap-3">
@@ -452,7 +452,7 @@ export const NativeToolsIntegrationSkeleton = () => {
         <div className="relative flex h-full w-full items-center justify-start">
           <RightSideSVG />
           <div className="relative flex flex-col items-center gap-2">
-            <span className="relative z-20 rounded-sm border border-blue-500 bg-blue-50 px-2 py-0.5 text-xs text-blue-500 dark:bg-blue-900 dark:text-white">
+            <span className="relative z-20 rounded-sm border border-info bg-info/10 px-2 py-0.5 text-xs text-info">
               Connected
             </span>
             <div className="absolute inset-x-0 -top-30 flex h-full flex-col items-center">
@@ -526,7 +526,7 @@ const VerticalLine = (
           gradientUnits="userSpaceOnUse"
         >
           <stop stopColor="var(--color-line)" />
-          <stop offset="0.5" stopColor="#F17463" />
+          <stop offset="0.5" stopColor="var(--brand)" />
           <stop offset="1" stopColor="var(--color-line)" />
         </motion.linearGradient>
       </defs>
@@ -585,7 +585,7 @@ const RightSideSVG = (props: React.SVGProps<SVGSVGElement>) => {
           gradientUnits="userSpaceOnUse"
         >
           <stop stopColor="var(--color-line)" />
-          <stop offset="0.5" stopColor="var(--color-blue-500)" />
+          <stop offset="0.5" stopColor="var(--info)" />
           <stop offset="1" stopColor="var(--color-line)" />
         </motion.linearGradient>
       </defs>
@@ -653,8 +653,8 @@ const TopSVG = (props: React.SVGProps<SVGSVGElement>) => {
           }}
         >
           <stop stopColor="var(--color-line)" />
-          <stop offset="0.33" stopColor="#F17463" />
-          <stop offset="0.66" stopColor="#F17463" />
+          <stop offset="0.33" stopColor="var(--brand)" />
+          <stop offset="0.66" stopColor="var(--brand)" />
           <stop offset="1" stopColor="var(--color-line)" />
         </motion.linearGradient>
       </defs>
@@ -713,8 +713,8 @@ export const MiddleSVG = (props: React.SVGProps<SVGSVGElement>) => {
           }}
         >
           <stop stopColor="var(--color-line)" />
-          <stop offset="0.33" stopColor="var(--color-blue-500)" />
-          <stop offset="0.66" stopColor="var(--color-blue-500)" />
+          <stop offset="0.33" stopColor="var(--info)" />
+          <stop offset="0.66" stopColor="var(--info)" />
           <stop offset="1" stopColor="var(--color-line)" />
         </motion.linearGradient>
       </defs>
@@ -767,8 +767,8 @@ export const BottomSVG = (props: React.SVGProps<SVGSVGElement>) => {
           }}
         >
           <stop stopColor="var(--color-line)" />
-          <stop offset="0.33" stopColor="var(--color-yellow-500)" />
-          <stop offset="0.66" stopColor="var(--color-yellow-500)" />
+          <stop offset="0.33" stopColor="var(--warning)" />
+          <stop offset="0.66" stopColor="var(--warning)" />
           <stop offset="1" stopColor="var(--color-line)" />
         </motion.linearGradient>
       </defs>
@@ -788,7 +788,7 @@ const TextIconBlock = ({
   return (
     <div className="relative flex items-center gap-2">
       {icon}
-      <span className="text-charcoal-700 text-sm font-medium dark:text-neutral-200">
+      <span className="text-charcoal-700 text-sm font-medium">
         {text}
       </span>
       {children}

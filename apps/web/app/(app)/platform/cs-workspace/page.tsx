@@ -42,13 +42,13 @@ const GRADE_META: Record<
 > = {
   healthy: {
     label: "Healthy",
-    badge: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-    dot: "bg-emerald-500",
+    badge: "bg-success/10 text-success border-success/20",
+    dot: "bg-success",
   },
   at_risk: {
     label: "At risk",
-    badge: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-    dot: "bg-amber-500",
+    badge: "bg-warning/10 text-warning border-warning/20",
+    dot: "bg-warning",
   },
   critical: {
     label: "Critical",
@@ -261,11 +261,11 @@ function AlertInboxPanel({
   onRefresh: () => void
 }) {
   return (
-    <Card className="border-amber-500/25 bg-amber-500/[0.03]">
+    <Card className="border-warning/25 bg-warning/[0.03]">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertTriangle className="h-4 w-4 text-warning" />
             Cross-org alert inbox
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={onRefresh}>
@@ -406,7 +406,7 @@ function TenantRow({
     <Card
       className={cn(
         "border-border/80",
-        tenant.needsAttention && "border-amber-500/30 bg-amber-500/[0.03]",
+        tenant.needsAttention && "border-warning/30 bg-warning/[0.03]",
         tenant.isSnoozed && "opacity-80",
       )}
     >
@@ -420,7 +420,7 @@ function TenantRow({
                 <span className="text-xs font-normal text-muted-foreground">/{tenant.slug}</span>
               ) : null}
               {tenant.needsAttention ? (
-                <Badge variant="outline" className="border-amber-500/40 text-amber-700">
+                <Badge variant="outline" className="border-warning/40 text-warning">
                   Needs attention
                 </Badge>
               ) : null}
@@ -524,7 +524,7 @@ function Metric({
   return (
     <div className="rounded-md border border-border/60 px-3 py-2">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={cn("font-medium tabular-nums", highlight && "text-amber-600 flex items-center gap-1")}>
+      <p className={cn("font-medium tabular-nums", highlight && "text-warning flex items-center gap-1")}>
         {highlight ? <AlertTriangle className="h-3.5 w-3.5" /> : null}
         {value}
       </p>

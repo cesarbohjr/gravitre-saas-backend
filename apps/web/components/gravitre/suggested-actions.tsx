@@ -53,32 +53,32 @@ const iconMap = {
 
 const priorityConfig = {
   critical: {
-    bg: "bg-red-500/10",
-    border: "border-red-500/30",
-    text: "text-red-600 dark:text-red-400",
-    badge: "bg-red-500/20 text-red-600 dark:text-red-400",
-    glow: "shadow-red-500/20",
+    bg: "bg-destructive/10",
+    border: "border-destructive/30",
+    text: "text-danger-text",
+    badge: "bg-destructive/20 text-danger-text",
+    glow: "shadow-destructive/20",
   },
   high: {
-    bg: "bg-amber-500/10",
-    border: "border-amber-500/30",
-    text: "text-amber-700 dark:text-amber-400",
-    badge: "bg-amber-500/20 text-amber-700 dark:text-amber-400",
-    glow: "shadow-amber-500/20",
+    bg: "bg-warning/10",
+    border: "border-warning/30",
+    text: "text-warning-text",
+    badge: "bg-warning/20 text-warning-text",
+    glow: "shadow-warning/20",
   },
   medium: {
-    bg: "bg-blue-500/10",
-    border: "border-blue-500/30",
-    text: "text-blue-600 dark:text-blue-400",
-    badge: "bg-blue-500/20 text-blue-600 dark:text-blue-400",
-    glow: "shadow-blue-500/20",
+    bg: "bg-info/10",
+    border: "border-info/30",
+    text: "text-info",
+    badge: "bg-info/20 text-info",
+    glow: "shadow-info/20",
   },
   low: {
-    bg: "bg-zinc-500/10",
-    border: "border-zinc-500/30",
-    text: "text-zinc-400",
-    badge: "bg-zinc-500/20 text-zinc-400",
-    glow: "shadow-zinc-500/20",
+    bg: "bg-muted-foreground/10",
+    border: "border-muted-foreground/30",
+    text: "text-muted-foreground",
+    badge: "bg-muted-foreground/20 text-muted-foreground",
+    glow: "shadow-muted-foreground/20",
   },
 }
 
@@ -149,8 +149,8 @@ export function SuggestedActions({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-secondary/30">
         <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500/20">
-            <Zap className="h-3.5 w-3.5 text-amber-700 dark:text-amber-400" />
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-warning/20">
+            <Zap className="h-3.5 w-3.5 text-warning-text" />
           </div>
           <h3 className="text-sm font-semibold text-foreground">Suggested actions</h3>
           <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -334,8 +334,8 @@ export function SuggestedActions({
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20">
-                <Zap className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/20">
+                <Zap className="h-4 w-4 text-warning-text" />
               </div>
               All suggested actions
             </DialogTitle>

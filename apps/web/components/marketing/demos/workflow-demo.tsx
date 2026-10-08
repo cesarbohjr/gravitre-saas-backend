@@ -53,13 +53,13 @@ function StepIcon({ type, status }: { type: string; status: string }) {
   
   switch (type) {
     case "trigger":
-      return <GitBranch className={`h-4 w-4 text-blue-500 ${iconClass}`} />
+      return <GitBranch className={`h-4 w-4 text-info ${iconClass}`} />
     case "agent":
       return <Bot className={`h-4 w-4 text-[color:var(--g-electric)] ${iconClass}`} />
     case "connector":
-      return <Database className={`h-4 w-4 text-amber-500 ${iconClass}`} />
+      return <Database className={`h-4 w-4 text-warning ${iconClass}`} />
     case "action":
-      return <Send className={`h-4 w-4 text-cyan-500 ${iconClass}`} />
+      return <Send className={`h-4 w-4 text-info ${iconClass}`} />
     default:
       return <Circle className="h-4 w-4 text-muted-foreground" />
   }
@@ -154,8 +154,8 @@ export function WorkflowDemo() {
               isComplete
                 ? "bg-primary/15 text-primary"
                 : isRunning
-                ? "bg-amber-100 text-amber-700"
-                : "bg-primary text-white hover:bg-primary/100"
+                ? "bg-warning/15 text-warning-text"
+                : "bg-primary text-primary-foreground hover:bg-primary/100"
             }`}
           >
             {isComplete ? (
@@ -188,7 +188,7 @@ export function WorkflowDemo() {
               animate={{
                 backgroundColor:
                   step.status === "running"
-                    ? "rgb(236 253 245)"
+                    ? "var(--g-emerald-surface)"
                     : step.status === "completed"
                     ? "transparent"
                     : "transparent",
@@ -199,7 +199,7 @@ export function WorkflowDemo() {
               {index < steps.length - 1 && (
                 <div
                   className={`absolute left-[21px] top-10 w-0.5 h-[calc(100%-16px)] transition-colors ${
-                    step.status === "completed" ? "bg-emerald-200" : "bg-border"
+                    step.status === "completed" ? "bg-brand/25" : "bg-border"
                   }`}
                 />
               )}

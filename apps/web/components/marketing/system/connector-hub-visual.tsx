@@ -44,7 +44,7 @@ export function ConnectorHubVisual({ className }: { className?: string }) {
                 y1={cy}
                 x2={x}
                 y2={y}
-                stroke="color-mix(in oklch, var(--g-intelligence) 35%, #eaedf1)"
+                stroke="color-mix(in oklch, var(--g-intelligence) 35%, var(--line))"
                 strokeWidth="1.25"
                 initial={reduce ? false : { opacity: 0 }}
                 whileInView={reduce ? undefined : { opacity: 1 }}
@@ -55,8 +55,8 @@ export function ConnectorHubVisual({ className }: { className?: string }) {
                 cx={x}
                 cy={y}
                 r={18}
-                fill="#fff"
-                stroke="color-mix(in oklch, var(--g-intelligence) 40%, #eaedf1)"
+                fill="var(--card)"
+                stroke="color-mix(in oklch, var(--g-intelligence) 40%, var(--line))"
                 strokeWidth="1.25"
                 initial={reduce ? false : { scale: 0.6, opacity: 0 }}
                 whileInView={reduce ? undefined : { scale: 1, opacity: 1 }}
@@ -79,7 +79,7 @@ export function ConnectorHubVisual({ className }: { className?: string }) {
           cx={cx}
           cy={cy}
           r={28}
-          fill="#fff"
+          fill="var(--card)"
           stroke="var(--primary)"
           strokeWidth="1.75"
           initial={reduce ? false : { scale: 0.8, opacity: 0 }}

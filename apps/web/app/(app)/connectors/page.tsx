@@ -685,9 +685,9 @@ function ConnectorTopologyCard({
             aria-hidden
           >
             {isSyncing ? (
-              <Loader2 className="h-2.5 w-2.5 text-white animate-spin" />
+              <Loader2 className="h-2.5 w-2.5 text-background animate-spin" />
             ) : (
-              <StatusIcon className="h-2.5 w-2.5 text-white" />
+              <StatusIcon className="h-2.5 w-2.5 text-background" />
             )}
           </div>
 

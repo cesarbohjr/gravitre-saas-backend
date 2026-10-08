@@ -10,7 +10,7 @@ export function MlKnowledgePanel() {
     >
       <div className="mb-4 flex items-center gap-2.5">
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-background/70 ring-1 ring-border/50">
-          <Gauge className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+          <Gauge className="h-4 w-4 text-success-text" />
         </span>
         <div>
           <h3 id="ml-knowledge-heading" className="text-sm font-semibold text-foreground">

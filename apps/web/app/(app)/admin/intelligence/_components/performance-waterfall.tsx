@@ -33,7 +33,7 @@ export function PerformanceWaterfall({
   const toneBar = {
     emerald: "bg-[color:var(--g-emerald)]/80",
     electric: "bg-[color:var(--g-electric)]/75",
-    cyan: "bg-cyan-500/75",
+    cyan: "bg-info/75",
   }[resolvedTone]
 
   return (

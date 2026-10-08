@@ -51,7 +51,7 @@ export function GravitreChatAvatar({
     <div
       className={cn(
         "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-        isSpeaking ? "bg-primary text-white" : "border border-border bg-white text-foreground shadow-sm dark:bg-neutral-900 dark:text-white",
+        isSpeaking ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground shadow-sm",
         "transition-colors duration-300",
         className,
       )}
@@ -66,9 +66,9 @@ export function GravitreChatAvatar({
           className="pointer-events-none absolute inset-0 rounded-full"
           animate={{
             boxShadow: [
-              "0 0 0 0 rgba(22,163,116,0.35)",
-              "0 0 0 6px rgba(22,163,116,0.12)",
-              "0 0 0 0 rgba(22,163,116,0.35)",
+              "0 0 0 0 color-mix(in srgb, var(--g-brand) 35%, transparent)",
+              "0 0 0 6px color-mix(in srgb, var(--g-brand) 12%, transparent)",
+              "0 0 0 0 color-mix(in srgb, var(--g-brand) 35%, transparent)",
             ],
           }}
           transition={{ duration: 1.6, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
@@ -82,7 +82,7 @@ export function GravitreChatAvatar({
           className="pointer-events-none absolute -inset-[3px] rounded-full"
           style={{
             background:
-              "conic-gradient(from 0deg, transparent 0deg, transparent 250deg, rgba(22,163,116,0.9) 340deg, transparent 360deg)",
+              "conic-gradient(from 0deg, transparent 0deg, transparent 250deg, color-mix(in srgb, var(--g-brand) 90%, transparent) 340deg, transparent 360deg)",
             WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))",
             mask: "radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))",
           }}
@@ -92,7 +92,7 @@ export function GravitreChatAvatar({
       ) : null}
 
       {isSpeaking ? (
-        <span aria-hidden className="z-10 flex items-end gap-[2.5px] text-white">
+        <span aria-hidden className="z-10 flex items-end gap-[2.5px] text-primary-foreground">
           {[0, 0.15, 0.3].map((delay, i) => (
             <motion.span
               key={delay}
