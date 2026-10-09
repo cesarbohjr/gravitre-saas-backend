@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   ArrowLeftRight,
   ArrowRight,
-  Bot,
   Building2,
   Check,
   Loader2,
@@ -33,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import { DepartmentIcon } from "@/components/agents/department-icon"
 import { agentsApi, federationApi } from "@/lib/api"
 import type { FederationPartnership } from "@/types/api"
 
@@ -208,7 +208,7 @@ export function CreateHandoffDialog({
                         {agents.map((agent) => (
                           <SelectItem key={agent.id} value={agent.id}>
                             <span className="flex items-center gap-2">
-                              <Bot className="h-3.5 w-3.5 text-muted-foreground" />
+                              <DepartmentIcon department={agent.department} size="xs" />
                               {agent.name}
                             </span>
                           </SelectItem>

@@ -5,7 +5,6 @@ import useSWR from "swr"
 import { formatDistanceToNow } from "date-fns"
 import { toast } from "sonner"
 import {
-  Bot,
   Lightbulb,
   ListChecks,
   Loader2,
@@ -42,6 +41,8 @@ import {
 import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
 import { SubagentToolGroup } from "@/components/gravitre/agent-ui/subagent-tool-group"
 import { cn } from "@/lib/utils"
+import { DepartmentIcon } from "@/components/agents/department-icon"
+import { useAgentDepartments } from "@/lib/use-agent-departments"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { RADIUS, STATUS, TYPE } from "@/lib/design-system"
 
@@ -504,12 +505,13 @@ function SubtaskCard({
   agentName?: string
 }) {
   const summary = subtaskReadableSummary(subtask)
+  const departmentOf = useAgentDepartments()
 
   return (
     <li className="list-none space-y-1.5 border-t border-border py-3 text-sm">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <span className="flex items-center gap-1.5 font-medium">
-          <Bot className="h-3.5 w-3.5 text-muted-foreground" />
+          <DepartmentIcon department={departmentOf({ id: subtask.agentId, name: agentName })} size="xs" />
           {agentName ?? `Agent ${subtask.agentId.slice(0, 8)}`}
         </span>
         <SwarmSubtaskStatusBadge status={subtask.status} />

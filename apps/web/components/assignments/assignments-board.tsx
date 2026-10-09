@@ -1,10 +1,12 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type RefObject } from "react"
+import { DepartmentIcon } from "@/components/agents/department-icon"
+import { useAgentDepartments } from "@/lib/use-agent-departments"
 import Link from "next/link"
 import useSWR from "swr"
 import { toast } from "sonner"
-import { AlertTriangle, Bot, ChevronDown, Sparkle } from "lucide-react"
+import { AlertTriangle, ChevronDown, Sparkle } from "lucide-react"
 import { agentsApi, marketplaceApi } from "@/lib/api"
 import { avatarGradient, createAssignment } from "@/lib/assignments"
 import type { DemoAssignment } from "@/lib/demo-assignments"
@@ -127,9 +129,7 @@ export function AssignComposer({
           autoComplete="off"
         />
         <span className="gv-chip asg-agentchip">
-          <span className="asg-bot" aria-hidden>
-            <Bot size={13} />
-          </span>
+          <DepartmentIcon department={agent?.department} size="xs" />
           <span className="asg-agentchip-name">
             {agent?.name ?? (agentRequest.isLoading ? "Loading agents" : noAgents ? "No agents yet" : "Pick an agent")}
           </span>
@@ -196,6 +196,7 @@ function cardSummary(assignment: DemoAssignment): string | null {
 }
 
 export function AssignmentCard({ assignment }: { assignment: DemoAssignment }) {
+  const departmentOf = useAgentDepartments()
   const summary = cardSummary(assignment)
   const pill = statusPill(assignment)
   const progress =
@@ -252,9 +253,7 @@ export function AssignmentCard({ assignment }: { assignment: DemoAssignment }) {
           </div>
         ) : null}
         <div className="asg-card-foot">
-          <span className="asg-bot" aria-hidden>
-            <Bot size={12} />
-          </span>
+          <DepartmentIcon department={departmentOf({ id: assignment.agentId, name: assignment.agent.name })} size="xs" />
           <span className="asg-agentname">{assignment.agent.name}</span>
           {date ? <span className="asg-date">{date}</span> : null}
         </div>

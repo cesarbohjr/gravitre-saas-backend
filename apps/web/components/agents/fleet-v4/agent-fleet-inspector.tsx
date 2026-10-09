@@ -15,28 +15,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { StatusChip } from "@/components/gravitre/visual"
 import { NucleoHistory } from "@/components/icons/nucleo/semantic"
-import { LEGACY_COLOR_TO_IDENTITY, LEGACY_ICON_TO_ROLE } from "@/lib/agent-identity-bridge"
-import { isAgentAvatarColorId, isAgentIconId } from "@/lib/agent-identity"
 import { AGENT_DEPARTMENT_OPTIONS, normalizeAgentDepartment, type AgentDepartment } from "@/lib/agent-display"
 import { relativeTime } from "@/lib/agent-job-result"
 import { normalizeAgentStatus, presentAgentStatus } from "@/lib/agent-runtime-status"
 import { cn } from "@/lib/utils"
-import { GravitreAgentIdentity } from "./gravitre-agent-identity"
-import { IDENTITY_COLOR_TOKENS, ROLE_ICON_REGISTRY, suggestRoleIcon } from "./identity-tokens"
-import type { AgentIdentityColorId, AgentRoleIconId } from "./types"
-
-function inspectorRoleIcon(agent: AgentFleetInspectorAgent): AgentRoleIconId {
-  if (agent.icon && agent.icon in ROLE_ICON_REGISTRY) return agent.icon as AgentRoleIconId
-  if (agent.icon && isAgentIconId(agent.icon)) return LEGACY_ICON_TO_ROLE[agent.icon]
-  return suggestRoleIcon(agent.role, agent.name, agent.department)
-}
-
-function inspectorIdentityColor(agent: AgentFleetInspectorAgent): AgentIdentityColorId {
-  const color = agent.avatarColor
-  if (color && color in IDENTITY_COLOR_TOKENS) return color as AgentIdentityColorId
-  if (color && isAgentAvatarColorId(color)) return LEGACY_COLOR_TO_IDENTITY[color]
-  return "violet"
-}
+import { DepartmentIcon } from "@/components/agents/department-icon"
 
 /**
  * Unified Agents inspector body — one content model for sheet + desktop panel.
@@ -110,11 +93,7 @@ export function AgentFleetInspectorBody({
     <div className="flex h-full flex-col" data-inspector-layout={layout}>
       <div className="px-5 pt-5 pb-4">
         <div className={cn("flex items-start gap-3", layout === "sheet" && "pr-8")}>
-          <GravitreAgentIdentity
-            icon={inspectorRoleIcon(agent)}
-            identityColor={inspectorIdentityColor(agent)}
-            size="md"
-          />
+          <DepartmentIcon department={agent.department} size="md" />
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-base font-semibold leading-tight tracking-tight text-foreground">
               {agent.name}

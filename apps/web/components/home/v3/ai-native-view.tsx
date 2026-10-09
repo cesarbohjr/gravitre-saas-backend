@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import { workforceState } from "@/components/home/operating-flow"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { DepartmentIcon } from "@/components/agents/department-icon"
 import { relativeTime } from "@/lib/agent-job-result"
 import { approvalsApi } from "@/lib/api"
 import { approveAssignment, type DemoAssignment } from "@/lib/demo-assignments"
@@ -182,15 +183,6 @@ function HeroScene({ nodes }: { nodes: Array<{ id: string; label: string; state:
           </g>
         )
       })}
-    </svg>
-  )
-}
-
-function AgentIcon({ color }: { color: string }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" aria-hidden>
-      <rect x="4" y="7" width="16" height="13" rx="3" />
-      <path d="M12 7V4M9 13h.01M15 13h.01" />
     </svg>
   )
 }
@@ -542,9 +534,9 @@ export function AiNativeView({
             const active = state === "exec" || state === "wait"
             return (
               <Link key={agent.id} href={`${APP_ROUTES.agents}/${agent.id}`} className="gv-row" style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 8px", borderRadius: 10, borderTop: "1px solid var(--gv-subtle)" }}>
-                <div style={{ width: 40, height: 40, borderRadius: 12, background: state === "wait" ? "var(--gv-amber-bg)" : "var(--gv-mint)", display: "grid", placeItems: "center", flex: "0 0 auto" }}>
-                  <AgentIcon color={color} />
-                </div>
+                <DepartmentIcon department={agent.department} size="md" title={`${label}`}>
+                  <span aria-hidden style={{ position: "absolute", right: -2, bottom: -2, width: 11, height: 11, borderRadius: "50%", background: color, border: "2px solid var(--gv-card)" }} />
+                </DepartmentIcon>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 15 }}>{agent.name}</div>
                   <div className="gv-mono" style={{ fontSize: 13, color: "var(--gv-muted)" }}>{agent.model || "auto"}</div>

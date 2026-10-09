@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { toast } from "sonner"
-import { ArrowLeft, ArrowRight, Bot, Loader2, Lock, RefreshCw, Sparkles, X } from "lucide-react"
+import { ArrowLeft, ArrowRight, Loader2, Lock, RefreshCw, Sparkles, X } from "lucide-react"
 import { apiFetch } from "@/lib/fetcher"
 import { agentsApi, connectorsApi, workflowsApi } from "@/lib/api"
 import { CONNECTOR_CATALOG } from "@/lib/connectors"
@@ -23,6 +23,7 @@ import {
   goalStrengthChecks,
 } from "@/lib/goal-insights"
 import { cn } from "@/lib/utils"
+import { DepartmentGlyph, DepartmentIcon } from "@/components/agents/department-icon"
 import {
   Dialog,
   DialogContent,
@@ -599,7 +600,7 @@ export function GoalWorkflowWizard({
                             aria-pressed={department === d.id}
                             onClick={() => setDepartment(department === d.id ? "" : d.id)}
                           >
-                            <span className="gv-ng-dept-dot" data-dept={d.id} aria-hidden />
+                            <DepartmentGlyph department={d.id} size={14} />
                             {d.label}
                           </button>
                         ))}
@@ -717,9 +718,7 @@ export function GoalWorkflowWizard({
                           <div style={{ display: "grid", gap: 10 }}>
                             {deptAgents.map((a) => (
                               <div key={a.id} className="gv-ng-agent">
-                                <span className="gv-ng-agent-icon" aria-hidden>
-                                  <Bot className="size-5" />
-                                </span>
+                                <DepartmentIcon department={a.department} size="md" />
                                 <div style={{ flex: "1 1 auto", minWidth: 0 }}>
                                   <div style={{ fontWeight: 600 }}>{a.name}</div>
                                   <div className="gv-hint">{a.role || a.description || "Agent"}</div>
