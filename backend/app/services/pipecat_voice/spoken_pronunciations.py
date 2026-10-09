@@ -36,6 +36,7 @@ BUILTIN_SPOKEN_ALIASES: dict[str, str] = {
     "SaaS": "sass",
     "approx.": "about",
     "FYI": "F Y I",
+    "Gravitre": "Gravit tree",
 }
 
 

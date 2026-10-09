@@ -76,13 +76,18 @@ def test_spoken_aliases_expand_shorthand() -> None:
     assert apply_spoken_aliases("vsx stays") == "vsx stays"
 
 
+def test_gravitre_is_said_gravit_tree() -> None:
+    assert apply_spoken_aliases("Gravitre's agents are ready.") == "Gravit tree's agents are ready."
+
+
 def test_custom_aliases_come_from_settings_and_bad_json_is_ignored() -> None:
+    # A custom alias overrides a built-in one.
     assert apply_spoken_aliases("Gravitre is ready.", '{"Gravitre": "Grav-ih-tray"}') == "Grav-ih-tray is ready."
-    assert apply_spoken_aliases("Gravitre is ready.", "not json") == "Gravitre is ready."
+    assert apply_spoken_aliases("Acme is ready.", "not json") == "Acme is ready."
 
 
 def test_tts_sanitizer_applies_aliases() -> None:
-    service = _service(voice_spoken_aliases='{"Gravitre": "Grav-ih-tray"}')
-    assert service._sanitize_for_tts("Gravitre can help, e.g. with leads") == (
-        "Grav-ih-tray can help, for example with leads."
+    service = _service(voice_spoken_aliases='{"Acme": "Ack me"}')
+    assert service._sanitize_for_tts("Acme and Gravitre can help, e.g. with leads") == (
+        "Ack me and Gravit tree can help, for example with leads."
     )
