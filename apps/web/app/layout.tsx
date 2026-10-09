@@ -1,11 +1,8 @@
 import type { Metadata, Viewport } from 'next'
-import { headers } from 'next/headers'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { RootProviders } from '@/components/root-providers'
-import { interDisplay } from '@/fonts/inter-display/inter'
-import { interDisplayMarketing } from '@/fonts/inter-display/inter-marketing'
-import { dmMono } from '@/fonts/dm-mono'
+import { geist, geistMono } from '@/fonts/geist'
 import './globals.css'
 
 // Allow pinch-to-zoom for accessibility (low-vision users).
@@ -68,10 +65,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const isMarketing = (await headers()).get('x-gravitre-marketing') === '1'
-  const htmlClassName = isMarketing
-    ? interDisplayMarketing.variable
-    : `${interDisplay.variable} ${dmMono.variable}`
+  const htmlClassName = `${geist.variable} ${geistMono.variable}`
 
   return (
     <html lang="en" suppressHydrationWarning className={htmlClassName}>
