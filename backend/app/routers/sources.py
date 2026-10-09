@@ -27,6 +27,7 @@ from app.rag.ingest import get_source
 from app.services.source_sync_service import (
     DEFAULT_SYNC_INTERVAL_SECONDS,
     list_connectors_for_vendor,
+    list_recent_source_activity,
     list_source_sync_history,
     sync_source_row,
     validate_saas_connector_link,
@@ -132,6 +133,7 @@ def _serialize_source_row(
         "createdAt": row.get("created_at"),
         "description": metadata.get("description") if isinstance(metadata, dict) else None,
         "syncIntervalSeconds": metadata.get("syncIntervalSeconds") if isinstance(metadata, dict) else None,
+        "lastSyncError": (metadata.get("lastSyncError") or None) if isinstance(metadata, dict) else None,
         "connectionHost": config.get("host"),
         "connectionPort": config.get("port"),
         "connectionDatabase": config.get("database") or config.get("dataset"),
@@ -236,7 +238,11 @@ def list_sources(
         except Exception:
             return {"sources": []}
     items = [_serialize_source_row(row, environment_name=environment_name, settings=settings) for row in list(r.data or [])]
-    return {"sources": items}
+    # Last seven sync results per source and the newest ingestion events, one batched read.
+    activity = list_recent_source_activity(client, org_id, [item["id"] for item in items])
+    for item in items:
+        item["recentSyncs"] = activity["syncs"].get(item["id"], [])
+    return {"sources": items, "ingestion": activity["feed"]}
 
 
 @router.get("/{source_id}")

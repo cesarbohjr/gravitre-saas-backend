@@ -42,7 +42,7 @@ function mapStepStatus(raw?: string | null): string {
   if (s.includes("fail") || s.includes("error") || s.includes("reject")) return "failed"
   if (s.includes("wait") || s.includes("approval") || s.includes("pending")) return "awaiting_approval"
   if (s.includes("run") || s.includes("progress") || s.includes("active")) return "running"
-  if (s.includes("verif") || s.includes("complete") || s.includes("success") || s.includes("done") || s.includes("approved"))
+  if (s.includes("verif") || s.includes("complete") || s.includes("succe") || s.includes("done") || s.includes("approved"))
     return "completed"
   return s
 }

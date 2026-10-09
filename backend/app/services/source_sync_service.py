@@ -123,6 +123,79 @@ def list_source_sync_history(
     return history
 
 
+def _history_status(metadata: dict[str, Any]) -> str:
+    return str(metadata.get("status") or ("success" if not metadata.get("error") else "error"))
+
+
+def list_recent_source_activity(
+    client: Client,
+    org_id: str,
+    source_ids: list[str],
+    *,
+    per_source: int = 7,
+    feed_size: int = 8,
+) -> dict[str, Any]:
+    """Recent sync results per source plus a cross-source ingestion feed.
+
+    One batched read of ``audit_events`` for every listed source: sync results
+    (``source.sync.*``) fill each source's last ``per_source`` syncs, oldest
+    first, and the newest events of any source kind (sync, created, updated)
+    form the feed. Failures degrade to empty history; the list never fails.
+    """
+    ids = [str(i) for i in source_ids if i]
+    if not ids:
+        return {"syncs": {}, "feed": []}
+    try:
+        response = (
+            client.table("audit_events")
+            .select("id, action, metadata, created_at, resource_id")
+            .eq("org_id", org_id)
+            .eq("resource_type", "source")
+            .in_("resource_id", ids)
+            .like("action", "source.%")
+            .order("created_at", desc=True)
+            .limit(min(1000, max(50, len(ids) * per_source * 3)))
+            .execute()
+        )
+        rows = list(response.data or [])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("source activity lookup failed org=%s error=%s", org_id, exc)
+        return {"syncs": {}, "feed": []}
+    syncs: dict[str, list[dict[str, Any]]] = {}
+    feed: list[dict[str, Any]] = []
+    for row in rows:
+        source_id = str(row.get("resource_id") or "")
+        action = str(row.get("action") or "")
+        metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        if action == "source.deleted":
+            continue
+        is_sync = action.startswith("source.sync")
+        event = {
+            "sourceId": source_id,
+            "kind": "sync" if is_sync else action.split(".", 1)[-1],
+            "status": _history_status(metadata) if is_sync else "success",
+            "records": metadata.get("records") if is_sync else None,
+            "error": metadata.get("error") if is_sync else None,
+            "createdAt": row.get("created_at"),
+        }
+        if is_sync:
+            bucket = syncs.setdefault(source_id, [])
+            if len(bucket) < per_source:
+                bucket.append(
+                    {
+                        "status": event["status"],
+                        "records": event["records"],
+                        "error": event["error"],
+                        "createdAt": event["createdAt"],
+                    }
+                )
+        if len(feed) < feed_size:
+            feed.append(event)
+    for bucket in syncs.values():
+        bucket.reverse()
+    return {"syncs": syncs, "feed": feed}
+
+
 async def sync_source_row(
     client: Client,
     settings: Settings,

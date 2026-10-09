@@ -28,6 +28,14 @@ export type ApprovalDecision = {
   decidedAt: string | null
 }
 
+export type ApprovalStep = {
+  text: string
+  /** Integration slug (hubspot, slack...) when the step names one. */
+  app: string | null
+  action: string | null
+  access: "read" | "write"
+}
+
 export type Approval = {
   id: string
   title: string
@@ -52,6 +60,8 @@ export type Approval = {
   approvalsReceived: number | null
   policy: ApprovalPolicy | null
   decisions: ApprovalDecision[]
+  /** What the agent asked to do, one row per planned step (GET /api/approvals `steps`). */
+  steps: ApprovalStep[]
   /** Raw request as stored: run parameters for workflow runs, the staged context for writes. */
   rawRequest: Record<string, unknown>
   context: {
@@ -63,6 +73,8 @@ export type Approval = {
     args: Record<string, unknown> | null
     impact: string | null
     riskLevel: RiskLevel | null
+    /** True when the backend scored risk from the steps instead of a stored score. */
+    riskDerived: boolean
     approvalReason: string | null
     conversationId: string | null
     runId: string | null
@@ -190,6 +202,17 @@ export function normalizeApproval(input: Raw): Approval {
     approvalsReceived: num(pick(input, "approvals_received", "approvalsReceived")),
     policy: normalizePolicy(input.policy),
     decisions,
+    steps: Array.isArray(input.steps)
+      ? (input.steps as unknown[])
+          .map((row) => obj(row))
+          .filter((row): row is Raw => Boolean(row))
+          .map((row) => ({
+            text: str(row.text) ?? str(row.action) ?? "Step",
+            app: str(row.app),
+            action: str(row.action),
+            access: str(row.access) === "write" ? ("write" as const) : ("read" as const),
+          }))
+      : [],
     rawRequest: requestRaw ?? ctx,
     context: {
       entity: str(pick(ctx, "workflow_name", "entity")) ?? "",
@@ -200,6 +223,7 @@ export function normalizeApproval(input: Raw): Approval {
       args: obj(ctx.args),
       impact: str(pick(ctx, "impact", "estimated_impact", "estimatedImpact")),
       riskLevel: riskOf(pick(ctx, "risk_level", "riskLevel")),
+      riskDerived: Boolean(pick(ctx, "risk_derived", "riskDerived")),
       approvalReason: str(pick(ctx, "approval_reason", "approvalReason")),
       conversationId: str(pick(ctx, "conversation_id", "conversationId")),
       runId: str(pick(ctx, "run_id", "runId")),
@@ -555,4 +579,40 @@ export function matchesQuery(a: Approval, query: string): boolean {
   ]
     .filter(Boolean)
     .some((v) => String(v).toLowerCase().includes(q))
+}
+
+/** "Member, Jul 18, 2026" / "Dana and Sam, Jul 15, 2026" / "Waiting on you". */
+export function decidedByLine(a: Approval, now = Date.now()): string {
+  if (a.status === "pending") {
+    const got = a.approvalsReceived ?? 0
+    const need = a.requiredApprovals ?? a.policy?.requiredApprovals ?? null
+    return need && need > 1 ? `Waiting on you · ${got} of ${need} approvals` : "Waiting on you"
+  }
+  const names = a.decisions.length
+    ? [...new Set(a.decisions.filter((d) => d.status === a.status).map((d) => d.approverName).filter(Boolean))]
+    : a.reviewedBy
+      ? [a.reviewedBy]
+      : []
+  const who = names.length === 0 ? "Not recorded" : names.length === 1 ? String(names[0]) : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
+  const when = formatDate(a.reviewedAt, now)
+  return when ? `${who}, ${when}` : who
+}
+
+/** One line naming the rule that made the request wait. */
+export function policyLine(a: Approval): string {
+  const p = a.policy
+  if (!p) return a.context.approvalReason ?? "Not reported"
+  const n = p.requiredApprovals && p.requiredApprovals > 1 ? `${p.requiredApprovals} approvals` : "one approval"
+  if (p.source === "hitl") return p.missing ? "A policy that no longer exists" : p.name ?? `Human-in-the-loop: ${n}`
+  if (p.source === "hitl_default") return `Writes need ${n} by default`
+  if (p.source === "extension_confirm") return "Extension writes need a confirmation"
+  if (a.gateType === "chat_orchestration_plan") return `Chat plans need ${n}`
+  if (p.scope === "workflow") return `This workflow needs ${n}`
+  if (p.scope === "org") return `Workflow runs need ${n}`
+  return `Workflow runs need ${n} by default`
+}
+
+export function riskLabel(level: RiskLevel | null): string {
+  if (!level) return "Not scored"
+  return `${level.charAt(0).toUpperCase()}${level.slice(1)} risk`
 }

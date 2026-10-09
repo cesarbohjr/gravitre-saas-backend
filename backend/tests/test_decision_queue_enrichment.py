@@ -146,3 +146,80 @@ def test_enrichment_degrades_when_tables_fail():
     assert items[0]["policy"]["scope"] == "default"
     assert items[0]["decisions"] == []
     assert items[1]["policy"] == {"source": "hitl", "id": "pol-x", "name": None, "missing": True, "action_kind": "write"}
+
+
+def test_workflow_steps_come_from_the_definition_snapshot():
+    client = _Client({})
+    items = [_workflow_item("run-plan")]
+    snapshot = {
+        "source": "chat_orchestration",
+        "steps": [
+            {"id": "s1", "name": "Search HubSpot for high-intent leads", "invoke_action": "hubspot.contacts.search"},
+            {"id": "s2", "name": "Post a short summary to a channel", "invoke_action": "slack.chat.postMessage"},
+        ],
+    }
+    enrich_decision_queue(
+        client,
+        "org-1",
+        items,
+        run_meta={"run-plan": {"required_approvals": 1, "definition_snapshot": snapshot}},
+    )
+    steps = items[0]["steps"]
+    assert [s["text"] for s in steps] == [
+        "Search HubSpot for high-intent leads",
+        "Post a short summary to a channel",
+    ]
+    assert [s["app"] for s in steps] == ["hubspot", "slack"]
+    assert steps[0]["access"] == "read"
+    assert steps[1]["access"] == "write"
+    assert items[0]["context"]["risk_level"] == "medium"
+    assert items[0]["context"]["risk_derived"] is True
+
+
+def test_read_only_plan_is_low_risk_and_two_approvers_is_high():
+    client = _Client({})
+    read_only = {"steps": [{"name": "Look up deals", "invoke_action": "hubspot.deals.search"}]}
+    items = [_workflow_item("run-a"), _workflow_item("run-b")]
+    enrich_decision_queue(
+        client,
+        "org-1",
+        items,
+        run_meta={
+            "run-a": {"required_approvals": 1, "definition_snapshot": read_only},
+            "run-b": {"required_approvals": 2, "definition_snapshot": read_only},
+        },
+    )
+    assert items[0]["context"]["risk_level"] == "low"
+    assert items[1]["context"]["risk_level"] == "high"
+
+
+def test_stored_risk_wins_and_connector_write_gets_one_step():
+    client = _Client({})
+    items = [
+        {
+            "id": "a-9",
+            "title": "Delete contact",
+            "gate_type": "chat_connector_write",
+            "status": "pending",
+            "context": {
+                "invoke_action": "hubspot.contacts.delete",
+                "integration": "hubspot",
+                "label": "Delete a contact",
+                "risk_level": "medium",
+            },
+        },
+        {
+            "id": "a-10",
+            "title": "Delete contact",
+            "gate_type": "chat_connector_write",
+            "status": "pending",
+            "context": {"invoke_action": "hubspot.contacts.delete", "integration": "hubspot"},
+        },
+    ]
+    enrich_decision_queue(client, "org-1", items)
+    assert items[0]["steps"] == [
+        {"text": "Delete a contact", "action": "hubspot.contacts.delete", "app": "hubspot", "access": "write"}
+    ]
+    assert items[0]["context"]["risk_level"] == "medium"
+    assert "risk_derived" not in items[0]["context"]
+    assert items[1]["context"]["risk_level"] == "high"

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import {
@@ -51,6 +51,8 @@ interface AddDataSourceModalProps {
   onClose: () => void
   onCreate: (data: CreateSourceRequest) => Promise<void>
   creating: boolean
+  /** Opens straight on this source type's connection step (e.g. "snowflake"), when the catalog has it. */
+  initialTypeId?: string | null
 }
 
 function FieldInput({
@@ -120,7 +122,7 @@ function FieldInput({
   )
 }
 
-export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDataSourceModalProps) {
+export function AddDataSourceModal({ open, onClose, onCreate, creating, initialTypeId }: AddDataSourceModalProps) {
   const [step, setStep] = useState(1)
   const [selectedType, setSelectedType] = useState<DataSourceTypeDefinition | null>(null)
   const [search, setSearch] = useState("")
@@ -182,6 +184,19 @@ export function AddDataSourceModal({ open, onClose, onCreate, creating }: AddDat
     setConfig(defaults)
     setStep(2)
   }
+
+  const allTypes = (typesPayload as { types?: DataSourceTypeDefinition[] } | undefined)?.types
+  const preselectedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!open) {
+      preselectedRef.current = null
+      return
+    }
+    if (!initialTypeId || preselectedRef.current === initialTypeId || !allTypes) return
+    const match = allTypes.find((type) => type.id === initialTypeId)
+    preselectedRef.current = initialTypeId
+    if (match) handleSelectType(match)
+  }, [open, initialTypeId, allTypes])
 
   const handleTest = async () => {
     if (!selectedType) return

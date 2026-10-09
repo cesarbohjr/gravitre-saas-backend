@@ -5,9 +5,8 @@ import Link from "next/link"
 import useSWR from "swr"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
-import { AlertTriangle, Lock, MoreHorizontal, RefreshCw, Search, ShieldCheck } from "lucide-react"
+import { Check, MoreHorizontal, RefreshCw, Search, Shield } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { Illustration } from "@/components/gravitre/illustration"
 import { WsPage } from "@/components/workspace/ws-page"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
@@ -15,6 +14,7 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { approvalsApi } from "@/lib/api"
+import { resolveProvider } from "@/lib/provider-registry"
 import { cn } from "@/lib/utils"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -34,7 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  activity,
+  decidedByLine,
   environmentLabel,
   formatDate,
   isExtensionGate,
@@ -43,32 +43,28 @@ import {
   matchesQuery,
   normalizeApprovals,
   parseTime,
-  policyCopy,
+  policyLine,
+  riskLabel,
   slaLine,
   summarySentence,
+  titleCase,
   typeLabel,
-  whatWillHappen,
   type Approval,
   type QueueTab,
   type RiskLevel,
 } from "@/components/approvals/decision-queue/model"
-import "@/components/approvals/decision-queue/decision-queue.css"
+import "@/components/workspace/ops-v4.css"
 
 const POLICIES_HREF = "/settings/approvals"
 
-const TABS: Array<{ id: QueueTab; label: string }> = [
-  { id: "pending", label: "Waiting on you" },
-  { id: "breached", label: "Past SLA" },
+/** The inbox switches between three queues; Past SLA is a view of Waiting, picked from its stat. */
+const SEGMENTS: Array<{ id: Exclude<QueueTab, "breached">; label: string }> = [
+  { id: "pending", label: "Waiting" },
   { id: "approved", label: "Approved" },
   { id: "rejected", label: "Rejected" },
 ]
 
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "?"
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-}
+const RISK_TONE: Record<RiskLevel, string> = { low: "green", medium: "amber", high: "red" }
 
 function updatedLabel(at: number | null, now: number): string {
   if (at == null) return "Not updated yet"
@@ -84,6 +80,11 @@ function isTypingTarget(target: EventTarget | null): boolean {
   if (target.isContentEditable) return true
   const tag = target.tagName
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT"
+}
+
+function appName(slug: string | null): string {
+  if (!slug) return "Gravitre"
+  return resolveProvider(slug)?.name ?? titleCase(slug)
 }
 
 const ALREADY_DONE = /already started|already resolved|not pending approval|already approved|no longer pending/i
@@ -113,7 +114,8 @@ function DecisionQueue() {
   const [rejectReason, setRejectReason] = useState("")
   const [now, setNow] = useState(() => Date.now())
   const [lastUpdated, setLastUpdated] = useState<number | null>(null)
-  const listRef = useRef<HTMLElement | null>(null)
+  const listRef = useRef<HTMLDivElement | null>(null)
+  const detailRef = useRef<HTMLDivElement | null>(null)
   const itemRefs = useRef(new Map<string, HTMLButtonElement>())
 
   const {
@@ -197,7 +199,7 @@ function DecisionQueue() {
     const inHistory = history?.find((a) => a.id === deepLinkId)
     if (!inPending && !inHistory) return
     deepLinked.current = deepLinkId
-    if (inPending) setTab(isPastSla(inPending) ? "breached" : "pending")
+    if (inPending) setTab("pending")
     else if (inHistory) setTab(inHistory.status === "rejected" ? "rejected" : "approved")
     setSelectedId(deepLinkId)
   }, [deepLinkId, pending, history])
@@ -210,6 +212,11 @@ function DecisionQueue() {
       if (focus) node.focus({ preventScroll: true })
     }
   }, [])
+
+  const pickTab = (next: QueueTab) => {
+    setTab(next)
+    setSelectedId(null)
+  }
 
   const canDecide = (a: Approval) =>
     adminLoading || isAdmin || (isExtensionGate(a) && Boolean(user?.id) && a.requestedById === user?.id)
@@ -325,229 +332,255 @@ function DecisionQueue() {
   })
 
   const summary = summarySentence(pending.length, breached.length)
-  const loadError = tab === "approved" || tab === "rejected" ? historyError : pendingError
-  const listLoading = (tab === "approved" || tab === "rejected" ? !historyData : !pendingData) && !loadError
+  const historyTab = tab === "approved" || tab === "rejected"
+  const loadError = historyTab ? historyError : pendingError
+  const listLoading = (historyTab ? !historyData : !pendingData) && !loadError
+  const segment = tab === "breached" ? "pending" : tab
+
+  const stat = (id: QueueTab, label: string, tone?: "green" | "red") => {
+    const n = counts[id]
+    return (
+      <button
+        type="button"
+        className={cn("ov-stat", tone)}
+        data-tab={id}
+        aria-pressed={tab === id}
+        onClick={() => pickTab(id)}
+      >
+        <span className="v">{n == null ? <span className="ov-skel-n" aria-label="Loading" /> : n}</span>
+        <span className="k">{label}</span>
+      </button>
+    )
+  }
 
   return (
-    <WsPage className={cn(selected?.status === "pending" && "dq-has-dock")}>
-      <header className="dq-head">
-        <div className="dq-head-main">
-          <div className="gv-eyebrow">Human in the loop</div>
-          <h1 className="dq-title">Decision queue</h1>
-          {pendingData ? (
-            <p className={cn("dq-summary", pending.length === 0 && "calm")} aria-live="polite">
-              {pending.length > 0 ? (
-                <span
-                  className="gv-ping"
-                  style={{ background: "var(--gv-amber)", width: 9, height: 9 }}
-                  aria-hidden
-                />
-              ) : null}
-              <span>
-                <strong>{summary.lead}</strong>
-                {summary.rest}
-              </span>
-            </p>
-          ) : (
-            <p className="dq-summary">{pendingError ? "Could not load the queue." : "Loading the queue..."}</p>
-          )}
-        </div>
-        <div className="dq-head-actions">
-          <span className={cn("dq-fresh", pendingError && "stale")}>
-            <span className="gv-dot" aria-hidden />
-            {pendingError ? "Could not refresh" : updatedLabel(lastUpdated, now)}
-          </span>
-          <button
-            type="button"
-            className="gv-iconbtn"
-            aria-label="Refresh"
-            onClick={() => void refresh()}
-            disabled={refreshing}
-          >
-            <RefreshCw size={18} className={cn(refreshing && "dq-spin")} aria-hidden />
-          </button>
-          <Link className="gv-btn outline" href={POLICIES_HREF}>
-            Approval policies
-          </Link>
-        </div>
-      </header>
-
-      <nav aria-label="Queue filters" className="gv-card dq-tabs">
-        {TABS.map((t) => {
-          const n = counts[t.id]
-          return (
-            <button
-              key={t.id}
-              type="button"
-              className={cn("dq-tab", tab === t.id && "on", t.id === "breached" && (n ?? 0) > 0 && "sla")}
-              aria-current={tab === t.id ? "true" : undefined}
-              data-tab={t.id}
-              onClick={() => {
-                setTab(t.id)
-                setSelectedId(null)
-              }}
-            >
-              <span className={cn("n", t.id === "breached" && (n ?? 0) > 0 && "hot")}>
-                {n == null ? <span className="gv-skel" aria-label="Loading" /> : n}
-              </span>
-              {t.label}
-            </button>
-          )
-        })}
-      </nav>
-
-      {loadError ? (
-        <div className="dq-error" role="status">
-          <AlertTriangle size={16} aria-hidden />
-          Could not load the latest requests. Showing what was loaded before.
-        </div>
-      ) : null}
-
-      <div className="dq-body">
-        <section
-          aria-label="Requests"
-          className="dq-list"
-          data-review-surface="approvals-queue"
-          ref={(node) => {
-            listRef.current = node
-          }}
-        >
-          <label className="gv-field">
-            <Search size={18} aria-hidden />
-            <input
-              aria-label="Filter requests"
-              placeholder="Filter by agent, app or action"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </label>
-          <div className="dq-listbar">
-            <button
-              type="button"
-              className="dq-plain"
-              onClick={() => setOldestFirst((v) => !v)}
-              aria-label={`Sort: ${oldestFirst ? "oldest first" : "newest first"}. Change sort order`}
-            >
-              {oldestFirst ? "Oldest first" : "Newest first"}
-            </button>
-            <select
-              className="dq-plain"
-              aria-label="Filter by risk"
-              value={risk}
-              onChange={(e) => setRisk(e.target.value as RiskLevel | "all")}
-            >
-              <option value="all">Risk: all</option>
-              <option value="high">Risk: high</option>
-              <option value="medium">Risk: medium</option>
-              <option value="low">Risk: low</option>
-            </select>
+    <WsPage wide={false} className={cn(selected?.status === "pending" && "dq-has-dock")}>
+      <div className="ov-page">
+        <section aria-labelledby="ap-hero" className="ov-hero">
+          <div className="ov-hero-art">
+            {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
+            <img src="/illustrations/ops-approvals.svg" alt="" />
           </div>
-
-          {listLoading ? (
-            <div className="gv-card" style={{ padding: 16 }} aria-label="Loading requests">
-              <div className="gv-skel" style={{ width: "40%" }} />
-              <div className="gv-skel" style={{ width: "80%", marginTop: 12, height: 14 }} />
-              <div className="gv-skel" style={{ width: "60%", marginTop: 12 }} />
+          <div className="ov-hero-copy">
+            <div className="ov-hero-eb">
+              <span className="ov-eyebrow">Human in the loop</span>
+              {pendingError ? (
+                <span className="ov-fresh stale" role="status">
+                  <i aria-hidden />
+                  Could not refresh
+                  <button type="button" onClick={() => void refresh()}>
+                    Retry
+                  </button>
+                </span>
+              ) : (
+                <span className="ov-fresh">
+                  <i aria-hidden />
+                  {updatedLabel(lastUpdated, now)}
+                </span>
+              )}
             </div>
-          ) : null}
-
-          {visible.map((a) => (
-            <RequestCard
-              key={a.id}
-              approval={a}
-              now={now}
-              selected={selected?.id === a.id}
-              onSelect={() => select(a.id)}
-              registerRef={(node) => {
-                if (node) itemRefs.current.set(a.id, node)
-                else itemRefs.current.delete(a.id)
-              }}
-            />
-          ))}
-
-          {!listLoading && visible.length === 0 && filtersOn && base.length > 0 ? (
-            <div className="gv-empty">
-              No requests match this filter.{" "}
-              <button
-                type="button"
-                className="dq-linkbtn"
-                onClick={() => {
-                  setQuery("")
-                  setRisk("all")
-                }}
-              >
-                Clear filters
+            <h1 id="ap-hero">Decision queue</h1>
+            <p className="ov-lead" aria-live="polite">
+              {pendingData ? (
+                <>
+                  <strong>{summary.lead}</strong>
+                  {summary.rest}
+                </>
+              ) : pendingError ? (
+                "Could not load the queue."
+              ) : (
+                "Loading the queue..."
+              )}
+            </p>
+            <div className="ov-stats">
+              {stat("pending", "Waiting on you", "green")}
+              {stat("breached", "Past SLA", (counts.breached ?? 0) > 0 ? "red" : undefined)}
+              {stat("approved", "Approved")}
+              {stat("rejected", "Rejected")}
+            </div>
+            <div className="ov-actions">
+              <Link className="ov-btn dark" href={POLICIES_HREF}>
+                <Shield size={16} aria-hidden />
+                Approval policies
+              </Link>
+              <button type="button" className="ov-btn" onClick={() => void refresh()} disabled={refreshing}>
+                <RefreshCw size={16} aria-hidden className={cn(refreshing && "ov-spin")} />
+                Refresh
               </button>
             </div>
-          ) : null}
-
-          {!listLoading && tab === "pending" && pending.length <= 1 && !pendingError ? (
-            <div className="gv-card dq-zero">
-              <Illustration name="moment-inbox-zero" width={320} />
-              <div className="dq-zero-title">
-                {pending.length === 1 ? "One decision from inbox zero" : "Inbox zero"}
-              </div>
-              <div className="dq-zero-body">New requests appear here the moment an agent pauses.</div>
-            </div>
-          ) : null}
-
-          {!listLoading && base.length === 0 && tab !== "pending" ? (
-            <div className="gv-empty">
-              {tab === "breached"
-                ? "No request is past its SLA."
-                : tab === "approved"
-                  ? "No approved requests yet."
-                  : "No rejected requests yet."}
-            </div>
-          ) : null}
+          </div>
         </section>
 
-        {selected ? (
-          <DetailPane
-            key={selected.id}
-            approval={selected}
-            now={now}
-            busy={busyId === selected.id}
-            canDecide={canDecide(selected)}
-            approvedCount={counts.approved}
-            onApprove={() => void approve(selected)}
-            onReject={() => openReject(selected)}
-            onViewHistory={() => {
-              setTab("approved")
-              setSelectedId(null)
-            }}
-            onBack={() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-          />
-        ) : !listLoading ? (
-          <article className="gv-card dq-detail" style={{ padding: "28px" }}>
-            <h2 className="gv-h2">{tab === "pending" ? "Nothing to decide right now" : "Nothing selected"}</h2>
-            <p className="gv-hint" style={{ marginTop: 8 }}>
-              {tab === "pending" || tab === "breached"
-                ? "When an agent or workflow needs your decision before it changes a connected system, the request lands here."
-                : "Decided requests stay here with who decided and when."}
-            </p>
-            {tab !== "approved" ? (
-              <button
-                type="button"
-                className="gv-btn outline sm"
-                style={{ marginTop: 16 }}
-                onClick={() => {
-                  setTab("approved")
-                  setSelectedId(null)
-                }}
-              >
-                View history
-              </button>
-            ) : null}
-          </article>
-        ) : null}
+        <section aria-labelledby="inbox-heading" className="ov-panel">
+          <div className="ov-band">
+            <div className="ov-band-l">
+              <span className="ov-dots" aria-hidden>
+                <i />
+                <i />
+                <i />
+              </span>
+              <h2 id="inbox-heading">Decision inbox</h2>
+            </div>
+            <div role="group" aria-label="Queue" className="ov-seg">
+              {SEGMENTS.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  aria-pressed={segment === s.id}
+                  onClick={() => pickTab(s.id)}
+                >
+                  {s.label} <span className="c">{counts[s.id] ?? ""}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="ov-split">
+            <div className="ov-list" data-review-surface="approvals-queue" ref={listRef}>
+              <div className="ov-list-tools">
+                <label className="ov-search">
+                  <Search size={15} aria-hidden />
+                  <span className="ov-sr">Filter requests</span>
+                  <input
+                    type="search"
+                    aria-label="Filter requests"
+                    placeholder="Filter by agent, app or action"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                </label>
+                <div className="ov-list-bar">
+                  <button
+                    type="button"
+                    className="ov-plain"
+                    onClick={() => setOldestFirst((v) => !v)}
+                    aria-label={`Sort: ${oldestFirst ? "oldest first" : "newest first"}. Change sort order`}
+                  >
+                    {oldestFirst ? "Oldest first" : "Newest first"}
+                  </button>
+                  {tab === "breached" ? (
+                    <button type="button" className="ov-plain" onClick={() => pickTab("pending")}>
+                      Past SLA only · Show all
+                    </button>
+                  ) : null}
+                  <select
+                    className="ov-plain"
+                    aria-label="Filter by risk"
+                    value={risk}
+                    onChange={(e) => setRisk(e.target.value as RiskLevel | "all")}
+                  >
+                    <option value="all">Risk: all</option>
+                    <option value="high">Risk: high</option>
+                    <option value="medium">Risk: medium</option>
+                    <option value="low">Risk: low</option>
+                  </select>
+                </div>
+              </div>
+
+              {loadError ? (
+                <div className="ov-alert" role="status" style={{ margin: 14 }}>
+                  Could not load the latest requests. Showing what was loaded before.
+                </div>
+              ) : null}
+
+              {listLoading ? (
+                <div className="ov-empty" aria-label="Loading requests">
+                  <span>Loading requests...</span>
+                </div>
+              ) : visible.length === 0 ? (
+                <div className="ov-empty">
+                  {filtersOn && base.length > 0 ? (
+                    <>
+                      <b>No requests match this filter</b>
+                      <button
+                        type="button"
+                        className="ov-linkbtn"
+                        onClick={() => {
+                          setQuery("")
+                          setRisk("all")
+                        }}
+                      >
+                        Clear filters
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="ic" aria-hidden>
+                        <Check size={24} />
+                      </span>
+                      <b>
+                        {tab === "pending"
+                          ? "Inbox zero"
+                          : tab === "breached"
+                            ? "Nothing past its SLA"
+                            : tab === "approved"
+                              ? "Nothing approved yet"
+                              : "Nothing rejected"}
+                      </b>
+                      <span>
+                        {tab === "pending" || tab === "breached"
+                          ? "When an agent pauses for a decision it lands here, oldest first."
+                          : tab === "approved"
+                            ? "Approved requests and who decided them will show here."
+                            : "Rejected requests and the reasons given will show here."}
+                      </span>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="ov-items">
+                  {visible.map((a) => (
+                    <RequestItem
+                      key={a.id}
+                      approval={a}
+                      now={now}
+                      selected={selected?.id === a.id}
+                      onSelect={() => {
+                        select(a.id)
+                        if (window.matchMedia?.("(max-width: 900px)").matches) {
+                          detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+                        }
+                      }}
+                      registerRef={(node) => {
+                        if (node) itemRefs.current.set(a.id, node)
+                        else itemRefs.current.delete(a.id)
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="ov-detail" ref={detailRef}>
+              {selected ? (
+                <DetailPane
+                  key={selected.id}
+                  approval={selected}
+                  now={now}
+                  busy={busyId === selected.id}
+                  canDecide={canDecide(selected)}
+                  onApprove={() => void approve(selected)}
+                  onReject={() => openReject(selected)}
+                  onBack={() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                />
+              ) : (
+                <div className="ov-placeholder">
+                  <b>Pick a request to see the details</b>
+                  <span>The plan, the risk and who decided appear here.</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <RiskLadder pending={pending} history={history} />
       </div>
 
       {selected?.status === "pending" && canDecide(selected) ? (
         <div className="dq-dock" data-testid="approval-mobile-actions" data-gravitre-mobile-action-dock>
           <button
             type="button"
-            className="gv-btn primary"
+            className="ov-btn dark"
             data-review-cta="approve"
             disabled={Boolean(busyId)}
             onClick={() => void approve(selected)}
@@ -556,7 +589,7 @@ function DecisionQueue() {
           </button>
           <button
             type="button"
-            className="gv-btn danger"
+            className="ov-btn danger"
             disabled={Boolean(busyId)}
             onClick={() => openReject(selected)}
           >
@@ -600,7 +633,7 @@ function DecisionQueue() {
   )
 }
 
-function RequestCard({
+function RequestItem({
   approval: a,
   now,
   selected,
@@ -616,49 +649,29 @@ function RequestCard({
   const sla = slaLine(a, now)
   const env = environmentLabel(a.environment)
   const decided = a.status !== "pending"
+  const level = a.context.riskLevel
+  const meta = decided
+    ? [a.status === "approved" ? "Approved" : "Rejected", formatDate(a.reviewedAt ?? a.requestedAt, now)]
+    : [sla ? sla.text : "Waiting", sla ? null : formatDate(a.requestedAt, now)]
   return (
     <button
       type="button"
       ref={registerRef}
-      className={cn("dq-item", selected && "on", decided && "done")}
+      className="ov-item dq-item"
       aria-current={selected ? "true" : undefined}
       data-path-waiting={a.status === "pending" ? "1" : "0"}
       data-path-run-id={a.context.runId ?? undefined}
       onClick={onSelect}
     >
-      {decided ? (
-        <div className="dq-item-sla quiet">
-          {a.status === "approved" ? "Approved" : "Rejected"}
-          {formatDate(a.reviewedAt, now) ? ` · ${formatDate(a.reviewedAt, now)}` : ""}
-        </div>
-      ) : sla ? (
-        <div className={cn("dq-item-sla", sla.breached && "hot")}>
-          {sla.breached ? <AlertTriangle size={14} aria-hidden /> : null}
-          {sla.text}
-        </div>
-      ) : null}
-      <div className="dq-item-title">{a.title}</div>
-      {a.context.tool ? <div className="dq-item-tool">{a.context.tool}</div> : null}
-      <div className="dq-pills">
-        {env ? <span className={cn("gv-pill", a.environment === "production" ? "brand" : "neutral")}>{env}</span> : null}
-        {a.context.riskLevel ? (
-          <span
-            className={cn(
-              "gv-pill",
-              a.context.riskLevel === "high" ? "red" : a.context.riskLevel === "medium" ? "amber" : "neutral",
-            )}
-          >
-            {a.context.riskLevel.charAt(0).toUpperCase() + a.context.riskLevel.slice(1)} risk
-          </span>
+      <span className={cn("meta", sla?.breached && "hot")}>{meta.filter(Boolean).join(" · ")}</span>
+      <span className="t">{a.title}</span>
+      <span className="ov-chips">
+        {selected && env ? (
+          <span className={cn("ov-chip", a.environment === "production" && "green")}>{env}</span>
         ) : null}
-        <span className="gv-pill neutral">{typeLabel(a)}</span>
-      </div>
-      <div className="dq-who">
-        <span className="dq-ini" aria-hidden>
-          {initials(a.requestedBy)}
-        </span>
-        {[a.requestedBy, formatDate(a.requestedAt, now)].filter(Boolean).join(" · ")}
-      </div>
+        <span className="ov-chip">{typeLabel(a)}</span>
+        {level ? <span className={cn("ov-chip", RISK_TONE[level])}>{riskLabel(level)}</span> : null}
+      </span>
     </button>
   )
 }
@@ -668,27 +681,23 @@ function DetailPane({
   now,
   busy,
   canDecide,
-  approvedCount,
   onApprove,
   onReject,
-  onViewHistory,
   onBack,
 }: {
   approval: Approval
   now: number
   busy: boolean
   canDecide: boolean
-  approvedCount: number | null
   onApprove: () => void
   onReject: () => void
-  onViewHistory: () => void
   onBack: () => void
 }) {
   const pending = a.status === "pending"
   const pastSla = isPastSla(a, now)
-  const rows = whatWillHappen(a)
-  const policy = policyCopy(a)
-  const events = activity(a, now)
+  const runId = a.context.runId
+  const conversationId = a.context.conversationId
+  const steps = a.steps
   const raw = useMemo(() => {
     try {
       return JSON.stringify(a.rawRequest, null, 2)
@@ -696,8 +705,6 @@ function DetailPane({
       return "{}"
     }
   }, [a.rawRequest])
-  const runId = a.context.runId
-  const conversationId = a.context.conversationId
 
   const copyLink = async () => {
     const url = `${window.location.origin}/approvals?id=${encodeURIComponent(a.id)}`
@@ -710,189 +717,207 @@ function DetailPane({
   }
 
   return (
-    <article
-      className="gv-card gv-rise dq-detail"
-      aria-label={a.title}
-      data-review-surface="approvals-inspect"
-    >
-      <div className={cn("dq-hero", !pending && "done")}>
-        <div className="dq-hero-main">
-          <button type="button" className="dq-linkbtn dq-back" onClick={onBack}>
-            Back to the list
-          </button>
-          <div className="dq-pills" style={{ marginTop: 0 }}>
-            {pending ? (
-              <span className="gv-pill amber">
-                <span className="gv-ping" style={{ background: "var(--gv-amber)", width: 7, height: 7 }} aria-hidden />
-                Waiting on you
-              </span>
-            ) : a.status === "approved" ? (
-              <span className="gv-pill brand">Approved</span>
-            ) : (
-              <span className="gv-pill red">Rejected</span>
-            )}
-            {pastSla ? <span className="gv-pill red">SLA breached</span> : null}
-          </div>
-          <h2>{a.title}</h2>
-          {a.description ? <p>{a.description}</p> : null}
-        </div>
-        {pending ? (
-          <div className="gv-hide-sm">
-            <Illustration name="moment-request-waiting" width={200} className="dq-hero-art" />
-          </div>
-        ) : null}
+    <article className="ov-detail-in" aria-label={a.title} data-review-surface="approvals-inspect">
+      <button type="button" className="ov-linkbtn ov-back" onClick={onBack}>
+        Back to the list
+      </button>
+      <div className="ov-detail-top">
+        <span className="ov-chips">
+          {pending ? (
+            <span className={cn("ov-pill", pastSla ? "red" : "amber")}>
+              <span className="ov-dot" aria-hidden />
+              {pastSla ? "Past SLA" : "Waiting on you"}
+            </span>
+          ) : a.status === "approved" ? (
+            <span className="ov-pill green">
+              <Check size={14} strokeWidth={2.6} aria-hidden />
+              Approved
+            </span>
+          ) : (
+            <span className="ov-pill red">Rejected</span>
+          )}
+        </span>
+        <span className="ov-from">
+          Request from <strong>{a.requestedBy}</strong>
+        </span>
       </div>
 
-      {pending ? (
-        <div className="dq-actions">
-          <button
-            type="button"
-            className="gv-btn primary"
-            data-review-cta="approve"
-            disabled={busy || !canDecide}
-            onClick={onApprove}
-          >
-            {busy ? "Working..." : "Approve"} <span className="gv-kbd">A</span>
-          </button>
-          <button type="button" className="gv-btn danger" disabled={busy || !canDecide} onClick={onReject}>
-            Reject <span className="gv-kbd">R</span>
-          </button>
-          <MoreMenu runId={runId} conversationId={conversationId} onCopy={copyLink} />
-          <div className="dq-lock">
-            <Lock size={14} aria-hidden />
-            {canDecide ? lockNote(a) : "Only workspace admins can decide this request."}
-          </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <h3>{a.title}</h3>
+        {a.description ? <p className="desc">{a.description}</p> : null}
+        {pending ? <p className="desc">{slaLine(a, now)?.text}</p> : null}
+      </div>
+
+      <div className="ov-box">
+        <div className="ov-box-head">
+          <b>What the agent asked to do</b>
+          <span>
+            {steps.length} {steps.length === 1 ? "step" : "steps"}
+          </span>
         </div>
-      ) : (
-        <div className="dq-actions">
-          {runId ? (
-            <Link className="gv-btn outline" href={`/runs/${encodeURIComponent(runId)}`}>
+        {steps.length ? (
+          steps.map((st, i) => (
+            <div className="ov-step" key={`${i}-${st.text}`}>
+              <span className="n">{i + 1}</span>
+              <span className="b">
+                <b>{st.text}</b>
+                <span>{appName(st.app)}</span>
+              </span>
+              <span className={cn("ov-access", st.access === "write" && "write")}>
+                {st.access === "write" ? "Write" : "Read"}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="ov-step">
+            <span className="b">
+              <span>The request did not list its steps. The raw request below has everything that was sent.</span>
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="ov-facts">
+        <div className="ov-fact">
+          <span>Decided by</span>
+          <b>{decidedByLine(a, now)}</b>
+        </div>
+        <div className="ov-fact">
+          <span>Policy applied</span>
+          <b>{policyLine(a)}</b>
+        </div>
+        <div className="ov-fact">
+          <span>Risk</span>
+          <b>{riskLabel(a.context.riskLevel)}</b>
+        </div>
+      </div>
+
+      {a.reviewComment ? <p className="ov-note">Reason given: &ldquo;{a.reviewComment}&rdquo;</p> : null}
+      {pending ? <p className="ov-note">{canDecide ? lockNote(a) : "Only workspace admins can decide this request."}</p> : null}
+
+      <details className="ov-raw">
+        <summary>View raw request</summary>
+        <pre>{raw}</pre>
+      </details>
+
+      <div className="ov-foot">
+        <div className="ov-actions">
+          {pending ? (
+            <>
+              <button
+                type="button"
+                className="ov-btn dark"
+                data-review-cta="approve"
+                disabled={busy || !canDecide}
+                onClick={onApprove}
+              >
+                {busy ? "Working..." : "Approve"} <span className="ov-kbd">A</span>
+              </button>
+              <button type="button" className="ov-btn danger" disabled={busy || !canDecide} onClick={onReject}>
+                Reject <span className="ov-kbd">R</span>
+              </button>
+            </>
+          ) : runId ? (
+            <Link className="ov-btn dark" href={`/runs/${encodeURIComponent(runId)}`}>
               View the run
             </Link>
           ) : null}
-          {a.reviewComment ? (
-            <span className="gv-hint">Reason given: &ldquo;{a.reviewComment}&rdquo;</span>
+          {pending && runId ? (
+            <Link className="ov-btn" href={`/runs/${encodeURIComponent(runId)}`}>
+              View the run
+            </Link>
           ) : null}
-          <MoreMenu runId={runId} conversationId={conversationId} onCopy={copyLink} />
-        </div>
-      )}
-
-      <div className="dq-cols">
-        <section className="dq-col">
-          <h3>{pending ? "What will happen" : "What was requested"}</h3>
-          {rows.length ? (
-            <dl className="gv-dl">
-              {rows.map((row) => (
-                <div key={row.term} style={{ display: "contents" }}>
-                  <dt>{row.term}</dt>
-                  <dd className={cn(row.mono && "gv-mono")}>
-                    {row.href ? <Link href={row.href}>{row.value}</Link> : row.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          ) : (
-            <p className="gv-hint">The request did not include any details beyond its title.</p>
-          )}
-          <details className="dq-raw">
-            <summary>
-              View raw request <span>JSON</span>
-            </summary>
-            <pre>{raw}</pre>
-          </details>
-        </section>
-        <section className="dq-col">
-          <h3>Why it paused</h3>
-          {policy ? (
-            <div className="dq-policy">
-              <ShieldCheck size={20} aria-hidden />
-              <div>
-                <strong>{policy.title}</strong>
-                <div className="sub">{policy.body}</div>
-                {a.context.approvalReason ? <div className="sub">{a.context.approvalReason}</div> : null}
-                <Link href={POLICIES_HREF}>Review policy &rarr;</Link>
-              </div>
-            </div>
-          ) : (
-            <div className="dq-policy">
-              <ShieldCheck size={20} aria-hidden />
-              <div>
-                <strong>{a.context.approvalReason ?? "This request needs a person to decide before it runs."}</strong>
-                <div className="sub">The policy that paused it was not reported.</div>
-                <Link href={POLICIES_HREF}>Review policies &rarr;</Link>
-              </div>
-            </div>
-          )}
-          <h3 className="next">Activity</h3>
-          <ol className="dq-timeline">
-            {events.map((e) => (
-              <li key={e.key}>
-                <span className={cn("mk", e.tone)} aria-hidden />
-                <div className="t">{e.title}</div>
-                {e.detail ? <div className="d">{e.detail}</div> : null}
-              </li>
-            ))}
-          </ol>
-        </section>
-      </div>
-
-      <div className="dq-foot">
-        <span>
-          <span className="gv-kbd">J</span> <span className="gv-kbd">K</span> Next and previous
-        </span>
-        {pending ? (
-          <>
-            <span>
-              <span className="gv-kbd">A</span> Approve
-            </span>
-            <span>
-              <span className="gv-kbd">R</span> Reject with a reason
-            </span>
-          </>
-        ) : null}
-        <span className="end">
           <AskGravitreSummonButton
+            className="ov-btn"
             selected={{ kind: "approval", id: a.id, label: a.title }}
             label="Ask Gravitre about this"
           />
-          <button type="button" className="dq-linkbtn" onClick={onViewHistory}>
-            {approvedCount != null ? `${approvedCount} approved · ` : ""}View history &rarr;
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="ov-btn" aria-label="More actions">
+                <MoreHorizontal size={18} aria-hidden />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {conversationId ? (
+                <DropdownMenuItem asChild>
+                  <Link href={`/ai?c=${encodeURIComponent(conversationId)}`}>Open the conversation</Link>
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem onSelect={() => void copyLink()}>Copy link to this request</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <span className="ov-keys">
+          <span className="ov-kbd">J</span>
+          <span className="ov-kbd">K</span>move
+          {pending ? (
+            <>
+              <span className="ov-kbd">A</span>approve <span className="ov-kbd">R</span>Reject with a reason
+            </>
+          ) : null}
         </span>
       </div>
     </article>
   )
 }
 
-function MoreMenu({
-  runId,
-  conversationId,
-  onCopy,
-}: {
-  runId: string | null
-  conversationId: string | null
-  onCopy: () => void
-}) {
+/** The three risk paths, each with how many requests in the loaded queue took it. */
+function RiskLadder({ pending, history }: { pending: Approval[]; history: Approval[] | null }) {
+  const all = [...pending, ...(history ?? [])]
+  const count = (level: RiskLevel) => all.filter((a) => a.context.riskLevel === level).length
+  const rungs: Array<{ level: RiskLevel; chip: string; title: string; body: string }> = [
+    {
+      level: "low",
+      chip: "Low risk",
+      title: "Runs on its own",
+      body: "Read only lookups and drafts. Logged in Activity, no approval needed.",
+    },
+    {
+      level: "medium",
+      chip: "Medium risk",
+      title: "One approval",
+      body: "Writes to one system, like updating a CRM record or posting to Slack.",
+    },
+    {
+      level: "high",
+      chip: "High risk",
+      title: "Two approvals and an SLA",
+      body: "Money, customer email or deletes. Escalates if no one decides in time.",
+    },
+  ]
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button type="button" className="gv-iconbtn dq-more" aria-label="More actions">
-          <MoreHorizontal size={18} aria-hidden />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        {runId ? (
-          <DropdownMenuItem asChild>
-            <Link href={`/runs/${encodeURIComponent(runId)}`}>Open the run</Link>
-          </DropdownMenuItem>
-        ) : null}
-        {conversationId ? (
-          <DropdownMenuItem asChild>
-            <Link href={`/ai?c=${encodeURIComponent(conversationId)}`}>Open the conversation</Link>
-          </DropdownMenuItem>
-        ) : null}
-        <DropdownMenuItem onSelect={() => onCopy()}>Copy link to this request</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <section aria-labelledby="policy-heading" className="ov-explain">
+      <div className="ov-explain-side">
+        <span className="ov-sq-row">
+          <span className="ov-sq" aria-hidden />
+          <h2 id="policy-heading">How risk decides who approves</h2>
+        </span>
+        <p>
+          Each action is scored before it runs. The score picks the path, so routine work keeps moving and anything
+          that can hurt waits for a person.
+        </p>
+        <Link href={POLICIES_HREF}>Edit approval policies</Link>
+      </div>
+      <div className="ov-explain-main">
+        {rungs.map((r) => (
+          <div className="ov-riskcard" key={r.level}>
+            <span className={cn("ov-chip", RISK_TONE[r.level])}>{r.chip}</span>
+            <b>{r.title}</b>
+            <p>{r.body}</p>
+            {history ? (
+              <span className="live">
+                {count(r.level)} in this queue
+              </span>
+            ) : null}
+            <span className={cn("ov-meter", RISK_TONE[r.level])} aria-hidden>
+              <i />
+              <i />
+              <i />
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }

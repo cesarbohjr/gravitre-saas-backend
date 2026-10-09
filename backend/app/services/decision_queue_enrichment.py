@@ -9,6 +9,11 @@ the facts the queue page shows next to each request, read from the real tables:
   covers a write).
 * ``decisions``: the recorded approve / reject rows for workflow runs
   (``run_approvals``), so history shows the real reviewer, time and reason.
+* ``steps``: what the agent asked to do, one row per planned step, each marked
+  read or write (from the run's definition snapshot, or the staged write).
+* ``context.risk_level``: the risk the request was scored at. A stored score
+  wins; otherwise it is derived from the steps (reads are low, writes medium,
+  money, customer email, deletes or a two-approver policy high).
 
 Every lookup is one batched query and failures degrade to "no extra facts";
 the queue itself never fails because enrichment could not load.
@@ -25,6 +30,26 @@ from app.workflows.constants import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Actions that move money, email customers or delete data are high risk.
+HIGH_RISK_MARKERS = (
+    "delete",
+    "remove",
+    "archive",
+    "refund",
+    "payment",
+    "charge",
+    "invoice",
+    "payout",
+    "transfer",
+    "send_email",
+    "send_message",
+    "email.send",
+    "messages.send",
+    "emails.send",
+    "gmail.send",
+    "sequence",
+)
 
 WORKFLOW_GATES = {"execute", "chat_orchestration_plan"}
 EXTENSION_GATES = {"browser_extension_write", "browser_extension_workflow"}
@@ -160,6 +185,102 @@ def _connector_policy(ctx: dict[str, Any], hitl: dict[str, dict[str, Any]], gate
     }
 
 
+def _is_write(action: str) -> bool:
+    if not action:
+        return False
+    # The catalog knows declared writes; the verb heuristic covers actions it has no entry for
+    # (e.g. slack.chat.postMessage). A reviewer should see either as a write.
+    try:
+        from app.services.outcome_verification import is_write_action
+
+        if is_write_action(action):
+            return True
+    except Exception:  # noqa: BLE001 — classification must not break the queue
+        pass
+    try:
+        from app.services.connector_outcome_effects import is_mutating_action
+
+        return bool(is_mutating_action(action))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _app_of(action: str, fallback: str | None = None) -> str | None:
+    """Integration slug from an invoke action like ``hubspot.contacts.create``."""
+    if action and "." in action:
+        return action.split(".", 1)[0].strip().lower() or fallback
+    return fallback
+
+
+def _step_rows(snapshot: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """Planned steps from a run's definition snapshot (chat plans and workflows)."""
+    snap = snapshot if isinstance(snapshot, dict) else {}
+    raw = snap.get("steps")
+    if not isinstance(raw, list) or not raw:
+        graph = snap.get("graph") if isinstance(snap.get("graph"), dict) else {}
+        raw = graph.get("nodes") if isinstance(graph.get("nodes"), list) else snap.get("nodes")
+    if not isinstance(raw, list):
+        return []
+    steps: list[dict[str, Any]] = []
+    for idx, step in enumerate(raw, start=1):
+        if not isinstance(step, dict):
+            continue
+        config = step.get("config") if isinstance(step.get("config"), dict) else {}
+        kind = str(step.get("node_type") or step.get("type") or "").strip().lower()
+        if kind in {"trigger", "start", "end", "note"}:
+            continue
+        action = str(
+            step.get("invoke_action")
+            or config.get("tool_action")
+            or config.get("invoke_action")
+            or config.get("action")
+            or ""
+        ).strip()
+        integration = str(step.get("connector") or config.get("connector") or config.get("integration") or "").strip().lower()
+        text = str(step.get("name") or step.get("label") or "").strip() or (action or f"Step {idx}")
+        steps.append(
+            {
+                "text": text,
+                "action": action or None,
+                "app": _app_of(action, integration or None),
+                "access": "write" if _is_write(action) else "read",
+            }
+        )
+    return steps[:20]
+
+
+def _connector_steps(item: dict[str, Any], ctx: dict[str, Any]) -> list[dict[str, Any]]:
+    action = str(ctx.get("invoke_action") or ctx.get("tool_name") or ctx.get("action") or "").strip()
+    integration = str(ctx.get("integration") or "").strip().lower() or None
+    text = str(ctx.get("label") or item.get("title") or action or "Write to a connected app").strip()
+    access = "write" if (_is_write(action) or str(ctx.get("hitl_action_kind") or "write") != "read") else "read"
+    return [{"text": text, "action": action or None, "app": _app_of(action, integration), "access": access}]
+
+
+def _derive_risk(steps: list[dict[str, Any]], required_approvals: int) -> str:
+    actions = " ".join(str(s.get("action") or s.get("text") or "").lower() for s in steps)
+    if required_approvals >= 2:
+        return "high"
+    if any(s.get("access") == "write" for s in steps) and any(m in actions for m in HIGH_RISK_MARKERS):
+        return "high"
+    if any(s.get("access") == "write" for s in steps):
+        return "medium"
+    return "low"
+
+
+def _attach_steps_and_risk(item: dict[str, Any], steps: list[dict[str, Any]], required_approvals: int) -> None:
+    item["steps"] = steps
+    ctx = item.get("context")
+    if not isinstance(ctx, dict):
+        ctx = {}
+        item["context"] = ctx
+    stored = str(ctx.get("risk_level") or ctx.get("riskLevel") or "").strip().lower()
+    if stored:
+        return
+    ctx["risk_level"] = _derive_risk(steps, required_approvals)
+    ctx["risk_derived"] = True
+
+
 def enrich_decision_queue(
     client: Any,
     org_id: str,
@@ -170,7 +291,8 @@ def enrich_decision_queue(
 ) -> list[dict[str, Any]]:
     """Attach ``policy`` and ``decisions`` to each queue item (in place, also returned).
 
-    ``run_meta`` maps a workflow run id to ``{"workflow_id", "required_approvals"}``.
+    ``run_meta`` maps a workflow run id to ``{"workflow_id", "required_approvals",
+    "definition_snapshot"}``.
     ``user_labels`` maps user ids to display names already resolved by the caller.
     """
     run_meta = run_meta or {}
@@ -213,6 +335,11 @@ def enrich_decision_queue(
             str(meta.get("workflow_id") or "") or None,
             int(meta.get("required_approvals") or 0),
         )
+        _attach_steps_and_risk(
+            item,
+            _step_rows(meta.get("definition_snapshot")),
+            int(item["policy"].get("required_approvals") or 0),
+        )
         decisions = [
             {
                 "approver_id": str(d.get("approver_id") or "") or None,
@@ -240,5 +367,10 @@ def enrich_decision_queue(
         ctx = item.get("context") if isinstance(item.get("context"), dict) else {}
         item["policy"] = _connector_policy(ctx, hitl, str(item.get("gate_type") or ""))
         item.setdefault("decisions", [])
+        _attach_steps_and_risk(
+            item,
+            _connector_steps(item, ctx),
+            int(item["policy"].get("required_approvals") or 0),
+        )
 
     return approvals

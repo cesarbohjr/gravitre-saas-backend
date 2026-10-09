@@ -1,67 +1,35 @@
 "use client"
 
 /**
- * Activity hub — BusinessOutcome list + Failure Alerts tab.
- * Canonical execution surface after IA consolidation (replaces Outcomes / Runs list nav).
+ * Activity hub: BusinessOutcome list, WorkObjects and Failure Alerts, laid out to
+ * the "Gravitre Agents v4" design (hero, segmented views, Outcomes inspector).
  *
- * Layout: a viewport-locked two-pane inspector (email-client / Sentry shaped).
- * The page itself never scrolls at `lg`+ — the list and the detail pane each own
- * their own scroll container. Previously everything (header, tabs, filters, 50
- * rows and the full detail card) stacked into one very tall document.
+ * The inspector shows the run trace, a suggested next step, summary and
+ * verification, then evidence / explanation / execution proof / diff / undo.
+ * Every value comes from the BusinessOutcome DTO; nothing is invented.
  */
 
-import { Suspense, useMemo, useRef, useState, type KeyboardEvent } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import { toast } from "sonner"
+import { ArrowLeft, ChevronRight, Download, ExternalLink, Sparkles, X } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
-import {
-  BusinessOutcomeView,
-  type BusinessOutcomeDto,
-} from "@/components/gravitre/business-outcome/business-outcome-view"
-import { ActivityTracePanel } from "@/components/activity/activity-trace-panel"
-import { HubFilterBar, HubFilterField } from "@/components/gravitre/hub-filter-bar"
-import { DataFreshness } from "@/components/gravitre/data-freshness"
-import {
-  GravitreEmpty,
-  GravitrePageHeader,
-  GravitreSurface,
-} from "@/components/gravitre/nodus-product"
-import { formatStatusLabel } from "@/components/gravitre/status-badge"
-import { StatusChip } from "@/components/gravitre/visual"
-import { ActivityStatStrip } from "@/components/activity/activity-stat-strip"
-import { Illustration } from "@/components/gravitre/illustration"
-import { summarizeActivityView } from "@/lib/activity-view-summary"
-import { ListSkeleton } from "@/components/gravitre/loading-state"
+import { WsPage } from "@/components/workspace/ws-page"
+import type { BusinessOutcomeDto } from "@/components/gravitre/business-outcome/business-outcome-view"
+import { buildActivityTraceStages, type ActivityTraceStage } from "@/components/activity/activity-trace-panel"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import { FailureAlertsPanel } from "@/components/workflows/failure-alerts-panel"
-import { OpenGravitreAIButton } from "@/components/gravitre/open-gravitre-ai-button"
-import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Icon } from "@/lib/icons"
-import { NucleoActivity, NucleoSearch } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
-import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
-import { businessOutcomesApi, workObjectsApi } from "@/lib/api"
+import { useGravitreAIWorkspace, usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
+import { summarizeActivityView } from "@/lib/activity-view-summary"
+import { auditApi, businessOutcomesApi, runsApi, workObjectsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
-import { APP_ROUTES } from "@/lib/app-routes"
+import { resolveProvider } from "@/lib/provider-registry"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
-import { INTERACTION, MOTION, TYPE } from "@/lib/design-system"
-import { ArrowLeft, ExternalLink, X } from "lucide-react"
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu"
+import "@/components/workspace/ops-v4.css"
 
 type ActivityTab = "all" | "objects" | "failures"
 
@@ -94,30 +62,484 @@ type WorkObjectEventDto = {
   runId?: string | null
   businessOutcomeId?: string | null
   createdAt?: string | null
-  evidence?: Record<string, unknown> | null
-  outcome?: Record<string, unknown> | null
 }
+
+const STATUS_OPTIONS = [
+  ["all", "All"],
+  ["failed", "Failed"],
+  ["completed", "Completed"],
+  ["running", "Running"],
+  ["partial_success", "Partial success"],
+  ["flagged_for_review", "Flagged for review"],
+] as const
+
+const LIFECYCLE_OPTIONS = [
+  ["all", "All"],
+  ["presented", "Presented"],
+  ["verified", "Verified"],
+  ["created", "Created"],
+  ["approved", "Approved"],
+  ["undone", "Undone"],
+] as const
+
+const OBJECT_TYPES = [
+  ["all", "All types"], ["opportunity", "Opportunity"], ["campaign", "Campaign"], ["candidate", "Candidate"],
+  ["financial_issue", "Financial issue"], ["ticket", "Ticket"], ["contract_matter", "Contract / matter"],
+  ["incident", "Incident"], ["vulnerability", "Vulnerability"], ["vendor", "Vendor"], ["feature", "Feature"],
+  ["issue_pr", "Issue / PR"], ["objective", "Objective"],
+] as const
+const OBJECT_DEPARTMENTS = [
+  ["all", "All departments"], ["sales", "Sales"], ["marketing", "Marketing"], ["hr", "HR"], ["finance", "Finance"],
+  ["support", "Support"], ["legal", "Legal"], ["security", "Security"], ["procurement", "Procurement"],
+  ["engineering", "Engineering"], ["operations", "Operations"],
+] as const
+const OBJECT_STATUSES = [
+  ["all", "All statuses"], ["identified", "Identified"], ["planned", "Planned"], ["in_progress", "In progress"],
+  ["awaiting_approval", "Awaiting approval"], ["blocked", "Blocked"], ["completed", "Completed"], ["failed", "Failed"],
+] as const
+const OBJECT_PRIORITIES = [
+  ["all", "All priorities"], ["low", "Low"], ["medium", "Medium"], ["high", "High"], ["critical", "Critical"],
+] as const
 
 function asOutcome(raw: Record<string, unknown>): BusinessOutcomeDto {
   return raw as unknown as BusinessOutcomeDto
 }
 
-function asWorkObject(raw: Record<string, unknown>): WorkObjectDto {
-  return raw as unknown as WorkObjectDto
+function humanize(value: string | null | undefined): string {
+  const text = String(value ?? "").replace(/[_-]+/g, " ").trim()
+  if (!text) return ""
+  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase()
 }
 
-function asWorkObjectEvent(raw: Record<string, unknown>): WorkObjectEventDto {
-  return raw as unknown as WorkObjectEventDto
+function statusTone(status: string | null | undefined): "green" | "red" | "amber" | undefined {
+  const s = String(status ?? "").toLowerCase()
+  if (!s) return undefined
+  if (s.includes("fail") || s.includes("error") || s.includes("reject") || s === "blocked") return "red"
+  if (s.includes("flag") || s.includes("partial") || s.includes("approval") || s.includes("pending") || s.includes("running") || s === "in_progress")
+    return "amber"
+  if (s.includes("complete") || s.includes("success") || s.includes("verified") || s === "approved") return "green"
+  return undefined
+}
+
+function isException(outcome: BusinessOutcomeDto): boolean {
+  const tone = statusTone(outcome.status)
+  return tone === "red" || String(outcome.status ?? "").toLowerCase() === "flagged_for_review"
+}
+
+function appName(slug: string | null | undefined): string {
+  if (!slug) return ""
+  return resolveProvider(slug)?.name ?? humanize(slug)
+}
+
+function updatedLabel(at: number | null, now: number): string {
+  if (at == null) return "Not updated yet"
+  const secs = Math.max(0, Math.floor((now - at) / 1000))
+  if (secs < 45) return "Updated just now"
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `Updated ${Math.max(1, mins)} min ago`
+  return `Updated ${Math.floor(mins / 60)} h ago`
+}
+
+/** The design's four-beat trace: the outcome itself is the page title, and an unproven check reads as "not confirmed", not as a second failure. */
+function traceStages(outcome: BusinessOutcomeDto): ActivityTraceStage[] {
+  return buildActivityTraceStages(outcome)
+    .filter((stage) => stage.id !== "outcome")
+    .map((stage) =>
+      stage.id === "verification" && stage.status !== "completed"
+        ? { ...stage, label: "Verify", status: "pending", summary: "Could not confirm" }
+        : stage.id === "verification"
+          ? { ...stage, label: "Verify" }
+          : stage,
+    )
+}
+
+function stageDot(stage: ActivityTraceStage): "ok" | "fail" | "run" | "" {
+  if (stage.status === "completed") return "ok"
+  if (stage.status === "failed") return "fail"
+  if (stage.status === "running" || stage.status === "awaiting_approval") return "run"
+  return ""
+}
+
+function stageLabel(stage: ActivityTraceStage): string {
+  return stage.label === stage.label.toUpperCase() ? humanize(stage.label) : stage.label
+}
+
+type Verdict = { tone: "green" | "red" | "amber"; label: string; code: string | null }
+
+function verdictOf(outcome: BusinessOutcomeDto): Verdict {
+  const v = outcome.sections?.verification
+  const code = v?.checkFailed || v?.method || null
+  if (v?.verified === true || (v?.verified == null && v?.confidence === "verified")) return { tone: "green", label: "Verified", code }
+  if (v?.confidence === "accepted_unproven") return { tone: "amber", label: "Accepted, not yet proven", code }
+  return { tone: "red", label: "Not verified", code }
+}
+
+type NextStep = {
+  text: string
+  fix: { label: string; href?: string; prompt?: string } | null
+}
+
+/** The suggested next step only uses what the outcome reports: next actions, the finding, or a recommendation. */
+function nextStepOf(outcome: BusinessOutcomeDto): NextStep | null {
+  const s = outcome.sections
+  const recommendation = (s?.recommendations ?? []).find((r) => r?.title || r?.reason)
+  const text =
+    s?.verification?.nextActions?.find((a) => a && a.trim()) ||
+    recommendation?.reason ||
+    recommendation?.title ||
+    (isException(outcome) ? s?.verification?.finding : null) ||
+    null
+  if (!text) return null
+  const integration = s?.evidence?.integration
+  const external = (s?.evidence?.links ?? []).find((l) => l?.href && /^https?:/i.test(l.href))
+  if (external && integration) return { text, fix: { label: `Check in ${appName(integration)}`, href: external.href } }
+  if (recommendation?.href) return { text, fix: { label: recommendation.title || "Open", href: recommendation.href } }
+  if (recommendation?.suggestedUtterance) {
+    return { text, fix: { label: recommendation.title || "Ask Gravitre to do it", prompt: recommendation.suggestedUtterance } }
+  }
+  if (external) return { text, fix: { label: external.label || "Open evidence", href: external.href } }
+  return { text, fix: null }
+}
+
+function proofFields(outcome: BusinessOutcomeDto): Array<[string, string]> {
+  const args = outcome.sections?.metadata?.actionArgs ?? outcome.sections?.metadata?.action_args
+  if (!args || typeof args !== "object") return []
+  return Object.entries(args as Record<string, unknown>).map(([k, v]) => [
+    k,
+    typeof v === "string" ? v : JSON.stringify(v),
+  ])
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: string
+  onChange: (next: string) => void
+  options: ReadonlyArray<readonly [string, string]>
+}) {
+  return (
+    <label className="ov-field">
+      <span>{label}</span>
+      <select className="ov-select" aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map(([v, l]) => (
+          <option key={v} value={v}>
+            {l}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function OutcomeDetail({
+  outcome,
+  onRetry,
+  retrying,
+  onAsk,
+}: {
+  outcome: BusinessOutcomeDto
+  onRetry: () => void
+  retrying: boolean
+  onAsk: (prompt: string) => void
+}) {
+  const s = outcome.sections
+  const stages = traceStages(outcome)
+  const verdict = verdictOf(outcome)
+  const step = nextStepOf(outcome)
+  const fields = proofFields(outcome)
+  const links = s?.evidence?.links ?? []
+  const tone = statusTone(outcome.status || outcome.lifecycleState)
+  const kicker = [humanize(outcome.kind), (outcome.lifecycleState ?? "").toLowerCase()].filter(Boolean).join(" · ")
+
+  return (
+    <>
+      <div className="ov-detail-top start">
+        <div className="ov-col">
+          {kicker ? <span className="ov-kicker">{kicker}</span> : null}
+          <h3 className="sm">{outcome.title || "Untitled outcome"}</h3>
+        </div>
+        {outcome.status ? (
+          <span className={cn("ov-pill", tone)}>
+            <span className="ov-dot" aria-hidden />
+            {humanize(outcome.status)}
+          </span>
+        ) : null}
+      </div>
+
+      {stages.length > 0 ? (
+        <div className="ov-trace">
+          <b>Run trace</b>
+          <ol>
+            {stages.map((stage) => {
+              const dot = stageDot(stage)
+              return (
+                <li key={stage.id}>
+                  <span className="mk">
+                    <span className={cn("dot", dot)} aria-hidden>
+                      {dot === "ok" ? "✓" : dot === "fail" ? "!" : ""}
+                    </span>
+                    <span className={cn("ln", dot === "ok" && "ok")} aria-hidden />
+                  </span>
+                  <b>{stageLabel(stage)}</b>
+                  <span>
+                    <span className="ov-sr">{humanize(stage.status)}. </span>
+                    {stage.summary || humanize(stage.status)}
+                  </span>
+                </li>
+              )
+            })}
+          </ol>
+        </div>
+      ) : null}
+
+      {step ? (
+        <div className="ov-suggest">
+          <span className="ic" aria-hidden>
+            <Sparkles size={16} />
+          </span>
+          <div className="bd">
+            <b>Suggested next step</b>
+            <p>{step.text}</p>
+            <div className="ov-actions">
+              {step.fix?.href ? (
+                /^https?:/i.test(step.fix.href) ? (
+                  <a className="ov-btn dark sm" href={step.fix.href} target="_blank" rel="noreferrer">
+                    {step.fix.label}
+                  </a>
+                ) : (
+                  <Link className="ov-btn dark sm" href={step.fix.href}>
+                    {step.fix.label}
+                  </Link>
+                )
+              ) : step.fix?.prompt ? (
+                <button type="button" className="ov-btn dark sm" onClick={() => onAsk(step.fix!.prompt!)}>
+                  {step.fix.label}
+                </button>
+              ) : null}
+              {isException(outcome) ? (
+                <button type="button" className="ov-btn sm" onClick={onRetry} disabled={retrying}>
+                  {retrying ? "Retrying..." : "Retry safely"}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="ov-cards2">
+        <div className="ov-card2">
+          <b>Summary</b>
+          <p>{s?.summary || "No summary reported."}</p>
+        </div>
+        <div className="ov-card2">
+          <b>Verification</b>
+          <span className={cn("ov-verdict", verdict.tone)}>
+            <span className="ov-dot" aria-hidden />
+            {verdict.label}
+          </span>
+          {verdict.code ? <span className="code">{verdict.code}</span> : null}
+        </div>
+      </div>
+
+      <div className="ov-acc">
+        <details>
+          <summary>
+            <ChevronRight size={16} aria-hidden />
+            <span className="l">Evidence</span>
+            <span className="m">View in Gravitre</span>
+          </summary>
+          <div className="body">
+            {links.length === 0 && !s?.evidence?.entityId ? <p>No evidence links reported.</p> : null}
+            {s?.evidence?.entityId ? (
+              <p>
+                {humanize(s.evidence.entityType) || "Record"} {s.evidence.entityId}
+                {s.evidence.integration ? ` in ${appName(s.evidence.integration)}` : ""}
+              </p>
+            ) : null}
+            <div className="links">
+              {links.map((link) =>
+                /^https?:/i.test(link.href) ? (
+                  <a key={link.href} href={link.href} target="_blank" rel="noreferrer">
+                    {link.label || link.href}
+                  </a>
+                ) : (
+                  <Link key={link.href} href={link.href}>
+                    {link.label || link.href}
+                  </Link>
+                ),
+              )}
+              {outcome.runId ? <Link href={`/runs/${outcome.runId}?trace=1`}>View in Gravitre</Link> : null}
+            </div>
+          </div>
+        </details>
+        <details>
+          <summary>
+            <ChevronRight size={16} aria-hidden />
+            <span className="l">Explanation</span>
+            <span className="m">Why the agent did this</span>
+          </summary>
+          <div className="body">
+            <p>{s?.explanation || s?.verification?.detail || "No explanation recorded for this outcome."}</p>
+          </div>
+        </details>
+        <details>
+          <summary>
+            <ChevronRight size={16} aria-hidden />
+            <span className="l">Execution proof</span>
+            <span className="m">
+              {fields.length} field{fields.length === 1 ? "" : "s"}
+            </span>
+          </summary>
+          <div className="body">
+            {fields.length === 0 ? (
+              <p>No action arguments were recorded.</p>
+            ) : (
+              <dl>
+                {fields.map(([k, v]) => (
+                  <div key={k} style={{ display: "contents" }}>
+                    <dt>{k}</dt>
+                    <dd>{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </div>
+        </details>
+        <details>
+          <summary>
+            <ChevronRight size={16} aria-hidden />
+            <span className="l">Diff</span>
+            <span className="m">What changed</span>
+          </summary>
+          <div className="body">
+            {s?.diff?.available && s.diff.prior ? (
+              <>
+                <p>Before this action:</p>
+                <pre>{JSON.stringify(s.diff.prior, null, 2)}</pre>
+              </>
+            ) : null}
+            <p>{s?.diff?.note || (s?.diff?.available ? "" : "No before-and-after was captured for this action.")}</p>
+          </div>
+        </details>
+        <details>
+          <summary>
+            <ChevronRight size={16} aria-hidden />
+            <span className="l">Undo</span>
+            <span className="m">{s?.undo?.available ? "Available" : "Nothing to undo"}</span>
+          </summary>
+          <div className="body">
+            {s?.undo?.available ? (
+              <>
+                <p>{s.undo.compensatingAction ? `Undo runs ${s.undo.compensatingAction}.` : "This action can be undone."}</p>
+                <button
+                  type="button"
+                  className="ov-btn sm"
+                  onClick={() => onAsk(`Undo this outcome: ${outcome.title ?? "the selected action"}. Confirm with me before running it.`)}
+                >
+                  Ask Gravitre to undo
+                </button>
+              </>
+            ) : (
+              <p>{s?.undo?.honestUnavailableReason || "There is nothing to undo for this outcome."}</p>
+            )}
+          </div>
+        </details>
+      </div>
+
+      <div className="ov-foot start">
+        {outcome.runId ? (
+          <Link className="ov-btn dark" href={`/runs/${outcome.runId}?trace=1`}>
+            View the run
+          </Link>
+        ) : null}
+        <AskGravitreSummonButton
+          className="ov-btn"
+          label="Ask Gravitre about this"
+          prompt="Explain this outcome's reported state, evidence and next action. Do not assume completion means verification."
+        />
+      </div>
+    </>
+  )
+}
+
+function WorkObjectDetail({ workObject, events, loading }: { workObject: WorkObjectDto; events: WorkObjectEventDto[]; loading: boolean }) {
+  const tone = statusTone(workObject.status)
+  return (
+    <>
+      <div className="ov-detail-top start">
+        <div className="ov-col">
+          <span className="ov-kicker">
+            {[humanize(workObject.objectType) || "Objective", humanize(workObject.department)].filter(Boolean).join(" · ")}
+          </span>
+          <h3 className="sm">{workObject.title || "Untitled work object"}</h3>
+        </div>
+        <span className={cn("ov-pill", tone)}>
+          <span className="ov-dot" aria-hidden />
+          {humanize(workObject.status || "identified")}
+        </span>
+      </div>
+      <p className="desc">{workObject.objective || "No objective recorded yet."}</p>
+      <div className="ov-wo-grid">
+        <span>
+          <strong>Owner:</strong> {workObject.owner || "Unassigned"}
+        </span>
+        <span>
+          <strong>Priority:</strong> {humanize(workObject.priority) || "Not set"}
+        </span>
+        <span>
+          <strong>Systems:</strong> {(workObject.systemsInvolved || []).map(appName).join(", ") || "None"}
+        </span>
+        <span>
+          <strong>Agents:</strong> {(workObject.agentsInvolved || []).join(", ") || "None"}
+        </span>
+      </div>
+      <div className="ov-card2">
+        <b>Lifecycle timeline</b>
+        {loading ? (
+          <p>Loading...</p>
+        ) : events.length === 0 ? (
+          <p>No attributed actions yet.</p>
+        ) : (
+          <ul className="ov-events">
+            {events.map((event) => (
+              <li key={event.id}>
+                <span className="row">
+                  <b>{event.actionName || humanize(event.eventType) || "Action"}</b>
+                  <span className={cn("ov-status", statusTone(event.actionStatus || "completed"))}>
+                    <i aria-hidden />
+                    {humanize(event.actionStatus || "completed")}
+                  </span>
+                </span>
+                <span>
+                  {event.systemName ? `${appName(event.systemName)} · ` : ""}
+                  {event.createdAt ? new Date(event.createdAt).toLocaleString() : "Time not recorded"}
+                </span>
+                {event.runId ? (
+                  <Link href={`/runs/${event.runId}`}>
+                    Open run <ExternalLink size={12} aria-hidden />
+                  </Link>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </>
+  )
 }
 
 function ActivityPageInner() {
   const { user } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { summonWorkspace } = useGravitreAIWorkspace()
+  const compact = useIsMobile(1024)
   const tabParam = searchParams.get("tab")
-  const tab: ActivityTab =
-    tabParam === "failures" ? "failures" : tabParam === "objects" ? "objects" : "all"
-  const reduceMotion = useReducedMotion()
+  const tab: ActivityTab = tabParam === "failures" ? "failures" : tabParam === "objects" ? "objects" : "all"
 
   const [status, setStatus] = useState<string>("all")
   const [lifecycle, setLifecycle] = useState<string>("all")
@@ -128,7 +550,16 @@ function ActivityPageInner() {
   const [objectPriority, setObjectPriority] = useState<string>("all")
   const [selectedOutcomeId, setSelectedOutcomeId] = useState<string | null>(null)
   const [selectedWorkObjectId, setSelectedWorkObjectId] = useState<string | null>(null)
+  const [retrying, setRetrying] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null)
+  const [now, setNow] = useState(() => Date.now())
   const rowRefs = useRef<Array<HTMLButtonElement | null>>([])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   const setTab = (next: ActivityTab) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -140,10 +571,7 @@ function ActivityPageInner() {
     router.replace(qs ? `/activity?${qs}` : "/activity")
   }
 
-  const listKey = user && tab === "all"
-    ? ["business-outcomes", status, lifecycle, integration.trim().toLowerCase()]
-    : null
-
+  const listKey = user ? ["business-outcomes", status, lifecycle, integration.trim().toLowerCase()] : null
   const { data, error, isLoading, mutate, isValidating } = useSWR(
     listKey,
     () =>
@@ -153,26 +581,16 @@ function ActivityPageInner() {
         integration: integration.trim() || undefined,
         limit: 50,
       }),
-    { revalidateOnFocus: true },
+    { revalidateOnFocus: true, onSuccess: () => setUpdatedAt(Date.now()) },
   )
 
-  const workObjectListKey =
-    user && tab === "objects"
-      ? [
-          "work-objects",
-          objectType,
-          objectDepartment,
-          objectStatus,
-          objectPriority,
-        ]
-      : null
-
+  // Always loaded so the "Work objects" segment carries its real count.
+  const workObjectListKey = user ? ["work-objects", objectType, objectDepartment, objectStatus, objectPriority] : null
   const {
     data: workObjectListData,
     error: workObjectListError,
     isLoading: workObjectsLoading,
     mutate: mutateWorkObjects,
-    isValidating: workObjectsValidating,
   } = useSWR(
     workObjectListKey,
     () =>
@@ -190,149 +608,142 @@ function ActivityPageInner() {
     () => (data?.businessOutcomes ?? []).map((row) => asOutcome(row as Record<string, unknown>)),
     [data],
   )
-
   const workObjects = useMemo(
-    () =>
-      (workObjectListData?.workObjects ?? []).map((row) =>
-        asWorkObject(row as Record<string, unknown>),
-      ),
+    () => (workObjectListData?.workObjects ?? []).map((row) => row as unknown as WorkObjectDto),
     [workObjectListData],
   )
+
+  const outcomeKey = (outcome: BusinessOutcomeDto) => outcome.id || outcome.runId || ""
 
   const selectedOutcomeExplicit =
     selectedOutcomeId == null
       ? null
-      : outcomes.find((o) => o.id === selectedOutcomeId) ||
-        outcomes.find((o) => o.runId === selectedOutcomeId) ||
-        null
-  // Inspector only on explicit selection — no first-row preview rail.
-  const selectedOutcome = selectedOutcomeExplicit
+      : outcomes.find((o) => o.id === selectedOutcomeId) || outcomes.find((o) => o.runId === selectedOutcomeId) || null
+  // Desktop opens on the top exception (else the newest row), as in the design. On phones the
+  // list comes first and the inspector stays closed until then: a tap opens it full width.
+  const topOutcome = compact ? null : outcomes.find(isException) || outcomes[0] || null
+  const selectedOutcome = selectedOutcomeExplicit || topOutcome
 
   const selectedWorkObjectExplicit =
-    selectedWorkObjectId == null
-      ? null
-      : workObjects.find((o) => o.id === selectedWorkObjectId) || null
-  const selectedWorkObject = selectedWorkObjectExplicit
+    selectedWorkObjectId == null ? null : workObjects.find((o) => o.id === selectedWorkObjectId) || null
+  const selectedWorkObject = selectedWorkObjectExplicit || (compact ? null : workObjects[0] || null)
 
-  const mobileDetailOpen =
-    tab === "objects" ? selectedWorkObjectId != null : selectedOutcomeId != null
+  const mobileDetailOpen = tab === "objects" ? selectedWorkObjectExplicit != null : selectedOutcomeExplicit != null
 
-  const clearMobileDetail = () => {
-    setSelectedOutcomeId(null)
-    setSelectedWorkObjectId(null)
-  }
+  const { data: workObjectDetailData, isLoading: workObjectDetailLoading } = useSWR(
+    user && tab === "objects" && selectedWorkObject?.id ? ["work-object-detail", selectedWorkObject.id] : null,
+    () => workObjectsApi.get(String(selectedWorkObject?.id || ""), 250),
+    { revalidateOnFocus: true },
+  )
+  const workObjectEvents = useMemo(
+    () => (workObjectDetailData?.events ?? []).map((row) => row as unknown as WorkObjectEventDto),
+    [workObjectDetailData],
+  )
 
+  usePublishGravitreAISelection(
+    tab === "objects"
+      ? selectedWorkObject
+        ? {
+            kind: "work_object",
+            id: selectedWorkObject.id,
+            label: selectedWorkObject.title?.trim() || selectedWorkObject.objective?.trim() || selectedWorkObject.id,
+          }
+        : null
+      : tab === "all" && selectedOutcome
+        ? {
+            kind: "outcome",
+            id: selectedOutcome.id || selectedOutcome.runId || "",
+            label: selectedOutcome.title?.trim() || "Outcome",
+          }
+        : null,
+  )
+
+  const summary = summarizeActivityView(outcomes)
+  const statsReady = !isLoading && !error
+  const hasOutcomeFilters = status !== "all" || lifecycle !== "all" || integration.trim() !== ""
+  const hasObjectFilters =
+    objectType !== "all" || objectDepartment !== "all" || objectStatus !== "all" || objectPriority !== "all"
+  const hasActiveFilters = tab === "objects" ? hasObjectFilters : hasOutcomeFilters
+  const panelLoading = tab === "objects" ? workObjectsLoading : isLoading
+  const panelError = tab === "objects" ? workObjectListError : error
+  const currentRows: Array<BusinessOutcomeDto | WorkObjectDto> = tab === "objects" ? workObjects : outcomes
   const selectedIndex =
     tab === "objects"
       ? selectedWorkObject
         ? workObjects.findIndex((o) => o.id === selectedWorkObject.id)
         : -1
       : selectedOutcome
-        ? outcomes.findIndex((o) => o.id === selectedOutcome.id && o.runId === selectedOutcome.runId)
+        ? outcomes.findIndex((o) => outcomeKey(o) === outcomeKey(selectedOutcome))
         : -1
 
-  const workObjectDetailKey =
-    user && tab === "objects" && selectedWorkObject?.id
-      ? ["work-object-detail", selectedWorkObject.id]
-      : null
-  const { data: workObjectDetailData, isLoading: workObjectDetailLoading } = useSWR(
-    workObjectDetailKey,
-    () => workObjectsApi.get(String(selectedWorkObject?.id || ""), 250),
-    { revalidateOnFocus: true },
-  )
-  const workObjectEvents = useMemo(
-    () =>
-      (workObjectDetailData?.events ?? []).map((row) =>
-        asWorkObjectEvent(row as Record<string, unknown>),
-      ),
-    [workObjectDetailData],
-  )
-
-  const selected = tab === "objects" ? selectedWorkObject : selectedOutcome
-
-  usePublishGravitreAISelection(
-    tab === "objects"
-      ? selectedWorkObjectExplicit
-        ? {
-            kind: "work_object",
-            id: selectedWorkObjectExplicit.id,
-            label:
-              selectedWorkObjectExplicit.title?.trim() ||
-              selectedWorkObjectExplicit.objective?.trim() ||
-              selectedWorkObjectExplicit.id,
-          }
-        : null
-      : selectedOutcomeExplicit
-        ? {
-            kind: "outcome",
-            id: selectedOutcomeExplicit.id || selectedOutcomeExplicit.runId || "",
-            label: selectedOutcomeExplicit.title?.trim() || "Outcome",
-          }
-        : null,
-  )
-
-  const hasActiveOutcomeFilters = status !== "all" || lifecycle !== "all" || integration.trim() !== ""
-  const activeOutcomeFilterCount =
-    (status !== "all" ? 1 : 0) + (lifecycle !== "all" ? 1 : 0) + (integration.trim() ? 1 : 0)
-  const hasActiveObjectFilters =
-    objectType !== "all" ||
-    objectDepartment !== "all" ||
-    objectStatus !== "all" ||
-    objectPriority !== "all"
-  const activeObjectFilterCount =
-    (objectType !== "all" ? 1 : 0) +
-    (objectDepartment !== "all" ? 1 : 0) +
-    (objectStatus !== "all" ? 1 : 0) +
-    (objectPriority !== "all" ? 1 : 0)
-
-  const outcomeKey = (outcome: BusinessOutcomeDto) => outcome.id || outcome.runId || ""
-
-  const resetOutcomeFilters = () => {
-    setStatus("all")
-    setLifecycle("all")
-    setIntegration("")
-  }
-
-  const resetObjectFilters = () => {
-    setObjectType("all")
-    setObjectDepartment("all")
-    setObjectStatus("all")
-    setObjectPriority("all")
-  }
-
-  const currentRows = tab === "objects" ? workObjects : outcomes
-  const viewSummary = summarizeActivityView(currentRows)
-  // Drives the empty state: "no matches, widen your filters" is a very
-  // different message from "nothing has run yet", and conflating them makes a
-  // filtered-out list look like a broken product.
-  const hasActiveFilters = tab === "objects" ? hasActiveObjectFilters : hasActiveOutcomeFilters
-  const activeFilterCount = tab === "objects" ? activeObjectFilterCount : activeOutcomeFilterCount
-  const isPanelLoading = tab === "objects" ? workObjectsLoading : isLoading
-  const isPanelRefreshing = tab === "objects" ? workObjectsValidating : isValidating
-  const panelError = tab === "objects" ? workObjectListError : error
-
   const resetFilters = () => {
-    if (tab === "objects") resetObjectFilters()
-    else resetOutcomeFilters()
+    if (tab === "objects") {
+      setObjectType("all")
+      setObjectDepartment("all")
+      setObjectStatus("all")
+      setObjectPriority("all")
+    } else {
+      setStatus("all")
+      setLifecycle("all")
+      setIntegration("")
+    }
   }
 
-  const refreshRows = () => {
-    if (tab === "objects") mutateWorkObjects()
-    else mutate()
+  const ask = (prompt: string) =>
+    summonWorkspace({ presentation: "compact", selected: undefined, agentScope: null, composerText: prompt, submit: false })
+
+  const retrySelected = async () => {
+    if (!selectedOutcome) return
+    if (!selectedOutcome.runId) {
+      ask(
+        `Retry "${selectedOutcome.title ?? "this action"}" safely. First check whether it already took effect so nothing is duplicated, then confirm with me.`,
+      )
+      return
+    }
+    try {
+      setRetrying(true)
+      const result = await runsApi.retry(selectedOutcome.runId)
+      toast.success("Retry started")
+      await mutate()
+      if (result?.run_id) router.push(`/runs/${result.run_id}`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Retry failed")
+    } finally {
+      setRetrying(false)
+    }
   }
 
-  // A listbox that only responds to clicks is a keyboard trap for exactly the
-  // audit/compliance users who live in this view. Arrow keys move the selection
-  // and follow focus, matching the ARIA listbox pattern.
+  const exportAudit = async () => {
+    if (exporting) return
+    setExporting(true)
+    try {
+      const response = await auditApi.export("csv")
+      if (!response.ok) throw new Error(`Export failed (${response.status})`)
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = url
+      anchor.download = "activity-audit.csv"
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+      toast.success("Audit exported")
+    } catch {
+      toast.error("Could not export the audit trail")
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  // Arrow keys move the selection and follow focus (ARIA listbox pattern).
   const handleListKeyDown = (event: KeyboardEvent<HTMLElement>, index: number) => {
     const lastIndex = currentRows.length - 1
     let next: number | null = null
-
     if (event.key === "ArrowDown") next = index === lastIndex ? 0 : index + 1
     else if (event.key === "ArrowUp") next = index === 0 ? lastIndex : index - 1
     else if (event.key === "Home") next = 0
     else if (event.key === "End") next = lastIndex
-
     if (next === null) return
     event.preventDefault()
     const target = currentRows[next]
@@ -343,706 +754,331 @@ function ActivityPageInner() {
     rowRefs.current[next]?.scrollIntoView({ block: "nearest" })
   }
 
-  // Surface the loaded count on the tab itself so the strip carries information
-  // rather than just switching panels. Omitted while loading so it doesn't
-  // flash a misleading 0.
-  const activityTabs: Array<{ id: ActivityTab; label: string; count?: number }> = [
+  const verifiedLabel =
+    statsReady && summary.completed > 0 && summary.verified >= summary.completed ? "Verified, all of them" : "Verified"
+
+  const stat = (value: number, label: string, onClick: () => void, extra?: { tone?: string; live?: boolean }) => (
+    <button type="button" className={cn("ov-stat", extra?.tone)} onClick={onClick}>
+      <span className="v">
+        {statsReady ? value : <span className="ov-skel-n" />}
+        {extra?.live && value > 0 ? <i className="ov-live" aria-hidden /> : null}
+      </span>
+      <span className="k">{label}</span>
+    </button>
+  )
+
+  const segments: Array<{ id: ActivityTab; label: string; count?: number }> = [
     { id: "all", label: "All", count: isLoading ? undefined : outcomes.length },
-    {
-      id: "objects",
-      label: "Work objects",
-      count: workObjectsLoading ? undefined : workObjects.length,
-    },
+    { id: "objects", label: "Work objects", count: workObjectsLoading ? undefined : workObjects.length },
     { id: "failures", label: "Failures" },
   ]
 
   return (
-    <AppShell fillViewport>
-      {/* lg+: fill the viewport and delegate scrolling to the panes. Below lg
-          there is no vertical budget for split panes, so the page scrolls
-          normally and the panes stack. */}
-      <div className="relative flex h-full min-h-0 w-full flex-col bg-[color:var(--g-canvas)] lg:overflow-hidden" data-composition="operate">
-
-        <GravitrePageHeader
-          family="expert"
-          className="relative z-10 shrink-0"
-          eyebrow="Operate / Work in motion"
-          title="Activity"
-          description="Work in motion. Outcomes, exceptions and evidence—without the noise."
-          icon={<NucleoActivity className="h-5 w-5" />}
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <AskGravitreSummonButton label="Explain this work" prompt="Explain the selected work’s reported state, evidence and next action. Do not assume completion means verification." />
-              {tab === "all" || tab === "objects" ? (
-                <DataFreshness
-                  updatedAt={
-                    tab === "objects"
-                      ? workObjectListData
-                        ? Date.now()
-                        : null
-                      : data
-                        ? Date.now()
-                        : null
-                  }
-                  isRefreshing={isPanelRefreshing}
-                  onRefresh={refreshRows}
-                />
-              ) : null}
-              <Button asChild variant="outline" size="sm" className="h-8">
-                <Link href={APP_ROUTES.audit}>Export audit</Link>
-              </Button>
+    <AppShell>
+      <WsPage wide={false}>
+        <div className="ov-page" data-composition="operate">
+          <section aria-labelledby="activity-hero" className="ov-hero">
+            <div className="ov-hero-art">
+              {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
+              <img src="/illustrations/ops-activity.svg" alt="" />
             </div>
-          }
-        >
-          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
-          <div className="-mb-px flex gap-5" aria-label="Activity views">
-            {activityTabs.map((item) => {
-              const active = tab === item.id
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setTab(item.id)}
-                  className={cn(
-                    "-mb-px border-b-2 pb-2 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    active
-                      ? "border-[color:var(--g-emerald)] text-[color:var(--g-text-primary)]"
-                      : "border-transparent text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
-                  )}
-                >
-                  {item.label}
-                  {typeof item.count === "number" ? (
-                    <span className="ml-1.5 tabular-nums text-[color:var(--g-text-muted)]">
-                      {item.count}
-                    </span>
-                  ) : null}
-                </button>
-              )
-            })}
-          </div>
-          {tab !== "failures" ? (
-            <ActivityStatStrip
-              items={[
-                { label: "running", value: isPanelLoading || panelError ? null : viewSummary.running, tone: "info" },
-                { label: "need approval", value: isPanelLoading || panelError ? null : viewSummary.approval, tone: "attention" },
-                { label: "completed", value: isPanelLoading || panelError ? null : viewSummary.completed, tone: "neutral" },
-                { label: "verified", value: isPanelLoading || panelError ? null : viewSummary.verified, tone: "brand" },
-              ]}
-            />
-          ) : null}
-          </div>
-        </GravitrePageHeader>
-
-        <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] px-[var(--np-page-pad-sm)] py-3 sm:px-[var(--np-page-pad)] sm:py-3.5 lg:overflow-hidden">
-
-        {tab === "failures" ? (
-          <FailureAlertsPanel />
-        ) : (
-          <>
-            <HubFilterBar compact>
-              {tab === "all" ? (
-                <>
-                  <HubFilterField label="Status" compact>
-                    <Select value={status} onValueChange={setStatus}>
-                      <SelectTrigger aria-label="Status" className="h-8 w-[140px]">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="failed">Failed</SelectItem>
-                        <SelectItem value="running">Running</SelectItem>
-                        <SelectItem value="partial_success">Partial success</SelectItem>
-                        <SelectItem value="flagged_for_review">Flagged for review</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </HubFilterField>
-                  <HubFilterField label="Lifecycle" compact>
-                    <Select value={lifecycle} onValueChange={setLifecycle}>
-                      <SelectTrigger aria-label="Lifecycle" className="h-8 w-[150px]">
-                        <SelectValue placeholder="Lifecycle" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {/* Values stay exactly as the API expects them; only the
-                            labels are humanized so raw enums don't leak into the UI. */}
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="created">Created</SelectItem>
-                        <SelectItem value="verified">Verified</SelectItem>
-                        <SelectItem value="presented">Presented</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="undone">Undone</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </HubFilterField>
-                  <HubFilterField label="Connector" compact className="min-w-[180px] flex-1">
-                    <Input
-                      className="h-8"
-                      placeholder="e.g. hubspot, apollo, clay"
-                      value={integration}
-                      onChange={(e) => setIntegration(e.target.value)}
-                    />
-                  </HubFilterField>
-                </>
-              ) : (
-                <>
-                  <HubFilterField label="Type" compact>
-                    <Select value={objectType} onValueChange={setObjectType}>
-                      <SelectTrigger aria-label="Type" className="h-8 w-[170px]">
-                        <SelectValue placeholder="Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All types</SelectItem>
-                        <SelectItem value="opportunity">Opportunity</SelectItem>
-                        <SelectItem value="campaign">Campaign</SelectItem>
-                        <SelectItem value="candidate">Candidate</SelectItem>
-                        <SelectItem value="financial_issue">Financial issue</SelectItem>
-                        <SelectItem value="ticket">Ticket</SelectItem>
-                        <SelectItem value="contract_matter">Contract / matter</SelectItem>
-                        <SelectItem value="incident">Incident</SelectItem>
-                        <SelectItem value="vulnerability">Vulnerability</SelectItem>
-                        <SelectItem value="vendor">Vendor</SelectItem>
-                        <SelectItem value="feature">Feature</SelectItem>
-                        <SelectItem value="issue_pr">Issue / PR</SelectItem>
-                        <SelectItem value="objective">Objective</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </HubFilterField>
-                  <HubFilterField label="Department" compact>
-                    <Select value={objectDepartment} onValueChange={setObjectDepartment}>
-                      <SelectTrigger aria-label="Department" className="h-8 w-[160px]">
-                        <SelectValue placeholder="Department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All departments</SelectItem>
-                        <SelectItem value="sales">Sales</SelectItem>
-                        <SelectItem value="marketing">Marketing</SelectItem>
-                        <SelectItem value="hr">HR</SelectItem>
-                        <SelectItem value="finance">Finance</SelectItem>
-                        <SelectItem value="support">Support</SelectItem>
-                        <SelectItem value="legal">Legal</SelectItem>
-                        <SelectItem value="security">Security</SelectItem>
-                        <SelectItem value="procurement">Procurement</SelectItem>
-                        <SelectItem value="engineering">Engineering</SelectItem>
-                        <SelectItem value="operations">Operations</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </HubFilterField>
-                  <HubFilterField label="Status" compact>
-                    <Select value={objectStatus} onValueChange={setObjectStatus}>
-                      <SelectTrigger aria-label="Status" className="h-8 w-[150px]">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All statuses</SelectItem>
-                        <SelectItem value="identified">Identified</SelectItem>
-                        <SelectItem value="planned">Planned</SelectItem>
-                        <SelectItem value="in_progress">In progress</SelectItem>
-                        <SelectItem value="awaiting_approval">Awaiting approval</SelectItem>
-                        <SelectItem value="blocked">Blocked</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                        <SelectItem value="failed">Failed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </HubFilterField>
-                  <HubFilterField label="Priority" compact>
-                    <Select value={objectPriority} onValueChange={setObjectPriority}>
-                      <SelectTrigger aria-label="Priority" className="h-8 w-[140px]">
-                        <SelectValue placeholder="Priority" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All priorities</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="critical">Critical</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </HubFilterField>
-                </>
-              )}
-              <AnimatePresence initial={false}>
-                {hasActiveFilters ? (
-                  <motion.div
-                    initial={reduceMotion ? false : { opacity: 0, scale: 0.94 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.94 }}
-                    transition={{ duration: MOTION.fast }}
-                    className="ml-auto"
-                  >
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 gap-1.5 text-xs text-muted-foreground"
-                      onClick={resetFilters}
-                    >
-                      {activeFilterCount} filter{activeFilterCount === 1 ? "" : "s"}
-                      <X className="h-3 w-3" />
-                      <span className="sr-only">Clear filters</span>
-                    </Button>
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
-            </HubFilterBar>
-
-            {panelError ? (
-              <div className="flex items-center gap-2 rounded-[var(--np-radius-md)] border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-                <Icon name="shieldAlert" size="sm" className="shrink-0" />
-                Could not load {tab === "objects" ? "WorkObjects" : "activity"}. Refresh and try again.
-              </div>
-            ) : null}
-
-            <div className="flex min-h-0 flex-1 flex-col gap-[var(--np-kpi-gap)] lg:flex-row">
-              <GravitreSurface
-                padded={false}
-                className={cn(
-                  "flex min-h-0 flex-col overflow-hidden lg:w-[340px] lg:shrink-0",
-                  mobileDetailOpen ? "hidden lg:flex" : "flex",
+            <div className="ov-hero-copy">
+              <div className="ov-hero-eb">
+                <span className="ov-eyebrow">Operate / Work in motion</span>
+                {error ? (
+                  <span className="ov-fresh stale" role="status">
+                    <i aria-hidden />
+                    Could not refresh
+                    <button type="button" onClick={() => void mutate()}>
+                      Retry
+                    </button>
+                  </span>
+                ) : (
+                  <span className="ov-fresh">
+                    <i aria-hidden />
+                    {isValidating && updatedAt ? "Refreshing..." : updatedLabel(updatedAt, now)}
+                  </span>
                 )}
-              >
-                <div className={cn("shrink-0 border-b border-divide px-3 py-2", TYPE.eyebrow)}>
-                  Recent
+              </div>
+              <h1 id="activity-hero">Activity</h1>
+              <p className="ov-lead">
+                Every outcome your agents produce, with the evidence to prove it. Exceptions rise to the top, the rest stays
+                out of your way.
+              </p>
+              <div className="ov-stats">
+                {stat(summary.running, "Running", () => { setTab("all"); setStatus("running") }, {
+                  tone: summary.running > 0 ? "green" : undefined,
+                  live: true,
+                })}
+                {stat(summary.approval, "Need approval", () => router.push("/approvals"))}
+                {stat(summary.completed, "Completed", () => { setTab("all"); setStatus("completed") })}
+                {stat(summary.verified, verifiedLabel, () => { setTab("all"); setLifecycle("verified") })}
+              </div>
+              <div className="ov-actions">
+                <button
+                  type="button"
+                  className="ov-btn dark"
+                  onClick={() =>
+                    ask(
+                      "Explain this work: what is running, what failed and why, and what I should do next. Do not assume completion means verification.",
+                    )
+                  }
+                >
+                  <Sparkles size={16} aria-hidden />
+                  Explain this work
+                </button>
+                <button type="button" className="ov-btn" onClick={() => void exportAudit()} disabled={exporting}>
+                  <Download size={16} aria-hidden />
+                  {exporting ? "Exporting..." : "Export audit"}
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <div className="ov-toolbar">
+            <div className="ov-seg lg" role="group" aria-label="Activity views">
+              {segments.map((item) => (
+                <button key={item.id} type="button" aria-pressed={tab === item.id} onClick={() => setTab(item.id)}>
+                  {item.label}
+                  {typeof item.count === "number" ? <span className="c"> {item.count}</span> : null}
+                </button>
+              ))}
+            </div>
+            <span className="sp" />
+            {tab === "all" ? (
+              <>
+                <SelectField label="Status" value={status} onChange={setStatus} options={STATUS_OPTIONS} />
+                <SelectField label="Lifecycle" value={lifecycle} onChange={setLifecycle} options={LIFECYCLE_OPTIONS} />
+                <input
+                  className="ov-input"
+                  aria-label="Connector"
+                  placeholder="Connector, for example hubspot"
+                  value={integration}
+                  onChange={(e) => setIntegration(e.target.value)}
+                />
+              </>
+            ) : tab === "objects" ? (
+              <>
+                <SelectField label="Type" value={objectType} onChange={setObjectType} options={OBJECT_TYPES} />
+                <SelectField label="Department" value={objectDepartment} onChange={setObjectDepartment} options={OBJECT_DEPARTMENTS} />
+                <SelectField label="Status" value={objectStatus} onChange={setObjectStatus} options={OBJECT_STATUSES} />
+                <SelectField label="Priority" value={objectPriority} onChange={setObjectPriority} options={OBJECT_PRIORITIES} />
+              </>
+            ) : null}
+            {tab !== "failures" && hasActiveFilters ? (
+              <button type="button" className="ov-linkbtn" onClick={resetFilters}>
+                <X size={14} aria-hidden /> Clear filters
+              </button>
+            ) : null}
+          </div>
+
+          {tab === "failures" ? (
+            <section className="ov-panel ov-pad" aria-label="Failure alerts">
+              <FailureAlertsPanel />
+            </section>
+          ) : (
+            <section aria-labelledby="activity-panel" className="ov-panel">
+              <div className="ov-band">
+                <div className="ov-band-l">
+                  <span className="ov-dots" aria-hidden>
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                  <h2 id="activity-panel">{tab === "objects" ? "Work objects" : "Outcomes"}</h2>
                 </div>
-                <div className="relative min-h-0 flex-1">
-                  <div
-                    className="pointer-events-none absolute inset-x-0 bottom-0 z-10 hidden h-8 bg-gradient-to-t from-[color:var(--g-surface-1)] to-transparent lg:block"
-                    aria-hidden
-                  />
-                  <div className="min-h-0 h-full lg:overflow-y-auto">
-                  {isPanelLoading ? (
-                    <ListSkeleton items={5} className="p-3" />
+                {tab === "all" && selectedOutcome?.runId ? (
+                  <Link className="ov-band-link" href={`/runs/${selectedOutcome.runId}?trace=1`}>
+                    Open run
+                    <ExternalLink size={14} aria-hidden />
+                  </Link>
+                ) : null}
+              </div>
+
+              {panelError ? (
+                <div className="ov-alert" role="alert" style={{ margin: 16 }}>
+                  <span>Could not load {tab === "objects" ? "work objects" : "activity"}.</span>
+                  <button
+                    type="button"
+                    className="ov-btn sm"
+                    onClick={() => void (tab === "objects" ? mutateWorkObjects() : mutate())}
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : null}
+
+              <div className={cn("ov-split tall swap", mobileDetailOpen && "has-detail")}>
+                <div className="ov-list">
+                  <div className="ov-list-head">Recent</div>
+                  {panelLoading ? (
+                    <div className="ov-placeholder" aria-busy="true">
+                      <span>Loading...</span>
+                    </div>
                   ) : currentRows.length === 0 ? (
-                    <div className="m-3 flex flex-col items-center pt-6">
-                    <Illustration
-                      name={hasActiveFilters ? "moment-focus-time" : "moment-welcome"}
-                      width={140}
-                      className="mx-auto"
-                    />
-                    <GravitreEmpty
-                      className="border-0 pt-4 shadow-none"
-                      title={
-                        hasActiveFilters
-                          ? `No matching ${tab === "objects" ? "WorkObjects" : "activity"}`
+                    <div className="ov-empty">
+                      <b>
+                        {hasActiveFilters
+                          ? `No matching ${tab === "objects" ? "work objects" : "activity"}`
                           : tab === "objects"
-                            ? "No WorkObjects yet"
-                            : "No activity yet"
-                      }
-                      hint={
-                        hasActiveFilters
+                            ? "No work objects yet"
+                            : "No activity yet"}
+                      </b>
+                      <span>
+                        {hasActiveFilters
                           ? "No results for these filters. Try widening them to see more."
                           : tab === "objects"
-                            ? "Complete connector actions in chat or runs and WorkObjects will be attributed here."
-                            : "Run a workflow or complete work in chat — results land here automatically."
-                      }
-                      action={
-                        hasActiveFilters ? (
-                          <Button variant="outline" size="sm" className="h-8" onClick={resetFilters}>
-                            Clear filters
-                          </Button>
-                        ) : (
-                          <Button asChild size="sm" className="h-8">
-                            <OpenGravitreAIButton>Start in chat</OpenGravitreAIButton>
-                          </Button>
-                        )
-                      }
-                    />
+                            ? "Complete connector actions in chat or runs and work objects will be attributed here."
+                            : "Run a workflow or complete work in chat, and results land here automatically."}
+                      </span>
+                      {hasActiveFilters ? (
+                        <button type="button" className="ov-btn sm" onClick={resetFilters}>
+                          Clear filters
+                        </button>
+                      ) : (
+                        <button type="button" className="ov-btn dark sm" onClick={() => ask("")}>
+                          Start in chat
+                        </button>
+                      )}
                     </div>
                   ) : (
-                    <ul
-                      className="divide-y divide-divide"
+                    <div
+                      className="ov-items"
                       role="listbox"
-                      aria-label={tab === "objects" ? "WorkObject list" : "Recent activity"}
-                      aria-activedescendant={
-                        selected
-                          ? tab === "objects"
-                            ? `activity-row-${(selected as WorkObjectDto).id}`
-                            : `activity-row-${outcomeKey(selected as BusinessOutcomeDto)}`
-                          : undefined
-                      }
+                      aria-label={tab === "objects" ? "Work object list" : "Recent activity"}
                     >
                       {tab === "objects"
                         ? workObjects.map((workObject, index) => {
-                            const id = String(workObject.id || "")
-                            const active = selectedWorkObject?.id === id
+                            const active = selectedWorkObject?.id === workObject.id
+                            const tone = statusTone(workObject.status)
                             return (
-                              <li key={id} role="presentation">
-                                <ContextMenu>
-                                  <ContextMenuTrigger asChild>
-                                <motion.button
-                                  type="button"
-                                  id={`activity-row-${id}`}
-                                  role="option"
-                                  aria-selected={active}
-                                  tabIndex={index === (selectedIndex === -1 ? 0 : selectedIndex) ? 0 : -1}
-                                  ref={(node) => {
-                                    rowRefs.current[index] = node
-                                  }}
-                                  onKeyDown={(event) => handleListKeyDown(event, index)}
-                                  initial={reduceMotion ? false : { opacity: 0, y: 4 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{
-                                    duration: MOTION.base,
-                                    delay: reduceMotion ? 0 : Math.min(index, 12) * MOTION.stagger,
-                                  }}
-                                  className={cn(
-                                    "group relative flex w-full flex-col gap-0.5 py-2.5 pl-3.5 pr-3 text-left transition-[background-color,box-shadow] duration-200",
-                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                                    active
-                                      ? "bg-[color:var(--g-emerald-pale)]"
-                                      : "hover:bg-[color:var(--g-surface-2)] hover:shadow-[inset_2px_0_0_0_var(--g-border-default)]",
-                                  )}
-                                  onClick={() => setSelectedWorkObjectId(id)}
-                                >
-                                  {active ? (
-                                    <motion.span
-                                      layoutId="activity-row-accent"
-                                      className="absolute inset-y-0 left-0 w-[3px] bg-[color:var(--g-emerald)]"
-                                      transition={
-                                        reduceMotion
-                                          ? { duration: 0 }
-                                          : { type: "spring", stiffness: 420, damping: 34 }
-                                      }
-                                      aria-hidden
-                                    />
-                                  ) : null}
-                                  <div className="flex items-start justify-between gap-2">
-                                    <span className="line-clamp-2 text-sm font-medium text-foreground">
-                                      {workObject.title || "Untitled WorkObject"}
+                              <button
+                                key={workObject.id}
+                                type="button"
+                                role="option"
+                                aria-selected={active}
+                                aria-current={active}
+                                className={cn("ov-item", tone === "red" && "fail")}
+                                tabIndex={index === (selectedIndex === -1 ? 0 : selectedIndex) ? 0 : -1}
+                                ref={(node) => {
+                                  rowRefs.current[index] = node
+                                }}
+                                onKeyDown={(event) => handleListKeyDown(event, index)}
+                                onClick={() => setSelectedWorkObjectId(workObject.id)}
+                              >
+                                <span className="row">
+                                  <span className="t">{workObject.title || "Untitled work object"}</span>
+                                  <span className={cn("ov-status", tone)}>
+                                    <i aria-hidden />
+                                    {humanize(workObject.status || "identified").toLowerCase()}
+                                  </span>
+                                </span>
+                                <span className="s">{workObject.objective || "No objective yet"}</span>
+                                <span className="ov-chips">
+                                  {workObject.objectType ? <span className="ov-tag">{workObject.objectType}</span> : null}
+                                  {workObject.department ? <span className="ov-tag">{workObject.department}</span> : null}
+                                  {(workObject.systemsInvolved || []).slice(0, 2).map((sys) => (
+                                    <span key={sys} className="ov-tag">
+                                      {sys}
                                     </span>
-                                    <StatusChip status={String(workObject.status || "identified")} className="shrink-0">
-                                      {formatStatusLabel(String(workObject.status || "identified"))}
-                                    </StatusChip>
-                                  </div>
-                                  <p className="line-clamp-2 text-xs text-muted-foreground">
-                                    {workObject.objective || "No objective yet"}
-                                  </p>
-                                  <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-                                    {workObject.objectType ? <span>{workObject.objectType}</span> : null}
-                                    {workObject.department ? <span>{workObject.department}</span> : null}
-                                    {workObject.priority ? <span>priority:{workObject.priority}</span> : null}
-                                    {workObject.systemsInvolved?.[0] ? (
-                                      <span>{workObject.systemsInvolved.join(", ")}</span>
-                                    ) : null}
-                                    {(workObject.businessOutcomeRefs || []).length > 0 ? (
-                                      <span>evidence:{(workObject.businessOutcomeRefs || []).length}</span>
-                                    ) : null}
-                                  </div>
-                                </motion.button>
-                                  </ContextMenuTrigger>
-                                  <ContextMenuContent className="w-44">
-                                    <ContextMenuItem onSelect={() => setSelectedWorkObjectId(id)}>
-                                      Open detail
-                                    </ContextMenuItem>
-                                  </ContextMenuContent>
-                                </ContextMenu>
-                              </li>
+                                  ))}
+                                </span>
+                              </button>
                             )
                           })
                         : outcomes.map((outcome, index) => {
                             const id = outcomeKey(outcome)
-                            const active =
-                              selectedOutcome?.id === outcome.id && selectedOutcome?.runId === outcome.runId
-                            const meta = outcome.sections?.metadata || {}
-                            const pack =
-                              typeof meta.pack_id === "string"
-                                ? meta.pack_id
-                                : typeof meta.packId === "string"
-                                  ? meta.packId
-                                  : null
+                            const active = selectedOutcome != null && outcomeKey(selectedOutcome) === id
+                            const tone = statusTone(outcome.status || outcome.lifecycleState)
+                            const tags = [outcome.sections?.evidence?.integration, outcome.source].filter(
+                              (t): t is string => typeof t === "string" && t.length > 0,
+                            )
                             return (
-                              <li key={id} role="presentation">
-                                <ContextMenu>
-                                  <ContextMenuTrigger asChild>
-                                <motion.button
-                                  type="button"
-                                  id={`activity-row-${id}`}
-                                  role="option"
-                                  aria-selected={active}
-                                  tabIndex={index === (selectedIndex === -1 ? 0 : selectedIndex) ? 0 : -1}
-                                  ref={(node) => {
-                                    rowRefs.current[index] = node
-                                  }}
-                                  onKeyDown={(event) => handleListKeyDown(event, index)}
-                                  initial={reduceMotion ? false : { opacity: 0, y: 4 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{
-                                    duration: MOTION.base,
-                                    delay: reduceMotion ? 0 : Math.min(index, 12) * MOTION.stagger,
-                                  }}
-                                  className={cn(
-                                    "group relative flex w-full flex-col gap-0.5 py-2.5 pl-3.5 pr-3 text-left transition-[background-color,box-shadow] duration-200",
-                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                                    String(outcome.status || "").toLowerCase() === "flagged_for_review" &&
-                                      "bg-warning/[0.05]",
-                                    active
-                                      ? "bg-[color:var(--g-emerald-pale)]"
-                                      : "hover:bg-[color:var(--g-surface-2)] hover:shadow-[inset_2px_0_0_0_var(--g-border-default)]",
-                                  )}
-                                  onClick={() => setSelectedOutcomeId(id)}
-                                >
-                                  {String(outcome.status || "").toLowerCase() === "flagged_for_review" && !active ? (
-                                    <span
-                                      className="absolute inset-y-0 left-0 w-[3px] bg-warning"
-                                      aria-hidden
-                                    />
-                                  ) : null}
-                                  {active ? (
-                                    <motion.span
-                                      layoutId="activity-row-accent"
-                                      className="absolute inset-y-0 left-0 w-[3px] bg-[color:var(--g-emerald)]"
-                                      transition={
-                                        reduceMotion
-                                          ? { duration: 0 }
-                                          : { type: "spring", stiffness: 420, damping: 34 }
-                                      }
-                                      aria-hidden
-                                    />
-                                  ) : null}
-                                  <div className="flex items-start justify-between gap-2">
-                                    <span className="line-clamp-2 text-sm font-medium text-foreground">
-                                      {outcome.title || "Untitled outcome"}
+                              <button
+                                key={id}
+                                id={`activity-row-${id}`}
+                                type="button"
+                                role="option"
+                                aria-selected={active}
+                                aria-current={active}
+                                className={cn("ov-item", tone === "red" && "fail", tone === "amber" && "warn")}
+                                tabIndex={index === (selectedIndex === -1 ? 0 : selectedIndex) ? 0 : -1}
+                                ref={(node) => {
+                                  rowRefs.current[index] = node
+                                }}
+                                onKeyDown={(event) => handleListKeyDown(event, index)}
+                                onClick={() => setSelectedOutcomeId(id)}
+                              >
+                                <span className="row">
+                                  <span className="t">{outcome.title || "Untitled outcome"}</span>
+                                  {outcome.status || outcome.lifecycleState ? (
+                                    <span className={cn("ov-status", tone)}>
+                                      <i aria-hidden />
+                                      {humanize(outcome.status || outcome.lifecycleState).toLowerCase()}
                                     </span>
-                                    {outcome.status || outcome.lifecycleState ? (
-                                      <StatusChip
-                                        status={String(outcome.status || outcome.lifecycleState)}
-                                        className="shrink-0"
-                                      >
-                                        {formatStatusLabel(String(outcome.status || outcome.lifecycleState))}
-                                      </StatusChip>
-                                    ) : null}
-                                  </div>
-                                  <p className="line-clamp-2 text-xs text-muted-foreground">
-                                    {outcome.sections?.summary || "No summary"}
-                                  </p>
-                                  <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-                                    {outcome.sections?.evidence?.integration ? (
-                                      <span>{String(outcome.sections.evidence.integration)}</span>
-                                    ) : null}
-                                    {pack ? <span>pack:{pack}</span> : null}
-                                    {outcome.source ? <span>{outcome.source}</span> : null}
-                                    {typeof meta.risk_level === "string" ||
-                                    typeof meta.riskLevel === "string" ? (
-                                      <span>
-                                        risk:{String(meta.risk_level || meta.riskLevel)}
+                                  ) : null}
+                                </span>
+                                <span className="s">{outcome.sections?.summary || "No summary"}</span>
+                                {tags.length > 0 ? (
+                                  <span className="ov-chips">
+                                    {tags.map((tag) => (
+                                      <span key={tag} className="ov-tag">
+                                        {tag}
                                       </span>
-                                    ) : null}
-                                    {typeof meta.estimated_impact === "string" ||
-                                    typeof meta.estimatedImpact === "string" ||
-                                    outcome.sections?.impact ? (
-                                      <span>
-                                        impact:
-                                        {String(
-                                          meta.estimated_impact ||
-                                            meta.estimatedImpact ||
-                                            outcome.sections?.impact,
-                                        )}
-                                      </span>
-                                    ) : null}
-                                    {outcome.runId ? (
-                                      <Link
-                                        href={`/runs/${outcome.runId}`}
-                                        className="inline-flex items-center gap-0.5 text-foreground/80 hover:underline"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        Run <ExternalLink className="h-2.5 w-2.5" />
-                                      </Link>
-                                    ) : null}
-                                  </div>
-                                </motion.button>
-                                  </ContextMenuTrigger>
-                                  <ContextMenuContent className="w-44">
-                                    <ContextMenuItem onSelect={() => setSelectedOutcomeId(id)}>
-                                      Open detail
-                                    </ContextMenuItem>
-                                    {outcome.runId ? (
-                                      <ContextMenuItem
-                                        onSelect={() => {
-                                          router.push(`/runs/${outcome.runId}`)
-                                        }}
-                                      >
-                                        Open run
-                                      </ContextMenuItem>
-                                    ) : null}
-                                  </ContextMenuContent>
-                                </ContextMenu>
-                              </li>
+                                    ))}
+                                  </span>
+                                ) : null}
+                              </button>
                             )
                           })}
-                    </ul>
+                    </div>
                   )}
-                  </div>
                 </div>
-              </GravitreSurface>
 
-              <GravitreSurface
-                padded={false}
-                className={cn(
-                  "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
-                  mobileDetailOpen ? "flex" : "hidden lg:flex",
-                )}
-              >
-                <div className="flex shrink-0 flex-col gap-1 border-b border-divide px-3 py-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="-ml-2 h-8 w-fit px-2 lg:hidden"
-                    onClick={clearMobileDetail}
-                  >
-                    <ArrowLeft className="mr-1 h-4 w-4" />
-                    Back to list
-                  </Button>
-                  <div className="flex items-center justify-between gap-3">
-                  <span className={cn(TYPE.eyebrow, "truncate")}>
-                    {tab === "objects"
-                      ? selectedWorkObject?.title || "Inspect"
-                      : selectedOutcome
-                        ? "Outcome"
-                        : "Inspect"}
-                  </span>
-                  {tab === "objects" ? null : selectedOutcome?.runId ? (
-                    <Link
-                      href={`/runs/${selectedOutcome.runId}?trace=1`}
-                      className={cn(
-                        "inline-flex shrink-0 items-center gap-1 rounded-[var(--np-radius-md)] px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-[color:var(--g-surface-2)] hover:text-foreground",
-                        INTERACTION,
-                      )}
+                <div className="ov-detail">
+                  <div className="ov-detail-in">
+                    <button
+                      type="button"
+                      className="ov-btn sm ov-back"
+                      onClick={() => {
+                        setSelectedOutcomeId(null)
+                        setSelectedWorkObjectId(null)
+                      }}
                     >
-                      Open run
-                      <ExternalLink className="h-3 w-3" />
-                    </Link>
-                  ) : null}
+                      <ArrowLeft size={14} aria-hidden />
+                      Back to list
+                    </button>
+                    {panelLoading ? (
+                      <div className="ov-placeholder" aria-busy="true">
+                        <span>Loading...</span>
+                      </div>
+                    ) : tab === "objects" && selectedWorkObject ? (
+                      <WorkObjectDetail
+                        workObject={selectedWorkObject}
+                        events={workObjectEvents}
+                        loading={workObjectDetailLoading}
+                      />
+                    ) : tab === "all" && selectedOutcome ? (
+                      <OutcomeDetail
+                        key={outcomeKey(selectedOutcome)}
+                        outcome={selectedOutcome}
+                        onRetry={() => void retrySelected()}
+                        retrying={retrying}
+                        onAsk={ask}
+                      />
+                    ) : (
+                      <div className="ov-placeholder">
+                        <b>Nothing selected</b>
+                        <span>Pick an item from the list to inspect it.</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="min-h-0 flex-1 p-3 lg:overflow-y-auto md:p-4">
-                  {isPanelLoading || (tab === "objects" && workObjectDetailLoading) ? (
-                    <ListSkeleton items={3} />
-                  ) : tab === "objects" && selectedWorkObject ? (
-                    <AnimatePresence mode="wait" initial={false}>
-                      <motion.div
-                        key={selectedWorkObject.id}
-                        initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
-                        transition={{ duration: MOTION.base }}
-                        className="space-y-4"
-                      >
-                        <div className="space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <StatusChip status={String(selectedWorkObject.status || "identified")}>
-                              {formatStatusLabel(String(selectedWorkObject.status || "identified"))}
-                            </StatusChip>
-                            {selectedWorkObject.priority ? (
-                              <span className="rounded-[var(--np-radius-md)] border border-divide px-2 py-0.5 text-[11px] text-muted-foreground">
-                                {selectedWorkObject.priority}
-                              </span>
-                            ) : null}
-                            {selectedWorkObject.department ? (
-                              <span className="rounded-[var(--np-radius-md)] border border-divide px-2 py-0.5 text-[11px] text-muted-foreground">
-                                {selectedWorkObject.department}
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="text-sm text-foreground">
-                            {selectedWorkObject.objective || "No objective recorded yet."}
-                          </p>
-                        </div>
-                        <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-                          <p>
-                            <strong className="text-foreground">Type:</strong>{" "}
-                            {selectedWorkObject.objectType || "objective"}
-                          </p>
-                          <p>
-                            <strong className="text-foreground">Owner:</strong>{" "}
-                            {selectedWorkObject.owner || "Unassigned"}
-                          </p>
-                          <p>
-                            <strong className="text-foreground">Systems:</strong>{" "}
-                            {(selectedWorkObject.systemsInvolved || []).join(", ") || "None"}
-                          </p>
-                          <p>
-                            <strong className="text-foreground">Agents:</strong>{" "}
-                            {(selectedWorkObject.agentsInvolved || []).join(", ") || "None"}
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-xs font-semibold text-muted-foreground">
-                            Lifecycle timeline
-                          </p>
-                          {workObjectEvents.length === 0 ? (
-                            <p className="text-xs text-muted-foreground">No attributed actions yet.</p>
-                          ) : (
-                            <ul className="space-y-2">
-                              {workObjectEvents.map((event) => (
-                                <li
-                                  key={event.id}
-                                  className="rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-2)] p-2"
-                                >
-                                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                                    <span className="font-medium text-foreground">
-                                      {event.actionName || event.eventType || "action"}
-                                    </span>
-                                    <StatusChip status={String(event.actionStatus || "completed")}>
-                                      {formatStatusLabel(String(event.actionStatus || "completed"))}
-                                    </StatusChip>
-                                  </div>
-                                  <p className="mt-1 text-xs text-muted-foreground">
-                                    {event.systemName ? `${event.systemName} · ` : ""}
-                                    {event.createdAt || "timestamp unavailable"}
-                                  </p>
-                                  {event.runId ? (
-                                    <Link href={`/runs/${event.runId}`} className="mt-1 inline-flex items-center gap-1 text-xs hover:underline">
-                                      Open run
-                                      <ExternalLink className="h-3 w-3" />
-                                    </Link>
-                                  ) : null}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      </motion.div>
-                    </AnimatePresence>
-                  ) : selectedOutcome ? (
-                    // Keyed cross-fade so switching rows reads as a transition
-                    // rather than the pane contents teleporting.
-                    <AnimatePresence mode="wait" initial={false}>
-                      <motion.div
-                        key={outcomeKey(selectedOutcome)}
-                        initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
-                        transition={{ duration: MOTION.base }}
-                      >
-                        {/* The outcome reads directly on the pane (no inner card), result
-                            first, then how it got there. */}
-                        <div className="space-y-5">
-                          <BusinessOutcomeView
-                            outcome={selectedOutcome}
-                            density="timeline"
-                            suppressTimeline
-                            flush
-                          />
-                          <div className="border-t border-divide pt-4">
-                            <ActivityTracePanel outcome={selectedOutcome} />
-                          </div>
-                        </div>
-                      </motion.div>
-                    </AnimatePresence>
-                  ) : (
-                    <GravitreEmpty
-                      className="border-0 shadow-none"
-                      icon={<NucleoSearch className="h-5 w-5" />}
-                      title="Nothing selected"
-                      hint="Select a run — inspector stays closed until then."
-                    />
-                  )}
-                </div>
-              </GravitreSurface>
-            </div>
-          </>
-        )}
+              </div>
+            </section>
+          )}
         </div>
-      </div>
+      </WsPage>
     </AppShell>
   )
 }
@@ -1051,7 +1087,7 @@ export default function ActivityPage() {
   return (
     <Suspense
       fallback={
-        <AppShell fillViewport>
+        <AppShell>
           <CenteredLoader fill="parent" label="Loading activity" />
         </AppShell>
       }

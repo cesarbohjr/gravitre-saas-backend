@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="260" viewBox="0 0 320 260" preserveAspectRatio="xMidYMid slice">
+<defs><filter id="art-grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch"></feTurbulence><feColorMatrix values="0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0 0.1 0.9 0 0 0 -0.38"></feColorMatrix></filter></defs>
+<rect width="320" height="260" fill="#DEDAD0"></rect>
+<ellipse cx="166" cy="126" rx="136" ry="98" fill="#DCE5DC"></ellipse>
+<path d="M112 84 C136 84 140 92 160 92" fill="none" stroke="#8A8985" stroke-width="1.6" stroke-dasharray="3 5"></path>
+<g transform="rotate(-6 70 150)">
+<rect x="34" y="138" width="78" height="30" rx="6" fill="#F5F2EA"></rect><rect x="34" y="138" width="5" height="30" rx="2" fill="#B8875A"></rect>
+<rect x="46" y="146" width="40" height="4" rx="2" fill="#C9C4B8"></rect><rect x="46" y="155" width="54" height="4" rx="2" fill="#E2DED4"></rect>
+</g>
+<g transform="rotate(-3 70 114)">
+<rect x="34" y="102" width="78" height="30" rx="6" fill="#F5F2EA"></rect><rect x="34" y="102" width="5" height="30" rx="2" fill="#3D6FD1"></rect>
+<rect x="46" y="110" width="40" height="4" rx="2" fill="#C9C4B8"></rect><rect x="46" y="119" width="54" height="4" rx="2" fill="#E2DED4"></rect>
+</g>
+<rect x="34" y="66" width="78" height="30" rx="6" fill="#FFFFFF" stroke="#2E9E5B" stroke-width="1.5"></rect><rect x="34" y="66" width="5" height="30" rx="2" fill="#5B5BD6"></rect>
+<rect x="46" y="74" width="40" height="4" rx="2" fill="#2B2D31"></rect><rect x="46" y="83" width="54" height="4" rx="2" fill="#C9C4B8"></rect>
+<circle cx="110" cy="66" r="10" fill="#F3E6C8" stroke="#C98A1B" stroke-width="1.8"></circle>
+<path d="M110 60 V66 L114 69" fill="none" stroke="#C98A1B" stroke-width="1.8" stroke-linecap="round"></path>
+<rect x="160" y="40" width="118" height="92" rx="10" fill="#22272D"></rect>
+<rect x="166" y="46" width="106" height="80" rx="6" fill="#F5F2EA"></rect>
+<rect x="174" y="54" width="48" height="6" rx="3" fill="#2B2D31"></rect>
+<rect x="174" y="66" width="86" height="4" rx="2" fill="#C9C4B8"></rect>
+<rect x="174" y="75" width="70" height="4" rx="2" fill="#C9C4B8"></rect>
+<rect x="174" y="100" width="42" height="18" rx="6" fill="#2E9E5B"></rect>
+<path d="M188 109 l4 4 l8 -8" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
+<rect x="222" y="100" width="40" height="18" rx="6" fill="none" stroke="#A3333D" stroke-width="1.8"></rect>
+<path d="M238 105 l8 8 M246 105 l-8 8" stroke="#A3333D" stroke-width="2" stroke-linecap="round"></path>
+<rect x="213" y="132" width="12" height="28" fill="#4A4F58"></rect>
+<rect x="150" y="160" width="140" height="8" rx="2" fill="#6E5A44"></rect>
+<rect x="158" y="168" width="5" height="46" fill="#6E5A44"></rect>
+<rect x="277" y="168" width="5" height="46" fill="#6E5A44"></rect>
+<rect x="244" y="150" width="28" height="10" rx="2" fill="#3B4250"></rect>
+<g transform="translate(140 0)">
+<rect x="-8" y="164" width="7" height="50" rx="3" fill="#26282C"></rect><rect x="1" y="164" width="7" height="50" rx="3" fill="#26282C"></rect>
+<path d="M-14 124 Q0 116 14 124 L16 170 L-16 170 Z" fill="#2F3A48"></path>
+<path d="M-4 120 L0 132 L4 120 Z" fill="#F5F2EA"></path>
+<path d="M-1 124 L0 140 L1 124 Z" fill="#2E9E5B"></path>
+<path d="M-10 128 L-13 160" stroke="#2F3A48" stroke-width="6" stroke-linecap="round"></path><circle cx="-13" cy="162" r="3.2" fill="#C99572"></circle>
+<path d="M10 127 L24 118 L40 112" fill="none" stroke="#2F3A48" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="42" cy="111" r="3.4" fill="#C99572"></circle>
+<circle cx="0" cy="106" r="10" fill="#C99572"></circle>
+<path d="M-10.5 106 A10.5 10.5 0 0 1 10.5 106 L10 102 Q0 96 -10.5 106 Z" fill="#1F1A17"></path>
+</g>
+<path d="M300 34 l2.5 6 l6 2.5 l-6 2.5 l-2.5 6 l-2.5 -6 l-6 -2.5 l6 -2.5 Z" fill="#C9A24B"></path>
+<line x1="20" y1="214" x2="300" y2="214" stroke="#9C8C74" stroke-width="2"></line>
+<rect width="320" height="260" filter="url(#art-grain)" opacity="0.55"></rect>
+</svg>
