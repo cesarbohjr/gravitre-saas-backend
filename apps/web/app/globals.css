@@ -948,6 +948,33 @@
   --color-g-signal: var(--g-signal);
 }
 
+/*
+ * iOS Safari zooms the whole page in when a focused text field's font is under
+ * 16px, and leaves it zoomed after the keyboard closes, so the chat sheet and
+ * every page stop fitting the screen until the user pinches back out. Most of
+ * the app's fields (the chat composer included) use text-sm (14px).
+ *
+ * `-webkit-touch-callout` is only supported by WebKit on iPhone and iPad, so
+ * desktop, Android and every other browser keep their current sizes.
+ *
+ * Unlayered, so it outranks every Tailwind text-* utility (those live in a
+ * cascade layer), but wrapped in :where() for zero specificity and not
+ * !important, so the redesign's own unlayered field styles still apply. The
+ * larger ones (home .gv-input 18px, assignments composer 17px) keep their size;
+ * the few smaller ones carry their own iOS 16px rule next to their definition.
+ */
+@supports (-webkit-touch-callout: none) {
+  :where(
+    input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="reset"], [type="image"], [type="hidden"]),
+    textarea,
+    select,
+    [contenteditable="true"],
+    [contenteditable=""]
+  ) {
+    font-size: 16px;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
