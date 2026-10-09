@@ -16,6 +16,50 @@ export interface Source {
   /** 0-100 when the backend reports it; null otherwise (never estimated client-side). */
   health: number | null
   topTables?: string[]
+  /** Catalog type id ("hubspot", "csv_upload"); falls back to `type`. */
+  typeId: string
+  /** Last sync failure message stored on the source, when there is one. */
+  lastSyncError: string | null
+  /** Connector this source reads through (OAuth vendors), when linked. */
+  connectorId?: string
+  /** Up to 7 most recent sync outcomes from the audit trail, oldest first. */
+  recentSyncs: SourceSyncPoint[]
+}
+
+export interface SourceSyncPoint {
+  status: "ok" | "fail"
+  records: number | null
+  error: string | null
+  createdAt: string | null
+}
+
+export interface SourceIngestionEvent {
+  sourceId: string
+  kind: "sync" | "created" | "updated"
+  status: "ok" | "fail" | null
+  records: number | null
+  error: string | null
+  createdAt: string | null
+}
+
+function syncStatus(value: unknown): "ok" | "fail" | null {
+  const raw = String(value ?? "").toLowerCase()
+  if (!raw) return null
+  if (["failed", "error", "fail", "failure"].includes(raw)) return "fail"
+  return "ok"
+}
+
+function optionalString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null
+}
+
+function normalizeSyncPoint(item: Record<string, unknown>): SourceSyncPoint {
+  return {
+    status: syncStatus(item.status) ?? "ok",
+    records: optionalFiniteNumber(item.records),
+    error: optionalString(item.error),
+    createdAt: optionalString(item.createdAt),
+  }
 }
 
 function optionalFiniteNumber(...candidates: unknown[]): number | null {
@@ -111,6 +155,15 @@ export function normalizeSource(input: Record<string, unknown>): Source {
     health:
       input.health != null && Number.isFinite(Number(input.health)) ? Number(input.health) : null,
     topTables: Array.isArray(input.topTables) ? (input.topTables as string[]) : [],
+    typeId: String(input.typeId ?? input.type ?? "").toLowerCase(),
+    lastSyncError: optionalString(input.lastSyncError),
+    connectorId: optionalString(input.connectorId) ?? undefined,
+    recentSyncs: Array.isArray(input.recentSyncs)
+      ? (input.recentSyncs as unknown[])
+          .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+          .map(normalizeSyncPoint)
+          .slice(-7)
+      : [],
   }
 }
 
@@ -126,3 +179,26 @@ export function normalizeSourcesResponse(payload: unknown): Source[] {
   return normalized
 }
 
+
+/** The "Recent ingestion" feed the sources list returns beside the inventory. */
+export function normalizeIngestionFeed(payload: unknown): SourceIngestionEvent[] {
+  if (!payload || typeof payload !== "object") return []
+  const raw = (payload as Record<string, unknown>).ingestion
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+    .map((item) => {
+      const kind = String(item.kind ?? "sync")
+      return {
+        sourceId: String(item.sourceId ?? ""),
+        kind: kind === "created" || kind === "updated" ? kind : "sync",
+        status: syncStatus(item.status),
+        records: optionalFiniteNumber(item.records),
+        error: optionalString(item.error),
+        createdAt: optionalString(item.createdAt),
+      } satisfies SourceIngestionEvent
+    })
+    .filter((item) => item.sourceId.length > 0)
+}
+
+export { formatRelativeSync }

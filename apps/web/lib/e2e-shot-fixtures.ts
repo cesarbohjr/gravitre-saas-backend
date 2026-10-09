@@ -55,6 +55,37 @@ const supabaseUser = {
 
 const businessOutcomes = [
   {
+    id: "bo_01hq8s5f1a",
+    orgId: DEMO_ORG_ID,
+    runId: "run_01hq8s5f1a",
+    kind: "failed_action",
+    title: "hubspot.lists.create may have been applied before the connection failed",
+    status: "failed",
+    lifecycleState: "presented",
+    lifecycleStatesReached: ["planned", "presented"],
+    source: "browser_extension",
+    createdAt: T(2),
+    sections: {
+      summary: "hubspot.lists.create may have been applied before the connection failed: [Errno 11] Resource temporarily unavailable",
+      evidence: { links: [{ label: "HubSpot lists", href: "https://app.hubspot.com/contacts/1/lists", kind: "record" }], integration: "hubspot" },
+      verification: {
+        verified: false,
+        confidence: "unverified",
+        checkFailed: "module_a_terminal_status",
+        nextActions: ["The list may already exist in HubSpot. Check for it before retrying so you do not create a duplicate."],
+      },
+      explanation: "You asked for a list of high-intent leads. The agent created the list, then the HubSpot connection dropped before the response came back.",
+      timeline: [
+        { index: 1, label: "Plan", status: "succeeded", summary: "Agent chose the action" },
+        { index: 2, label: "Authorize", status: "succeeded", summary: "Connector signed in" },
+        { index: 3, label: "Create list", status: "failed", summary: "Connection dropped mid call" },
+      ],
+      diff: { available: false, note: "No before-and-after was captured because the call did not return." },
+      undo: { available: false, honestUnavailableReason: "Nothing was confirmed as created, so there is nothing to undo yet." },
+      metadata: { actionArgs: { name: "High-intent leads" } },
+    },
+  },
+  {
     id: "bo_01hq8s4m2k",
     orgId: DEMO_ORG_ID,
     runId: "run_01hq8s4m2k",
@@ -727,7 +758,13 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
           action: "hubspot.contacts.create",
           impact: "Creates one contact and associates it with Northwind Logistics.",
           runId: "run_01hq9d4k2m",
+          risk_level: "medium",
         },
+        steps: [
+          { text: "Search HubSpot for an existing contact with this email", app: "hubspot", action: "hubspot.contacts.search", access: "read" },
+          { text: "Enrich the company record from Apollo", app: "apollo", action: "apollo.organizations.enrich", access: "read" },
+          { text: "Create the contact and associate it with Northwind Logistics", app: "hubspot", action: "hubspot.contacts.create", access: "write" },
+        ],
       },
       {
         id: "apr_01hq9c8b1x",
@@ -753,7 +790,12 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
           action: "salesforce.opportunity.update",
           impact: "Changes StageName on one opportunity.",
           runId: "run_01hq9c8b1x",
+          risk_level: "medium",
         },
+        steps: [
+          { text: "Read the Zendesk thread for the booked procurement call", app: "zendesk", action: "zendesk.tickets.get", access: "read" },
+          { text: "Move opportunity 0064x to Negotiation", app: "salesforce", action: "salesforce.opportunity.update", access: "write" },
+        ],
       },
       {
         id: "apr_01hq9a2f7t",
@@ -777,8 +819,13 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         context: {
           entity: "Zendesk connector",
           action: "connector.scope.grant",
+          risk_level: "high",
           impact: "Adds tickets:write for every workflow using this connector.",
         },
+        steps: [
+          { text: "Add tickets:write to the Zendesk connector", app: "zendesk", action: "connector.scope.grant", access: "write" },
+          { text: "Apply the refund macro to the waiting tickets", app: "zendesk", action: "zendesk.macros.apply", access: "write" },
+        ],
       },
     ],
   },
@@ -1068,9 +1115,20 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   // Screenshot-only inventory: mixed connection states, complete schema disclosure.
   "/api/sources": {
     sources: [
-      { id: "src_warehouse", name: "Northwind operations warehouse", type: "postgres", category: "sql", status: "connected", environment: "production", lastSync: AGO(12), tables: 16, recordCount: 12400, workflowsUsing: 3, operatorsUsing: 2, health: 98, topTables: ["accounts", "service_requests", "invoices", "contract_renewals", "workflow_events"] },
-      { id: "src_ingesting", name: "Service event archive", type: "mongodb", category: "nosql", status: "syncing", environment: "staging", lastSync: AGO(3), tables: 4, recordCount: 1800, workflowsUsing: 1, operatorsUsing: 1 },
-      { id: "src_attention", name: "Finance reporting warehouse", type: "snowflake", category: "warehouse", status: "error", environment: "production", lastSync: AGO(180), tables: 8, recordCount: 6400, workflowsUsing: 2, operatorsUsing: 1, description: "Connection requires review before the next ingestion." },
+      { id: "src_hubspot", name: "HubSpot · hubspot", type: "hubspot", typeId: "hubspot", category: "warehouse", status: "error", environment: "production", lastSync: AGO(2), recordCount: 0, lastSyncError: "401 Unauthorized: refresh token expired", recentSyncs: [{ status: "error", records: null, createdAt: AGO(120) }, { status: "error", records: null, createdAt: AGO(60) }] },
+      { id: "src_matrix", name: "Escalation Matrix", type: "manual", typeId: "manual", category: "warehouse", status: "error", environment: "production", lastSync: AGO(2), recordCount: 0, lastSyncError: "Could not parse row 1: missing header 'severity'", recentSyncs: [{ status: "error", records: null, createdAt: AGO(120) }, { status: "error", records: null, createdAt: AGO(60) }] },
+      { id: "src_warehouse", name: "Northwind operations warehouse", type: "postgres", typeId: "postgresql", category: "sql", status: "connected", environment: "production", lastSync: AGO(12), tables: 16, recordCount: 12400, workflowsUsing: 3, operatorsUsing: 2, health: 98, topTables: ["accounts", "service_requests", "invoices", "contract_renewals", "workflow_events"], recentSyncs: [{ status: "success", records: 1200, createdAt: AGO(420) }, { status: "success", records: 1200, createdAt: AGO(360) }, { status: "success", records: 1200, createdAt: AGO(300) }, { status: "success", records: 1200, createdAt: AGO(240) }, { status: "success", records: 1200, createdAt: AGO(180) }, { status: "success", records: 1200, createdAt: AGO(120) }, { status: "success", records: 1200, createdAt: AGO(60) }] },
+      { id: "src_ingesting", name: "Service event archive", type: "mongodb", category: "nosql", status: "syncing", environment: "staging", lastSync: AGO(3), tables: 4, recordCount: 1800, workflowsUsing: 1, operatorsUsing: 1, recentSyncs: [{ status: "success", records: 1200, createdAt: AGO(180) }, { status: "success", records: 1200, createdAt: AGO(120) }, { status: "success", records: 1200, createdAt: AGO(60) }] },
+      { id: "src_attention", name: "Finance reporting warehouse", type: "snowflake", typeId: "snowflake", category: "warehouse", status: "error", environment: "production", lastSync: AGO(180), tables: 8, recordCount: 6400, workflowsUsing: 2, operatorsUsing: 1, description: "Connection requires review before the next ingestion.", recentSyncs: [{ status: "success", records: 1200, createdAt: AGO(360) }, { status: "success", records: 1200, createdAt: AGO(300) }, { status: "success", records: 1200, createdAt: AGO(240) }, { status: "success", records: 1200, createdAt: AGO(180) }, { status: "error", records: null, createdAt: AGO(120) }, { status: "error", records: null, createdAt: AGO(60) }] },
+      { id: "src_macros", name: "Support Macros", type: "manual", typeId: "manual", category: "warehouse", status: "unknown", environment: "production", lastSync: AGO(60 * 24 * 88), recordCount: 0, recentSyncs: [] },
+    ],
+    ingestion: [
+      { sourceId: "src_hubspot", kind: "sync", status: "error", createdAt: AGO(2) },
+      { sourceId: "src_matrix", kind: "sync", status: "error", createdAt: AGO(2) },
+      { sourceId: "src_ingesting", kind: "sync", status: "success", records: 1800, createdAt: AGO(3) },
+      { sourceId: "src_warehouse", kind: "sync", status: "success", records: 12400, createdAt: AGO(12) },
+      { sourceId: "src_attention", kind: "sync", status: "error", createdAt: AGO(180) },
+      { sourceId: "src_macros", kind: "created", createdAt: AGO(60 * 24 * 88) },
     ],
   },
   // Source detail (/e2e/shots/source-detail/src_warehouse). Shapes follow

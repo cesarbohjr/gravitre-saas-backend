@@ -213,6 +213,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(run).toMatch(/Drill-down into this run/)
     const activity = readFileSync(resolve(webRoot, "app/(app)/activity/page.tsx"), "utf8")
     expect(activity).not.toMatch(/selectedOutcomeExplicit \?\? outcomes\[0\]/)
+    // v4 design: desktop opens on the top exception; phones keep the inspector closed until a tap.
     expect(activity).toMatch(/inspector stays closed until then/)
     expect(activity).toMatch(/\?trace=1/)
   })

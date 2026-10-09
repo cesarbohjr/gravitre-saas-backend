@@ -11,7 +11,7 @@ vi.mock("@/lib/api", () => ({ sourcesApi: { sync: mocks.sync, delete: mocks.remo
 vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ user: { id: "fixture-user" } }) }))
 vi.mock("@/components/gravitre/app-shell", () => ({ AppShell: ({ children }: { children: React.ReactNode }) => <main>{children}</main> }))
 vi.mock("@/components/gravitre/add-data-source-modal", () => ({ AddDataSourceModal: () => null }))
-vi.mock("next/navigation", () => ({ usePathname: () => "/sources" }))
+vi.mock("next/navigation", () => ({ usePathname: () => "/sources", useRouter: () => ({ push: vi.fn() }) }))
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const source = { id: "source-real", name: "Warehouse with a long name", type: "postgres", status: "connected", tables: 5, recordCount: 1200, workflowsUsing: 3, operatorsUsing: 2, topTables: ["accounts", "invoices", "renewals", "events", "service_requests"] }
 let root: Root

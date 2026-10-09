@@ -3600,7 +3600,11 @@ def list_approvals_alias(
                 "sla_minutes": sla["sla_minutes"],
             }
         )
-        run_meta[str(run["id"])] = {"workflow_id": workflow_id, "required_approvals": required}
+        run_meta[str(run["id"])] = {
+            "workflow_id": workflow_id,
+            "required_approvals": required,
+            "definition_snapshot": snapshot,
+        }
     # Chat connector writes queued for org admins (not workflow_runs).
     if not type or type in {"connector", "connector_chat"}:
         try:
