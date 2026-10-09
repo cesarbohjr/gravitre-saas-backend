@@ -1,21 +1,14 @@
 /* Agents roster (Team / List / Work map). Scoped under .gv-ws; tokens from workspace.css. */
 
-/* Department identity hues (dot, avatar tint, avatar ink). */
-.gv-ws .rs-d-sales { --dept: #5b5bd6; --dept-tint: #ecedfb; --dept-ink: #3a44b0; }
-.gv-ws .rs-d-marketing { --dept: #b8875a; --dept-tint: #fbf1dc; --dept-ink: #8a5a06; }
-.gv-ws .rs-d-customer_success { --dept: #3d6fd1; --dept-tint: #e8f0fb; --dept-ink: #2b6cb0; }
-.gv-ws .rs-d-operations { --dept: #4a6a8e; --dept-tint: #e6eef3; --dept-ink: #3e6e8e; }
-.gv-ws .rs-d-finance { --dept: #2e8b57; --dept-tint: #ddf3e8; --dept-ink: #0a6b47; }
-.gv-ws .rs-d-engineering { --dept: #2f7d6d; --dept-tint: #e1f0ec; --dept-ink: #2f7d6d; }
-.gv-ws .rs-d-security { --dept: #a3333d; --dept-tint: #fbecec; --dept-ink: #a8323e; }
-.gv-ws .rs-d-general { --dept: #8a8a85; --dept-tint: var(--gv-subtle); --dept-ink: var(--gv-text-2); }
-.dark .gv-ws .rs-d-sales { --dept-tint: #1e2140; --dept-ink: #a9b0f3; }
-.dark .gv-ws .rs-d-marketing { --dept-tint: #2c2312; --dept-ink: #f0c070; }
-.dark .gv-ws .rs-d-customer_success { --dept-tint: #16243a; --dept-ink: #8db8ea; }
-.dark .gv-ws .rs-d-operations { --dept-tint: #172630; --dept-ink: #93b6cc; }
-.dark .gv-ws .rs-d-finance { --dept-tint: #123a2a; --dept-ink: #3fd99a; }
-.dark .gv-ws .rs-d-engineering { --dept-tint: #12302a; --dept-ink: #7fcfbd; }
-.dark .gv-ws .rs-d-security { --dept-tint: #3a1a1d; --dept-ink: #f19aa3; }
+/* Department identity hues (dot, avatar tint, avatar ink) from the global --dept-* tokens. */
+.gv-ws .rs-d-sales { --dept: var(--dept-sales); --dept-tint: var(--dept-sales-tint); --dept-ink: var(--dept-sales-ink); }
+.gv-ws .rs-d-marketing { --dept: var(--dept-marketing); --dept-tint: var(--dept-marketing-tint); --dept-ink: var(--dept-marketing-ink); }
+.gv-ws .rs-d-customer_success { --dept: var(--dept-customer_success); --dept-tint: var(--dept-customer_success-tint); --dept-ink: var(--dept-customer_success-ink); }
+.gv-ws .rs-d-operations { --dept: var(--dept-operations); --dept-tint: var(--dept-operations-tint); --dept-ink: var(--dept-operations-ink); }
+.gv-ws .rs-d-finance { --dept: var(--dept-finance); --dept-tint: var(--dept-finance-tint); --dept-ink: var(--dept-finance-ink); }
+.gv-ws .rs-d-engineering { --dept: var(--dept-engineering); --dept-tint: var(--dept-engineering-tint); --dept-ink: var(--dept-engineering-ink); }
+.gv-ws .rs-d-security { --dept: var(--dept-security); --dept-tint: var(--dept-security-tint); --dept-ink: var(--dept-security-ink); }
+.gv-ws .rs-d-general { --dept: var(--dept-general); --dept-tint: var(--dept-general-tint); --dept-ink: var(--dept-general-ink); }
 .gv-ws .rs-ddot { width: 8px; height: 8px; border-radius: 50%; background: var(--dept); flex: 0 0 auto; display: inline-block; }
 .gv-ws .rs-dsq { width: 10px; height: 10px; border-radius: 3px; background: var(--dept); flex: 0 0 auto; display: inline-block; }
 .gv-ws .rs-ava { background: var(--dept-tint); color: var(--dept-ink); }
@@ -246,7 +239,7 @@
 .gv-ws .wm-card .tag.ok { color: var(--gv-brand-strong); }
 .gv-ws .wm-card .tag.amber { color: var(--gv-amber-text); }
 .gv-ws .wm-mono { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; font-weight: 700; font-size: 14px; flex: 0 0 auto; background: var(--gv-dark); color: var(--gv-on-dark); }
-.gv-ws .wm-agico { position: relative; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex: 0 0 auto; font-size: 10px; font-weight: 700; }
+.gv-ws .wm-agico { position: relative; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; flex: 0 0 auto; font-size: 10px; font-weight: 700; }
 .gv-ws .wm-agico .d { position: absolute; right: -2px; bottom: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--gv-accent); border: 2px solid var(--gv-card); }
 .gv-ws .wm-agico .d.amber { background: var(--gv-amber); }
 .gv-ws .wm-agico .d.grey { background: var(--gv-border-strong); }

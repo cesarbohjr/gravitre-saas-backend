@@ -345,6 +345,7 @@ export default function NewAgentPage() {
                   </GravitreSurface>
 
                   <AgentIdentityPicker
+                    department={selectedDepartment}
                     name={agentName.trim() || "New Agent"}
                     icon={selectedIcon}
                     avatarColor={selectedColor}
@@ -587,7 +588,7 @@ export default function NewAgentPage() {
                     <p className="text-xs font-medium text-muted-foreground">Name & Purpose</p>
                     <div className="mt-3 flex items-start gap-4">
                       <AgentIdentityAvatar
-                        agent={{ name: agentName, icon: selectedIcon, avatarColor: selectedColor, role: agentPurpose }}
+                        agent={{ name: agentName, icon: selectedIcon, avatarColor: selectedColor, role: agentPurpose, department: selectedDepartment }}
                         size="lg"
                         showStatusDot={false}
                       />

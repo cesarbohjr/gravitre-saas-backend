@@ -1,20 +1,21 @@
 "use client"
 
 import { useReducedMotion } from "framer-motion"
-import { initials, type RosterAgent } from "@/lib/agents-roster"
+import type { RosterAgent } from "@/lib/agents-roster"
+import { DEPARTMENT_ICONS } from "@/lib/department-icons"
 import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
 import { cn } from "@/lib/utils"
 
-/** Department identity dots (the same hues as the roster's department cards). */
+/** Department hues from the global --dept-* tokens (the roster's department cards use the same). */
 export const DEPT_DOT: Record<AgentDepartmentId, string> = {
-  sales: "#5b5bd6",
-  marketing: "#b8875a",
-  customer_success: "#3d6fd1",
-  operations: "#4a6a8e",
-  finance: "#2e8b57",
-  engineering: "#2f7d6d",
-  security: "#a3333d",
-  general: "#8a8a85",
+  sales: "var(--dept-sales)",
+  marketing: "var(--dept-marketing)",
+  customer_success: "var(--dept-customer_success)",
+  operations: "var(--dept-operations)",
+  finance: "var(--dept-finance)",
+  engineering: "var(--dept-engineering)",
+  security: "var(--dept-security)",
+  general: "var(--dept-general)",
 }
 
 /** Six seats around the council table: node, department label and "typing" bubble. */
@@ -139,9 +140,13 @@ export function CouncilPreview({ seats, className }: { seats: CouncilSeat[]; cla
               />
             </rect>
           ) : null}
-          <text y="5" textAnchor="middle" fontSize="14" fontWeight="600" className="ma-svg-ink">
-            {seat.agent ? initials(seat.agent.name) : "+"}
-          </text>
+          {seat.agent ? (
+            <SeatIcon department={seat.department} />
+          ) : (
+            <text y="5" textAnchor="middle" fontSize="14" fontWeight="600" className="ma-svg-ink">
+              +
+            </text>
+          )}
           {seat.agent ? (
             <circle
               cx="19"
@@ -161,7 +166,7 @@ export function CouncilPreview({ seats, className }: { seats: CouncilSeat[]; cla
       <g fontSize="11" className="ma-svg-text">
         {placed.map(({ seat, pos }) => (
           <text key={`l${seat.department}`} x={pos.label.x} y={pos.label.y} textAnchor={pos.label.anchor}>
-            <tspan fill={DEPT_DOT[seat.department]}>●</tspan> {seat.departmentLabel}
+            {seat.departmentLabel}
           </text>
         ))}
       </g>
@@ -212,4 +217,9 @@ export function CouncilPreview({ seats, className }: { seats: CouncilSeat[]; cla
       </text>
     </svg>
   )
+}
+
+function SeatIcon({ department }: { department: AgentDepartmentId }) {
+  const Icon = DEPARTMENT_ICONS[department] ?? DEPARTMENT_ICONS.general
+  return <Icon x={-11} y={-11} width={22} height={22} strokeWidth={1.9} className="dept-glyph" data-dept={department} aria-hidden />
 }

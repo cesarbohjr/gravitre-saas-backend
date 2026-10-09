@@ -20,6 +20,7 @@ import {
   type RosterAgent,
 } from "@/lib/agents-roster"
 import { cn } from "@/lib/utils"
+import { DepartmentGlyph } from "@/components/agents/department-icon"
 import { AgentAvatar, AppChips, GiveTaskLink, agentHref, newAgentHref } from "./agent-bits"
 
 type SortKey = "tasks" | "name"
@@ -331,7 +332,7 @@ export function RosterListView({
                 aria-pressed={dept === d.id}
                 onClick={() => setDept(d.id)}
               >
-                <span className="rs-ddot" />
+                <DepartmentGlyph department={d.id} size={13} />
                 {d.name} <b>{counts.get(d.id) ?? 0}</b>
               </button>
             ))}
@@ -473,7 +474,7 @@ export function RosterListView({
                     </td>
                     <td>
                       <span className={cn("rs-dept", `rs-d-${a.department}`)}>
-                        <span className="rs-ddot" />
+                        <DepartmentGlyph department={a.department} size={13} />
                         <select
                           aria-label={`Change department for ${a.name}`}
                           value={a.department}

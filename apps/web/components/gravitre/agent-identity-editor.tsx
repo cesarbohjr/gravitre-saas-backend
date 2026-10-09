@@ -165,7 +165,7 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
             Edit agent identity
           </DialogTitle>
           <DialogDescription>
-            Name, department, icon, color, and optional photo are shared
+            Name, department and optional photo are shared
             everywhere this agent appears.
           </DialogDescription>
         </DialogHeader>
@@ -222,7 +222,7 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
           <div className="rounded-xl border border-border p-4">
             <div className="mb-3 flex items-center gap-3">
               <AgentIdentityAvatar
-                agent={{ name, icon, avatarColor, avatarUrl }}
+                agent={{ name, icon, avatarColor, avatarUrl, department }}
                 size="lg"
               />
               <div className="min-w-0 flex-1">
@@ -280,6 +280,7 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
 
           {!avatarUrl ? (
             <AgentIdentityPicker
+              department={department}
               name={name.trim() || agent.name}
               icon={icon}
               avatarColor={avatarColor}
@@ -288,8 +289,8 @@ export function AgentIdentityEditor({ agent }: AgentIdentityEditorProps) {
             />
           ) : (
             <p className="text-xs text-muted-foreground">
-              Icon and color pickers are hidden while a custom photo is active.
-              Remove the photo to edit them.
+              The photo replaces the department icon while it is set. Remove
+              the photo to show the department icon again.
             </p>
           )}
         </fieldset>

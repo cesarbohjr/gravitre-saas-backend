@@ -1,13 +1,14 @@
 "use client"
 
 /**
- * Canonical agent identity renderer (Agents 4.0 Phase 1).
- * Compact symbol tile — no glow discs, no saturated orbs.
+ * Canonical agent identity renderer.
+ * Every agent is drawn with its department's icon on the department tint
+ * (lib/department-icons.ts); an uploaded photo still wins when one is set.
  * Preserves prior API so call sites upgrade by import alone.
  */
 
 import { cn } from "@/lib/utils"
-import { GravitreAgentIcon } from "@/components/agents/fleet-v4/gravitre-agent-icon"
+import { DepartmentIcon, type DepartmentIconSize } from "@/components/agents/department-icon"
 import { GravitreAgentStatusDot } from "@/components/agents/fleet-v4/gravitre-agent-status"
 import {
   resolveAgentIdentity,
@@ -16,16 +17,15 @@ import {
 } from "@/lib/agent-identity"
 import { resolveV4IdentityView } from "@/lib/agent-identity-bridge"
 import type { AgentStatus } from "@/types/api"
-import type { IdentitySize } from "@/components/agents/fleet-v4/types"
 
 export type AgentIdentityAvatarSize = "xs" | "sm" | "md" | "lg" | "xl" | "orb"
 
-const SIZE_TO_TILE: Record<AgentIdentityAvatarSize, IdentitySize> = {
-  xs: "sm",
+const SIZE_TO_TILE: Record<AgentIdentityAvatarSize, DepartmentIconSize> = {
+  xs: "xs",
   sm: "sm",
   md: "md",
   lg: "lg",
-  xl: "lg",
+  xl: "xl",
   /** Legacy orb size — now a large tile, not a 96px glow circle. */
   orb: "lg",
 }
@@ -98,14 +98,16 @@ export function AgentIdentityAvatar({
   }
 
   return (
-    <GravitreAgentIcon
-      icon={view.icon}
-      identityColor={view.identityColor}
+    <DepartmentIcon
+      department={agent?.department}
       size={SIZE_TO_TILE[size]}
-      runtimeState={view.runtimeState}
-      showStatusDot={showStatusDot && Boolean(view.runtimeState)}
-      elevated={size === "lg" || size === "xl" || size === "orb"}
-      className={cn(size === "xs" && FRAME.xs, size === "xl" && FRAME.xl, className)}
-    />
+      className={cn((size === "lg" || size === "xl" || size === "orb") && "shadow-[var(--np-shadow)]", className)}
+    >
+      {showStatusDot && view.runtimeState ? (
+        <span className="absolute -bottom-0.5 -right-0.5">
+          <GravitreAgentStatusDot state={view.runtimeState} />
+        </span>
+      ) : null}
+    </DepartmentIcon>
   )
 }

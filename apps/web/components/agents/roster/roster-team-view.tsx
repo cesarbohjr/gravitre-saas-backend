@@ -16,6 +16,7 @@ import {
   type RosterAgent,
 } from "@/lib/agents-roster"
 import { cn } from "@/lib/utils"
+import { DepartmentGlyph, DepartmentIcon } from "@/components/agents/department-icon"
 import {
   AgentAvatar,
   AppChips,
@@ -108,7 +109,7 @@ function DepartmentBand({ group, starId }: { group: DepartmentGroup; starId: str
         ) : null}
         <div className="rs-band-copy">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span className="rs-dsq" />
+            <DepartmentIcon department={meta.id} size="sm" />
             <h2 id={`dept-${meta.id}`}>{meta.name}</h2>
             <span className="rs-cnt">{agents.length}</span>
           </div>
@@ -368,7 +369,7 @@ export function RosterTeamView({
             aria-pressed={dept === g.meta.id}
             onClick={() => setDept(g.meta.id)}
           >
-            <span className="rs-ddot" />
+            <DepartmentGlyph department={g.meta.id} size={13} />
             {g.meta.name} <b>{g.agents.length}</b>
           </button>
         ))}
@@ -385,7 +386,7 @@ export function RosterTeamView({
             {showEmpty.map((meta) => (
               <div key={meta.id} className={cn("rs-emptydept", `rs-d-${meta.id}`)}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span className="rs-dsq" />
+                  <DepartmentIcon department={meta.id} size="xs" />
                   <strong style={{ fontWeight: 600 }}>{meta.name}</strong>
                   <span className="rs-cnt" style={{ marginLeft: "auto" }}>
                     0

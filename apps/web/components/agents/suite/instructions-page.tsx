@@ -11,7 +11,7 @@ import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { WsPage } from "@/components/workspace/ws-page"
-import { DEPT_DOT } from "@/components/agents/suite/council-preview"
+import { DepartmentGlyph } from "@/components/agents/department-icon"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -280,10 +280,13 @@ export function InstructionsPage() {
     }
   }
 
-  function scopeLabel(i: CustomInstruction): { label: string; dot: string } {
-    if (i.agent_id) return { label: i.agent_name ?? agentById.get(i.agent_id)?.name ?? "One agent", dot: ALL_DOT }
-    if (i.department) return { label: deptName(i.department), dot: DEPT_DOT[i.department as AgentDepartmentId] ?? ALL_DOT }
-    return { label: "All agents", dot: ALL_DOT }
+  function scopeLabel(i: CustomInstruction): { label: string; department: string | null } {
+    if (i.agent_id) {
+      const agent = agentById.get(i.agent_id)
+      return { label: i.agent_name ?? agent?.name ?? "One agent", department: agent?.department ?? null }
+    }
+    if (i.department) return { label: deptName(i.department), department: i.department }
+    return { label: "All agents", department: null }
   }
 
   return (
@@ -466,7 +469,7 @@ export function InstructionsPage() {
                     aria-pressed={scope === d.id}
                     onClick={() => setScope(d.id)}
                   >
-                    <span className="rs-ddot" style={{ background: DEPT_DOT[d.id] }} />
+                    <DepartmentGlyph department={d.id} size={13} />
                     {d.name}
                     <span className="c">{deptCounts.get(d.id) ?? 0}</span>
                   </button>
@@ -579,7 +582,11 @@ export function InstructionsPage() {
                 <div className="in-tpl-top">
                   <span className={cn("in-badge", t.kind)}>{t.kind === "guardrail" ? "Guardrail" : "Guidance"}</span>
                   <span className="in-scope">
-                    <span className="rs-ddot" style={{ background: t.scope === "all" ? ALL_DOT : DEPT_DOT[t.scope] }} />
+                    {t.scope === "all" ? (
+                      <span className="rs-ddot" style={{ background: ALL_DOT }} />
+                    ) : (
+                      <DepartmentGlyph department={t.scope} size={13} />
+                    )}
                     {t.scope === "all" ? "All agents" : deptName(t.scope)}
                   </span>
                 </div>
@@ -654,7 +661,11 @@ export function InstructionsPage() {
                         <span className={cn("in-badge", k)}>{k === "guardrail" ? "Guardrail" : "Guidance"}</span>
                         <b>{i.name}</b>
                         <span className="in-scope">
-                          <span className="rs-ddot" style={{ background: s.dot }} />
+                          {s.department ? (
+                            <DepartmentGlyph department={s.department} size={12} />
+                          ) : (
+                            <span className="rs-ddot" style={{ background: ALL_DOT }} />
+                          )}
                           {s.label}
                         </span>
                         {!i.is_active ? <span className="in-badge off">Off</span> : null}

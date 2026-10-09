@@ -16,7 +16,7 @@ import { WsPage } from "@/components/workspace/ws-page"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { StartSwarmDialog, type SwarmStartPreset } from "@/components/agent-swarm/start-swarm-dialog"
 import { SwarmRunDetailPanel } from "@/components/agent-swarm/swarm-run-detail-panel"
-import { CouncilPreview, DEPT_DOT, councilSeats } from "@/components/agents/suite/council-preview"
+import { CouncilPreview, councilSeats } from "@/components/agents/suite/council-preview"
 import "@/components/agents/roster/roster.css"
 import "@/components/agents/suite/agents-suite.css"
 import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
@@ -29,6 +29,7 @@ import { formatSwarmReadableText } from "@/lib/swarm-result-format"
 import { DEPARTMENT_BY_ID, normalizeAgentsPayload, toRosterAgent, type RosterAgent } from "@/lib/agents-roster"
 import type { AgentSwarmRun } from "@/types/api"
 import { cn } from "@/lib/utils"
+import { DepartmentGlyph } from "@/components/agents/department-icon"
 
 const ACTIVE = new Set(["pending", "running", "aggregating"])
 
@@ -490,7 +491,7 @@ function MultiAgentRunContent() {
               <img src="/illustrations/agents-council.svg" alt="" />
             </div>
             <div className="as-h2-row">
-              <span className="as-sq" style={{ background: "#3d6fd1" }} />
+              <span className="as-sq" style={{ background: "var(--dept-customer_success)" }} />
               <h2 id="runs-heading" className="as-h2">
                 Recent runs
               </h2>
@@ -550,7 +551,7 @@ function MultiAgentRunContent() {
                           <div className="ma-tags">
                             {s.teams.map((t) => (
                               <span key={t} className="as-tag">
-                                <span className="rs-ddot" style={{ background: DEPT_DOT[t], width: 7, height: 7 }} />
+                                <DepartmentGlyph department={t} size={12} />
                                 {deptName(t)}
                               </span>
                             ))}

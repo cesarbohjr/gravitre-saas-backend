@@ -4,6 +4,7 @@ import type { ComponentType, SVGProps } from "react"
 import { cn } from "@/lib/utils"
 import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import { ROLE_ICON_REGISTRY, suggestRoleIcon } from "@/components/agents/fleet-v4/identity-tokens"
+import { DEPARTMENT_ICONS, ROLE_DEPARTMENT, departmentIdFor } from "@/lib/department-icons"
 import type { AgentRoleIconId } from "@/components/agents/fleet-v4/types"
 
 /**
@@ -157,7 +158,10 @@ export function NodeCategoryBar({ color }: { color: string }) {
   )
 }
 
-/** Canonical role for an agent step, from its configured role then its name. */
+/**
+ * Mark for an agent step: the department's icon. Uses the step's configured
+ * department, else the department its role or name points to.
+ */
 export function agentStepRole(config: Record<string, unknown> | undefined, name: string): {
   id: AgentRoleIconId
   label: string
@@ -167,7 +171,8 @@ export function agentStepRole(config: Record<string, unknown> | undefined, name:
   const department = typeof config?.department === "string" ? config.department : ""
   const id = suggestRoleIcon(roleText, name, department)
   const entry = ROLE_ICON_REGISTRY[id]
-  return { id, label: roleText || entry.label, Icon: entry.Icon as GlyphComponent }
+  const dept = department ? departmentIdFor(department) : ROLE_DEPARTMENT[id]
+  return { id, label: roleText || entry.label, Icon: DEPARTMENT_ICONS[dept] as GlyphComponent }
 }
 
 /** Default rendered footprint per node family; measured sizes override these when available. */
