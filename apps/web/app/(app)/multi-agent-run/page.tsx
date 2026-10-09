@@ -1,63 +1,94 @@
 "use client"
 
-import {
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+// Agents > Multi-agent ("Gravitre Agents" design): council runs over real agents and runs.
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
-import useSWR from "swr"
 import Link from "next/link"
+import useSWR from "swr"
 import { formatDistanceToNow } from "date-fns"
-import { motion, useReducedMotion } from "framer-motion"
 import { toast } from "sonner"
-import { ChevronRight, Network, Plus, RefreshCw } from "lucide-react"
+import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
-import { Button } from "@/components/ui/button"
 import { SelectionInspector } from "@/components/gravitre/selection-inspector"
-import { TYPE } from "@/lib/design-system"
-import {
-  GravitreMetric,
-  GravitrePageHeader,
-} from "@/components/gravitre/nodus-product"
-import { MultiAgentRunOverview } from "@/components/gravitre/multi-agent-run-overview"
+import { WsPage } from "@/components/workspace/ws-page"
+import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
+import { StartSwarmDialog, type SwarmStartPreset } from "@/components/agent-swarm/start-swarm-dialog"
+import { SwarmRunDetailPanel } from "@/components/agent-swarm/swarm-run-detail-panel"
+import { CouncilPreview, DEPT_DOT, councilSeats } from "@/components/agents/suite/council-preview"
+import "@/components/agents/roster/roster.css"
+import "@/components/agents/suite/agents-suite.css"
+import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
 import { agentSwarmApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { useAuth } from "@/lib/auth-context"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { ensureSelectedOrg } from "@/lib/org-context"
 import { formatSwarmReadableText } from "@/lib/swarm-result-format"
+import { DEPARTMENT_BY_ID, normalizeAgentsPayload, toRosterAgent, type RosterAgent } from "@/lib/agents-roster"
 import type { AgentSwarmRun } from "@/types/api"
-import { StartSwarmDialog } from "@/components/agent-swarm/start-swarm-dialog"
-import { SwarmRunDetailPanel } from "@/components/agent-swarm/swarm-run-detail-panel"
-import { SwarmRunStatusBadge } from "@/components/agent-swarm/swarm-status-badge"
-import {
-  isSwarmExecutionUnverified,
-  SwarmVerificationLabel,
-} from "@/components/agent-swarm/swarm-verification-label"
-import { SwarmConvergenceDiagram } from "@/components/agent-swarm/swarm-convergence-diagram"
-import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { cn } from "@/lib/utils"
 
 const ACTIVE = new Set(["pending", "running", "aggregating"])
 
-function formatRelative(iso: string | null | undefined) {
-  if (!iso) return "Not reported"
+type RunFilter = "all" | "active" | "completed" | "review"
+
+const FILTERS: Array<{ id: RunFilter; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "active", label: "Active" },
+  { id: "completed", label: "Completed" },
+  { id: "review", label: "Needs review" },
+]
+
+/** Starter questions: who should sit on the council for each. */
+const STARTERS: Array<{ text: string; teams: AgentDepartmentId[] }> = [
+  { text: "Which accounts should Sales prioritise this week?", teams: ["sales", "customer_success", "finance"] },
+  { text: "Where is marketing spend not paying back?", teams: ["marketing", "finance", "sales"] },
+  { text: "Which customers are at risk this quarter?", teams: ["customer_success", "sales", "security"] },
+  { text: "Are we ready to close the month?", teams: ["finance", "operations", "general"] },
+]
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: "Starting",
+  running: "Talking it through",
+  aggregating: "Agreeing",
+  completed: "Recommended",
+  failed: "Needs review",
+  cancelled: "Stopped",
+}
+
+function deptName(id: AgentDepartmentId) {
+  return DEPARTMENT_BY_ID.get(id)?.name ?? id
+}
+
+function relative(iso: string | null | undefined) {
+  if (!iso) return null
   try {
     return formatDistanceToNow(new Date(iso), { addSuffix: true })
   } catch {
-    return "Not reported"
+    return null
   }
+}
+
+function needsReview(run: AgentSwarmRun) {
+  return run.status === "failed"
+}
+
+function CouncilIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="8" r="3" />
+      <circle cx="5" cy="11" r="2" />
+      <circle cx="19" cy="11" r="2" />
+      <path d="M7 19a5 5 0 0 1 10 0M2 18a3 3 0 0 1 4-2.8M22 18a3 3 0 0 0-4-2.8" />
+    </svg>
+  )
 }
 
 export default function MultiAgentRunPage() {
   return (
-    <AppShell title="Multi-Agent Run">
+    <AppShell title="Multi-agent runs">
       <Suspense fallback={null}>
         <MultiAgentRunContent />
       </Suspense>
@@ -74,16 +105,16 @@ function MultiAgentRunContent() {
   const [orgId, setOrgId] = useState<string | null>(null)
   const detailBusy = useRef(false)
   const [startOpen, setStartOpen] = useState(false)
-  const [selectedId, setSelectedId] = useState<string | null>(() =>
-    searchParams.get("runId"),
-  )
+  const [preset, setPreset] = useState<SwarmStartPreset | null>(null)
+  const [pick, setPick] = useState(0)
+  const [filter, setFilter] = useState<RunFilter>("all")
+  const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get("runId"))
+
   const selectRun = useCallback(
     (id: string) => {
       if (detailBusy.current) return
       setSelectedId(id)
-      router.replace(`${APP_ROUTES.multiAgentRun}?runId=${id}`, {
-        scroll: false,
-      })
+      router.replace(`${APP_ROUTES.multiAgentRun}?runId=${id}`, { scroll: false })
     },
     [router],
   )
@@ -100,13 +131,11 @@ function MultiAgentRunContent() {
         .then((id) => {
           if (!cancelled) {
             setOrgId(id)
-            if (!id)
-              setOrgError("Workspace membership is required to load runs.")
+            if (!id) setOrgError("Workspace membership is required to load runs.")
           }
         })
         .catch(() => {
-          if (!cancelled)
-            setOrgError("Could not load your workspace. Try again.")
+          if (!cancelled) setOrgError("Could not load your workspace. Try again.")
         })
     return () => {
       cancelled = true
@@ -114,54 +143,91 @@ function MultiAgentRunContent() {
   }, [user, orgAttempt])
 
   useEffect(() => {
-    const runId = searchParams.get("runId")
-    setSelectedId(runId)
+    setSelectedId(searchParams.get("runId"))
   }, [searchParams])
 
   const swrKey = orgId ? `agent-swarm/runs:${orgId}` : null
-  const { data, error, isLoading, isValidating, mutate } = useSWR(
-    swrKey,
-    () => agentSwarmApi.list({ limit: 30 }),
-    {
-      refreshInterval: (latest) => {
-        const runs = latest?.runs ?? []
-        return runs.some((r) => ACTIVE.has(r.status)) ? 5000 : 0
-      },
-    },
-  )
+  const { data, error, isLoading, isValidating, mutate } = useSWR(swrKey, () => agentSwarmApi.list({ limit: 30 }), {
+    refreshInterval: (latest) => ((latest?.runs ?? []).some((r) => ACTIVE.has(r.status)) ? 5000 : 0),
+  })
+  const {
+    data: agentsData,
+    error: agentsError,
+    mutate: mutateAgents,
+  } = useSWR(user ? "/api/agents" : null, apiFetcher, { dedupingInterval: 2000 })
 
   const runs = useMemo(() => data?.runs ?? [], [data])
+  const agents: RosterAgent[] = useMemo(
+    () => normalizeAgentsPayload(agentsData).map((raw) => toRosterAgent(raw, undefined)),
+    [agentsData],
+  )
+  const ready = useMemo(() => agents.filter((a) => a.state !== "blocked" && a.state !== "not_set_up"), [agents])
 
   useEffect(() => {
     for (const run of runs) {
       const previous = prevStatusRef.current.get(run.id)
       prevStatusRef.current.set(run.id, run.status)
-      if (
-        run.status === "completed" &&
-        previous &&
-        previous !== "completed" &&
-        !notifiedRef.current.has(run.id)
-      ) {
+      if (run.status === "completed" && previous && previous !== "completed" && !notifiedRef.current.has(run.id)) {
         notifiedRef.current.add(run.id)
         const summary = formatSwarmReadableText(run.finalRecommendation, 140)
-        toast.success("Multi-agent run complete", {
+        toast.success("The council has a recommendation", {
           description: summary || run.objective,
-          action: {
-            label: "View results",
-            onClick: () => selectRun(run.id),
-          },
+          action: { label: "View", onClick: () => selectRun(run.id) },
         })
       }
     }
   }, [runs, selectRun])
 
-  const selectedRun = runs.find(run => run.id === selectedId)
-  usePublishGravitreAISelection(selectedRun ? { kind: "multi-agent-run", id: selectedRun.id, label: selectedRun.objective } : null)
-  const stats = useMemo(() => {
-    const active = runs.filter((r) => ACTIVE.has(r.status)).length
-    const completed = runs.filter((r) => r.status === "completed").length
-    return { active, completed, total: runs.length }
-  }, [runs])
+  const selectedRun = runs.find((run) => run.id === selectedId)
+  usePublishGravitreAISelection(
+    selectedRun ? { kind: "multi-agent-run", id: selectedRun.id, label: selectedRun.objective } : null,
+  )
+
+  const stats = useMemo(
+    () => ({
+      active: runs.filter((r) => ACTIVE.has(r.status)).length,
+      completed: runs.filter((r) => r.status === "completed").length,
+      review: runs.filter(needsReview).length,
+    }),
+    [runs],
+  )
+  const latest = useMemo(
+    () => runs.find((r) => r.status === "completed" && (r.finalRecommendation ?? "").trim()) ?? null,
+    [runs],
+  )
+
+  const latestPill =
+    stats.active > 0 ? `${stats.active} running` : latest ? "Ready" : stats.review > 0 ? "Needs review" : "Waiting"
+
+  const labels = useMemo(() => new Map(agents.map((a) => [a.department, a.departmentLabel] as const)), [agents])
+  const starter = STARTERS[pick]
+  const seats = useMemo(() => councilSeats(agents, starter.teams, labels), [agents, starter, labels])
+  const councilSize = useMemo(() => new Set(ready.map((a) => a.department)).size, [ready])
+
+  const visibleRuns = useMemo(() => {
+    if (filter === "active") return runs.filter((r) => ACTIVE.has(r.status))
+    if (filter === "completed") return runs.filter((r) => r.status === "completed")
+    if (filter === "review") return runs.filter(needsReview)
+    return runs
+  }, [runs, filter])
+
+  function openStart(next: SwarmStartPreset | null) {
+    setPreset(next)
+    setStartOpen(true)
+  }
+
+  /** One subtask per department on the question, each given to that department's best ready agent. */
+  function startStarter(index: number) {
+    const s = STARTERS[index]
+    const picks = councilSeats(agents, s.teams, labels).filter((seat) => seat.involved && seat.agent)
+    openStart({
+      objective: s.text,
+      subtasks: picks.map((seat) => ({
+        agentId: seat.agent!.id,
+        task: `From the ${seat.departmentLabel} point of view: ${s.text} Share the evidence behind your answer.`,
+      })),
+    })
+  }
 
   function handleStarted(id: string) {
     void mutate()
@@ -174,68 +240,151 @@ function MultiAgentRunContent() {
     router.replace(APP_ROUTES.multiAgentRun, { scroll: false })
   }
 
+  const refresh = () => {
+    void mutate()
+    void mutateAgents()
+  }
+
+  const loadingRuns = !orgId || (isLoading && runs.length === 0)
+
   return (
-    <div className="relative min-h-full" data-composition="operate">
-      <div className="relative z-10 mx-auto max-w-6xl space-y-6 p-4 pb-24 sm:p-6 sm:pb-24">
+    <WsPage>
+      <div className="rs-tabs">
         <AgentsHubTabs active="multi-agent" />
-        <GravitrePageHeader
-          title="Multi-Agent Run"
-          description="Coordinate multiple agents on parallel subtasks, then merge their results into one recommendation."
-          icon={<Network className="h-5 w-5" />}
-          className="border-0 px-0"
-          actions={
-            <>
-              {selectedRun ? <AskGravitreSummonButton label="Review coordinated work" prompt="Review the selected multi-agent run’s reported contributions, disagreements and final recommendation." /> : null}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void mutate()}
-                disabled={isValidating || !orgId}
-                className="min-h-11"
-              >
-                <RefreshCw
-                  className={cn(
-                    "mr-1 h-4 w-4",
-                    isValidating && "animate-spin motion-reduce:animate-none",
-                  )}
-                />
-                Refresh
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => setStartOpen(true)}
-                className="min-h-11 gap-1"
-                disabled={!orgId}
-              >
-                <Plus className="h-4 w-4" />
-                Start multi-agent run
-              </Button>
-            </>
-          }
-        />
+      </div>
 
-        <MultiAgentRunOverview
-          activeRuns={data ? stats.active : null}
-          completedRuns={data ? stats.completed : null}
-          totalRuns={data ? stats.total : null}
-        />
+      <div style={{ display: "flex", flexDirection: "column", gap: 24, paddingTop: 24 }}>
+        <div className="ma-top">
+          <section aria-labelledby="ma-heading" className="as-panel ma-hero">
+            <div className="ma-hero-head">
+              <div>
+                <h1 id="ma-heading">Multi-agent runs</h1>
+                <p>Put several agents on one question. They talk it through and hand you one recommendation.</p>
+              </div>
+              <div className="ma-actions">
+                {selectedRun ? (
+                  <AskGravitreSummonButton
+                    className="rs-ask"
+                    label="Review this run"
+                    prompt="Review the selected multi-agent run’s reported contributions, disagreements and final recommendation."
+                  />
+                ) : null}
+                <button type="button" className="gv-btn outline" onClick={refresh} disabled={!orgId || isValidating}>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                    className={cn(isValidating && "animate-spin motion-reduce:animate-none")}
+                  >
+                    <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
+                    <path d="M21 3v5h-5" />
+                  </svg>
+                  Refresh
+                </button>
+                <button type="button" className="gv-btn dark" onClick={() => openStart(null)} disabled={!orgId}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  Start a council run
+                </button>
+              </div>
+            </div>
+            <div className="ma-stats">
+              <Link href="/agents?view=list" className="ma-stat ok">
+                <span className="k">
+                  <i />
+                  Ready to join
+                </span>
+                <span className="v">{agentsData ? ready.length : "–"}</span>
+              </Link>
+              <button type="button" className="ma-stat" aria-pressed={filter === "active"} onClick={() => setFilter("active")}>
+                <span className="k">
+                  <i />
+                  Active runs
+                </span>
+                <span className="v">{data ? stats.active : "–"}</span>
+              </button>
+              <button type="button" className="ma-stat" aria-pressed={filter === "completed"} onClick={() => setFilter("completed")}>
+                <span className="k">
+                  <i />
+                  Completed
+                </span>
+                <span className="v">
+                  {data ? stats.completed : "–"}
+                  <small>last 30</small>
+                </span>
+              </button>
+              <button
+                type="button"
+                className={cn("ma-stat", stats.review > 0 && "warn")}
+                aria-pressed={filter === "review"}
+                onClick={() => setFilter("review")}
+              >
+                <span className="k">
+                  <i className={stats.review > 0 ? "warn" : "idle"} />
+                  Needs you
+                </span>
+                <span className="v">
+                  {data ? stats.review : "–"}
+                  <small>{stats.review > 0 ? "to review" : "All clear"}</small>
+                </span>
+              </button>
+            </div>
+          </section>
 
-        <section className="grid max-w-lg grid-cols-2 gap-[var(--np-kpi-gap)] sm:grid-cols-3">
-          <GravitreMetric
-            label="Active"
-            hint="In the latest 30 runs"
-            value={data ? stats.active : "Not reported"}
-          />
-          <GravitreMetric
-            label="Completed"
-            hint="In the latest 30 runs"
-            value={data ? stats.completed : "Not reported"}
-          />
-          <GravitreMetric
-            label="Recent runs"
-            value={data ? stats.total : "Not reported"}
-          />
-        </section>
+          <section aria-labelledby="latest-heading" className="as-dark ma-latest">
+            <div className="ma-latest-head">
+              <span className="eb">Latest recommendation</span>
+              <span className="ma-latest-pill">
+                <i />
+                {data ? latestPill : "Loading"}
+              </span>
+            </div>
+            <div className="ma-latest-body">
+              <span className="ma-latest-ic">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
+                  <path d="M12 3l9 5-9 5-9-5z" />
+                  <path d="M3 13l9 5 9-5" />
+                </svg>
+              </span>
+              {latest ? (
+                <>
+                  <h2 id="latest-heading">{latest.objective}</h2>
+                  <p>{formatSwarmReadableText(latest.finalRecommendation, 260)}</p>
+                  <div className="meta">
+                    {latest.finalConfidence != null ? <span>{Math.round(latest.finalConfidence * 100)}% confidence</span> : null}
+                    {relative(latest.completedAt ?? latest.updatedAt) ? <span>{relative(latest.completedAt ?? latest.updatedAt)}</span> : null}
+                    <span>Advice only. Actions still wait for your approval.</span>
+                  </div>
+                  <div className="ma-actions">
+                    <button type="button" className="as-gbtn" onClick={() => selectRun(latest.id)}>
+                      Open recommendation
+                    </button>
+                    <button type="button" className="as-obtn" onClick={() => openStart(null)} disabled={!orgId}>
+                      Start another run
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 id="latest-heading">No council runs yet</h2>
+                  <p>When your agents agree on their first recommendation, it will be featured right here.</p>
+                  <div className="ma-actions">
+                    <button type="button" className="as-gbtn" onClick={() => startStarter(pick)} disabled={!orgId}>
+                      Start your first run
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+        </div>
 
         {orgError ? (
           <WorkSectionErrorCard
@@ -252,165 +401,251 @@ function MultiAgentRunContent() {
             onRetry={() => void mutate()}
           />
         ) : null}
-        {!orgId ? (
-          <p className="px-1 text-sm text-muted-foreground">
-            {orgError ? "Run history is unavailable." : "Loading workspace…"}
-          </p>
-        ) : (
-          <div
-            className={cn(
-              "grid gap-6",
-              selectedId && "lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]",
-            )}
-          >
-            <section className="space-y-2">
-              <h2 className={TYPE.eyebrow}>Recent runs</h2>
-              {isLoading && runs.length === 0 ? (
-                <div className="rounded-xl border border-border/70 bg-card/40 px-6 py-10 text-center">
-                  <RefreshCw className="mx-auto mb-3 h-5 w-5 animate-spin text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Loading runs…</p>
-                </div>
-              ) : runs.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border/80 bg-gradient-to-b from-card/60 to-card/20 p-8 text-center">
-                  <SwarmConvergenceDiagram variant="hero" className="mb-5" />
-                  <p className="text-sm font-medium text-foreground">
-                    No multi-agent runs yet
-                  </p>
-                  <p className="mx-auto mt-1 mb-4 max-w-sm text-xs text-muted-foreground">
-                    Split one objective across parallel agents, then merge their
-                    work into a single council recommendation.
-                  </p>
-                  <Button
-                    size="sm"
-                    className="min-h-11"
-                    onClick={() => setStartOpen(true)}
-                  >
-                    Start your first run
-                  </Button>
-                </div>
-              ) : (
-                <ul className="space-y-2">
-                  {runs.map((run, index) => (
-                    <SwarmRunRow
-                      key={run.id}
-                      run={run}
-                      index={index}
-                      selected={selectedId === run.id}
-                      onSelect={() =>
-                        selectedId === run.id
-                          ? handleCloseDetail()
-                          : selectRun(run.id)
-                      }
-                    />
-                  ))}
-                </ul>
-              )}
-            </section>
+        {agentsError ? (
+          <WorkSectionErrorCard
+            title="Couldn't load your agents"
+            message="The council preview needs your roster. Try again."
+            error={agentsError}
+            onRetry={() => void mutateAgents()}
+          />
+        ) : null}
 
-            <SelectionInspector
-              open={Boolean(selectedId)}
-              onOpenChange={(open) => {
-                if (!open) handleCloseDetail()
-              }}
-              title="Multi-agent run"
-              description="Subtasks, council evidence and execution controls."
+        <section aria-labelledby="council-heading" className="as-panel as-split">
+          <div className="as-split-side">
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="as-h2-row">
+                <span className="as-sq" style={{ background: "#2e9e5b" }} />
+                <h2 id="council-heading" className="as-h2">
+                  Council
+                </h2>
+                <span className="n">{agentsData ? councilSize : ""}</span>
+              </div>
+              <p className="as-copy">
+                Agents from different departments split one question, talk it through and agree on one recommendation.
+              </p>
+            </div>
+            <ol className="ma-steps">
+              {[
+                ["Ask", "You set one business question."],
+                ["Talk it through", "Agents message each other and share findings."],
+                ["Agree", "The council weighs evidence and notes dissent."],
+                ["Recommend", "One answer, with the sources behind it."],
+              ].map(([title, body], i) => (
+                <li key={title}>
+                  <span className="num">{i + 1}</span>
+                  <span>
+                    <b>{title}</b>
+                    <span>{body}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <div className="as-note">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gv-amber-text)" strokeWidth="2" strokeLinecap="round" aria-hidden style={{ flex: "none", marginTop: 2 }}>
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 8v5M12 16h.01" />
+              </svg>
+              <span>
+                A recommendation is advice, not proof that anything was done. Actions still wait for your approval, and your{" "}
+                <Link href={APP_ROUTES.training}>guardrails</Link> apply inside every run.
+              </span>
+            </div>
+            <button
+              type="button"
+              className="gv-btn dark"
+              style={{ alignSelf: "flex-start", marginTop: "auto" }}
+              onClick={() => openStart(null)}
+              disabled={!orgId}
             >
-              {selectedId ? (
-                <SwarmRunDetailPanel
-                  key={selectedId}
-                  swarmRunId={selectedId}
-                  hideClose
-                  onBusyChange={(busy) => {
-                    detailBusy.current = busy
-                  }}
-                  onClose={handleCloseDetail}
-                  onMutateList={() => void mutate()}
-                />
-              ) : null}
-            </SelectionInspector>
+              Give the council a question
+            </button>
           </div>
-        )}
+          <div className="as-split-main">
+            <div className="ma-preview-head">
+              <span className="ma-live">
+                <i />
+                Live preview
+              </span>
+              <span className="ma-objective" title={starter.text}>
+                {starter.text}
+              </span>
+            </div>
+            <div className="ma-stage">
+              <div>
+                <CouncilPreview seats={seats} />
+              </div>
+            </div>
+            {agentsData && agents.length === 0 ? (
+              <p className="as-copy">
+                You have no agents yet. <Link href="/agents/new">Create one</Link> to seat it on the council.
+              </p>
+            ) : null}
+          </div>
+        </section>
 
-        <p className="text-xs text-muted-foreground">
-          Manage individual agents on{" "}
-          <Link
-            href={APP_ROUTES.agents}
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            AI Team
-          </Link>
-          .
-        </p>
+        <section aria-labelledby="runs-heading" className="as-panel as-split">
+          <div className="as-split-side" style={{ gap: 14 }}>
+            <div className="ma-runs-art">
+              {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
+              <img src="/illustrations/agents-council.svg" alt="" />
+            </div>
+            <div className="as-h2-row">
+              <span className="as-sq" style={{ background: "#3d6fd1" }} />
+              <h2 id="runs-heading" className="as-h2">
+                Recent runs
+              </h2>
+              <span className="n">{data ? runs.length : ""}</span>
+            </div>
+            <p className="as-copy">
+              {runs.length === 0
+                ? "Nothing yet. Preview a starter question in the council above, then run it."
+                : "Your latest 30 council runs. Open one to see each agent's part, the evidence and the recommendation."}
+            </p>
+            <div role="group" aria-label="Filter runs" className="as-filter">
+              {FILTERS.map((f) => (
+                <button key={f.id} type="button" aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="as-split-main" style={{ padding: 20 }}>
+            {loadingRuns && !orgError ? (
+              <div className="ma-cards" aria-busy="true" aria-label="Loading runs">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <div key={i} className="gv-skel as-skel-card" />
+                ))}
+              </div>
+            ) : (
+              <>
+                {visibleRuns.length > 0 ? (
+                  <div className="ma-cards">
+                    {visibleRuns.map((run) => (
+                      <RunCard
+                        key={run.id}
+                        run={run}
+                        selected={run.id === selectedId}
+                        onSelect={() => (selectedId === run.id ? handleCloseDetail() : selectRun(run.id))}
+                      />
+                    ))}
+                  </div>
+                ) : runs.length > 0 ? (
+                  <p className="as-copy">No runs match this filter.</p>
+                ) : null}
+                {filter === "all" ? (
+                  <>
+                    {runs.length > 0 ? <p className="ma-sub">Starter questions</p> : null}
+                    <div className="ma-cards">
+                      {STARTERS.map((s, i) => (
+                        <article key={s.text} className="ma-card">
+                          <div className="ma-card-head">
+                            <div className="ma-card-ic">
+                              <CouncilIcon />
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                              <span className="ma-card-title">{s.text}</span>
+                              <span className="ma-card-sub">{s.teams.length} agents</span>
+                            </div>
+                          </div>
+                          <div className="ma-tags">
+                            {s.teams.map((t) => (
+                              <span key={t} className="as-tag">
+                                <span className="rs-ddot" style={{ background: DEPT_DOT[t], width: 7, height: 7 }} />
+                                {deptName(t)}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="ma-card-foot">
+                            {i === pick ? (
+                              <span className="ma-showing">
+                                <i />
+                                Showing in preview
+                              </span>
+                            ) : (
+                              <button type="button" className="ma-preview-link" onClick={() => setPick(i)}>
+                                Preview
+                              </button>
+                            )}
+                            <button type="button" className="as-gbtn sm" onClick={() => startStarter(i)} disabled={!orgId}>
+                              Run this
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </>
+                ) : null}
+              </>
+            )}
+          </div>
+        </section>
       </div>
+
+      <SelectionInspector
+        open={Boolean(selectedId)}
+        onOpenChange={(open) => {
+          if (!open) handleCloseDetail()
+        }}
+        title="Multi-agent run"
+        description="Subtasks, council evidence and execution controls."
+      >
+        {selectedId ? (
+          <SwarmRunDetailPanel
+            key={selectedId}
+            swarmRunId={selectedId}
+            hideClose
+            onBusyChange={(busy) => {
+              detailBusy.current = busy
+            }}
+            onClose={handleCloseDetail}
+            onMutateList={() => void mutate()}
+          />
+        ) : null}
+      </SelectionInspector>
 
       <StartSwarmDialog
         open={startOpen}
-        onOpenChange={setStartOpen}
+        onOpenChange={(open) => {
+          setStartOpen(open)
+          if (!open) setPreset(null)
+        }}
+        preset={preset}
         onStarted={handleStarted}
       />
-    </div>
+    </WsPage>
   )
 }
 
-function SwarmRunRow({
-  run,
-  index,
-  selected,
-  onSelect,
-}: {
-  run: AgentSwarmRun
-  index: number
-  selected: boolean
-  onSelect: () => void
-}) {
-  const reduced = useReducedMotion()
-  const preview = run.finalRecommendation
-    ? formatSwarmReadableText(run.finalRecommendation, 120)
-    : null
-
+function RunCard({ run, selected, onSelect }: { run: AgentSwarmRun; selected: boolean; onSelect: () => void }) {
+  const preview = run.finalRecommendation ? formatSwarmReadableText(run.finalRecommendation, 160) : null
+  const when = relative(run.completedAt ?? run.createdAt)
+  const active = ACTIVE.has(run.status)
+  const tone = run.status === "failed" ? "warn" : run.status === "cancelled" ? "idle" : ""
+  const agents = run.subtasks?.length ?? 0
   return (
-    <motion.li
-      initial={reduced ? false : { opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: reduced ? 0 : 0.18,
-        delay: reduced ? 0 : Math.min(index, 5) * 0.02,
-      }}
-    >
-      <button
-        type="button"
-        aria-pressed={selected}
-        onClick={onSelect}
-        className={cn(
-          "min-h-11 w-full border-b border-border px-3 py-4 text-left transition-colors",
-          selected
-            ? "border-l-2 border-l-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]"
-            : "bg-transparent hover:bg-muted/30",
-        )}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <SwarmRunStatusBadge status={run.status} />
-              <span className="text-xs text-muted-foreground">
-                {formatRelative(run.createdAt)}
-              </span>
-            </div>
-            <p className="line-clamp-2 font-medium">{run.objective}</p>
-            {preview ? (
-              <div className="flex flex-wrap items-center gap-2">
-                {isSwarmExecutionUnverified(run.executionVerified) ? (
-                  <SwarmVerificationLabel compact />
-                ) : null}
-                <p className="line-clamp-1 text-xs text-muted-foreground">
-                  {preview}
-                </p>
-              </div>
-            ) : null}
-          </div>
-          <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+    <button type="button" className="ma-card" aria-pressed={selected} onClick={onSelect}>
+      <div className="ma-card-head">
+        <div className={cn("ma-card-ic", tone)}>
+          <CouncilIcon />
         </div>
-      </button>
-    </motion.li>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+          <span className="ma-card-title">{run.objective}</span>
+          <span className="ma-card-sub">
+            {[agents > 0 ? `${agents} agents` : null, when].filter(Boolean).join(" · ") || "Not reported"}
+          </span>
+        </div>
+      </div>
+      {preview ? (
+        <p className="ma-card-body">{preview}</p>
+      ) : run.status === "failed" && run.errorMessage ? (
+        <p className="ma-card-body">{run.errorMessage}</p>
+      ) : null}
+      <div className="ma-card-foot">
+        <span className={cn("gv-pill", run.status === "completed" ? "brand" : run.status === "failed" ? "red" : active ? "blue" : "neutral")}>
+          {STATUS_LABEL[run.status] ?? "Not reported"}
+        </span>
+        <span className="ma-card-sub">Open</span>
+      </div>
+    </button>
   )
 }

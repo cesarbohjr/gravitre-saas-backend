@@ -15,6 +15,7 @@ from app.services.swarm_coordinator_service import (
     _swarm_run_execution_verified,
     aggregate_swarm_run,
     cancel_swarm_run,
+    list_swarm_runs,
     run_swarm_subtask_job,
     start_swarm,
 )
@@ -491,3 +492,60 @@ async def test_run_swarm_subtask_job_uses_execution_core(mock_client, mock_resol
     call_kwargs = mock_intel_cls.return_value.execute_task.await_args.kwargs
     assert call_kwargs["parameters"]["surface"] == "swarm"
     assert call_kwargs["parameters"]["subtask_spec"]["scopedTools"][0]["connectorType"] == "hubspot"
+
+
+def _swarm_row(run_id: str) -> dict:
+    return {
+        "id": run_id,
+        "org_id": "org-1",
+        "status": "completed",
+        "objective": f"Question {run_id}",
+        "decision_method": "majority_vote",
+        "created_at": "2026-10-09T00:00:00+00:00",
+        "updated_at": "2026-10-09T00:00:00+00:00",
+    }
+
+
+def _subtask_row(sub_id: str, run_id: str, agent_id: str, order: int) -> dict:
+    return {
+        "id": sub_id,
+        "swarm_run_id": run_id,
+        "agent_id": agent_id,
+        "task_prompt": "Weigh in",
+        "status": "completed",
+        "sort_order": order,
+        "scoped_tools": [],
+    }
+
+
+def test_list_swarm_runs_includes_each_runs_participants_in_one_read():
+    runs = _table([_swarm_row("run-1"), _swarm_row("run-2")])
+    subtasks_table = _table(
+        [
+            _subtask_row("s1", "run-1", "agent-a", 0),
+            _subtask_row("s2", "run-1", "agent-b", 1),
+            _subtask_row("s3", "run-2", "agent-c", 0),
+        ]
+    )
+    subtasks_table.in_.return_value = subtasks_table
+    client = MagicMock()
+    client.table.side_effect = lambda name: runs if name == "agent_swarm_runs" else subtasks_table
+
+    result = list_swarm_runs(client, "org-1", limit=30)
+
+    assert [len(r["subtasks"]) for r in result] == [2, 1]
+    assert [s["agentId"] for s in result[0]["subtasks"]] == ["agent-a", "agent-b"]
+    subtasks_table.in_.assert_called_once_with("swarm_run_id", ["run-1", "run-2"])
+
+
+def test_list_swarm_runs_still_lists_runs_when_participants_fail_to_load():
+    runs = _table([_swarm_row("run-1")])
+    subtasks_table = _table([])
+    subtasks_table.in_.side_effect = RuntimeError("boom")
+    client = MagicMock()
+    client.table.side_effect = lambda name: runs if name == "agent_swarm_runs" else subtasks_table
+
+    result = list_swarm_runs(client, "org-1")
+
+    assert result[0]["id"] == "run-1"
+    assert result[0]["subtasks"] == []

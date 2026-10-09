@@ -1,7 +1,7 @@
 """Training API: datasets, jobs, and custom instructions."""
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -91,10 +91,28 @@ class JobCreateRequest(BaseModel):
     model_base: str
 
 
+InstructionKind = Literal["guidance", "guardrail"]
+InstructionDepartment = Literal[
+    "sales",
+    "marketing",
+    "customer_success",
+    "operations",
+    "finance",
+    "engineering",
+    "security",
+    "general",
+]
+
+
 class InstructionCreateRequest(BaseModel):
     name: str = Field(..., min_length=1)
     content: str = Field(..., min_length=1)
     agent_id: str | None = None
+    # Guidance shapes how agents work; a guardrail is a hard limit agents must not cross.
+    kind: InstructionKind = "guidance"
+    # Roster department id. Ignored when agent_id is set (the agent is more specific).
+    department: InstructionDepartment | None = None
+    is_active: bool = True
 
 
 class InstructionUpdateRequest(BaseModel):
@@ -102,6 +120,20 @@ class InstructionUpdateRequest(BaseModel):
     content: str | None = None
     agent_id: str | None = None
     is_active: bool | None = None
+    kind: InstructionKind | None = None
+    department: InstructionDepartment | None = None
+
+
+_SCOPE_COLUMNS_MISSING = (
+    "Guardrails and department instructions need a database update that has not been applied yet."
+)
+
+
+def _scope_columns_missing(error: object) -> bool:
+    text = str(error or "").lower()
+    return ("kind" in text or "department" in text) and (
+        "does not exist" in text or "schema cache" in text or "pgrst204" in text or "42703" in text
+    )
 
 
 class AgentFineTunedModelRequest(BaseModel):
@@ -1016,7 +1048,7 @@ def get_instruction(
     client = shared_service_client(settings, create_client)
     response = (
         client.table("custom_instructions")
-        .select("id, agent_id, name, content, is_active, created_at, updated_at")
+        .select("*")
         .eq("org_id", org_id)
         .eq("id", instruction_id)
         .limit(1)
@@ -1044,23 +1076,38 @@ def create_instruction(
     # by .insert()) has no .select()/.limit() method — chaining them raised
     # an uncaught AttributeError on every call. .insert() already returns the
     # full row by default (returning=representation).
-    response = (
-        client.table("custom_instructions")
-        .insert(
-            {
-                "org_id": org_id,
-                "agent_id": body.agent_id,
-                "name": body.name.strip(),
-                "content": body.content,
-                "is_active": True,
-                "created_by": user["user_id"],
-            }
-        )
-        .execute()
-    )
+    row = {
+        "org_id": org_id,
+        "agent_id": body.agent_id,
+        "name": body.name.strip(),
+        "content": body.content,
+        "is_active": body.is_active,
+        "created_by": user["user_id"],
+        "kind": body.kind,
+        "department": None if body.agent_id else body.department,
+    }
+    legacy_ok = row["kind"] == "guidance" and not row["department"]
+
+    def _insert(payload: dict) -> object:
+        return client.table("custom_instructions").insert(payload).execute()
+
+    try:
+        response = _insert(row)
+        error = response_error(response)
+    except Exception as exc:  # noqa: BLE001
+        if not _scope_columns_missing(exc):
+            raise
+        response, error = None, exc
+    if error is not None and _scope_columns_missing(error):
+        if not legacy_ok:
+            raise HTTPException(status_code=409, detail=_SCOPE_COLUMNS_MISSING)
+        response = _insert({k: v for k, v in row.items() if k not in ("kind", "department")})
     invalidate_instruction_cache(org_id)
     _raise_if_response_error(response)
-    return dict((response.data or [{}])[0])
+    created = dict((response.data or [{}])[0])
+    created.setdefault("kind", "guidance")
+    created.setdefault("department", None)
+    return created
 
 
 @router.patch("/instructions/{instruction_id}")
@@ -1074,6 +1121,12 @@ def update_instruction(
     if org_id is None:
         raise HTTPException(status_code=403, detail="Organization context required")
     payload = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "department" in body.model_fields_set and body.department is None:
+        payload["department"] = None
+    if "agent_id" in body.model_fields_set and body.agent_id is None:
+        payload["agent_id"] = None
+    if payload.get("agent_id"):
+        payload["department"] = None
     if not payload:
         raise HTTPException(status_code=400, detail="No updates provided")
     # Bug fix: .update() returns SyncFilterRequestBuilder, which has no
@@ -1088,6 +1141,8 @@ def update_instruction(
         .execute()
     )
     invalidate_instruction_cache(org_id)
+    if _scope_columns_missing(response_error(response)):
+        raise HTTPException(status_code=409, detail=_SCOPE_COLUMNS_MISSING)
     if _is_missing_table_error(response_error(response)):
         raise HTTPException(status_code=404, detail="Instruction not found")
     _raise_if_response_error(response)

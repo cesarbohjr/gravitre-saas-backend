@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="260" viewBox="0 0 320 260" preserveAspectRatio="xMidYMid slice">
+<defs><filter id="art-grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch"></feTurbulence><feColorMatrix values="0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0 0.1 0.9 0 0 0 -0.38"></feColorMatrix></filter></defs>
+<rect width="320" height="260" fill="#DEDAD0"></rect>
+<ellipse cx="160" cy="128" rx="134" ry="98" fill="#CFE0D5"></ellipse>
+<g stroke="#5E6B62" stroke-width="1.5" stroke-dasharray="3 4" fill="none">
+<path d="M126 98 L150 76"></path><path d="M194 98 L170 76"></path><path d="M66 94 Q90 60 138 58"></path><path d="M254 94 Q230 60 182 58"></path>
+</g>
+<rect x="132" y="34" width="56" height="42" rx="9" fill="#F5F2EA"></rect>
+<circle cx="160" cy="55" r="11" fill="#2E9E5B"></circle>
+<path d="M154 55 l4 4 l8 -9" fill="none" stroke="#F5F2EA" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M200 30 l2.5 6 l6 2.5 l-6 2.5 l-2.5 6 l-2.5 -6 l-6 -2.5 l6 -2.5 Z" fill="#C9A24B"></path>
+<g transform="translate(126 0)">
+<path d="M-14 128 Q0 120 14 128 L16 174 L-16 174 Z" fill="#5B5BD6"></path>
+<path d="M-12 132 L-16 156 L-8 164" fill="none" stroke="#5B5BD6" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path>
+<circle cx="0" cy="110" r="10" fill="#C99572"></circle>
+<path d="M-10.5 109 A10.5 10.5 0 0 1 10.5 109 Q0 101 -10.5 109 Z" fill="#1F1A17"></path>
+</g>
+<g transform="translate(194 0)">
+<path d="M-14 128 Q0 120 14 128 L16 174 L-16 174 Z" fill="#B0573F"></path>
+<path d="M12 132 L16 156 L8 164" fill="none" stroke="#B0573F" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path>
+<circle cx="0" cy="110" r="10" fill="#D6AB86"></circle>
+<path d="M-10.5 109 A10.5 10.5 0 0 1 10.5 109 Q0 101 -10.5 109 Z" fill="#2E231D"></path><circle cx="0" cy="98" r="4.5" fill="#2E231D"></circle>
+</g>
+<rect x="154" y="178" width="12" height="36" fill="#6E5A44"></rect>
+<ellipse cx="160" cy="213" rx="26" ry="4" fill="#6E5A44"></ellipse>
+<ellipse cx="160" cy="174" rx="80" ry="14" fill="#8A6A4E"></ellipse>
+<ellipse cx="160" cy="171" rx="80" ry="13" fill="#A07E60"></ellipse>
+<rect x="124" y="165" width="20" height="7" rx="1" fill="#F5F2EA"></rect>
+<rect x="176" y="160" width="26" height="10" rx="2" fill="#3B4250"></rect>
+<g transform="translate(66 0)">
+<rect x="-8" y="164" width="7" height="50" rx="3" fill="#26282C"></rect><rect x="1" y="164" width="7" height="50" rx="3" fill="#26282C"></rect>
+<path d="M-13 124 Q0 116 13 124 L15 168 L-15 168 Z" fill="#7C8F6B"></path>
+<path d="M-10 128 L-12 160" stroke="#7C8F6B" stroke-width="6" stroke-linecap="round"></path><circle cx="-12" cy="162" r="3.2" fill="#D6AB86"></circle>
+<path d="M9 128 L20 144 L30 146" fill="none" stroke="#7C8F6B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="32" cy="146" r="3.2" fill="#D6AB86"></circle>
+<circle cx="0" cy="106" r="10" fill="#D6AB86"></circle>
+<path d="M-10.5 105 A10.5 10.5 0 0 1 10.5 105 Q2 97 -10.5 105 Z" fill="#2E231D"></path><circle cx="-8" cy="97" r="4.5" fill="#2E231D"></circle>
+</g>
+<g transform="translate(254 0) scale(-1 1)">
+<rect x="-8" y="164" width="7" height="50" rx="3" fill="#26282C"></rect><rect x="1" y="164" width="7" height="50" rx="3" fill="#26282C"></rect>
+<path d="M-13 124 Q0 116 13 124 L15 168 L-15 168 Z" fill="#C9A24B"></path>
+<path d="M-10 128 L-12 160" stroke="#C9A24B" stroke-width="6" stroke-linecap="round"></path><circle cx="-12" cy="162" r="3.2" fill="#C99572"></circle>
+<path d="M9 127 L22 116 L30 104" fill="none" stroke="#C9A24B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="31" cy="102" r="3.2" fill="#C99572"></circle>
+<circle cx="0" cy="106" r="10" fill="#C99572"></circle>
+<path d="M-10.5 106 A10.5 10.5 0 0 1 10.5 106 L10 102 Q0 96 -10.5 106 Z" fill="#1F1A17"></path>
+</g>
+<line x1="28" y1="214" x2="292" y2="214" stroke="#9C8C74" stroke-width="2"></line>
+<rect width="320" height="260" filter="url(#art-grain)" opacity="0.55"></rect>
+</svg>

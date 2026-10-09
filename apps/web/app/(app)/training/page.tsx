@@ -3,7 +3,7 @@
 import { useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { TrainingWorkbench } from "@/components/training/training-workbench"
+import { InstructionsPage } from "@/components/agents/suite/instructions-page"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 
@@ -26,7 +26,11 @@ function TrainingRoute() {
     if (target) router.replace(target)
   }, [router, target])
   if (target) return null
-  return <TrainingWorkbench section="instructions" />
+  return (
+    <AppShell title={SURFACE_COPY.trainingInstructions.title}>
+      <InstructionsPage />
+    </AppShell>
+  )
 }
 
 export default function TrainingPage() {
