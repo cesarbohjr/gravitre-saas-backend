@@ -133,6 +133,8 @@ export interface AgentIdentity {
   avatarUrl: string | null
   personality: AgentPersonality
   initials: string
+  /** Department label; drives the agent's icon when no `agent` input is given. */
+  department?: string | null
 }
 
 export interface AgentIdentityInput {

@@ -99,7 +99,7 @@ export function AgentIdentityAvatar({
 
   return (
     <DepartmentIcon
-      department={agent?.department}
+      department={agent?.department ?? identity?.department}
       size={SIZE_TO_TILE[size]}
       className={cn((size === "lg" || size === "xl" || size === "orb") && "shadow-[var(--np-shadow)]", className)}
     >
