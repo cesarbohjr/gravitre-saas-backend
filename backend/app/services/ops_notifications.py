@@ -21,7 +21,7 @@ from app.services.org_approval_rules import load_rules_and_timezone, sla_deadlin
 
 logger = get_logger(__name__)
 
-_ESCALATED_KEEP = 500
+_ESCALATED_KEEP = 4000  # two tables x _MAX_PENDING
 WEEKLY_SUMMARY_HOUR = 9
 _OPS_KEY = "opsNotifications"
 
@@ -225,8 +225,10 @@ def escalate_past_due_approvals(
         org_settings = _org_settings(client, org_id)
     ops = org_settings.get(_OPS_KEY) if isinstance(org_settings.get(_OPS_KEY), dict) else {}
     already = {str(x) for x in (ops.get("escalated") or []) if x}
+    pending = _pending_requests(client, org_id, now=now)
+    pending_ids = {item["id"] for item in pending}
     candidates = []
-    for item in _pending_requests(client, org_id, now=now):
+    for item in pending:
         started = _parse_time(item["started"])
         if started is None or item["id"] in already or sla_deadline(started, rules, tz_name) > now:
             continue
@@ -240,7 +242,10 @@ def escalate_past_due_approvals(
         due.extend(item for item in candidates if item["id"] not in done)
         if not due:
             return None
-        return {**state, "escalated": (done + [item["id"] for item in due])[-_ESCALATED_KEEP:]}
+        # Keep ids that are still waiting (decided ones drop out), so the
+        # list stays bounded without forgetting an overdue request.
+        kept = [x for x in done if x in pending_ids]
+        return {**state, "escalated": (kept + [item["id"] for item in due])[-_ESCALATED_KEEP:]}
 
     # Claim first so a crash mid-send cannot repeat the escalation.
     if _save_ops_state(client, org_id, claim) is None:

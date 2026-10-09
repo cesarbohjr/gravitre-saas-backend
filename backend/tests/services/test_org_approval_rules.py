@@ -311,3 +311,36 @@ def test_weekly_summary_claim_survives_a_stale_snapshot():
     with patch.object(ops_notifications, "emit_notification", return_value="n1") as emit:
         assert ops_notifications.send_weekly_summary_if_due(db, stale, now=monday) == 0
     emit.assert_not_called()
+
+
+def test_more_than_500_overdue_requests_escalate_once():
+    from app.services import ops_notifications
+
+    org = {"id": "org-1", "settings": {"approvalRules": {"escalatePastDue": True, "sla": "1h"}}}
+    runs = [
+        {
+            "id": f"run-{i:04d}",
+            "org_id": "org-1",
+            "approval_status": "pending_approval",
+            "created_at": f"2026-09-{1 + i // 100:02d}T{i % 24:02d}:{i % 60:02d}:00+00:00",
+        }
+        for i in range(700)
+    ]
+    db = _FakeDb(
+        {
+            "organizations": [org],
+            "workflow_runs": runs,
+            "approvals": [],
+            "organization_members": [{"org_id": "org-1", "user_id": "admin-1", "role": "admin"}],
+        }
+    )
+    now = datetime(2026, 10, 9, 12, 0, tzinfo=timezone.utc)
+    with patch.object(ops_notifications, "emit_notification", return_value="n1"):
+        assert ops_notifications.escalate_past_due_approvals(db, "org-1", now=now) == 700
+        assert ops_notifications.escalate_past_due_approvals(db, "org-1", now=now) == 0
+        # The next escalation forgets requests that were decided meanwhile.
+        runs[0]["approval_status"] = "approved"
+        runs.append({"id": "run-new", "org_id": "org-1", "approval_status": "pending_approval", "created_at": "2026-10-09T09:00:00+00:00"})
+        assert ops_notifications.escalate_past_due_approvals(db, "org-1", now=now) == 1
+    escalated = db.tables["organizations"][0]["settings"]["opsNotifications"]["escalated"]
+    assert "run-0000" not in escalated and "run-0699" in escalated and "run-new" in escalated
