@@ -5,6 +5,7 @@ shared production client only; writes invalidate the org.
 """
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
@@ -31,16 +32,15 @@ def _fresh_cache():
 
 
 def _patched(client: _Client, *, shared: bool):
-    def _execute_or_empty(_client: Any, _builder: Any, *, resource: str) -> list[dict[str, Any]]:
-        client.reads += 1
-        return list(client.rows)
-
     class _Builder:
         def __getattr__(self, _name: str) -> Any:
             return lambda *a, **k: self
 
+        def execute(self) -> SimpleNamespace:
+            client.reads += 1
+            return SimpleNamespace(data=[dict(r) for r in client.rows], error=None)
+
     return (
-        patch.object(training_service, "execute_or_empty", side_effect=_execute_or_empty),
         patch("app.core.org_state_cache.cache_allowed", return_value=shared),
         patch.object(_Client, "table", lambda self, _name: _Builder(), create=True),
     )
@@ -52,8 +52,8 @@ def _load(client: _Client) -> list[str]:
 
 def test_shared_client_reads_once_until_invalidated() -> None:
     client = _Client([{"name": "Tone", "content": "Be brief."}])
-    a, b, c = _patched(client, shared=True)
-    with a, b, c:
+    a, b = _patched(client, shared=True)
+    with a, b:
         assert _load(client) == ["Tone: Be brief."]
         assert _load(client) == ["Tone: Be brief."]
         assert client.reads == 1
@@ -65,8 +65,8 @@ def test_shared_client_reads_once_until_invalidated() -> None:
 
 def test_other_clients_are_never_cached() -> None:
     client = _Client([{"name": "Tone", "content": "Be brief."}])
-    a, b, c = _patched(client, shared=False)
-    with a, b, c:
+    a, b = _patched(client, shared=False)
+    with a, b:
         _load(client)
         _load(client)
     assert client.reads == 2
