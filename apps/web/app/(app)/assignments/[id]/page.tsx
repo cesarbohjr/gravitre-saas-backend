@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, use, useMemo, useRef, type FormEvent, type ReactNode } from "react"
+import { DepartmentIcon } from "@/components/agents/department-icon"
+import { useAgentDepartments } from "@/lib/use-agent-departments"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
@@ -8,7 +10,6 @@ import { toast } from "sonner"
 import {
   AlertTriangle,
   ArrowUpRight,
-  Bot,
   Check,
   ChevronRight,
   Download,
@@ -140,6 +141,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
     readableAssignmentText(handoff?.action_title?.trim() || handoff?.task?.description?.trim() || "") || "Agent assignment"
   const agentName = handoff?.agent_name || "Agent"
   const agentId = handoff?.agent_id
+  const departmentOf = useAgentDepartments()
   const createdLabel = shortDate(job?.createdAt, true)
   const confidencePercent = reportedAssignmentConfidence(handoff?.confidence)
   const sources = (handoff?.rag_sources ?? []).map((s) => s.source).filter((s): s is string => Boolean(s))
@@ -601,9 +603,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
           <h1 className="asgd-title">{taskTitle}</h1>
           <div className="asgd-meta">
             <span className="asgd-agent">
-              <span className="asg-bot lg" aria-hidden>
-                <Bot size={14} />
-              </span>
+              <DepartmentIcon department={departmentOf({ id: agentId, name: agentName })} size="sm" />
               {agentName}
             </span>
             {createdLabel ? (

@@ -11,7 +11,6 @@ import {
   DEPARTMENT_BY_ID,
   blockedReason,
   buildWorkMap,
-  initials,
   litAgents,
   missingPieces,
   traceStory,
@@ -22,6 +21,8 @@ import {
   type TraceKey,
 } from "@/lib/agents-roster"
 import { cn } from "@/lib/utils"
+import { DEPARTMENT_ICONS } from "@/lib/department-icons"
+import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
 import { agentHref, giveTaskHref } from "./agent-bits"
 import { RosterNodeSheet, type MapNode } from "./roster-node-sheet"
 
@@ -537,7 +538,7 @@ export function RosterWorkMap({
                       aria-label={`${a.name}, dormant, needs ${missing.join(", ")}`}
                     >
                       <span className={cn("wm-agico rs-ava", `rs-d-${a.department}`)} aria-hidden>
-                        {initials(a.name)}
+                        <DeptGlyph department={a.department} />
                         <span className="d grey" />
                       </span>
                       <span style={{ flex: "1 1 auto", minWidth: 0 }}>
@@ -592,7 +593,7 @@ export function RosterWorkMap({
                   title={a.state === "blocked" ? blockedReason(a) ?? undefined : undefined}
                 >
                   <span className={cn("wm-agico rs-ava", `rs-d-${a.department}`)} aria-hidden>
-                    {initials(a.name)}
+                    <DeptGlyph department={a.department} />
                     <span
                       className={cn(
                         "d",
@@ -832,4 +833,9 @@ export function RosterWorkMap({
       />
     </>
   )
+}
+
+function DeptGlyph({ department }: { department: AgentDepartmentId }) {
+  const Icon = DEPARTMENT_ICONS[department] ?? DEPARTMENT_ICONS.general
+  return <Icon size={14} strokeWidth={2} aria-hidden />
 }

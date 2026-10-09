@@ -18,6 +18,7 @@ import {
   type WorkMapModel,
 } from "@/lib/agents-roster"
 import { cn } from "@/lib/utils"
+import { DepartmentIcon } from "@/components/agents/department-icon"
 import { giveTaskHref } from "./agent-bits"
 
 /** A node the user clicked on the work map: agent id, app name, output name or goal id. */
@@ -60,7 +61,8 @@ function AgentRow({ agent, onOpen }: { agent: RosterAgent; onOpen: () => void })
   const dept = DEPARTMENT_BY_ID.get(agent.department)?.name ?? agent.departmentLabel
   return (
     <button type="button" onClick={onOpen} className="flex w-full items-center justify-between gap-3 rounded-md px-1.5 py-1.5 text-left hover:bg-muted">
-      <span className="min-w-0">
+      <DepartmentIcon department={agent.department} size="sm" />
+      <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium text-foreground">{agent.name}</span>
         <span className="block truncate text-xs text-muted-foreground">{[dept, agent.role].filter(Boolean).join(" · ")}</span>
       </span>

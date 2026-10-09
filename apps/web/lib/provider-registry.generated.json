@@ -76,7 +76,8 @@
       "name": "Marketo",
       "category": "marketing",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/marketo.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -85,7 +86,8 @@
       "name": "Segment",
       "category": "analytics",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/segment.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -120,7 +122,8 @@
       "name": "Constant Contact",
       "category": "marketing",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/constant_contact.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -227,7 +230,8 @@
       "name": "ZoomInfo",
       "category": "sales",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/zoominfo.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -238,7 +242,8 @@
       "aliases": [
         "peopledatalabs"
       ],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/pdl.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -247,7 +252,8 @@
       "name": "LinkedIn Sales Navigator",
       "category": "sales",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/linkedin.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -274,7 +280,8 @@
       "name": "World Bank",
       "category": "knowledge",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/world_bank.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -327,6 +334,19 @@
       "darkPlate": false,
       "lightPlate": false
     },
+    "paypal": {
+      "id": "paypal",
+      "name": "PayPal",
+      "category": "finance",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "paypal",
+      "hex": "#002991",
+      "src": "/brand-logos/paypal.svg",
+      "srcDark": "/brand-logos/paypal-white.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
     "quickbooks": {
       "id": "quickbooks",
       "name": "QuickBooks",
@@ -345,7 +365,8 @@
       "name": "NetSuite",
       "category": "finance",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/netsuite.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -367,8 +388,9 @@
       "name": "Plaid",
       "category": "finance",
       "aliases": [],
-      "source": "fallback",
-      "darkPlate": false,
+      "source": "official-asset",
+      "src": "/vendor-logos/plaid.svg",
+      "darkPlate": true,
       "lightPlate": false
     },
     "shopify": {
@@ -401,7 +423,8 @@
       "aliases": [
         "teams"
       ],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/microsoft_teams.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -472,7 +495,8 @@
       "name": "Twilio",
       "category": "communication",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/twilio.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -481,7 +505,8 @@
       "name": "SendGrid",
       "category": "email",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/sendgrid.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -491,6 +516,65 @@
       "category": "email",
       "aliases": [],
       "source": "fallback",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "brevo": {
+      "id": "brevo",
+      "name": "Brevo",
+      "category": "email",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "brevo",
+      "hex": "#0B996E",
+      "src": "/brand-logos/brevo.svg",
+      "srcDark": "/brand-logos/brevo.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "vapi": {
+      "id": "vapi",
+      "name": "Vapi",
+      "category": "communication",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/vapi.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "gitlab": {
+      "id": "gitlab",
+      "name": "GitLab",
+      "category": "devops",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "gitlab",
+      "hex": "#FC6D26",
+      "src": "/brand-logos/gitlab.svg",
+      "srcDark": "/brand-logos/gitlab.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "okta": {
+      "id": "okta",
+      "name": "Okta",
+      "category": "devops",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "okta",
+      "hex": "#007DC1",
+      "src": "/brand-logos/okta.svg",
+      "srcDark": "/brand-logos/okta.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "connectwise": {
+      "id": "connectwise",
+      "name": "ConnectWise",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/connectwise.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -592,7 +676,8 @@
       "aliases": [
         "mondaycom"
       ],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/monday.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -701,7 +786,18 @@
       "name": "Freshdesk",
       "category": "support",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/freshdesk.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "freshservice": {
+      "id": "freshservice",
+      "name": "Freshservice",
+      "category": "support",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/freshservice.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -710,7 +806,8 @@
       "name": "Gorgias",
       "category": "support",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/gorgias.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -719,7 +816,8 @@
       "name": "Workday",
       "category": "hr",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/workday.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -728,7 +826,8 @@
       "name": "BambooHR",
       "category": "hr",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/bamboohr.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -776,7 +875,8 @@
       "name": "Amazon S3",
       "category": "storage",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/aws_s3.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -790,7 +890,8 @@
         "kinesis",
         "dynamodb"
       ],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/aws.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -853,7 +954,8 @@
       "name": "Oracle",
       "category": "data",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/oracle.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -875,7 +977,8 @@
       "name": "Amazon Redshift",
       "category": "data",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/redshift.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -1098,12 +1201,23 @@
       "darkPlate": false,
       "lightPlate": false
     },
+    "clio": {
+      "id": "clio",
+      "name": "Clio",
+      "category": "productivity",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/clio.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
     "absorb_lms": {
       "id": "absorb_lms",
       "name": "Absorb LMS",
       "category": "learning",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/absorb_lms.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -1130,12 +1244,482 @@
       "darkPlate": false,
       "lightPlate": false
     },
+    "servicenow": {
+      "id": "servicenow",
+      "name": "ServiceNow",
+      "category": "support",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/servicenow.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "connectsecure": {
+      "id": "connectsecure",
+      "name": "ConnectSecure",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/connectsecure.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "sage_intacct": {
+      "id": "sage_intacct",
+      "name": "Sage Intacct",
+      "category": "finance",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "sage",
+      "hex": "#00D639",
+      "src": "/brand-logos/sage.svg",
+      "srcDark": "/brand-logos/sage.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "front": {
+      "id": "front",
+      "name": "Front",
+      "category": "support",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/front.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "gong": {
+      "id": "gong",
+      "name": "Gong",
+      "category": "sales",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/gong.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "highlevel": {
+      "id": "highlevel",
+      "name": "HighLevel",
+      "category": "crm",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/highlevel.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "instantly": {
+      "id": "instantly",
+      "name": "Instantly",
+      "category": "sales",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/instantly.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "attio": {
+      "id": "attio",
+      "name": "Attio",
+      "category": "crm",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/attio.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "close": {
+      "id": "close",
+      "name": "Close",
+      "category": "crm",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/close.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "ashby": {
+      "id": "ashby",
+      "name": "Ashby",
+      "category": "hr",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/ashby.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "hibob": {
+      "id": "hibob",
+      "name": "HiBob",
+      "category": "hr",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "hibob",
+      "hex": "#E42C51",
+      "src": "/brand-logos/hibob.svg",
+      "srcDark": "/brand-logos/hibob.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "ukg_pro": {
+      "id": "ukg_pro",
+      "name": "UKG Pro",
+      "category": "hr",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/ukg_pro.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "box": {
+      "id": "box",
+      "name": "Box",
+      "category": "storage",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "box",
+      "hex": "#0061D5",
+      "src": "/brand-logos/box.svg",
+      "srcDark": "/brand-logos/box.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "dropbox": {
+      "id": "dropbox",
+      "name": "Dropbox",
+      "category": "storage",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "dropbox",
+      "hex": "#0061FF",
+      "src": "/brand-logos/dropbox.svg",
+      "srcDark": "/brand-logos/dropbox.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "zoom": {
+      "id": "zoom",
+      "name": "Zoom",
+      "category": "communication",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "zoom",
+      "hex": "#0B5CFF",
+      "src": "/brand-logos/zoom.svg",
+      "srcDark": "/brand-logos/zoom.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "discord": {
+      "id": "discord",
+      "name": "Discord",
+      "category": "communication",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "discord",
+      "hex": "#5865F2",
+      "src": "/brand-logos/discord.svg",
+      "srcDark": "/brand-logos/discord.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "sap_s4hana_cloud": {
+      "id": "sap_s4hana_cloud",
+      "name": "SAP S/4HANA Cloud",
+      "category": "finance",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "sap",
+      "hex": "#0FAAFF",
+      "src": "/brand-logos/sap.svg",
+      "srcDark": "/brand-logos/sap.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "sharepoint_online": {
+      "id": "sharepoint_online",
+      "name": "SharePoint Online",
+      "category": "storage",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/sharepoint_online.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "kustomer": {
+      "id": "kustomer",
+      "name": "Kustomer",
+      "category": "support",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/kustomer.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "helpscout": {
+      "id": "helpscout",
+      "name": "Help Scout",
+      "category": "support",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "helpscout",
+      "hex": "#1292EE",
+      "src": "/brand-logos/helpscout.svg",
+      "srcDark": "/brand-logos/helpscout.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "copper": {
+      "id": "copper",
+      "name": "Copper",
+      "category": "crm",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/copper.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "zoho_crm": {
+      "id": "zoho_crm",
+      "name": "Zoho CRM",
+      "category": "crm",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "zoho",
+      "hex": "#E42527",
+      "src": "/brand-logos/zoho.svg",
+      "srcDark": "/brand-logos/zoho.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "lever": {
+      "id": "lever",
+      "name": "Lever",
+      "category": "hr",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/lever.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "deel": {
+      "id": "deel",
+      "name": "Deel",
+      "category": "hr",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/deel.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "rippling": {
+      "id": "rippling",
+      "name": "Rippling",
+      "category": "hr",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/rippling.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "personio": {
+      "id": "personio",
+      "name": "Personio",
+      "category": "hr",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "personio",
+      "hex": "#000000",
+      "src": "/brand-logos/personio.svg",
+      "srcDark": "/brand-logos/personio-white.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "ramp": {
+      "id": "ramp",
+      "name": "Ramp",
+      "category": "finance",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/ramp.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "brex": {
+      "id": "brex",
+      "name": "Brex",
+      "category": "finance",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "brex",
+      "hex": "#212121",
+      "src": "/brand-logos/brex.svg",
+      "srcDark": "/brand-logos/brex-white.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "chargebee": {
+      "id": "chargebee",
+      "name": "Chargebee",
+      "category": "finance",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/chargebee.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "docusign": {
+      "id": "docusign",
+      "name": "DocuSign",
+      "category": "productivity",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/docusign.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "dropbox_sign": {
+      "id": "dropbox_sign",
+      "name": "Dropbox Sign",
+      "category": "productivity",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/dropbox_sign.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "pax8": {
+      "id": "pax8",
+      "name": "Pax8",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/pax8.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "autotask": {
+      "id": "autotask",
+      "name": "Autotask PSA",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/autotask.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "huntress": {
+      "id": "huntress",
+      "name": "Huntress",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/huntress.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "sentinelone": {
+      "id": "sentinelone",
+      "name": "SentinelOne",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/sentinelone.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "crowdstrike": {
+      "id": "crowdstrike",
+      "name": "CrowdStrike",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/crowdstrike.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "jumpcloud": {
+      "id": "jumpcloud",
+      "name": "JumpCloud",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/jumpcloud.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "duo": {
+      "id": "duo",
+      "name": "Duo",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/duo.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "onepassword": {
+      "id": "onepassword",
+      "name": "1Password",
+      "category": "devops",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "1password",
+      "hex": "#145FE4",
+      "src": "/brand-logos/1password.svg",
+      "srcDark": "/brand-logos/1password.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "microsoft_intune": {
+      "id": "microsoft_intune",
+      "name": "Microsoft Intune",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/microsoft_intune.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "jamf_pro": {
+      "id": "jamf_pro",
+      "name": "Jamf Pro",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/jamf_pro.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "braintree": {
+      "id": "braintree",
+      "name": "Braintree",
+      "category": "finance",
+      "aliases": [],
+      "source": "simple-icons",
+      "simpleIcon": "braintree",
+      "hex": "#000000",
+      "src": "/brand-logos/braintree.svg",
+      "srcDark": "/brand-logos/braintree-white.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "recurly": {
+      "id": "recurly",
+      "name": "Recurly",
+      "category": "finance",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/recurly.svg",
+      "darkPlate": false,
+      "lightPlate": false
+    },
     "openai": {
       "id": "openai",
       "name": "OpenAI",
       "category": "ai",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/openai.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -1159,7 +1743,8 @@
       "name": "xAI",
       "category": "ai",
       "aliases": [],
-      "source": "fallback",
+      "source": "official-asset",
+      "src": "/vendor-logos/xai.svg",
       "darkPlate": false,
       "lightPlate": false
     },
@@ -1167,7 +1752,11 @@
       "id": "meta",
       "name": "Meta",
       "category": "ai",
-      "aliases": [],
+      "aliases": [
+        "meta_marketing",
+        "meta_ads",
+        "facebook_ads"
+      ],
       "source": "simple-icons",
       "simpleIcon": "meta",
       "hex": "#0467DF",

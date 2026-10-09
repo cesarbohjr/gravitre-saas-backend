@@ -54,6 +54,16 @@
 }
 
 :root {
+  /* Department identity: one hue per department, used by every agent tile,
+     department chip and group header (lib/department-icons.ts). */
+  --dept-sales: #5b5bd6; --dept-sales-tint: #ecedfb; --dept-sales-ink: #3a44b0;
+  --dept-marketing: #b8875a; --dept-marketing-tint: #fbf1dc; --dept-marketing-ink: #8a5a06;
+  --dept-customer_success: #3d6fd1; --dept-customer_success-tint: #e8f0fb; --dept-customer_success-ink: #2b6cb0;
+  --dept-operations: #4a6a8e; --dept-operations-tint: #e6eef3; --dept-operations-ink: #3e6e8e;
+  --dept-finance: #2e8b57; --dept-finance-tint: #ddf3e8; --dept-finance-ink: #0a6b47;
+  --dept-engineering: #2f7d6d; --dept-engineering-tint: #e1f0ec; --dept-engineering-ink: #2f7d6d;
+  --dept-security: #a3333d; --dept-security-tint: #fbecec; --dept-security-ink: #a8323e;
+  --dept-general: #8a8a85; --dept-general-tint: #efefea; --dept-general-ink: #33342f;
   /* Marketing System 4.0 — canvas aliases (Nodus daylight; marketing is light-locked, so these live on :root) */
   --g-marketing-canvas: #ffffff;
   --g-marketing-surface: #f9f9f9;
@@ -259,6 +269,14 @@
 }
 
 .dark {
+  --dept-sales-tint: #1e2140; --dept-sales-ink: #a9b0f3;
+  --dept-marketing-tint: #2c2312; --dept-marketing-ink: #f0c070;
+  --dept-customer_success-tint: #16243a; --dept-customer_success-ink: #8db8ea;
+  --dept-operations-tint: #172630; --dept-operations-ink: #93b6cc;
+  --dept-finance-tint: #123a2a; --dept-finance-ink: #3fd99a;
+  --dept-engineering-tint: #12302a; --dept-engineering-ink: #7fcfbd;
+  --dept-security-tint: #3a1a1d; --dept-security-ink: #f19aa3;
+  --dept-general-tint: #262826; --dept-general-ink: #c4c4be;
   /* Graphite, not navy: neutral charcoal ladder with emerald as the only hue. */
   /* Status colors. Dark-mode fills are lighter than their light-mode
      counterparts, so their foregrounds invert to dark to stay legible. */
@@ -1636,3 +1654,15 @@ details[open] > .g-disclosure > :first-child::after {
 @media (prefers-reduced-motion: reduce) {
   .g-trace-scan { left: 0; width: 100%; opacity: 0.35; }
 }
+
+/* Department icon tile (components/agents/department-icon.tsx). */
+.dept-tile { display: inline-grid; place-items: center; position: relative; flex: 0 0 auto; background: var(--dept-tint); color: var(--dept-ink); }
+.dept-glyph { color: var(--dept-ink); flex: 0 0 auto; }
+:is(.dept-tile, .dept-glyph, .dept-scope)[data-dept="sales"] { --dept: var(--dept-sales); --dept-tint: var(--dept-sales-tint); --dept-ink: var(--dept-sales-ink); }
+:is(.dept-tile, .dept-glyph, .dept-scope)[data-dept="marketing"] { --dept: var(--dept-marketing); --dept-tint: var(--dept-marketing-tint); --dept-ink: var(--dept-marketing-ink); }
+:is(.dept-tile, .dept-glyph, .dept-scope)[data-dept="customer_success"] { --dept: var(--dept-customer_success); --dept-tint: var(--dept-customer_success-tint); --dept-ink: var(--dept-customer_success-ink); }
+:is(.dept-tile, .dept-glyph, .dept-scope)[data-dept="operations"] { --dept: var(--dept-operations); --dept-tint: var(--dept-operations-tint); --dept-ink: var(--dept-operations-ink); }
+:is(.dept-tile, .dept-glyph, .dept-scope)[data-dept="finance"] { --dept: var(--dept-finance); --dept-tint: var(--dept-finance-tint); --dept-ink: var(--dept-finance-ink); }
+:is(.dept-tile, .dept-glyph, .dept-scope)[data-dept="engineering"] { --dept: var(--dept-engineering); --dept-tint: var(--dept-engineering-tint); --dept-ink: var(--dept-engineering-ink); }
+:is(.dept-tile, .dept-glyph, .dept-scope)[data-dept="security"] { --dept: var(--dept-security); --dept-tint: var(--dept-security-tint); --dept-ink: var(--dept-security-ink); }
+:is(.dept-tile, .dept-glyph, .dept-scope)[data-dept="general"] { --dept: var(--dept-general); --dept-tint: var(--dept-general-tint); --dept-ink: var(--dept-general-ink); }

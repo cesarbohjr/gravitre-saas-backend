@@ -139,6 +139,7 @@ export function NewAssignmentModal({
         identity: {
           name: item.name,
           role: item.role,
+          department: item.department,
           icon: item.icon,
           avatarColor: item.avatarColor,
           avatarUrl: item.avatarUrl,

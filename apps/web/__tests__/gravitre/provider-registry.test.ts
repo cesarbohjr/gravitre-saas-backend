@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest"
 import { PROVIDER_REGISTRY, hasProviderMark, resolveProvider } from "@/lib/provider-registry"
 import { suggestRoleIcon } from "@/components/agents/fleet-v4/identity-tokens"
 import { getCategoryIcon } from "@/lib/marketplace-category-icons"
-import { DECISION_GEOMETRY, nodeAnchor } from "@/components/workflows/builder-node-chrome"
+import { DECISION_GEOMETRY, agentStepRole, nodeAnchor } from "@/components/workflows/builder-node-chrome"
+import { CONNECTOR_CATALOG } from "@/lib/connectors"
+import { DEPARTMENT_ICONS, departmentIdFor } from "@/lib/department-icons"
 
 describe("provider registry", () => {
   it("resolves canonical ids, display names and aliases to one entry", () => {
@@ -21,8 +23,33 @@ describe("provider registry", () => {
         if (entry.srcDark) expect(existsSync(join(process.cwd(), "public", entry.srcDark))).toBe(true)
       }
     }
-    expect(hasProviderMark("openai")).toBe(false)
+    expect(hasProviderMark("openai")).toBe(true)
+    expect(hasProviderMark("fred")).toBe(false)
     expect(hasProviderMark("not-a-real-vendor")).toBe(false)
+  })
+
+  it("has an official logo for every connector vendor in the catalog", () => {
+    // Public data sources and generic channels have no vendor mark to ship;
+    // the rest had no official mark we could source. Shrink this list, don't grow it.
+    const NO_MARK = new Set([
+      "email",
+      "ai_visibility_ui",
+      "finseo",
+      "stackadapt",
+      "motion",
+      "fred",
+      "sec_edgar",
+      "oecd",
+      "opencorporates",
+      "nvd",
+      "cisa_kev",
+      "halo_psa",
+      "syncro",
+    ])
+    const missing = CONNECTOR_CATALOG.map((c) => c.vendorKey).filter(
+      (key) => !NO_MARK.has(key) && !hasProviderMark(key),
+    )
+    expect(missing).toEqual([])
   })
 })
 
@@ -63,5 +90,25 @@ describe("decision anchors", () => {
   it("meet rectangle border midpoints for rect nodes", () => {
     expect(nodeAnchor("agent", { x: 10, y: 20 }, { w: 224, h: 80 }, "left")).toEqual({ x: 10, y: 60 })
     expect(nodeAnchor("agent", { x: 10, y: 20 }, { w: 224, h: 80 }, "bottom")).toEqual({ x: 122, y: 100 })
+  })
+})
+
+describe("department icons", () => {
+  it.each([
+    ["Sales", "sales"],
+    ["Customer Success", "customer_success"],
+    ["Support", "customer_success"],
+    ["customer_success", "customer_success"],
+    ["Engineering", "engineering"],
+    ["HR", "general"],
+    [null, "general"],
+    ["", "general"],
+  ])("maps %s to %s", (input, id) => {
+    expect(departmentIdFor(input)).toBe(id)
+  })
+
+  it("draws workflow agent steps with their department's icon", () => {
+    expect(agentStepRole({ department: "Finance" }, "Anything").Icon).toBe(DEPARTMENT_ICONS.finance)
+    expect(agentStepRole({ role: "Lead enrichment" }, "Enricher").Icon).toBe(DEPARTMENT_ICONS.sales)
   })
 })

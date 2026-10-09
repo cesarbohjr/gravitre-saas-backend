@@ -2,137 +2,46 @@
 
 import { cn } from "@/lib/utils"
 import {
-  AGENT_COLOR_OPTIONS,
-  AGENT_ICON_OPTIONS,
-  personalityFromAvatarColor,
   suggestAgentColor,
   suggestAgentIcon,
   type AgentAvatarColorId,
   type AgentIconId,
 } from "@/lib/agent-identity"
-import {
-  LEGACY_COLOR_TO_IDENTITY,
-  LEGACY_ICON_TO_ROLE,
-} from "@/lib/agent-identity-bridge"
-import {
-  IDENTITY_COLOR_TOKENS,
-  ROLE_ICON_REGISTRY,
-} from "@/components/agents/fleet-v4/identity-tokens"
+import { departmentIdFor } from "@/lib/department-icons"
+import { ROSTER_DEPARTMENTS } from "@/lib/agents-roster"
 import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
 
 interface AgentIdentityPickerProps {
   name: string
   icon: AgentIconId
   avatarColor: AgentAvatarColorId
-  onIconChange: (icon: AgentIconId) => void
-  onColorChange: (color: AgentAvatarColorId) => void
+  /** The agent's department; its icon is the agent's mark everywhere. */
+  department?: string | null
+  /** Kept for callers that still pass them; the icon now follows the department. */
+  onIconChange?: (icon: AgentIconId) => void
+  onColorChange?: (color: AgentAvatarColorId) => void
   className?: string
 }
 
-/** Appearance picker — soft tiles + curated colors (API still stores legacy ids). */
-export function AgentIdentityPicker({
-  name,
-  icon,
-  avatarColor,
-  onIconChange,
-  onColorChange,
-  className,
-}: AgentIdentityPickerProps) {
-  const personality = personalityFromAvatarColor(avatarColor)
-
+/** Appearance preview: every agent wears its department's icon and colour. */
+export function AgentIdentityPicker({ name, icon, avatarColor, department, className }: AgentIdentityPickerProps) {
+  const deptLabel = departmentLabelFor(department)
   return (
-    <div className={cn("space-y-4", className)}>
-      <div className="flex items-center gap-4">
-        <AgentIdentityAvatar
-          identity={{
-            name,
-            icon,
-            storedIcon: icon,
-            avatarColor,
-            avatarUrl: null,
-            personality,
-            initials: name.slice(0, 2).toUpperCase(),
-          }}
-          agent={{ name, icon, avatarColor, status: "active" }}
-          size="lg"
-          showStatusDot={false}
-        />
-        <div>
-          <p className="text-sm font-medium text-foreground">
-            Agent appearance
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Choose an icon and color so teammates can recognize this agent at a
-            glance.
-          </p>
-        </div>
-      </div>
-
+    <div className={cn("flex items-center gap-4", className)}>
+      <AgentIdentityAvatar agent={{ name, icon, avatarColor, department }} size="lg" showStatusDot={false} />
       <div>
-        <p className="mb-2 text-xs font-medium text-muted-foreground">Icon</p>
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-          {AGENT_ICON_OPTIONS.map((option) => {
-            const roleId = LEGACY_ICON_TO_ROLE[option.id]
-            const { Icon } = ROLE_ICON_REGISTRY[roleId]
-            const selected = icon === option.id
-            return (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => onIconChange(option.id)}
-                className={cn(
-                  "flex min-h-11 flex-col items-center gap-1 rounded-[var(--np-radius-md)] border px-2 py-2 text-[10px] transition",
-                  selected
-                    ? "border-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]/40 text-foreground"
-                    : "border-divide bg-[color:var(--g-surface-1)] text-muted-foreground hover:border-[color:var(--g-brand-border)]",
-                )}
-                aria-pressed={selected}
-                title={option.label}
-              >
-                <Icon className="h-4 w-4" />
-                <span className="truncate">{option.label}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      <div>
-        <p className="mb-2 text-xs font-medium text-muted-foreground">Color</p>
-        <div className="flex flex-wrap gap-2">
-          {AGENT_COLOR_OPTIONS.map((option) => {
-            const selected = avatarColor === option.id
-            const soft =
-              IDENTITY_COLOR_TOKENS[LEGACY_COLOR_TO_IDENTITY[option.id]]
-            return (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => onColorChange(option.id)}
-                className={cn(
-                  "flex min-h-11 items-center gap-2 rounded-md border px-3 py-1.5 text-xs transition",
-                  selected
-                    ? "border-[color:var(--g-brand)] bg-[color:var(--g-brand-soft)]/30 text-foreground"
-                    : "border-divide text-muted-foreground hover:bg-[color:var(--g-surface-2)]",
-                )}
-                aria-pressed={selected}
-              >
-                <span
-                  className={cn(
-                    "h-4 w-4 rounded-sm border",
-                    soft.surfaceClass,
-                    soft.borderClass,
-                  )}
-                  aria-hidden
-                />
-                {option.label}
-              </button>
-            )
-          })}
-        </div>
+        <p className="text-sm font-medium text-foreground">Agent appearance</p>
+        <p className="text-xs text-muted-foreground">
+          Agents wear their department&apos;s icon, so this one shows the {deptLabel} icon. Change the department to change it.
+        </p>
       </div>
     </div>
   )
+}
+
+function departmentLabelFor(department: string | null | undefined): string {
+  const id = departmentIdFor(department)
+  return ROSTER_DEPARTMENTS.find((d) => d.id === id)?.name ?? "General"
 }
 
 export function useSuggestedAgentIdentity(

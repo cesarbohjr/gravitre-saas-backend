@@ -198,6 +198,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
+import { departmentIconFor } from "@/lib/department-icons"
+import { useAgentDepartments } from "@/lib/use-agent-departments"
 import { Illustration } from "@/components/gravitre/illustration"
 
 let generatedNodeIdCounter = 0
@@ -459,7 +461,16 @@ function CanvasNode({
   }) {
   const config = getNodeTypeConfig(node.type)
   const accent = NODE_CATEGORY_ACCENTS[nodeCategory(node.type)].color
-  const agentRole = node.type === "agent" ? agentStepRole(node.config, node.name) : null
+  const departmentOf = useAgentDepartments()
+  const agentRef = node.config?.agent_id ?? node.config?.agentId
+  const agentDepartment =
+    node.type === "agent" && !node.config?.department && typeof agentRef === "string"
+      ? departmentOf({ id: agentRef })
+      : null
+  const agentRole =
+    node.type === "agent"
+      ? agentStepRole(agentDepartment ? { ...node.config, department: agentDepartment } : node.config, node.name)
+      : null
   const Icon = agentRole?.Icon ?? config.icon
   const actionName = node.selectedAction
     ? connectorActions[node.vendor || ""]?.actions.find((a) => a.id === node.selectedAction)?.name || node.selectedAction
@@ -5046,7 +5057,7 @@ export default function WorkflowBuilderPage({ params }: { params: Promise<{ id: 
                           key={agent.id}
                           name={agent.name}
                           description={agentLibrarySubtitle(agent)}
-                          icon={Bot}
+                          icon={departmentIconFor(agent.department)}
                           nodeType="agent"
                           dragPayload={{ config: agentNodeConfig(agent) }}
                           onAdd={() => addExistingAgentNode(agent)}

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import type { RosterAgent } from "@/lib/agents-roster"
-import { initials } from "@/lib/agents-roster"
+import { DEPARTMENT_ICONS } from "@/lib/department-icons"
 import { cn } from "@/lib/utils"
 
 export function giveTaskHref(agentId: string): string {
@@ -17,23 +17,24 @@ export function newAgentHref(departmentLabel?: string): string {
   return departmentLabel ? `/agents/new?department=${encodeURIComponent(departmentLabel)}` : "/agents/new"
 }
 
-/** Initials avatar tinted by department, with a live / blocked / not-set-up dot. */
+/** Department icon tile in the department tint, with a live / blocked / not-set-up dot. */
 export function AgentAvatar({
   agent,
   size = "lg",
   dot = true,
   className,
 }: {
-  agent: Pick<RosterAgent, "name" | "department" | "state">
+  agent: Pick<RosterAgent, "department" | "state">
   size?: "lg" | "sm"
   dot?: boolean
   className?: string
 }) {
+  const Icon = DEPARTMENT_ICONS[agent.department] ?? DEPARTMENT_ICONS.general
   const dotClass =
     agent.state === "blocked" ? "amber" : agent.state === "not_set_up" ? "grey" : agent.state === "working" ? "live" : ""
   return (
     <span className={cn("gv-ava rs-ava", size === "lg" && "lg", `rs-d-${agent.department}`, className)} aria-hidden>
-      {initials(agent.name)}
+      <Icon size={size === "lg" ? 22 : 17} strokeWidth={1.9} aria-hidden />
       {dot ? <span className={cn("dot", dotClass)} /> : null}
     </span>
   )

@@ -10,6 +10,7 @@
 
 import { Check, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { DepartmentGlyph } from "@/components/agents/department-icon"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { DEPARTMENT_OPTIONS } from "@/lib/department-context"
+import { DEPARTMENT_ALL, DEPARTMENT_OPTIONS } from "@/lib/department-context"
 import {
   CHAT_PERSONA_OPTIONS,
   resolveChatPersonaLabel,
@@ -90,6 +91,7 @@ export function ChatSessionControls({
           )}
           aria-label={`Session: ${dept}, ${personaLabel}, ${speedLabel}`}
         >
+          {department && department !== DEPARTMENT_ALL ? <DepartmentGlyph department={department} size={12} /> : null}
           <span className="truncate">
             {dept} · {personaLabel}
           </span>
@@ -104,7 +106,8 @@ export function ChatSessionControls({
           </DropdownMenuLabel>
           <DropdownMenuRadioGroup value={department} onValueChange={onDepartmentChange}>
             {DEPARTMENT_OPTIONS.map((option) => (
-              <DropdownMenuRadioItem key={option.id} value={option.id} className="text-xs">
+              <DropdownMenuRadioItem key={option.id} value={option.id} className="gap-2 text-xs">
+                {option.id === DEPARTMENT_ALL ? null : <DepartmentGlyph department={option.id} size={13} />}
                 {option.label}
               </DropdownMenuRadioItem>
             ))}

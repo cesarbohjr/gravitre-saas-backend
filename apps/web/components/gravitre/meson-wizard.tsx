@@ -740,6 +740,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                       </div>
                     </div>
                     <AgentIdentityPicker
+                      department={selectedDepartment}
                       name={generatedResult.generatedConfig.agent}
                       icon={selectedIcon}
                       avatarColor={selectedColor}
