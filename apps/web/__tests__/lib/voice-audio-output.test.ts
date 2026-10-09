@@ -50,7 +50,9 @@ describe("voice duplex audible output contract", () => {
 describe("voice physical-output failure handling", () => {
   it("surfaces AudioContext suspension after the session has started", () => {
     expect(hook).toMatch(/addEventListener\("statechange", onOutputStateChange\)/)
-    expect(hook).toMatch(/sessionWantedRef\.current && ctx\.state !== "running"/)
+    expect(hook).toMatch(/if \(!sessionWantedRef\.current\) return/)
+    // iOS "interrupted" output is resumed before asking for a tap.
+    expect(hook).toMatch(/ensureAudioOutputRunning\(ctx\)\.then/)
     expect(hook).toMatch(/removeEventListener\("statechange", stateHandler\)/)
   })
 

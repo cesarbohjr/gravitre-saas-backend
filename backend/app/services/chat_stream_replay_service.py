@@ -144,14 +144,19 @@ def load_completed_turn_from_db(
             client.table("conversation_messages")
             .select("id, role, content, tool_calls, created_at")
             .eq("conversation_id", cid)
-            .eq("role", "assistant")
             .order("created_at", desc=True)
-            .limit(1)
+            .limit(2)
             .execute()
         )
         if not rows.data:
             return None
         row = rows.data[0]
+        # The newest message is the prompt still waiting for a reply: there is no
+        # completed turn to replay, and the older answer belongs to another prompt.
+        if str(row.get("role") or "") != "assistant":
+            return None
+        prior = rows.data[1] if len(rows.data) > 1 else {}
+        prompt_text = str(prior.get("content") or "") if str(prior.get("role") or "") == "user" else ""
         event_id = str(row.get("id") or "")
         incoming = (last_event_id or "").strip()
         if incoming and event_id and incoming == event_id:
@@ -161,7 +166,7 @@ def load_completed_turn_from_db(
             "event_id": event_id,
             "conversation_id": cid,
             "org_id": oid,
-            "user_text": "",
+            "user_text": prompt_text,
             "assistant_text": str(row.get("content") or ""),
             "tool_calls": row.get("tool_calls") if isinstance(row.get("tool_calls"), list) else [],
             "assistant_message_id": event_id,

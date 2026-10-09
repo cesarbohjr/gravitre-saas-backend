@@ -60,12 +60,25 @@ export async function fetchCompletedChatReplay(
   }
 }
 
+function normalizePrompt(text: string | null | undefined): string {
+  return (text || "").replace(/\s+/g, " ").trim().toLowerCase()
+}
+
 export function applyChatReplay(messages: UIMessage[], replay: ChatReplayPayload): UIMessage[] {
   if (replay.already_have) return messages
   const text = (replay.assistant_text || "").trim()
   if (!text || looksLikeToolJson(text)) return messages
   const last = messages[messages.length - 1]
   if (last?.role === "assistant" && uiMessageText(last).trim()) return messages
+  // The replay is the server's last completed turn. After a failed turn that is
+  // usually the previous prompt's answer; showing it under the new prompt made
+  // Gravitre look like it answered a different question. Only apply a replay
+  // whose prompt matches the one waiting for a reply.
+  const lastUser = [...messages].reverse().find((message) => message.role === "user")
+  const replayPrompt = normalizePrompt(replay.user_text)
+  if (!replayPrompt || !lastUser || replayPrompt !== normalizePrompt(uiMessageText(lastUser))) {
+    return messages
+  }
   const assistant = conversationMessageToUI({
     id: replay.assistant_message_id || replay.event_id || `replay-${Date.now()}`,
     conversation_id: replay.conversation_id || "",

@@ -541,3 +541,37 @@ async def test_stream_emits_stopped_when_cancel_flag_set(async_client, monkeypat
     assert "should-not-appear" not in resp.text
     assert intelligence._captured == {}
 
+
+
+@pytest.mark.asyncio
+async def test_stale_stop_from_earlier_turn_does_not_cancel_new_message(async_client, monkeypatch):
+    """A Stop sent before this message (e.g. on conversation switch) must not cancel it."""
+    from app.services import chat_turn_cancel_service as cancel_service
+
+    _authenticate(org_id="org-1")
+    _mock_prepare_stream_guardrails(monkeypatch)
+    intelligence = _mock_agent_intelligence_stream(monkeypatch, content="fresh answer")
+    monkeypatch.setattr(cancel_service, "get_redis_client", lambda *_a, **_k: None)
+    monkeypatch.setattr(assistant_module, "get_conversation_state_service", lambda *_a, **_k: MagicMock(
+        ensure_owned_conversation=AsyncMock(return_value="conv-stale-stop"),
+        get_task_state=AsyncMock(return_value={}),
+        update_task_state=AsyncMock(return_value=None),
+    ))
+    monkeypatch.setattr(assistant_module, "load_conversation_summary", lambda *_a, **_k: None)
+    cancel_service.reset_local_stops_for_tests()
+    cancel_service.request_stop("org-1", "conv-stale-stop")
+
+    resp = await async_client.post(
+        "/api/assistant/chat",
+        headers={"Authorization": "Bearer token"},
+        json={
+            "messages": [{"role": "user", "content": "hello"}],
+            "org_id": "org-1",
+            "conversation_id": "conv-stale-stop",
+        },
+    )
+    assert resp.status_code == 200
+    assert "fresh answer" in resp.text
+    assert "You stopped me" not in resp.text
+    assert intelligence._captured
+    assert not cancel_service.is_stop_requested("org-1", "conv-stale-stop")
