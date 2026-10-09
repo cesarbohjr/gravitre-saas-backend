@@ -151,22 +151,42 @@ def _with_scope_defaults(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return rows
 
 
+def _scope_columns_missing(error: object) -> bool:
+    """The kind/department columns are not there yet (any PostgREST/Postgres wording)."""
+    text = str(error or "").lower()
+    return ("kind" in text or "department" in text) and any(
+        marker in text for marker in ("does not exist", "schema cache", "pgrst204", "42703")
+    )
+
+
 def _select_instructions(client: Any, org_id: str, *, active_only: bool, limit: int | None = None) -> list[dict[str, Any]]:
     """Instruction rows with kind/department; falls back to the pre-scope columns."""
-    for columns in (_INSTRUCTION_COLUMNS, _LEGACY_INSTRUCTION_COLUMNS):
+
+    def builder_for(columns: str) -> Any:
         builder = client.table("custom_instructions").select(columns).eq("org_id", org_id)
         if active_only:
             builder = builder.eq("is_active", True)
         builder = builder.order("updated_at", desc=True)
-        if limit is not None:
-            builder = builder.limit(limit)
-        try:
-            return _with_scope_defaults(execute_or_empty(client, builder, resource="custom_instructions"))
-        except Exception as exc:  # noqa: BLE001
-            if columns == _INSTRUCTION_COLUMNS and is_missing_column_error(exc):
-                continue
-            raise
-    return []
+        return builder.limit(limit) if limit is not None else builder
+
+    # Run the scoped read directly: execute_or_empty would turn a missing-column error into
+    # an empty list and the legacy retry below would never run.
+    try:
+        response = builder_for(_INSTRUCTION_COLUMNS).execute()
+        error = response_error(response)
+    except Exception as exc:  # noqa: BLE001
+        response, error = None, exc
+    if error is None and response is not None:
+        return _with_scope_defaults(list(response.data or []))
+    if not _scope_columns_missing(error):
+        if is_schema_unavailable_error(error):
+            return []
+        if isinstance(error, Exception):
+            raise error
+        raise RuntimeError(f"custom_instructions: {error}")
+    return _with_scope_defaults(
+        execute_or_empty(client, builder_for(_LEGACY_INSTRUCTION_COLUMNS), resource="custom_instructions")
+    )
 
 
 def load_active_instruction_texts(

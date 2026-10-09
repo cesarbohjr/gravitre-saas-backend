@@ -32,10 +32,14 @@ def _fresh_cache():
 
 
 def _load(**kwargs: Any) -> list[str]:
-    with patch.object(training_service, "execute_or_empty", return_value=[dict(r) for r in ROWS]), patch(
-        "app.core.org_state_cache.cache_allowed", return_value=False
-    ):
-        return load_active_instruction_texts(MagicMock(), "org-1", **kwargs)
+    chain = MagicMock()
+    for step in ("select", "eq", "order", "limit"):
+        getattr(chain, step).return_value = chain
+    chain.execute.return_value = SimpleNamespace(data=[dict(r) for r in ROWS], error=None)
+    client = MagicMock()
+    client.table.return_value = chain
+    with patch("app.core.org_state_cache.cache_allowed", return_value=False):
+        return load_active_instruction_texts(client, "org-1", **kwargs)
 
 
 def test_guardrails_first_then_broad_to_specific() -> None:
@@ -63,7 +67,15 @@ def test_fleet_department_matches_web_mapping() -> None:
     assert fleet_department("") is None
 
 
-def test_list_falls_back_when_scope_columns_are_missing() -> None:
+@pytest.mark.parametrize(
+    "error",
+    [
+        "column custom_instructions.kind does not exist",
+        {"code": "42703", "message": "column custom_instructions.department does not exist"},
+        {"code": "PGRST204", "message": "Could not find the 'kind' column of 'custom_instructions' in the schema cache"},
+    ],
+)
+def test_list_falls_back_when_scope_columns_are_missing(error: Any) -> None:
     calls: list[str] = []
 
     def _table(name: str) -> MagicMock:
@@ -74,7 +86,7 @@ def test_list_falls_back_when_scope_columns_are_missing() -> None:
             chain = MagicMock()
             if "kind" in columns:
                 chain.eq.return_value.order.return_value.execute.return_value = SimpleNamespace(
-                    data=None, error="column custom_instructions.kind does not exist"
+                    data=None, error=error
                 )
             else:
                 chain.eq.return_value.order.return_value.execute.return_value = SimpleNamespace(
