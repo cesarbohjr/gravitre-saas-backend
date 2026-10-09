@@ -1,6 +1,7 @@
 """Phase 15: Settings API."""
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Annotated, Any
@@ -1074,3 +1075,140 @@ def delete_hitl_policy_route(
         metadata={},
     )
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Settings v5: workspace defaults (accent colour, time zone) and the org-wide
+# approval rules behind Settings > Human in the loop. Both live on
+# organizations.settings and are merged, never replaced, so other keys
+# (enterprise branding, onboarding, notification channels) survive.
+# ---------------------------------------------------------------------------
+
+_HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
+DEFAULT_ACCENT_COLOR = "#2E9E5B"
+
+
+class WorkspaceDefaultsUpdateRequest(BaseModel):
+    accentColor: str | None = None
+    timeZone: str | None = None
+
+
+def _org_settings_row(client: Any, org_id: str) -> dict[str, Any]:
+    rows = client.table("organizations").select("id, settings").eq("id", org_id).limit(1).execute().data or []
+    if not rows:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    raw = rows[0].get("settings")
+    return dict(raw) if isinstance(raw, dict) else {}
+
+
+def _save_org_settings(client: Any, org_id: str, org_settings: dict[str, Any]) -> None:
+    client.table("organizations").update({"settings": org_settings}).eq("id", org_id).execute()
+    invalidate_org_state(org_id)
+
+
+def _workspace_defaults(org_settings: dict[str, Any]) -> dict[str, Any]:
+    from app.services.branding_service import DEFAULT_BRANDING, get_org_branding
+    from app.services.org_approval_rules import timezone_from_settings
+
+    color = str(get_org_branding(org_settings).get("primaryColor") or "")
+    if not _HEX_COLOR.match(color) or color.lower() == str(DEFAULT_BRANDING["primaryColor"]).lower():
+        color = DEFAULT_ACCENT_COLOR
+    return {"accentColor": color.upper(), "timeZone": timezone_from_settings(org_settings)}
+
+
+@router.get("/workspace")
+def get_workspace_defaults_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = shared_service_client(settings, create_client)
+    return {"workspace": _workspace_defaults(_org_settings_row(client, org_id))}
+
+
+@router.patch("/workspace")
+def update_workspace_defaults_route(
+    body: WorkspaceDefaultsUpdateRequest,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    from app.services.branding_service import merge_branding
+    from app.services.org_approval_rules import is_valid_timezone
+
+    user, org_id = admin
+    client = shared_service_client(settings, create_client)
+    org_settings = _org_settings_row(client, org_id)
+    changed: dict[str, Any] = {}
+    if body.accentColor is not None:
+        color = body.accentColor.strip()
+        if not _HEX_COLOR.match(color):
+            raise HTTPException(status_code=400, detail="accentColor must be a hex colour like #2E9E5B")
+        # The accent is the white-label primary colour: shared reports and
+        # notification emails already read it from enterprise.branding.
+        org_settings = merge_branding(org_settings, {"primaryColor": color.upper()})
+        changed["accentColor"] = color.upper()
+    if body.timeZone is not None:
+        tz = body.timeZone.strip()
+        if not is_valid_timezone(tz):
+            raise HTTPException(status_code=400, detail="timeZone must be an IANA time zone like America/Vancouver")
+        org_settings["timezone"] = tz
+        changed["timeZone"] = tz
+    if changed:
+        _save_org_settings(client, org_id, org_settings)
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=user["user_id"],
+            action="settings.workspace_updated",
+            resource_type="org_settings",
+            resource_id=str(org_id),
+            metadata=changed,
+        )
+    return {"workspace": _workspace_defaults(org_settings)}
+
+
+@router.get("/approval-rules")
+def get_approval_rules_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    from app.services.org_approval_rules import rules_from_settings
+
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = shared_service_client(settings, create_client)
+    return {"rules": rules_from_settings(_org_settings_row(client, org_id)).to_api()}
+
+
+@router.patch("/approval-rules")
+def update_approval_rules_route(
+    body: dict[str, Any],
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    from app.services.org_approval_rules import SETTINGS_KEY, merge_rules_update, rules_from_settings
+
+    user, org_id = admin
+    client = shared_service_client(settings, create_client)
+    org_settings = _org_settings_row(client, org_id)
+    try:
+        rules = merge_rules_update(rules_from_settings(org_settings), body if isinstance(body, dict) else {})
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    stored = rules.to_api()
+    stored.pop("slaMinutes", None)
+    org_settings[SETTINGS_KEY] = stored
+    _save_org_settings(client, org_id, org_settings)
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user["user_id"],
+        action="settings.approval_rules_updated",
+        resource_type="org_settings",
+        resource_id=str(org_id),
+        metadata=stored,
+    )
+    return {"rules": rules.to_api()}

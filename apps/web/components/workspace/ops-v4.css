@@ -1,5 +1,6 @@
 /*
- * Decision queue (/approvals), Sources and Activity, from "Gravitre Agents v4".
+ * Decision queue (/approvals), Sources and Activity, from "Gravitre Agents v4",
+ * with the v5 type scale (lighter headings, 380px scrolling lists, pagers).
  * Scoped under .gv-ws (workspace.css). The --ov-* tokens carry the design's
  * exact light values and a matching dark set.
  */
@@ -17,6 +18,8 @@
   --ov-chip-ink: #3e3d3a;
   --ov-ink: #141414;
   --ov-ink-2: #3e3d3a;
+  --ov-head: #1d1e1c;
+  --ov-title: #26272a;
   --ov-muted: #5a5955;
   --ov-control: #d6d4ce;
   --ov-input: #dedcd6;
@@ -61,6 +64,8 @@
   --ov-chip-ink: #d6d6d0;
   --ov-ink: #ededE8;
   --ov-ink-2: #d6d6d0;
+  --ov-head: #ededE8;
+  --ov-title: #e4e4de;
   --ov-muted: #a3a49c;
   --ov-control: #3a3c38;
   --ov-input: #3a3c38;
@@ -110,13 +115,13 @@
 .gv-ws .ov-fresh.stale { color: var(--ov-amber-ink); background: var(--ov-amber-bg); border-radius: 999px; padding: 4px 10px; }
 .gv-ws .ov-fresh.stale i { width: 7px; height: 7px; background: var(--ov-amber); }
 .gv-ws .ov-fresh.stale button { border: 0; background: transparent; padding: 0; font-size: 13px; font-weight: 600; color: var(--ov-amber-ink); text-decoration: underline; }
-.gv-ws .ov-hero h1 { margin: 0; font-size: 38px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+.gv-ws .ov-hero h1 { margin: 0; font-size: 32px; font-weight: 500; letter-spacing: -0.015em; line-height: 1.15; color: var(--ov-head); }
 .gv-ws .ov-lead { margin: 0; font-size: 16px; line-height: 1.55; color: var(--ov-muted); max-width: 640px; }
 .gv-ws .ov-lead strong { color: var(--ov-ink); font-weight: 600; }
 .gv-ws .ov-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
 .gv-ws .ov-stat { background: var(--ov-stat); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; border: 0; text-align: left; color: var(--ov-ink); }
 .gv-ws button.ov-stat:hover { box-shadow: inset 0 0 0 1px var(--ov-control); }
-.gv-ws .ov-stat .v { display: flex; align-items: center; gap: 8px; font-size: 28px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.gv-ws .ov-stat .v { display: flex; align-items: center; gap: 8px; font-size: 26px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; }
 .gv-ws .ov-stat .v small { font-size: 14px; font-weight: 500; color: var(--ov-muted); }
 .gv-ws .ov-stat .k { font-size: 13px; color: var(--ov-muted); }
 .gv-ws .ov-stat.green { background: var(--ov-green-bg); }
@@ -185,7 +190,7 @@
 .gv-ws .ov-item .meta { font-size: 12px; color: var(--ov-muted); }
 .gv-ws .ov-item .meta.hot { color: var(--ov-red-ink); font-weight: 600; }
 .gv-ws .ov-item .meta.warn { color: var(--ov-amber-ink); font-weight: 600; }
-.gv-ws .ov-item .t { font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--ov-ink); overflow-wrap: anywhere; }
+.gv-ws .ov-item .t { font-size: 14px; font-weight: 500; line-height: 1.45; color: var(--ov-title); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .gv-ws .ov-item .s { font-size: 13px; line-height: 1.45; color: var(--ov-muted); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .gv-ws .ov-item .row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .gv-ws .ov-chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -216,9 +221,8 @@
 .gv-ws .ov-pill.amber { background: var(--ov-amber-bg); color: var(--ov-amber-ink); }
 .gv-ws .ov-pill .ov-dot { background: currentColor; }
 .gv-ws .ov-from { font-size: 13px; color: var(--ov-muted); }
-.gv-ws .ov-from strong { color: var(--ov-ink); font-weight: 600; }
-.gv-ws .ov-detail h3 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; overflow-wrap: anywhere; }
-.gv-ws .ov-detail h3.sm { font-size: 24px; letter-spacing: -0.01em; line-height: 1.3; }
+.gv-ws .ov-from strong { color: var(--ov-title); font-weight: 500; }
+.gv-ws .ov-detail h3 { margin: 0; font-size: 21px; font-weight: 500; letter-spacing: -0.01em; line-height: 1.35; color: var(--ov-head); overflow-wrap: anywhere; }
 .gv-ws .ov-detail .desc { margin: 0; font-size: 15px; line-height: 1.55; color: var(--ov-muted); }
 .gv-ws .ov-kicker { font-size: 13px; color: var(--ov-muted); }
 .gv-ws .ov-box { background: var(--ov-card); border: 1px solid var(--ov-border); border-radius: 16px; overflow: hidden; }
@@ -257,7 +261,7 @@
 /* Side explainer + cards (risk ladder, connect a system) */
 .gv-ws .ov-explain { display: flex; flex-wrap: wrap; background: var(--ov-card); border: 1px solid var(--ov-border); border-radius: 20px; overflow: hidden; }
 .gv-ws .ov-explain-side { flex: 1 1 300px; padding: 24px; background: var(--ov-band); border-right: 1px solid var(--ov-line); display: flex; flex-direction: column; gap: 10px; }
-.gv-ws .ov-explain-side h2 { margin: 0; font-size: 22px; font-weight: 600; }
+.gv-ws .ov-explain-side h2 { margin: 0; font-size: 20px; font-weight: 500; }
 .gv-ws .ov-explain-side p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--ov-muted); }
 .gv-ws .ov-explain-side a { font-size: 14px; font-weight: 500; }
 .gv-ws .ov-sq-row { display: flex; align-items: center; gap: 10px; }
@@ -281,7 +285,7 @@
 .gv-ws .ov-fixcard { padding: 18px; border-right: 1px solid var(--ov-line-faint); border-bottom: 1px solid var(--ov-line-faint); display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .gv-ws .ov-fixcard .head { display: flex; align-items: center; gap: 12px; }
 .gv-ws .ov-fixcard .who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.gv-ws .ov-fixcard .who b { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.gv-ws .ov-fixcard .who b { font-size: 14px; font-weight: 500; color: var(--ov-title); overflow-wrap: anywhere; }
 .gv-ws .ov-fixcard .who span { font-size: 13px; color: var(--ov-muted); }
 .gv-ws .ov-fixcard p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ov-ink-2); background: var(--ov-band); border-radius: 10px; padding: 10px 12px; overflow-wrap: anywhere; }
 .gv-ws .ov-fixcard .acts { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -300,7 +304,7 @@
 .gv-ws button.ov-tr[aria-pressed="true"] { background: var(--ov-green-sel); }
 .gv-ws .ov-src { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .gv-ws .ov-src .nm { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.gv-ws .ov-src .nm b { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gv-ws .ov-src .nm b { font-size: 14px; font-weight: 500; color: var(--ov-title); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gv-ws .ov-src .nm span { font-size: 12px; color: var(--ov-muted); }
 .gv-ws .ov-hist { display: flex; gap: 4px; }
 .gv-ws .ov-hist i { width: 14px; height: 18px; border-radius: 3px; background: var(--ov-empty); }
@@ -447,4 +451,22 @@
   .gv-ws .ov-split.swap .ov-back { display: inline-flex; }
   .gv-ws .ov-split.swap .ov-list { flex-basis: 100%; border-right: 0; }
 
+}
+
+/* v5: on desktop the inbox is a fixed-height pane; list and detail scroll on
+   their own, the list is 380px with a sticky header, and the detail has a
+   previous/next pager. Below 1024px the panes stack as before. */
+.gv-ws .ov-pager { display: inline-flex; align-items: center; gap: 4px; background: var(--ov-card); border: 1px solid var(--ov-border); border-radius: 10px; padding: 2px; }
+.gv-ws .ov-pager button { width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; display: grid; place-items: center; color: var(--ov-ink-2); }
+.gv-ws .ov-pager button:hover:not(:disabled) { background: var(--ov-chip); }
+.gv-ws .ov-pager button:disabled { color: var(--ov-idle); cursor: default; }
+.gv-ws .ov-pager span { font-size: 12px; color: var(--ov-muted); min-width: 44px; text-align: center; font-variant-numeric: tabular-nums; }
+.gv-ws .ov-top-right { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+@media (min-width: 1024px) {
+  .gv-ws .ov-split { flex-wrap: nowrap; height: min(720px, calc(100vh - 120px)); min-height: 520px; }
+  .gv-ws .ov-split.tall { height: min(760px, calc(100vh - 120px)); min-height: 540px; }
+  .gv-ws .ov-split .ov-list { flex: 0 0 380px; max-width: 380px; overflow-y: auto; overscroll-behavior: contain; }
+  .gv-ws .ov-split .ov-list-tools, .gv-ws .ov-split .ov-list-head { position: sticky; top: 0; z-index: 1; background: var(--ov-card); }
+  .gv-ws .ov-split .ov-items { overflow: visible; }
+  .gv-ws .ov-split .ov-detail { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
 }

@@ -7,119 +7,159 @@ import { NotificationSettings } from "@/components/settings/notification-setting
 import { SecuritySettings } from "@/components/settings/security-settings"
 import { TeamSettings } from "@/components/settings/team-settings"
 import { AIModelsSettings } from "@/components/settings/ai-models-settings"
+import { ApprovalRulesSettings } from "@/components/settings/approval-rules-settings"
 
 const mocks = vi.hoisted(() => ({
-  response: { data: undefined as { notifications: { emailEnabled: boolean; slackEnabled: boolean; recipients: string[] } } | undefined, error: undefined as Error | undefined, isLoading: false },
-  mutate: vi.fn(), updateOrg: vi.fn(), uploadOrgLogo: vi.fn(), removeOrgLogo: vi.fn(), update: vi.fn(), success: vi.fn(), error: vi.fn(), refresh: vi.fn(),
+  swr: {} as Record<string, { data?: unknown; error?: Error; isLoading?: boolean }>,
+  mutate: vi.fn(), updateOrg: vi.fn(), uploadOrgLogo: vi.fn(), removeOrgLogo: vi.fn(), updateWorkspace: vi.fn(),
+  updateApprovalRules: vi.fn(), getPreferences: vi.fn(), updatePreferences: vi.fn(), deleteOrg: vi.fn(),
+  success: vi.fn(), error: vi.fn(), refresh: vi.fn(),
 }))
-vi.mock("swr", () => ({ default: () => ({ ...mocks.response, mutate: mocks.mutate }) }))
+vi.mock("swr", () => ({ default: (key: string) => ({ ...(mocks.swr[key] ?? {}), mutate: mocks.mutate }) }))
 vi.mock("@/lib/api", () => ({
-  settingsApi: { updateOrg: mocks.updateOrg, uploadOrgLogo: mocks.uploadOrgLogo, removeOrgLogo: mocks.removeOrgLogo, getMemoryEntityEmbeddings: vi.fn().mockResolvedValue({ memoryEntityEmbeddings: { enabled: false, connectors: [] } }), updateMemoryEntityEmbeddings: vi.fn() },
+  settingsApi: { updateOrg: mocks.updateOrg, uploadOrgLogo: mocks.uploadOrgLogo, removeOrgLogo: mocks.removeOrgLogo, updateWorkspace: mocks.updateWorkspace, updateApprovalRules: mocks.updateApprovalRules, getMemoryEntityEmbeddings: vi.fn().mockResolvedValue({ memoryEntityEmbeddings: { enabled: false, connectors: [] } }), updateMemoryEntityEmbeddings: vi.fn() },
+  notificationsApi: { getPreferences: mocks.getPreferences, updatePreferences: mocks.updatePreferences },
+  organizationsApi: { delete: mocks.deleteOrg },
   ssoApi: { getConfig: vi.fn().mockResolvedValue(null), saveConfig: vi.fn(), enable: vi.fn(), disable: vi.fn(), deleteConfig: vi.fn(), initLogin: vi.fn() },
 }))
-vi.mock("@/lib/fetcher", () => ({ apiFetch: mocks.update, fetcher: vi.fn() }))
+vi.mock("@/lib/fetcher", () => ({ apiFetch: vi.fn(), fetcher: vi.fn() }))
+vi.mock("@/lib/org-context", () => ({ clearSelectedOrgFromStorage: vi.fn(), invalidateOrgCache: vi.fn() }))
+vi.mock("next/image", () => ({ default: ({ unoptimized: _u, ...props }: Record<string, unknown>) => <img {...(props as React.ImgHTMLAttributes<HTMLImageElement>)} /> }))
 vi.mock("sonner", () => ({ toast: { success: mocks.success, error: mocks.error } }))
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 let root: Root
 let container: HTMLDivElement
 const organization = { id: "org-real", name: "Service team", slug: "service-team", primaryDomain: "team.example", logoUrl: "/team-logo.svg" }
+const prefs = {
+  approval_needed: { bell_enabled: true, email_enabled: true, slack_enabled: false },
+  run_failed: { bell_enabled: true, email_enabled: false, slack_enabled: true },
+  source_attention: { bell_enabled: true, email_enabled: true, slack_enabled: false },
+  weekly_summary: { bell_enabled: true, email_enabled: false, slack_enabled: false },
+}
 const org = (isAdmin = true) => act(() => root.render(<OrganizationSettings orgData={organization} isAdmin={isAdmin} onUpdate={mocks.refresh} />))
-const notification = (isAdmin = true) => act(() => root.render(<NotificationSettings isAdmin={isAdmin} />))
+const notification = () => act(() => root.render(<NotificationSettings />))
 function input(id: string, value: string) {
   const element = container.querySelector<HTMLInputElement>(`#${id}`)!
   act(() => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(element, value); element.dispatchEvent(new Event("input", { bubbles: true })) })
 }
-const submit = () => container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))
+const button = (text: string) => [...container.querySelectorAll("button")].find((el) => el.textContent?.trim() === text)
+const click = (el: Element | undefined | null) => act(() => { (el as HTMLElement).click() })
+const saveChanges = () => act(async () => { button("Save changes")!.click() })
 beforeEach(() => {
   vi.clearAllMocks()
-  mocks.response = { data: { notifications: { emailEnabled: false, slackEnabled: true, recipients: ["owner@team.example"] } }, error: undefined, isLoading: false }
+  mocks.swr = {
+    "/api/settings/workspace": { data: { workspace: { accentColor: "#2E9E5B", timeZone: "America/Vancouver" } } },
+    "notification-event-preferences": { data: { preferences: prefs } },
+    "/api/settings/approval-rules": { data: { rules: { customerEmailApproval: true, twoApprovalsHighRisk: false, autoApproveReadOnly: false, escalatePastDue: false, sla: "4h", slaMinutes: 240 } } },
+  }
   mocks.updateOrg.mockResolvedValue({ organization }); mocks.refresh.mockResolvedValue(undefined)
-  mocks.update.mockResolvedValue({ ok: true, json: async () => mocks.response.data })
+  mocks.updateWorkspace.mockResolvedValue({ workspace: { accentColor: "#5B5BD6", timeZone: "Europe/London" } })
+  mocks.updatePreferences.mockResolvedValue({ ok: true, preferences: prefs })
   mocks.mutate.mockResolvedValue(undefined)
   container = document.createElement("div"); document.body.append(container); root = createRoot(container)
 })
 afterEach(() => { act(() => root.unmount()); container.remove() })
-it("loads saved organization fields and preserves its logo in the save payload", async () => {
-  org(); input("organization-name", "New service team")
-  await act(async () => submit())
+it("saves an edited workspace name and keeps the slug, domain and logo", async () => {
+  org(); expect(container.textContent).not.toContain("Unsaved changes")
+  input("organization-name", "New service team")
+  expect(container.textContent).toContain("Unsaved changes")
+  await saveChanges()
   expect(mocks.updateOrg).toHaveBeenCalledWith({ name: "New service team", slug: "service-team", primaryDomain: "team.example", logoUrl: "/team-logo.svg" })
-  expect(container.textContent).toContain("Changes saved")
+  expect(mocks.updateWorkspace).not.toHaveBeenCalled()
+  expect(container.textContent).toContain("Saved")
+})
+it("saves accent colour and time zone through the workspace endpoint", async () => {
+  org()
+  expect(container.querySelector('[aria-label="Gravitre green"]')!.getAttribute("aria-pressed")).toBe("true")
+  click(container.querySelector('[aria-label="Indigo"]'))
+  const zone = container.querySelector<HTMLSelectElement>("#organization-timezone")!
+  expect(zone.value).toBe("America/Vancouver")
+  act(() => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(zone, "Europe/London"); zone.dispatchEvent(new Event("change", { bubbles: true })) })
+  await saveChanges()
+  expect(mocks.updateWorkspace).toHaveBeenCalledWith({ accentColor: "#5B5BD6", timeZone: "Europe/London" })
+  expect(mocks.updateOrg).not.toHaveBeenCalled()
+})
+it("discards unsaved workspace edits", () => {
+  org(); input("organization-name", "Draft name")
+  click(button("Discard"))
+  expect(container.querySelector<HTMLInputElement>("#organization-name")!.value).toBe("Service team")
 })
 it("preserves unsaved organization edits through a background data update", () => {
   org(); input("organization-name", "Draft name")
   act(() => root.render(<OrganizationSettings orgData={{ ...organization, name: "Refetched name" }} isAdmin onUpdate={mocks.refresh} />))
   expect(container.querySelector<HTMLInputElement>("#organization-name")!.value).toBe("Draft name")
 })
-it("keeps organization writes unavailable for non-admin members", async () => {
-  org(false); expect(container.querySelector("fieldset")!.disabled).toBe(true)
-  await act(async () => submit()); expect(mocks.updateOrg).not.toHaveBeenCalled()
+it("keeps workspace writes unavailable for non-admin members", () => {
+  org(false)
+  expect(container.querySelector<HTMLInputElement>("#organization-name")!.disabled).toBe(true)
+  expect(container.textContent).toContain("Only owners and admins")
+  expect(container.textContent).not.toContain("Delete workspace")
 })
-it("shows an organization save error without a false saved state", async () => {
+it("shows a workspace save error without a false saved state", async () => {
   mocks.updateOrg.mockRejectedValue(new Error("Update denied")); org()
-  await act(async () => submit())
+  input("organization-name", "Other")
+  await saveChanges()
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("Update denied")
-  expect(mocks.success).not.toHaveBeenCalled()
-})
-it("uses reported channel preferences and recipients instead of sample addresses", () => {
-  notification()
-  expect(container.querySelector<HTMLInputElement>('[aria-label="Email notifications"]')!.checked).toBe(false)
-  expect(container.querySelector<HTMLInputElement>('[aria-label="Slack notifications"]')!.checked).toBe(true)
-  expect(container.querySelector<HTMLInputElement>("#notification-recipients")!.value).toBe("owner@team.example")
-  expect(container.querySelector('a')?.getAttribute("href")).toBe("/connectors")
-})
-it("blocks edits during loading or failed preferences and offers retry", () => {
-  mocks.response.data = undefined; mocks.response.isLoading = true; notification()
-  expect(container.querySelector("form")).toBeNull(); expect(container.textContent).toContain("Loading notification preferences")
-  mocks.response.isLoading = false; mocks.response.error = new Error("Failed"); notification()
-  expect(container.querySelector('[role="alert"]')).not.toBeNull()
-  act(() => container.querySelector<HTMLButtonElement>("button")!.click()); expect(mocks.mutate).toHaveBeenCalledOnce()
-})
-it("saves valid deduplicated addresses and channel toggles to the dedicated endpoint", async () => {
-  notification(); input("notification-recipients", "owner@team.example, owner@team.example; ops@team.example")
-  await act(async () => submit())
-  const [url, request] = mocks.update.mock.calls[0]
-  expect(url).toBe("/api/settings/notifications"); expect(request.method).toBe("PATCH")
-  expect(JSON.parse(request.body)).toEqual({ emailEnabled: false, slackEnabled: true, recipients: ["owner@team.example", "ops@team.example"] })
-  expect(mocks.mutate).toHaveBeenCalledWith(mocks.response.data, { revalidate: false })
-})
-it("rejects invalid recipients and preserves input for correction", async () => {
-  notification(); input("notification-recipients", "invalid-address")
-  await act(async () => submit())
-  expect(mocks.update).not.toHaveBeenCalled(); expect(container.querySelector('[role="alert"]')?.textContent).toContain("valid email addresses")
-})
-it("keeps failed preference writes visible without claiming success", async () => {
-  mocks.update.mockResolvedValue({ ok: false }); notification()
-  await act(async () => submit())
-  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Could not save")
-  expect(mocks.success).not.toHaveBeenCalled()
-})
-it("blocks preference writes for non-admin members even when submitted directly", async () => {
-  notification(false); await act(async () => submit())
-  expect(mocks.update).not.toHaveBeenCalled(); expect(container.querySelector("fieldset")!.disabled).toBe(true)
+  expect(container.textContent).toContain("Unsaved changes")
 })
 it("uploads a logo file through the organization logo endpoint", async () => {
   mocks.uploadOrgLogo.mockResolvedValue({ logoUrl: "data:image/png;base64,abc" })
   org()
-  const input = container.querySelector<HTMLInputElement>("#organization-logo-file")!
   const file = new File(["logo"], "logo.png", { type: "image/png" })
+  const field = container.querySelector<HTMLInputElement>("#organization-logo-file")!
   await act(async () => {
-    Object.defineProperty(input, "files", { value: [file], configurable: true })
-    input.dispatchEvent(new Event("change", { bubbles: true }))
+    Object.defineProperty(field, "files", { value: [file], configurable: true })
+    field.dispatchEvent(new Event("change", { bubbles: true }))
   })
   expect(mocks.uploadOrgLogo).toHaveBeenCalledWith(file)
   expect(container.querySelector("img")?.getAttribute("src")).toBe("data:image/png;base64,abc")
-  expect(container.textContent).toContain("Changes saved")
 })
-it("keeps invalid logo edits from breaking the preview or reaching the save endpoint", async () => {
+it("keeps invalid logo URLs from breaking the preview or reaching the save endpoint", async () => {
   org(); input("organization-logoUrl", "not a URL")
   expect(container.querySelector("img")?.getAttribute("src")).toBe("/team-logo.svg")
-  await act(async () => submit()); expect(mocks.updateOrg).not.toHaveBeenCalled()
+  await saveChanges(); expect(mocks.updateOrg).not.toHaveBeenCalled()
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("valid logo image URL")
 })
-it("does not save preferences when the server omits channel or recipient fields", () => {
-  mocks.response.data = { notifications: {} } as typeof mocks.response.data
-  notification(); expect(container.querySelector("form")).toBeNull()
+it("shows each event by channel from the saved per-person preferences", () => {
+  notification()
+  const box = (label: string) => container.querySelector<HTMLInputElement>(`[aria-label="${label}"]`)!
+  expect(box("A request is waiting on you by Email").checked).toBe(true)
+  expect(box("A run failed by Slack").checked).toBe(true)
+  expect(box("Weekly summary by Email").checked).toBe(false)
+  expect(box("A source needs attention by In app").checked).toBe(true)
+  expect(container.querySelector('a')?.getAttribute("href")).toBe("/connectors")
+})
+it("blocks edits during loading or failed preferences and offers retry", () => {
+  mocks.swr["notification-event-preferences"] = { isLoading: true }; notification()
+  expect(container.querySelector('input[type="checkbox"]')).toBeNull(); expect(container.textContent).toContain("Loading notification preferences")
+  mocks.swr["notification-event-preferences"] = { error: new Error("Failed") }; notification()
   expect(container.querySelector('[role="alert"]')).not.toBeNull()
+  click(button("Retry")); expect(mocks.mutate).toHaveBeenCalledOnce()
+})
+it("saves a changed notification matrix to the preferences endpoint", async () => {
+  notification()
+  click(container.querySelector('[aria-label="Weekly summary by Email"]'))
+  await saveChanges()
+  expect(mocks.updatePreferences).toHaveBeenCalledWith({ ...prefs, weekly_summary: { bell_enabled: true, email_enabled: true, slack_enabled: false } })
+  expect(mocks.mutate).toHaveBeenCalledWith({ preferences: prefs }, { revalidate: false })
+})
+it("keeps failed preference writes visible without claiming success", async () => {
+  mocks.updatePreferences.mockRejectedValue(new Error("Could not save")); notification()
+  click(container.querySelector('[aria-label="A run failed by Email"]'))
+  await saveChanges()
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Could not save")
+  expect(container.textContent).toContain("Unsaved changes")
+})
+it("saves the human in the loop rules and decision SLA", async () => {
+  mocks.updateApprovalRules.mockResolvedValue({ rules: {} })
+  act(() => root.render(<ApprovalRulesSettings />))
+  const toggle = container.querySelector('[role="switch"][aria-label="Escalate past due requests"]')!
+  expect(toggle.getAttribute("aria-checked")).toBe("false")
+  click(toggle)
+  const sla = container.querySelector<HTMLSelectElement>("#decision-sla")!
+  act(() => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(sla, "1bd"); sla.dispatchEvent(new Event("change", { bubbles: true })) })
+  await saveChanges()
+  expect(mocks.updateApprovalRules).toHaveBeenCalledWith({ customerEmailApproval: true, twoApprovalsHighRisk: false, autoApproveReadOnly: false, escalatePastDue: true, sla: "1bd" })
 })
 it("does not offer fake 2FA or IP allowlist saves on Security", () => {
   act(() => root.render(<SecuritySettings />))
@@ -140,12 +180,4 @@ it("does not present unsaved workspace model defaults as persistable", () => {
   act(() => root.render(<AIModelsSettings isAdmin />))
   expect(container.textContent).toContain("no organization API for workspace default models")
   expect(container.textContent).not.toContain("Saved!")
-})
-it("serializes repeated preference submissions until the server responds", async () => {
-  let finish!: (result: unknown) => void
-  mocks.update.mockImplementation(() => new Promise(resolve => { finish = resolve }))
-  notification(); act(() => { submit(); submit() })
-  expect(mocks.update).toHaveBeenCalledOnce(); expect(container.querySelector("fieldset")!.disabled).toBe(true)
-  await act(async () => finish({ ok: true, json: async () => mocks.response.data }))
-  expect(container.textContent).toContain("Preferences saved")
 })

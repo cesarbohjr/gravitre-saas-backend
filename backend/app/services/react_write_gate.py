@@ -267,11 +267,15 @@ def resolve_user_write_approval_required(
         tool_name=tool_name,
         label=label,
     )
+    from app.services.org_approval_rules import load_approval_rules
+
+    rules = load_approval_rules(client, str(org_id))
     decision = get_hitl_policy_service(settings).resolve(
         client,
         org_id=str(org_id),
         user_id=str(user_id),
         action_kind=action_kind,
+        rules=rules,
     )
 
     from app.connectors.action_catalog.registry import get_action_spec
@@ -288,6 +292,7 @@ def resolve_user_write_approval_required(
         hitl=decision,
         identity=identity,
         risk_class=risk_class,
+        rules=rules,
     )
 
     return requires, invoke_action, integration, label

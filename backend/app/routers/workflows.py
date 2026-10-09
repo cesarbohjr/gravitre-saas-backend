@@ -1830,6 +1830,9 @@ async def execute_workflow(
     required_approvals = decision.required_approvals
     approver_roles = decision.approver_roles
     approval_floor_applied = decision.approval_floor_applied
+    from app.services.org_approval_rules import required_approvals_for_definition
+
+    required_approvals = required_approvals_for_definition(client, org_id, definition, required_approvals)
 
     approval_required = required_approvals > 0
     if approval_required:
@@ -2350,6 +2353,9 @@ def _execute_workflow_with_context(
     required_approvals = decision.required_approvals
     approver_roles = decision.approver_roles
     approval_floor_applied = decision.approval_floor_applied
+    from app.services.org_approval_rules import required_approvals_for_definition
+
+    required_approvals = required_approvals_for_definition(client, org_id, definition, required_approvals)
 
     approval_required = required_approvals > 0
     if approval_required:
@@ -3453,14 +3459,25 @@ def list_approvals_alias(
         except ValueError:
             return None
 
+    from app.services.org_approval_rules import load_rules_and_timezone, sla_deadline
+
+    approval_rules, org_tz, custom_sla = load_rules_and_timezone(client, org_id)
+
     def _sla_fields(created_at: str | None, pri: str) -> dict[str, object]:
         started = _parse_time(created_at)
         if not started:
             return {"sla_deadline": None, "sla_minutes_remaining": None, "sla_breached": False}
-        sla_minutes = (
-            settings.approval_sla_minutes_high if pri == "high" else settings.approval_sla_minutes_medium
-        )
-        deadline = started + timedelta(minutes=max(1, sla_minutes))
+        if started.tzinfo is None:
+            started = started.replace(tzinfo=timezone.utc)
+        if custom_sla:
+            # Settings > Human in the loop > Decision SLA, in the org's time zone.
+            deadline = sla_deadline(started, approval_rules, org_tz)
+            sla_minutes = max(1, int((deadline - started).total_seconds() // 60))
+        else:
+            sla_minutes = (
+                settings.approval_sla_minutes_high if pri == "high" else settings.approval_sla_minutes_medium
+            )
+            deadline = started + timedelta(minutes=max(1, sla_minutes))
         remaining = (deadline - datetime.now(timezone.utc)).total_seconds() / 60.0
         return {
             "sla_deadline": deadline.isoformat(),

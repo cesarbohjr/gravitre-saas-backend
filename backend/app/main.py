@@ -313,6 +313,10 @@ async def lifespan(app: FastAPI):
         start_standing_investigator_scheduler,
         stop_standing_investigator_scheduler,
     )
+    from app.schedulers.ops_notifications_scheduler import (
+        start_ops_notifications_scheduler,
+        stop_ops_notifications_scheduler,
+    )
     from app.schedulers.memory_promotion_scheduler import (
         start_memory_expiration_scheduler,
         start_memory_promotion_scheduler,
@@ -363,6 +367,7 @@ async def lifespan(app: FastAPI):
         app.state.temporal_worker_task = None
     # Standing investigators: asyncio tick (Temporal-friendly service entry also available).
     app.state.standing_investigator_task = start_standing_investigator_scheduler()
+    app.state.ops_notifications_task = start_ops_notifications_scheduler()
     app.state.memory_expiration_task = start_memory_expiration_scheduler()
     app.state.cache_warming_task = start_cache_warming_scheduler()
 
@@ -435,6 +440,7 @@ async def lifespan(app: FastAPI):
         await stop_standing_investigator_scheduler(
             getattr(app.state, "standing_investigator_task", None)
         )
+        await stop_ops_notifications_scheduler(getattr(app.state, "ops_notifications_task", None))
         await stop_memory_scheduler(getattr(app.state, "memory_promotion_task", None))
         temporal_task = getattr(app.state, "temporal_worker_task", None)
         if temporal_task is not None:

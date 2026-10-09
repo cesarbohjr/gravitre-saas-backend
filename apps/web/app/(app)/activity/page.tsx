@@ -9,7 +9,7 @@
  * Every value comes from the BusinessOutcome DTO; nothing is invented.
  */
 
-import { Suspense, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -17,6 +17,7 @@ import { toast } from "sonner"
 import { ArrowLeft, ChevronRight, Download, ExternalLink, Sparkles, X } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WsPage } from "@/components/workspace/ws-page"
+import { OvPager } from "@/components/workspace/ov-pager"
 import type { BusinessOutcomeDto } from "@/components/gravitre/business-outcome/business-outcome-view"
 import { buildActivityTraceStages, type ActivityTraceStage } from "@/components/activity/activity-trace-panel"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
@@ -240,11 +241,13 @@ function OutcomeDetail({
   onRetry,
   retrying,
   onAsk,
+  pager,
 }: {
   outcome: BusinessOutcomeDto
   onRetry: () => void
   retrying: boolean
   onAsk: (prompt: string) => void
+  pager?: ReactNode
 }) {
   const s = outcome.sections
   const stages = traceStages(outcome)
@@ -260,14 +263,17 @@ function OutcomeDetail({
       <div className="ov-detail-top start">
         <div className="ov-col">
           {kicker ? <span className="ov-kicker">{kicker}</span> : null}
-          <h3 className="sm">{outcome.title || "Untitled outcome"}</h3>
+          <h3>{outcome.title || "Untitled outcome"}</h3>
         </div>
-        {outcome.status ? (
-          <span className={cn("ov-pill", tone)}>
-            <span className="ov-dot" aria-hidden />
-            {humanize(outcome.status)}
-          </span>
-        ) : null}
+        <span className="ov-top-right">
+          {outcome.status ? (
+            <span className={cn("ov-pill", tone)}>
+              <span className="ov-dot" aria-hidden />
+              {humanize(outcome.status)}
+            </span>
+          ) : null}
+          {pager}
+        </span>
       </div>
 
       {stages.length > 0 ? (
@@ -466,7 +472,17 @@ function OutcomeDetail({
   )
 }
 
-function WorkObjectDetail({ workObject, events, loading }: { workObject: WorkObjectDto; events: WorkObjectEventDto[]; loading: boolean }) {
+function WorkObjectDetail({
+  workObject,
+  events,
+  loading,
+  pager,
+}: {
+  workObject: WorkObjectDto
+  events: WorkObjectEventDto[]
+  loading: boolean
+  pager?: ReactNode
+}) {
   const tone = statusTone(workObject.status)
   return (
     <>
@@ -475,11 +491,14 @@ function WorkObjectDetail({ workObject, events, loading }: { workObject: WorkObj
           <span className="ov-kicker">
             {[humanize(workObject.objectType) || "Objective", humanize(workObject.department)].filter(Boolean).join(" · ")}
           </span>
-          <h3 className="sm">{workObject.title || "Untitled work object"}</h3>
+          <h3>{workObject.title || "Untitled work object"}</h3>
         </div>
-        <span className={cn("ov-pill", tone)}>
-          <span className="ov-dot" aria-hidden />
-          {humanize(workObject.status || "identified")}
+        <span className="ov-top-right">
+          <span className={cn("ov-pill", tone)}>
+            <span className="ov-dot" aria-hidden />
+            {humanize(workObject.status || "identified")}
+          </span>
+          {pager}
         </span>
       </div>
       <p className="desc">{workObject.objective || "No objective recorded yet."}</p>
@@ -735,6 +754,22 @@ function ActivityPageInner() {
       setExporting(false)
     }
   }
+
+  const selectRow = (index: number) => {
+    const target = currentRows[index]
+    if (!target) return
+    if (tab === "objects") setSelectedWorkObjectId((target as WorkObjectDto).id)
+    else setSelectedOutcomeId(outcomeKey(target as BusinessOutcomeDto))
+    rowRefs.current[index]?.scrollIntoView({ block: "nearest" })
+  }
+  const pager = (
+    <OvPager
+      position={selectedIndex + 1}
+      count={currentRows.length}
+      onPrev={() => selectRow(selectedIndex - 1)}
+      onNext={() => selectRow(selectedIndex + 1)}
+    />
+  )
 
   // Arrow keys move the selection and follow focus (ARIA listbox pattern).
   const handleListKeyDown = (event: KeyboardEvent<HTMLElement>, index: number) => {
@@ -1057,6 +1092,7 @@ function ActivityPageInner() {
                         workObject={selectedWorkObject}
                         events={workObjectEvents}
                         loading={workObjectDetailLoading}
+                        pager={pager}
                       />
                     ) : tab === "all" && selectedOutcome ? (
                       <OutcomeDetail
@@ -1065,6 +1101,7 @@ function ActivityPageInner() {
                         onRetry={() => void retrySelected()}
                         retrying={retrying}
                         onAsk={ask}
+                        pager={pager}
                       />
                     ) : (
                       <div className="ov-placeholder">
