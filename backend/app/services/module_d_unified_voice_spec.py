@@ -273,6 +273,13 @@ def build_module_d_unified_system_prompt(
             )
 
             parts.append(response_length_directive(spoken_length_band))  # type: ignore[arg-type]
+    elif conversation_tier:
+        # Typed chat: same character, tier overlay and style examples as voice.
+        from app.services.pipecat_voice.conversation_dna import (
+            conversation_dna_for_turn,
+        )
+
+        parts.append(conversation_dna_for_turn(conversation_tier, spoken_user_text, spoken=False))
     extra = (extra_operator_rules or "").strip()
     if extra:
         parts.append(extra)

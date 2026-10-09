@@ -21,6 +21,7 @@ from pipecat.frames.frames import (
     LLMFullResponseStartFrame,
     LLMTextFrame,
     OutputTransportMessageUrgentFrame,
+    TTSUpdateSettingsFrame,
 )
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.llm_service import LLMService
@@ -208,6 +209,41 @@ class GravitreCognitiveLLMService(LLMService):
         self._carry_user_text: str | None = None
         self._active_user_text = ""
         self._answer_started = False
+        # ElevenLabs stability currently applied; the pipeline starts on the
+        # medium baseline. Changed only when a turn's tier needs a different one.
+        self._voice_stability: float | None = None
+
+    async def _apply_tier_voice(self, tier: str | None) -> None:
+        """Livelier delivery for light turns, steadier for deep (stability only).
+
+        Sent only when the tier's value differs from what is applied, so
+        consecutive same-tier turns never touch the TTS. The frame reaches the
+        TTS before this turn's first sentence, so the new context opens with it.
+        """
+        if not bool(getattr(self._app_settings, "voice_tier_expression", True)):
+            return
+        try:
+            from app.services.tier1_voice_service import (
+                CONVERSATIONAL_VOICE_SETTINGS,
+                voice_stability_for_tier,
+            )
+
+            current = (
+                self._voice_stability
+                if self._voice_stability is not None
+                else float(CONVERSATIONAL_VOICE_SETTINGS["stability"])
+            )
+            target = voice_stability_for_tier(tier)
+            if target == current:
+                return
+            from pipecat.services.elevenlabs.tts import ElevenLabsTTSService
+
+            await self.push_frame(
+                TTSUpdateSettingsFrame(delta=ElevenLabsTTSService.Settings(stability=target))
+            )
+            self._voice_stability = target
+        except Exception:  # noqa: BLE001 - delivery tuning must never break a turn
+            logger.debug("pipecat_voice_tier_voice_skipped", exc_info=True)
 
     async def _ensure_durable_context(self) -> None:
         """Load the durable seed once per socket, off the event loop.
@@ -450,6 +486,7 @@ class GravitreCognitiveLLMService(LLMService):
             voice_tier.reason,
             voice_mode,
         )
+        await self._apply_tier_voice(voice_tier.tier)
         # Same guardrails text chat runs before streaming (kill switch, rate
         # limit, budget, moderation, model policy). Moderation is a network
         # round trip, so it runs concurrently with the brain's preparation and
@@ -1144,4 +1181,9 @@ class GravitreCognitiveLLMService(LLMService):
                 self._org_id,
                 scan.rejected_raw_tags[:5],
             )
-        return normalize_spoken_text(scan.clean_text)
+        from app.services.pipecat_voice.spoken_pronunciations import apply_spoken_aliases
+
+        return apply_spoken_aliases(
+            normalize_spoken_text(scan.clean_text),
+            str(getattr(self._app_settings, "voice_spoken_aliases", "") or ""),
+        )

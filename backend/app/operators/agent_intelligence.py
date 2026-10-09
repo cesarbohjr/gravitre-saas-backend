@@ -6,6 +6,7 @@ briefings, role prompts, and ReAct tool loop.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 from app.core.async_bridge import spawn_background
 import json
 import time
@@ -984,6 +985,21 @@ class AgentIntelligence:
         domain_focus = domain_focus_section(persona_modifier)
         if domain_focus:
             sections.extend([domain_focus, ""])
+        if not spoken_mode and conversation_tier:
+            # Typed chat gets the same character, tier overlay and style examples as
+            # voice. It changes per turn, so it sits after the cacheable prefix.
+            from app.services.pipecat_voice.conversation_dna import (
+                conversation_dna_for_turn,
+            )
+
+            sections.extend(
+                [
+                    conversation_dna_for_turn(
+                        conversation_tier, spoken_user_text, spoken=False
+                    ).strip(),
+                    "",
+                ]
+            )
         if sentiment_adaptation and sentiment_adaptation != "none":
             adaptation_hint = {
                 "acknowledge_briefly": "The user may be frustrated — acknowledge briefly, then solve.",
@@ -5326,9 +5342,15 @@ class AgentIntelligence:
         combined_persona_modifier = "\n\n".join(persona_modifier_parts) if persona_modifier_parts else None
         surface = "agent_chat" if agent_id else "assistant"
 
+        from app.core.io_pool import run_io
         from app.services.operator_act_context import build_operator_act_context
 
-        system_prompt = self._build_system_prompt(
+        # The builder reads custom instructions from Supabase (cached, but the
+        # first turn per org and TTL still hits the network); keep it off the
+        # event loop so other turns and voice audio are never stalled by it.
+        system_prompt = await run_io(
+            contextvars.copy_context().run,
+            self._build_system_prompt,
             surface,
             agent if agent_id else None,
             rag_sources,

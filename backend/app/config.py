@@ -655,6 +655,19 @@ class Settings(BaseSettings):
             "voice_deep_ack_seconds",
         ),
     )
+    # Per-tier voice delivery: light turns a little livelier, deep turns
+    # steadier (ElevenLabs stability only; no latency cost). False keeps one
+    # fixed delivery for every turn.
+    voice_tier_expression: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("VOICE_TIER_EXPRESSION", "voice_tier_expression"),
+    )
+    # JSON object of {"written": "spoken"} aliases applied before TTS, e.g.
+    # {"Gravitre": "Grav-ih-tray"}. Built-in shorthand aliases always apply.
+    voice_spoken_aliases: str = Field(
+        default="",
+        validation_alias=AliasChoices("VOICE_SPOKEN_ALIASES", "voice_spoken_aliases"),
+    )
     # Voice 3.0 Phase 1 — mic capture (default OFF until explicitly enabled).
     voice_agc_v2: bool = Field(
         default=False,

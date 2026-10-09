@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.core.supabase_response import response_error
+from app.core.ttl_cache import TTLCache, ttl_from_env
 
 
 def is_schema_unavailable_error(error: Exception | None) -> bool:
@@ -72,6 +73,24 @@ def list_training_jobs(client: Any, org_id: str) -> list[dict[str, Any]]:
     )
 
 
+# (org_id, agent_id) -> active instruction texts. Every chat turn (text and
+# voice) builds a system prompt that needs these, and the read used to run
+# synchronously on the event loop each turn. Writers must call
+# invalidate_instruction_cache(org_id).
+_instruction_cache = TTLCache(ttl_from_env("ORG_STATE_CACHE_TTL_SECONDS", 30.0), max_entries=4096)
+
+
+def invalidate_instruction_cache(org_id: str | None) -> None:
+    """Drop cached instruction texts for an org; never raises."""
+    oid = str(org_id or "").strip()
+    if not oid:
+        return
+    try:
+        _instruction_cache.invalidate_tag(("org", oid))
+    except Exception:  # noqa: BLE001 - a cache bug must not fail a write
+        pass
+
+
 def load_active_instruction_texts(
     client: Any,
     org_id: str,
@@ -80,6 +99,28 @@ def load_active_instruction_texts(
     limit: int = 12,
 ) -> list[str]:
     """Active custom instructions for prompt injection (org-wide + optional agent)."""
+    from app.core.org_state_cache import cache_allowed
+
+    cacheable = cache_allowed(client)
+    key = (str(org_id), str(agent_id or ""), int(limit))
+    if cacheable:
+        cached = _instruction_cache.get(key)
+        if cached is not None:
+            return cached
+        token = _instruction_cache.token()
+    texts = _query_active_instruction_texts(client, org_id, agent_id=agent_id, limit=limit)
+    if cacheable:
+        _instruction_cache.set(key, texts, tags=[("org", str(org_id))], token=token)
+    return texts
+
+
+def _query_active_instruction_texts(
+    client: Any,
+    org_id: str,
+    *,
+    agent_id: str | None,
+    limit: int,
+) -> list[str]:
     rows = execute_or_empty(
         client,
         client.table("custom_instructions")

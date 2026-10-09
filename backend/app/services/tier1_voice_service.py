@@ -88,6 +88,18 @@ CONVERSATIONAL_VOICE_SETTINGS: dict[str, float | bool] = {
     "use_speaker_boost": True,
 }
 
+# Per-tier delivery. Only stability moves (lower = livelier, higher = steadier);
+# style stays 0 because ElevenLabs notes style adds latency and the 0.25-style
+# profile above made chunked delivery less coherent. Medium is the baseline.
+VOICE_TIER_STABILITY: dict[str, float] = {"light": 0.4, "medium": 0.5, "deep": 0.6}
+
+
+def voice_stability_for_tier(tier: str | None) -> float:
+    """ElevenLabs stability for a conversational tier; unknown tiers use the baseline."""
+    return VOICE_TIER_STABILITY.get(
+        str(tier or "").strip().lower(), float(CONVERSATIONAL_VOICE_SETTINGS["stability"])
+    )
+
 
 class VoiceProviderError(Exception):
     def __init__(
