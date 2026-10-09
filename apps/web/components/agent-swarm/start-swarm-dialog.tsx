@@ -53,6 +53,12 @@ const METHODS: {
   },
 ]
 type Draft = { id: number; agentId: string; task: string }
+
+/** Prefill from a starter question: objective plus one subtask per chosen agent. */
+export interface SwarmStartPreset {
+  objective: string
+  subtasks: Array<{ agentId: string; task: string }>
+}
 const selectClass =
   "min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
 
@@ -60,10 +66,12 @@ export function StartSwarmDialog({
   open,
   onOpenChange,
   onStarted,
+  preset,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onStarted: (id: string) => void
+  preset?: SwarmStartPreset | null
 }) {
   const [parentAgentId, setParentAgentId] = useState("")
   const [objective, setObjective] = useState("")
@@ -96,6 +104,22 @@ export function StartSwarmDialog({
     () => collectInstalledAgentIds(installsData?.installs ?? []),
     [installsData],
   )
+
+  useEffect(() => {
+    if (!open || !preset) return
+    setObjective(preset.objective)
+    if (preset.subtasks.length > 0) {
+      resolved.current = true
+      setParentAgentId(preset.subtasks[0].agentId)
+      setSubtasks(
+        preset.subtasks.map((s) => ({
+          id: nextId.current++,
+          agentId: s.agentId,
+          task: s.task,
+        })),
+      )
+    }
+  }, [open, preset])
 
   useEffect(() => {
     if (

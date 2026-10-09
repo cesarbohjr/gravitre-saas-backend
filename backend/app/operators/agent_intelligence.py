@@ -959,8 +959,12 @@ class AgentIntelligence:
                     org_context.get("org_id") or org_context.get("id") or ""
                 ).strip() or None
             agent_id_for_instructions = None
+            agent_department_for_instructions = None
             if isinstance(agent_config, dict):
                 agent_id_for_instructions = str(agent_config.get("id") or "").strip() or None
+                agent_department_for_instructions = (
+                    str(agent_config.get("department") or "").strip() or None
+                )
             if org_id_for_instructions:
                 from app.services.training_service import load_active_instruction_texts
                 from app.workflows.repository import get_supabase_client
@@ -969,12 +973,17 @@ class AgentIntelligence:
                     get_supabase_client(self.settings),
                     org_id_for_instructions,
                     agent_id=agent_id_for_instructions,
+                    department=agent_department_for_instructions,
                 )
                 if instruction_texts:
                     sections.extend(
                         [
                             "## Custom Training Instructions",
-                            "Follow these org-approved instructions when they apply:",
+                            "Follow these org-approved instructions when they apply.",
+                            "Lines marked [Guardrail] are hard limits: never cross one. If a step "
+                            "would cross a guardrail, stop and ask the user before doing it.",
+                            "Guidance is listed from broad to specific; when two disagree, follow "
+                            "the later, more specific one unless a guardrail says otherwise:",
                             *[f"- {text}" for text in instruction_texts],
                             "",
                         ]

@@ -2290,5 +2290,14 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       { id: "ds_tickets", name: "ticket-routing", description: "Labelled support tickets", type: "examples", status: "ready", record_count: 620, created_by: supabaseUser.id, created_at: T(30000), updated_at: T(9000) },
     ],
   },
+  // FIXTURE: Agents > Instructions (shape of GET /api/training/instructions).
+  "/api/training/instructions": {
+    instructions: [
+      { id: "ins_email", agent_id: null, name: "Confirm before emailing customers", content: "Agents may draft customer emails but never send one until a person approves it.", is_active: true, kind: "guardrail", department: null, created_at: T(9000), updated_at: T(120) },
+      { id: "ins_floor", agent_id: null, name: "Protect pricing floors", content: "Never quote below the approved floor or promise a discount without sign off.", is_active: true, kind: "guardrail", department: "sales", created_at: T(8000), updated_at: T(600) },
+      { id: "ins_cite", agent_id: null, name: "Cite your sources", content: "Every recommendation lists the records, reports or pages it relied on.", is_active: true, kind: "guidance", department: null, created_at: T(7000), updated_at: T(1400) },
+      { id: "ins_tone", agent_id: null, name: "Escalation tone", content: "When a customer is upset, acknowledge the problem first, then offer one clear next step.", is_active: false, kind: "guidance", department: "customer_success", created_at: T(6000), updated_at: T(3000) },
+    ],
+  },
   ...MARKETPLACE_SHOT_FIXTURES,
 }

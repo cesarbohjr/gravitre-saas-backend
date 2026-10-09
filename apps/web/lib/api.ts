@@ -67,6 +67,7 @@ import type {
   TrainingDataset,
   TrainingJob,
   CustomInstruction,
+  CustomInstructionKind,
   TrainingDatasetListResponse,
   TrainingJobListResponse,
   CustomInstructionListResponse,
@@ -2418,7 +2419,14 @@ export const trainingApi = {
   // Instructions
   listInstructions: () => fetcher<CustomInstructionListResponse>(apiUrl("/api/training/instructions")),
   getInstruction: (id: string) => fetcher<CustomInstruction>(apiUrl(`/api/training/instructions/${id}`)),
-  createInstruction: (data: { name: string; content: string; agent_id?: string }) =>
+  createInstruction: (data: {
+    name: string
+    content: string
+    agent_id?: string
+    kind?: CustomInstructionKind
+    department?: string | null
+    is_active?: boolean
+  }) =>
     postJson<CustomInstruction>(apiUrl("/api/training/instructions"), data),
   updateInstruction: (id: string, data: Partial<CustomInstruction>) =>
     patchJson<CustomInstruction>(apiUrl(`/api/training/instructions/${id}`), data),

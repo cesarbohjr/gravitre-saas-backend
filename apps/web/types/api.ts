@@ -593,13 +593,19 @@ export interface TrainingJob {
   created_at: string
 }
 
+export type CustomInstructionKind = "guidance" | "guardrail"
+
 export interface CustomInstruction {
   id: string
-  agent_id?: string
+  agent_id?: string | null
   agent_name?: string
   name: string
   content: string
   is_active: boolean
+  /** Guidance shapes how agents work; a guardrail is a hard limit. Older rows: guidance. */
+  kind?: CustomInstructionKind
+  /** Roster department id the instruction applies to; null with no agent = whole team. */
+  department?: string | null
   created_at: string
   updated_at?: string
 }

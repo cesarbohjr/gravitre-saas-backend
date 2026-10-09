@@ -1,6 +1,7 @@
 """Training hub API regression tests (BUILD/INSIGHTS audit spec)."""
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -148,3 +149,49 @@ def test_instructions_crud(_mock_list, mock_create):
     )
     assert create_response.status_code == 201
     assert create_response.json()["name"] == "Tone"
+
+
+@patch("app.routers.training.create_client")
+def test_create_guardrail_for_a_department(mock_create):
+    insert_chain = chain_mock(data=[{"id": "ins-2", "name": "Floor", "kind": "guardrail", "department": "sales"}])
+    sb = MagicMock()
+    table = MagicMock()
+    table.insert.return_value = insert_chain
+    sb.table.return_value = table
+    mock_create.return_value = sb
+
+    authenticate()
+    response = client.post(
+        "/api/training/instructions",
+        json={"name": "Floor", "content": "Never discount.", "kind": "guardrail", "department": "sales", "is_active": False},
+    )
+    assert response.status_code == 201
+    row = table.insert.call_args.args[0]
+    assert (row["kind"], row["department"], row["is_active"]) == ("guardrail", "sales", False)
+
+
+@patch("app.routers.training.create_client")
+def test_create_falls_back_until_scope_columns_exist(mock_create):
+    missing = MagicMock()
+    missing.execute.return_value = SimpleNamespace(
+        data=None, error="Could not find the 'kind' column of 'custom_instructions' in the schema cache"
+    )
+    ok = chain_mock(data=[{"id": "ins-3", "name": "Tone"}])
+    sb = MagicMock()
+    table = MagicMock()
+    table.insert.side_effect = [missing, ok]
+    sb.table.return_value = table
+    mock_create.return_value = sb
+
+    authenticate()
+    response = client.post("/api/training/instructions", json={"name": "Tone", "content": "Be brief."})
+    assert response.status_code == 201
+    assert "kind" not in table.insert.call_args_list[1].args[0]
+    assert response.json()["kind"] == "guidance"
+
+    table.insert.side_effect = [missing]
+    blocked = client.post(
+        "/api/training/instructions",
+        json={"name": "Floor", "content": "Never discount.", "kind": "guardrail"},
+    )
+    assert blocked.status_code == 409

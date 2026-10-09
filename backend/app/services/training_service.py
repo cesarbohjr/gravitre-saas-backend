@@ -91,24 +91,109 @@ def invalidate_instruction_cache(org_id: str | None) -> None:
         pass
 
 
+INSTRUCTION_KINDS = ("guidance", "guardrail")
+INSTRUCTION_DEPARTMENTS = (
+    "sales",
+    "marketing",
+    "customer_success",
+    "operations",
+    "finance",
+    "engineering",
+    "security",
+    "general",
+)
+
+_INSTRUCTION_COLUMNS = "id, agent_id, name, content, is_active, kind, department, created_at, updated_at"
+_LEGACY_INSTRUCTION_COLUMNS = "id, agent_id, name, content, is_active, created_at, updated_at"
+
+
+def fleet_department(raw: str | None) -> str | None:
+    """Agent department label -> roster department id (mirrors the web app's mapping)."""
+    key = " ".join(str(raw or "").lower().replace("_", " ").replace("-", " ").split())
+    if not key:
+        return None
+    exact = {
+        "sales": "sales",
+        "customer success": "customer_success",
+        "support": "customer_success",
+        "finance": "finance",
+        "operations": "operations",
+        "engineering": "engineering",
+        "marketing": "marketing",
+        "security": "security",
+        "general": "general",
+        "hr": "general",
+    }
+    if key in exact:
+        return exact[key]
+    if "sale" in key or "revenue" in key:
+        return "sales"
+    if "support" in key or "success" in key or "customer" in key:
+        return "customer_success"
+    if "finance" in key or "account" in key:
+        return "finance"
+    if "market" in key:
+        return "marketing"
+    if "secur" in key or "compliance" in key:
+        return "security"
+    if "engineer" in key or "platform" in key or "sre" in key:
+        return "engineering"
+    if any(word in key for word in ("hr", "people", "talent", "recruit")):
+        return "general"
+    return "operations"
+
+
+def _with_scope_defaults(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    for row in rows:
+        kind = str(row.get("kind") or "guidance")
+        row["kind"] = kind if kind in INSTRUCTION_KINDS else "guidance"
+        row["department"] = row.get("department") or None
+    return rows
+
+
+def _select_instructions(client: Any, org_id: str, *, active_only: bool, limit: int | None = None) -> list[dict[str, Any]]:
+    """Instruction rows with kind/department; falls back to the pre-scope columns."""
+    for columns in (_INSTRUCTION_COLUMNS, _LEGACY_INSTRUCTION_COLUMNS):
+        builder = client.table("custom_instructions").select(columns).eq("org_id", org_id)
+        if active_only:
+            builder = builder.eq("is_active", True)
+        builder = builder.order("updated_at", desc=True)
+        if limit is not None:
+            builder = builder.limit(limit)
+        try:
+            return _with_scope_defaults(execute_or_empty(client, builder, resource="custom_instructions"))
+        except Exception as exc:  # noqa: BLE001
+            if columns == _INSTRUCTION_COLUMNS and is_missing_column_error(exc):
+                continue
+            raise
+    return []
+
+
 def load_active_instruction_texts(
     client: Any,
     org_id: str,
     *,
     agent_id: str | None = None,
+    department: str | None = None,
     limit: int = 12,
 ) -> list[str]:
-    """Active custom instructions for prompt injection (org-wide + optional agent)."""
+    """Active custom instructions for prompt injection.
+
+    Order: guardrails first (marked ``[Guardrail]``), then guidance from broad to
+    specific (whole team, the agent's department, the agent itself), so a later
+    line is the more specific one.
+    """
     from app.core.org_state_cache import cache_allowed
 
+    dept = fleet_department(department)
     cacheable = cache_allowed(client)
-    key = (str(org_id), str(agent_id or ""), int(limit))
+    key = (str(org_id), str(agent_id or ""), str(dept or ""), int(limit))
     if cacheable:
         cached = _instruction_cache.get(key)
         if cached is not None:
             return cached
         token = _instruction_cache.token()
-    texts = _query_active_instruction_texts(client, org_id, agent_id=agent_id, limit=limit)
+    texts = _query_active_instruction_texts(client, org_id, agent_id=agent_id, department=dept, limit=limit)
     if cacheable:
         _instruction_cache.set(key, texts, tags=[("org", str(org_id))], token=token)
     return texts
@@ -119,44 +204,40 @@ def _query_active_instruction_texts(
     org_id: str,
     *,
     agent_id: str | None,
+    department: str | None = None,
     limit: int,
 ) -> list[str]:
-    rows = execute_or_empty(
-        client,
-        client.table("custom_instructions")
-        .select("id, agent_id, name, content, is_active, updated_at")
-        .eq("org_id", org_id)
-        .eq("is_active", True)
-        .order("updated_at", desc=True)
-        .limit(max(1, min(limit * 3, 60))),
-        resource="custom_instructions",
-    )
-    texts: list[str] = []
+    rows = _select_instructions(client, org_id, active_only=True, limit=max(1, min(limit * 3, 60)))
     agent_key = str(agent_id or "").strip()
-    for row in rows:
+    ranked: list[tuple[int, int, str]] = []
+    for index, row in enumerate(rows):
         content = str(row.get("content") or "").strip()
         if not content:
             continue
         row_agent = str(row.get("agent_id") or "").strip()
-        # Org-wide (no agent_id) always apply; agent-scoped only when matching.
-        if row_agent and row_agent != agent_key:
-            continue
+        row_dept = str(row.get("department") or "").strip()
+        # Whole-team rows always apply; scoped rows only for their agent or department.
+        if row_agent:
+            if row_agent != agent_key:
+                continue
+            level = 3
+        elif row_dept:
+            if row_dept != department:
+                continue
+            level = 2
+        else:
+            level = 1
         name = str(row.get("name") or "Instruction").strip()
-        texts.append(f"{name}: {content}")
-        if len(texts) >= limit:
-            break
-    return texts
+        if row.get("kind") == "guardrail":
+            ranked.append((0, index, f"[Guardrail] {name}: {content}"))
+        else:
+            ranked.append((level, index, f"{name}: {content}"))
+    ranked.sort(key=lambda item: (item[0], item[1]))
+    return [text for _, _, text in ranked[:limit]]
 
 
 def list_custom_instructions(client: Any, org_id: str) -> list[dict[str, Any]]:
-    rows = execute_or_empty(
-        client,
-        client.table("custom_instructions")
-        .select("id, agent_id, name, content, is_active, created_at, updated_at")
-        .eq("org_id", org_id)
-        .order("updated_at", desc=True),
-        resource="custom_instructions",
-    )
+    rows = _select_instructions(client, org_id, active_only=False)
     agent_ids = sorted({str(row["agent_id"]) for row in rows if row.get("agent_id")})
     agent_names: dict[str, str] = {}
     if agent_ids:
