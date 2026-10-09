@@ -129,9 +129,11 @@ function AgentsRoster() {
   })
   const statsAvailable = Boolean(stats && !statsError)
 
+  const rawAgents = useMemo(() => normalizeAgentsPayload(data), [data])
+  const rawById = useMemo(() => new Map(rawAgents.map((raw) => [String(raw.id), raw as Record<string, unknown>])), [rawAgents])
   const agents = useMemo(
-    () => normalizeAgentsPayload(data).map((raw) => toRosterAgent(raw, statsAvailable ? stats : undefined)),
-    [data, stats, statsAvailable],
+    () => rawAgents.map((raw) => toRosterAgent(raw, statsAvailable ? stats : undefined)),
+    [rawAgents, stats, statsAvailable],
   )
 
   usePublishGravitreAISelection(selected ? { kind: "agent", id: selected.id, label: selected.name } : null)
@@ -234,6 +236,8 @@ function AgentsRoster() {
           initialTrace={searchParams.get("trace")}
           onGoalsChanged={() => void mutateStats()}
           onSelectAgent={setSelected}
+          rawById={rawById}
+          onChanged={refresh}
         />
       ) : (
         <RosterTeamView agents={agents} statsAvailable={statsAvailable} days={stats?.days?.length ?? 0} />
