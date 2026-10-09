@@ -148,6 +148,16 @@ class _Query:
         self.table = table
         self.filters: list[tuple[str, str, Any]] = []
         self.update_payload: dict[str, Any] | None = None
+        self.order_key: str | None = None
+        self.window: tuple[int, int] | None = None
+
+    def order(self, key: str, **_k: Any) -> "_Query":
+        self.order_key = key
+        return self
+
+    def range(self, start: int, end: int) -> "_Query":
+        self.window = (start, end)
+        return self
 
     def select(self, *_a: Any, **_k: Any) -> "_Query":
         return self
@@ -182,6 +192,10 @@ class _Query:
                     ok = False
             if ok:
                 out.append(row)
+        if self.order_key:
+            out.sort(key=lambda row: str(row.get(self.order_key) or ""))
+        if self.window:
+            out = out[self.window[0] : self.window[1] + 1]
         return out
 
     def execute(self) -> Any:
@@ -251,3 +265,49 @@ def test_weekly_summary_sends_once_on_monday_morning():
         again = db.tables["organizations"][0]
         assert ops_notifications.send_weekly_summary_if_due(db, again, now=monday) == 0
     assert emit.call_args.kwargs["event_type"] == "weekly_summary"
+
+
+def test_escalation_keeps_settings_saved_meanwhile_and_reaches_old_requests():
+    from app.services import ops_notifications
+
+    org = {"id": "org-1", "settings": {"approvalRules": {"escalatePastDue": True, "sla": "1h"}}}
+    stale = dict(org["settings"])
+    # An admin changes the time zone after the tick read its snapshot.
+    org["settings"] = {**org["settings"], "timezone": "Europe/London"}
+    runs = [
+        {
+            "id": f"run-{i:03d}",
+            "org_id": "org-1",
+            "approval_status": "pending_approval",
+            "created_at": f"2026-10-0{1 + i // 100}T{i % 24:02d}:00:00+00:00",
+            "definition_snapshot": {"name": f"Run {i}"},
+        }
+        for i in range(450)
+    ]
+    db = _FakeDb(
+        {
+            "organizations": [org],
+            "workflow_runs": runs,
+            "approvals": [],
+            "organization_members": [{"org_id": "org-1", "user_id": "admin-1", "role": "admin"}],
+        }
+    )
+    now = datetime(2026, 10, 9, 12, 0, tzinfo=timezone.utc)
+    with patch.object(ops_notifications, "emit_notification", return_value="n1"):
+        sent = ops_notifications.escalate_past_due_approvals(db, "org-1", now=now, org_settings=stale)
+    assert sent == 450
+    saved = db.tables["organizations"][0]["settings"]
+    assert saved["timezone"] == "Europe/London"
+    assert "run-000" in saved["opsNotifications"]["escalated"]
+
+
+def test_weekly_summary_claim_survives_a_stale_snapshot():
+    from app.services import ops_notifications
+
+    org = {"id": "org-1", "settings": {"timezone": "UTC", "opsNotifications": {"weeklySummaryWeek": "2026-W42"}}}
+    db = _FakeDb({"organizations": [org], "organization_members": [{"org_id": "org-1", "user_id": "u1", "role": "member"}]})
+    monday = datetime(2026, 10, 12, 9, 30, tzinfo=timezone.utc)
+    stale = {"id": "org-1", "settings": {"timezone": "UTC"}}
+    with patch.object(ops_notifications, "emit_notification", return_value="n1") as emit:
+        assert ops_notifications.send_weekly_summary_if_due(db, stale, now=monday) == 0
+    emit.assert_not_called()

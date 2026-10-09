@@ -119,21 +119,39 @@ def notify_source_attention(
     )
 
 
-def _pending_requests(client: Any, org_id: str) -> list[dict[str, Any]]:
+_PAGE = 200
+_MAX_PENDING = 2000
+# The shortest SLA choice: anything newer cannot be past due yet.
+_MIN_SLA = timedelta(minutes=60)
+
+
+def _oldest_first(query_for_page: Any, cutoff: datetime, time_key: str) -> list[dict[str, Any]]:
+    """Read pending rows oldest first, stopping once rows are too new to be past due."""
+    rows: list[dict[str, Any]] = []
+    for start in range(0, _MAX_PENDING, _PAGE):
+        try:
+            page = query_for_page().range(start, start + _PAGE - 1).execute().data or []
+        except Exception:  # noqa: BLE001
+            break
+        rows.extend(page)
+        last = _parse_time(page[-1].get(time_key)) if page else None
+        if len(page) < _PAGE or (last is not None and last > cutoff):
+            break
+    return rows
+
+
+def _pending_requests(client: Any, org_id: str, *, now: datetime | None = None) -> list[dict[str, Any]]:
+    cutoff = (now or datetime.now(timezone.utc)) - _MIN_SLA
     out: list[dict[str, Any]] = []
-    try:
-        runs = (
-            client.table("workflow_runs")
-            .select("id, created_at, definition_snapshot")
-            .eq("org_id", org_id)
-            .eq("approval_status", "pending_approval")
-            .limit(100)
-            .execute()
-            .data
-            or []
-        )
-    except Exception:  # noqa: BLE001
-        runs = []
+    runs = _oldest_first(
+        lambda: client.table("workflow_runs")
+        .select("id, created_at, definition_snapshot")
+        .eq("org_id", org_id)
+        .eq("approval_status", "pending_approval")
+        .order("created_at"),
+        cutoff,
+        "created_at",
+    )
     for run in runs:
         snap = run.get("definition_snapshot") if isinstance(run.get("definition_snapshot"), dict) else {}
         out.append(
@@ -143,19 +161,15 @@ def _pending_requests(client: Any, org_id: str) -> list[dict[str, Any]]:
                 "title": str(snap.get("name") or "A workflow run"),
             }
         )
-    try:
-        rows = (
-            client.table("approvals")
-            .select("id, title, requested_at")
-            .eq("org_id", org_id)
-            .eq("status", "pending")
-            .limit(100)
-            .execute()
-            .data
-            or []
-        )
-    except Exception:  # noqa: BLE001
-        rows = []
+    rows = _oldest_first(
+        lambda: client.table("approvals")
+        .select("id, title, requested_at")
+        .eq("org_id", org_id)
+        .eq("status", "pending")
+        .order("requested_at"),
+        cutoff,
+        "requested_at",
+    )
     for row in rows:
         out.append(
             {
@@ -165,6 +179,30 @@ def _pending_requests(client: Any, org_id: str) -> list[dict[str, Any]]:
             }
         )
     return [item for item in out if item["id"]]
+
+
+def _save_ops_state(client: Any, org_id: str, update: Any) -> dict[str, Any] | None:
+    """Write only the opsNotifications key onto a fresh read of the org settings.
+
+    Re-reading just before the write keeps approval rules, time zone and
+    branding saved by an admin in the meantime. Returns the new ops state, or
+    None when the settings could not be read (nothing is written then).
+    """
+    try:
+        rows = client.table("organizations").select("settings").eq("id", org_id).limit(1).execute().data or []
+    except Exception:  # noqa: BLE001
+        return None
+    if not rows:
+        return None
+    raw = rows[0].get("settings")
+    current = dict(raw) if isinstance(raw, dict) else {}
+    ops = current.get(_OPS_KEY) if isinstance(current.get(_OPS_KEY), dict) else {}
+    next_ops = update(dict(ops))
+    if next_ops is None:
+        return None
+    current[_OPS_KEY] = next_ops
+    client.table("organizations").update({"settings": current}).eq("id", org_id).execute()
+    return next_ops
 
 
 def escalate_past_due_approvals(
@@ -186,19 +224,27 @@ def escalate_past_due_approvals(
     if org_settings is None:
         org_settings = _org_settings(client, org_id)
     ops = org_settings.get(_OPS_KEY) if isinstance(org_settings.get(_OPS_KEY), dict) else {}
-    done = [str(x) for x in (ops.get("escalated") or []) if x]
-    due = []
-    for item in _pending_requests(client, org_id):
+    already = {str(x) for x in (ops.get("escalated") or []) if x}
+    candidates = []
+    for item in _pending_requests(client, org_id, now=now):
         started = _parse_time(item["started"])
-        if started is None or item["id"] in done or sla_deadline(started, rules, tz_name) > now:
+        if started is None or item["id"] in already or sla_deadline(started, rules, tz_name) > now:
             continue
-        due.append(item)
-    if not due:
+        candidates.append(item)
+    if not candidates:
         return 0
+    due: list[dict[str, Any]] = []
+
+    def claim(state: dict[str, Any]) -> dict[str, Any] | None:
+        done = [str(x) for x in (state.get("escalated") or []) if x]
+        due.extend(item for item in candidates if item["id"] not in done)
+        if not due:
+            return None
+        return {**state, "escalated": (done + [item["id"] for item in due])[-_ESCALATED_KEEP:]}
+
     # Claim first so a crash mid-send cannot repeat the escalation.
-    done = (done + [item["id"] for item in due])[-_ESCALATED_KEEP:]
-    org_settings[_OPS_KEY] = {**ops, "escalated": done}
-    client.table("organizations").update({"settings": org_settings}).eq("id", org_id).execute()
+    if _save_ops_state(client, org_id, claim) is None:
+        return 0
     approvers = org_member_user_ids(client, org_id, ["owner", "admin"])
     for item in due:
         _notify(
@@ -283,8 +329,13 @@ def send_weekly_summary_if_due(client: Any, org: dict[str, Any], *, now: datetim
     if ops.get("weeklySummaryWeek") == week:
         return 0
     # Claim the week before sending so a crash cannot double-send.
-    next_settings = {**org_settings, _OPS_KEY: {**ops, "weeklySummaryWeek": week}}
-    client.table("organizations").update({"settings": next_settings}).eq("id", org_id).execute()
+    claimed = _save_ops_state(
+        client,
+        org_id,
+        lambda state: None if state.get("weeklySummaryWeek") == week else {**state, "weeklySummaryWeek": week},
+    )
+    if claimed is None:
+        return 0
     return _notify(
         client,
         org_id,
@@ -315,7 +366,6 @@ def run_ops_notifications_tick(client: Any, *, now: datetime | None = None) -> d
         try:
             if rules.get("escalatePastDue") is True:
                 escalated += escalate_past_due_approvals(client, org_id, now=now, org_settings=dict(settings))
-                settings = _org_settings(client, org_id) or settings
             summaries += send_weekly_summary_if_due(client, {"id": org_id, "settings": settings}, now=now)
         except Exception as exc:  # noqa: BLE001
             logger.warning("ops_notifications_org_failed org=%s error=%s", org_id, exc)

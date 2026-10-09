@@ -181,3 +181,10 @@ it("does not present unsaved workspace model defaults as persistable", () => {
   expect(container.textContent).toContain("no organization API for workspace default models")
   expect(container.textContent).not.toContain("Saved!")
 })
+it("keeps the saved workspace name when the org refetch is stale", async () => {
+  org(); input("organization-name", "New service team")
+  await saveChanges()
+  act(() => root.render(<OrganizationSettings orgData={{ ...organization }} isAdmin onUpdate={mocks.refresh} />))
+  expect(container.querySelector<HTMLInputElement>("#organization-name")!.value).toBe("New service team")
+  expect(container.textContent).not.toContain("Unsaved changes")
+})

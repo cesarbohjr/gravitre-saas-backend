@@ -83,18 +83,22 @@ export function OrganizationSettings({
     { revalidateOnFocus: false },
   )
   const workspace = workspaceData?.workspace
-  // A logo uploaded or removed here is already saved; show it until the refreshed org arrives.
+  // Values saved here win over orgData until the refreshed org reports them,
+  // so a slow or failed refetch cannot snap the form back to the old values.
+  const serverName = String(orgData.name ?? "")
   const serverLogo = String(orgData.logoUrl ?? orgData.logo_url ?? "")
+  const [savedName, setSavedName] = useState<string | null>(null)
   const [savedLogo, setSavedLogo] = useState<string | null>(null)
+  useEffect(() => setSavedName(null), [serverName])
   useEffect(() => setSavedLogo(null), [serverLogo])
   const baseline = useMemo<Draft>(
     () => ({
-      name: String(orgData.name ?? ""),
+      name: savedName ?? serverName,
       logoUrl: savedLogo ?? serverLogo,
       accentColor: (workspace?.accentColor ?? ACCENT_SWATCHES[0].hex).toUpperCase(),
       timeZone: workspace?.timeZone ?? "UTC",
     }),
-    [orgData.name, savedLogo, serverLogo, workspace?.accentColor, workspace?.timeZone],
+    [savedName, serverName, savedLogo, serverLogo, workspace?.accentColor, workspace?.timeZone],
   )
   const [draft, setDraft] = useState<Draft>(baseline)
   const [touched, setTouched] = useState<Partial<Record<keyof Draft, boolean>>>({})
@@ -165,6 +169,8 @@ export function OrganizationSettings({
           primaryDomain: String(orgData.primaryDomain ?? orgData.primary_domain ?? ""),
           logoUrl: draft.logoUrl,
         })
+        setSavedName(draft.name.trim())
+        setSavedLogo(draft.logoUrl)
       }
       if (draft.accentColor !== baseline.accentColor || draft.timeZone !== baseline.timeZone) {
         const result = await settingsApi.updateWorkspace({ accentColor: draft.accentColor, timeZone: draft.timeZone })
