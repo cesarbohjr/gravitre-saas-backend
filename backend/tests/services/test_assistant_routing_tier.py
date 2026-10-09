@@ -109,3 +109,24 @@ def test_user_deepen_overrides_pinned_fast():
     ctrl = RoutingControl(tier="simple", model="gpt-fast", max_iterations=2, pinned_fast=True)
     assert escalate_for_user_deepen(ctrl, "please go deeper") is True
     assert ctrl.tier == "research"
+
+
+def test_write_and_consequential_reasons_escalate_past_pinned_fast():
+    # Fast is a latency choice for questions; a requested write must leave the
+    # simple tier (low model, two rounds) once it is known to be a write.
+    for reason in ("write_tool_from_simple", "consequential_write", "spoken_consequential_write"):
+        ctrl = RoutingControl(tier="simple", model="gpt-fast", max_iterations=2, pinned_fast=True)
+        assert ctrl.escalate("multi_step", reason) is True, reason
+        assert ctrl.tier == "multi_step"
+        assert ctrl.max_iterations >= 6
+    ctrl = RoutingControl(tier="simple", model="gpt-fast", max_iterations=2, pinned_fast=True)
+    assert escalate_for_write_tool(ctrl, tool_is_write=True) is True
+    assert ctrl.tier == "multi_step"
+
+
+def test_pinned_fast_still_holds_for_non_write_reasons():
+    ctrl = RoutingControl(tier="simple", model="gpt-fast", max_iterations=2, pinned_fast=True)
+    assert ctrl.escalate("multi_step", "consecutive_tool_failures") is False
+    assert ctrl.tier == "simple"
+    # Plain questions in fast mode stay simple.
+    assert classify_routing_tier("What is Gravitre?", mode="fast").tier == "simple"

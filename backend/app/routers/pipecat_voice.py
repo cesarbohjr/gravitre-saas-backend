@@ -228,7 +228,20 @@ async def pipecat_voice_ws(
     if fallback_enabled and fallback != primary:
         providers.append((fallback, primary, "primary_pipeline_failed"))
 
-    if conversation_id:
+    minted_conversation = False
+    if not (conversation_id or "").strip():
+        # Talk opened on a new chat. Give the session its conversation id now
+        # (reported in session.ready, which the web client adopts) so the first
+        # turn's pending approvals and offers have a row to live on; the row
+        # itself is created at the first confirmed turn, never for an empty
+        # session. Before this, turn 1 ran with no id and its task state was
+        # silently dropped.
+        import uuid
+
+        conversation_id = str(uuid.uuid4())
+        minted_conversation = True
+
+    if conversation_id and not minted_conversation:
         # A stop marker left by an earlier socket on this conversation (barge-in
         # just before a reconnect, or Talk reopened within its 120 s TTL) would
         # make every turn on this socket return without answering.

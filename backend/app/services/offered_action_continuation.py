@@ -36,6 +36,10 @@ ContinuationKind = Literal[
     "execute_read",
     "decline",
     "topic_change",
+    # Short reply that is neither a clear yes nor a clear no: the offer is kept
+    # and the caller asks the model (classify_offer_reply_with_model) instead
+    # of clearing it as a topic change.
+    "needs_model",
     "none",
 ]
 
@@ -79,6 +83,40 @@ _CLAIMS_FUTURE_RE = re.compile(
 _WRITE_OFFER_RE = re.compile(
     r"(?i)\b(send|create|update|post|delete|publish|execute the write|approve this send)\b"
 )
+
+# Natural spoken/typed acceptances of an offer. CONFIRM_PATTERN only takes a
+# bare token ("yes", "sure"), so "Yes, please." or "Sounds great" used to read
+# as a topic change and the offer was deleted.
+_AFFIRM_PHRASE = (
+    r"(?:yes|yeah|yea|yep|yup|ya|sure|ok(?:ay)?|alright|all\s+right|absolutely|definitely|"
+    r"certainly|of\s+course|please(?:\s+do)?|great|perfect|cool|nice|awesome|excellent|"
+    r"sounds\s+(?:good|great|perfect|fine)|that\s+(?:works|sounds\s+(?:good|great)|"
+    r"would\s+be\s+(?:great|perfect|helpful|nice)|'?d\s+be\s+(?:great|perfect|helpful|nice))|"
+    r"that'?d\s+be\s+(?:great|perfect|helpful|nice)|go\s+(?:ahead|for\s+it)|do\s+(?:it|that)|"
+    r"let'?s\s+(?:do\s+(?:it|that)|go)|run\s+(?:it|that|the\s+check)|check\s+(?:it|that)|"
+    r"go\s+ahead\s+and\s+(?:check|run|do)\s+(?:it|that)|i'?d\s+like\s+that|why\s+not)"
+)
+_AFFIRMATION_RE = re.compile(
+    rf"(?i)^\s*{_AFFIRM_PHRASE}(?:[\s,.!]+(?:{_AFFIRM_PHRASE}|thanks|thank\s+you|now|then))*\s*[.!]*\s*$"
+)
+_SOFT_DECLINE_RE = re.compile(
+    r"(?i)^\s*(?:no|nah|nope|not\s+(?:now|right\s+now|today|yet))?[\s,.!]*"
+    r"(?:thanks|thank\s+you|i'?m\s+(?:good|fine|ok(?:ay)?)|that'?s\s+(?:ok(?:ay)?|fine|alright)|"
+    r"(?:no|nah|nope)\s+need|maybe\s+later|not\s+(?:now|right\s+now|today|yet)|skip\s+it)?"
+    r"(?<=\w)[\s,.!]*(?:thanks|thank\s+you)?\s*[.!]*\s*$"
+)
+SHORT_REPLY_MAX_WORDS = 8
+_STARTS_AFFIRM_RE = re.compile(r"(?i)^\s*(?:yes|yeah|yep|sure|ok(?:ay)?|alright|please|go\s+ahead)\b")
+
+
+def _is_new_request(message: str) -> bool:
+    """A self-contained new ask ("Draft a follow-up email to Stephanie")."""
+    try:
+        from app.services.conversation_tier import _content_tier
+
+        return _content_tier((message or "").strip()).tier == "deep"
+    except Exception:  # noqa: BLE001
+        return False
 
 PROGRESS_ACK = "Checking now…"
 TOOL_TIMEOUT_S = 8.0
@@ -138,11 +176,24 @@ def is_confirm_utterance(message: str) -> bool:
     spoken = classify_spoken_write_approval(text)
     if spoken.decision == "hold_commit":
         return False
-    return bool(CONFIRM_PATTERN.match(text) or text.lower() in {"yes", "y", "ok", "okay", "confirm"})
+    return bool(
+        CONFIRM_PATTERN.match(text)
+        or text.lower() in {"yes", "y", "ok", "okay", "confirm"}
+        or _AFFIRMATION_RE.match(text)
+        or spoken.decision == "confirm"
+    )
 
 
 def is_decline_utterance(message: str) -> bool:
-    return bool(DECLINE_PATTERN.match((message or "").strip()))
+    text = (message or "").strip()
+    if DECLINE_PATTERN.match(text):
+        return True
+    # "no thanks", "nah, I'm good", "not right now" — but never a bare
+    # "thanks", which accepts or closes rather than declines.
+    lowered = text.lower()
+    if not re.match(r"^\s*(?:no|nah|nope|not|i'?m|that'?s|maybe|skip)\b", lowered):
+        return False
+    return bool(_SOFT_DECLINE_RE.match(text))
 
 
 def claims_future_action(text: str) -> bool:
@@ -258,7 +309,64 @@ def resolve_offered_action_turn(
     if is_confirm_utterance(message):
         offered.status = "confirmed"
         return ContinuationDecision(kind="execute_read", offered=offered, reason="user_confirmed")
+    if 0 < len((message or "").split()) <= SHORT_REPLY_MAX_WORDS and (
+        _STARTS_AFFIRM_RE.match(message or "") or not _is_new_request(message)
+    ):
+        # "Yes and cc me", "hmm, maybe" — too short to be a new topic with
+        # confidence. Keep the offer; the caller asks the model.
+        return ContinuationDecision(kind="needs_model", offered=offered, reason="short_reply_unclear")
     return ContinuationDecision(kind="topic_change", offered=offered, reason="user_changed_topic")
+
+
+async def classify_offer_reply_with_model(
+    message: str,
+    *,
+    offered: OfferedAction,
+    conversation_history: list[dict[str, Any]] | None,
+    settings: Any | None = None,
+    org_id: str | None = None,
+) -> ContinuationKind:
+    """Model read of a short, unclear reply to an offer.
+
+    Returns ``execute_read`` (accepts), ``decline`` (refuses) or ``none``
+    (anything else: the offer is kept, never cleared on a guess).
+    """
+    try:
+        from app.services.model_router import TaskType, get_model_router
+        from app.services.pending_reply_classifier import _format_conversation_for_classifier
+
+        history = _format_conversation_for_classifier(conversation_history)
+        prompt = (
+            "The assistant offered to run a read-only check for the user. Decide what "
+            "the user's latest reply means. Labels: accept (they want the offered "
+            "check run), decline (they do not), other (a different request, a "
+            "question, or unclear).\n"
+            f"Recent conversation:\n{history or '(none)'}\n\n"
+            f"Offer: {offered.type} over {', '.join(offered.scope) or 'the workspace'}\n"
+            f"Latest user reply: {message}\n"
+        )
+        response = await get_model_router().complete(
+            task_type=TaskType.CLASSIFICATION,
+            prompt=prompt,
+            system_prompt='Respond as JSON: {"intent":"accept|decline|other"}',
+            temperature=0.0,
+            max_tokens=40,
+            org_id=org_id,
+        )
+        import json
+
+        parsed = response.parsed if isinstance(getattr(response, "parsed", None), dict) else None
+        if parsed is None:
+            parsed = json.loads(response.content or "{}")
+        intent = str((parsed or {}).get("intent") or "").strip().lower()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("offered_action_model_classify_skipped: %s", exc)
+        return "none"
+    if intent == "accept":
+        return "execute_read"
+    if intent == "decline":
+        return "decline"
+    return "none"
 
 
 def progress_steps_for_scopes(scope: list[str], *, current: str | None = None) -> list[str]:

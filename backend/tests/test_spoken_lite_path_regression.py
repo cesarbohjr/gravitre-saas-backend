@@ -71,7 +71,7 @@ def test_light_medium_deep_voice_routing():
     assert classify_conversation_tier("Investigate my production logs").tier == "deep"
     assert classify_conversation_tier("Create four campaigns in Google Ads").tier == "deep"
     assert resolve_voice_session_intelligence_mode("Hello!") == "fast"
-    assert resolve_voice_session_intelligence_mode("How does onboarding work?") == "fast"
+    assert resolve_voice_session_intelligence_mode("How does onboarding work?") == "standard"
     assert resolve_voice_session_intelligence_mode("How many companies are in my HubSpot?") == "agent"
     assert resolve_voice_session_intelligence_mode("Investigate my production logs") == "agent"
 

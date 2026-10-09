@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import re
 import time
 from typing import Any
 
@@ -26,6 +27,7 @@ from pipecat.services.llm_service import LLMService
 from pipecat.utils.text.base_text_aggregator import AggregationType
 
 from app.core.logging import get_logger
+from app.services.conversation_tier import should_acknowledge_turn
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 from app.services.pipecat_voice.llm_context_utils import messages_from_context as _messages_from_context
 from app.services.pipecat_voice.speculative_generation import SpeculativeGenerationCoordinator
@@ -67,11 +69,50 @@ STOP_POLL_INTERVAL_S = 0.25
 
 # Appended to the voice turn's base prompt. Business context, memory and
 # history ride along on every turn; this keeps them background.
+# A cached voice system prompt is rebuilt after this long (text rebuilds per turn).
+BASE_PROMPT_MAX_AGE_S = 300.0
+# The speculative run and its confirmed turn both ask for the durable tail.
+DURABLE_REFRESH_MIN_INTERVAL_S = 0.5
+
 VOICE_NO_VOLUNTEERED_DATA_NOTE = (
     "Treat business context, memory and earlier conversation as background: never volunteer "
     "figures from them or run connector tools unless the user's current message asks for that "
     "or accepts your offer."
 )
+
+
+def merge_unanswered_turn(
+    carried: str, user_text: str, history: list[dict[str, Any]]
+) -> tuple[str, list[dict[str, Any]]]:
+    """Fold a request cancelled before any answer into the next utterance.
+
+    The cancelled utterance is still the last user message in the context;
+    it is removed from history and joined to the new text, so "Email Sarah the
+    deck" + "and cc Mike" is answered as one request. Backing off ("never
+    mind", "stop") withdraws it, and an exact repeat is not doubled.
+    """
+    from app.services.conversation_tier import _DECLINE_CONTINUATION_RE
+
+    carried = (carried or "").strip()
+    text = (user_text or "").strip()
+    if not carried or not text or _DECLINE_CONTINUATION_RE.match(text):
+        return user_text, history
+
+    def _norm(value: str) -> str:
+        return " ".join(re.sub(r"[^\w\s]", " ", value.casefold()).split())
+
+    trimmed = list(history or [])
+    for idx in range(len(trimmed) - 1, -1, -1):
+        row = trimmed[idx]
+        if str(row.get("role") or "") == "assistant":
+            break
+        if str(row.get("role") or "") == "user" and _norm(str(row.get("content") or "")) == _norm(carried):
+            trimmed.pop(idx)
+            break
+    if _norm(carried) == _norm(text) or _norm(text).startswith(_norm(carried)):
+        return text, trimmed
+    joiner = " " if carried[-1] in ".!?," else ", "
+    return f"{carried}{joiner}{text}", trimmed
 
 
 async def adopt_or_fresh(adopted: Any, fresh: Any):
@@ -136,9 +177,22 @@ class GravitreCognitiveLLMService(LLMService):
         self._durable_load_lock = asyncio.Lock()
         self._interrupt_reporter: Any | None = None
         # One brain, one prompt: the canonical assistant system prompt text chat
-        # builds (persona, org context, agent memory). Built once per socket.
+        # builds (persona, org context, agent memory). Text rebuilds it every
+        # turn; voice reuses it only while it is fresh and, for an agent whose
+        # memory section is retrieved from the question, only for the same text
+        # (so a speculative run and its confirmed turn share one build).
         self._base_prompt: str | None = None
+        self._base_prompt_built_at = 0.0
+        self._base_prompt_query: str | None = None
         self._base_prompt_lock = asyncio.Lock()
+        # Rows persisted to this conversation after the seed was read (text typed
+        # while Talk is open, and this socket's own voice turns), refreshed per
+        # turn so voice sees what was typed and text sees what was said.
+        self._durable_live_rows: list[dict[str, Any]] = []
+        self._durable_watermark: str | None = None
+        self._durable_owned = False
+        self._durable_refreshed_at = 0.0
+        self._conversation_prepared: str | None = None
         # Per-turn latency record (voice_turn_trace.VoiceTurnTrace), set by pipeline.py.
         self._turn_trace: Any | None = None
         self._turn_brain_marks: list[dict[str, Any]] = []
@@ -149,6 +203,11 @@ class GravitreCognitiveLLMService(LLMService):
         # acknowledgement (so consecutive deep turns do not repeat it).
         self._turn_spoke = False
         self._last_ack: str | None = None
+        # The request a barge-in cancelled before any answer was spoken. It is
+        # merged into the next turn instead of being silently lost.
+        self._carry_user_text: str | None = None
+        self._active_user_text = ""
+        self._answer_started = False
 
     async def _ensure_durable_context(self) -> None:
         """Load the durable seed once per socket, off the event loop.
@@ -175,21 +234,24 @@ class GravitreCognitiveLLMService(LLMService):
         """
         from app.services.shared_turn_preparation import build_turn_system_prompt, harden_against_injection
 
-        if self._base_prompt is None:
+        agent_id = str((self._agent or {}).get("id") or "") or None
+        if self._base_prompt_stale(user_text, agent_id=agent_id):
             async with self._base_prompt_lock:
-                if self._base_prompt is None:
+                if self._base_prompt_stale(user_text, agent_id=agent_id):
                     try:
                         self._base_prompt = await asyncio.to_thread(
                             build_turn_system_prompt,
                             self._app_settings,
                             self._org_id,
                             user_id=self._user_id,
-                            agent_id=str((self._agent or {}).get("id") or "") or None,
+                            agent_id=agent_id,
                             query=user_text,
                         )
                     except Exception as exc:  # noqa: BLE001 - never make Talk unavailable
                         logger.warning("pipecat_base_prompt_build_failed org_id=%s err=%s", self._org_id, exc)
-                        self._base_prompt = ""
+                        self._base_prompt = self._base_prompt or ""
+                    self._base_prompt_built_at = time.monotonic()
+                    self._base_prompt_query = user_text
         prompt = self._base_prompt or None
         if prompt:
             prompt = f"{prompt}\n\n{VOICE_NO_VOLUNTEERED_DATA_NOTE}"
@@ -203,10 +265,63 @@ class GravitreCognitiveLLMService(LLMService):
             )
         return {"assistant_base_prompt": prompt}
 
+    def _base_prompt_stale(self, user_text: str, *, agent_id: str | None) -> bool:
+        if self._base_prompt is None:
+            return True
+        if time.monotonic() - self._base_prompt_built_at > BASE_PROMPT_MAX_AGE_S:
+            # Connected apps and org context change; text rebuilds every turn.
+            return True
+        # An agent's memory section is retrieved for the question asked.
+        return bool(agent_id) and self._base_prompt_query != user_text
+
     async def speculative_durable_context(self) -> tuple[list[dict[str, Any]], str | None, str | None]:
-        """Return the same durable seed/summary used by confirmed voice turns."""
+        """Return the same durable history/summary used by confirmed voice turns."""
         await self._ensure_durable_context()
-        return list(self._durable_history), self._durable_summary, self._conversation_id
+        await self._refresh_durable_tail()
+        return self._durable_rows(), self._durable_summary, self._conversation_id
+
+    def _durable_rows(self) -> list[dict[str, Any]]:
+        """Seed plus rows persisted since; merged with the socket by merge_durable_and_socket_history."""
+        return [dict(m) for m in self._durable_history] + [
+            {**dict(m), "_live": True} for m in self._durable_live_rows
+        ]
+
+    async def _refresh_durable_tail(self) -> None:
+        """Read rows persisted to the conversation since the last read (one small query)."""
+        if not self._conversation_id or not self._durable_owned:
+            return
+        now = time.monotonic()
+        if now - self._durable_refreshed_at < DURABLE_REFRESH_MIN_INTERVAL_S:
+            return
+        self._durable_refreshed_at = now
+        try:
+            rows = await asyncio.to_thread(self._load_rows_since, self._conversation_id, self._durable_watermark)
+        except Exception as exc:  # noqa: BLE001 - history refresh is best-effort
+            logger.debug("pipecat_durable_refresh_failed error=%s", exc)
+            return
+        for row in rows:
+            created = str(row.get("created_at") or "")
+            if created:
+                self._durable_watermark = created
+            role = str(row.get("role") or "")
+            content = str(row.get("content") or "")
+            if role in {"user", "assistant"} and content.strip():
+                self._durable_live_rows.append({"role": role, "content": content})
+        self._durable_live_rows = self._durable_live_rows[-96:]
+
+    def _load_rows_since(self, conversation_id: str, watermark: str | None) -> list[dict[str, Any]]:
+        from app.workflows.repository import get_supabase_client
+
+        query = (
+            get_supabase_client(self._app_settings)
+            .table("conversation_messages")
+            .select("role,content,created_at")
+            .eq("conversation_id", conversation_id)
+        )
+        if watermark:
+            query = query.gt("created_at", watermark)
+        response = query.order("created_at", desc=False).limit(48).execute()
+        return list(getattr(response, "data", None) or [])
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -224,6 +339,14 @@ class GravitreCognitiveLLMService(LLMService):
                 await self.start_processing_metrics()
                 self._turn_brain_marks = []
                 await self._run_gravitre_turn(frame.context)
+            except asyncio.CancelledError:
+                # Barge-in cancelled this turn. If none of the answer was spoken
+                # yet, keep the request for the next turn ("Email Sarah the
+                # deck" ... "and cc Mike").
+                if self._active_user_text and not self._answer_started:
+                    self._carry_user_text = self._active_user_text
+                    logger.info("pipecat_voice_unanswered_turn_carried org_id=%s", self._org_id)
+                raise
             except Exception as exc:  # noqa: BLE001
                 # str(exc) stays in the log, which is where a stack-shaped string
                 # belongs. What went downstream before was the same raw exception
@@ -283,10 +406,19 @@ class GravitreCognitiveLLMService(LLMService):
             if self._interrupt_reporter.conversation_id:
                 self._conversation_id = self._interrupt_reporter.conversation_id
         await self._ensure_durable_context()
+        # Same conversation row and ledger ingest text runs before the brain,
+        # so the first turn's approvals persist (minted ids get their row now).
+        await self._prepare_conversation(user_text)
+        await self._refresh_durable_tail()
         if trace is not None:
             trace.note("durable_ready")
-        history = self._merge_durable_and_socket_history(self._durable_history, history)
+        history = self._merge_durable_and_socket_history(self._durable_rows(), history)
         user_text = reconstitute_spoken_identity_fields(user_text)
+        carried, self._carry_user_text = self._carry_user_text, None
+        if carried:
+            user_text, history = merge_unanswered_turn(carried, user_text, history)
+        self._active_user_text = user_text
+        self._answer_started = False
         if self._interrupt_reporter is not None:
             self._interrupt_reporter.begin_turn(user_text)
         if await asyncio.to_thread(
@@ -465,9 +597,10 @@ class GravitreCognitiveLLMService(LLMService):
         notice_interval_s = slow_tool_notice_seconds(self._app_settings)
         slow_tool_notices = SlowToolNotices(notice_interval_s)
         events_source = with_silence_ticks(events_source, interval_s=notice_interval_s)
-        # Deep turns run the full pipeline before their first token: if nothing
-        # has been said shortly after the turn is confirmed, acknowledge it.
-        if voice_tier.tier == "deep":
+        # Medium and deep turns run the pipeline before their first token: if
+        # nothing has been said shortly after the turn is confirmed, acknowledge
+        # it. Light turns and backing off ("never mind") are answered at once.
+        if should_acknowledge_turn(voice_tier):
             events_source = with_ack_deadline(events_source, delay_s=deep_ack_seconds(self._app_settings))
         last_stop_poll = time.perf_counter()
         async for event in events_source:
@@ -622,6 +755,7 @@ class GravitreCognitiveLLMService(LLMService):
             for chunk in chunks:
                 spoken = self._sanitize_for_tts(chunk)
                 if spoken:
+                    self._answer_started = True
                     if first_speakable_chunk_at is None:
                         first_speakable_chunk_at = time.perf_counter()
                         if trace is not None:
@@ -641,6 +775,7 @@ class GravitreCognitiveLLMService(LLMService):
         # reply is not silently dropped from speech.
         tail = self._sanitize_for_tts(text_buffer)
         if tail:
+            self._answer_started = True
             if first_speakable_chunk_at is None:
                 first_speakable_chunk_at = time.perf_counter()
                 if trace is not None:
@@ -780,6 +915,9 @@ class GravitreCognitiveLLMService(LLMService):
             )
             rows = list(getattr(response, "data", None) or [])
             rows.reverse()
+            self._durable_owned = True
+            if rows:
+                self._durable_watermark = str(rows[-1].get("created_at") or "") or None
             history = [
                 {"role": str(row.get("role") or ""), "content": str(row.get("content") or "")}
                 for row in rows
@@ -819,10 +957,34 @@ class GravitreCognitiveLLMService(LLMService):
     def _merge_durable_and_socket_history(
         durable: list[dict[str, Any]], socket_history: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
-        """Seed from durable history, then append only new in-socket messages."""
-        # Durable is a frozen pre-socket seed; socket_history contains only
-        # turns observed on this live socket. Preserve legitimate repeated turns.
-        return ([dict(message) for message in durable] + [dict(message) for message in socket_history])[-48:]
+        """Durable history (seed + rows persisted since), then unpersisted socket turns."""
+        from app.services.pipecat_voice.llm_context_utils import merge_durable_and_socket_history
+
+        return merge_durable_and_socket_history(durable, socket_history)
+
+    async def _prepare_conversation(self, user_text: str) -> None:
+        if not self._conversation_id or not self._user_id:
+            return
+        from app.services.shared_turn_preparation import prepare_turn_conversation
+
+        ensure_row = self._conversation_prepared != self._conversation_id
+        try:
+            prepared = await prepare_turn_conversation(
+                self._app_settings,
+                org_id=self._org_id,
+                user_id=self._user_id,
+                conversation_id=self._conversation_id,
+                user_text=user_text,
+                ensure_row=ensure_row,
+            )
+        except Exception as exc:  # noqa: BLE001 - never make Talk unavailable
+            logger.warning("pipecat_conversation_prepare_failed error=%s", exc)
+            return
+        if prepared:
+            if ensure_row and prepared == self._conversation_id:
+                self._durable_owned = True
+            self._conversation_id = prepared
+            self._conversation_prepared = prepared
 
     def _persist_completed_voice_turn(
         self,

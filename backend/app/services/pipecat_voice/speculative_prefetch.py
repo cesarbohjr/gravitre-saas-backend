@@ -37,7 +37,10 @@ from pipecat.frames.frames import (
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
 from app.core.logging import get_logger
-from app.services.pipecat_voice.llm_context_utils import messages_from_context
+from app.services.pipecat_voice.llm_context_utils import (
+    merge_durable_and_socket_history,
+    messages_from_context,
+)
 from app.services.pipecat_voice.utterance_gate import is_non_utterance
 from app.services.pipecat_voice.speculative_generation import (
     SpeculativeGenerationCoordinator,
@@ -243,7 +246,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                 # Awaited, not called: the first load on a resumed conversation
                 # is two Supabase queries and must not run on the event loop.
                 durable, history_summary, provider_conversation_id = await self._durable_context_provider()
-                history = (list(durable or []) + list(socket_history or []))[-48:]
+                history = merge_durable_and_socket_history(list(durable or []), list(socket_history or []))
                 conversation_id = provider_conversation_id or conversation_id
             turn_inputs = await self._turn_inputs_provider(query) if self._turn_inputs_provider is not None else {}
             # Same helper and inputs as the confirmed turn (adopt-on-match parity).

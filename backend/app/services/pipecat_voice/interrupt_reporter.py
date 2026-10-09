@@ -436,6 +436,8 @@ class ElevenLabsInterruptReporter(FrameProcessor):
 
         if isinstance(frame, LLMFullResponseStartFrame):
             self._generating = True
+            if self._voice_session is not None:
+                self._voice_session.assistant_generating = True
             self._draft_llm = ""
             self._draft_client = ""
             self._spoken_aligned = ""
@@ -456,8 +458,12 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             self._spoken_aligned += str(getattr(frame, "text", None) or "")
         elif isinstance(frame, LLMFullResponseEndFrame):
             self._generating = False
+            if self._voice_session is not None:
+                self._voice_session.assistant_generating = False
         elif isinstance(frame, InterruptionFrame):
             self._generating = False
+            if self._voice_session is not None:
+                self._voice_session.assistant_generating = False
             offset = getattr(frame, "gravitre_playback_offset_ms", None)
             if offset is not None:
                 try:

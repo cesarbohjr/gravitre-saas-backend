@@ -3,8 +3,10 @@
 A deep turn runs routing, the kernel and context assembly before its first
 token, which left seconds of silence after the caller stopped talking. When
 nothing has been said shortly after the turn is confirmed, the bridge speaks
-one short acknowledgement with no data in it. Light/medium turns, a deep
-answer that arrives in time, and a refused turn say nothing extra.
+one short acknowledgement with no data in it. Medium turns get the same
+acknowledgement on the same timer (their first token is seconds away too).
+Light turns, backing off ("never mind"), an answer that arrives in time, and a
+refused turn say nothing extra.
 """
 from __future__ import annotations
 
@@ -26,7 +28,9 @@ from app.services.pipecat_voice.voice_silence_guard import (
 from app.services.shared_turn_preparation import TurnGuardrailBlocked
 
 DEEP_TEXT = "send an email to acme about the renewal timeline"
-MEDIUM_TEXT = "what should i focus on today"
+MEDIUM_TEXT = "explain how vector databases work"
+LIGHT_TEXT = "haha that's funny"
+DECLINE_TEXT = "never mind"
 
 
 def _turn(user_text: str, *, first_text_after_s: float, ack_s: float = 0.05, guard: Any = None) -> tuple[list[str], list[str], list[tuple[str, str]]]:
@@ -82,10 +86,18 @@ def test_deep_answer_that_arrives_in_time_gets_no_acknowledgement() -> None:
     assert answers
 
 
-def test_medium_turn_is_never_acknowledged() -> None:
-    narrations, answers, _ = _turn(MEDIUM_TEXT, first_text_after_s=0.3)
-    assert narrations == []
-    assert answers
+def test_slow_medium_turn_is_acknowledged_like_deep() -> None:
+    narrations, answers, order = _turn(MEDIUM_TEXT, first_text_after_s=0.3)
+    assert len(narrations) == 1
+    assert narrations[0] in DEEP_ACKNOWLEDGEMENTS
+    assert answers and order[0] == ("narration", narrations[0])
+
+
+def test_light_and_backing_off_turns_are_never_acknowledged() -> None:
+    for text in (LIGHT_TEXT, DECLINE_TEXT):
+        narrations, answers, _ = _turn(text, first_text_after_s=0.3)
+        assert narrations == [], text
+        assert answers
 
 
 def test_refused_turn_speaks_only_the_refusal() -> None:

@@ -2962,6 +2962,8 @@ class AgentIntelligence:
 
             from app.services.offered_action_continuation import (
                 PROGRESS_ACK,
+                ContinuationDecision,
+                classify_offer_reply_with_model,
                 execute_offered_read,
                 progress_steps_for_scopes,
                 resolve_offered_action_turn,
@@ -2974,6 +2976,27 @@ class AgentIntelligence:
                     conversation_history if isinstance(conversation_history, list) else None
                 ),
             )
+            if continuation.kind == "needs_model" and continuation.offered is not None:
+                # A short reply that is neither a clear yes nor no: ask the model,
+                # and keep the offer unless it reads as a clear accept/decline.
+                _offer_kind = await classify_offer_reply_with_model(
+                    task_text,
+                    offered=continuation.offered,
+                    conversation_history=(
+                        conversation_history if isinstance(conversation_history, list) else None
+                    ),
+                    settings=active_settings,
+                    org_id=org_id,
+                )
+                if _offer_kind == "execute_read":
+                    continuation.offered.status = "confirmed"
+                elif _offer_kind == "decline":
+                    continuation.offered.status = "declined"
+                continuation = ContinuationDecision(
+                    kind=_offer_kind,
+                    offered=continuation.offered,
+                    reason=f"model_{_offer_kind}",
+                )
             if continuation.kind == "decline" and continuation.offered is not None:
                 await get_conversation_state_service(active_settings).update_task_state(
                     conversation_id,
@@ -3697,25 +3720,37 @@ class AgentIntelligence:
         from app.services.verification_critic_service import is_consequential_classification
 
         _cls_for_depth = pipeline_classification if isinstance(pipeline_classification, dict) else {}
-        _spoken_consequential = bool(spoken_mode) and is_consequential_classification(_cls_for_depth)
+        # A requested write or action must not stay on fast's tiny tool set and
+        # 3 simple rounds, typed or spoken. Fast stays fast for plain questions.
+        _consequential = is_consequential_classification(_cls_for_depth) or bool(
+            _cls_for_depth.get("requires_action")
+        )
+        _spoken_consequential = bool(spoken_mode) and _consequential
+        if _consequential and mode_key == "fast":
+            # standard upgrades to agent (all tools) when connectors or MCP tools are live.
+            mode_key = resolve_effective_intelligence_mode(
+                "standard", connected_early, has_mcp_tools=bool(mcp_tools_early)
+            )
+            tool_names = resolve_assistant_tool_names(mode_key, None, connected_early)
+            permitted_registry = resolve_registry_permitted_tools(tool_names)
+            pipeline_tier = mode_to_tier(mode_key)
+            routing_control.escalate(
+                "multi_step",
+                "spoken_consequential_write" if spoken_mode else "consequential_write",
+            )
+            max_iterations = max(int(MODE_CONFIG[mode_key]["max_iterations"]), routing_control.max_iterations)
+            routing_control.max_iterations = max_iterations
+            routing_sse = {
+                **routing_decision.to_sse(),
+                "routingTier": routing_control.tier,
+                "maxToolRounds": routing_control.max_iterations,
+                "consequentialEscalation": True,
+                "spokenConsequentialEscalation": bool(spoken_mode),
+            }
         reasoning_depth = "full"
         if spoken_mode:
             if _spoken_consequential:
                 reasoning_depth = "full"
-                if mode_key == "fast":
-                    mode_key = "standard"
-                    tool_names = resolve_assistant_tool_names(mode_key, None, connected_early)
-                    permitted_registry = resolve_registry_permitted_tools(tool_names)
-                    max_iterations = int(MODE_CONFIG[mode_key]["max_iterations"])
-                    pipeline_tier = mode_to_tier(mode_key)
-                    routing_control.escalate("multi_step", "spoken_consequential_write")
-                    max_iterations = routing_control.max_iterations
-                    routing_sse = {
-                        **routing_decision.to_sse(),
-                        "routingTier": routing_control.tier,
-                        "maxToolRounds": routing_control.max_iterations,
-                        "spokenConsequentialEscalation": True,
-                    }
             elif _spoken_keep_full:
                 reasoning_depth = "full"
 

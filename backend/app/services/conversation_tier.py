@@ -57,14 +57,21 @@ _BUSINESS_NOUN_RE = re.compile(
     r"invoices?|payments?|expenses?|budget|spend|roi|kpis?|metrics|analytics|dashboards?|"
     r"reports?|tickets?|workflows?|automations?|agents?|connectors?|integrations?|"
     r"crm|inbox|emails?|calendar|meetings?|orders?|inventory|subscribers?|signups?|"
-    r"conversions?|traffic|tasks?|projects?|records?|database|logs?|production|deployments?"
+    r"conversions?|traffic|tasks?|projects?|records?|database|logs?|production|deployments?|"
+    r"messages?|calls|follow[-\s]?ups?|appointments?|schedule|agenda"
     r")\b"
 )
 _POSSESSIVE_RE = re.compile(r"(?i)\b(my|our|we|us|the team'?s|the company'?s|this month'?s|last month'?s)\b")
 _DATA_QUESTION_RE = re.compile(
     r"(?i)\b(how\s+many|how\s+much|number\s+of|count\s+of|total|list|show(?:\s+me)?|"
     r"which\s+of|top\s+\d+|latest|recent|this\s+(?:week|month|quarter)|last\s+(?:week|month|quarter)|"
-    r"yesterday|today'?s|status\s+of)\b"
+    r"yesterday|today'?s|tomorrow|tonight|next\s+week|this\s+(?:morning|afternoon|evening)|"
+    r"status\s+(?:of|on|for)|any\s+new|(?:do|did)\s+i\s+(?:have|miss)|have\s+i\s+got|who\s+should\s+i)\b"
+)
+# Personal briefing asks that need the user's own apps.
+_BRIEFING_RE = re.compile(
+    r"(?i)\b(what\s+did\s+i\s+miss|catch\s+me\s+up|what'?s\s+on\s+my\s+(?:plate|schedule|agenda|calendar)|"
+    r"how'?s\s+my\s+(?:day|week|morning|afternoon)\s+looking|plan\s+my\s+(?:day|week))\b"
 )
 
 # Operational verbs that ask the system to do something. They count when they
@@ -87,6 +94,48 @@ _LEAD_IN = (
     r"go\s+ahead\s+and\s+|let'?s\s+|help\s+me\s+|i'?d\s+like\s+(?:you\s+)?to\s+)?"
 )
 _IMPERATIVE_OP_RE = re.compile(rf"(?i)^\s*{_LEAD_IN}(?:{_IMPERATIVE_VERBS})\b")
+# A request verb opening any clause, after social prefixes ("thanks, can you
+# also email John", "got it. send it", "cool, mark it won"). Creative and
+# self-directed objects ("write me a poem", "tell me a joke") are excluded.
+_SOCIAL_PREFIX = (
+    r"(?:(?:hey|hi|hello|ok(?:ay)?|so|alright|um+|uh+|yo|thanks|thank\s+you|great|perfect|cool|nice|"
+    r"awesome|got\s+it|sounds\s+good|yes|yeah|yep|sure|right|and|also|actually|oh|now|then|wait)"
+    r"[,!.\s]+)*"
+)
+_REQUEST_VERBS = (
+    r"text|message|tell|ping|call|e-?mail|write|draft|send|forward|reply|move|reschedule|cancel|mark|"
+    r"change|set|make|put|give|attach|cc|bcc|add|remove|update|delete|create|schedule|book|invite|share|"
+    r"assign|close|log|plan|remind|post|publish|shoot|drop|check|pull|find|show|look\s+up|get|"
+    r"run|launch|pause|archive|enroll|enrich|export|sync|connect|approve|follow\s+up|"
+    r"do\s+(?:the\s+same|that\s+(?:again|for|with)|it\s+(?:again|for|with))"
+)
+_REQUEST_CLAUSE_RE = re.compile(
+    rf"(?i)^\s*{_SOCIAL_PREFIX}{_LEAD_IN}(?:also\s+|just\s+|now\s+|then\s+|quickly\s+)?(?:{_REQUEST_VERBS})\b"
+)
+_NON_TASK_OBJECT_RE = re.compile(
+    r"(?i)^\s*(?:\w+\s+){0,1}(?:me|us)\s+(?:a\s+|an\s+|another\s+|some\s+|more\s+|a\s+few\s+|a\s+couple\s+(?:of\s+)?|\d+\s+|"
+    r"(?:two|three|four|five|ten)\s+)?(?:\w+\s+)?"
+    r"(?:poem|story|stories|song|joke|jokes|haiku|riddle|limerick|pun|fun\s+fact|ideas?|tips?|advice|"
+    r"examples?|names?|word|quote|recipe|more|about|something)\b"
+)
+_CLAUSE_SPLIT_RE = re.compile(r"[,.!?;:]+|\s+but\s+")
+
+
+def _clauses(text: str) -> list[str]:
+    return [c.strip() for c in _CLAUSE_SPLIT_RE.split(text or "") if c and c.strip()]
+
+
+def _has_request_clause(text: str) -> bool:
+    for clause in _clauses(text):
+        m = _REQUEST_CLAUSE_RE.match(clause)
+        if not m:
+            continue
+        if _NON_TASK_OBJECT_RE.match(clause[m.end():]):
+            continue
+        return True
+    return False
+
+
 # "create an agent", "analyze my ...": operational regardless of position.
 _EMBEDDED_OP_RE = re.compile(
     r"(?i)\b("
@@ -146,6 +195,55 @@ _LIGHT_RE = re.compile(
 )
 _LIGHT_MAX_WORDS = 16
 
+# Light needs every clause to be social. "Nice, which one closes first?" and
+# "Same for Facebook" open with an ack but carry a request.
+_ACK_WORDS = (
+    r"ha(?:ha)+|he(?:he)+|lol|lmao|rofl|nice|cool|awesome|wow|whoa|oh|wow|no\s+way|interesting|fair\s+enough|"
+    r"makes\s+sense|gotcha|got\s+it|i\s+see|really|true|amazing|great|perfect|love\s+it|love\s+that|same|"
+    r"totally|exactly|right|ok(?:ay)?|yes|yeah|yep|sure|alright|thanks|thank\s+you|haha|hmm+|ah|aw+"
+)
+_ACK_ONLY_RE = re.compile(rf"(?i)^\s*(?:{_ACK_WORDS})(?:\s+(?:{_ACK_WORDS}|so\s+much|a\s+lot))*\s*$")
+_GREETING_ONLY_RE = re.compile(
+    r"(?i)^\s*(?:hi|hey|hello|hiya|howdy|yo|sup|good\s+(?:morning|afternoon|evening|night))"
+    r"(?:\s+(?:there|gravitre|everyone|friend|buddy|again))*\s*$"
+)
+# _LIGHT_RE without its two start-anchored branches (greeting / ack opener).
+_LIGHT_BODY_RE = re.compile(
+    r"(?i)("
+    r"\bhow\s+(?:are|r)\s+(?:you|u|things)\b|\bhow'?s\s+(?:it\s+going|your\s+day|life|everything|things)\b|"
+    r"\bwhat'?s\s+up\b|\bhow\s+(?:was|is)\s+your\s+(?:day|weekend|morning|night|week|trip|vacation|holiday)\b|"
+    r"\b(?:my|the|this|your)\s+(?:weekend|vacation|holiday|trip|birthday)\b|"
+    r"\b(?:weather|sunny|raining|rainy|snow(?:ing|y)?|cold\s+out|hot\s+out)\b|"
+    r"\b(?:lunch|dinner|breakfast|coffee|pizza|tacos?|food|cooking|recipe\s+ideas?)\b|"
+    r"\b(?:football|soccer|basketball|baseball|hockey|tennis|the\s+game|the\s+match|playoffs|world\s+cup)\b|"
+    r"\b(?:movie|film|tv\s+show|series|music|song|concert|book\s+club|netflix)\b|"
+    r"\b(?:my\s+(?:dog|cat|kids?|son|daughter|wife|husband|partner|family|mom|dad))\b|"
+    r"\bthat'?s\s+(?:so\s+|really\s+|pretty\s+)?(?:wild|funny|hilarious|crazy|awesome|great|cool|nice|"
+    r"amazing|interesting|wonderful|sad|rough|fair|true|cute|lovely)\b|"
+    r"\b(?:tell\s+me\s+a\s+joke|another\s+joke|a\s+joke|make\s+me\s+laugh|say\s+something\s+funny|"
+    r"fun\s+fact|a\s+pun|riddle|knock\s+knock|you'?re\s+(?:funny|hilarious|great|the\s+best|awesome|sweet))\b|"
+    r"\b(?:thanks|thank\s+you|thx|ty|cheers|appreciate\s+it|much\s+appreciated)\b|"
+    r"\b(?:bye|goodbye|see\s+you|see\s+ya|talk\s+(?:to\s+you\s+)?later|good\s+night|take\s+care|have\s+a\s+good)\b|"
+    r"\bi'?m\s+(?:so\s+|really\s+|pretty\s+|a\s+bit\s+|kind\s+of\s+)?(?:tired|exhausted|stressed|happy|excited|bored|"
+    r"sad|good|great|fine|okay|ok|well|hungry|sleepy|nervous|anxious)\b|"
+    r"\bi\s+feel\s+(?:so\s+|really\s+)?(?:tired|great|good|bad|down|happy|stressed)\b|"
+    r"\b(?:can\s+you\s+hear\s+me|are\s+you\s+(?:there|still\s+there)|you\s+there)\b|"
+    r"\b(?:what'?s\s+your\s+name|who\s+are\s+you|nice\s+to\s+meet\s+you|you'?re\s+welcome|no\s+worries)\b"
+    r")"
+)
+
+
+def _is_social_clause(clause: str) -> bool:
+    return bool(
+        _ACK_ONLY_RE.match(clause) or _GREETING_ONLY_RE.match(clause) or _LIGHT_BODY_RE.search(clause)
+    )
+
+
+def _is_social_utterance(text: str) -> bool:
+    """Every clause is social or phatic (not just one of them)."""
+    clauses = _clauses(text)
+    return bool(clauses) and all(_is_social_clause(c) for c in clauses)
+
 # Short continuations / answers to whatever the assistant said last.
 _CONTINUATION_RE = re.compile(
     r"(?i)^\s*(?:(?:yes|yeah|yep|yup|sure|ok(?:ay)?|alright|right|great|perfect|cool|fine|no|nope|"
@@ -165,6 +263,28 @@ _CONTINUATION_RE = re.compile(
     r"(?:[,.!\s]+(?:please|now|then|thanks|thank\s+you))*\s*[.!?]*\s*$"
 )
 _CONTINUATION_MAX_WORDS = 8
+
+# "never mind", "no thanks", "stop", "wait": the user is backing off. These
+# are answered briefly; they never take the full agent pipeline or a
+# "one moment" acknowledgement. Pending approvals still see the reply first.
+_DECLINE_CONTINUATION_RE = re.compile(
+    r"(?i)^\s*(?:(?:no|nope|nah|actually|um+|uh+|oh|ok(?:ay)?|hmm+)[,.!\s]+)*"
+    r"(?:no|nope|nah|no\s+thanks?|no\s+thank\s+you|not\s+(?:yet|now|right\s+now|today)|wait|hold\s+on|"
+    r"hang\s+on|one\s+sec(?:ond)?|stop(?:\s+(?:it|that|talking))?|never\s*mind|scratch\s+that|"
+    r"forget\s+(?:it|that|about\s+it)|cancel\s+(?:it|that)|no\s+wait|don'?t\s+(?:do\s+(?:it|that)|bother)|"
+    r"that'?s\s+(?:ok(?:ay)?|fine|alright|all)|i'?m\s+good|maybe\s+later|skip\s+(?:it|that))"
+    r"(?:[,.!\s]+(?:please|thanks|thank\s+you|for\s+now|then))*\s*[.!?]*\s*$"
+)
+_FOLLOWUP_MAX_WORDS = 12
+# Words that tie a short utterance to what came before ("and the smallest?",
+# "what about last month", "make it Thursday"). A self-contained new question
+# ("explain how vector databases work") is not a follow-up.
+_DEPENDENT_RE = re.compile(
+    r"(?i)(?:^\s*(?:and|or|also|plus|but|then|now|ok(?:ay)?|so|actually|oh|same|what\s+about|how\s+about|"
+    r"which|who|sure|yes|yeah|yep|nice|cool|great|perfect|alright|instead|only|just|except|to|for|with)\b)|"
+    r"\b(?:it|that|those|them|this\s+one|that\s+one|these|ones?|him|her|there|instead|too|as\s+well|"
+    r"the\s+(?:first|second|third|fourth|last|other|next|previous|same|biggest|smallest|top|bottom|rest))\b"
+)
 
 _ASSISTANT_OFFER_RE = re.compile(
     r"(?i)(want\s+me\s+to|would\s+you\s+like\s+me\s+to|shall\s+i|should\s+i|do\s+you\s+want\s+me\s+to|"
@@ -302,6 +422,10 @@ def _content_tier(text: str) -> ConversationTier:
         return ConversationTier("medium", "definitional_question")
     if _IMPERATIVE_OP_RE.search(text):
         return ConversationTier("deep", "imperative_operational_verb")
+    if _has_request_clause(text):
+        return ConversationTier("deep", "request_verb_clause")
+    if _BRIEFING_RE.search(text):
+        return ConversationTier("deep", "personal_briefing")
     if _EMBEDDED_OP_RE.search(text):
         return ConversationTier("deep", "operational_request")
     if _NAMED_APP_RE.search(text):
@@ -312,7 +436,7 @@ def _content_tier(text: str) -> ConversationTier:
         return ConversationTier("deep", "research_request")
     if (
         _words(text) <= _LIGHT_MAX_WORDS
-        and _LIGHT_RE.search(text)
+        and _is_social_utterance(text)
         and not _BUSINESS_NOUN_RE.search(text)
         and not _TASK_VERB_ANYWHERE_RE.search(text)
         and not re.search(r"https?://|\S+@\S+\.\w+|\d{3,}", text)
@@ -343,6 +467,27 @@ def _assistant_signals_deep(assistant_text: str) -> bool:
     return False
 
 
+def _is_affirmation(text: str) -> bool:
+    """"Sounds great", "Perfect", "yes please" — accepting whatever was asked."""
+    if _words(text) > _CONTINUATION_MAX_WORDS:
+        return False
+    try:
+        from app.services.offered_action_continuation import _AFFIRMATION_RE
+
+        return bool(_AFFIRMATION_RE.match(text))
+    except Exception:  # noqa: BLE001
+        logger.debug("conversation_tier_affirmation_detector_failed", exc_info=True)
+        return False
+
+
+def _previous_turn_is_deep(history: list[dict[str, Any]] | None, text: str) -> bool:
+    assistant_text = _last(history, "assistant")
+    if _assistant_signals_deep(assistant_text):
+        return True
+    prior_user = _last(history, "user", skip_text=text)
+    return bool(prior_user) and _content_tier(prior_user).tier == "deep"
+
+
 def classify_conversation_tier(
     message: str,
     *,
@@ -355,24 +500,30 @@ def classify_conversation_tier(
         return ConversationTier("medium", "empty")
 
     pending = _pending_reason(task_state)
+    if _DECLINE_CONTINUATION_RE.match(text):
+        # Backing off is never deep work. Pending state still keeps it off the
+        # lite path so the pending-reply handler sees the decline.
+        if pending:
+            return ConversationTier("medium", "continuation_decline_pending")
+        return ConversationTier("light", "continuation_decline")
     ref = _reference_matched(text, task_state)
     if ref:
         return ConversationTier("deep", ref)
 
-    if _is_continuation(text):
+    assistant_text = _last(history, "assistant")
+    assistant_asked = bool(assistant_text) and (
+        assistant_text.rstrip().endswith("?") or bool(_ASSISTANT_OFFER_RE.search(assistant_text))
+    )
+    if _is_continuation(text) or (assistant_asked and _is_affirmation(text)):
         if pending:
             return ConversationTier("deep", f"continuation_{pending}")
-        assistant_text = _last(history, "assistant")
         prior_user = _last(history, "user", skip_text=text)
         if _assistant_signals_deep(assistant_text):
             return ConversationTier("deep", "continuation_of_deep_assistant_turn")
         prior_tier = _content_tier(prior_user).tier if prior_user else None
         if prior_tier == "deep":
             return ConversationTier("deep", "continuation_of_deep_user_turn")
-        asked = bool(assistant_text) and (
-            assistant_text.rstrip().endswith("?") or bool(_ASSISTANT_OFFER_RE.search(assistant_text))
-        )
-        if asked and prior_tier is None:
+        if assistant_asked and prior_tier is None:
             # An offer or question with nothing to anchor it: assume it mattered.
             return ConversationTier("deep", "continuation_of_unanchored_offer")
         if prior_tier is not None:
@@ -381,6 +532,17 @@ def classify_conversation_tier(
         return ConversationTier("medium", "continuation_without_context")
 
     result = _content_tier(text)
+    if (
+        result.tier != "deep"
+        and _words(text) <= _FOLLOWUP_MAX_WORDS
+        and not _is_social_utterance(text)
+        and not _is_definitional(text)
+        and (_words(text) <= 4 or _DEPENDENT_RE.search(text))
+        and _previous_turn_is_deep(history, text)
+    ):
+        # "what about last month", "and cc Mike", "Nice, which one closes
+        # first?" — a short follow-up right after deep work is part of it.
+        return ConversationTier("deep", "followup_of_deep_turn")
     if pending and result.tier == "light":
         # Mid-task small talk never takes the lite path.
         return ConversationTier("medium", f"light_demoted_{pending}")
@@ -388,8 +550,25 @@ def classify_conversation_tier(
 
 
 def tier_to_execution_mode(tier: str) -> str:
-    """Light/medium run in fast mode; deep uses the unified agent engine."""
-    return "agent" if tier == "deep" else "fast"
+    """Light runs fast; medium runs standard (tools, escalation); deep runs agent."""
+    if tier == "deep":
+        return "agent"
+    if tier == "medium":
+        return "standard"
+    return "fast"
+
+
+def should_acknowledge_turn(tier: "ConversationTier | None") -> bool:
+    """Medium and deep spoken turns get the short "one moment" acknowledgement.
+
+    Light turns answer fast, and backing off ("never mind", "stop") is answered
+    at once rather than acknowledged.
+    """
+    if tier is None:
+        return False
+    if str(tier.reason or "").startswith("continuation_decline"):
+        return False
+    return tier.tier in {"medium", "deep"}
 
 
 def upgrade_spoken_mode_for_tier(mode: str | None, tier: str, *, spoken_mode: bool) -> str | None:
@@ -400,6 +579,11 @@ def upgrade_spoken_mode_for_tier(mode: str | None, tier: str, *, spoken_mode: bo
     tier can be deeper; a confirmation like "yes, do that" must then run with
     the tools the offer needs. Never lowers a mode, and leaves text alone.
     """
-    if spoken_mode and tier == "deep" and (mode or "").strip().lower() == "fast":
+    current = (mode or "").strip().lower()
+    if not spoken_mode:
+        return mode
+    if tier == "deep" and current in {"fast", "standard"}:
         return "agent"
+    if tier == "medium" and current == "fast":
+        return "standard"
     return mode

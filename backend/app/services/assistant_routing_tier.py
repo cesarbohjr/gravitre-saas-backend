@@ -46,6 +46,19 @@ LATENCY_BUDGETS: dict[str, dict[str, int]] = {
 
 _TIER_RANK = {"simple": 0, "multi_step": 1, "research": 2}
 
+# Reasons that may lift a pinned-fast turn. Fast is a latency choice for
+# questions; it must not keep a requested write or a high-risk action on the
+# low model with two tool rounds.
+PINNED_FAST_ESCALATION_REASONS = frozenset(
+    {
+        "user_deepen",
+        "write_tool_from_simple",
+        "consequential_write",
+        "spoken_consequential_write",
+        "post_classification_risk_floor",
+    }
+)
+
 _WRITE_INTENT = re.compile(
     r"\b(create|update|delete|send|post|assign|enroll|trigger|execute|run|write|"
     r"close|notify|message|sync|add|remove|publish)\b",
@@ -114,7 +127,7 @@ class RoutingControl:
         to_tier = _normalize_tier(to_tier)
         if _TIER_RANK[to_tier] <= _TIER_RANK.get(self.tier, 0):
             return False
-        if self.pinned_fast and to_tier != "simple" and reason != "user_deepen":
+        if self.pinned_fast and to_tier != "simple" and reason not in PINNED_FAST_ESCALATION_REASONS:
             return False
         from_tier = self.tier
         from_model = self.model
