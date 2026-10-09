@@ -275,12 +275,22 @@ def update_notification_preferences(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
     user_id = _user["user_id"]
     client = shared_service_client(settings, create_client)
+    existing = _execute(
+        client.table("notification_preferences")
+        .select("preferences")
+        .eq("org_id", org_id)
+        .eq("user_id", user_id)
+        .limit(1)
+    )
+    stored = (existing.data[0].get("preferences") if existing is not None and existing.data else None) or {}
     payload = {
         "org_id": org_id,
         "user_id": user_id,
-        "preferences": flatten_structured_preferences(preferences),
+        "preferences": flatten_structured_preferences(
+            preferences, stored if isinstance(stored, dict) else {}
+        ),
     }
     _execute(
         client.table("notification_preferences").upsert(payload, on_conflict="org_id,user_id")
     )
-    return {"ok": True}
+    return {"ok": True, "preferences": structured_preferences(payload["preferences"])}

@@ -1239,6 +1239,18 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   },
   "/api/settings/home-reports-layout": { layout: null },
   "/api/settings/hitl-policies": { policies: [] },
+  "/api/settings/workspace": { workspace: { accentColor: "#2E9E5B", timeZone: "America/Vancouver" } },
+  "/api/settings/approval-rules": {
+    rules: { customerEmailApproval: true, twoApprovalsHighRisk: true, autoApproveReadOnly: true, escalatePastDue: false, sla: "4h", slaMinutes: 240 },
+  },
+  "/api/notifications/preferences": {
+    preferences: {
+      approval_needed: { bell_enabled: true, email_enabled: true, slack_enabled: true },
+      run_failed: { bell_enabled: true, email_enabled: true, slack_enabled: false },
+      source_attention: { bell_enabled: true, email_enabled: false, slack_enabled: true },
+      weekly_summary: { bell_enabled: false, email_enabled: true, slack_enabled: false },
+    },
+  },
   "/api/metrics/weekly-throughput": {
     target: 2400,
     days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => ({ day, records: [1800, 2200, 2600, 2100, 2800, 1500, 1200][index], target: 2400 })),

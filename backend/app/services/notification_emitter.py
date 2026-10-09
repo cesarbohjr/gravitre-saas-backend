@@ -45,6 +45,8 @@ CANONICAL_EVENT_TYPES: frozenset[str] = frozenset(
         "scheduled_run_completed",
         "scheduled_run_failed",
         "task_completed",
+        "source_attention",
+        "weekly_summary",
         "agent_created",
         "workflow_created",
         "run_started",
@@ -99,6 +101,11 @@ def _resolve_entity_ref(entity_ref: dict[str, Any] | None) -> dict[str, Any]:
     return ref
 
 
+# Preference-only events stored under an existing notifications.type value, so
+# no constraint change is needed; channel routing still uses the event name.
+_ROW_TYPES: dict[str, str] = {"source_attention": "system", "weekly_summary": "system"}
+
+
 def _insert_notification_row(
     client: Any,
     *,
@@ -116,7 +123,7 @@ def _insert_notification_row(
     row = {
         "org_id": org_id,
         "user_id": user_id,
-        "type": event_type,
+        "type": _ROW_TYPES.get(event_type, event_type),
         "title": title[:200],
         "body": body[:2000],
         "url": entity_ref.get("result_url"),
@@ -250,6 +257,19 @@ def emit_notification(
 
     bell_allowed = channel_enabled(client, org_id, user_id, canonical_type, "bell")
     email_allowed = channel_enabled(client, org_id, user_id, canonical_type, "email")
+    slack_allowed = channel_enabled(client, org_id, user_id, canonical_type, "slack")
+
+    # Slack is opt-in per event in Settings > Notifications; it never sends
+    # unless the person switched it on, so no caller hint is needed.
+    if slack_allowed and hints.get("slack", True):
+        _send_slack_dm_if_configured(
+            client,
+            org_id=org_id,
+            user_id=user_id,
+            title=title,
+            body=body,
+            entity_ref=ref,
+        )
 
     if hints.get("email") and email_allowed:
         _send_email_if_configured(
@@ -293,6 +313,59 @@ def emit_notification(
     )
 
     return notification_id
+
+
+def _send_slack_dm_if_configured(
+    client: Any,
+    *,
+    org_id: str,
+    user_id: str,
+    title: str,
+    body: str,
+    entity_ref: dict[str, Any],
+) -> bool:
+    """DM the person from the workspace's Slack app. Best effort, never raises."""
+    try:
+        from app.config import get_settings
+        from app.connectors.connector_tool_auth import resolve_slack_bot_token
+        from app.connectors.repository import get_connector_by_type
+        from app.connectors.slack import send_slack_message, slack_api_call
+        from app.services.notification_email_service import _app_base_url, resolve_user_email
+
+        settings = get_settings()
+        if settings.disable_connectors:
+            return False
+        email = resolve_user_email(client, org_id, user_id)
+        if not email:
+            # organization_members ids are auth UIDs; public.users links them via auth_user_id.
+            rows = (
+                client.table("users").select("email").eq("auth_user_id", user_id).limit(1).execute().data
+                or []
+            )
+            email = str((rows[0] if rows else {}).get("email") or "").strip()
+        if not email:
+            return False
+        conn = get_connector_by_type(client, org_id, "slack")
+        if not conn:
+            return False
+        token = resolve_slack_bot_token(client, org_id, str(conn["id"]), settings)
+        if not token:
+            return False
+        member = slack_api_call(token, "users.lookupByEmail", params={"email": email})
+        slack_user_id = str(((member or {}).get("user") or {}).get("id") or "")
+        if not slack_user_id:
+            return False
+        text = f"*{title}*\n{body}".strip()
+        url = str(entity_ref.get("result_url") or "")
+        if url:
+            if url.startswith("/"):
+                url = f"{_app_base_url(settings)}{url}"
+            text = f"{text}\n<{url}|Open in Gravitre>"
+        send_slack_message(token, slack_user_id, text)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.info("slack notification skipped org_id=%s user_id=%s: %s", org_id, user_id, exc)
+        return False
 
 
 def _send_email_if_configured(
@@ -371,6 +444,21 @@ def _send_email_if_configured(
                 asset_title=str(ctx.get("asset_title") or title),
                 asset_type=str(ctx.get("asset_type") or ""),
                 view_path=str(ctx.get("view_path") or entity_ref.get("result_url") or "/marketplace/installed"),
+            )
+            return
+
+        if kind == "notice":
+            from app.services.notification_email_service import send_notice_email
+
+            send_notice_email(
+                client,
+                settings,
+                org_id=org_id,
+                user_id=user_id,
+                headline=title,
+                summary=body,
+                view_path=str(entity_ref.get("result_url") or "/"),
+                cta_label=str(ctx.get("cta_label") or "Open in Gravitre"),
             )
             return
 

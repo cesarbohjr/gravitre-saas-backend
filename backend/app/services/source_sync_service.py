@@ -254,6 +254,20 @@ async def sync_source_row(
         }
     ).eq("id", source_id).execute()
 
+    if status == "error":
+        from app.services.ops_notifications import notify_source_attention
+
+        try:
+            notify_source_attention(
+                client,
+                org_id=org_id,
+                source=row,
+                previous_status=str(row.get("status") or ""),
+                error=error_message,
+            )
+        except Exception as exc:  # noqa: BLE001 - alerts never fail a sync
+            logger.warning("source_attention_notify_failed source_id=%s error=%s", source_id, exc)
+
     write_audit_event(
         client,
         org_id=org_id,

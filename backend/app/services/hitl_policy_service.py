@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.services.org_approval_rules import ApprovalRules, load_approval_rules
 from app.workflows.constants import SAFE_DEFAULT_APPROVER_ROLES
 
 logger = get_logger(__name__)
@@ -63,6 +64,29 @@ def classify_action_kind(
         return "write"
     # Default unknown connector actions to write (safer).
     return "write" if kind_l or invoke_action or tool_name else "read"
+
+
+def apply_org_rules(decision: HitlDecision, rules: ApprovalRules) -> HitlDecision:
+    """Layer Settings > Human in the loop switches over a policy decision."""
+    if decision.action_kind == "read" and rules.auto_approve_read_only and decision.requires_approval:
+        return replace(
+            decision,
+            requires_approval=False,
+            required_approvals=0,
+            reason="Org rule: read-only lookups run without waiting",
+        )
+    if (
+        decision.action_kind == "delete"
+        and rules.two_approvals_high_risk
+        and decision.requires_approval
+        and decision.required_approvals < 2
+    ):
+        return replace(
+            decision,
+            required_approvals=2,
+            reason=f"{decision.reason}; org rule: two approvals for high risk actions",
+        )
+    return decision
 
 
 class HitlPolicyService:
@@ -128,6 +152,27 @@ class HitlPolicyService:
         client.table("hitl_policies").delete().eq("id", policy_id).eq("org_id", org_id).execute()
 
     def resolve(
+        self,
+        client: Any,
+        *,
+        org_id: str,
+        user_id: str,
+        action_kind: str,
+        department_ids: list[str] | None = None,
+        rules: ApprovalRules | None = None,
+    ) -> HitlDecision:
+        decision = self._resolve_policies(
+            client,
+            org_id=org_id,
+            user_id=user_id,
+            action_kind=action_kind,
+            department_ids=department_ids,
+        )
+        if rules is None:
+            rules = load_approval_rules(client, org_id)
+        return apply_org_rules(decision, rules)
+
+    def _resolve_policies(
         self,
         client: Any,
         *,

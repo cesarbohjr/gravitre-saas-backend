@@ -6,10 +6,10 @@ import useSWR from "swr"
 import { motion } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { SettingsShell } from "@/components/settings/settings-shell"
+import { ApprovalRulesSettings } from "@/components/settings/approval-rules-settings"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { TYPE } from "@/lib/design-system"
-import { ArrowRight, CheckCircle2, Inbox, Loader2, Plus, ShieldCheck, Trash2 } from "lucide-react"
+import { CheckCircle2, Loader2, Plus, ShieldCheck, Trash2 } from "lucide-react"
 import { fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
@@ -58,8 +58,7 @@ export default function HitlApprovalsPage() {
           activeSection="approvals"
           isAdmin={isAdmin}
           onSectionChange={onSectionChange}
-          hideHeader
-        >
+          >
           <div className="flex h-64 items-center justify-center p-4 text-muted-foreground md:p-6">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             Loading…
@@ -77,7 +76,6 @@ export default function HitlApprovalsPage() {
         mobileMenuOpen={mobileMenuOpen}
         onMobileMenuOpenChange={setMobileMenuOpen}
         onSectionChange={onSectionChange}
-        hideHeader
       >
         {isAdmin ? <ApprovalsContent /> : <ApprovalsDenied />}
       </SettingsShell>
@@ -211,24 +209,14 @@ function ApprovalsContent() {
   }
 
   return (
-    <div className="relative space-y-6 p-4 md:p-6">
-      <motion.header
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col gap-3 border-b border-[color:var(--g-border-default)] pb-5 lg:flex-row lg:items-end lg:justify-between"
-      >
-        <div className="max-w-xl">
-          <p className={cn(TYPE.meta, "mb-1 inline-flex items-center gap-1.5")}>
-            <ShieldCheck
-              className="h-3.5 w-3.5 text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]"
-              aria-hidden
-            />
-            Governance
-          </p>
-          <h1 className={TYPE.pageTitle}>Human-in-the-loop</h1>
-          <p className={cn(TYPE.pageLead, "mt-2 leading-relaxed")}>
-            Require approval before high-impact actions run. Scope by organization, department, or person —
-            more specific rules win when several match.
+    <div className="relative space-y-6">
+      <ApprovalRulesSettings />
+
+      <header className="flex flex-col gap-1 pt-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-base font-medium text-foreground">Policies by team or person</h2>
+          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+            Fine-tune who approves what for a department or a person. More specific rules win when several match.
           </p>
         </div>
         <p className="text-sm tabular-nums text-muted-foreground" data-testid="hitl-policy-counts">
@@ -236,13 +224,13 @@ function ApprovalsContent() {
           {policies.length === 1 ? "policy" : "policies"} ·{" "}
           <span className="font-semibold text-foreground">{enabledCount}</span> active
         </p>
-      </motion.header>
+      </header>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section aria-labelledby="hitl-active-policies" className="min-w-0">
           <div className="mb-3">
             <h2 id="hitl-active-policies" className="text-base font-semibold text-foreground">
-              Active policies
+              Your policies
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Enable, pause, or remove rules without leaving Settings.
@@ -338,14 +326,6 @@ function ApprovalsContent() {
               Write and delete actions already require admin or owner approval. Custom policies let you
               tighten or broaden that for specific teams.
             </p>
-            <Link
-              href="/approvals"
-              className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-[color:var(--g-brand-active)] hover:underline dark:text-[color:var(--g-brand)]"
-            >
-              <Inbox className="h-3.5 w-3.5" aria-hidden />
-              Open decision queue
-              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-            </Link>
           </div>
         </section>
 

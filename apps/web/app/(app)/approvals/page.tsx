@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { Check, MoreHorizontal, RefreshCw, Search, Shield } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WsPage } from "@/components/workspace/ws-page"
+import { OvPager } from "@/components/workspace/ov-pager"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
@@ -562,6 +563,14 @@ function DecisionQueue() {
                   onApprove={() => void approve(selected)}
                   onReject={() => openReject(selected)}
                   onBack={() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  position={selectedIndex + 1}
+                  count={visible.length}
+                  onPrev={() => {
+                    if (selectedIndex > 0) select(visible[selectedIndex - 1].id, true)
+                  }}
+                  onNext={() => {
+                    if (selectedIndex >= 0 && selectedIndex < visible.length - 1) select(visible[selectedIndex + 1].id, true)
+                  }}
                 />
               ) : (
                 <div className="ov-placeholder">
@@ -684,6 +693,10 @@ function DetailPane({
   onApprove,
   onReject,
   onBack,
+  position,
+  count,
+  onPrev,
+  onNext,
 }: {
   approval: Approval
   now: number
@@ -692,6 +705,10 @@ function DetailPane({
   onApprove: () => void
   onReject: () => void
   onBack: () => void
+  position: number
+  count: number
+  onPrev: () => void
+  onNext: () => void
 }) {
   const pending = a.status === "pending"
   const pastSla = isPastSla(a, now)
@@ -737,8 +754,11 @@ function DetailPane({
             <span className="ov-pill red">Rejected</span>
           )}
         </span>
-        <span className="ov-from">
-          Request from <strong>{a.requestedBy}</strong>
+        <span className="ov-top-right">
+          <span className="ov-from">
+            Request from <strong>{a.requestedBy}</strong>
+          </span>
+          <OvPager position={position} count={count} onPrev={onPrev} onNext={onNext} />
         </span>
       </div>
 

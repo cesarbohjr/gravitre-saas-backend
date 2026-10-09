@@ -3656,6 +3656,20 @@ export const memoryPromotionApi = {
 }
 
 // ============ Settings ============
+export interface WorkspaceDefaults {
+  accentColor: string
+  timeZone: string
+}
+
+export interface ApprovalRules {
+  customerEmailApproval: boolean
+  twoApprovalsHighRisk: boolean
+  autoApproveReadOnly: boolean
+  escalatePastDue: boolean
+  sla: "1h" | "4h" | "1bd"
+  slaMinutes: number
+}
+
 export const settingsApi = {
   get: () => fetcher<Record<string, unknown>>(apiUrl("/api/settings")),
   update: (data: Record<string, unknown>) => patchJson<Record<string, unknown>>(apiUrl("/api/settings"), data),
@@ -3686,6 +3700,13 @@ export const settingsApi = {
     deleteJson<{ organization?: Record<string, unknown>; logoUrl: null }>(
       apiUrl("/api/settings/organization/logo"),
     ),
+  // Workspace defaults (accent colour, time zone) and Human in the loop rules
+  getWorkspace: () => fetcher<{ workspace: WorkspaceDefaults }>(apiUrl("/api/settings/workspace")),
+  updateWorkspace: (data: Partial<WorkspaceDefaults>) =>
+    patchJson<{ workspace: WorkspaceDefaults }>(apiUrl("/api/settings/workspace"), data),
+  getApprovalRules: () => fetcher<{ rules: ApprovalRules }>(apiUrl("/api/settings/approval-rules")),
+  updateApprovalRules: (data: Partial<Omit<ApprovalRules, "slaMinutes">>) =>
+    patchJson<{ rules: ApprovalRules }>(apiUrl("/api/settings/approval-rules"), data),
   
   // Team
   listTeamMembers: () => fetcher<{ team: User[] }>(apiUrl("/api/settings/team")),
@@ -3860,6 +3881,13 @@ export const orgApi = {
 }
 
 // ============ Notifications ============
+/** Per-event delivery: in app (bell), email and Slack direct message. */
+export interface NotificationChannelPreference {
+  bell_enabled: boolean
+  email_enabled: boolean
+  slack_enabled?: boolean
+}
+
 export const notificationsApi = {
   list: (filters?: { unread_only?: boolean; limit?: number; offset?: number }) => {
     const params = new URLSearchParams()
@@ -3880,11 +3908,14 @@ export const notificationsApi = {
   delete: (id: string) =>
     deleteRequest(apiUrl(`/api/notifications/${id}`)),
   getPreferences: () =>
-    fetcher<{ preferences: Record<string, { bell_enabled: boolean; email_enabled: boolean }> }>(
+    fetcher<{ preferences: Record<string, NotificationChannelPreference> }>(
       apiUrl("/api/notifications/preferences"),
     ),
-  updatePreferences: (preferences: Record<string, { bell_enabled: boolean; email_enabled: boolean }>) =>
-    patchJson<void>(apiUrl("/api/notifications/preferences"), preferences),
+  updatePreferences: (preferences: Record<string, Partial<NotificationChannelPreference>>) =>
+    patchJson<{ ok: boolean; preferences?: Record<string, NotificationChannelPreference> }>(
+      apiUrl("/api/notifications/preferences"),
+      preferences,
+    ),
   streamUrl: () => apiUrl("/api/notifications/stream"),
 }
 

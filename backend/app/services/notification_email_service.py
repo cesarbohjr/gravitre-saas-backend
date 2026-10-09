@@ -776,3 +776,40 @@ def send_marketplace_install_email(
         client=client,
         org_id=org_id,
     )
+
+
+def send_notice_email(
+    client: Any,
+    settings: Settings,
+    *,
+    org_id: str,
+    user_id: str,
+    headline: str,
+    summary: str,
+    view_path: str,
+    cta_label: str = "Open in Gravitre",
+) -> bool:
+    """Plain branded notice (past-due approvals, source alerts, weekly summary)."""
+    if not settings.notification_email_enabled:
+        return False
+    to_addr = resolve_user_email(client, org_id, user_id)
+    if not to_addr:
+        return False
+    brand = load_org_email_branding(client, org_id, settings)
+    path = view_path if view_path.startswith("/") else f"/{view_path}"
+    subject, html_body = _simple_completion_email(
+        brand,
+        subject_prefix=headline,
+        headline=headline,
+        summary=summary,
+        view_url=f"{brand.app_base_url}{path}",
+        cta_label=cta_label,
+    )
+    return _send_email(
+        settings,
+        to_addr=to_addr,
+        subject=subject,
+        html_body=html_body,
+        client=client,
+        org_id=org_id,
+    )

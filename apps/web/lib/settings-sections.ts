@@ -18,6 +18,16 @@ import {
 
 export type SettingsTier = "personal" | "organization" | "admin"
 
+/** Left-nav groups from the v5 Settings design, plus "account" for personal pages. */
+export type SettingsGroup = "workspace" | "people" | "admin" | "account"
+
+export const SETTINGS_GROUPS: { id: SettingsGroup; label: string; locked?: boolean }[] = [
+  { id: "workspace", label: "Workspace" },
+  { id: "people", label: "People and plan" },
+  { id: "admin", label: "Admin", locked: true },
+  { id: "account", label: "Your account" },
+]
+
 export type SettingsSectionId =
   | "profile"
   | "organizations"
@@ -45,6 +55,7 @@ export interface SettingsSection {
   description: string
   icon: LucideIcon
   tier: SettingsTier
+  group: SettingsGroup
   /** Prefer href so standalone routes keep a working left nav. */
   href?: string
   /** Hide from the primary list; still valid as activeSection. */
@@ -70,6 +81,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     id: "profile",
     title: "Profile",
     description: "Your name, avatar, and account preferences",
+    group: "account",
     icon: UserRound,
     tier: "personal",
     href: "/settings/profile",
@@ -78,22 +90,25 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     id: "organizations",
     title: "Organizations",
     description: "Switch or manage workspace membership",
+    group: "account",
     icon: Building2,
     tier: "personal",
     href: "/settings/organizations",
   },
   {
     id: "organization",
-    title: "Organization",
-    description: "Manage organization details and branding",
+    title: "General",
+    description: "Name, logo and defaults for everyone in this workspace.",
+    group: "workspace",
     icon: Building2,
     tier: "organization",
     href: "/settings?section=organization",
   },
   {
     id: "ai-models",
-    title: "AI Models",
+    title: "AI models",
     description: "Configure default models, AI behavior, and Memory entity matching",
+    group: "workspace",
     icon: Brain,
     tier: "organization",
     href: "/settings?section=ai-models",
@@ -102,14 +117,16 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     id: "security",
     title: "Security",
     description: "Authentication, SSO, and access controls",
+    group: "workspace",
     icon: Shield,
     tier: "organization",
     href: "/settings?section=security",
   },
   {
     id: "api-keys",
-    title: "API Keys",
+    title: "API keys",
     description: "Manage API keys for integrations",
+    group: "workspace",
     icon: Key,
     tier: "organization",
     href: "/settings?section=api-keys",
@@ -117,39 +134,44 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "notifications",
     title: "Notifications",
-    description: "Configure alerts and notification channels",
+    description: "Choose where each kind of update reaches you.",
+    group: "workspace",
     icon: Bell,
     tier: "organization",
     href: "/settings?section=notifications",
   },
   {
     id: "team",
-    title: "Team Members",
+    title: "Team members",
     description: "Invite and manage team access",
+    group: "people",
     icon: Users,
     tier: "organization",
     href: "/settings?section=team",
   },
   {
     id: "lite-seats",
-    title: "Lite Seats",
+    title: "Lite seats",
     description: "Allocate Gravitre Lite seats by department",
+    group: "people",
     icon: Users,
     tier: "organization",
     href: "/settings?section=lite-seats",
   },
   {
     id: "meson-addons",
-    title: "Meson Addons",
+    title: "Meson add-ons",
     description: "Enable premium AI addon capabilities",
+    group: "people",
     icon: Sparkles,
     tier: "organization",
     href: "/settings?section=meson-addons",
   },
   {
     id: "billing",
-    title: "Billing & Plan",
+    title: "Billing and plan",
     description: "Subscription, usage, top-ups, and invoices",
+    group: "people",
     icon: CreditCard,
     tier: "organization",
     href: "/settings/billing",
@@ -158,6 +180,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     id: "webhooks",
     title: "Webhooks",
     description: "Configure outbound webhooks",
+    group: "workspace",
     icon: Webhook,
     tier: "organization",
     href: "/settings?section=webhooks",
@@ -166,6 +189,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     id: "permissions",
     title: "Role permissions",
     description: "What each workspace role can access",
+    group: "admin",
     icon: Shield,
     tier: "admin",
     href: "/settings/team/permissions",
@@ -173,8 +197,9 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   },
   {
     id: "approvals",
-    title: "Human-in-the-loop",
-    description: "Require approval before high-impact actions run",
+    title: "Human in the loop",
+    description: "Decide which agent actions wait for a person, and how fast someone must answer.",
+    group: "admin",
     icon: Lock,
     tier: "admin",
     href: "/settings/approvals",
@@ -184,6 +209,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     id: "enterprise",
     title: "Enterprise",
     description: "CS workspace, residency, white-label, and SIEM",
+    group: "admin",
     icon: Building2,
     tier: "admin",
     href: "/settings/enterprise",
@@ -193,6 +219,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     id: "federation",
     title: "Federation",
     description: "Cross-org grants and handoffs",
+    group: "admin",
     icon: Handshake,
     tier: "admin",
     href: "/settings/federation",
@@ -202,6 +229,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     id: "environments",
     title: "Environments",
     description: "Prod and staging environment controls",
+    group: "admin",
     icon: Boxes,
     tier: "admin",
     href: "/environments",
@@ -211,6 +239,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     id: "audit",
     title: "Audit trail",
     description: "Review security and compliance events",
+    group: "admin",
     icon: FileText,
     tier: "admin",
     href: "/audit",
@@ -260,4 +289,25 @@ export function settingsSectionsForTier(
     if (section.adminOnly && !isAdmin) return false
     return true
   })
+}
+
+
+/** Workspace group in the design's order: General, Security, API keys, Notifications, Webhooks. */
+const GROUP_ORDER: Partial<Record<SettingsSectionId, number>> = {
+  organization: 0,
+  security: 1,
+  "api-keys": 2,
+  notifications: 3,
+  webhooks: 4,
+  "ai-models": 5,
+}
+
+export function settingsSectionsForGroup(group: SettingsGroup, isAdmin: boolean): SettingsSection[] {
+  return SETTINGS_SECTIONS.filter((section) => section.group === group && (!section.adminOnly || isAdmin)).sort(
+    (a, b) => (GROUP_ORDER[a.id] ?? 0) - (GROUP_ORDER[b.id] ?? 0),
+  )
+}
+
+export function settingsGroupLabel(group: SettingsGroup): string {
+  return SETTINGS_GROUPS.find((row) => row.id === group)?.label ?? "Settings"
 }

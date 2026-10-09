@@ -18,6 +18,7 @@ from app.services.agent_identity_service import (
     resolve_approval_override,
 )
 from app.services.hitl_policy_service import HitlDecision
+from app.services.org_approval_rules import ApprovalRules, is_customer_email_action
 
 AutonomyLabel = Literal["READ ONLY", "ACT WITH APPROVAL", "ACT WITHIN POLICY"]
 
@@ -42,8 +43,12 @@ def resolve_write_user_approval(
     hitl: HitlDecision | None,
     identity: EffectiveAgentIdentity | None,
     risk_class: str = "",
+    rules: ApprovalRules | None = None,
 ) -> tuple[bool, str]:
     """Return (requires_user_approval, reason).
+
+    ``rules`` are the org's Settings > Human in the loop switches; the email
+    rule holds customer email for a person even under an auto-run override.
 
     Callers still run HMAC / PendingAction after this returns True.
     """
@@ -52,6 +57,9 @@ def resolve_write_user_approval(
 
     if requires_write_approval_always(invoke_action, risk_class=risk_class):
         return True, "high_risk_or_f1_write_always_requires_approval"
+
+    if rules is not None and rules.customer_email_approval and is_customer_email_action(invoke_action):
+        return True, "org_rule_customer_email_waits_for_approval"
 
     trust = str(identity.trust_level) if identity is not None else ""
     if trust == "read_only":

@@ -141,9 +141,8 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
       resolve(webRoot, "components/settings/notification-settings.tsx"),
       "utf8",
     )
-    expect(notifications).toMatch(/aria-label="Email notifications"/)
-    expect(notifications).toMatch(/aria-label="Slack notifications"/)
-    expect(notifications).toMatch(/border-b border-divide py-3/)
+    expect(notifications).toMatch(/aria-label=\{`\$\{event\.label\} by \$\{channel\.label\}`\}/)
+    expect(notifications).toMatch(/className="st-card"/)
     expect(notifications).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
 
     const security = readFileSync(

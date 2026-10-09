@@ -14,7 +14,13 @@ PREFERENCE_EVENT_TYPES: tuple[str, ...] = (
     "scheduled_run_completed",
     "scheduled_run_failed",
     "task_completed",
+    "source_attention",
+    "weekly_summary",
 )
+
+# Delivery channels. "bell" is the in-app inbox; "slack" is a direct message
+# from the workspace's Slack app to the person (matched by email).
+CHANNELS: tuple[str, ...] = ("bell", "email", "slack")
 
 DEFAULT_EVENT_PREFERENCES: dict[str, dict[str, bool]] = {
     "run_completed": {"bell_enabled": True, "email_enabled": False},
@@ -24,6 +30,9 @@ DEFAULT_EVENT_PREFERENCES: dict[str, dict[str, bool]] = {
     "scheduled_run_completed": {"bell_enabled": True, "email_enabled": False},
     "scheduled_run_failed": {"bell_enabled": True, "email_enabled": True},
     "task_completed": {"bell_enabled": True, "email_enabled": False},
+    "source_attention": {"bell_enabled": True, "email_enabled": True},
+    # In app only until someone opts in, so no org starts getting email it did not ask for.
+    "weekly_summary": {"bell_enabled": True, "email_enabled": False},
 }
 
 
@@ -36,6 +45,7 @@ def default_preferences_payload() -> dict[str, bool]:
     for event_type, channels in DEFAULT_EVENT_PREFERENCES.items():
         payload[_pref_key(event_type, "bell")] = channels["bell_enabled"]
         payload[_pref_key(event_type, "email")] = channels["email_enabled"]
+        payload[_pref_key(event_type, "slack")] = channels.get("slack_enabled", False)
     return payload
 
 
@@ -92,18 +102,27 @@ def structured_preferences(stored: dict[str, Any] | None) -> dict[str, dict[str,
         structured[event_type] = {
             "bell_enabled": merged.get(_pref_key(event_type, "bell"), True),
             "email_enabled": merged.get(_pref_key(event_type, "email"), False),
+            "slack_enabled": merged.get(_pref_key(event_type, "slack"), False),
         }
     return structured
 
 
-def flatten_structured_preferences(structured: dict[str, Any]) -> dict[str, bool]:
-    payload = default_preferences_payload()
+def flatten_structured_preferences(
+    structured: dict[str, Any],
+    stored: dict[str, Any] | None = None,
+) -> dict[str, bool]:
+    """Apply a structured update on top of ``stored`` (or the defaults).
+
+    Events and channels missing from ``structured`` keep their stored value,
+    so a page that edits four events does not reset the other five.
+    """
+    payload = merge_preferences(stored)
     for event_type in PREFERENCE_EVENT_TYPES:
         row = structured.get(event_type)
         if not isinstance(row, dict):
             continue
-        if "bell_enabled" in row:
-            payload[_pref_key(event_type, "bell")] = bool(row["bell_enabled"])
-        if "email_enabled" in row:
-            payload[_pref_key(event_type, "email")] = bool(row["email_enabled"])
+        for channel in CHANNELS:
+            field = f"{channel}_enabled"
+            if field in row:
+                payload[_pref_key(event_type, channel)] = bool(row[field])
     return payload

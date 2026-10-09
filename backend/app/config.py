@@ -530,6 +530,8 @@ class Settings(BaseSettings):
     company_intelligence_interval_seconds: int = 28800
     # Standing unprompted investigators (read-scoped advisory). 0 disables; default 8 hours.
     standing_investigator_interval_seconds: int = 28800
+    # Past-due approval escalation + Monday weekly summary (0 disables).
+    ops_notifications_interval_seconds: int = 900
     # Shared secret for /api/watchers/agent/signal HMAC or X-Watcher-Secret header.
     watcher_agent_webhook_secret: str | None = None
     # Memory promotion evaluation (v4). 0 disables; default 8 hours.
