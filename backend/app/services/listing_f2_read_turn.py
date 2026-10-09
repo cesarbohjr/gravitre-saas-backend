@@ -42,6 +42,11 @@ _CONTACTS = re.compile(
     r"|hubspot contacts (?:are|in this|in the|do we)"
     r")\b"
 )
+_COMPANIES = re.compile(
+    r"(?is)\b(?:how many|count)\b.{0,80}\bcompanies\b.{0,80}\bhubspot\b"
+    r"|\b(?:how many|count)\b.{0,80}\bhubspot\b.{0,40}\bcompanies\b"
+    r"|\bhubspot compan(?:y|ies) count\b"
+)
 _BARE_WRITE = re.compile(r"(?is)\b(create|update|delete|enroll)\b")
 _NEGATED_WRITE = re.compile(r"(?is)\bdo not (?:create|update|delete)\b")
 _SHOW_BOUND_ARTIFACT = re.compile(
@@ -64,6 +69,15 @@ def listing_f2_intent(message: str) -> ListingF2Intent | None:
     text = message or ""
     if _BARE_WRITE.search(text) and not _NEGATED_WRITE.search(text):
         return None
+    if _COMPANIES.search(text):
+        return ListingF2Intent(
+            provider="hubspot",
+            search_tool="hubspot.companies.search",
+            list_tool="hubspot.companies.search",
+            capability_id="crm.companies.read",
+            title="HubSpot companies",
+            count_query=True,
+        )
     if _CONTACTS.search(text):
         wants_count = bool(
             re.search(r"(?is)\b(how many|count)\b", text) or re.search(r"(?is)\bcontact(?:s)? count\b", text)
@@ -91,6 +105,30 @@ def match_listing_f2_intent(message: str) -> bool:
     return listing_f2_intent(message) is not None or match_bound_artifact_resume(message)
 
 
+def resolve_listing_read_message(message: str, task_state: dict[str, Any] | None) -> str:
+    """Bind a short read continuation to the nearest request, never an older plan.
+
+    Pending approvals own confirmations. This helper only resumes a known
+    read intent and cannot authorize a write.
+    """
+    if listing_f2_intent(message) is not None:
+        return message
+    if not re.fullmatch(r"(?i)\s*(?:(?:ok|okay|yes)[, ]+)?(?:do that|do it|go ahead)\s*[.!]?\s*", message or ""):
+        return message
+    state = task_state or {}
+    if any(isinstance(state.get(key), dict) and state[key].get("status") in {
+        "awaiting_confirm", "awaiting_plan_confirm", "awaiting_step_confirm",
+        "awaiting_admin_approval", "awaiting_user_confirmation", "awaiting_user",
+    } for key in ("pending_task", "pending_action", "offered_action")):
+        return message
+    for prior in reversed(state.get("recent_user_messages") or []):
+        if not isinstance(prior, str) or prior.strip().lower() == (message or "").strip().lower():
+            continue
+        # Do not jump over a newer objective to find an old matching read.
+        return prior if listing_f2_intent(prior) is not None else message
+    return message
+
+
 def match_bound_artifact_resume(message: str) -> bool:
     text = message or ""
     return bool(_SHOW_BOUND_ARTIFACT.search(text) and not _WANTS_FRESH.search(text))
@@ -105,7 +143,7 @@ def _listing_artifact_rows(
 ) -> list[dict[str, Any]]:
     """Observation-backed table rows only. Never invent counts or prices."""
     if intent.count_query:
-        object_name = "contacts" if "contact" in action_key else "deals"
+        object_name = "contacts" if "contact" in action_key else "companies" if "companies" in action_key else "deals"
         return [
             {
                 "system": "HubSpot",
@@ -242,7 +280,7 @@ def try_listing_f2_read_turn(
     action_key = intent.search_tool
     repaired_used = False
     proposed_args: dict[str, Any] = {"limit": 25}
-    if intent.count_query and "contacts" in intent.search_tool:
+    if intent.count_query:
         proposed_args = {
             "limit": 1,
             "filter_groups": [
@@ -329,9 +367,23 @@ def try_listing_f2_read_turn(
             }
     if not is_f1_read_action(action_key):
         return None
+    if intent.count_query and invoked.success:
+        payload = invoked.data if isinstance(invoked.data, dict) else {}
+        total = payload.get("total")
+        if isinstance(total, bool) or not isinstance(total, int) or total < 0:
+            return {
+                "stop_pipeline": True,
+                "dialogue_mode": "answer",
+                "message": "HubSpot returned records without a verified total, so I can't report the account count yet.",
+                "workflow_status": "blocked",
+                "execution_path": "listing_f2_read",
+                "writes_started": False,
+            }
     count = _result_count(getattr(invoked, "data", None))
-    if intent.count_query and "contact" in action_key:
-        summary = f"This HubSpot account has {count} contact{'s' if count != 1 else ''}."
+    if intent.count_query and invoked.success:
+        noun = "company" if "companies" in action_key else "contact"
+        plural = "companies" if noun == "company" else "contacts"
+        summary = f"This HubSpot account has {count} {noun if count == 1 else plural}."
     else:
         summary = _summarize_read(action_key, invoked.data)
     observation = ExecutionObservation(

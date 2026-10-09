@@ -26,7 +26,7 @@ def build_cross_source_analytics_plan(
         return None
     cap = str(capability_id or "").strip().lower()
     traffic_shaped = (
-        cap in {"", "analytics.traffic_overview", "analytics.query", "search.performance"}
+        cap in {"analytics.traffic_overview", "analytics.query", "search.performance"}
         or mentions_analytics_traffic_language(text)
         or mentions_website_performance_language(text)
     )
