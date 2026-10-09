@@ -955,18 +955,23 @@
  * the app's fields (the chat composer included) use text-sm (14px).
  *
  * `-webkit-touch-callout` is only supported by WebKit on iPhone and iPad, so
- * desktop, Android and every other browser keep their current sizes. Unlayered
- * and !important so it outranks the text-* utilities on each field.
+ * desktop, Android and every other browser keep their current sizes.
+ *
+ * Unlayered, so it outranks every Tailwind text-* utility (those live in a
+ * cascade layer), but wrapped in :where() for zero specificity and not
+ * !important, so the redesign's own unlayered field styles still apply. The
+ * larger ones (home .gv-input 18px, assignments composer 17px) keep their size;
+ * the few smaller ones carry their own iOS 16px rule next to their definition.
  */
 @supports (-webkit-touch-callout: none) {
-  :is(
+  :where(
     input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="reset"], [type="image"], [type="hidden"]),
     textarea,
     select,
     [contenteditable="true"],
     [contenteditable=""]
-  ):not([class*="text-lg"], [class*="text-xl"], [class*="text-2xl"], [class*="text-3xl"], [class*="text-4xl"], [class*="text-5xl"]) {
-    font-size: 16px !important;
+  ) {
+    font-size: 16px;
   }
 }
 

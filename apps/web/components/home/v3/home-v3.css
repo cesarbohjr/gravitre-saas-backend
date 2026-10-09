@@ -105,6 +105,10 @@
 .gv-home .gv-rng:hover { background: var(--gv-subtle); }
 .gv-home .gv-rng.on { background: var(--gv-dark); color: var(--gv-canvas); }
 .gv-home .gv-select { font: inherit; font-size: 14px; min-height: 44px; border: 1px solid var(--gv-border); border-radius: 10px; background: var(--gv-card); padding: 0 12px; color: var(--gv-text); }
+@supports (-webkit-touch-callout: none) {
+  /* iOS zooms the page on focus below 16px; see the note in app/globals.css. */
+  .gv-home .gv-select { font-size: 16px; }
+}
 .gv-home .gv-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
 .gv-home .gv-w { background: var(--gv-card); border: 1px solid var(--gv-border); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; min-width: 0; transition: box-shadow .2s, border-color .2s, transform .2s, opacity .2s; animation: gvRise .6s cubic-bezier(.22,1,.36,1) both; }
 .gv-home .gv-w:hover { box-shadow: 0 1px 2px rgba(20,22,21,.04), 0 14px 34px -18px rgba(20,22,21,.22); }

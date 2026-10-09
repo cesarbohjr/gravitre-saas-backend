@@ -159,7 +159,15 @@
 .gv-ws .gv-field { display: flex; align-items: center; gap: 10px; border: 1px solid var(--gv-border); background: var(--gv-card); border-radius: 10px; padding: 0 12px; min-height: 44px; color: var(--gv-muted); }
 .gv-ws .gv-field:focus-within { border-color: var(--gv-brand); box-shadow: 0 0 0 4px var(--gv-ring); }
 .gv-ws .gv-field input, .gv-ws .gv-field select { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: inherit; font-size: 14px; color: var(--gv-text); }
+@supports (-webkit-touch-callout: none) {
+  /* iOS zooms the page on focus below 16px; see the note in app/globals.css. */
+  .gv-ws .gv-field input, .gv-ws .gv-field select { font-size: 16px; }
+}
 .gv-ws .gv-in { width: 100%; border: 1px solid var(--gv-border); border-radius: 10px; padding: 0 12px; min-height: 44px; font: inherit; font-size: 14px; color: var(--gv-text); background: var(--gv-card); outline: none; }
+@supports (-webkit-touch-callout: none) {
+  /* iOS zooms the page on focus below 16px; see the note in app/globals.css. */
+  .gv-ws .gv-in { font-size: 16px; }
+}
 .gv-ws .gv-in:focus { border-color: var(--gv-brand); box-shadow: 0 0 0 4px var(--gv-ring); }
 .gv-ws .gv-textarea { width: 100%; min-height: 96px; resize: vertical; border: 1px solid var(--gv-border-strong); border-radius: 12px; padding: 14px 16px; font: inherit; font-size: 18px; line-height: 1.45; color: var(--gv-text); background: var(--gv-card); outline: none; }
 .gv-ws .gv-textarea:focus { border-color: var(--gv-brand); box-shadow: 0 0 0 4px var(--gv-ring); }

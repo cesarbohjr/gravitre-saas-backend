@@ -34,6 +34,10 @@
 .gv-ws .dq-plain:hover { color: var(--gv-text); background: var(--gv-subtle); }
 .gv-ws .dq-plain:focus-visible { outline: 3px solid rgba(25, 195, 125, 0.4); }
 .gv-ws select.dq-plain { appearance: none; padding-right: 6px; text-align: right; }
+@supports (-webkit-touch-callout: none) {
+  /* iOS zooms the page on focus below 16px; see the note in app/globals.css. */
+  .gv-ws select.dq-plain { font-size: 16px; }
+}
 
 /* Request cards */
 .gv-ws .dq-item { display: block; width: 100%; text-align: left; font: inherit; color: var(--gv-text); border: 1px solid var(--gv-border); border-radius: 12px; padding: 14px 16px; background: var(--gv-card); cursor: pointer; }
