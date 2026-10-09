@@ -377,6 +377,15 @@ async def lifespan(app: FastAPI):
     if not _get_settings_lifespan().disable_ai:
         await _warm_unified_tool_embeds()
 
+    # Load the dialogue style examples once at startup (~20 ms of JSON) so the
+    # first chat or voice turn does not pay for it.
+    try:
+        from app.services.pipecat_voice.dialogue_library import select_fewshots
+
+        await asyncio.to_thread(select_fewshots, "light", "hello")
+    except Exception:  # noqa: BLE001 - warmup is best effort
+        logger.debug("dialogue_library_warmup_failed", exc_info=True)
+
     # Voice warmups are optimization only and must never hold Railway readiness.
     # A cold Pipecat import previously cost the first live voice request ~13s, so
     # still give it a short bounded head start. If it exceeds that window, let

@@ -12,11 +12,13 @@ from app.services.module_d_unified_voice_spec import (
 )
 from app.services.pipecat_voice.conversation_dna import (
     CONVERSATION_DNA_CORE,
+    TEXT_DNA_CORE,
     TIER_OVERLAYS,
     build_conversation_dna_section,
 )
 
 DNA_HEADER = "## Conversation character (voice)"
+TEXT_DNA_HEADER = "## Conversation character (text)"
 
 
 def test_every_tier_inherits_the_same_core() -> None:
@@ -76,9 +78,16 @@ def test_module_d_spoken_prompt_places_dna_after_persona_and_before_policy() -> 
     assert TIER_OVERLAYS["light"] in prompt
 
 
-def test_module_d_typed_prompt_has_no_dna() -> None:
+def test_module_d_typed_prompt_gets_text_character_not_voice() -> None:
     prompt = build_module_d_unified_system_prompt(spoken_mode=False, conversation_tier="deep")
     assert DNA_HEADER not in prompt
+    assert prompt.count(TEXT_DNA_HEADER) == 1
+    assert TIER_OVERLAYS["deep"] in prompt
+
+
+def test_module_d_typed_prompt_without_tier_has_no_dna() -> None:
+    prompt = build_module_d_unified_system_prompt(spoken_mode=False)
+    assert DNA_HEADER not in prompt and TEXT_DNA_HEADER not in prompt
 
 
 def test_module_d_only_overlay_varies_between_tiers() -> None:
@@ -134,9 +143,33 @@ def test_classical_agent_prompt_also_carries_dna(intelligence: AgentIntelligence
     assert TIER_OVERLAYS["deep"] in prompt
 
 
-def test_classical_typed_prompt_has_no_dna(intelligence: AgentIntelligence) -> None:
-    prompt = intelligence._build_system_prompt("assistant", None, [], {}, conversation_tier="light")
+def test_classical_typed_prompt_gets_text_character(intelligence: AgentIntelligence) -> None:
+    prompt = intelligence._build_system_prompt(
+        "assistant",
+        None,
+        [],
+        {},
+        assistant_base_prompt="PERSONA SENTINEL",
+        spoken_user_text="haha tell me a joke",
+        task_state_section="TASK STATE SENTINEL",
+        conversation_tier="light",
+    )
     assert DNA_HEADER not in prompt
+    assert prompt.count(TEXT_DNA_HEADER) == 1
+    dna = prompt.index(TEXT_DNA_HEADER)
+    assert prompt.index("PERSONA SENTINEL") < dna < prompt.index("TASK STATE SENTINEL")
+    assert dna < prompt.index("## Rules")
+    assert TIER_OVERLAYS["light"] in prompt
+
+
+def test_text_core_keeps_the_same_boundaries() -> None:
+    assert TEXT_DNA_CORE.startswith(TEXT_DNA_HEADER)
+    for phrase in ("win on any conflict", "Never claim to be human",
+                   "Never volunteer account, CRM or connector data", "never at their expense"):
+        assert phrase in TEXT_DNA_CORE
+    text = build_conversation_dna_section("deep", spoken=False)
+    assert text.startswith(TEXT_DNA_CORE) and text.endswith(TIER_OVERLAYS["deep"])
+    assert len(text) < 900
 
 
 def test_conversational_tiers_get_library_style_examples() -> None:
@@ -149,10 +182,14 @@ def test_conversational_tiers_get_library_style_examples() -> None:
     assert len(light) < 900 + 700
 
 
-def test_deep_and_empty_turns_get_no_style_examples() -> None:
+def test_deep_turns_get_one_narrative_example_and_empty_turns_none() -> None:
     from app.services.pipecat_voice.conversation_dna import conversation_dna_for_turn
+    from app.services.pipecat_voice.dialogue_library import HEADER
 
-    assert conversation_dna_for_turn("deep", "pull my pipeline") == build_conversation_dna_section("deep")
+    deep = conversation_dna_for_turn("deep", "pull my pipeline")
+    assert deep.startswith(build_conversation_dna_section("deep"))
+    assert HEADER in deep and deep.count("\n\nUser:") == 1
+    assert "what it means, then the next step" in TIER_OVERLAYS["deep"]
     assert conversation_dna_for_turn("light", "  ") == build_conversation_dna_section("light")
 
 

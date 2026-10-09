@@ -174,3 +174,80 @@ async def test_execute_calls_all_read_tools() -> None:
 
 def test_offered_from_state_ignores_completed() -> None:
     assert offered_from_state({"offered_action": {"status": "completed", "tools": ["connector_status"]}}) is None
+
+
+# --- spoken affirmations and short replies ---------------------------------------
+
+
+@pytest.mark.parametrize(
+    "utterance",
+    [
+        "yes please",
+        "Sure, go ahead.",
+        "sounds great",
+        "yes, please do",
+        "that would be great",
+        "perfect, do it",
+        "let's do it",
+        "okay check it",
+    ],
+)
+def test_natural_affirmations_execute_the_offer(utterance: str) -> None:
+    offered = extract_offered_action(OFFER)
+    assert offered is not None
+    decision = resolve_offered_action_turn(utterance, task_state={"offered_action": offered.as_dict()})
+    assert decision.kind == "execute_read", utterance
+
+
+@pytest.mark.parametrize("utterance", ["no thanks", "nah, I'm good", "not right now", "maybe later"])
+def test_soft_declines_decline(utterance: str) -> None:
+    offered = extract_offered_action(OFFER)
+    assert offered is not None
+    decision = resolve_offered_action_turn(utterance, task_state={"offered_action": offered.as_dict()})
+    assert decision.kind == "decline", utterance
+
+
+@pytest.mark.parametrize("utterance", ["yes and cc me on it", "hmm, maybe", "which one is faster?"])
+def test_short_unclear_reply_keeps_the_offer_for_the_model(utterance: str) -> None:
+    offered = extract_offered_action(OFFER)
+    assert offered is not None
+    decision = resolve_offered_action_turn(utterance, task_state={"offered_action": offered.as_dict()})
+    assert decision.kind == "needs_model", utterance
+    assert decision.offered is not None
+
+
+@pytest.mark.parametrize(
+    ("verdict", "expected"), [("accept", "execute_read"), ("decline", "decline"), ("other", "none")]
+)
+def test_model_classifier_maps_verdicts(verdict: str, expected: str) -> None:
+    import asyncio
+    from types import SimpleNamespace
+
+    from app.services.offered_action_continuation import classify_offer_reply_with_model
+
+    offered = extract_offered_action(OFFER)
+    assert offered is not None
+    router = SimpleNamespace(
+        complete=AsyncMock(return_value=SimpleNamespace(content='{"intent": "%s"}' % verdict, parsed=None))
+    )
+    with patch("app.services.model_router.get_model_router", return_value=router):
+        kind = asyncio.run(
+            classify_offer_reply_with_model(
+                "hmm, maybe", offered=offered, conversation_history=[{"role": "assistant", "content": OFFER}]
+            )
+        )
+    assert kind == expected
+
+
+def test_model_classifier_failure_keeps_the_offer() -> None:
+    import asyncio
+    from types import SimpleNamespace
+
+    from app.services.offered_action_continuation import classify_offer_reply_with_model
+
+    offered = extract_offered_action(OFFER)
+    assert offered is not None
+    router = SimpleNamespace(complete=AsyncMock(side_effect=RuntimeError("down")))
+    with patch("app.services.model_router.get_model_router", return_value=router):
+        kind = asyncio.run(classify_offer_reply_with_model("hmm", offered=offered, conversation_history=None))
+    assert kind == "none"

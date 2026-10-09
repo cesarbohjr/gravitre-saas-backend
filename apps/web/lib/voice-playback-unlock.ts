@@ -18,10 +18,59 @@ export function getSharedPlaybackContext(): AudioContext | null {
   return sharedPlaybackContext
 }
 
+/**
+ * True when the context is paused but can be resumed. Safari/iOS reports
+ * "interrupted" (not "suspended") once the microphone takes over the audio
+ * session or a call/route change happens; checking only "suspended" left those
+ * sessions stuck on "Sound is blocked" with Enable sound doing nothing.
+ */
+export function isResumableAudioState(state: string | undefined): boolean {
+  return state !== undefined && state !== "running" && state !== "closed"
+}
+
+/**
+ * Resume a paused output context. iOS can leave `resume()` pending while the
+ * session is interrupted, so the wait is bounded instead of hanging the caller.
+ */
+export async function ensureAudioOutputRunning(
+  ctx: AudioContext | null,
+  timeoutMs = 1500,
+): Promise<boolean> {
+  if (!ctx) return false
+  if (ctx.state === "running") return true
+  if (!isResumableAudioState(ctx.state)) return false
+  try {
+    await Promise.race([
+      ctx.resume(),
+      new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+    ])
+  } catch {
+    /* fall through to the state check */
+  }
+  // Re-read through a widened type: TS narrowed `state` before the await.
+  return (ctx.state as string) === "running"
+}
+
+/**
+ * iOS 17+ exposes `navigator.audioSession`. Declaring play-and-record before
+ * the microphone opens stops Safari from interrupting reply playback when
+ * capture starts. No-op everywhere else.
+ */
+export function preferPlayAndRecordAudioSession(): void {
+  if (typeof navigator === "undefined") return
+  const session = (navigator as unknown as { audioSession?: { type?: string } }).audioSession
+  if (!session) return
+  try {
+    session.type = "play-and-record"
+  } catch {
+    /* unsupported value on this browser */
+  }
+}
+
 export async function unlockVoicePlayback(): Promise<AudioContext | null> {
   const ctx = getSharedPlaybackContext()
   if (!ctx) return null
-  if (ctx.state === "suspended") {
+  if (isResumableAudioState(ctx.state)) {
     try {
       await ctx.resume()
     } catch {

@@ -284,3 +284,58 @@ def persist_completed_turn(
             assistant_message_id=assistant_id,
         )
     return persisted_id, assistant_id
+
+
+async def prepare_turn_conversation(
+    settings: Any,
+    *,
+    org_id: str,
+    user_id: str | None,
+    conversation_id: str | None,
+    user_text: str,
+    ensure_row: bool = True,
+) -> str | None:
+    """Conversation row and parameter ledger before the brain runs, as text chat does.
+
+    STA-306: the row must exist before the ReAct write gate persists a
+    pending_task mid-stream, otherwise the approval is a silent no-op and the
+    next "yes" has nothing to confirm. Module B: names, emails and dates the
+    user mentions are written to the conversation ledger before the turn, so
+    an early return in the brain cannot drop them. Never raises.
+    """
+    if not conversation_id or not user_id or not org_id:
+        return conversation_id
+    from app.services.conversation_state_service import get_conversation_state_service
+
+    state_svc = get_conversation_state_service(settings)
+    if ensure_row:
+        try:
+            conversation_id = await state_svc.ensure_owned_conversation(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                title=(user_text or "New conversation")[:80],
+            )
+        except Exception as exc:  # noqa: BLE001 - never make a turn unavailable
+            logger.warning("turn_conversation_ensure_failed conversation_id=%s error=%s", conversation_id, exc)
+            return conversation_id
+    text = (user_text or "").strip()
+    if not conversation_id or not text:
+        return conversation_id
+    try:
+        from app.services.parameter_ledger import get_ledger, ingest_message_slots, ledger_patch
+
+        prior = await state_svc.get_task_state(conversation_id, org_id)
+        ledger = ingest_message_slots(
+            text,
+            turn_index=len(list((prior or {}).get("recent_user_messages") or [])) + 1,
+            ledger=get_ledger(prior),
+        )
+        await state_svc.update_task_state(
+            conversation_id,
+            org_id,
+            {**ledger_patch(ledger), "recent_user_messages": [text]},
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("turn_ledger_ingest_failed conversation_id=%s error=%s", conversation_id, exc)
+    return conversation_id

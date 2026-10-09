@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import re
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -73,6 +74,47 @@ logger = get_logger(__name__)
 # finalization time without adding perceptible extra latency to a genuine
 # interruption - Phase 6 instruments the real, live distribution of this.
 DEFAULT_GRACE_PERIOD_S = 0.6
+
+# While the brain is still working and nothing is playing, these never cancel
+# the request in flight: hesitations, acknowledgements, presence checks and
+# small talk. ("you there?" used to cancel the turn and get "Yes, I'm here!",
+# and the original request never ran.)
+_PRESENCE_RE = re.compile(
+    r"(?i)^\s*(?:(?:hey|hi|hello|um+|uh+|hmm+|so|ok(?:ay)?)[,.!?\s]*)*"
+    r"(?:hello|hey|hi|you\s+there|are\s+you\s+(?:still\s+)?there|still\s+there|anyone\s+there|"
+    r"can\s+you\s+hear\s+me|still\s+(?:working|thinking)(?:\s+on\s+it)?|are\s+you\s+(?:working|thinking)|"
+    r"take\s+your\s+time|no\s+rush|whenever)?[,.!?\s]*$"
+)
+_THINKING_HOLD_MAX_WORDS = 6
+
+
+def is_hold_while_thinking(text: str) -> bool:
+    """True when speech during the brain's thinking window must not cancel it."""
+    stripped = (text or "").strip()
+    if not stripped:
+        return True
+    if len(stripped.split()) > _THINKING_HOLD_MAX_WORDS:
+        return False
+    classification = classify_user_utterance(stripped)
+    if classification in (
+        BackchannelClassification.STOP_COMMAND,
+        BackchannelClassification.CORRECTION,
+    ):
+        return False
+    if is_backchannel(classification):
+        return True
+    if _PRESENCE_RE.match(stripped):
+        return True
+    from app.services.pipecat_voice.utterance_gate import is_filler_only
+
+    if is_filler_only(stripped):
+        return True
+    try:
+        from app.services.conversation_tier import _is_social_utterance
+
+        return _is_social_utterance(stripped)
+    except Exception:  # noqa: BLE001
+        return False
 
 # Interim text that is unambiguous enough to stop the bot before Flux finalizes.
 _CLEAR_INTERRUPTIONS = frozenset(
@@ -128,6 +170,15 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         self._buffer_text = ""
         self._pending_started_at = 0.0
         self._grace_task = None
+        # The pending classification started while the brain was thinking
+        # (generating, nothing playing) rather than while audio played.
+        self._pending_thinking = False
+        # A turn we opened without interruption and whose text we dropped:
+        # later transcripts of the same utterance are dropped too while they
+        # stay hold-worthy, so "you there?" never becomes a queued turn.
+        self._held_turn = False
+        self._held_text = ""
+        self._held_thinking = False
 
     async def cleanup(self):
         await self._cancel_grace_task()
@@ -185,11 +236,32 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             if self._pending:
                 # Already holding one open - don't restart the window.
                 return ProcessFrameResult.STOP
-            if not self._bot_speaking:
+            self._held_turn = False
+            self._held_text = ""
+            # The brain mid-turn with nothing playing is protected too: Pipecat
+            # would otherwise cancel the in-flight request on any sound.
+            thinking = not self._bot_speaking and self._assistant_thinking()
+            if not self._bot_speaking and not thinking:
                 # Nothing to protect; behave exactly like the stock strategy.
                 return await super().process_frame(frame)
-            await self._begin_pending_classification()
+            await self._begin_pending_classification(thinking=thinking)
             return ProcessFrameResult.STOP
+
+        if isinstance(frame, TranscriptionFrame) and self._held_turn and not self._pending:
+            # The aggregator has already appended this text; drop it again
+            # while the held utterance is still only filler / small talk, so
+            # "you there?" never becomes a queued turn of its own.
+            self._held_text = f"{self._held_text} {frame.text}".strip()
+            still_hold = (
+                is_hold_while_thinking(self._held_text)
+                if self._held_thinking
+                else is_backchannel(classify_user_utterance(self._held_text))
+            )
+            if still_hold:
+                await self.trigger_reset_aggregation()
+            else:
+                self._held_turn = False
+            return ProcessFrameResult.CONTINUE
 
         if isinstance(frame, TranscriptionFrame) and self._pending:
             self._buffer_text = f"{self._buffer_text} {frame.text}".strip()
@@ -250,8 +322,12 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
 
         return ProcessFrameResult.CONTINUE
 
-    async def _begin_pending_classification(self):
+    def _assistant_thinking(self) -> bool:
+        return bool(getattr(self._voice_session, "assistant_generating", False))
+
+    async def _begin_pending_classification(self, *, thinking: bool = False):
         self._pending = True
+        self._pending_thinking = thinking
         self._buffer_text = ""
         self._pending_started_at = time.monotonic()
         await self._cancel_grace_task()
@@ -284,6 +360,26 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         await self._cancel_grace_task()
 
         decision_latency_ms = (time.monotonic() - self._pending_started_at) * 1000.0
+        if self._pending_thinking and is_hold_while_thinking(self._buffer_text):
+            # Nothing is playing and the brain is mid-turn: a cough, "hmm" or
+            # "you there?" must not cancel the request. Open the turn without
+            # interrupting and drop its text (the deep/medium acknowledgement
+            # already told the user we are working on it).
+            logger.info(
+                "voice_turn_taking_thinking_hold text=%r decision_latency_ms=%.1f resolved_by_timeout=%s",
+                self._buffer_text[:80],
+                decision_latency_ms,
+                resolved_by_timeout,
+            )
+            await self.trigger_user_turn_started(
+                enable_interruptions=False, enable_user_speaking_frames=False
+            )
+            if self._buffer_text:
+                await self.trigger_reset_aggregation()
+                self._held_turn = True
+                self._held_text = self._buffer_text
+                self._held_thinking = True
+            return
         backchannel = is_backchannel(classification)
         if backchannel and self._voice_session is not None and self._voice_session.expects_answer():
             # The bot just asked something; "yes" / "sure" is the answer.
@@ -325,6 +421,9 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
                 enable_interruptions=False, enable_user_speaking_frames=False
             )
             await self.trigger_reset_aggregation()
+            self._held_turn = True
+            self._held_text = self._buffer_text
+            self._held_thinking = False
         else:
             await self.trigger_user_turn_started(
                 enable_interruptions=self._enable_interruptions,

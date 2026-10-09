@@ -701,8 +701,12 @@ export function AiWorkspace({
         userStatus?: { label?: string | null }
         connectedIntegrations?: string[]
       }
-      if ("dialogueMode" in payload) setDialogueMode(payload.dialogueMode ?? null)
-      if ("pendingTask" in payload) setPendingTask(payload.pendingTask ?? null)
+      // Every data-intelligence frame carries these keys, null when that frame has
+      // nothing to say. Treating null as "clear" let a turn's closing frames wipe
+      // its own approval card and execution result, so actions looked like they
+      // never ran. They are reset when the next prompt is sent instead.
+      if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
+      if (payload.pendingTask) setPendingTask(payload.pendingTask)
       if (payload.taskState) setTaskState(payload.taskState)
       if (payload.strategicPlan) setStrategicPlan(payload.strategicPlan)
       if (payload.advisorBrief) setAdvisorBrief(payload.advisorBrief)
@@ -725,8 +729,9 @@ export function AiWorkspace({
       if (Array.isArray(payload.businessSignals) && payload.businessSignals.length > 0) {
         setActiveBusinessSignals(payload.businessSignals)
       }
-      if ("executionResult" in payload) {
-        setExecutionResult(payload.executionResult ?? null)
+      if (payload.executionResult) {
+        setExecutionResult(payload.executionResult)
+        if (payload.executionResult.success && !payload.pendingTask) setPendingTask(null)
         if (payload.executionResult?.success && notifications) {
           const resultUrl = payload.executionResult.result_url ?? undefined
           notifications.addNotification({
@@ -1465,13 +1470,22 @@ export function AiWorkspace({
           : null
       voiceReplyClaimOwnerRef.current = activeConversationIdRef.current
       setCanContinueAfterStop(false)
+      setDialogueMode(null)
+      setPendingTask(null)
       await ensureConversation(prompt)
+      // A resend after a failed turn: the failed prompt is still the last message
+      // with no reply. Drop it so the backend does not see the request twice.
+      const current = messagesRef.current
+      const last = current[current.length - 1]
+      if (last?.role === "user" && uiMessageText(last).trim() === prompt.trim()) {
+        setMessages(current.slice(0, -1))
+      }
       sendMessage({
         text: prompt,
         metadata: { created_at: new Date().toISOString() },
       })
     },
-    [ensureConversation, sendMessage],
+    [ensureConversation, sendMessage, setMessages],
   )
 
   const handleRejectExecution = useCallback(() => {
@@ -1787,13 +1801,24 @@ export function AiWorkspace({
       }
       setOrgReady(true)
 
+      // Only a turn that is actually running needs a server-side Stop. Sending one
+      // on every switch left a stop flag behind that cancelled the next message
+      // in that conversation ("You stopped me before I finished that").
+      const switchingAwayFromLiveTurn =
+        sessionBusyRef.current ||
+        chatStatusRef.current === "submitted" ||
+        chatStatusRef.current === "streaming"
       // Clear busy flags synchronously so apply/replace is never forced into merge.
       sessionBusyRef.current = false
       chatStatusRef.current = "ready"
       setSessionBusy(false)
       submitLockRef.current = false
       setSidebarOpen(false)
-      stopChatTurn({ conversationId: activeConversationIdRef.current, stopStream: stop })
+      if (switchingAwayFromLiveTurn) {
+        stopChatTurn({ conversationId: activeConversationIdRef.current, stopStream: stop })
+      } else {
+        stop()
+      }
       setThreadRestoreStale(false)
       setDialogueMode(null)
       setPendingTask(null)
@@ -2389,6 +2414,38 @@ export function AiWorkspace({
     return null
   }
 
+  // One history list for every layout: the full page sidebar and, on phones,
+  // the drawer opened from the chat sheet (which previously had no history).
+  const conversationSidebar = (
+    <ConversationSidebar
+      conversations={conversations}
+      activeConversationId={activeConversationId}
+      onSelect={(id) => void handleSelectConversation(id)}
+      onNew={handleNewConversation}
+      onDelete={(id) => void handleDeleteConversation(id)}
+      onArchive={(id) => void handleArchiveConversation(id)}
+      onUnarchive={(id) => void handleUnarchiveConversation(id)}
+      onPin={(id) => void handlePinConversation(id)}
+      onUnpin={(id) => void handleUnpinConversation(id)}
+      onRename={(id, title) => void handleRenameConversation(id, title)}
+      onBulkDelete={(ids) => void handleBulkDeleteConversations(ids)}
+      isOpen={sidebarOpen}
+      onToggle={() => {
+        setSidebarOpen((open) => {
+          const next = !open
+          // Overlay viewports cannot host both drawers — Activity is also fixed.
+          if (next) setActivityRailOpen(false)
+          return next
+        })
+      }}
+      isLoading={showConversationsSkeleton}
+      loadError={showConversationsError ? conversationsError : undefined}
+      onRetry={() => void mutateConversations()}
+      searchQuery={historySearch}
+      onSearchQueryChange={setHistorySearch}
+    />
+  )
+
   if (GRAVITRE_AI_FLOAT_ENABLED && floatWorkspaceOpen) {
     const presence = deriveGravitreHelperPresence({ conversation, approval, voice })
     // Was: setPresentationMode("expanded") then close. That overwrote the mode
@@ -2453,6 +2510,11 @@ export function AiWorkspace({
           inputRef={inputRef}
           onKeyDown={onKeyDown}
           voice={surfaceVoiceProps}
+          historyPanel={conversationSidebar}
+          onOpenHistory={() => {
+            setActivityRailOpen(false)
+            setSidebarOpen(true)
+          }}
         />
       )
     }
@@ -2603,33 +2665,7 @@ export function AiWorkspace({
 
   const fullPageLayout = (
     <div className="flex h-full min-h-0 flex-1">
-      <ConversationSidebar
-        conversations={conversations}
-        activeConversationId={activeConversationId}
-        onSelect={(id) => void handleSelectConversation(id)}
-        onNew={handleNewConversation}
-        onDelete={(id) => void handleDeleteConversation(id)}
-        onArchive={(id) => void handleArchiveConversation(id)}
-        onUnarchive={(id) => void handleUnarchiveConversation(id)}
-        onPin={(id) => void handlePinConversation(id)}
-        onUnpin={(id) => void handleUnpinConversation(id)}
-        onRename={(id, title) => void handleRenameConversation(id, title)}
-        onBulkDelete={(ids) => void handleBulkDeleteConversations(ids)}
-        isOpen={sidebarOpen}
-        onToggle={() => {
-          setSidebarOpen((open) => {
-            const next = !open
-            // Overlay viewports cannot host both drawers — Activity is also fixed.
-            if (next) setActivityRailOpen(false)
-            return next
-          })
-        }}
-        isLoading={showConversationsSkeleton}
-        loadError={showConversationsError ? conversationsError : undefined}
-        onRetry={() => void mutateConversations()}
-        searchQuery={historySearch}
-        onSearchQueryChange={setHistorySearch}
-      />
+      {conversationSidebar}
 
       <div className="ai-surface-shell ai-chat-surface flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="shrink-0 border-b border-[color:var(--chat-surface-border)] bg-[color:var(--chat-surface)]">

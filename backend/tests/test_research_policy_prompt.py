@@ -335,5 +335,8 @@ def test_execute_task_and_streaming_share_build_system_prompt():
 
     text = open(module.__file__, encoding="utf-8").read()
     assert text.count("def _build_system_prompt(") == 1
-    assert text.count("self._build_system_prompt(") >= 2
+    # execute_task calls it directly; streaming runs the same builder off the
+    # event loop via run_io(..., self._build_system_prompt, ...).
     assert "system_prompt = self._build_system_prompt(" in text
+    assert "self._build_system_prompt,\n" in text
+    assert text.count("self._build_system_prompt") >= 2

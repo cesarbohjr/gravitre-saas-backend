@@ -113,6 +113,8 @@ export interface GravitreAIMobileSheetProps {
    * point (`vaul`'s own `dismissible` gesture handling). */
   onClose: () => void
   titleAccessory?: ReactNode
+  /** Leading header control, e.g. the chat history button. */
+  leadingAction?: ReactNode
   children: ReactNode
 }
 
@@ -122,6 +124,7 @@ export function GravitreAIMobileSheet({
   onModeChange,
   onClose,
   titleAccessory,
+  leadingAction,
   children,
 }: GravitreAIMobileSheetProps) {
   const contentRef = useRef<HTMLDivElement | null>(null)
@@ -201,6 +204,7 @@ export function GravitreAIMobileSheet({
           ) : null}
           <div className="flex shrink-0 items-center justify-between border-b border-divide px-3 py-2.5">
             <div className="flex min-w-0 items-center gap-2">
+              {leadingAction}
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--np-radius-sm)] bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand)]">
                 <NucleoChat className="h-3.5 w-3.5" />
               </span>

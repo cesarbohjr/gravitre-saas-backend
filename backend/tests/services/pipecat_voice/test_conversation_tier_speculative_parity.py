@@ -119,7 +119,7 @@ def _confirmed_service(coordinator: SpeculativeGenerationCoordinator) -> Gravitr
     [
         ("what's our revenue this quarter", "deep", "agent"),
         ("haha that's hilarious", "light", "fast"),
-        ("explain how vector databases work", "medium", "fast"),
+        ("explain how vector databases work", "medium", "standard"),
     ],
 )
 async def test_speculative_and_confirmed_turn_compute_the_same_tier(text, expected_tier, expected_mode) -> None:

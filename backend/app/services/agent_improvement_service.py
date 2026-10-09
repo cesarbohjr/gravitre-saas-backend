@@ -232,6 +232,9 @@ def _apply_instruction(
             )
             .execute()
         )
+        from app.services.training_service import invalidate_instruction_cache
+
+        invalidate_instruction_cache(org_id)
         if not inserted.data:
             return ImprovementStep("instruction", "failed", "The note was not saved.", target=name)
         return ImprovementStep("instruction", "applied", "Note added.", target=name)

@@ -48,3 +48,61 @@ def test_blank_conversation_is_ignored(monkeypatch) -> None:
     monkeypatch.setattr("app.services.chat_stream_replay_service.get_redis_client", lambda _s=None: None)
     assert store_completed_turn("org-1", None, user_text="a", assistant_text="b") is None
     assert load_completed_turn("org-1", "") is None
+
+
+class _Rows:
+    def __init__(self, data):
+        self.data = data
+
+
+class _Query:
+    def __init__(self, data):
+        self._data = data
+
+    def __getattr__(self, _name):
+        return lambda *_a, **_k: self
+
+    def execute(self):
+        return _Rows(self._data)
+
+
+class _Client:
+    def __init__(self, messages):
+        self._messages = messages
+
+    def table(self, name):
+        return _Query([{"id": "conv-1"}] if name == "conversations" else self._messages)
+
+
+def _db_replay(monkeypatch, messages):
+    import app.workflows.repository as repository
+    from app.services.chat_stream_replay_service import load_completed_turn_from_db
+
+    monkeypatch.setattr(repository, "get_supabase_client", lambda *_a, **_k: _Client(messages))
+    return load_completed_turn_from_db(
+        object(), org_id="org-1", user_id="user-1", conversation_id="conv-1"
+    )
+
+
+def test_db_replay_carries_the_prompt_it_answered(monkeypatch) -> None:
+    payload = _db_replay(
+        monkeypatch,
+        [
+            {"id": "a2", "role": "assistant", "content": "Sent."},
+            {"id": "u2", "role": "user", "content": "email Sarah the deck"},
+        ],
+    )
+    assert payload is not None
+    assert payload["user_text"] == "email Sarah the deck"
+    assert payload["assistant_text"] == "Sent."
+
+
+def test_db_replay_skips_a_prompt_still_waiting_for_its_reply(monkeypatch) -> None:
+    payload = _db_replay(
+        monkeypatch,
+        [
+            {"id": "u3", "role": "user", "content": "email Sarah the deck"},
+            {"id": "a2", "role": "assistant", "content": "You have 3 deals."},
+        ],
+    )
+    assert payload is None

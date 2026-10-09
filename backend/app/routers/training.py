@@ -20,6 +20,7 @@ from app.services.external_dataset_providers import (
 )
 from app.services.dataset_target_validation import require_dataset_target
 from app.services.training_service import (
+    invalidate_instruction_cache,
     is_schema_unavailable_error,
     list_custom_instructions,
     list_training_datasets,
@@ -1057,6 +1058,7 @@ def create_instruction(
         )
         .execute()
     )
+    invalidate_instruction_cache(org_id)
     _raise_if_response_error(response)
     return dict((response.data or [{}])[0])
 
@@ -1085,6 +1087,7 @@ def update_instruction(
         .eq("id", instruction_id)
         .execute()
     )
+    invalidate_instruction_cache(org_id)
     if _is_missing_table_error(response_error(response)):
         raise HTTPException(status_code=404, detail="Instruction not found")
     _raise_if_response_error(response)
@@ -1110,6 +1113,7 @@ def delete_instruction(
         .eq("id", instruction_id)
         .execute()
     )
+    invalidate_instruction_cache(org_id)
     if _is_missing_table_error(response_error(response)):
         return {"ok": True}
     _raise_if_response_error(response)

@@ -119,8 +119,9 @@ TABLE: list[tuple[str, list | None, dict | None, str]] = [
     ("yes, do that", DEEP_EXCHANGE, None, "deep"),
     ("sure", DEEP_EXCHANGE, None, "deep"),
     ("ok send it", DEEP_EXCHANGE, None, "deep"),
-    ("no wait", DEEP_EXCHANGE, None, "deep"),
-    ("cancel that", DEEP_EXCHANGE, None, "deep"),
+    # backing off after deep work is answered at once, never deep
+    ("no wait", DEEP_EXCHANGE, None, "light"),
+    ("cancel that", DEEP_EXCHANGE, None, "light"),
     ("the second one", OFFERED_LIST, None, "deep"),
     ("the second one", None, OPTION_SET, "deep"),
     ("yes", None, PENDING_APPROVAL, "deep"),
@@ -178,7 +179,7 @@ def test_continuation_and_pending_helpers() -> None:
 
 def test_tier_to_mode() -> None:
     assert tier_to_execution_mode("light") == "fast"
-    assert tier_to_execution_mode("medium") == "fast"
+    assert tier_to_execution_mode("medium") == "standard"
     assert tier_to_execution_mode("deep") == "agent"
 
 
@@ -249,9 +250,9 @@ def test_text_default_mode_is_backward_compatible(message: str, expected: str) -
 
 def test_voice_mode_follows_tier_and_history() -> None:
     assert resolve_voice_session_intelligence_mode("Hello!") == "fast"
-    assert resolve_voice_session_intelligence_mode("explain TCP vs UDP") == "fast"
+    assert resolve_voice_session_intelligence_mode("explain TCP vs UDP") == "standard"
     assert resolve_voice_session_intelligence_mode("How many companies are in my HubSpot?") == "agent"
-    assert resolve_voice_session_intelligence_mode("yes, do that") == "fast"
+    assert resolve_voice_session_intelligence_mode("yes, do that") == "standard"
     assert resolve_voice_session_intelligence_mode("yes, do that", history=DEEP_EXCHANGE) == "agent"
     tier, mode = resolve_voice_turn_routing("yes, do that", history=DEEP_EXCHANGE)
     assert (tier.tier, mode) == ("deep", "agent")
@@ -281,7 +282,9 @@ def test_deep_tier_upgrades_a_pinned_fast_voice_mode() -> None:
     from app.services.conversation_tier import upgrade_spoken_mode_for_tier
 
     assert upgrade_spoken_mode_for_tier("fast", "deep", spoken_mode=True) == "agent"
-    assert upgrade_spoken_mode_for_tier("fast", "medium", spoken_mode=True) == "fast"
+    assert upgrade_spoken_mode_for_tier("fast", "medium", spoken_mode=True) == "standard"
+    assert upgrade_spoken_mode_for_tier("standard", "deep", spoken_mode=True) == "agent"
+    assert upgrade_spoken_mode_for_tier("fast", "light", spoken_mode=True) == "fast"
     assert upgrade_spoken_mode_for_tier("fast", "deep", spoken_mode=False) == "fast"
     assert upgrade_spoken_mode_for_tier("agent", "light", spoken_mode=True) == "agent"
     assert upgrade_spoken_mode_for_tier(None, "deep", spoken_mode=True) is None
@@ -294,3 +297,129 @@ def test_pending_approval_confirmation_is_deep_even_without_history() -> None:
     tier = classify_conversation_tier("yes, do that", history=[], task_state=PENDING_APPROVAL)
     assert tier.tier == "deep"
     assert upgrade_spoken_mode_for_tier("fast", tier.tier, spoken_mode=True) == "agent"
+
+
+# --- 2026-10-09 review: action requests, follow-ups, backing off ---------------
+
+DEALS_ANSWER = [
+    {"role": "user", "content": "Show me my open deals in HubSpot"},
+    {"role": "assistant", "content": "You have 4 open deals worth $52k. The biggest is Acme at $20k."},
+]
+FOLLOW_UP_OFFER = [
+    {"role": "user", "content": "Who hasn't replied to my last email?"},
+    {
+        "role": "assistant",
+        "content": "Three people haven't replied: Sarah, Mike and Dana. Want me to send them a follow-up?",
+    },
+]
+UNANSWERED_EMAIL = [
+    {"role": "user", "content": "hi"},
+    {"role": "assistant", "content": "Hey! What can I do for you?"},
+    {"role": "user", "content": "Email Sarah the deck from yesterday"},
+]
+
+# Requests that used to route medium/light (fast mode, lite path) and never ran tools.
+ACTION_REQUESTS = [
+    "Can you text John that I'm running late",
+    "Tell Sarah I'll be late",
+    "Write a follow up to Acme",
+    "Can you write an email to Mike",
+    "Thanks, can you also email John the deck?",
+    "Got it, thanks. Send it.",
+    "Perfect, send it to all of them",
+    "Cancel my 3pm",
+    "Move my 3pm to 4pm",
+    "Could you put a meeting on Friday with Sarah",
+    "What meetings do I have tomorrow?",
+    "What did I miss today?",
+    "What's the status on the Acme deal?",
+    "Shoot Sarah an email with the deck",
+    "Okay, now do the same for Acme",
+    "Yes, and also add Mike",
+    "Text Maria happy birthday",
+    "Message the team that lunch is on me",
+    "Plan my week",
+    "Great, now pull up my pipeline",
+]
+
+
+@pytest.mark.parametrize("message", ACTION_REQUESTS)
+def test_action_requests_route_deep(message: str) -> None:
+    result = classify_conversation_tier(message)
+    assert result.tier == "deep", (message, result)
+
+
+# (message, history, expected tier)
+FOLLOW_UP_TABLE: list[tuple[str, list, str]] = [
+    ("cool, mark it won", DEALS_ANSWER, "deep"),
+    ("Nice, which one closes first?", DEALS_ANSWER, "deep"),
+    ("Nice, let's do the second one", DEALS_ANSWER, "deep"),
+    ("Same for last month", DEALS_ANSWER, "deep"),
+    ("what about last month", DEALS_ANSWER, "deep"),
+    ("ok what about Acme", DEALS_ANSWER, "deep"),
+    ("and the smallest?", DEALS_ANSWER, "deep"),
+    ("great, update it to closed won", DEALS_ANSWER, "deep"),
+    ("Thanks", DEALS_ANSWER, "light"),
+    ("haha nice", DEALS_ANSWER, "light"),
+    ("Sounds great", FOLLOW_UP_OFFER, "deep"),
+    ("Yes please, that would be great", FOLLOW_UP_OFFER, "deep"),
+    ("Yes and cc me", FOLLOW_UP_OFFER, "deep"),
+    ("Sure, but leave Dana out", FOLLOW_UP_OFFER, "deep"),
+    ("great", FOLLOW_UP_OFFER, "deep"),
+    ("Perfect", FOLLOW_UP_OFFER, "deep"),
+    ("and cc Mike", UNANSWERED_EMAIL, "deep"),
+    ("actually make it Thursday", UNANSWERED_EMAIL, "deep"),
+    ("oh and attach the pricing sheet", UNANSWERED_EMAIL, "deep"),
+    # a self-contained new question after deep work is not dragged deep
+    ("explain how vector databases work", DEALS_ANSWER, "medium"),
+    ("what is the capital of France", DEALS_ANSWER, "medium"),
+    ("sure", JOKE_EXCHANGE, "light"),
+]
+
+
+@pytest.mark.parametrize(("message", "history", "expected"), FOLLOW_UP_TABLE)
+def test_follow_ups_keep_the_depth_of_the_exchange(message, history, expected) -> None:
+    result = classify_conversation_tier(message, history=history)
+    assert result.tier == expected, (message, result)
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["Same for Facebook", "Nice, which one closes first?", "great, update it to closed won", "Order the report"],
+)
+def test_light_requires_every_clause_to_be_social(message: str) -> None:
+    assert classify_conversation_tier(message).tier != "light"
+
+
+@pytest.mark.parametrize(
+    "message", ["never mind", "no thanks", "nope", "stop", "wait", "hold on", "forget it", "no, thank you"]
+)
+def test_backing_off_is_never_deep_or_acknowledged(message: str) -> None:
+    from app.services.conversation_tier import should_acknowledge_turn
+
+    for state in (None, PENDING_APPROVAL):
+        tier = classify_conversation_tier(message, history=DEEP_EXCHANGE, task_state=state)
+        assert tier.tier != "deep", (message, state, tier)
+        assert not should_acknowledge_turn(tier), (message, state, tier)
+    # Pending state keeps a decline off the lite path so the approval sees it.
+    assert not use_spoken_lite_path(
+        spoken_mode=True, routing_tier="simple", message=message, task_state=PENDING_APPROVAL
+    )
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["write me a poem about the sea", "tell me a joke", "give me three names for my dog", "give me ideas for a team offsite"],
+)
+def test_creative_and_self_directed_asks_are_not_tool_work(message: str) -> None:
+    assert classify_conversation_tier(message).tier != "deep"
+
+
+def test_acknowledgement_policy() -> None:
+    from app.services.conversation_tier import ConversationTier, should_acknowledge_turn
+
+    assert should_acknowledge_turn(ConversationTier("deep", "operator_task"))
+    assert should_acknowledge_turn(ConversationTier("medium", "general"))
+    assert not should_acknowledge_turn(ConversationTier("light", "social"))
+    assert not should_acknowledge_turn(ConversationTier("medium", "continuation_decline_pending"))
+    assert not should_acknowledge_turn(None)

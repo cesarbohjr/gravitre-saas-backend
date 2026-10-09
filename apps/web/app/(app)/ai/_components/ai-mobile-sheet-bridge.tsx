@@ -24,6 +24,7 @@
  */
 
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react"
+import { History } from "lucide-react"
 import type { ChatSurfaceVoiceProps } from "@/lib/voice-duplex-controls"
 import { GravitreAIMobileSheet, type GravitreAIMobileSheetMode } from "@/components/gravitre/ai-mobile-sheet"
 import { GravitreAIContextIndicator } from "@/components/gravitre/ai-context-indicator"
@@ -88,6 +89,9 @@ export interface GravitreAIMobileSheetBridgeProps {
   voice?: ChatSurfaceVoiceProps
 
   children?: ReactNode
+  /** Conversation history drawer (the same list the full page shows). */
+  historyPanel?: ReactNode
+  onOpenHistory?: () => void
 }
 
 export function GravitreAIMobileSheetBridge({
@@ -129,6 +133,8 @@ export function GravitreAIMobileSheetBridge({
   inputRef,
   onKeyDown,
   voice,
+  historyPanel,
+  onOpenHistory,
 }: GravitreAIMobileSheetBridgeProps) {
   const bodyRef = useRef<HTMLDivElement | null>(null)
   // State, not a ref: the drawer mounts its content after this component's first effects run.
@@ -183,7 +189,20 @@ export function GravitreAIMobileSheetBridge({
       onModeChange={onModeChange}
       onClose={onClose}
       titleAccessory={<GravitreAIContextIndicator className="mt-0.5" />}
+      leadingAction={
+        onOpenHistory ? (
+          <button
+            type="button"
+            onClick={onOpenHistory}
+            aria-label="Chat history"
+            className="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[color:var(--g-text-muted)] hover:bg-[color:var(--g-surface-1)] hover:text-foreground"
+          >
+            <History className="h-4 w-4" aria-hidden />
+          </button>
+        ) : null
+      }
     >
+      {historyPanel}
       {/* Positioned wrapper so the contained orb fills the sheet, not the composer. */}
       <div ref={bodyRef} className="relative flex min-h-0 flex-1 flex-col">
       <GravitreAIRuntimeDetails

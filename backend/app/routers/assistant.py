@@ -30,6 +30,7 @@ from app.billing.service import (
     get_plan_for_org,
 )
 from app.config import Settings, get_settings
+from app.core.io_pool import run_io
 from app.core.logging import get_logger
 from app.services.ai_guardrails import (
     AIBudgetExceededError,
@@ -1207,7 +1208,11 @@ async def assistant_chat(
 
     intelligence_hub_visualization: dict[str, Any] | None = None
     intelligence_hub_deterministic_answer: str | None = None
-    system_prompt = _build_assistant_system_prompt(
+    # Org context reads are blocking Supabase round trips. This handler runs on
+    # the single uvicorn event loop, so doing them inline froze every other
+    # request (and this turn's own stream) for their duration.
+    system_prompt = await run_io(
+        _build_assistant_system_prompt,
         settings,
         org_id,
         user_id=str(current_user.get("user_id") or "") or None,
@@ -1245,6 +1250,13 @@ async def assistant_chat(
 
     user_id = str(current_user.get("user_id") or "")
     conversation_id = (body.conversation_id or "").strip() or None
+    if conversation_id:
+        # A Stop that arrived before this message was sent belongs to an earlier
+        # turn (the web app also sends one when switching conversations). Left in
+        # place for its 120s TTL it cancelled this new turn with "You stopped me
+        # before I finished that" and nothing ran. Stops sent from now on still
+        # cancel this turn.
+        await run_io(clear_stop, org_id, conversation_id, settings=settings)
     existing_summary: str | None = None
     if conversation_id and user_id:
         # STA-306 — row must exist before ReAct write-gate persists pending_task mid-stream.
@@ -1254,7 +1266,8 @@ async def assistant_chat(
             conversation_id=conversation_id,
             title=(last_user or "New conversation")[:80],
         )
-        existing_summary = load_conversation_summary(
+        existing_summary = await run_io(
+            load_conversation_summary,
             get_supabase_client(settings),
             conversation_id=conversation_id,
             org_id=org_id,
@@ -1315,7 +1328,8 @@ async def assistant_chat(
                         for tok in (last_user or "").split():
                             if len(tok) >= 3:
                                 aliases.append(tok.strip(",.!?"))
-                        ledger = recall_slots_into_ledger(
+                        ledger = await run_io(
+                            recall_slots_into_ledger,
                             get_supabase_client(settings),
                             org_id=org_id,
                             ledger=ledger,
@@ -1349,7 +1363,7 @@ async def assistant_chat(
             if text.strip():
                 history_messages.append({"role": role, "content": text})
 
-    interrupt = load_interrupted_turn(org_id, conversation_id, settings=settings)
+    interrupt = await run_io(load_interrupted_turn, org_id, conversation_id, settings=settings)
     history_messages = merge_history_with_interrupt(history_messages, interrupt)
 
     prepared_holder = {"model_override": model_override, "task_type": task_type}

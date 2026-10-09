@@ -13,7 +13,10 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { createVoiceAnalyser, type VoiceAnalyserHandle } from "@/lib/voice-analyser"
 import {
+  ensureAudioOutputRunning,
   getSharedPlaybackContext,
+  isResumableAudioState,
+  preferPlayAndRecordAudioSession,
   unlockVoicePlayback,
 } from "@/lib/voice-playback-unlock"
 import {
@@ -602,8 +605,8 @@ export function useVoiceDuplexSession(options: Options) {
     if (!playbackBlockedRef.current) return
     const unlocked = await unlockVoicePlayback()
     const ctx = audioCtxRef.current
-    if (ctx && ctx.state === "suspended") {
-      await ctx.resume().catch(() => {})
+    if (ctx && isResumableAudioState(ctx.state)) {
+      await ensureAudioOutputRunning(ctx)
     }
     const outputRunning = !ctx || ctx.state === "running" || unlocked?.state === "running"
     if (!outputRunning) {
@@ -620,6 +623,8 @@ export function useVoiceDuplexSession(options: Options) {
     }
     void playNext()
   }, [emitOutputDiagnostic, enqueuePcm, playNext])
+  const resumeBlockedPlaybackRef = useRef(resumeBlockedPlayback)
+  resumeBlockedPlaybackRef.current = resumeBlockedPlayback
 
   const enqueueAudio = useCallback(
     (b64: string, contentType?: string) => {
@@ -650,6 +655,7 @@ export function useVoiceDuplexSession(options: Options) {
   const setupVoiceMicrophone = useCallback(
     async (ctx: AudioContext) => {
       const flags = phase1FlagsRef.current
+      preferPlayAndRecordAudioSession()
       const { stream, effective, tuning, profile } = await acquireVoiceMicrophoneStream({
         flags,
         deviceId: optsRef.current.micDeviceId,
@@ -1217,18 +1223,24 @@ export function useVoiceDuplexSession(options: Options) {
       outputFailureNotifiedRef.current = false
       const onOutputStateChange = () => {
         if (audioCtxRef.current !== ctx) return
-        if (sessionWantedRef.current && ctx.state !== "running") {
+        if (!sessionWantedRef.current) return
+        if (ctx.state === "running") {
+          // iOS hands output back after an interruption (mic start, call, route
+          // change) without a tap; recover on our own instead of waiting for one.
+          if (playbackBlockedRef.current) void resumeBlockedPlaybackRef.current?.()
+          return
+        }
+        // Try to resume before asking for a tap: an "interrupted" context usually
+        // resumes by itself, and only a real autoplay gate needs Enable sound.
+        void ensureAudioOutputRunning(ctx).then((running) => {
+          if (running || audioCtxRef.current !== ctx || !sessionWantedRef.current) return
           playbackBlockedRef.current = true
           setPlaybackBlocked(true)
-        }
+        })
       }
       outputContextStateHandlerRef.current = onOutputStateChange
       ctx.addEventListener("statechange", onOutputStateChange)
-      if (ctx.state === "suspended") await ctx.resume().catch(() => {})
-      if (ctx.state !== "running") {
-        playbackBlockedRef.current = true
-        setPlaybackBlocked(true)
-      }
+      await ensureAudioOutputRunning(ctx)
       pcmDecoderRef.current.reset()
       pcmPlayerRef.current?.dispose()
       pcmPlayerRef.current = null
@@ -1236,6 +1248,12 @@ export function useVoiceDuplexSession(options: Options) {
       const playerReady = createVoicePcmPlayer(ctx, { onActiveChange: handlePcmActiveChange })
 
       const { stream, tuning, prerollEnabled } = await setupVoiceMicrophone(ctx)
+      // Opening the mic is what interrupts output on iOS. Resume after it, and
+      // only then decide whether the person has to tap Enable sound.
+      if (!(await ensureAudioOutputRunning(ctx)) && audioCtxRef.current === ctx) {
+        playbackBlockedRef.current = true
+        setPlaybackBlocked(true)
+      }
       const player = await playerReady
       if (audioCtxRef.current !== ctx) {
         // Torn down while we waited: release what this attempt acquired.
@@ -1575,15 +1593,13 @@ export function useVoiceDuplexSession(options: Options) {
         const ctx = sharedOutput ?? new AC()
         audioCtxSharedRef.current = Boolean(sharedOutput && ctx === sharedOutput)
         audioCtxRef.current = ctx
-        if (ctx.state === "suspended") {
-          await ctx.resume().catch(() => {})
-        }
-        if (ctx.state !== "running") {
+        await ensureAudioOutputRunning(ctx)
+
+        const { stream, tuning, prerollEnabled } = await setupVoiceMicrophone(ctx)
+        if (!(await ensureAudioOutputRunning(ctx)) && audioCtxRef.current === ctx) {
           playbackBlockedRef.current = true
           setPlaybackBlocked(true)
         }
-
-        const { stream, tuning, prerollEnabled } = await setupVoiceMicrophone(ctx)
         analyserRef.current = createVoiceAnalyser()
         analyserRef.current.connectStream(stream)
         startRaf()
