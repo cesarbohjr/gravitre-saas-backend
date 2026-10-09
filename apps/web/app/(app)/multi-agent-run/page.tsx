@@ -196,6 +196,9 @@ function MultiAgentRunContent() {
     [runs],
   )
 
+  const latestPill =
+    stats.active > 0 ? `${stats.active} running` : latest ? "Ready" : stats.review > 0 ? "Needs review" : "Waiting"
+
   const labels = useMemo(() => new Map(agents.map((a) => [a.department, a.departmentLabel] as const)), [agents])
   const starter = STARTERS[pick]
   const seats = useMemo(() => councilSeats(agents, starter.teams, labels), [agents, starter, labels])
@@ -336,40 +339,50 @@ function MultiAgentRunContent() {
           </section>
 
           <section aria-labelledby="latest-heading" className="as-dark ma-latest">
-            <span className="eb">Latest recommendation</span>
-            <div className="art">
-              {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
-              <img src="/illustrations/agents-council-wide.svg" alt="" />
+            <div className="ma-latest-head">
+              <span className="eb">Latest recommendation</span>
+              <span className="ma-latest-pill">
+                <i />
+                {data ? latestPill : "Loading"}
+              </span>
             </div>
-            {latest ? (
-              <>
-                <h2 id="latest-heading">{latest.objective}</h2>
-                <p>{formatSwarmReadableText(latest.finalRecommendation, 220)}</p>
-                <div className="meta">
-                  {latest.finalConfidence != null ? <span>{Math.round(latest.finalConfidence * 100)}% confidence</span> : null}
-                  {relative(latest.completedAt ?? latest.updatedAt) ? <span>{relative(latest.completedAt ?? latest.updatedAt)}</span> : null}
-                  <span>Advice only. Actions still wait for your approval.</span>
-                </div>
-                <div className="ma-actions">
-                  <button type="button" className="as-gbtn" onClick={() => selectRun(latest.id)}>
-                    Open recommendation
-                  </button>
-                  <button type="button" className="as-obtn" onClick={() => openStart(null)} disabled={!orgId}>
-                    Start another run
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h2 id="latest-heading">No council runs yet</h2>
-                <p>When your agents agree on their first recommendation, it will be featured right here.</p>
-                <div className="ma-actions">
-                  <button type="button" className="as-gbtn" onClick={() => startStarter(pick)} disabled={!orgId}>
-                    Start your first run
-                  </button>
-                </div>
-              </>
-            )}
+            <div className="ma-latest-body">
+              <span className="ma-latest-ic">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
+                  <path d="M12 3l9 5-9 5-9-5z" />
+                  <path d="M3 13l9 5 9-5" />
+                </svg>
+              </span>
+              {latest ? (
+                <>
+                  <h2 id="latest-heading">{latest.objective}</h2>
+                  <p>{formatSwarmReadableText(latest.finalRecommendation, 260)}</p>
+                  <div className="meta">
+                    {latest.finalConfidence != null ? <span>{Math.round(latest.finalConfidence * 100)}% confidence</span> : null}
+                    {relative(latest.completedAt ?? latest.updatedAt) ? <span>{relative(latest.completedAt ?? latest.updatedAt)}</span> : null}
+                    <span>Advice only. Actions still wait for your approval.</span>
+                  </div>
+                  <div className="ma-actions">
+                    <button type="button" className="as-gbtn" onClick={() => selectRun(latest.id)}>
+                      Open recommendation
+                    </button>
+                    <button type="button" className="as-obtn" onClick={() => openStart(null)} disabled={!orgId}>
+                      Start another run
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 id="latest-heading">No council runs yet</h2>
+                  <p>When your agents agree on their first recommendation, it will be featured right here.</p>
+                  <div className="ma-actions">
+                    <button type="button" className="as-gbtn" onClick={() => startStarter(pick)} disabled={!orgId}>
+                      Start your first run
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </section>
         </div>
 
@@ -472,6 +485,10 @@ function MultiAgentRunContent() {
 
         <section aria-labelledby="runs-heading" className="as-panel as-split">
           <div className="as-split-side" style={{ gap: 14 }}>
+            <div className="ma-runs-art">
+              {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
+              <img src="/illustrations/agents-council.svg" alt="" />
+            </div>
             <div className="as-h2-row">
               <span className="as-sq" style={{ background: "#3d6fd1" }} />
               <h2 id="runs-heading" className="as-h2">

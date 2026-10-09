@@ -376,7 +376,30 @@ def list_swarm_runs(client: Any, org_id: str, *, limit: int = 20) -> list[dict[s
         .limit(limit)
         .execute()
     )
-    return [_serialize_swarm(dict(row)) for row in (result.data or [])]
+    rows = [dict(row) for row in (result.data or [])]
+    subtasks_by_run = _load_subtasks_for_runs(client, [str(row["id"]) for row in rows])
+    return [_serialize_swarm(row, subtasks_by_run.get(str(row["id"]), [])) for row in rows]
+
+
+def _load_subtasks_for_runs(client: Any, swarm_run_ids: list[str]) -> dict[str, list[dict[str, Any]]]:
+    """One read for every listed run, so the run list can show who took part."""
+    if not swarm_run_ids:
+        return {}
+    try:
+        result = (
+            client.table("agent_swarm_subtasks")
+            .select("*")
+            .in_("swarm_run_id", swarm_run_ids)
+            .order("sort_order")
+            .execute()
+        )
+    except Exception:  # noqa: BLE001 - the list still renders without participants
+        logger.warning("could not load swarm subtasks for run list", exc_info=True)
+        return {}
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in result.data or []:
+        grouped.setdefault(str(row["swarm_run_id"]), []).append(_serialize_subtask(dict(row)))
+    return grouped
 
 
 def get_swarm_run(client: Any, org_id: str, swarm_run_id: str) -> dict[str, Any]:
