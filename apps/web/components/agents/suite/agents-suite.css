@@ -57,7 +57,11 @@
 .gv-ws .ma-stat.warn { background: var(--gv-amber-bg); }
 .gv-ws .ma-stat.warn .k { color: var(--gv-amber-text); }
 .gv-ws .ma-latest { flex: 1 1 360px; }
-.gv-ws .ma-latest h2 + p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.gv-ws .ma-latest { gap: 12px; padding: 24px; }
+.gv-ws .ma-latest .art { height: auto; aspect-ratio: 600 / 190; }
+.gv-ws .ma-latest .ma-actions { gap: 8px; }
+.gv-ws .ma-latest .ma-actions button { flex: 1 1 auto; justify-content: center; white-space: nowrap; padding-inline: 14px; }
+.gv-ws .ma-latest h2 + p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .gv-ws .ma-latest .meta { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 13px; color: #a3a7a3; }
 .gv-ws .ma-latest h2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
@@ -210,3 +214,8 @@
 .gv-ws .in-item .meta { font-size: 13px; color: var(--gv-faint); }
 .gv-ws .in-item.off p, .gv-ws .in-item.off b { color: var(--gv-muted); }
 .gv-ws .in-item-actions { display: flex; align-items: center; gap: 10px; }
+/* Keep the hero and the latest-recommendation card the same height: the card stays compact and the stat tiles take up any extra room. */
+.gv-ws .ma-hero .ma-stats { flex: 1 1 auto; }
+.gv-ws .ma-hero .ma-stat { justify-content: space-between; }
+.gv-ws .ma-latest h2 { font-size: 22px; line-height: 1.3; }
+.gv-ws .ma-latest .ma-actions button { min-height: 40px; padding-inline: 12px; font-size: 13px; }

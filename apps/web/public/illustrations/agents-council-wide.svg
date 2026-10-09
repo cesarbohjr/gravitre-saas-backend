@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="320" height="260" viewBox="0 0 320 260" preserveAspectRatio="xMidYMid slice">
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="190" viewBox="-140 26 600 190" preserveAspectRatio="xMidYMid slice">
 <defs><filter id="art-grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch"></feTurbulence><feColorMatrix values="0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0 0.1 0.9 0 0 0 -0.38"></feColorMatrix></filter></defs>
-<rect width="320" height="260" fill="#DEDAD0"></rect>
+<rect x="-140" y="0" width="600" height="260" fill="#DEDAD0"></rect>
 <ellipse cx="160" cy="128" rx="134" ry="98" fill="#CFE0D5"></ellipse>
 <g stroke="#5E6B62" stroke-width="1.5" stroke-dasharray="3 4" fill="none">
 <path d="M126 98 L150 76"></path><path d="M194 98 L170 76"></path><path d="M66 94 Q90 60 138 58"></path><path d="M254 94 Q230 60 182 58"></path>
@@ -44,5 +44,5 @@
 <path d="M-10.5 106 A10.5 10.5 0 0 1 10.5 106 L10 102 Q0 96 -10.5 106 Z" fill="#1F1A17"></path>
 </g>
 <line x1="28" y1="214" x2="292" y2="214" stroke="#9C8C74" stroke-width="2"></line>
-<rect width="320" height="260" filter="url(#art-grain)" opacity="0.55"></rect>
+<rect x="-140" y="0" width="600" height="260" filter="url(#art-grain)" opacity="0.55"></rect>
 </svg>

@@ -339,7 +339,7 @@ function MultiAgentRunContent() {
             <span className="eb">Latest recommendation</span>
             <div className="art">
               {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
-              <img src="/illustrations/agents-council.svg" alt="" />
+              <img src="/illustrations/agents-council-wide.svg" alt="" />
             </div>
             {latest ? (
               <>
