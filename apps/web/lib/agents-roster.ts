@@ -480,6 +480,32 @@ export function buildWorkMap(agents: RosterAgent[], goals: RosterGoal[]): WorkMa
   }
 }
 
+/**
+ * Agents that are fully wired into the work map: set up, reading from at least one
+ * connected app, producing an output, and feeding a goal. Only these get animated
+ * lines; everyone else is listed as dormant with what they are missing.
+ */
+export function wiredAgentIds(model: WorkMapModel): Set<string> {
+  const fed = new Set<string>()
+  for (const ids of model.goalAgents.values()) for (const id of ids) fed.add(id)
+  return new Set(
+    model.agents
+      .filter((a) => a.state !== "not_set_up" && a.apps.length > 0 && Boolean(a.output) && fed.has(a.id))
+      .map((a) => a.id),
+  )
+}
+
+/** What keeps an agent off the live map, in the order a user would fix it. */
+export function missingPieces(agent: RosterAgent, model: WorkMapModel): string[] {
+  const missing: string[] = []
+  if (agent.state === "not_set_up") missing.push("instructions")
+  if (agent.apps.length === 0) missing.push("a connector")
+  if (!agent.output) missing.push("an output")
+  const fed = [...model.goalAgents.values()].some((ids) => ids.includes(agent.id))
+  if (!fed) missing.push("a goal")
+  return missing
+}
+
 export type TraceKey = string // "all" | "goal:<id>" | "goal:none" | "agent:<id>" | "app:<name>" | "out:<name>"
 
 export function litAgents(model: WorkMapModel, key: TraceKey): Set<string> {

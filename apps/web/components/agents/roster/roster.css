@@ -240,6 +240,20 @@
 .gv-ws .wm-agico .d.grey { background: var(--gv-border-strong); }
 .gv-ws .wm-agico .d.blink { animation: wmBlink 1.6s ease-in-out infinite; }
 @keyframes wmBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.gv-ws .wm-logo { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; flex: 0 0 auto; background: var(--gv-card); border: 1px solid var(--gv-subtle); }
+.gv-ws .wm-apps { display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; }
+.gv-ws .wm-apps .more { font-size: 10px; font-weight: 600; color: var(--gv-muted); margin-left: 2px; }
+/* Dormant agents and apps only they use: one quiet group each, no lines. */
+.gv-ws .wm-group { position: absolute; display: flex; flex-direction: column; gap: 2px; padding: 12px; border: 1px dashed var(--gv-border-strong); border-radius: 12px; background: var(--gv-card); overflow: hidden; }
+.gv-ws .wm-group > b { font-size: 12.5px; font-weight: 600; color: var(--gv-text-2); }
+.gv-ws .wm-group-sub { font-size: 11px; line-height: 1.35; color: var(--gv-muted); margin-bottom: 6px; }
+.gv-ws .wm-grow { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 3px 6px; border: 0; border-radius: 8px; background: transparent; font: inherit; color: var(--gv-text-2); text-align: left; cursor: pointer; opacity: 0.75; }
+.gv-ws .wm-grow:hover, .gv-ws .wm-grow:focus-visible { background: var(--gv-canvas); opacity: 1; }
+.gv-ws .wm-grow .t1 { display: block; font-size: 12.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gv-ws .wm-need { font-size: 10.5px; color: var(--gv-muted); white-space: nowrap; flex: 0 0 auto; }
+.gv-ws .wm-group-more { font-size: 12px; font-weight: 600; color: var(--gv-brand); text-decoration: none; margin-top: auto; padding: 4px 6px 0; }
+.gv-ws .wm-none .chips button { font: inherit; font-size: 11px; color: var(--gv-text-2); background: var(--gv-canvas); border: 0; border-radius: 6px; padding: 3px 7px; cursor: pointer; }
+.gv-ws .wm-none .chips button:hover { color: var(--gv-text); }
 .gv-ws .wm-bar4 { width: 4px; height: 16px; border-radius: 2px; flex: 0 0 auto; background: var(--gv-border-strong); }
 .gv-ws .wm-bar4.ok { background: var(--gv-accent); }
 .gv-ws .wm-bar4.amber { background: var(--gv-amber); }
