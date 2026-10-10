@@ -251,7 +251,9 @@ def invoke_sealed_f1_read(
         observation_id=str(uuid4()),
         step_id=step.step_id,
         plan_id=plan.plan_id,
-        connector_id=invoked.connector_id or proof.connector_id,
+        # The vendor ("google_analytics"), which every reader of observations
+        # keys on. invoke_tool's connector_id can be the connection row id.
+        connector_id=proof.connector_id or catalog.split(".", 1)[0],
         success=bool(invoked.success),
         summary=(invoked.error_message or "ok")[:500],
         error=invoked.error_code if not invoked.success else None,
@@ -260,6 +262,7 @@ def invoke_sealed_f1_read(
         latency_ms=invoked.latency_ms,
         structured={
             "action_key": catalog,
+            "connection_id": invoked.connector_id,
             "compiled_parameters": dict(proof.compiled_parameters),
             "report": report,
             "time_window": proof.time_window,
