@@ -781,3 +781,67 @@ class TestAdoptedReplayOffTheFirstWord:
         run.scope.mark_blocked("connector_write:email.send")
         with pytest.raises(SpeculativeSideEffectBlocked):
             run.start_commit()
+
+
+class TestRetainedBudget:
+    """Audit finding 7: the character budget counted only text deltas."""
+
+    @pytest.mark.asyncio
+    async def test_an_oversized_complete_payload_discards_the_run(self):
+        from app.operators.stream_events import AssistantStreamComplete
+
+        big = AssistantStreamComplete(full_content="x" * 1_000_000, tool_results=[], react_result=None, model="t")
+        coordinator = SpeculativeGenerationCoordinator()
+        run = start_speculative_run(
+            text="what is two plus two", runner=lambda: _events(_delta("ok"), big), create_task=asyncio.ensure_future
+        )
+        coordinator.set_run(run)
+        await run.task
+        assert run.outcome == "over_budget"
+        from app.services.pipecat_voice.speculative_generation import _DONE
+
+        left = [run.queue.get_nowait() for _ in range(run.queue.qsize())]
+        assert left == [_DONE], "what it buffered is released; only the end marker remains"
+        assert coordinator.stats.over_budget == 1
+        assert coordinator.adopt("what is two plus two") is None
+
+    @pytest.mark.asyncio
+    async def test_tool_payloads_count_toward_the_budget(self):
+        tool = AssistantStreamEvent(
+            sse_type="tool-output-available",
+            payload={"toolCallId": "c1", "output": {"rows": ["y" * 1000] * 600}},
+        )
+        run = start_speculative_run(
+            text="pull every deal", runner=lambda: _events(tool), create_task=asyncio.ensure_future
+        )
+        await run.task
+        assert run.retained_bytes > 512_000 and run.outcome == "over_budget"
+
+    @pytest.mark.asyncio
+    async def test_too_many_deferred_writes_block_the_run(self):
+        async def _noop():
+            return None
+
+        async def _runner():
+            for _ in range(300):
+                await run_or_defer("audit.write_audit_event", _noop)
+            yield _delta("done")
+
+        run = start_speculative_run(
+            text="what is two plus two", runner=_runner, create_task=asyncio.ensure_future,
+            bounds=SpeculativeBounds(max_deferred_writes=10),
+        )
+        await run.task
+        assert run.scope.blocked_reason == "deferred_write_limit"
+        assert run.outcome == "blocked"
+        assert run.dropped_writes == 10
+
+    @pytest.mark.asyncio
+    async def test_a_normal_answer_stays_well_inside_the_budget(self):
+        run = start_speculative_run(
+            text="what is two plus two",
+            runner=lambda: _events(*[_delta("Four. ") for _ in range(40)]),
+            create_task=asyncio.ensure_future,
+        )
+        await run.task
+        assert run.outcome is None and run.retained_bytes < 10_000

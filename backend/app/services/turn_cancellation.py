@@ -39,7 +39,7 @@ _generation = itertools.count(1)
 class TurnCancellation:
     """Cancel token for one turn's work. Cancelling is final."""
 
-    __slots__ = ("generation", "_event", "_lock", "reason", "_linked", "_waiters")
+    __slots__ = ("_event", "_linked", "_lock", "_waiters", "generation", "reason")
 
     def __init__(self) -> None:
         self.generation = next(_generation)

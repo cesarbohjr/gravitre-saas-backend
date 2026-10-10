@@ -31,11 +31,16 @@ from pipecat.utils.asyncio.task_manager import TaskManager
 from pipecat.utils.base_object import BaseObject
 
 from app.services import chat_turn_cancel_service
-from app.services.pipecat_voice.backchannel_turn_strategy import BackchannelAwareUserTurnStartStrategy
+from app.services.pipecat_voice.backchannel_turn_strategy import (
+    BackchannelAwareUserTurnStartStrategy,
+)
 from app.services.pipecat_voice.interrupt_reporter import ElevenLabsInterruptReporter
 from app.services.pipecat_voice.speculative_generation import start_speculative_run
 from app.services.pipecat_voice.voice_audio_origin import VoicePipelineSession
-from app.services.pipecat_voice.voice_silence_guard import TURN_CANCELLED, with_silence_ticks
+from app.services.pipecat_voice.voice_silence_guard import (
+    TURN_CANCELLED,
+    with_silence_ticks,
+)
 from app.services.react_write_gate import WRITE_COMMIT_INTERRUPTED
 from app.services.tool_types import ToolValidationError
 from app.services.turn_cancellation import (

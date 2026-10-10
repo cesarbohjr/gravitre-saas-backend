@@ -411,6 +411,10 @@ class SpeculativeBounds:
     timeout_s: float = 5.0
     max_buffered_chars: int = 2000
     max_buffered_events: int = 512
+    # Hard limits: a run that keeps more than this alive (complete events,
+    # tool payloads) or defers more writes than this is discarded, not paused.
+    max_retained_bytes: int = 512_000
+    max_deferred_writes: int = 256
 
 
 @dataclass
@@ -422,6 +426,7 @@ class SpeculativeStats:
     discarded: int = 0
     timeouts: int = 0
     blocked: int = 0
+    over_budget: int = 0
     buffer_pauses: int = 0
     rejected_revisions: int = 0
     deferred_writes_replayed: int = 0
@@ -448,6 +453,28 @@ def _event_text_len(event: Any) -> int:
         if isinstance(delta, str):
             return len(delta)
     return 0
+
+
+def _retained_size(value: Any, depth: int = 0) -> int:
+    """Approximate bytes a buffered value keeps alive (strings and bytes)."""
+    if isinstance(value, (str, bytes, bytearray)):
+        return len(value)
+    if depth >= 6:
+        return 0
+    if isinstance(value, dict):
+        return sum(_retained_size(k, depth + 1) + _retained_size(v, depth + 1) for k, v in value.items())
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return sum(_retained_size(v, depth + 1) for v in value)
+    return 0
+
+
+def _event_retained_size(event: Any) -> int:
+    """Everything an event holds, not only its text delta: a complete event's
+    full content, tool inputs and results, any payload."""
+    total = 0
+    for attr in ("payload", "full_content", "tool_results", "react_result"):
+        total += _retained_size(getattr(event, attr, None))
+    return total
 
 
 @dataclass
@@ -479,6 +506,7 @@ class SpeculativeGenerationRun:
     outcome: str | None = None
     buffered_chars: int = 0
     buffered_events: int = 0
+    retained_bytes: int = 0
     paused: bool = False
     dropped_writes: int = 0
     # voice_request_revisions_v1: the revision this run answers and the state
@@ -580,11 +608,23 @@ class SpeculativeGenerationRun:
             return None
         return asyncio.ensure_future(self.scope.replay())
 
-    async def _admit(self, event: Any) -> None:
+    async def _admit(self, event: Any) -> bool:
+        """Account for one produced event; False when the run must stop."""
         self.buffered_events += 1
         self.buffered_chars += _event_text_len(event)
+        self.retained_bytes += _event_retained_size(event)
         if self.consumed:
-            return
+            return True
+        if self.retained_bytes > self.bounds.max_retained_bytes:
+            # Over the hard budget: free it now. The confirmed turn runs fresh.
+            logger.info(
+                "pipecat_voice_speculative_generation_over_budget bytes=%s", self.retained_bytes
+            )
+            self._settle("over_budget")
+            # Drop what it buffered so the memory goes with it.
+            while not self.queue.empty():
+                self.queue.get_nowait()
+            return False
         if (
             self.buffered_chars > self.bounds.max_buffered_chars
             or self.buffered_events > self.bounds.max_buffered_events
@@ -596,6 +636,7 @@ class SpeculativeGenerationRun:
                 if self.on_pause is not None:
                     self.on_pause()
             await self._adopted_evt.wait()
+        return True
 
     async def events(self) -> AsyncIterator[Any]:
         """Yield every event this run has produced (already-buffered ones
@@ -636,7 +677,8 @@ async def _drive_into_queue(
                         # so stop spending on it now.
                         run._settle("blocked")
                         break
-                    await run._admit(event)
+                    if not await run._admit(event):
+                        break
                 await queue.put(event)
         except asyncio.CancelledError:
             raise
@@ -673,6 +715,7 @@ def start_speculative_run(
         revision=revision,
     )
     holder.append(run)
+    run.scope.max_deferred = run.bounds.max_deferred_writes
     if run.bounds.timeout_s and run.bounds.timeout_s > 0:
         try:
             run._timer = asyncio.get_running_loop().call_later(run.bounds.timeout_s, run._expire)
@@ -729,6 +772,8 @@ class SpeculativeGenerationCoordinator:
             self.stats.timeouts += 1
         elif run.outcome == "blocked":
             self.stats.blocked += 1
+        elif run.outcome == "over_budget":
+            self.stats.over_budget += 1
         self.stats.discarded += 1
         self.stats.wasted_s += run.wasted_s
         self.stats.deferred_writes_dropped += run.dropped_writes
