@@ -124,7 +124,14 @@ class ConversationStateService:
         org_id: str,
         *,
         client: Any | None = None,
+        strict: bool = False,
     ) -> dict[str, Any]:
+        """The conversation's task_state.
+
+        A failed read returns the default state, unless ``strict``: then it
+        raises, so a caller that must tell "no state" from "unknown state"
+        (speculative adoption) can.
+        """
         if not conversation_id or not org_id:
             return deepcopy(DEFAULT_TASK_STATE)
         from app.services.speculative_execution import current_scope
@@ -154,7 +161,9 @@ class ConversationStateService:
                 rows = (await run_io(query.execute)).data or []
             if rows:
                 return self._normalize_state(rows[0].get("task_state"))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
+            if strict:
+                raise
             logger.debug(
                 "get_task_state fallback conversation_id=%s error=%s",
                 conversation_id,
@@ -268,6 +277,19 @@ class ConversationStateService:
                 scope.defer(
                     "conversation.task_state",
                     lambda: self._persist_state(conversation_id, org_id, patch, client=client),
+                )
+                return
+            from app.services.turn_cancellation import current_turn_cancelled
+
+            if current_turn_cancelled():
+                # Fence: the turn this write belongs to was cancelled (stopped,
+                # cut off, superseded). Its state must not overwrite what the
+                # user did next, even when a background replay lands late.
+                # Checked with no await before the write.
+                logger.info(
+                    "persist_task_state_dropped_for_cancelled_turn conversation_id=%s keys=%s",
+                    conversation_id,
+                    sorted(original_updates)[:12],
                 )
                 return
             self._client(client).table("conversations").update(

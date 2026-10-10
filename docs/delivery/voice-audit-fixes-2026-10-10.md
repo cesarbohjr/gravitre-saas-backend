@@ -90,3 +90,20 @@ The offline bench cannot be replaced by a live bench from this environment. Rail
 ## Validation
 - Backend: 1241 tests in `tests/services/pipecat_voice` and `tests/services/test_speculative_execution.py` pass. Related bridge and side-effect tests also pass.
 - Web: vitest for `voice-playback-progress` passes, and `tsc --noEmit` is clean.
+
+## Follow-up after the PR #351 review
+
+The review of #351 at 7ef50af reproduced three gaps. All three were confirmed in code and fixed in the follow-up PR. Tests: `tests/services/pipecat_voice/test_audit_followup_fences.py`; 8 of its 10 tests fail without the fixes, and the other 2 are controls.
+
+1. **A failed state read counted as known state.** `ConversationStateService.get_task_state` caught read errors and returned the default state, so strict adoption saw "known and empty".
+   - It now takes `strict=True`, which raises on a failed read.
+   - The adoption state read uses it, so a failed read is `known=False` and is never adopted.
+   - Other callers keep the old fallback.
+2. **A late replay could overwrite a correction.**
+   - Every deferred write now records the turn token that deferred it, and it replays (or drains late) under that token.
+   - `_persist_state` drops a task_state write when its turn is cancelled. The check runs right before the database update, with no await between them.
+   - So a cancelled or superseded turn's state cannot land, whether it comes from a replay, the late-write thread or the turn itself.
+   - Audit writes are not fenced.
+3. **The size count missed deep and unknown payloads.** The count now walks the whole event, including objects.
+   - A payload deeper than 32 levels or over 50,000 nodes counts as over budget.
+   - Unknown objects count their in-memory size.

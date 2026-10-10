@@ -40,6 +40,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.core.logging import get_logger
+from app.services.turn_cancellation import (
+    bound_turn_cancellation,
+    current_turn_cancellation,
+)
 
 logger = get_logger(__name__)
 
@@ -53,6 +57,10 @@ class _Deferred:
     label: str
     factory: Callable[[], Any]
     blocking: bool  # sync callable that does blocking I/O (run off the loop)
+    # The turn token of the work that deferred it. The write runs under it,
+    # so a write fenced on cancellation (task_state) is dropped once that
+    # turn is cancelled, even when the replay outlives the turn.
+    cancellation: Any = None
 
 
 @dataclass
@@ -113,6 +121,7 @@ class SpeculativeScope:
         if self.discarded:
             # The run was discarded: whatever it still tries to write is dropped.
             return
+        origin = current_turn_cancellation()
         with self._lock:
             if not self.adopted and self.max_deferred is not None and len(self.deferred) >= self.max_deferred:
                 # Over budget: this run can no longer be adopted (its writes
@@ -121,14 +130,16 @@ class SpeculativeScope:
             else:
                 over = False
                 if not self.adopted or self.flushing:
-                    self.deferred.append(_Deferred(label=label, factory=factory, blocking=blocking))
+                    self.deferred.append(
+                        _Deferred(label=label, factory=factory, blocking=blocking, cancellation=origin)
+                    )
                     return
         if over:
             self.mark_blocked("deferred_write_limit")
             return
         # The writer saw the scope during the replay but the replay has since
         # finished: nothing will drain the main queue again, so write now.
-        self._write_late(_Deferred(label=label, factory=factory, blocking=blocking))
+        self._write_late(_Deferred(label=label, factory=factory, blocking=blocking, cancellation=origin))
 
     def _write_late(self, item: _Deferred) -> None:
         with self._lock:
@@ -154,21 +165,23 @@ class SpeculativeScope:
                     return
                 item = self._late.pop(0)
             try:
-                result = item.factory()
-                if inspect.isawaitable(result):
-                    asyncio.run(result)
+                with bound_turn_cancellation(item.cancellation):
+                    result = item.factory()
+                    if inspect.isawaitable(result):
+                        asyncio.run(result)
             except Exception as exc:  # noqa: BLE001 - same fail-open as the writers themselves
                 logger.warning("speculative_late_write_failed label=%s error=%s", item.label, exc)
 
     @staticmethod
     async def _run_item(item: _Deferred) -> bool:
         try:
-            if item.blocking:
-                await asyncio.to_thread(item.factory)
-            else:
-                result = item.factory()
-                if inspect.isawaitable(result):
-                    await result
+            with bound_turn_cancellation(item.cancellation):
+                if item.blocking:
+                    await asyncio.to_thread(item.factory)
+                else:
+                    result = item.factory()
+                    if inspect.isawaitable(result):
+                        await result
             return True
         except Exception as exc:  # noqa: BLE001 - same fail-open as the writers themselves
             logger.warning("speculative_deferred_write_failed label=%s error=%s", item.label, exc)
