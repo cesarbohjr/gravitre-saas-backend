@@ -935,7 +935,10 @@ class MesonService:
             if scoped_workflow_id:
                 failed_q = failed_q.eq("workflow_id", scoped_workflow_id)
             failed_runs = failed_q.execute()
-            from app.services.gravitre_voice import format_operator_message
+            from app.services.gravitre_voice import (
+                format_operator_message,
+                is_voice_shaped_blocker,
+            )
 
             for run in failed_runs.data or []:
                 run_id = str(run.get("id") or "")
@@ -947,6 +950,7 @@ class MesonService:
                     "Write blocked" in raw
                     or "not Connected" in raw
                     or raw.startswith("Blocked.")
+                    or is_voice_shaped_blocker(raw)
                 ):
                     message = raw
                 else:
@@ -2631,7 +2635,10 @@ class MesonService:
                 .execute()
             )
             if failed_run.data:
-                from app.services.gravitre_voice import format_operator_message
+                from app.services.gravitre_voice import (
+                    format_operator_message,
+                    is_voice_shaped_blocker,
+                )
 
                 row = failed_run.data[0]
                 run_id = str(row.get("id") or "")
@@ -2640,6 +2647,7 @@ class MesonService:
                     "Write blocked" in raw
                     or "not Connected" in raw
                     or raw.startswith("Blocked.")
+                    or is_voice_shaped_blocker(raw)
                 ):
                     message = raw
                 else:

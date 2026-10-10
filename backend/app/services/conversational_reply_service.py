@@ -31,6 +31,19 @@ _BANK_KEYS: dict[str, str] = {
 }
 
 
+def _product_label(slug: str | None) -> str:
+    """Product name for a vendor slug (``google_analytics`` -> Google Analytics)."""
+    raw = str(slug or "").strip()
+    if not raw:
+        return ""
+    try:
+        from app.services.connector_semantic_registry import connector_display_name
+
+        return connector_display_name(raw) or raw
+    except Exception:  # noqa: BLE001 — copy only; never fail the turn over a label
+        return raw.replace("_", " ").title()
+
+
 def _recent_context_lines(task_state: dict[str, Any] | None, history: list[dict[str, Any]] | None) -> str:
     bits: list[str] = []
     state = task_state if isinstance(task_state, dict) else {}
@@ -65,18 +78,18 @@ def build_capability_snapshot(
         except Exception:  # noqa: BLE001
             connected = []
     if connected:
-        labels = ", ".join(sorted({c.replace("_", " ").title() for c in connected}))
-        connectors_line = f"Connected for this org right now: {labels}."
+        labels = ", ".join(sorted({_product_label(c) for c in connected}))
+        connectors_line = f"Right now you've connected {labels}."
     else:
         connectors_line = (
-            "No connectors are Connected for this organization yet — "
-            "set them up at /connectors when you want vendor actions."
+            "You haven't connected any tools yet. You can set them up in "
+            "Settings → Connectors whenever you want me to work in them."
         )
     return (
         f"{connectors_line} "
-        "If you ask me to make a change in one of those systems, I'll ask for approval "
-        "when it's required. I can also help you work through multi-step tasks, review "
-        "past activity, and use the intelligence available in your workspace."
+        "If you ask me to change something in one of those tools, I'll ask for your approval "
+        "first when it's needed. I can also help you work through multi-step tasks, look "
+        "back at past activity, and dig into what Gravitre knows about your business."
     )
 
 

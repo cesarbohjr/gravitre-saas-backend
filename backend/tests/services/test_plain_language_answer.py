@@ -4,7 +4,7 @@ from app.services.plain_language_answer import read_next_steps, with_next_steps
 def test_contact_read_gets_next_steps_without_internals() -> None:
     answer = with_next_steps("This HubSpot account has 57 contacts.", "hubspot.contacts.search", 57)
     assert answer.startswith("This HubSpot account has 57 contacts.")
-    assert "Nothing else is needed from you." in answer
+    assert "Want me to list them" in answer
     assert "lifecycle stage" in answer
     assert "hubspot.contacts.search" not in answer
 

@@ -1,8 +1,10 @@
 """P3 — PCM origin and turn-state so probe audio is not treated as user barge-in."""
 from __future__ import annotations
 
+import re
+import time
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 ORIGINS = frozenset({"user_mic", "probe_pcm", "tts_echo"})
@@ -16,6 +18,39 @@ TTS_ECHO = "tts_echo"
 LISTENING = "listening"
 COMMITTING = "committing_utterance"
 SPEAKING = "speaking"
+
+# The bot's own voice coming back through a phone or laptop speaker is
+# transcribed like speech. Text the bot said this recently is compared with
+# what the mic heard so the echo is not taken for the user cutting in.
+ECHO_WINDOW_S = 15.0
+_ECHO_MIN_OVERLAP = 0.6
+# A two-word reply ("which pages", "the first") can reuse the bot's words on
+# purpose, so it takes three words before a phrase can count as echo.
+_ECHO_MIN_WORDS = 3
+
+
+def _speech_words(text: str) -> list[str]:
+    return re.sub(r"[^\w\s']", " ", (text or "").casefold()).split()
+
+
+def is_echo_of(
+    heard: str,
+    spoken: list[str],
+    *,
+    min_words: int = _ECHO_MIN_WORDS,
+    min_overlap: float = _ECHO_MIN_OVERLAP,
+) -> bool:
+    """True when ``heard`` is mostly a replay of the bot's recent ``spoken`` text."""
+    words = _speech_words(heard)
+    if len(words) < max(_ECHO_MIN_WORDS, min_words):
+        return False
+    bot_words = [w for text in spoken for w in _speech_words(text)]
+    if not bot_words:
+        return False
+    bot_pairs = set(zip(bot_words, bot_words[1:]))
+    pairs = list(zip(words, words[1:]))
+    matched = sum(1 for pair in pairs if pair in bot_pairs)
+    return matched / len(pairs) >= min_overlap
 
 _current_origin: ContextVar[str] = ContextVar("gravitre_audio_origin", default=USER_MIC)
 _current_turn_state: ContextVar[str] = ContextVar("gravitre_turn_state", default=LISTENING)
@@ -36,6 +71,28 @@ class VoicePipelineSession:
     # spoken a question that is still waiting for the user's answer. A short
     # "yes"/"sure" then is that answer, not a backchannel to ignore.
     answer_expected: Any = None
+    # (monotonic time, text) of what the bot recently said, newest last.
+    recent_bot_speech: list[tuple[float, str]] = field(default_factory=list)
+
+    def note_bot_speech(self, text: str) -> None:
+        text = (text or "").strip()
+        if not text:
+            return
+        now = time.monotonic()
+        self.recent_bot_speech = [
+            (at, said) for at, said in self.recent_bot_speech if now - at <= ECHO_WINDOW_S
+        ][-20:]
+        self.recent_bot_speech.append((now, text))
+
+    def is_echo_of_bot(self, heard: str, *, strict: bool = False) -> bool:
+        """``strict`` is for a finished turn, where the bot may be silent: a
+        person can quote a few of the bot's words back, so it takes a longer,
+        near-verbatim replay to call it echo."""
+        now = time.monotonic()
+        recent = [said for at, said in self.recent_bot_speech if now - at <= ECHO_WINDOW_S]
+        if strict:
+            return is_echo_of(heard, recent, min_words=6, min_overlap=0.85)
+        return is_echo_of(heard, recent)
 
     def expects_answer(self) -> bool:
         probe = self.answer_expected

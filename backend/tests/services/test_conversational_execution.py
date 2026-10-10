@@ -124,7 +124,9 @@ def test_execute_workflow_params_ready_and_confirm_copy(execution_service):
     }
     assert execution_service.params_ready("execute_workflow", clarified) is True
     msg = execution_service.build_confirm_message("execute_workflow", clarified)
-    assert "execute" in msg.lower()
+    assert "i'll run" in msg.lower()
+    assert "okay to go ahead?" in msg.lower()
+    assert "wf-1" not in msg
     assert "Lead nurture" in msg
     assert "create a draft" not in msg.lower()
 

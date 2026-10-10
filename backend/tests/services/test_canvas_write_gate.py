@@ -104,8 +104,9 @@ def test_block_canvas_write_step_for_unapproved_run():
     assert blocked is not None
     assert blocked["error_code"] == CANVAS_WRITE_AUTHORITY_BLOCKED
     # Module D — user-facing copy from gravitre_voice, not a hand-written canvas string.
-    assert "Write blocked" in str(blocked.get("error") or "")
-    assert "required_approvals" in str(blocked.get("error") or "")
+    assert "can't run this step" in str(blocked.get("error") or "")
+    assert "needs your okay" in str(blocked.get("error") or "")
+    assert "required_approvals" not in str(blocked.get("error") or "")
     voice = str(blocked.get("error") or "")
     extracted = user_facing_message_from_write_authority_error(
         PermissionError(f"{CANVAS_WRITE_AUTHORITY_BLOCKED}: {voice}")

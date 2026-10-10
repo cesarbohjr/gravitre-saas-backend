@@ -61,10 +61,10 @@ class TestNarrateToolCompleted:
         assert narrate_tool_completed("anyTool", [1, 2, 3]) is None
 
     def test_list_result_key_produces_a_real_count(self) -> None:
-        assert narrate_tool_completed("listOpportunities", {"results": [1, 2, 3]}) == "I found 3."
+        assert narrate_tool_completed("listOpportunities", {"results": [1, 2, 3]}) == "I found 3 of them."
 
     def test_count_key_produces_a_real_count(self) -> None:
-        assert narrate_tool_completed("x", {"totalResults": 7}) == "I found 7."
+        assert narrate_tool_completed("x", {"totalResults": 7}) == "I found 7 of them."
 
     def test_zero_results_is_silence_not_a_fake_finding(self) -> None:
         assert narrate_tool_completed("x", {"results": []}) is None

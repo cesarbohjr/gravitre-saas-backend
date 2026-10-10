@@ -50,22 +50,22 @@ PREFLIGHT_ERROR_CLASSES = frozenset(
 )
 
 _USER_FACING = {
-    "RESOURCE_UNRESOLVED": "I couldn't identify which account or property to read.",
-    "PARAMETER_UNRESOLVED": "I need one more business detail before I can look that up.",
-    "AUTH_UNAVAILABLE": "This connection needs to be re-authorized before I can read data.",
-    "NOT_CONFIGURED": "That data source isn't connected for this workspace.",
-    "NOT_AUTHENTICATED": "This connection isn't signed in yet.",
-    "AUTH_EXPIRED": "This connection's sign-in expired and needs to be refreshed.",
-    "MISSING_SCOPE": "This connection is missing permission to read that data.",
-    "ACTION_UNAVAILABLE": "That data source isn't connected for this workspace.",
-    "SCHEMA_INVALID": "The request isn't valid for this read.",
-    "PROVIDER_CONSTRAINT_INVALID": "The request doesn't meet the provider's read constraints.",
-    "PERMISSION_BLOCKED": "This read isn't permitted for the current workspace.",
-    "TENANT_SCOPE_VIOLATION": "That resource isn't available in this workspace.",
-    "WRONG_SIBLING_ACTION": "I need a different kind of lookup for that request.",
-    "PREFLIGHT_REQUIRED": "That read wasn't compiled before execution.",
-    "PREFLIGHT_STALE": "The compiled read no longer matches this request.",
-    "GENUINE_USER_CLARIFICATION_REQUIRED": "I need you to choose among a few valid options.",
+    "RESOURCE_UNRESOLVED": "I couldn't tell which account or property you mean.",
+    "PARAMETER_UNRESOLVED": "I need one more detail before I can look that up.",
+    "AUTH_UNAVAILABLE": "You'll need to sign in to that tool again before I can look at your data.",
+    "NOT_CONFIGURED": "That tool isn't connected yet.",
+    "NOT_AUTHENTICATED": "That tool isn't signed in yet.",
+    "AUTH_EXPIRED": "The sign-in for that tool expired, so it needs a quick reconnect.",
+    "MISSING_SCOPE": "That tool hasn't given me permission to see that data.",
+    "ACTION_UNAVAILABLE": "That tool isn't connected yet.",
+    "SCHEMA_INVALID": "I couldn't look that up as asked. Could you put it another way?",
+    "PROVIDER_CONSTRAINT_INVALID": "That tool won't accept the request as it stands. Could you narrow it down?",
+    "PERMISSION_BLOCKED": "You don't have access to look at that here.",
+    "TENANT_SCOPE_VIOLATION": "That isn't available in your account.",
+    "WRONG_SIBLING_ACTION": "I need to look that up a different way.",
+    "PREFLIGHT_REQUIRED": "I couldn't get that lookup ready, so I didn't run it.",
+    "PREFLIGHT_STALE": "Your request changed since I set up that lookup, so I didn't run it.",
+    "GENUINE_USER_CLARIFICATION_REQUIRED": "There are a few ways to take this. Which one do you want?",
 }
 
 _UNTRUSTED_MARKERS = (
@@ -145,7 +145,7 @@ class PreflightResult:
     def user_message(self) -> str:
         if self.ok:
             return ""
-        return _USER_FACING.get(self.error_class or "", "I couldn't complete that read yet.")
+        return _USER_FACING.get(self.error_class or "", "I couldn't look that up yet.")
 
     def as_dict(self) -> dict[str, Any]:
         return {

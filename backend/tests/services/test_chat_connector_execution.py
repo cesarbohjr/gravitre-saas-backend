@@ -835,7 +835,7 @@ async def test_execute_plan_write_without_body_or_url_fails_verifiability_gate(c
 
     assert result.success is False
     assert result.error_code == "unverifiable_output"
-    assert "verified output" in str(result.body or "").lower()
+    assert "can't confirm" in str(result.body or "").lower()
 
 
 @pytest.mark.asyncio

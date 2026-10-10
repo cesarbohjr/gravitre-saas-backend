@@ -105,7 +105,7 @@ def test_format_tool_error_uses_connected_vocab():
         error_code="connector_not_connected",
         integration="slack",
     )
-    assert "Connected" in msg
+    assert "isn't connected" in msg
     assert "Slack" in msg
 
 
@@ -138,8 +138,9 @@ def test_notification_failure_body_uses_blocked_register():
         status="failed",
         error_summary="step blew up",
     )
-    assert body.startswith("Blocked.")
-    assert "Next:" in body
+    assert body.startswith("I'm stuck on this one.")
+    assert "step blew up" in body
+    assert "Open the failed run" in body
 
 
 def test_format_confidence_for_voice_labels_estimates():
@@ -162,7 +163,8 @@ def test_failure_alert_kinds():
     body = format_operator_message(
         "failure_alert_body", blocker="auth expired", failure_count=3
     )
-    assert body.startswith("Blocked.")
+    assert body.startswith("I'm stuck on this one.")
+    assert "auth expired" in body
 
 
 def test_connector_connect_to_run_house_style():
@@ -172,13 +174,15 @@ def test_connector_connect_to_run_house_style():
         confidence_register="blocked",
     )
     assert "Connect Slack" in msg
-    assert "/connectors" in msg
+    assert "Settings → Connectors" in msg
+    assert "/connectors" not in msg
     assert "in Gravitre" not in msg
 
 
 def test_canvas_write_blocked_kind():
     msg = format_operator_message("canvas_write_blocked", allow_humor=True)
-    assert "Write blocked" in msg
+    assert "can't run this step" in msg
+    assert "required_approvals" not in msg
     assert humor_permitted(kind="canvas_write_blocked", allow_humor=True) is False
 
 
@@ -202,7 +206,7 @@ def test_estimate_register_prefix():
         confidence_register="estimate",
     )
     assert msg.startswith("Estimate —")
-    assert "Connected" in msg
+    assert "connected so far" in msg
 
 
 def test_insufficient_info_house_phrase():

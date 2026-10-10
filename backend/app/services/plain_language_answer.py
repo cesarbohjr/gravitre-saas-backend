@@ -20,13 +20,13 @@ def read_next_steps(action_key: str | None, count: int | None) -> str:
     key = str(action_key or "").lower()
     if count is not None and count <= 0:
         return (
-            "Nothing else is needed from you. If you expected results, try a broader "
-            "search or check that the right account is connected."
+            "If you expected results, try a broader search or check that the right "
+            "account is connected."
         )
     for needle, follow_up in _OBJECT_FOLLOW_UPS:
         if needle in key:
-            return f"Nothing else is needed from you. If it helps, I can {follow_up}."
-    return "Nothing else is needed from you. If it helps, I can list the records or dig into any of them."
+            return f"Want me to {follow_up}?"
+    return "Want me to list them or dig into any of them?"
 
 
 def with_next_steps(answer: str, action_key: str | None, count: int | None) -> str:
@@ -35,6 +35,6 @@ def with_next_steps(answer: str, action_key: str | None, count: int | None) -> s
     if not text:
         return text
     lowered = text.lower()
-    if "nothing else is needed" in lowered or "next step" in lowered:
+    if "nothing else is needed" in lowered or "next step" in lowered or "want me to" in lowered:
         return text
     return f"{text}\n\n{read_next_steps(action_key, count)}"

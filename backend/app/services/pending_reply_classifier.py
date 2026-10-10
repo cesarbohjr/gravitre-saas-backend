@@ -583,8 +583,8 @@ def format_pending_meta_answer(snap: PendingSnapshot) -> str:
             "(for example skip a step or change the target)."
         )
     return (
-        "I still have a pending request open. Tell me the missing value, "
-        "say **yes** to proceed, **cancel** to abandon, or ask what I need."
+        "I'm still waiting on something for your last request. Tell me what's missing, "
+        "say **yes** to go ahead, **cancel** to drop it, or ask me what I need."
     )
 
 
@@ -598,11 +598,11 @@ def format_unrelated_hold_prompt(snap: PendingSnapshot, *, new_request: str) -> 
     if len(clipped) > 160:
         clipped = clipped[:157] + "…"
     return (
-        f"You have a pending item (**{pending_label}**) that isn't finished. "
-        f"Your new message looks like a different request{f' (“{clipped}”)' if clipped else ''}.\n\n"
-        "Should I **abandon** the pending item and handle this new request, "
-        "or **hold** the pending item aside and proceed with the new request? "
-        "Reply `abandon` or `hold`."
+        f"We're still in the middle of **{pending_label}**. "
+        f"Your new message{f' (“{clipped}”)' if clipped else ''} sounds like something else.\n\n"
+        "Should I **abandon** that and move on to this, "
+        "or **hold** it for later and start on this? "
+        "Just say abandon or hold."
     )
 
 

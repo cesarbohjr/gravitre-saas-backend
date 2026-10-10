@@ -174,7 +174,7 @@ def test_listing_contact_count_binds_table_artifact() -> None:
     assert turn["writes_started"] is False
     assert turn["execution_path"] == "listing_f2_read"
     assert turn["message"].startswith("This HubSpot account has 57 contacts.")
-    assert "Nothing else is needed from you" in turn["message"]
+    assert "Want me to" in turn["message"]
     assert "hubspot.contacts.search" not in turn["message"]
     arts = turn["task_state"]["work_artifacts"]
     assert arts[-1]["kind"] == "table"
@@ -320,7 +320,7 @@ def test_store_answer_discloses_disconnected_live_sources() -> None:
     assert turn is not None
     assert turn["join"] is True
     assert turn["entity_id"] == ALPHA_ENTITY_ID
-    assert "not a live multi-provider census" in str(turn["message"]).lower()
+    assert "not a fresh look at each tool" in str(turn["message"]).lower()
     assert turn["writes_started"] is False
     assert turn["missing_live_sources"]
     assert turn["execution_result"] is not None

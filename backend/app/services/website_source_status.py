@@ -77,15 +77,15 @@ def website_limitation_message(readiness: dict[str, dict[str, Any]], *, timefram
     gsc = readiness.get("google_search_console") or {}
     window = f" for {timeframe}" if timeframe else ""
     lines = [
-        f"I'm still on website performance{window}. No website analytics system is executable on this workspace right now.",
+        f"I'm still on website performance{window}, but I can't get into Google Analytics or Search Console right now.",
         "",
     ]
     lines.append(f"- **Analytics:** {_vendor_clause(ga, 'Google Analytics')}")
     lines.append(f"- **Search Console:** {_vendor_clause(gsc, 'Search Console')}")
     lines.append("")
     lines.append(
-        "Other connected systems are not used for this question. "
-        "Reconnect Analytics or Search Console, then ask the same website question again."
+        "Your other tools can't answer this one. "
+        "Reconnect Google Analytics or Search Console, then ask me again."
     )
     return "\n".join(lines)
 
@@ -116,10 +116,10 @@ def _vendor_clause(row: dict[str, Any], label: str) -> str:
     if not row.get("present"):
         return f"{label} isn't connected."
     if row.get("executable"):
-        return f"{label} is executable."
+        return f"{label} is connected and working."
     reason = str(row.get("blocking_reason") or row.get("auth_status") or "not executable")
     if reason in {"pending_auth", "not_connected"}:
-        return f"{label} is present but not authorized yet (pending sign-in)."
+        return f"{label} is set up, but the sign-in is still pending."
     if reason in {"token_expired", "auth_expired"}:
-        return f"{label} is connected but the sign-in expired. Reconnect it at /connectors."
-    return f"{label} is not executable ({reason.replace('_', ' ')})."
+        return f"{label} is connected, but the sign-in expired. Reconnect it in Settings → Connectors."
+    return f"I can't use {label} right now."

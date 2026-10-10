@@ -527,7 +527,8 @@ async def test_materialize_platform_execute_workflow_uses_distinct_pending_type(
 
     assert turn is not None
     assert turn["dialogue_mode"] == "confirm"
-    assert "execute" in turn["message"].lower()
+    assert "i'll run" in turn["message"].lower()
+    assert "okay to go ahead?" in turn["message"].lower()
     assert "Lead nurture" in turn["message"]
     assert "create a draft" not in turn["message"].lower()
     saved = state.update_task_state.await_args.args[2]

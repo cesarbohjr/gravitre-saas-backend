@@ -373,7 +373,7 @@ def test_composer_does_not_say_done_on_unverified_invoke() -> None:
         task_state={},
     )
     assert "Done —" not in turn["message"]
-    assert "confirming" in turn["message"].lower() or "sent to the provider" in turn["message"].lower()
+    assert "still checking whether it worked" in turn["message"].lower()
 
 
 def test_composer_confirmed_when_verified() -> None:

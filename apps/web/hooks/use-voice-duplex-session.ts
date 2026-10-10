@@ -153,6 +153,9 @@ function speculativeTranscriptDiverged(partial: string, finalText: string): bool
   return inter / union < 0.72
 }
 
+// Longest a barge-in mutes late frames of the reply it cancelled.
+const INTERRUPTED_AUDIO_DROP_MS = 1500
+
 export function useVoiceDuplexSession(options: Options) {
   const [presence, setPresence] = useState<VoicePresenceState>("idle")
   const [levels, setLevels] = useState<number[] | null>(null)
@@ -265,6 +268,14 @@ export function useVoiceDuplexSession(options: Options) {
   // path has audio but cannot play it; this path means TTS/audio transport never
   // delivered anything to the browser.
   const audioReplyWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // After a barge-in, audio frames of the cancelled reply can still be on the
+  // wire. They are dropped until the user's next turn starts, so the stopped
+  // reply never resumes or replays.
+  // After a barge-in, late frames of the cancelled reply are dropped until the
+  // user's next final transcript, or for a short window at most, so a
+  // transcript/interrupt arriving out of order can never mute the next answer.
+  const dropAudioUntilRef = useRef(0)
+  const droppingInterruptedAudio = () => performance.now() < dropAudioUntilRef.current
   const audioFramesReceivedRef = useRef(0)
   // performance.now() of the reply's first audio frame, for the playback.started report.
   const firstAudioReceivedAtRef = useRef<number | null>(null)
@@ -1341,6 +1352,7 @@ export function useVoiceDuplexSession(options: Options) {
           if (!text) return
           setProvisionalTranscript(text)
           if (msg.final) {
+            dropAudioUntilRef.current = 0
             lastUserFinalRef.current = text
             browserAudioPlaybackStartedRef.current = false
             audioFallbackTriggeredRef.current = false
@@ -1366,6 +1378,9 @@ export function useVoiceDuplexSession(options: Options) {
           if (!delta) return
           const firstAssistantText = assistantTextRef.current.length === 0
           assistantTextRef.current += delta
+          // Armed even inside the post-interrupt drop window: if that window
+          // swallows the start of the next reply, the HTTP fallback still
+          // speaks it. The interrupted reply's watchdog was cleared already.
           if (firstAssistantText && audibleAudioFramesRef.current === 0) {
             armAudioReplyWatchdog()
           }
@@ -1405,6 +1420,10 @@ export function useVoiceDuplexSession(options: Options) {
           // The server only sends this for a real barge-in. Drop the audio
           // already queued here (up to the jitter lead) so the bot stops the
           // moment the user cuts in, not after the buffer drains.
+          // The cancelled reply must not come back: no fallback replay of its
+          // full text, and no late frames of it.
+          clearAudioReplyWatchdog()
+          dropAudioUntilRef.current = performance.now() + INTERRUPTED_AUDIO_DROP_MS
           if (agentSpeakingRef.current || pcmPlayerRef.current?.isActive()) {
             stopPcmPlayback()
             agentSpeakingRef.current = false
@@ -1431,6 +1450,7 @@ export function useVoiceDuplexSession(options: Options) {
           // HTTP TTS owns this turn after the no-audio watchdog fires. A late
           // provider frame must not create overlapping speech.
           if (audioFallbackTriggeredRef.current) return
+          if (droppingInterruptedAudio()) return
           const pcm = pcmDecoderRef.current.decode(msg.pcm16_b64)
           if (pcm.length > 0) {
             if (firstAudioReceivedAtRef.current == null) {

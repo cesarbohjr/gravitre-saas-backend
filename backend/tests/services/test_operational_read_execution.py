@@ -55,11 +55,11 @@ async def test_pipeline_health_uses_deals_list_not_search() -> None:
     assert turn["workflow_status"] == "completed"
     message = str(turn["message"])
     assert "2 deal" in message
-    assert "What is happening:" in message
-    assert "What appears important:" in message
-    assert "What I cannot conclude:" in message
-    assert "What is missing:" in message
-    assert "What to do next:" in message
+    assert "What's going on:" in message
+    assert "What stands out:" in message
+    assert "What I can't tell yet:" in message
+    assert "What's missing:" in message
+    assert "Next step:" in message
     assert mock_invoke.call_args.kwargs["action_key"] == "hubspot.deals.list"
     assert turn.get("execution_result")
     assert turn["task_state"].get("work_artifacts")
@@ -155,7 +155,7 @@ async def test_pipeline_follow_up_reuses_operational_read() -> None:
             task_state=prior,
         )
     assert turn is not None
-    assert "What appears important:" in str(turn["message"])
+    assert "What stands out:" in str(turn["message"])
     assert mock_invoke.call_args.kwargs["action_key"] == "hubspot.deals.list"
 
 

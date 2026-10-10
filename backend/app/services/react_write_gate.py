@@ -736,11 +736,9 @@ async def materialize_react_platform_write_approval_turn(
         task_type = "execute_workflow"
         goal_line = f"\nGoal: {wf_goal}" if wf_goal else ""
         confirm_message = (
-            f"I'll **execute** the workflow **{wf_name}** "
-            f"(id `{wf_id}`).{goal_line}\n\n"
-            "This starts a new run and may trigger connected steps "
-            "(connectors, agents, notifications).\n\n"
-            "Reply **yes** to run it now, or **no** to cancel."
+            f"I'll run **{wf_name}** now.{goal_line}\n\n"
+            "It might send emails or update other tools. Okay to go ahead?\n\n"
+            "Reply **yes** to run it, or **no** to cancel."
         )
     else:  # assistant_run_agent_task
         task = str(args.get("task") or message or "").strip()

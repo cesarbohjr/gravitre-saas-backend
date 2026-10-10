@@ -87,9 +87,9 @@ def try_cross_system_entity_turn(
     if not companies:
         return _entity_join_finished(
             body=(
-                "I don't have an accepted cross-system company join for this organization. "
-                "Matching names is not enough, so I am keeping HubSpot, QuickBooks, and Zendesk "
-                "records separate until there is exact host or email evidence."
+                "I haven't matched this company across HubSpot, QuickBooks, and Zendesk yet. "
+                "A matching name isn't enough, so I'm keeping them separate until I see the "
+                "same website or email in each."
             ),
             task_state=task_state,
             join=False,
@@ -106,19 +106,19 @@ def try_cross_system_entity_turn(
         if vendor not in connected
     ]
     fact = (
-        f"The accepted company entity “{entity.display_name}” links {', '.join(systems)} "
-        f"on stored evidence"
-        + (f" (host {', '.join(hosts)})" if hosts else "")
-        + f". Entity id {entity.id}."
+        f"I've matched “{entity.display_name}” across "
+        f"{', '.join(connector_display_name(s) for s in systems)} based on what Gravitre has saved"
+        + (f" (website {', '.join(hosts)})" if hosts else "")
+        + "."
     )
     inference = (
-        "That join is from the tenant entity store, not a live multi-provider census. "
-        "I will not mix metrics from those systems as if they were one result set."
+        "That match comes from what Gravitre has saved, not a fresh look at each tool, "
+        "so I won't mix their numbers together as if they were one set."
     )
     if missing:
         limitation = " ".join(missing)
     else:
-        limitation = "I can read each connected system separately if you want live records."
+        limitation = "If you want the latest numbers, I can check each tool separately."
     body = f"{fact}\n\n{inference}\n\n{limitation}"
     return _entity_join_finished(
         body=body,

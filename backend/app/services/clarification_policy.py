@@ -146,8 +146,8 @@ def decide_connector_clarification(
 def format_not_connected_message(connector_id: str, *, display_name: str | None = None) -> str:
     label = display_name or connector_display_name(connector_id)
     return (
-        f"{label} isn't connected yet. Connect it at /connectors and I can pull live data "
-        "from your account."
+        f"{label} isn't connected yet. Connect it in Settings → Connectors and I can look "
+        "at your live data."
     )
 
 

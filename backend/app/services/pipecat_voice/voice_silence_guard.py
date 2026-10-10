@@ -123,11 +123,11 @@ class SlowToolNotices:
 DEFAULT_DEEP_ACK_SECONDS = 0.6
 
 DEEP_ACKNOWLEDGEMENTS: tuple[str, ...] = (
-    "One moment.",
-    "Give me a second.",
-    "Okay, one moment.",
-    "Hmm, give me a moment.",
-    "Okay, give me a second.",
+    "Sure, let me look.",
+    "Okay, give me a sec.",
+    "Yeah, one sec.",
+    "Sure, let me see.",
+    "Okay, let me look.",
 )
 
 

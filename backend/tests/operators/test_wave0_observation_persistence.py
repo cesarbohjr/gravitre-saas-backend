@@ -147,7 +147,7 @@ async def test_react_tool_audit_includes_args_observation_and_error():
         )
 
     assert result.status == ReActStatus.NEEDS_HUMAN_INPUT
-    assert "rate-limited" in result.answer.lower() or "rate limited" in result.answer.lower()
+    assert "too many requests" in result.answer.lower()
     tool_audits = [
         call.kwargs["metadata"]
         for call in audit_mock.call_args_list

@@ -10,9 +10,9 @@ from app.services.tool_error_messages import (
 
 def test_auth_expired_mentions_reconnect():
     msg = format_tool_error_for_user("auth_expired", "token gone", integration="apollo")
-    assert "authentication expired" in msg.lower()
+    assert "sign-in expired" in msg.lower()
     assert "Apollo" in msg
-    assert "/connectors" in msg
+    assert "Settings → Connectors" in msg
 
 
 def test_permission_denied_is_actionable():
@@ -22,14 +22,15 @@ def test_permission_denied_is_actionable():
     assert "contact list" in msg.lower() or "lists" in msg.lower()
 
 
-def test_unknown_code_falls_back_to_message():
+def test_unknown_code_names_the_product_without_echoing_vendor_text():
     msg = format_tool_error_for_user("weird_code", "Vendor said nope", integration="hubspot")
-    assert "Hubspot" in msg or "HubSpot" in msg or "hubspot" in msg.lower()
-    assert "Vendor said nope" in msg
+    assert "HubSpot" in msg
+    # Raw vendor error text stays in the audit trail, never in the answer.
+    assert "Vendor said nope" not in msg
 
 
 def test_empty_falls_back_to_generic():
-    assert format_tool_error_for_user(None, None) == "The connector action failed."
+    assert format_tool_error_for_user(None, None) == "That didn't work."
 
 
 def test_integration_from_tool_name():
@@ -52,7 +53,7 @@ def test_format_react_connector_failure_uses_last_failed():
     ]
     msg = format_react_connector_failure(calls)
     assert msg is not None
-    assert "/connectors" in msg
+    assert "Settings → Connectors" in msg
     assert "Apollo" in msg
 
 

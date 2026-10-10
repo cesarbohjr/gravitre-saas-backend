@@ -97,8 +97,8 @@ async def test_gateway_shortcuts_yes_wait_before_kernel() -> None:
     assert decision.action == "shortcut"
     assert decision.candidate_id == "spoken_hold_commit"
     assert decision.answer is not None
-    assert "on hold" in decision.answer.lower()
-    assert "will not send" in decision.answer.lower()
+    assert "holding off" in decision.answer.lower()
+    assert "won't send" in decision.answer.lower()
     assert (decision.extras or {}).get("provider_invoked") is False
     assert (decision.extras or {}).get("spoken_write_decision") == "hold_commit"
 

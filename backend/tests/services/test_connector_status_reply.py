@@ -91,7 +91,7 @@ def test_connected_healthy(mock_list):
         connected_integrations=["hubspot"],
     )
     assert result is not None
-    assert "Yes, Hubspot is connected and healthy." == result.text
+    assert "Yes, HubSpot is connected and healthy." == result.text
     assert "assistant_" not in result.text.lower()
 
 
@@ -223,7 +223,7 @@ def test_connected_list_question(mock_list):
     )
     assert result is not None
     assert "Gmail" in result.text
-    assert "Hubspot" in result.text
+    assert "HubSpot" in result.text
     assert "schema" not in result.text.lower()
 
 
@@ -324,7 +324,7 @@ def test_retrieval_ab_a_list_names_only_getconnectorstatus_executable_rows(mock_
     )
     assert result is not None
     assert result.source == "getConnectorStatus"
-    assert result.text == "You have Hubspot connected."
+    assert result.text == "You have HubSpot connected."
     assert result.text != RETRIEVAL_AB_A_FALSE_CLAIM
     mock_rows.assert_called_once()
 

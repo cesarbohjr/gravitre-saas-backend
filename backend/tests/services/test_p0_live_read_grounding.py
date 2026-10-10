@@ -144,7 +144,7 @@ def test_catalog_eligibility_copy_is_not_treated_as_ungrounded_crm() -> None:
     assert "verified result" not in text.lower()
     text = apply_provider_result_grounding("Found 25 deals in your CRM.", {"success": True})
     assert "25" not in text
-    assert "verified result" in text.lower() or "connected system" in text.lower()
+    assert "confirmed numbers" in text.lower()
 
 
 def test_grounded_count_must_match_observation() -> None:

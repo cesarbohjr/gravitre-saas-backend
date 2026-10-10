@@ -50,7 +50,7 @@ def test_user_copy_connector_not_connected_not_invalid_params():
         integration="slack",
         action="slack.post_message",
     )
-    assert "not connected" in msg.lower()
+    assert "isn't connected" in msg.lower()
     assert "invalid parameters" not in msg.lower()
 
 

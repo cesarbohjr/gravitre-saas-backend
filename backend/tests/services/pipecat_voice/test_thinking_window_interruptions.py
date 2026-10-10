@@ -262,3 +262,151 @@ def test_barge_in_before_any_answer_carries_the_request_to_the_next_turn() -> No
     assert queries == ["Email Sarah the deck from yesterday", "Email Sarah the deck from yesterday, and cc Mike"]
     assert all(m.get("content") != "Email Sarah the deck from yesterday" for m in (histories[1] or []))
     assert service._carry_user_text is None
+
+
+def _echo_loop_service():
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
+    from app.services.pipecat_voice.interrupt_reporter import ElevenLabsInterruptReporter
+
+    service = GravitreCognitiveLLMService(
+        app_settings=SimpleNamespace(voice_slow_tool_notice_seconds=0, voice_deep_ack_seconds=0),
+        org_id="00000000-0000-4000-8000-000000000001",
+        user_id="00000000-0000-4000-8000-000000000002",
+    )
+    service.push_frame = AsyncMock()
+    service.start_ttfb_metrics = AsyncMock()
+    service.stop_ttfb_metrics = AsyncMock()
+    service.start_processing_metrics = AsyncMock()
+    service.stop_processing_metrics = AsyncMock()
+    service._push_llm_text = AsyncMock()  # type: ignore[method-assign]
+    session = VoicePipelineSession()
+    reporter = ElevenLabsInterruptReporter(voice_session=session)
+    reporter.push_frame = AsyncMock()  # type: ignore[method-assign]
+    service._interrupt_reporter = reporter
+    return service, session
+
+
+def _run_turns(service, script) -> list[str]:
+    """Run ``script`` against ``service`` with the brain faked; return the queries it got."""
+    import asyncio
+    from typing import Any
+    from unittest.mock import AsyncMock, patch
+
+    from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
+
+    queries: list[str] = []
+
+    async def _slow_stream(**kwargs: Any):
+        queries.append(kwargs["query"])
+        yield AssistantStreamEvent(sse_type="data-intelligence", payload={"data": {}})
+        if len(queries) == 1:
+            # The first turn says "let me check" and is then cut off.
+            await service._speak_narration("Let me check your website traffic for this week.")
+            await asyncio.sleep(5)
+        yield AssistantStreamEvent(sse_type="text-delta", payload={"delta": "You had 1,200 visitors."})
+        yield AssistantStreamComplete(full_content="", tool_results=[], react_result=None, model="test")
+
+    fake = type("FakeIntelligence", (), {"execute_task_streaming": staticmethod(_slow_stream)})()
+
+    async def _noop(*_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    with patch("pipecat.services.llm_service.LLMService.process_frame", new=_noop), patch(
+        "app.operators.agent_intelligence.get_agent_intelligence", return_value=fake
+    ), patch("app.services.shared_turn_preparation.guard_spoken_turn", new=AsyncMock(return_value=None)), patch(
+        "app.services.shared_turn_preparation.build_turn_system_prompt", return_value=""
+    ), patch("app.services.pipecat_voice.cognitive_llm.is_stop_requested", return_value=False):
+        asyncio.run(script())
+    return queries
+
+
+def _context_frame(*texts: str):
+    from pipecat.frames.frames import LLMContextFrame
+    from pipecat.processors.aggregators.llm_context import LLMContext
+
+    return LLMContextFrame(context=LLMContext(messages=[{"role": "user", "content": t} for t in texts]))
+
+
+def test_request_is_not_repeated_once_gravitre_started_talking() -> None:
+    """Live report: voice kept restarting the traffic answer from the beginning."""
+    import asyncio
+
+    from pipecat.processors.frame_processor import FrameDirection
+
+    service, _session = _echo_loop_service()
+    first = "what's my website traffic"
+
+    async def _script() -> None:
+        task = asyncio.create_task(service.process_frame(_context_frame(first), FrameDirection.DOWNSTREAM))
+        await asyncio.sleep(0.3)
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        # "Let me check..." was already spoken, so the request is not re-run.
+        assert service._carry_user_text is None
+        await service.process_frame(_context_frame(first, "show me last month"), FrameDirection.DOWNSTREAM)
+
+    queries = _run_turns(service, _script)
+    assert queries == [first, "show me last month"]
+
+
+def test_the_bots_own_voice_is_not_answered_as_a_new_turn() -> None:
+    import asyncio
+
+    from pipecat.processors.frame_processor import FrameDirection
+
+    service, _session = _echo_loop_service()
+    first = "what's my website traffic"
+
+    async def _script() -> None:
+        task = asyncio.create_task(service.process_frame(_context_frame(first), FrameDirection.DOWNSTREAM))
+        await asyncio.sleep(0.3)
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        # The mic picked up the narration and Flux transcribed it.
+        await service.process_frame(
+            _context_frame(first, "let me check your website traffic for this week"),
+            FrameDirection.DOWNSTREAM,
+        )
+
+    queries = _run_turns(service, _script)
+    assert queries == [first]
+
+
+def test_echo_needs_a_near_verbatim_replay() -> None:
+    session = VoicePipelineSession()
+    session.note_bot_speech("Want me to dig into where the visits came from, or which pages did best?")
+    assert session.is_echo_of_bot("dig into where the visits came from")
+    assert not session.is_echo_of_bot("where the visits came from", strict=True)
+    assert not session.is_echo_of_bot("yes show me the pages")
+    # A short reply that reuses the bot's words is the user talking.
+    assert not session.is_echo_of_bot("which pages")
+
+
+def test_an_echo_turn_keeps_the_carried_request() -> None:
+    """An unanswered request survives an echo turn instead of being dropped."""
+    import asyncio
+
+    from pipecat.processors.frame_processor import FrameDirection
+
+    service, session = _echo_loop_service()
+    session.note_bot_speech("Want me to dig into where the visits came from, or which pages did best?")
+    service._carry_user_text = "what's my website traffic"
+
+    async def _script() -> None:
+        await service.process_frame(
+            _context_frame("want me to dig into where the visits came from or which pages did best"),
+            FrameDirection.DOWNSTREAM,
+        )
+        assert service._carry_user_text == "what's my website traffic"
+
+    queries = _run_turns(service, _script)
+    assert queries == []

@@ -108,7 +108,7 @@ def test_connector_unavailable_trigger_uses_global_policy_copy():
     engine = ClarificationEngine(settings=None)
     trigger = engine._connector_unavailable_trigger("slack")
     assert trigger["trigger_type"] == "connector_unavailable"
-    assert "/connectors" in trigger["reason"]
+    assert "Settings → Connectors" in trigger["reason"]
     assert trigger["template_vars"]["connector"] == "Slack"
 
 

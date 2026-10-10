@@ -207,6 +207,8 @@ class GravitreCognitiveLLMService(LLMService):
         # The request a barge-in cancelled before any answer was spoken. It is
         # merged into the next turn instead of being silently lost.
         self._carry_user_text: str | None = None
+        # The current turn already merged a request carried from a cancelled one.
+        self._turn_was_carried = False
         self._active_user_text = ""
         self._answer_started = False
         # ElevenLabs stability currently applied; the pipeline starts on the
@@ -379,7 +381,16 @@ class GravitreCognitiveLLMService(LLMService):
                 # Barge-in cancelled this turn. If none of the answer was spoken
                 # yet, keep the request for the next turn ("Email Sarah the
                 # deck" ... "and cc Mike").
-                if self._active_user_text and not self._answer_started:
+                # Only when nothing at all was said: once Gravitre has started
+                # talking (even "let me check"), repeating the request would
+                # restart the answer from the top. A request that was itself
+                # carried is never carried again, so it cannot loop.
+                if (
+                    self._active_user_text
+                    and not self._answer_started
+                    and not self._turn_spoke
+                    and not self._turn_was_carried
+                ):
                     self._carry_user_text = self._active_user_text
                     logger.info("pipecat_voice_unanswered_turn_carried org_id=%s", self._org_id)
                 raise
@@ -430,6 +441,13 @@ class GravitreCognitiveLLMService(LLMService):
             # Backstop for UtteranceGateProcessor: a hesitation is not a request.
             logger.info("pipecat_voice_filler_turn_skipped org_id=%s", self._org_id)
             return
+        session = self._voice_session()
+        if session is not None and session.is_echo_of_bot(user_text, strict=True):
+            # The mic picked up Gravitre's own voice. Answering it would
+            # restart the reply from the beginning. Checked before anything is
+            # stored, and any carried request stays carried for the next turn.
+            logger.info("pipecat_voice_echo_turn_skipped org_id=%s", self._org_id)
+            return
         trace = self._turn_trace
         if trace is not None:
             trace.begin_turn()
@@ -451,6 +469,7 @@ class GravitreCognitiveLLMService(LLMService):
         history = self._merge_durable_and_socket_history(self._durable_rows(), history)
         user_text = reconstitute_spoken_identity_fields(user_text)
         carried, self._carry_user_text = self._carry_user_text, None
+        self._turn_was_carried = bool(carried)
         if carried:
             user_text, history = merge_unanswered_turn(carried, user_text, history)
         self._active_user_text = user_text
@@ -1088,6 +1107,7 @@ class GravitreCognitiveLLMService(LLMService):
         spoken = self._sanitize_for_tts(text)
         if spoken:
             self._turn_spoke = True
+            self._note_bot_speech(spoken)
             await self._push_narration_speech(spoken)
 
     async def _push_narration_speech(self, spoken: str) -> None:
@@ -1149,7 +1169,16 @@ class GravitreCognitiveLLMService(LLMService):
             self._turn_trace.note("tts_requested")
         self._tts_text_pending = True
         self._turn_spoke = True
+        self._note_bot_speech(spoken)
         await self._push_llm_text(spoken + " ")
+
+    def _voice_session(self) -> Any:
+        return getattr(self._interrupt_reporter, "_voice_session", None)
+
+    def _note_bot_speech(self, spoken: str) -> None:
+        session = self._voice_session()
+        if session is not None:
+            session.note_bot_speech(spoken)
 
     def _finish_turn_trace(self) -> None:
         """Hand the turn's brain checkpoints to the trace and close the turn."""

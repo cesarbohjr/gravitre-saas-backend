@@ -199,7 +199,7 @@ def narrate_tool_still_running(tool_name: str, *, repeat: bool = False) -> str:
     a percentage, or an outcome.
     """
     if repeat:
-        return "That's still running."
+        return "Still working on it."
     if is_write_shaped_tool_name(tool_name):
         return f"Still {_gerund_phrase(tool_name)}."
     return f"Still checking {_humanize_tool_name(tool_name)}."
@@ -238,7 +238,7 @@ def narrate_tool_completed(tool_name: str, output: Any) -> str | None:
 
         if not evidence_is_verified(output):
             # Provider acceptance only: say exactly that, never "done".
-            return "That change was accepted. I'm still confirming it took effect."
+            return "I've sent that over. I'm still confirming it stuck."
         for key in _CONFIRMED_DETAIL_KEYS:
             val = output.get(key)
             if isinstance(val, str) and val.strip():
@@ -248,12 +248,18 @@ def narrate_tool_completed(tool_name: str, output: Any) -> str | None:
         rows = output.get(key)
         if isinstance(rows, list):
             n = len(rows)
-            return f"I found {n}." if n else None
+            return _found_line(n)
     for key in _COUNT_KEYS:
         val = output.get(key)
         if isinstance(val, int):
-            return f"I found {val}." if val else None
+            return _found_line(val)
     return None
+
+
+def _found_line(n: int) -> str | None:
+    if not n:
+        return None
+    return "I found one." if n == 1 else f"I found {n} of them."
 
 
 def will_execute_staged_connector_write(task_state: dict[str, Any] | None, message: str) -> bool:
