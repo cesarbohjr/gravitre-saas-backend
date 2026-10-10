@@ -1378,11 +1378,10 @@ export function useVoiceDuplexSession(options: Options) {
           if (!delta) return
           const firstAssistantText = assistantTextRef.current.length === 0
           assistantTextRef.current += delta
-          if (
-            firstAssistantText &&
-            audibleAudioFramesRef.current === 0 &&
-            !droppingInterruptedAudio()
-          ) {
+          // Armed even inside the post-interrupt drop window: if that window
+          // swallows the start of the next reply, the HTTP fallback still
+          // speaks it. The interrupted reply's watchdog was cleared already.
+          if (firstAssistantText && audibleAudioFramesRef.current === 0) {
             armAudioReplyWatchdog()
           }
           optsRef.current.onAssistantDelta?.(assistantTextRef.current)

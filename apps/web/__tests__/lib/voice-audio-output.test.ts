@@ -217,6 +217,9 @@ describe("voice live turn completion lifecycle", () => {
     expect(handler.slice(0, 600)).toMatch(/dropAudioUntilRef\.current = performance\.now\(\) \+ INTERRUPTED_AUDIO_DROP_MS/)
     const audio = hook.slice(hook.indexOf('kind === "audio"'))
     expect(audio.slice(0, 400)).toMatch(/if \(droppingInterruptedAudio\(\)\) return/)
+    // The next reply's no-audio fallback still arms inside the drop window.
+    const text = hook.slice(hook.indexOf('kind === "assistant_text"'))
+    expect(text.slice(0, 900)).toMatch(/if \(firstAssistantText && audibleAudioFramesRef\.current === 0\) \{\s+armAudioReplyWatchdog\(\)/)
     // A new user turn lets audio through again, and the mute is time-bounded
     // so an out-of-order transcript can never silence the next answer.
     expect(hook).toMatch(/if \(msg\.final\) \{\s+dropAudioUntilRef\.current = 0/)
