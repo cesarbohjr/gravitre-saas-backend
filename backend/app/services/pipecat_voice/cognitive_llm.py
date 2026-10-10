@@ -1096,6 +1096,8 @@ class GravitreCognitiveLLMService(LLMService):
         if should_acknowledge_turn(voice_tier):
             events_source = with_ack_deadline(events_source, delay_s=deep_ack_seconds(self._app_settings))
         last_stop_poll = time.perf_counter()
+        # Set when the turn is stopped mid-stream: nothing left over is said.
+        turn_stopped = False
         self._start_answer_first()
 
         def _tool_call_running(call_id: str) -> Callable[[], bool] | None:
@@ -1125,6 +1127,7 @@ class GravitreCognitiveLLMService(LLMService):
                     self._org_id,
                     self._turn_work.reason,
                 )
+                turn_stopped = True
                 break
             poll_stop = now - last_stop_poll >= STOP_POLL_INTERVAL_S
             if poll_stop:
@@ -1140,6 +1143,7 @@ class GravitreCognitiveLLMService(LLMService):
                     self._org_id,
                     self._conversation_id,
                 )
+                turn_stopped = True
                 break
             if hold_starts is not None and (
                 event is ACK_DUE
@@ -1308,9 +1312,15 @@ class GravitreCognitiveLLMService(LLMService):
         if guard_task is not None and await _guard_refused():
             await self.stop_ttfb_metrics()
             return
-        # A construct the model never closed (e.g. a stray "*") is still held in
-        # the filter; emit it so the transcript is not truncated.
-        await self._flush_client_text(client_text_filter)
+        if turn_stopped:
+            # A stopped turn says nothing more: no buffered tail, no held lines.
+            text_buffer = ""
+            if self._answer_first is not None:
+                self._answer_first.discard()
+        else:
+            # A construct the model never closed (e.g. a stray "*") is still held in
+            # the filter; emit it so the transcript is not truncated.
+            await self._flush_client_text(client_text_filter)
         # Flush any trailing clause that never hit a sentence boundary (e.g.
         # a short answer with no terminal punctuation) so the tail of the
         # reply is not silently dropped from speech.

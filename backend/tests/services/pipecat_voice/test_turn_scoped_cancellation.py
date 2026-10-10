@@ -410,3 +410,38 @@ async def test_cancel_from_a_worker_thread_wakes_the_loop() -> None:
     waiter = token.waiter()
     await asyncio.to_thread(token.cancel, "barge_in")
     await asyncio.wait_for(waiter.wait(), 1.0)
+
+
+def test_a_stopped_turn_says_nothing_left_over() -> None:
+    """After a stop, the unfinished clause still buffered is not spoken."""
+    from unittest.mock import AsyncMock
+
+    from app.operators.stream_events import (
+        AssistantStreamComplete,
+        AssistantStreamEvent,
+    )
+    from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
+
+    service = GravitreCognitiveLLMService(app_settings=object(), org_id=ORG, user_id=USER)
+    token = TurnCancellation()
+    service._turn_work = token
+
+    async def _stream(**_kwargs: Any):
+        yield AssistantStreamEvent(sse_type="text-delta", payload={"delta": "Your revenue was up "})
+        token.cancel("held_task_cancel")
+        yield AssistantStreamEvent(sse_type="text-delta", payload={"delta": "twelve percent."})
+        yield AssistantStreamComplete(full_content="x", tool_results=[], react_result=None, model="t")
+
+    spoken: list[str] = []
+    service.push_frame = AsyncMock()
+    service._push_llm_text = AsyncMock(side_effect=lambda text: spoken.append(text))
+
+    class _Context:
+        def get_messages(self) -> list[dict[str, Any]]:
+            return [{"role": "user", "content": "how is revenue"}]
+
+    intelligence = SimpleNamespace(execute_task_streaming=_stream)
+    with patch("app.operators.agent_intelligence.get_agent_intelligence", return_value=intelligence):
+        asyncio.run(service._run_gravitre_turn(_Context()))
+
+    assert spoken == [], "the buffered 'Your revenue was up' is dropped, not flushed"
