@@ -200,7 +200,9 @@ async def test_grounded_history_cuts_at_the_browser_played_position_and_marks_it
 
     stored = [row["content"] for row in db.rows("conversation_messages", role="assistant")]
     assert stored == [f"Revenue was {TRUNCATION_MARKER}"]
-    assert rewrites == [(ASSISTANT_ID, f"Revenue was {TRUNCATION_MARKER}")]
+    # In memory at once (nothing confirmed heard yet), then the durable text.
+    assert rewrites[0] == (ASSISTANT_ID, f"Revenue was up twelve percent this quarter. {UNCONFIRMED_MARKER}")
+    assert rewrites[-1] == (ASSISTANT_ID, f"Revenue was {TRUNCATION_MARKER}")
 
 
 @pytest.mark.asyncio

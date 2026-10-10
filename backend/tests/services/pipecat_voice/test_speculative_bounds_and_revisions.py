@@ -733,3 +733,51 @@ class TestAdoptionContract:
     def test_benign_punctuation_case_and_inert_tails_still_adopt(self, spec, final):
         ok, _why = strict_transcript_match(spec, final, max_extra_words=3)
         assert ok is True
+
+
+class TestAdoptedReplayOffTheFirstWord:
+    @pytest.mark.asyncio
+    async def test_first_buffered_event_does_not_wait_for_the_deferred_replay(self):
+        """Audit finding 5: a 120 ms deferred write delayed the first adopted
+        event by 120 ms. The replay now runs behind the first words, in order,
+        and the turn still ends only after it lands."""
+        release = asyncio.Event()
+        order: list[str] = []
+
+        async def _slow_write():
+            await release.wait()
+            order.append("deferred")
+
+        async def _runner():
+            await run_or_defer("kernel.active_objective", _slow_write)
+            yield _delta("Four.")
+
+        coordinator = SpeculativeGenerationCoordinator()
+        run = start_speculative_run(text="what is two plus two", runner=_runner, create_task=asyncio.ensure_future)
+        coordinator.set_run(adoptable(run))
+        await run.task
+
+        service, deltas = _service(SimpleNamespace(), coordinator)
+        with confirmed_turn_sees_matching_versions(), patch(
+            "app.operators.agent_intelligence.get_agent_intelligence"
+        ) as intel:
+            intel.return_value.execute_task_streaming = AsyncMock(side_effect=AssertionError("must adopt"))
+            turn = asyncio.create_task(service._run_gravitre_turn(_Ctx()))
+            for _ in range(200):
+                if any("four" in d.lower() for d in deltas):
+                    break
+                await asyncio.sleep(0.01)
+            assert any("four" in d.lower() for d in deltas), "first words before the replay finished"
+            assert order == [] and not turn.done(), "the turn waits for the replay"
+            release.set()
+            await asyncio.wait_for(turn, timeout=5.0)
+        assert order == ["deferred"]
+        assert coordinator.stats.deferred_writes_replayed == 1
+
+    @pytest.mark.asyncio
+    async def test_a_blocked_run_still_fails_before_any_output(self):
+        run = start_speculative_run(text="email sarah", runner=lambda: _events(_delta("Sent.")), create_task=asyncio.ensure_future)
+        await run.task
+        run.scope.mark_blocked("connector_write:email.send")
+        with pytest.raises(SpeculativeSideEffectBlocked):
+            run.start_commit()

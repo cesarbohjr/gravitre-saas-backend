@@ -567,6 +567,19 @@ class SpeculativeGenerationRun:
         SpeculativeSideEffectBlocked when the run hit a refused side effect."""
         return await self.scope.commit()
 
+    def start_commit(self) -> "asyncio.Task[int] | None":
+        """Adopt now and replay the deferred writes in the background.
+
+        The adoption check (blocked or not) is synchronous, so a refused run
+        still fails before any of its output is used; the replay does not
+        hold the first buffered event back. Writes the producer makes from
+        here on queue behind the replay, in order. None when there is nothing
+        to replay.
+        """
+        if not self.scope.begin_commit():
+            return None
+        return asyncio.ensure_future(self.scope.replay())
+
     async def _admit(self, event: Any) -> None:
         self.buffered_events += 1
         self.buffered_chars += _event_text_len(event)

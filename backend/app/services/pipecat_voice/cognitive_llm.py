@@ -432,6 +432,8 @@ class GravitreCognitiveLLMService(LLMService):
         self._adopted_run: Any | None = None
         # The current turn's TurnCancellation (process_frame).
         self._turn_work: TurnCancellation | None = None
+        # Assistant row id -> heard text from a barge-in (patch_live_assistant_row).
+        self._assistant_rewrites: dict[str, str] = {}
         # How a silenced reply's result was delivered: None (not yet), "spoken"
         # or "visible" (see _resume_speech_for_result).
         self._result_delivery: str | None = None
@@ -579,6 +581,8 @@ class GravitreCognitiveLLMService(LLMService):
             role = str(row.get("role") or "")
             content = str(row.get("content") or "")
             if role in {"user", "assistant"} and content.strip():
+                if role == "assistant" and row.get("id"):
+                    content = self._assistant_rewrites.get(str(row.get("id")), content)
                 live = {"role": role, "content": content}
                 if row.get("id"):
                     live["_id"] = str(row.get("id"))
@@ -594,6 +598,11 @@ class GravitreCognitiveLLMService(LLMService):
         """
         if not message_id:
             return
+        # Kept for rows not read yet: the rewrite can land (or be noted in
+        # memory at the barge-in) before the next tail refresh reads the row.
+        self._assistant_rewrites[message_id] = content
+        if len(self._assistant_rewrites) > 64:
+            self._assistant_rewrites.pop(next(iter(self._assistant_rewrites)))
         for row in self._durable_live_rows:
             if row.get("_id") == message_id and row.get("role") == "assistant":
                 row["content"] = content
@@ -1052,13 +1061,22 @@ class GravitreCognitiveLLMService(LLMService):
                 self._turn_work.link(adopted_run.cancellation)
 
             async def _adopted_events():
-                # Durable writes the run deferred while speculative land now,
-                # before any of its output is used (raises if it was blocked).
-                replayed = await adopted_run.commit()
-                if coordinator is not None:
-                    coordinator.note_replayed(replayed)
+                # Adopted now (raises if the run was blocked, before any of its
+                # output is used). The durable writes it deferred replay in the
+                # background, in order, instead of holding back its first
+                # buffered words; the turn ends only once they have landed.
+                replay = adopted_run.start_commit()
+                if replay is not None and coordinator is not None:
+                    replay.add_done_callback(
+                        lambda t: t.cancelled()
+                        or t.exception() is not None
+                        or coordinator.note_replayed(t.result())
+                    )
                 async for adopted_event in adopted_run.events():
                     yield adopted_event
+                if replay is not None:
+                    # A cut-off turn leaves the replay running on its own.
+                    await asyncio.shield(replay)
 
             events_source = adopt_or_fresh(_adopted_events(), _fresh_stream)
         else:
@@ -1352,6 +1370,9 @@ class GravitreCognitiveLLMService(LLMService):
             if durable_assistant_text:
                 preassigned_assistant_id = str(getattr(complete_event, "message_id", None) or "") or None
                 if self._interrupt_reporter is not None:
+                    # The previous barge-in's rewrite lands before this turn's
+                    # rows, so stored rows stay in order.
+                    await self._interrupt_reporter.flush_bookkeeping()
                     self._interrupt_reporter.mark_turn_persisted(
                         conversation_id=self._conversation_id,
                         assistant_message_id=preassigned_assistant_id,
@@ -1952,6 +1973,8 @@ class GravitreCognitiveLLMService(LLMService):
         complete = AssistantStreamComplete(
             full_content=report, tool_results=[], react_result=None, model="voice_task_cancel"
         )
+        if reporter is not None:
+            await reporter.flush_bookkeeping()
         persisted_id, assistant_id = await asyncio.to_thread(
             self._persist_completed_voice_turn,
             user_text=user_text,

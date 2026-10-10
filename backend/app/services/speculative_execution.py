@@ -174,8 +174,21 @@ class SpeculativeScope:
 
         Returns the number of writes replayed. Idempotent.
         """
-        if self.adopted or self.discarded:
+        if not self.begin_commit():
             return 0
+        return await self.replay()
+
+    def begin_commit(self) -> bool:
+        """Adopt now, synchronously; the replay itself runs in :meth:`replay`.
+
+        From here on the run may do side effects (it is adopted), and its new
+        durable writes queue behind the replay. Returns False when there is
+        nothing to replay (already adopted, or discarded). Raises
+        :class:`SpeculativeSideEffectBlocked` for a run that hit a refused
+        side effect: its output must not be used at all.
+        """
+        if self.adopted or self.discarded:
+            return False
         if self.blocked:
             # Never replay the writes of a run that hit a refused side effect.
             raise SpeculativeSideEffectBlocked(self.blocked_reason or "blocked")
@@ -185,6 +198,10 @@ class SpeculativeScope:
             # not flushing" before the replay has even started.
             self.adopted = True
             self.flushing = True
+        return True
+
+    async def replay(self) -> int:
+        """Replay the deferred writes after :meth:`begin_commit`."""
         token = _CURRENT.set(None)
         replayed = 0
         try:
