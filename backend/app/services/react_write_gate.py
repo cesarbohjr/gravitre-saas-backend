@@ -812,6 +812,11 @@ async def materialize_react_write_approval_turn(
     pending = pending_write_from_react(react_result)
     if not pending or not conversation_id:
         return None
+    from app.services.speculative_execution import block_if_speculative
+
+    # Staging an approval on words the user has not finished saying is refused;
+    # the run becomes non-adoptable and the confirmed turn stages it instead.
+    block_if_speculative("approval.stage_react_write")
 
     tool = str(pending.get("tool") or "").strip()
     pending_args = safe_normalize_stored_dict(pending, key='args')

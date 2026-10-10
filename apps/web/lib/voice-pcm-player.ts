@@ -19,6 +19,7 @@ import {
 } from "@/public/voice-worklets/voice-dsp.js"
 import { createPcmJitterState, schedulePcmStart } from "@/lib/voice-pcm-jitter"
 import { VOICE_PCM_PLAYER_PROCESSOR, loadVoiceWorklets } from "@/lib/voice-worklets"
+import { rampDuckGain, resetDuckGainAt } from "@/lib/voice-overlap-duck"
 
 /** Fade applied when playback is cut (barge-in, stop), instead of a hard stop. */
 export const PCM_FLUSH_FADE_S = 0.012
@@ -38,13 +39,27 @@ export type VoicePcmPlayer = {
   readonly kind: VoicePcmPlayerKind
   /** Queue PCM16 mono. Throws if the browser refuses to schedule it. */
   enqueue: (pcm: Int16Array, sampleRate: number) => void
-  /** Fade out and drop everything queued (barge-in). */
+  /** Fade out and drop everything queued (barge-in). Also ends any duck. */
   flush: () => void
+  /**
+   * Duck (true) or restore (false) the output level while an overlapping user
+   * turn is classified (speech.duck / speech.unduck). Audio keeps playing.
+   */
+  setDuck: (ducked: boolean) => void
   isActive: () => boolean
   /** Context time the first audio since the last flush started at, if any. */
   originTime: () => number | null
+  /**
+   * Seconds of reply audio actually played since the last flush: real audio
+   * only, never underrun gaps or the flush fade. Feeds the per-reply
+   * playback.progress reports the server uses to cut history to what was heard.
+   */
+  playedSeconds: () => number
   dispose: () => void
 }
+
+/** Most a worklet player extrapolates past its last progress report (s). */
+export const PLAYED_EXTRAPOLATION_MAX_S = 0.1
 
 export async function createVoicePcmPlayer(
   ctx: AudioContext,
@@ -73,15 +88,36 @@ export function createWorkletPcmPlayer(
     outputChannelCount: [1],
     processorOptions: { flushFadeS: PCM_FLUSH_FADE_S },
   })
-  node.connect(options.destination ?? ctx.destination)
+  // Overlap ducking sits after the player, so it lowers what is already queued.
+  const duck = createDuckControl(ctx, options.destination ?? ctx.destination)
+  node.connect(duck.input)
   let active = false
   let origin: number | null = null
   // Sequence of the last pcm message posted; the worklet echoes the last one it
   // processed. An "inactive" report from before audio we already posted (e.g. the
   // end of a barge-in flush fade) is stale and must not end the reply.
   let posted = 0
+  // Played-audio accounting, per flush epoch (the worklet restarts its count
+  // at each flush and tags reports with the epoch it belongs to).
+  let epoch = 0
+  let playedFrames = 0
+  let progressAt: number | null = null
+  let postedSeconds = 0
   node.port.onmessage = (event: MessageEvent) => {
-    const msg = event.data as { type?: string; active?: boolean; frame?: number; seq?: number }
+    const msg = event.data as {
+      type?: string
+      active?: boolean
+      frame?: number
+      seq?: number
+      epoch?: number
+      played?: number
+    }
+    if (msg?.type === "progress") {
+      if (msg.epoch !== epoch || typeof msg.played !== "number") return
+      playedFrames = Math.max(playedFrames, msg.played)
+      progressAt = typeof msg.frame === "number" ? msg.frame / ctx.sampleRate : ctx.currentTime
+      return
+    }
     if (msg?.type === "started") {
       const at = typeof msg.frame === "number" ? msg.frame / ctx.sampleRate : ctx.currentTime
       if (origin == null) origin = at
@@ -107,22 +143,38 @@ export function createWorkletPcmPlayer(
         options.onActiveChange?.(true)
       }
       posted += 1
+      postedSeconds += pcm.length / (sampleRate || 16000)
       node.port.postMessage(
         { type: "pcm", pcm: copy, sampleRate: sampleRate || 16000, seq: posted },
         [copy.buffer],
       )
     },
     flush() {
-      node.port.postMessage({ type: "flush" })
+      epoch += 1
+      playedFrames = 0
+      progressAt = null
+      postedSeconds = 0
+      node.port.postMessage({ type: "flush", epoch })
       origin = null
+      duck.resetAfterFlush()
     },
+    setDuck: (ducked) => duck.set(ducked),
     isActive: () => active,
     originTime: () => origin,
+    playedSeconds() {
+      let seconds = playedFrames / ctx.sampleRate
+      if (active && progressAt != null) {
+        // Between reports (~50 ms apart) assume playback kept going, briefly.
+        seconds += Math.min(PLAYED_EXTRAPOLATION_MAX_S, Math.max(0, ctx.currentTime - progressAt))
+      }
+      return Math.max(0, Math.min(postedSeconds, seconds))
+    },
     dispose() {
       try {
         node.port.postMessage({ type: "dispose" })
         node.port.onmessage = null
         node.disconnect()
+        duck.dispose()
       } catch {
         /* ignore */
       }
@@ -135,7 +187,8 @@ export function createBufferSourcePcmPlayer(
   ctx: AudioContext,
   options: VoicePcmPlayerOptions = {},
 ): VoicePcmPlayer {
-  const destination = options.destination ?? ctx.destination
+  const duck = createDuckControl(ctx, options.destination ?? ctx.destination)
+  const destination = duck.input
   const rate = ctx.sampleRate
   let out = ctx.createGain()
   out.connect(destination)
@@ -147,6 +200,10 @@ export function createBufferSourcePcmPlayer(
   let origin: number | null = null
   let fadeInPending = true
   const fadeFrames = Math.max(1, Math.round(0.004 * rate))
+  // Buffers scheduled since the last flush, for playedSeconds(); fully played
+  // ones are folded into playedDoneS.
+  let scheduled: Array<{ start: number; dur: number }> = []
+  let playedDoneS = 0
 
   const setActive = (next: boolean) => options.onActiveChange?.(next)
 
@@ -173,6 +230,7 @@ export function createBufferSourcePcmPlayer(
       src.buffer = buf
       src.connect(out)
       src.start(startFrame / rate)
+      scheduled.push({ start: startFrame / rate, dur: samples.length / rate })
       if (origin == null) origin = startFrame / rate
       nextFrame = startFrame + samples.length
       if (sources.length === 0) setActive(true)
@@ -218,10 +276,29 @@ export function createBufferSourcePcmPlayer(
       nextFrame = 0
       origin = null
       fadeInPending = true
+      scheduled = []
+      playedDoneS = 0
+      duck.resetAfterFlush()
       if (wasActive) setActive(false)
     },
+    setDuck: (ducked) => duck.set(ducked),
     isActive: () => sources.length > 0,
     originTime: () => origin,
+    playedSeconds() {
+      const now = ctx.currentTime
+      let partial = 0
+      const pending: Array<{ start: number; dur: number }> = []
+      for (const item of scheduled) {
+        const elapsed = now - item.start
+        if (elapsed >= item.dur) playedDoneS += item.dur
+        else {
+          if (elapsed > 0) partial += elapsed
+          pending.push(item)
+        }
+      }
+      scheduled = pending
+      return playedDoneS + partial
+    },
     dispose() {
       for (const src of sources) {
         src.onended = null
@@ -234,6 +311,35 @@ export function createBufferSourcePcmPlayer(
       sources = []
       try {
         out.disconnect()
+      } catch {
+        /* ignore */
+      }
+      duck.dispose()
+    },
+  }
+}
+
+/** The output gain stage both players route through for overlap ducking. */
+function createDuckControl(ctx: AudioContext, destination: AudioNode) {
+  const gain = ctx.createGain()
+  gain.connect(destination)
+  let ducked = false
+  return {
+    input: gain as AudioNode,
+    set(next: boolean) {
+      if (next === ducked) return
+      ducked = next
+      rampDuckGain(gain.gain, ctx.currentTime, next)
+    },
+    /** A flush cut the reply: full level again once its fade has finished. */
+    resetAfterFlush() {
+      if (!ducked) return
+      ducked = false
+      resetDuckGainAt(gain.gain, ctx.currentTime, ctx.currentTime + PCM_FLUSH_FADE_S)
+    },
+    dispose() {
+      try {
+        gain.disconnect()
       } catch {
         /* ignore */
       }

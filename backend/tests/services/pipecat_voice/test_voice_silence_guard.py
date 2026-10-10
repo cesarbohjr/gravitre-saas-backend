@@ -56,7 +56,7 @@ def _spoken_lines(events_and_delays: list[tuple[Any, float]], *, notice_s: float
     service.stop_ttfb_metrics = AsyncMock()
     spoken: list[str] = []
 
-    async def _record(text: str) -> None:
+    async def _record(text: str, kind: str = "progress") -> None:
         spoken.append(text)
 
     service._speak_narration = _record  # type: ignore[method-assign]

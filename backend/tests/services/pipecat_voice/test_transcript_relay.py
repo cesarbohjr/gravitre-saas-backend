@@ -142,10 +142,10 @@ async def test_relay_is_wired_into_the_live_pipeline_before_the_aggregator():
     from app.services.pipecat_voice import pipeline as pipeline_module
 
     source = inspect.getsource(pipeline_module.build_pipecat_voice_task)
-    assert "TranscriptRelayProcessor()" in source
+    assert "TranscriptRelayProcessor(" in source
     # Scope to the Pipeline([...]) list: "user_agg," also appears earlier at the
     # LLMContextAggregatorPair assignment, which would make the order check pass
     # for the wrong reason.
     listing = source[source.index("pipeline = Pipeline(") :]
-    assert listing.index("TranscriptRelayProcessor()") < listing.index("user_agg,")
-    assert listing.index("stt,") < listing.index("TranscriptRelayProcessor()")
+    assert listing.index("TranscriptRelayProcessor(") < listing.index("user_agg,")
+    assert listing.index("stt,") < listing.index("TranscriptRelayProcessor(")

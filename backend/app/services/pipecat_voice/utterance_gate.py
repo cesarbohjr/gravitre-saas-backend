@@ -119,10 +119,20 @@ def min_short_transcript_confidence(settings: Any) -> float:
 class UtteranceGateProcessor(FrameProcessor):
     """Drop final STT transcripts that are not a real utterance."""
 
-    def __init__(self, *, app_settings: Any = None, org_id: str = "", **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        app_settings: Any = None,
+        org_id: str = "",
+        voice_session: Any = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
         self._min_confidence = min_short_transcript_confidence(app_settings)
         self._org_id = org_id
+        # Told about dropped filler so a held barge-in made only of "mm-hmm"
+        # resolves as a backchannel instead of an empty interruption.
+        self._voice_session = voice_session
         self.dropped = 0
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
@@ -136,6 +146,9 @@ class UtteranceGateProcessor(FrameProcessor):
             confidence = average_word_confidence(getattr(frame, "result", None))
             if is_non_utterance(text, confidence=confidence, min_confidence=self._min_confidence):
                 self.dropped += 1
+                note = getattr(self._voice_session, "note_filler_dropped", None)
+                if callable(note) and is_filler_only(text):
+                    note()
                 logger.info(
                     "pipecat_voice_non_utterance_dropped org_id=%s chars=%s confidence=%s",
                     self._org_id,

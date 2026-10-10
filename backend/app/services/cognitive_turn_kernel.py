@@ -126,12 +126,17 @@ class CognitiveTurnKernel:
             return
         try:
             from app.services.conversation_state_service import get_conversation_state_service
+            from app.services.speculative_execution import run_or_defer
 
-            await get_conversation_state_service(self.settings).update_task_state(
-                request.conversation_id,
-                request.org_id,
-                {"active_objective": record},
-                client=request.client,
+            # A speculative (unconfirmed) run defers this until it is adopted.
+            await run_or_defer(
+                "kernel.active_objective",
+                lambda: get_conversation_state_service(self.settings).update_task_state(
+                    request.conversation_id,
+                    request.org_id,
+                    {"active_objective": record},
+                    client=request.client,
+                ),
             )
         except Exception as exc:  # noqa: BLE001 - the plan still answers this turn
             logger.warning(
@@ -594,6 +599,24 @@ class CognitiveTurnKernel:
         outcome_event: str | None = None,
     ) -> CognitiveTurnContext:
         """LEARN stage after ACT — record outcomes + promote typed memories."""
+        from app.services.speculative_execution import current_scope
+
+        scope = current_scope()
+        if scope is not None:
+            # Memory promotion and outcome rows are durable: a speculative run
+            # learns only if it is adopted (the replay runs this same method).
+            scope.defer(
+                "kernel.learn",
+                lambda: self.run_learn(
+                    request,
+                    context,
+                    act_result=act_result,
+                    recommendation_id=recommendation_id,
+                    outcome_event=outcome_event,
+                ),
+            )
+            context.learn = {"ok": True, "deferred": "speculative", "outcome_ids": [], "promoted_memory_ids": []}
+            return context
         t0 = time.perf_counter()
         learn: dict[str, Any] = {"ok": True, "outcome_ids": [], "promoted_memory_ids": []}
         try:
@@ -1089,8 +1112,14 @@ class CognitiveTurnKernel:
                 "knowledge_summary": knowledge_summary,
                 "confidence_summary": confidence_summary,
             }
+            from app.services.speculative_execution import run_or_defer
+
             # Still awaited, but the blocking insert no longer holds the event loop.
-            await asyncio.to_thread(client.table("cognitive_turn_traces").insert(payload).execute)
+            # A speculative run writes its trace only if it is adopted.
+            await run_or_defer(
+                "kernel.turn_trace",
+                lambda: asyncio.to_thread(client.table("cognitive_turn_traces").insert(payload).execute),
+            )
         except Exception as exc:  # noqa: BLE001
             logger.debug("cognitive_turn_trace_persist_skipped error=%s", exc)
 

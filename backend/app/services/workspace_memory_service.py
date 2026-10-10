@@ -94,6 +94,22 @@ def promote_turn_memories(
     _ = settings or get_settings()
     if not client or not org_id or not memories:
         return []
+    from app.services.speculative_execution import defer_if_speculative
+
+    if defer_if_speculative(
+        "memory.promote_turn_memories",
+        promote_turn_memories,
+        client,
+        org_id=org_id,
+        memories=memories,
+        agent_id=agent_id,
+        conversation_id=conversation_id,
+        user_id=user_id,
+        settings=settings,
+        provenance=provenance,
+    ):
+        # Unconfirmed speech never writes memory; replayed only if adopted.
+        return []
 
     written: list[dict[str, Any]] = []
     base_prov = (provenance or "confirmed_turn").strip() or "confirmed_turn"

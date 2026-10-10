@@ -59,6 +59,16 @@ import {
   createVoicePcmPlayer,
   type VoicePcmPlayer,
 } from "@/lib/voice-pcm-player"
+import { createOverlapDuckState } from "@/lib/voice-overlap-duck"
+import {
+  PLAYBACK_PROGRESS_INTERVAL_MS,
+  assistantTextKind,
+  createPlaybackProgressTracker,
+  encodePlaybackProgress,
+  speechInterruptionKind,
+  transcriptDisposition,
+  type PlaybackProgressReason,
+} from "@/lib/voice-playback-progress"
 import {
   cancelVoiceSessionTurn,
   getVoiceStatus,
@@ -90,6 +100,11 @@ export type DuplexLatencyStages = {
 export type DuplexTurnResult = {
   userText: string
   assistantText: string
+  /**
+   * The answer part of assistantText: without the acknowledgement ("One
+   * moment.") or tool narration the server labelled filler / progress.
+   */
+  assistantAnswerText?: string
   conversationId: string | null
   turnId: string | null
   cancelled: boolean
@@ -100,9 +115,23 @@ export type DuplexTurnResult = {
 /** Phase 5: barge-in reconciliation — what the user actually heard. */
 export type SpeechInterruptedInfo = {
   reconciledText: string
+  /** The answer part of what was heard (no filler or tool narration). */
+  reconciledAnswerText?: string
   draftChars: number
   droppedChars: number
   playbackOffsetMs: number | null
+}
+
+export type SpeechStoppedInfo = {
+  replyId: number | null
+  /** The reply is still being generated; its text keeps arriving. */
+  workContinues: boolean
+}
+
+export type AssistantNotice = {
+  kind: string
+  text: string
+  replyId: number | null
 }
 
 type Options = {
@@ -118,9 +147,22 @@ type Options = {
   forceHttpDuplex?: boolean
   getHistory?: () => Array<{ role: string; content: string }>
   onUserFinal?: (text: string) => void
+  /**
+   * A final transcript the server will not treat as a turn ("yeah" over the
+   * bot, an echo of the bot, "you there?" while it thinks). The reply on
+   * screen is left as it is and no user message is added.
+   */
+  onBackchannel?: (text: string, reason: string) => void
   onAssistantDelta?: (text: string) => void
   onSpeechInterrupted?: (info: SpeechInterruptedInfo) => void
-  onTurnComplete?: (result: DuplexTurnResult) => void
+  /**
+   * "Stop talking, keep working": the server silenced the reply's audio but its
+   * text keeps streaming and is saved in full. The reply on screen is kept.
+   */
+  onSpeechStopped?: (info: SpeechStoppedInfo) => void
+  /** A short one-time note from the server (e.g. "still working on it"). */
+  onAssistantNotice?: (notice: AssistantNotice) => void
+  onTurnComplete?:(result: DuplexTurnResult) => void
   onError?: (message: string, billing?: boolean) => void
   /**
    * Recovery path when Pipecat produces assistant text but no audio frames.
@@ -258,6 +300,13 @@ export function useVoiceDuplexSession(options: Options) {
   // One decoder per reply stream, so a sample split across two messages survives.
   const pcmDecoderRef = useRef(createPcm16StreamDecoder())
   const assistantTextRef = useRef("")
+  // Answer-labelled text only (no filler / tool narration), for the turn result.
+  const assistantAnswerTextRef = useRef("")
+  // What the player actually played, per reply id, reported to the server when
+  // session.ready says playback-grounded history is on.
+  const playbackTrackerRef = useRef(createPlaybackProgressTracker())
+  const playbackReportsEnabledRef = useRef(false)
+  const playbackReportTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastUserFinalRef = useRef("")
   // Pipecat keeps one websocket alive across many turns. Completion is per turn,
   // not per socket. This guard prevents a close event from re-dispatching a turn
@@ -280,6 +329,17 @@ export function useVoiceDuplexSession(options: Options) {
   // they belong to; frames of an interrupted reply are dropped by that id,
   // and the time window above only covers servers that send no id.
   const interruptedReplyIdRef = useRef<number | null>(null)
+  // voice_overlap_duck_v1: the reply is ducked while the server classifies a
+  // user turn that overlaps it (speech.duck / speech.unduck).
+  const overlapDuckRef = useRef(createOverlapDuckState())
+  const endOverlapDuck = () => {
+    if (overlapDuckRef.current.reset()) pcmPlayerRef.current?.setDuck(false)
+  }
+  // The current reply was silenced by a "stop talking" (speech_stop) while its
+  // text keeps streaming: no HTTP TTS fallback may speak it again.
+  const speechMutedRef = useRef(false)
+  // Server notices already shown, by kind and reply id (each is one-time).
+  const noticesShownRef = useRef(new Set<string>())
   const isInterruptedReplyAudio = (replyId: unknown): boolean => {
     if (typeof replyId === "number") {
       const cut = interruptedReplyIdRef.current
@@ -319,6 +379,38 @@ export function useVoiceDuplexSession(options: Options) {
     }
   }, [])
 
+  // Report how much of each reply the player has played. Called on a timer
+  // while audio plays, when the player drains, and (with interrupted) right
+  // before playback is cut, so the server can cut history to what was heard.
+  const sendPlaybackProgress = useCallback(
+    (reason: PlaybackProgressReason, options?: { interrupted?: boolean; replyId?: unknown }) => {
+      if (!playbackReportsEnabledRef.current || orchestrationRef.current !== "pipecat") return
+      const ws = wsRef.current
+      if (!ws || ws.readyState !== WebSocket.OPEN) return
+      const played = pcmPlayerRef.current?.playedSeconds() ?? 0
+      const reports = playbackTrackerRef.current.reports(played, {
+        reason,
+        interrupted: options?.interrupted,
+        ensureReplyId: options?.replyId,
+      })
+      for (const report of reports) {
+        try {
+          ws.send(encodePlaybackProgress(report))
+        } catch {
+          /* best effort: the server falls back to its own estimate */
+        }
+      }
+    },
+    [],
+  )
+
+  const stopPlaybackReportTimer = useCallback(() => {
+    if (playbackReportTimerRef.current) {
+      clearInterval(playbackReportTimerRef.current)
+      playbackReportTimerRef.current = null
+    }
+  }, [])
+
   const emitOutputDiagnostic = useCallback(
     (
       event:
@@ -353,6 +445,7 @@ export function useVoiceDuplexSession(options: Options) {
     audioReplyWatchdogRef.current = setTimeout(() => {
       audioReplyWatchdogRef.current = null
       if (
+        !speechMutedRef.current &&
         sessionWantedRef.current &&
         activeRef.current &&
         assistantTextRef.current.trim() &&
@@ -384,6 +477,10 @@ export function useVoiceDuplexSession(options: Options) {
     // Short fade-out in the player rather than a hard stop: cutting a waveform
     // mid-cycle is itself a click.
     pcmPlayerRef.current?.flush()
+    // The flush also restores the player's gain, so no duck is left pending.
+    overlapDuckRef.current.reset()
+    // The player's played count restarts at the flush; so does the timeline.
+    playbackTrackerRef.current.reset()
     pcmBlockedQueueRef.current = []
     pcmDecoderRef.current.reset()
   }, [])
@@ -452,13 +549,14 @@ export function useVoiceDuplexSession(options: Options) {
   const handlePcmActiveChange = useCallback(
     (playing: boolean) => {
       if (playing) return
+      sendPlaybackProgress("drained")
       agentSpeakingRef.current = false
       if (phase2FlagsRef.current.echoTestMode) {
         emitMicDiagnostics("echo_test")
       }
       if (activeRef.current) setPresence("listening")
     },
-    [emitMicDiagnostics],
+    [emitMicDiagnostics, sendPlaybackProgress],
   )
 
   const enqueuePcm = useCallback(
@@ -814,6 +912,8 @@ export function useVoiceDuplexSession(options: Options) {
       /* ignore */
     }
     processorRef.current = null
+    stopPlaybackReportTimer()
+    playbackReportsEnabledRef.current = false
     pcmPlayerRef.current?.dispose()
     pcmPlayerRef.current = null
     try {
@@ -849,7 +949,7 @@ export function useVoiceDuplexSession(options: Options) {
     // A new session must never start silently muted.
     micMutedRef.current = false
     setMicMuted(false)
-  }, [cancelReconnect, emitMicDiagnostics, stopMicTelemetry])
+  }, [cancelReconnect, emitMicDiagnostics, stopMicTelemetry, stopPlaybackReportTimer])
 
   const bargeIn = useCallback(async () => {
     const t0 = performance.now()
@@ -864,6 +964,8 @@ export function useVoiceDuplexSession(options: Options) {
         : undefined
     setPresence("interrupted")
     agentSpeakingRef.current = false
+    // Report the cut position before the flush resets the player's count.
+    sendPlaybackProgress("barge_in", { interrupted: true })
     stopPlayback()
     abortRef.current?.abort()
     abortRef.current = null
@@ -889,7 +991,7 @@ export function useVoiceDuplexSession(options: Options) {
     const ms = Math.round(performance.now() - t0)
     setLatency((prev) => ({ ...prev, barge_in_cancel_ms: ms }))
     if (activeRef.current) setPresence("listening")
-  }, [stopPlayback])
+  }, [sendPlaybackProgress, stopPlayback])
 
   const runSessionTurn = useCallback(
     async (finalText: string, opts?: { speculative?: boolean }) => {
@@ -1307,9 +1409,16 @@ export function useVoiceDuplexSession(options: Options) {
       failureHandledRef.current = false
       socketOpenedRef.current = false
       assistantTextRef.current = ""
+      assistantAnswerTextRef.current = ""
+      speechMutedRef.current = false
+      noticesShownRef.current = new Set()
       lastUserFinalRef.current = ""
       // Reply ids restart with every server session.
       interruptedReplyIdRef.current = null
+      overlapDuckRef.current = createOverlapDuckState()
+      playbackTrackerRef.current = createPlaybackProgressTracker()
+      playbackReportsEnabledRef.current = false
+      stopPlaybackReportTimer()
       dropAudioUntilRef.current = 0
 
       ws.onopen = () => {
@@ -1338,6 +1447,19 @@ export function useVoiceDuplexSession(options: Options) {
         if (kind === "session.ready") {
           const cid = typeof msg.conversation_id === "string" ? msg.conversation_id : null
           if (cid) optsRef.current.onConversationId?.(cid)
+          playbackReportsEnabledRef.current = msg.playback_grounded_history_v1 === true
+          stopPlaybackReportTimer()
+          if (playbackReportsEnabledRef.current) {
+            const interval =
+              typeof msg.playback_report_interval_ms === "number" && msg.playback_report_interval_ms >= 100
+                ? msg.playback_report_interval_ms
+                : PLAYBACK_PROGRESS_INTERVAL_MS
+            playbackReportTimerRef.current = setInterval(() => {
+              if (pcmPlayerRef.current?.isActive() && playbackTrackerRef.current.hasOpenReplies()) {
+                sendPlaybackProgress("periodic")
+              }
+            }, interval)
+          }
           return
         }
         if (kind === "error") {
@@ -1364,8 +1486,16 @@ export function useVoiceDuplexSession(options: Options) {
         if (kind === "transcript") {
           const text = String(msg.text || "").trim()
           if (!text) return
+          const disposition = transcriptDisposition(msg)
+          if (disposition === "backchannel") {
+            // The server dropped it ("yeah" over the reply, an echo, "you
+            // there?" while thinking): not a new user turn. Keep the reply on
+            // screen and its audio playing, and add no user message.
+            optsRef.current.onBackchannel?.(text, String(msg.turn_taking || "backchannel"))
+            return
+          }
           setProvisionalTranscript(text)
-          if (msg.final) {
+          if (disposition === "final") {
             dropAudioUntilRef.current = 0
             lastUserFinalRef.current = text
             browserAudioPlaybackStartedRef.current = false
@@ -1380,6 +1510,8 @@ export function useVoiceDuplexSession(options: Options) {
             audibleAudioFramesRef.current = 0
             maxPcmPeakRef.current = 0
             assistantTextRef.current = ""
+            assistantAnswerTextRef.current = ""
+            speechMutedRef.current = false
             turnIdRef.current = null
             pipecatTurnCompletionDispatchedRef.current = false
           } else if (agentSpeakingRef.current) {
@@ -1392,6 +1524,7 @@ export function useVoiceDuplexSession(options: Options) {
           if (!delta) return
           const firstAssistantText = assistantTextRef.current.length === 0
           assistantTextRef.current += delta
+          if (assistantTextKind(msg) === "answer") assistantAnswerTextRef.current += delta
           // Armed even inside the post-interrupt drop window: if that window
           // swallows the start of the next reply, the HTTP fallback still
           // speaks it. The interrupted reply's watchdog was cleared already.
@@ -1419,6 +1552,7 @@ export function useVoiceDuplexSession(options: Options) {
           optsRef.current.onTurnComplete?.({
             userText: lastUserFinalRef.current,
             assistantText,
+            assistantAnswerText: assistantAnswerTextRef.current.trim() || fallbackText,
             conversationId: completedConversationId,
             turnId,
             cancelled: false,
@@ -1430,6 +1564,50 @@ export function useVoiceDuplexSession(options: Options) {
           })
           return
         }
+        if (kind === "assistant_notice") {
+          const text = String(msg.text || "").trim()
+          if (!text) return
+          const replyId = typeof msg.reply_id === "number" ? msg.reply_id : null
+          const noticeKind = String(msg.kind || "notice")
+          const key = `${noticeKind}:${replyId ?? ""}`
+          if (noticesShownRef.current.has(key)) return
+          noticesShownRef.current.add(key)
+          optsRef.current.onAssistantNotice?.({ kind: noticeKind, text, replyId })
+          return
+        }
+        if (kind === "speech.duck" || kind === "speech.unduck") {
+          // Overlap ducking: lower the reply while the server decides whether
+          // the person is interrupting; restore it when they were not. A real
+          // interruption arrives as speech.interrupted and cuts instead.
+          if (kind === "speech.duck") {
+            if (typeof msg.reply_id === "number" && isInterruptedReplyAudio(msg.reply_id)) return
+            if (overlapDuckRef.current.duck(msg.reply_id)) pcmPlayerRef.current?.setDuck(true)
+          } else if (overlapDuckRef.current.unduck(msg.reply_id)) {
+            pcmPlayerRef.current?.setDuck(false)
+          }
+          return
+        }
+        if (kind === "speech.interrupted" && speechInterruptionKind(msg) === "speech_stop") {
+          // "Stop talking, keep working": silence this reply and drop the rest
+          // of its audio by reply id, but keep its text. It keeps streaming
+          // and is saved in full, so nothing is reset or trimmed here, and no
+          // playback report is sent (there is no cut to ground history on).
+          clearAudioReplyWatchdog()
+          speechMutedRef.current = true
+          const replyId = typeof msg.reply_id === "number" ? msg.reply_id : null
+          if (replyId !== null) {
+            interruptedReplyIdRef.current = Math.max(interruptedReplyIdRef.current ?? -1, replyId)
+          } else {
+            dropAudioUntilRef.current = performance.now() + INTERRUPTED_AUDIO_DROP_MS
+          }
+          stopPcmPlayback()
+          endOverlapDuck()
+          agentSpeakingRef.current = false
+          const workContinues = msg.work_continues === true
+          if (activeRef.current) setPresence(workContinues ? "thinking" : "listening")
+          optsRef.current.onSpeechStopped?.({ replyId, workContinues })
+          return
+        }
         if (kind === "speech.interrupted") {
           // The server only sends this for a real barge-in. Drop the audio
           // already queued here (up to the jitter lead) so the bot stops the
@@ -1437,6 +1615,8 @@ export function useVoiceDuplexSession(options: Options) {
           // The cancelled reply must not come back: no fallback replay of its
           // full text, and no late frames of it.
           clearAudioReplyWatchdog()
+          // Played position at the cut, before the flush resets it.
+          sendPlaybackProgress("interrupted", { interrupted: true, replyId: msg.reply_id })
           if (typeof msg.reply_id === "number") {
             interruptedReplyIdRef.current = Math.max(interruptedReplyIdRef.current ?? -1, msg.reply_id)
           } else {
@@ -1447,16 +1627,22 @@ export function useVoiceDuplexSession(options: Options) {
             agentSpeakingRef.current = false
             if (activeRef.current) setPresence("listening")
           }
+          // The flush already restored the gain; this covers an idle player.
+          endOverlapDuck()
           // Phase 5: reconcile the visible/stored assistant text down to the
           // portion that was actually spoken aloud. Without this the drafted
           // tail the user never heard is replayed as history next turn.
           if (msg.reconcile_played_audio !== true) return
           const reconciled = String(msg.reconciled_text ?? "")
+          const reconciledAnswer =
+            typeof msg.reconciled_answer_text === "string" ? msg.reconciled_answer_text : undefined
+          if (reconciledAnswer !== undefined) assistantAnswerTextRef.current = reconciledAnswer
           if (reconciled.length >= assistantTextRef.current.length) return
           assistantTextRef.current = reconciled
           optsRef.current.onAssistantDelta?.(reconciled)
           optsRef.current.onSpeechInterrupted?.({
             reconciledText: reconciled,
+            reconciledAnswerText: reconciledAnswer,
             draftChars: Number(msg.draft_chars) || 0,
             droppedChars: Number(msg.dropped_chars) || 0,
             playbackOffsetMs:
@@ -1469,6 +1655,8 @@ export function useVoiceDuplexSession(options: Options) {
           // provider frame must not create overlapping speech.
           if (audioFallbackTriggeredRef.current) return
           if (isInterruptedReplyAudio(msg.reply_id)) return
+          // A newer reply never plays ducked.
+          if (overlapDuckRef.current.audio(msg.reply_id)) pcmPlayerRef.current?.setDuck(false)
           const pcm = pcmDecoderRef.current.decode(msg.pcm16_b64)
           if (pcm.length > 0) {
             if (firstAudioReceivedAtRef.current == null) {
@@ -1481,6 +1669,11 @@ export function useVoiceDuplexSession(options: Options) {
               audibleAudioFramesRef.current += 1
               clearAudioReplyWatchdog()
             }
+            playbackTrackerRef.current.noteReceived(
+              msg.reply_id,
+              pcm.length,
+              Number(msg.sample_rate) || 16000,
+            )
           }
           enqueuePcm(pcm, Number(msg.sample_rate) || 16000)
         }
@@ -1510,6 +1703,7 @@ export function useVoiceDuplexSession(options: Options) {
           optsRef.current.onTurnComplete?.({
             userText: lastUserFinalRef.current,
             assistantText: assistantTextRef.current.trim(),
+            assistantAnswerText: assistantAnswerTextRef.current.trim(),
             conversationId: optsRef.current.conversationId || null,
             turnId: null,
             cancelled: false,
@@ -1568,7 +1762,7 @@ export function useVoiceDuplexSession(options: Options) {
         err instanceof Error ? err.message : "Microphone permission denied",
       )
     }
-  }, [applyMicMuted, armAudioReplyWatchdog, bargeIn, cancelReconnect, clearAudioReplyWatchdog, enqueuePcm, handlePcmActiveChange, handlePipecatSocketFailure, setupVoiceMicrophone, startMicTelemetry, stopPcmPlayback, teardownMic])
+  }, [applyMicMuted, armAudioReplyWatchdog, bargeIn, cancelReconnect, clearAudioReplyWatchdog, enqueuePcm, handlePcmActiveChange, handlePipecatSocketFailure, sendPlaybackProgress, setupVoiceMicrophone, startMicTelemetry, stopPcmPlayback, stopPlaybackReportTimer, teardownMic])
 
   // Assigned after definition so handlePipecatSocketFailure can re-enter these
   // without a circular useCallback dependency.
@@ -1795,6 +1989,8 @@ export function useVoiceDuplexSession(options: Options) {
           optsRef.current.onUserFinal?.(trimmed)
           setPresence("thinking")
           assistantTextRef.current = ""
+          assistantAnswerTextRef.current = ""
+          speechMutedRef.current = false
           ws.send(JSON.stringify({ type: "text", text: trimmed }))
         }
         return

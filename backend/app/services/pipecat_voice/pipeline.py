@@ -28,11 +28,15 @@ from app.services.pipecat_voice.backchannel_turn_strategy import (
 )
 from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
 from app.services.pipecat_voice.interrupt_reporter import ElevenLabsInterruptReporter
-from app.services.pipecat_voice.json_audio_serializer import GravitreJsonAudioSerializer
+from app.services.pipecat_voice.json_audio_serializer import (
+    GravitreJsonAudioSerializer,
+    ReplyAudioStampProcessor,
+)
 from app.services.pipecat_voice.krisp_factory import build_krisp_viva_input_filter
 from app.services.pipecat_voice.speculative_generation import SpeculativeGenerationCoordinator
 from app.services.pipecat_voice.speculative_prefetch import SpeculativePrefetchProcessor
 from app.services.pipecat_voice.spoken_text_tap import (
+    GeneratedSpeechTapProcessor,
     SpokenTextLedger,
     SpokenTextTapProcessor,
 )
@@ -180,7 +184,19 @@ def build_pipecat_voice_task(
             conversation_id_getter=lambda: getattr(llm, "_conversation_id", None) or conversation_id,
         )
     )
-    serializer = GravitreJsonAudioSerializer(
+    from app.services.pipecat_voice.playback_report_serializer import PlaybackReportingSerializer
+    from app.services.pipecat_voice.voice_reply_playback import VoicePlaybackTracker
+
+    # Per reply: labelled text (filler / progress / answer), audio sent, words
+    # timed, and what the browser reports it played. Feeds first-audio-by-kind
+    # latency and the heard-text rewrite after a barge-in.
+    playback_tracker = VoicePlaybackTracker(
+        reply_id_getter=lambda: voice_session.reply_id,
+        on_first_audio=turn_trace.on_first_audio_of_kind,
+    )
+    playback_grounded = bool(getattr(settings, "voice_playback_grounded_history_v1", False))
+    serializer = PlaybackReportingSerializer(
+        playback_tracker=playback_tracker,
         turn_trace=turn_trace,
         session=voice_session,
         default_origin=voice_session.origin,
@@ -277,7 +293,22 @@ def build_pipecat_voice_task(
         tts_service=tts,
         speculative_coordinator=speculative_coordinator,
         voice_session=voice_session,
+        playback_tracker=playback_tracker,
+        playback_grounded_history_enabled=playback_grounded,
     )
+    # A barge-in that rewrites a stored reply also fixes the bridge's cached copy.
+    interrupt_reporter.on_assistant_rewritten = llm.patch_live_assistant_row
+    llm._playback_tracker = playback_tracker
+    # voice_answer_first_v1: acknowledgement / tool lines wait for the audio
+    # queued ahead of them (measured just before the output transport).
+    answer_first = bool(getattr(settings, "voice_answer_first_v1", False))
+    playout_processors: list[Any] = []
+    if answer_first:
+        from app.services.pipecat_voice.voice_answer_first import PlayoutClock, PlayoutClockProcessor
+
+        playout_clock = PlayoutClock()
+        llm._playout_clock = playout_clock
+        playout_processors.append(PlayoutClockProcessor(playout_clock))
 
     # Share active durable turn identity so mid-generation interruption can
     # persist/update the exact current turn rather than targeting a prior row.
@@ -329,22 +360,31 @@ def build_pipecat_voice_task(
             stt,
             # Before anything reads a final transcript: a cough, breath or "uh"
             # Flux finalizes as a turn must never reach the brain.
-            UtteranceGateProcessor(app_settings=settings, org_id=org_id),
+            UtteranceGateProcessor(app_settings=settings, org_id=org_id, voice_session=voice_session),
             # user_agg consumes TranscriptionFrame before transport.output(), so
             # the serializer never sees one and the client got no transcript at
             # all. Mirror finals as a message frame, which passes through.
-            TranscriptRelayProcessor(),
+            # With the Flux turn strategy, finals it will drop (backchannel,
+            # echo, held while thinking) are marked so the client keeps the reply.
+            TranscriptRelayProcessor(voice_session=voice_session if use_flux else None),
             TextTurnKickProcessor(),
             speculative,
             user_agg,
             llm,
             interrupt_reporter,
             tts,
+            # Binds each TTS context to the reply that generated it and drops
+            # audio of a cut-off reply, so late frames never carry a new id.
+            ReplyAudioStampProcessor(voice_session=voice_session),
+            # Where each word starts in its reply's audio, in TTS output order
+            # (maps the browser's played ms to heard text).
+            GeneratedSpeechTapProcessor(playback_tracker, voice_session=voice_session),
+            *playout_processors,
             transport.output(),
             # After the output transport: word-level TTSTextFrames ride the
             # transport clock queue, so this position tracks real playback rather
             # than queued-but-unplayed text.
-            SpokenTextTapProcessor(spoken_ledger),
+            SpokenTextTapProcessor(spoken_ledger, playback=playback_tracker),
             assistant_agg,
         ]
     )
@@ -398,23 +438,9 @@ def build_pipecat_voice_task(
                 ttfb_by_processor_ms=ttfb_by_processor_ms,
             )
             e2e_ms = _pending_e2e_ms.pop("value", None)
-            if e2e_ms is not None:
-                from app.services.pipecat_voice.voice_latency_metrics import (
-                    record_voice_slo_metric,
-                )
-                from app.services.voice_slo import METRIC_A_ID
-
-                await asyncio.to_thread(
-                    record_voice_slo_metric,
-                    settings,
-                    metric=METRIC_A_ID,
-                    org_id=org_id,
-                    user_id=user_id,
-                    conversation_id=conversation_id,
-                    ms=e2e_ms,
-                    source="duplex_first_speech",
-                    composed=True,
-                )
+            # SLO Metric A (first speech) is written with the turn's
+            # critical-path row by turn_trace: it times the first ANSWER audio,
+            # which may come after the acknowledgement this event fires on.
             # The turn's critical-path row is written by turn_trace once the
             # whole turn (bridge + browser playback report) is in.
             turn_trace.on_observer_breakdown(
@@ -450,7 +476,15 @@ def build_pipecat_voice_task(
         "spoken_prompt_v2": polish_flags["spoken_prompt_v2"],
         "response_length_adapt_v1": polish_flags["response_length_adapt_v1"],
         "played_audio_reconcile_v1": polish_flags["played_audio_reconcile_v1"],
+        # assistant_text deltas carry kind: filler | progress | answer.
+        "spoken_segment_labels": True,
+        # The browser sends playback.progress reports only when this is on.
+        "playback_grounded_history_v1": playback_grounded,
+        "answer_first_v1": answer_first,
+        "playback_report_interval_ms": 500,
     }
+    idle_refresh_enabled = bool(getattr(settings, "voice_tts_idle_refresh_v1", False))
+    idle_refresh_tasks: list[asyncio.Task[Any]] = []
 
     @transport.event_handler("on_client_connected")
     async def _on_client_connected(_transport, _websocket):
@@ -476,6 +510,29 @@ def build_pipecat_voice_task(
                     pass
         except Exception as exc:  # noqa: BLE001
             logger.warning("pipecat_tts_warmup_hook_failed error=%s", exc)
+        if idle_refresh_enabled and not idle_refresh_tasks:
+            from app.services.pipecat_voice.tts_warmup import TtsIdleRefresher
+
+            refresher = TtsIdleRefresher(
+                tts,
+                last_activity=lambda: playback_tracker.last_audio_activity,
+                busy=lambda: bool(
+                    getattr(voice_session, "bot_speaking", False)
+                    or getattr(voice_session, "assistant_generating", False)
+                ),
+            )
+            idle_refresh_tasks.append(asyncio.create_task(refresher.run()))
+
+    @transport.event_handler("on_client_disconnected")
+    async def _on_client_disconnected(_transport, _websocket):
+        while idle_refresh_tasks:
+            idle_refresh_tasks.pop().cancel()
+        if playback_grounded:
+            # A reply cut off by the drop is stored as heard, not in full.
+            try:
+                await interrupt_reporter.reconcile_on_disconnect()
+            except Exception:  # noqa: BLE001 - the socket is closing either way
+                logger.warning("pipecat_disconnect_heard_reconcile_failed", exc_info=True)
 
     # The router releases this socket's stop marker when the socket closes.
     task.gravitre_interrupt_reporter = interrupt_reporter

@@ -760,6 +760,33 @@ class Settings(BaseSettings):
             "voice_speculative_prefix_max_words",
         ),
     )
+    # Speculative run bounds (always on, conservative): an unadopted run is
+    # cancelled after this long; past the buffer caps its producer pauses.
+    voice_speculative_timeout_s: float = Field(
+        default=5.0,
+        validation_alias=AliasChoices("VOICE_SPECULATIVE_TIMEOUT_S", "voice_speculative_timeout_s"),
+    )
+    voice_speculative_max_buffer_chars: int = Field(
+        default=2000,
+        validation_alias=AliasChoices(
+            "VOICE_SPECULATIVE_MAX_BUFFER_CHARS",
+            "voice_speculative_max_buffer_chars",
+        ),
+    )
+    voice_speculative_max_buffer_events: int = Field(
+        default=512,
+        validation_alias=AliasChoices(
+            "VOICE_SPECULATIVE_MAX_BUFFER_EVENTS",
+            "voice_speculative_max_buffer_events",
+        ),
+    )
+    # Versioned request revisions: speculative adoption bound to transcript,
+    # conversation, pending-task, approval and context versions, with a
+    # stricter transcript check (default OFF).
+    voice_request_revisions_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_REQUEST_REVISIONS_V1", "voice_request_revisions_v1"),
+    )
     voice_tts_chunk_v2: bool = Field(
         default=False,
         validation_alias=AliasChoices("VOICE_TTS_CHUNK_V2", "voice_tts_chunk_v2"),
@@ -795,6 +822,101 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "VOICE_PLAYED_AUDIO_RECONCILE_V1",
             "voice_played_audio_reconcile_v1",
+        ),
+    )
+    # Meaningful interruption types on the live voice path: a backchannel keeps
+    # the reply going, "explain that" pauses and answers with the task kept,
+    # a correction revises the active request, "stop talking" silences speech
+    # without cancelling authorized work, and "cancel it" stops pending
+    # execution and reports what had already happened. Off: every non-
+    # backchannel interruption stops the reply and becomes an ordinary turn.
+    voice_interrupt_intents_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_INTERRUPT_INTENTS_V1",
+            "voice_interrupt_intents_v1",
+        ),
+    )
+    # While a user turn that overlaps the bot's speech is being classified
+    # (backchannel / echo / real interruption), the client is told to duck the
+    # reply's audio (speech.duck) instead of playing it at full level, and to
+    # restore it (speech.unduck) when the overlap turns out not to be an
+    # interruption. A real interruption still cuts via speech.interrupted.
+    # Off: nothing is sent and the reply plays at full level until resolved.
+    voice_overlap_duck_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_OVERLAP_DUCK_V1",
+            "voice_overlap_duck_v1",
+        ),
+    )
+    # A committed final that is syntactically incomplete ("I want to check",
+    # "...and the", "um") holds the turn's first spoken output for a short,
+    # bounded window. If the user resumes inside it the fragment is not
+    # answered: it is carried into the turn that follows. Off: the fragment
+    # is answered as soon as it is committed, as before.
+    voice_incomplete_turn_hold_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_INCOMPLETE_TURN_HOLD_V1",
+            "voice_incomplete_turn_hold_v1",
+        ),
+    )
+    # Length of that hold in milliseconds; capped at 700.
+    voice_incomplete_turn_hold_ms: int = Field(
+        default=600,
+        validation_alias=AliasChoices(
+            "VOICE_INCOMPLETE_TURN_HOLD_MS",
+            "voice_incomplete_turn_hold_ms",
+        ),
+    )
+    # Safety (on by default): a bare go-ahead ("yes", "send it") answering the
+    # assistant's question is not acted on until it is final. The brain does
+    # not start (so no approval is consumed and no write runs) for
+    # voice_incomplete_turn_hold_ms; if the user resumes inside that window the
+    # turn waits for what they say, and a stop, correction or request
+    # ("yes... wait") replaces the go-ahead. Costs that window on such
+    # confirmations only; every other turn is unaffected. Off: the go-ahead is
+    # answered the moment Flux commits it, as before.
+    voice_confirmation_hold_v1: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "VOICE_CONFIRMATION_HOLD_V1",
+            "voice_confirmation_hold_v1",
+        ),
+    )
+    # The browser reports how much of each reply it actually played
+    # (playback.progress). On a barge-in the stored assistant message is cut to
+    # the answer text that was played, mapped from played audio ms through the
+    # reply's word timings, and marked as cut so the model knows the rest was not
+    # heard. Without a report the server-side estimate is used, as before.
+    voice_playback_grounded_history_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_PLAYBACK_GROUNDED_HISTORY_V1",
+            "voice_playback_grounded_history_v1",
+        ),
+    )
+    # Reconnect the ElevenLabs websocket when it has been idle for the expiry
+    # (45 s) and is no longer open, so the next reply does not pay the connect.
+    # A healthy socket is never torn down (Pipecat's keepalive holds it open).
+    voice_tts_idle_refresh_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_TTS_IDLE_REFRESH_V1",
+            "voice_tts_idle_refresh_v1",
+        ),
+    )
+    # Answer-first speech: acknowledgement and tool lines are held as text and
+    # spoken one at a time just before the queued audio runs out, instead of
+    # all being queued ahead of the answer. When the answer is ready, lines
+    # not yet spoken are dropped; a tool line is spoken only while its tool is
+    # still running. The answer itself is unchanged (voice_answer_first.py).
+    voice_answer_first_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_ANSWER_FIRST_V1",
+            "voice_answer_first_v1",
         ),
     )
     # Run context assembly concurrently with the unified-turn LIVE pass instead of

@@ -8,6 +8,7 @@ full_draft plus optional client playback_offset_ms.
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -25,6 +26,14 @@ from pipecat.frames.frames import (
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
 from app.core.logging import get_logger
+from app.services.pipecat_voice.voice_reply_playback import (
+    ANSWER,
+    NOTHING_HEARD_MARKER,
+    TRUNCATION_MARKER,
+    ReplyPlayback,
+    disconnect_heard_offset,
+    normalize_segment_kind,
+)
 
 logger = get_logger(__name__)
 
@@ -45,6 +54,67 @@ class _InterruptedTurn:
     assistant_message_id: str | None
 
 
+@dataclass(frozen=True)
+class _HeardContext:
+    """What is known at the barge-in about the reply that was cut.
+
+    ``server_offset`` is where the server-side estimate (TTS words that left
+    the output transport) puts the end of the heard text, as an offset into
+    ``reply.draft``; ``server_text`` is that estimate as text, filler included.
+    """
+
+    reply: ReplyPlayback | None
+    reply_id: int | None
+    server_offset: int | None
+    server_text: str
+    still_generating: bool
+
+
+def resolve_heard_answer(
+    ctx: _HeardContext,
+    *,
+    offset: int | None = None,
+    grounded: bool = False,
+) -> tuple[str, dict[str, Any]]:
+    """The assistant text to store for a cut reply, and how it was derived.
+
+    Only answer text is stored: an acknowledgement ("Sure, let me look.") or
+    tool narration ("Let me check your CRM.") was said, but it is not the
+    answer, and a stored message that starts with it reads to the model as an
+    answer that never got going. With ``grounded`` the text is cut at
+    ``offset`` (the browser's played position when it reported one) and marked
+    when the user did not hear all of it.
+    """
+    reply = ctx.reply
+    meta: dict[str, Any] = {}
+    use_offset = offset if offset is not None else ctx.server_offset
+    if reply is None or not reply.segments or use_offset is None:
+        # No labelled draft to map onto: the estimate as it was.
+        text = ctx.server_text
+        meta["heard_text_basis"] = "server_text"
+        answer_full = text
+    elif offset is None and not reply.has_non_answer():
+        # Answer-only reply cut by the server estimate: exactly the reconciled text.
+        text = ctx.server_text
+        meta["heard_text_basis"] = "server_text"
+        answer_full = reply.answer_text_upto(None)
+    else:
+        text = reply.answer_text_upto(use_offset)
+        answer_full = reply.answer_text_upto(None)
+        meta["heard_text_basis"] = "answer_segments"
+        meta["non_answer_chars_dropped"] = sum(
+            min(seg.end, use_offset) - seg.start
+            for seg in reply.segments
+            if seg.kind != ANSWER and seg.start < use_offset
+        )
+    truncated = ctx.still_generating or len(text.strip()) < len((answer_full or "").strip())
+    meta["answer_truncated"] = bool(truncated)
+    if grounded and truncated:
+        text = f"{text.strip()} {TRUNCATION_MARKER}" if text.strip() else NOTHING_HEARD_MARKER
+        meta["truncation_marked"] = True
+    return text, meta
+
+
 class ElevenLabsInterruptReporter(FrameProcessor):
     """Accumulate draft/spoken text; on interrupt publish speech.interrupted."""
 
@@ -60,6 +130,8 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         tts_service: Any | None = None,
         speculative_coordinator: Any | None = None,
         voice_session: Any | None = None,
+        playback_tracker: Any | None = None,
+        playback_grounded_history_enabled: bool = False,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -100,8 +172,23 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         # speculative run in particular) saw the marker and returned nothing.
         self._generating = False
         self._bot_speaking = False
+        # The last real barge-in, until the next confirmed turn consumes it.
+        self._last_barge_in: dict[str, Any] | None = None
+        # Labelled draft of the live reply (filler / progress / answer
+        # segments), shared with the socket's playback tracker when there is one.
+        self._playback_tracker = playback_tracker
+        self._playback_grounded = bool(playback_grounded_history_enabled)
+        self._reply: ReplyPlayback | None = None
+        # Called with (assistant_message_id, stored_text) after a barge-in
+        # rewrote a stored assistant row, so cached copies can follow.
+        self.on_assistant_rewritten: Any | None = None
+        # voice_playback_grounded_history_v1: heard text of a reply the socket
+        # dropped before the turn was stored, applied once it is.
+        self._pending_disconnect_cut: str | None = None
         if voice_session is not None:
             voice_session.answer_expected = self.answer_expected
+            voice_session.speech_stop_handler = self.silence_current_reply
+            voice_session.speech_duck_handler = self.send_speech_duck
 
     @property
     def assistant_turn_live(self) -> bool:
@@ -128,6 +215,33 @@ class ElevenLabsInterruptReporter(FrameProcessor):
     def conversation_id(self) -> str | None:
         return self._conversation_id
 
+    def _current_reply_id(self) -> int | None:
+        reply_id = getattr(self._voice_session, "reply_id", None)
+        return reply_id if isinstance(reply_id, int) else None
+
+    def _note_assistant_text(self, delta: str, kind: Any) -> None:
+        if not delta:
+            return
+        kind = normalize_segment_kind(kind)
+        if self._reply is None:
+            reply = None
+            if self._playback_tracker is not None:
+                try:
+                    reply = self._playback_tracker.reply(self._current_reply_id())
+                except Exception:  # noqa: BLE001
+                    reply = None
+            self._reply = reply if reply is not None else ReplyPlayback(reply_id=self._current_reply_id())
+            if self._reply.draft:
+                # This processor is the only writer of a reply's text; text
+                # already there belongs to a turn that never finished. Start clean
+                # so the draft and the segments cannot drift.
+                self._reply.draft = ""
+                self._reply.segments = []
+        if self._playback_tracker is not None and self._reply.reply_id is not None:
+            self._playback_tracker.note_assistant_text(delta, kind, self._reply.reply_id)
+        else:
+            self._reply.add_text(delta, kind)
+
     def begin_turn(self, user_text: str) -> None:
         self._active_user_text = str(user_text or "").strip()
         self._active_assistant_message_id = None
@@ -136,6 +250,64 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         if conversation_id:
             self._conversation_id = conversation_id
         self._active_assistant_message_id = assistant_message_id or None
+        pending, self._pending_disconnect_cut = self._pending_disconnect_cut, None
+        if pending is not None and assistant_message_id:
+            # The socket dropped while this reply was still generating; its
+            # completed row was just written in full. Cut it to what was heard.
+            task = self.create_task(self._persist_interrupted_assistant_text(pending))
+            self._post_interrupt_tasks.add(task)
+            task.add_done_callback(self._post_interrupt_tasks.discard)
+
+    async def reconcile_on_disconnect(self) -> dict[str, Any] | None:
+        """voice_playback_grounded_history_v1: store only what was heard of a dropped reply.
+
+        The socket went away mid-reply (network drop, tab closed): the browser
+        cannot report any more, and the full reply is (or is about to be)
+        stored. Cut it to the answer text heard, from the last periodic
+        playback report or the server estimate, and mark it as cut, so after a
+        reconnect the model sees only what the user heard. A reply that was
+        heard in full is left alone. Returns what was decided (for logs/tests).
+        """
+        if not self._playback_grounded or self._playback_tracker is None:
+            return None
+        tracker = self._playback_tracker
+        reply_id = tracker.audio_reply_id()
+        reply = tracker.reply(reply_id, create=False) if reply_id is not None else None
+        if reply is None or not reply.segments:
+            return None
+        offset, meta = disconnect_heard_offset(reply)
+        # Only the newest reply can still be generating; an older reply whose
+        # audio was the last to play is complete.
+        still_generating = bool(self._generating) and reply_id == tracker.current_reply_id()
+        heard = _HeardContext(
+            reply=reply,
+            reply_id=reply_id,
+            server_offset=offset,
+            server_text=reply.answer_text_upto(offset),
+            still_generating=still_generating,
+        )
+        text, resolved = resolve_heard_answer(heard, offset=offset, grounded=True)
+        meta.update(resolved)
+        meta["reply_id"] = reply_id
+        if not resolved.get("answer_truncated"):
+            meta["action"] = "heard_in_full"
+            return meta
+        turn = self._snapshot_turn()
+        if not turn.assistant_message_id:
+            # Not stored yet (still generating): cut it when it is.
+            self._pending_disconnect_cut = text
+            meta["action"] = "pending_until_persisted"
+        else:
+            await self._persist_interrupted_assistant_text(text, turn)
+            meta["action"] = "rewritten"
+        logger.info(
+            "pipecat_disconnect_heard_resolved reply_id=%s source=%s action=%s chars=%s",
+            reply_id,
+            meta.get("heard_source"),
+            meta.get("action"),
+            len(text),
+        )
+        return meta
 
     def _snapshot_turn(self) -> _InterruptedTurn:
         return _InterruptedTurn(
@@ -163,6 +335,14 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 turn.org_id, turn.conversation_id, str(exc),
             )
             return
+        callback = self.on_assistant_rewritten
+        if callback is not None and turn.assistant_message_id:
+            # The completed row may already be cached (with the full reply) by
+            # the bridge's live history; give it the stored text.
+            try:
+                callback(str(turn.assistant_message_id), reconciled_text.strip())
+            except Exception:  # noqa: BLE001
+                logger.debug("pipecat_assistant_rewrite_callback_failed", exc_info=True)
         if persisted is None:
             return
         persisted_id, assistant_id = persisted
@@ -248,19 +428,12 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         reconcile_meta: dict[str, Any] | None,
         playback_offset_ms: float | None,
     ) -> bool:
-        """Blocking barge-in bookkeeping. Runs in a worker thread, never on the loop.
+        """Blocking barge-in audit rows. Runs in a worker thread, never on the loop.
 
-        Returns whether a conversation stop marker was armed.
+        The stop marker is not armed here: it is armed in-process before the
+        interruption leaves this processor and shared through Redis by
+        :meth:`_arm_shared_stop_sync`, which does not wait for the TTS cancel.
         """
-        from app.services.voice_barge_in_write import mark_voice_barge_in_stop
-
-        # First, so an in-flight ReAct write sees the barge-in as early as possible.
-        armed = mark_voice_barge_in_stop(
-            org_id=turn.org_id,
-            conversation_id=turn.conversation_id,
-            settings=self._settings,
-            user_id=turn.user_id,
-        )
         if tts_cancel:
             from app.services.pipecat_voice.tts_context_cancel import record_tts_context_cancel
 
@@ -284,7 +457,114 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 reconcile_meta=reconcile_meta,
                 playback_offset_ms=playback_offset_ms,
             )
-        return bool(armed)
+        return True
+
+    def _arm_stop_now(self, turn: _InterruptedTurn) -> bool:
+        """Block uncommitted writes for this conversation before anything is awaited.
+
+        In-process and I/O free, so it runs on the loop the moment the
+        barge-in is recognized: a write commit check in this process sees it
+        even while the TTS cancel or the Redis write are still in flight.
+        """
+        if not turn.org_id or not turn.conversation_id:
+            return False
+        from app.services.chat_turn_cancel_service import arm_local_stop
+
+        armed = arm_local_stop(str(turn.org_id), str(turn.conversation_id))
+        if armed:
+            self._armed_stop = (str(turn.org_id), str(turn.conversation_id))
+        return armed
+
+    def _arm_shared_stop_sync(self, turn: _InterruptedTurn) -> bool:
+        """Share the stop with other workers (Redis) and audit it. Worker thread."""
+        from app.services.voice_barge_in_write import mark_voice_barge_in_stop
+
+        return bool(
+            mark_voice_barge_in_stop(
+                org_id=turn.org_id,
+                conversation_id=turn.conversation_id,
+                settings=self._settings,
+                user_id=turn.user_id,
+            )
+        )
+
+    def _tts_context_ids(self) -> list[str]:
+        """Audio contexts the TTS currently holds (synchronous getters only)."""
+        tts = self._tts_service
+        if tts is None:
+            return []
+        ids: list[str] = []
+        try:
+            getter = getattr(tts, "get_audio_contexts", None)
+            if callable(getter):
+                ids.extend(str(c) for c in (getter() or []) if c)
+            for attr in ("get_active_audio_context_id",):
+                active = getattr(tts, attr, None)
+                if callable(active) and active():
+                    ids.append(str(active()))
+            turn_id = getattr(tts, "_turn_context_id", None)
+            if isinstance(turn_id, str) and turn_id:
+                ids.append(turn_id)
+        except Exception:  # noqa: BLE001 - identity binding is best effort
+            pass
+        return list(dict.fromkeys(ids))
+
+    async def _cancel_tts_context(self) -> dict[str, Any] | None:
+        if self._tts_service is None:
+            return None
+        from app.services.pipecat_voice.tts_context_cancel import (
+            cancel_elevenlabs_tts_context,
+        )
+
+        try:
+            return await cancel_elevenlabs_tts_context(
+                self._tts_service,
+                keep_session=True,
+            ) or None
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("pipecat_tts_context_cancel_failed error=%s", str(exc))
+            return None
+
+    async def _resolve_durable_text(
+        self, heard: _HeardContext
+    ) -> tuple[str, dict[str, Any]]:
+        """Answer text to store; with the grounded flag, cut at the browser's played position."""
+        if not self._playback_grounded:
+            return resolve_heard_answer(heard)
+        reply = heard.reply
+        tracker = self._playback_tracker
+        reported = None
+        if tracker is not None and heard.reply_id is not None:
+            try:
+                reported = await tracker.wait_for_client_report(heard.reply_id)
+            except Exception:  # noqa: BLE001
+                reported = None
+        meta: dict[str, Any] = {"heard_source": "server_estimate"}
+        offset: int | None = None
+        if reported is not None and reply is not None and reported.client_played_ms is not None:
+            offset, method = reply.char_offset_for_played_ms(reported.client_played_ms)
+            if heard.server_offset is not None:
+                # Audio cannot be played before it was sent: the server estimate
+                # is an upper bound on what the browser can have played.
+                offset = min(offset, heard.server_offset)
+            meta.update(
+                {
+                    "heard_source": "client_playback",
+                    "played_to_text": method,
+                    "client_played_ms": int(round(reported.client_played_ms)),
+                    "sent_audio_ms": int(round(reply.sent_audio_ms)),
+                }
+            )
+        text, resolved = resolve_heard_answer(heard, offset=offset, grounded=True)
+        meta.update(resolved)
+        logger.info(
+            "pipecat_interrupted_heard_resolved reply_id=%s source=%s played_ms=%s chars=%s",
+            heard.reply_id,
+            meta.get("heard_source"),
+            meta.get("client_played_ms"),
+            len(text),
+        )
+        return text, meta
 
     async def _post_interrupt(
         self,
@@ -293,34 +573,53 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         reconcile_meta: dict[str, Any] | None,
         playback_offset_ms: float | None,
         reconciled_text: str | None,
+        heard: _HeardContext | None = None,
     ) -> None:
-        tts_cancel: dict[str, Any] | None = None
-        if self._tts_service is not None:
-            from app.services.pipecat_voice.tts_context_cancel import (
-                cancel_elevenlabs_tts_context,
-            )
-
-            try:
-                tts_cancel = await cancel_elevenlabs_tts_context(
-                    self._tts_service,
-                    keep_session=True,
-                ) or None
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("pipecat_tts_context_cancel_failed error=%s", str(exc))
+        # The in-process stop is already armed (_arm_stop_now). The shared one
+        # and the TTS cancel are independent: neither waits for the other.
+        shared_stop = asyncio.ensure_future(asyncio.to_thread(self._arm_shared_stop_sync, turn))
+        tts_cancel = await self._cancel_tts_context()
         try:
-            armed = await asyncio.to_thread(
+            await shared_stop
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("pipecat_barge_in_shared_stop_failed error=%s", str(exc))
+        try:
+            await asyncio.to_thread(
                 self._run_post_interrupt_writes_sync,
                 turn,
                 tts_cancel=tts_cancel,
                 reconcile_meta=reconcile_meta,
                 playback_offset_ms=playback_offset_ms,
             )
-            if armed and turn.org_id and turn.conversation_id:
-                self._armed_stop = (str(turn.org_id), str(turn.conversation_id))
         except Exception as exc:  # noqa: BLE001
             logger.warning("pipecat_post_interrupt_writes_failed error=%s", str(exc))
         if reconciled_text is not None:
-            await self._persist_interrupted_assistant_text(reconciled_text, turn)
+            durable_text = reconciled_text
+            if heard is not None:
+                try:
+                    durable_text, heard_meta = await self._resolve_durable_text(heard)
+                    if heard_meta.get("heard_source") == "client_playback" and self._settings is not None:
+                        await asyncio.to_thread(self._record_grounded_reconciliation, turn, heard_meta)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("pipecat_interrupted_heard_resolve_failed error=%s", str(exc))
+                    durable_text = reconciled_text
+            await self._persist_interrupted_assistant_text(durable_text, turn)
+
+    def _record_grounded_reconciliation(self, turn: _InterruptedTurn, meta: dict[str, Any]) -> None:
+        if not turn.org_id:
+            return
+        from app.services.pipecat_voice.voice_latency_metrics import (
+            record_voice_barge_in_reconciliation,
+        )
+
+        record_voice_barge_in_reconciliation(
+            self._settings,
+            org_id=turn.org_id,
+            user_id=turn.user_id,
+            conversation_id=turn.conversation_id,
+            reconcile_meta={"stage": "playback_grounded", **meta},
+            playback_offset_ms=meta.get("client_played_ms"),
+        )
 
     def _schedule_post_interrupt(self, turn: _InterruptedTurn, **kwargs: Any) -> None:
         """Run barge-in bookkeeping after the stop frame is already moving."""
@@ -337,17 +636,31 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 logger.warning("pipecat_interrupted_detached_persist_failed error=%s", str(exc))
         task.add_done_callback(_consume)
 
-    async def settle_barge_in(self) -> None:
+    def consume_barge_in(self) -> dict[str, Any] | None:
+        """The barge-in the next confirmed turn follows, once: reply id and time.
+
+        None when the turn did not cut anything off (the bot was idle).
+        """
+        info, self._last_barge_in = self._last_barge_in, None
+        return info
+
+    async def settle_barge_in(self, *, release: bool = True) -> None:
         """Called at the start of the next confirmed user turn.
 
         Waits for the previous interruption's bookkeeping, then releases the
         conversation stop marker this socket armed for that interrupted turn.
         Without the release the marker (120 s TTL) would make the next voice
         turn in the same conversation return without answering.
+
+        ``release=False`` (a "cancel it" turn) keeps the marker armed so a
+        write of the cancelled work that is still on its way to commit is
+        refused; the next ordinary turn releases it.
         """
         pending = [task for task in self._post_interrupt_tasks if not task.done()]
         if pending:
             await asyncio.gather(*(asyncio.shield(task) for task in pending), return_exceptions=True)
+        if not release:
+            return
         armed = self._armed_stop
         self._armed_stop = None
         if armed is None:
@@ -378,16 +691,108 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         except Exception as exc:  # noqa: BLE001
             logger.warning("pipecat_stop_marker_release_failed error=%s", str(exc))
 
+    async def send_speech_duck(self, ducked: bool) -> None:
+        """Tell the client to duck (or restore) the current reply's audio.
+
+        voice_overlap_duck_v1: sent while an overlapping user turn is being
+        classified. Audio is untouched here; the browser lowers its output gain.
+        A real interruption still ends with speech.interrupted, which resets it.
+        """
+        reply_id = getattr(self._voice_session, "reply_id", None)
+        message: dict[str, Any] = {"type": "speech.duck" if ducked else "speech.unduck"}
+        if isinstance(reply_id, int):
+            message["reply_id"] = reply_id
+        logger.info("pipecat_speech_duck ducked=%s reply_id=%s", ducked, reply_id)
+        await self.push_frame(
+            OutputTransportMessageUrgentFrame(message=message),
+            FrameDirection.DOWNSTREAM,
+        )
+
+    async def silence_current_reply(self) -> bool:
+        """Silence this reply ("stop talking") and keep the work behind it running.
+
+        Nothing goes upstream, so the brain's turn (and any authorized tool
+        call in it) is not cancelled, and no stop marker is armed, so its
+        writes are not refused. Downstream, the reply's audio is cut by
+        identity, the TTS and output transport are flushed, and the client is
+        told speech stopped while work continues. The reply's text and its
+        normal completion still go out; nothing more of it is spoken.
+        Returns False when there was nothing to silence.
+        """
+        session = self._voice_session
+        if session is None or not (self.assistant_turn_live or getattr(session, "assistant_generating", False)):
+            return False
+        reply_id = getattr(session, "reply_id", None)
+        if not isinstance(reply_id, int):
+            return False
+        session.mute_reply(reply_id)
+        work_continues = bool(self._generating or getattr(session, "assistant_generating", False))
+        spoken = ""
+        if self._spoken_ledger is not None and self._spoken_ledger.ever_recorded:
+            spoken = self._spoken_ledger.snapshot()
+        logger.info(
+            "pipecat_speech_silenced reply_id=%s work_continues=%s spoken_chars=%s",
+            reply_id,
+            work_continues,
+            len(spoken),
+        )
+        await self.push_frame(
+            OutputTransportMessageUrgentFrame(
+                message={
+                    "type": "speech.interrupted",
+                    "tts_provider": "elevenlabs",
+                    "interrupted": True,
+                    "intent": "speech_stop",
+                    "work_continues": work_continues,
+                    "reply_id": reply_id,
+                    "spoken_text": spoken[:2000],
+                    "full_draft_text": (self._draft_client or self._draft_llm or "").strip()[:2000],
+                    "playback_offset_ms": None,
+                    "tts_context_cancel": None,
+                }
+            ),
+            FrameDirection.DOWNSTREAM,
+        )
+        notice_sent = getattr(session, "muted_notice_sent", None)
+        if work_continues and isinstance(notice_sent, set) and reply_id not in notice_sent:
+            notice_sent.add(reply_id)
+            await self.push_frame(
+                OutputTransportMessageUrgentFrame(
+                    message={
+                        "type": "assistant_notice",
+                        "kind": "speech_stopped_work_continues",
+                        "reply_id": reply_id,
+                        "text": "Okay, I'll stop talking. I'm still working on it, and the answer will show here.",
+                    }
+                ),
+                FrameDirection.DOWNSTREAM,
+            )
+        # Flush what the TTS and the output transport already hold for this
+        # reply. Pushed downstream only: the brain upstream keeps running.
+        flush = InterruptionFrame()
+        setattr(flush, "gravitre_speech_only", True)
+        await self.push_frame(flush, FrameDirection.DOWNSTREAM)
+        task = self.create_task(self._cancel_tts_context())
+        self._post_interrupt_tasks.add(task)
+        task.add_done_callback(self._post_interrupt_tasks.discard)
+        return True
+
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         if isinstance(frame, BotStartedSpeakingFrame):
             self._bot_speaking = True
+            if self._voice_session is not None:
+                # Read by the transcript relay to mark backchannel finals.
+                self._voice_session.bot_speaking = True
         elif isinstance(frame, BotStoppedSpeakingFrame):
             self._bot_speaking = False
+            if self._voice_session is not None:
+                self._voice_session.bot_speaking = False
             if not self._generating:
                 # The reply is fully generated and has finished playing.
                 self._draft_llm = ""
                 self._draft_client = ""
                 self._spoken_aligned = ""
+                self._reply = None
         if isinstance(frame, InterruptionFrame) and not self.assistant_turn_live:
             # The user started a turn while nothing was being said or generated:
             # not a barge-in. Let the frame reset the pipeline, but do not cancel
@@ -432,6 +837,25 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                     warming,
                 )
                 return
+            # A real barge-in. Before anything is awaited (the base class's
+            # interruption handling, the provider cancel, Redis): refuse
+            # uncommitted writes of the interrupted work, and cut the
+            # interrupted reply's audio off by identity.
+            interrupted_turn = self._snapshot_turn()
+            self._arm_stop_now(interrupted_turn)
+            interrupted_reply_id = getattr(self._voice_session, "reply_id", None)
+            cancel_audio = getattr(self._voice_session, "cancel_reply_audio", None)
+            if isinstance(interrupted_reply_id, int) and callable(cancel_audio):
+                # The TTS has not seen this interruption yet (it is downstream),
+                # so every context it holds belongs to the reply being cut off,
+                # including one whose audio was never seen downstream.
+                for context_id in self._tts_context_ids():
+                    self._voice_session.bind_audio_context(context_id, interrupted_reply_id)
+                cancel_audio(interrupted_reply_id)
+            self._last_barge_in = {
+                "reply_id": interrupted_reply_id if isinstance(interrupted_reply_id, int) else None,
+                "at": time.monotonic(),
+            }
         await super().process_frame(frame, direction)
 
         if isinstance(frame, LLMFullResponseStartFrame):
@@ -442,6 +866,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             self._draft_client = ""
             self._spoken_aligned = ""
             self._last_playback_offset_ms = None
+            self._reply = None
             if self._spoken_ledger is not None:
                 self._spoken_ledger.reset()
             if self._voice_session is not None:
@@ -453,7 +878,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         elif isinstance(frame, OutputTransportMessageUrgentFrame):
             msg = frame.message if isinstance(frame.message, dict) else {}
             if str(msg.get("type") or "") == "assistant_text":
-                self._draft_client += str(msg.get("delta") or "")
+                delta = str(msg.get("delta") or "")
+                self._draft_client += delta
+                self._note_assistant_text(delta, msg.get("kind"))
         elif isinstance(frame, TTSTextFrame):
             self._spoken_aligned += str(getattr(frame, "text", None) or "")
         elif isinstance(frame, LLMFullResponseEndFrame):
@@ -461,6 +888,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             if self._voice_session is not None:
                 self._voice_session.assistant_generating = False
         elif isinstance(frame, InterruptionFrame):
+            still_generating = self._generating
             self._generating = False
             if self._voice_session is not None:
                 self._voice_session.assistant_generating = False
@@ -514,11 +942,18 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             reply_id = getattr(self._voice_session, "reply_id", None)
             if isinstance(reply_id, int):
                 payload["reply_id"] = reply_id
+            reply = self._reply
+            if self._playback_tracker is not None and isinstance(reply_id, int):
+                try:
+                    self._playback_tracker.mark_interrupted(reply_id)
+                except Exception:  # noqa: BLE001
+                    pass
             # Phase 5 (conversational polish): tell the client which text was
             # actually heard so the next turn's history is not padded with a tail
             # the user never received. Flag-gated; off means legacy payload only.
             reconcile_meta: dict[str, Any] = {}
             reconcile_audit: dict[str, Any] | None = None
+            heard_ctx: _HeardContext | None = None
             if self._reconcile_enabled:
                 from app.services.pipecat_voice.voice_conversational_polish import (
                     reconcile_played_audio,
@@ -543,6 +978,26 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 payload["reconcile_played_audio"] = True
                 payload.update(reconcile_meta)
                 reconcile_audit = dict(reconcile_meta)
+                # Where the estimate puts the heard end in the labelled draft.
+                # Valid only when the draft is the client text the segments index.
+                server_offset: int | None = None
+                if (
+                    reply is not None
+                    and self._draft_client
+                    and reply.draft == self._draft_client
+                ):
+                    lead = len(self._draft_client) - len(self._draft_client.lstrip())
+                    server_offset = lead + len(reconciliation.reconciled_text)
+                heard_ctx = _HeardContext(
+                    reply=reply,
+                    reply_id=reply_id if isinstance(reply_id, int) else None,
+                    server_offset=server_offset,
+                    server_text=reconciliation.reconciled_text,
+                    still_generating=still_generating,
+                )
+                answer_text, _answer_meta = resolve_heard_answer(heard_ctx)
+                # The answer part of what was heard: the text history keeps.
+                payload["reconciled_answer_text"] = answer_text[:2000]
             logger.info(
                 "pipecat_speech_interrupted spoken_chars=%s draft_chars=%s offset_ms=%s reconcile=%s",
                 len(spoken),
@@ -562,18 +1017,20 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             # heard. The turn identity is captured now, before a new turn can
             # replace it.
             self._schedule_post_interrupt(
-                self._snapshot_turn(),
+                interrupted_turn,
                 reconcile_meta=reconcile_audit,
                 playback_offset_ms=self._last_playback_offset_ms,
                 reconciled_text=(
                     str(payload.get("reconciled_text") or "") if self._reconcile_enabled else None
                 ),
+                heard=heard_ctx,
             )
             # Clear so a follow-up turn starts clean.
             self._draft_llm = ""
             self._draft_client = ""
             self._spoken_aligned = ""
             self._last_playback_offset_ms = None
+            self._reply = None
             if self._spoken_ledger is not None:
                 self._spoken_ledger.reset()
 

@@ -13,7 +13,8 @@ function fakeWorkletEnv() {
     disconnect() {}
   }
   vi.stubGlobal("AudioWorkletNode", FakeNode)
-  const ctx = { currentTime: 0, sampleRate: 48000, destination: {} } as unknown as AudioContext
+  const createGain = () => ({ gain: { value: 1, cancelScheduledValues() {}, setValueAtTime() {}, linearRampToValueAtTime() {} }, connect() {}, disconnect() {} })
+  const ctx = { currentTime: 0, sampleRate: 48000, destination: {}, createGain } as unknown as AudioContext
   const emit = (data: unknown) => port.onmessage?.({ data } as MessageEvent)
   return { ctx, posted, emit }
 }

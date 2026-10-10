@@ -24,6 +24,7 @@ bounded by CPU.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import os
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
@@ -85,10 +86,13 @@ async def run_io(fn: Callable[..., _T], /, *args: Any, **kwargs: Any) -> _T:
     """Run a blocking callable off the event loop on the dedicated I/O pool.
 
     Drop-in for ``asyncio.to_thread`` that does not compete with the default
-    executor.
+    executor. Like ``to_thread`` it runs ``fn`` in a copy of the caller's
+    context, so context variables (for example the speculative dry-run scope
+    in ``app.services.speculative_execution``) are visible to the worker.
     """
     if not offload_enabled():
         # Deliberately blocks the loop; the measurement baseline only.
         return fn(*args, **kwargs)
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(get_io_pool(), partial(fn, *args, **kwargs))
+    ctx = contextvars.copy_context()
+    return await loop.run_in_executor(get_io_pool(), partial(ctx.run, fn, *args, **kwargs))

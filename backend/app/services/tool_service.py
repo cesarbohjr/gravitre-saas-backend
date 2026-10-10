@@ -4957,8 +4957,12 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     if f1_write:
         params = enforce_invoke_write_preflight(ctx, action, params)
 
-    from app.services.voice_barge_in_write import raise_if_barge_in_blocks_invoke
+    from app.services.voice_barge_in_write import (
+        raise_if_barge_in_blocks_invoke,
+        raise_if_speculative_blocks_invoke,
+    )
 
+    raise_if_speculative_blocks_invoke(action)
     raise_if_barge_in_blocks_invoke(ctx, action)
 
     from app.capability_ontology.resolver import resolve_capability_invoke_action
@@ -5160,12 +5164,18 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
         if should_track_compensation(ctx, action):
             compensation_snapshot = prepare_forward_snapshot(ctx, action, params)
 
+    from app.services.voice_barge_in_write import begin_write_effect, finish_write_effect
+
+    # Last stop check before the provider call, and the record a cancelled
+    # voice turn reads to say what had already been done.
+    write_effect = begin_write_effect(ctx, action)
     last_error: ToolError | None = None
     attempts = _MAX_RETRIES + 1
     for attempt in range(attempts):
         started = time.perf_counter()
         try:
             result = executor(ctx, params)
+            finish_write_effect(write_effect, "completed" if result.success else "failed")
             result.latency_ms = result.latency_ms or int((time.perf_counter() - started) * 1000)
             _write_tool_audit(
                 ctx,
@@ -5293,6 +5303,10 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
             if attempt < len(_RETRY_BACKOFF_SEC):
                 time.sleep(_RETRY_BACKOFF_SEC[attempt])
 
+    finish_write_effect(
+        write_effect,
+        "uncertain" if isinstance(last_error, ToolOutcomeUncertainError) else "failed",
+    )
     assert last_error is not None
     _write_tool_audit(
         ctx,

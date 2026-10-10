@@ -98,6 +98,7 @@ def record_voice_llm_stage_sample(
     speculative_outcome: str | None = None,
     speculative_v2: bool | None = None,
     tts_chunk_v2: bool | None = None,
+    speculation: dict[str, Any] | None = None,
 ) -> None:
     """Real, measured LLM-bridge stage timings for one voice turn."""
     payload: dict[str, Any] = {
@@ -111,6 +112,10 @@ def record_voice_llm_stage_sample(
         payload["speculative_v2"] = speculative_v2
     if tts_chunk_v2 is not None:
         payload["tts_chunk_v2"] = tts_chunk_v2
+    if speculation:
+        # Session speculation counters (started/adopted/discarded/timeouts,
+        # wasted seconds) as of this turn.
+        payload["speculation"] = dict(speculation)
     _write(
         settings,
         org_id=org_id,

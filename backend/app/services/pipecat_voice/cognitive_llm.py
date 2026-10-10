@@ -10,7 +10,7 @@ import asyncio
 import contextlib
 import re
 import time
-from typing import Any
+from typing import Any, Callable
 
 from pipecat.frames.frames import (
     AggregatedTextFrame,
@@ -30,8 +30,18 @@ from pipecat.utils.text.base_text_aggregator import AggregationType
 from app.core.logging import get_logger
 from app.services.conversation_tier import should_acknowledge_turn
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
+from app.services.pipecat_voice.backchannel_classifier import (
+    InterruptIntent,
+    classify_interrupt_intent,
+    is_bare_confirmation,
+    is_syntactically_incomplete,
+)
 from app.services.pipecat_voice.llm_context_utils import messages_from_context as _messages_from_context
-from app.services.pipecat_voice.speculative_generation import SpeculativeGenerationCoordinator
+from app.services.pipecat_voice.speculative_generation import (
+    SpeculativeGenerationCoordinator,
+    load_revision_versions,
+)
+from app.services.speculative_execution import SpeculativeSideEffectBlocked
 from app.services.pipecat_voice.spoken_stream_filter import SpokenMarkdownStreamFilter
 from app.services.pipecat_voice.utterance_gate import is_filler_only
 from app.services.pipecat_voice.voice_delivery_tags import strip_and_validate_delivery_tags
@@ -39,6 +49,14 @@ from app.services.pipecat_voice.voice_latency_metrics import record_voice_llm_st
 from app.services.pipecat_voice.voice_latency_tuning import (
     resolve_voice_speculative_tuning,
     resolve_voice_tts_chunk_tuning,
+    voice_request_revisions_enabled,
+)
+from app.services.pipecat_voice.voice_answer_first import RESULT_LINE_GRACE_S, AnswerFirstSpeech
+from app.services.pipecat_voice.voice_reply_playback import (
+    ANSWER,
+    FILLER,
+    PROGRESS,
+    strip_non_answer_speech,
 )
 from app.services.pipecat_voice.voice_silence_guard import (
     ACK_DUE,
@@ -81,6 +99,78 @@ VOICE_NO_VOLUNTEERED_DATA_NOTE = (
     "or accepts your offer."
 )
 
+# voice_interrupt_intents_v1: the user cut in to ask what something just said means.
+VOICE_EXPLAIN_INTERRUPTION_NOTE = (
+    "The user interrupted your last reply to ask what part of it means. Explain that part "
+    "briefly from the conversation so far. Do not start, change or cancel any task, and do not "
+    "repeat the whole reply."
+)
+# How long a "cancel it" waits for a write already at the provider to report back.
+TASK_CANCEL_SETTLE_WAIT_S = 1.5
+# voice_incomplete_turn_hold_v1: hard ceiling on the hold, whatever the setting.
+INCOMPLETE_TURN_HOLD_MAX_S = 0.7
+_INCOMPLETE_HOLD_POLL_S = 0.02
+# Stream events whose handling can put speech (or text) in front of the user.
+_OUTPUT_EVENT_TYPES = frozenset({"text-delta", "tool-input-available", "tool-output-available"})
+
+
+class _TurnYieldedToUser(Exception):
+    """The user resumed during an incomplete turn's hold; the fragment is carried."""
+
+    def __init__(self, user_text: str) -> None:
+        super().__init__("incomplete turn yielded to the user")
+        self.user_text = user_text
+
+
+def incomplete_turn_hold_seconds(settings: Any) -> float:
+    """Hold for a syntactically incomplete final, in seconds (0 when off)."""
+    if not bool(getattr(settings, "voice_incomplete_turn_hold_v1", False)):
+        return 0.0
+    try:
+        ms = float(getattr(settings, "voice_incomplete_turn_hold_ms", 600) or 0)
+    except (TypeError, ValueError):
+        ms = 600.0
+    return max(0.0, min(INCOMPLETE_TURN_HOLD_MAX_S, ms / 1000.0))
+
+
+# voice_confirmation_hold_v1: once the user resumed, how long the go-ahead may
+# wait for them to finish before it is set aside (never sent while they talk),
+# and how long after they stop for the turn strategy's verdict to land.
+CONFIRMATION_HOLD_MAX_WAIT_S = 8.0
+CONFIRMATION_HOLD_SETTLE_S = 0.1
+
+
+def confirmation_hold_seconds(settings: Any) -> float:
+    """Hold before acting on a bare go-ahead, in seconds (0 when off)."""
+    if not bool(getattr(settings, "voice_confirmation_hold_v1", True)):
+        return 0.0
+    try:
+        ms = float(getattr(settings, "voice_incomplete_turn_hold_ms", 600) or 0)
+    except (TypeError, ValueError):
+        ms = 600.0
+    return max(0.0, min(INCOMPLETE_TURN_HOLD_MAX_S, ms / 1000.0))
+
+
+def answers_assistant_question(user_text: str, history: list[dict[str, Any]] | None) -> bool:
+    """A bare go-ahead ("yes", "send it") replying to an assistant turn that asked something."""
+    if not is_bare_confirmation(user_text):
+        return False
+    for message in reversed(list(history or [])):
+        if not isinstance(message, dict):
+            continue
+        role = str(message.get("role") or "")
+        if role == "user":
+            continue
+        if role != "assistant":
+            return False
+        content = message.get("content")
+        if isinstance(content, list):
+            content = " ".join(
+                str(part.get("text") or "") for part in content if isinstance(part, dict)
+            )
+        return str(content or "").rstrip().rstrip("\"')]*").endswith("?")
+    return False
+
 
 _CONTINUES_PREVIOUS_RE = re.compile(
     r"(?i)^\s*(?:and|also|plus|but|with|without|for|to|or|then|cc|bcc|including|except|"
@@ -114,7 +204,12 @@ def _replaces_unanswered_turn(text: str) -> bool:
 
 
 def merge_unanswered_turn(
-    carried: str, user_text: str, history: list[dict[str, Any]]
+    carried: str,
+    user_text: str,
+    history: list[dict[str, Any]],
+    *,
+    revision: bool = False,
+    fragment: bool = False,
 ) -> tuple[str, list[dict[str, Any]]]:
     """Fold a request cancelled before any answer into the next utterance.
 
@@ -123,6 +218,14 @@ def merge_unanswered_turn(
     deck" + "and cc Mike" is answered as one request. Backing off ("never
     mind", "stop") withdraws it, an exact repeat is not doubled, and a new,
     self-contained request replaces it rather than being merged into it.
+
+    ``revision`` (an interrupting correction: "use last quarter instead",
+    "no, Acme not Northwind") always revises the carried request, however
+    self-contained the correction sounds.
+
+    ``fragment`` (the carried text was cut off mid-thought, "I want to
+    check") always continues into the new text: "last month's traffic" is
+    the rest of that sentence, not a request that replaces it.
     """
     from app.services.conversation_tier import _DECLINE_CONTINUATION_RE
 
@@ -144,10 +247,58 @@ def merge_unanswered_turn(
             break
     if _norm(carried) == _norm(text) or _norm(text).startswith(_norm(carried)):
         return text, trimmed
+    if revision:
+        return f"{carried.rstrip(' .,')} (correction: {text})", trimmed
+    if fragment:
+        return f"{carried.rstrip(' .,-').rstrip('.').rstrip()} {text}", trimmed
     if _replaces_unanswered_turn(text):
         return user_text, history
     joiner = " " if carried[-1] in ".!?," else ", "
     return f"{carried}{joiner}{text}", trimmed
+
+
+def _action_label(action: str) -> str:
+    """'email.send' -> 'email send', 'hubspot.create_contact' -> 'hubspot create contact'."""
+    return " ".join(re.split(r"[._\-]+", str(action or "").strip())).strip() or "an action"
+
+
+def _join_labels(actions: list[str]) -> str:
+    labels = list(dict.fromkeys(_action_label(a) for a in actions))
+    if len(labels) <= 1:
+        return labels[0] if labels else ""
+    return ", ".join(labels[:-1]) + " and " + labels[-1]
+
+
+def describe_cancelled_work(
+    *, completed: list[str], unconfirmed: list[str], blocked: list[str]
+) -> str:
+    """What a "cancel it" can truthfully say, from recorded write effects only.
+
+    Cancelling the turn never undoes a write that already reached the
+    provider, so a finished write is reported as done, one still in flight
+    as unconfirmed, and only a write the stop refused as stopped.
+    """
+    parts: list[str] = []
+    if completed:
+        parts.append(
+            f"Okay, I've stopped. One thing had already gone through before you said that: "
+            f"{_join_labels(completed)}. Stopping now doesn't undo it."
+            if len(set(completed)) == 1
+            else f"Okay, I've stopped. These had already gone through before you said that: "
+            f"{_join_labels(completed)}. Stopping now doesn't undo them."
+        )
+    if unconfirmed:
+        parts.append(
+            f"{'Also, ' if parts else 'Okay, I stopped what I could. '}"
+            f"{_join_labels(unconfirmed)} was already in progress, and I can't confirm yet whether it went through."
+        )
+    if blocked:
+        parts.append(
+            f"{'I' if parts else 'Okay, cancelled. I'} stopped {_join_labels(blocked)} before it was sent."
+        )
+    if not parts:
+        return "Okay, cancelled. Nothing had been sent or changed yet."
+    return " ".join(parts)
 
 
 async def adopt_or_fresh(adopted: Any, fresh: Any):
@@ -157,24 +308,39 @@ async def adopt_or_fresh(adopted: Any, fresh: Any):
     with an empty ``cancelled`` completion and no text. Adopting that verbatim
     meant the user's turn got no answer at all, so the confirmed turn falls
     back to the same fresh call it would have made without speculation.
+
+    The same fallback applies when the adopted run turns out to have hit a
+    side effect it may not perform unconfirmed (SpeculativeSideEffectBlocked
+    from the commit of its deferred writes): nothing was replayed, so the turn
+    is redone on the normal path.
     """
     produced_text = False
-    async for event in adopted:
-        if isinstance(event, AssistantStreamComplete):
-            if (
-                not produced_text
-                and str(getattr(event, "model", "") or "") == "cancelled"
-                and not str(getattr(event, "full_content", "") or "").strip()
-            ):
-                logger.info("pipecat_voice_speculative_cancelled_fallback_fresh")
-                async for fresh_event in fresh():
-                    yield fresh_event
-                return
+    produced_any = False
+    try:
+        async for event in adopted:
+            if isinstance(event, AssistantStreamComplete):
+                if (
+                    not produced_text
+                    and str(getattr(event, "model", "") or "") == "cancelled"
+                    and not str(getattr(event, "full_content", "") or "").strip()
+                ):
+                    logger.info("pipecat_voice_speculative_cancelled_fallback_fresh")
+                    async for fresh_event in fresh():
+                        yield fresh_event
+                    return
+                produced_any = True
+                yield event
+                continue
+            if isinstance(event, AssistantStreamEvent) and event.sse_type == "text-delta":
+                produced_text = True
+            produced_any = True
             yield event
-            continue
-        if isinstance(event, AssistantStreamEvent) and event.sse_type == "text-delta":
-            produced_text = True
-        yield event
+    except SpeculativeSideEffectBlocked:
+        if produced_any:
+            raise
+        logger.info("pipecat_voice_speculative_blocked_fallback_fresh")
+        async for fresh_event in fresh():
+            yield fresh_event
 
 
 class GravitreCognitiveLLMService(LLMService):
@@ -248,6 +414,34 @@ class GravitreCognitiveLLMService(LLMService):
         # ElevenLabs stability currently applied; the pipeline starts on the
         # medium baseline. Changed only when a turn's tier needs a different one.
         self._voice_stability: float | None = None
+        # This reply's id (bound when its LLM response opened).
+        self._reply_id: int | None = None
+        # voice_interrupt_intents_v1: the request a barge-in cut off before its
+        # answer began (acknowledgement or not), for a correction to revise.
+        self._revisable_user_text: str | None = None
+        # When the current (or last) confirmed turn started, monotonic: a
+        # "cancel it" reports the write effects recorded since then.
+        self._turn_started_mono: float | None = None
+        # The speculative run this turn adopted. Its producer is a task of its
+        # own, so cancelling the turn does not stop it: the turn ending, for
+        # any reason, cancels it (see _release_adopted_run).
+        self._adopted_run: Any | None = None
+        # How a silenced reply's result was delivered: None (not yet), "spoken"
+        # or "visible" (see _resume_speech_for_result).
+        self._result_delivery: str | None = None
+        # The carried text is an unfinished fragment the user went on from
+        # (voice_incomplete_turn_hold_v1): it is always joined, never replaced.
+        self._carry_is_fragment = False
+        # Some of this turn's answer was already handed to the TTS.
+        self._answer_spoken = False
+        # voice_reply_playback.VoicePlaybackTracker, set by pipeline.py: knows
+        # which spoken sentences were filler or tool narration.
+        self._playback_tracker: Any | None = None
+        # voice_answer_first_v1: the playout clock (set by pipeline.py) and this
+        # turn's held filler / progress lines with the task releasing them.
+        self._playout_clock: Any | None = None
+        self._answer_first: AnswerFirstSpeech | None = None
+        self._answer_first_task: asyncio.Task[Any] | None = None
 
     async def _apply_tier_voice(self, tier: str | None) -> None:
         """Livelier delivery for light turns, steadier for deep (stability only).
@@ -355,7 +549,8 @@ class GravitreCognitiveLLMService(LLMService):
     def _durable_rows(self) -> list[dict[str, Any]]:
         """Seed plus rows persisted since; merged with the socket by merge_durable_and_socket_history."""
         return [dict(m) for m in self._durable_history] + [
-            {**dict(m), "_live": True} for m in self._durable_live_rows
+            {**{k: v for k, v in dict(m).items() if k != "_id"}, "_live": True}
+            for m in self._durable_live_rows
         ]
 
     async def _refresh_durable_tail(self) -> None:
@@ -378,8 +573,46 @@ class GravitreCognitiveLLMService(LLMService):
             role = str(row.get("role") or "")
             content = str(row.get("content") or "")
             if role in {"user", "assistant"} and content.strip():
-                self._durable_live_rows.append({"role": role, "content": content})
+                live = {"role": role, "content": content}
+                if row.get("id"):
+                    live["_id"] = str(row.get("id"))
+                self._durable_live_rows.append(live)
         self._durable_live_rows = self._durable_live_rows[-96:]
+
+    def patch_live_assistant_row(self, message_id: str, content: str) -> None:
+        """A barge-in rewrote a stored assistant row: update the cached copy.
+
+        Live rows are read once (by creation time), so a completed reply that
+        was cached before the user cut it in would keep its full, unheard text
+        in every later turn's history.
+        """
+        if not message_id:
+            return
+        for row in self._durable_live_rows:
+            if row.get("_id") == message_id and row.get("role") == "assistant":
+                row["content"] = content
+
+    def _strip_spoken_fillers(self, history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Drop filler and tool narration from the socket's assistant messages.
+
+        The in-socket context is built from the words the TTS spoke, so it
+        holds "Sure, let me look." and "Let me check your CRM." as if they were
+        part of the answer; the stored rows do not. Only text this socket spoke
+        as filler/progress is removed.
+        """
+        tracker = self._playback_tracker
+        phrases = tracker.non_answer_phrases() if tracker is not None else []
+        if not phrases:
+            return history
+        cleaned: list[dict[str, Any]] = []
+        for message in history or []:
+            if str(message.get("role") or "") == "assistant":
+                text = strip_non_answer_speech(str(message.get("content") or ""), phrases)
+                if not text.strip():
+                    continue
+                message = {**message, "content": text}
+            cleaned.append(message)
+        return cleaned
 
     def _load_rows_since(self, conversation_id: str, watermark: str | None) -> list[dict[str, Any]]:
         from app.workflows.repository import get_supabase_client
@@ -387,7 +620,7 @@ class GravitreCognitiveLLMService(LLMService):
         query = (
             get_supabase_client(self._app_settings)
             .table("conversation_messages")
-            .select("role,content,created_at")
+            .select("id,role,content,created_at")
             .eq("conversation_id", conversation_id)
         )
         if watermark:
@@ -405,12 +638,28 @@ class GravitreCognitiveLLMService(LLMService):
             logger.info("pipecat_voice_provisional_context_ignored org_id=%s", self._org_id)
             return
         if isinstance(frame, LLMContextFrame):
-            await self.push_frame(LLMFullResponseStartFrame())
+            # The reply id is bound here, on the frame that opens this reply's
+            # TTS context, so its audio keeps this id however late it arrives.
+            start = LLMFullResponseStartFrame()
+            session = self._voice_session()
+            if session is not None:
+                self._reply_id = session.begin_reply()
+                setattr(start, "gravitre_reply_id", self._reply_id)
+            await self.push_frame(start)
             self._tts_text_pending = False
+            self._result_delivery = None
+            self._answer_spoken = False
             try:
                 await self.start_processing_metrics()
                 self._turn_brain_marks = []
                 await self._run_gravitre_turn(frame.context)
+            except _TurnYieldedToUser as yielded:
+                # Nothing of the fragment was said or shown. It is answered
+                # together with what the user says next, as one request.
+                self._carry_user_text = yielded.user_text
+                self._carry_is_fragment = True
+                self._revisable_user_text = None
+                logger.info("pipecat_voice_incomplete_turn_yielded org_id=%s", self._org_id)
             except asyncio.CancelledError:
                 # Barge-in cancelled this turn. If none of the answer was spoken
                 # yet, keep the request for the next turn ("Email Sarah the
@@ -427,6 +676,12 @@ class GravitreCognitiveLLMService(LLMService):
                 ):
                     self._carry_user_text = self._active_user_text
                     logger.info("pipecat_voice_unanswered_turn_carried org_id=%s", self._org_id)
+                # A correction revises the request it cut off even after an
+                # acknowledgement was spoken: the revised request is answered
+                # instead of the original, so nothing restarts from the top.
+                self._revisable_user_text = (
+                    self._active_user_text if self._active_user_text and not self._answer_started else None
+                )
                 raise
             except Exception as exc:  # noqa: BLE001
                 # str(exc) stays in the log, which is where a stack-shaped string
@@ -446,6 +701,8 @@ class GravitreCognitiveLLMService(LLMService):
                 await self.push_error(error_msg=spoken, exception=exc)
                 await self.push_frame(ErrorFrame(error=spoken))
             finally:
+                self._release_adopted_run()
+                await self._stop_answer_first()
                 await self.stop_processing_metrics()
                 await self.push_frame(LLMFullResponseEndFrame())
                 self._finish_turn_trace()
@@ -482,10 +739,29 @@ class GravitreCognitiveLLMService(LLMService):
             # stored, and any carried request stays carried for the next turn.
             logger.info("pipecat_voice_echo_turn_skipped org_id=%s", self._org_id)
             return
+        intent = self._interrupt_intent(user_text)
+        if intent is InterruptIntent.SPEECH_STOP:
+            # "stop talking" reached the brain as a turn (the turn strategy
+            # normally keeps it out). It asks for silence, not an answer.
+            logger.info("pipecat_voice_speech_stop_turn_skipped org_id=%s", self._org_id)
+            return
         trace = self._turn_trace
         if trace is not None:
             trace.begin_turn()
         self._turn_spoke = False
+        previous_turn_started = self._turn_started_mono
+        self._turn_started_mono = time.monotonic()
+        hold_s = incomplete_turn_hold_seconds(self._app_settings)
+        hold_starts = self._user_turn_starts() if hold_s > 0 and is_syntactically_incomplete(user_text) else None
+        if intent is InterruptIntent.TASK_CANCEL:
+            await self._answer_task_cancel(user_text, since=previous_turn_started)
+            return
+        confirm_hold_s = confirmation_hold_seconds(self._app_settings)
+        if confirm_hold_s > 0 and answers_assistant_question(user_text, history):
+            # voice_confirmation_hold_v1: before the brain runs (so before any
+            # approval is consumed or write executed) make sure the go-ahead
+            # is final. Raises _TurnYieldedToUser when the user went on.
+            await self._hold_bare_confirmation(user_text, confirm_hold_s)
         if self._interrupt_reporter is not None:
             # A confirmed new user turn ends the interrupted one: let its
             # bookkeeping finish and release the stop marker it armed, so this
@@ -500,16 +776,31 @@ class GravitreCognitiveLLMService(LLMService):
         await self._refresh_durable_tail()
         if trace is not None:
             trace.note("durable_ready")
-        history = self._merge_durable_and_socket_history(self._durable_rows(), history)
+        history = self._merge_durable_and_socket_history(
+            self._durable_rows(), self._strip_spoken_fillers(history)
+        )
         user_text = reconstitute_spoken_identity_fields(user_text)
         carried, self._carry_user_text = self._carry_user_text, None
+        revisable, self._revisable_user_text = self._revisable_user_text, None
+        if intent is InterruptIntent.EXPLAIN:
+            # "Wait, what does that mean?" is answered on its own; the request
+            # it paused stays exactly as it was, still carried.
+            self._carry_user_text = carried
+            carried = None
+        elif intent is InterruptIntent.CORRECTION and not carried and revisable:
+            carried = revisable
         self._turn_was_carried = bool(carried)
+        carried_fragment, self._carry_is_fragment = self._carry_is_fragment, False
         if carried:
-            user_text, history = merge_unanswered_turn(carried, user_text, history)
+            user_text, history = merge_unanswered_turn(
+                carried,
+                user_text,
+                history,
+                revision=intent is InterruptIntent.CORRECTION,
+                fragment=carried_fragment and intent is not InterruptIntent.CORRECTION,
+            )
         self._active_user_text = user_text
         self._answer_started = False
-        if session is not None:
-            session.begin_reply()
         if self._interrupt_reporter is not None:
             self._interrupt_reporter.begin_turn(user_text)
         if await asyncio.to_thread(
@@ -531,6 +822,17 @@ class GravitreCognitiveLLMService(LLMService):
         # Same helper and inputs (final text + merged history) as the
         # speculative run, so an adopted run was produced under the same tier.
         voice_tier, voice_mode = resolve_voice_turn_routing(user_text, history=history)
+        if intent is InterruptIntent.EXPLAIN:
+            # Explain from what was said: the fast mode answers from the
+            # conversation and starts no task, so the paused one is untouched.
+            from app.services.conversation_tier import tier_to_execution_mode
+
+            voice_mode = tier_to_execution_mode("light")
+            turn_inputs = dict(turn_inputs)
+            base = str(turn_inputs.get("assistant_base_prompt") or "")
+            turn_inputs["assistant_base_prompt"] = (
+                f"{base}\n\n{VOICE_EXPLAIN_INTERRUPTION_NOTE}" if base else VOICE_EXPLAIN_INTERRUPTION_NOTE
+            )
         if trace is not None:
             # Fallback only: the brain's own routing.conversationTier wins.
             trace.set_turn_meta(tier=voice_tier.tier)
@@ -573,7 +875,8 @@ class GravitreCognitiveLLMService(LLMService):
                 await task
             except TurnGuardrailBlocked as blocked:
                 logger.info("pipecat_voice_guardrail_blocked org_id=%s kind=%s", self._org_id, blocked.kind)
-                await self._speak_narration(blocked.spoken)
+                # The refusal is this turn's answer.
+                await self._speak_narration(blocked.spoken, kind=ANSWER)
                 return True
             return False
         # `normalize_spoken_text` forces sentence-terminal punctuation onto
@@ -608,6 +911,9 @@ class GravitreCognitiveLLMService(LLMService):
         # tool's tool-input-available and tool-output-available, logged per
         # call so the next probe can name the slow tool instead of the round.
         tool_call_started_at: dict[str, float] = {}
+        # Evidence for TTS chunking: answer sentences released while a tool
+        # call of this turn was still running (none are held for tools today).
+        answer_chunks_while_tool_pending = 0
         first_delta_at: float | None = None
         first_speakable_chunk_at: float | None = None
         tts_requested_at: float | None = None
@@ -638,13 +944,34 @@ class GravitreCognitiveLLMService(LLMService):
         # mismatch (or no coordinator/run at all) falls back to the exact
         # same fresh call as before — zero regression risk on the default
         # path.
+        if intent is InterruptIntent.EXPLAIN and self._speculative_coordinator is not None:
+            # A run speculated on the raw words had neither the explain note
+            # nor the fast mode; never adopt it for an explanation.
+            with contextlib.suppress(Exception):
+                self._speculative_coordinator.cancel()
+        coordinator = self._speculative_coordinator
+        revisions_v1 = voice_request_revisions_enabled(self._app_settings)
+        confirmed_versions = None
+        if coordinator is not None and revisions_v1 and coordinator.has_pending_run:
+            # voice_request_revisions_v1: the run may be adopted only if the
+            # conversation, pending task, approval state and context it was
+            # produced under are still what this confirmed turn sees.
+            confirmed_versions = await load_revision_versions(
+                self._app_settings,
+                org_id=self._org_id,
+                conversation_id=self._conversation_id,
+                history=history,
+                history_summary=self._durable_summary,
+            )
         speculative_run = (
-            self._speculative_coordinator.adopt(
+            coordinator.adopt(
                 user_text,
                 prefix_max_extra_words=prefix_extra,
                 tier=voice_tier.tier,
+                strict=revisions_v1,
+                versions=confirmed_versions,
             )
-            if self._speculative_coordinator
+            if coordinator and intent is not InterruptIntent.EXPLAIN
             else None
         )
         speculative_outcome = "adopted" if speculative_run is not None else "fresh"
@@ -656,6 +983,15 @@ class GravitreCognitiveLLMService(LLMService):
             self._turn_brain_marks.append(getattr(speculative_run, "latency_marks", None) or {})
         if trace is not None:
             trace.set_turn_meta(speculative_outcome=speculative_outcome)
+            if coordinator is not None:
+                trace.set_turn_meta(
+                    speculation={
+                        **coordinator.stats.snapshot(),
+                        "reject_reason": coordinator.last_reject_reason,
+                        "revision_delta": coordinator.last_revision_delta,
+                        "revisions_v1": revisions_v1,
+                    }
+                )
         if speculative_run is not None:
             logger.info(
                 "pipecat_voice_speculative_generation_adopted org_id=%s chars=%s prefix_adopt=%s",
@@ -681,7 +1017,19 @@ class GravitreCognitiveLLMService(LLMService):
             )
 
         if speculative_run is not None:
-            events_source = adopt_or_fresh(speculative_run.events(), _fresh_stream)
+            adopted_run = speculative_run
+            self._adopted_run = adopted_run
+
+            async def _adopted_events():
+                # Durable writes the run deferred while speculative land now,
+                # before any of its output is used (raises if it was blocked).
+                replayed = await adopted_run.commit()
+                if coordinator is not None:
+                    coordinator.note_replayed(replayed)
+                async for adopted_event in adopted_run.events():
+                    yield adopted_event
+
+            events_source = adopt_or_fresh(_adopted_events(), _fresh_stream)
         else:
             events_source = _fresh_stream()
         # Dead-air guard: while one slow tool call keeps the stream silent, say
@@ -695,6 +1043,15 @@ class GravitreCognitiveLLMService(LLMService):
         if should_acknowledge_turn(voice_tier):
             events_source = with_ack_deadline(events_source, delay_s=deep_ack_seconds(self._app_settings))
         last_stop_poll = time.perf_counter()
+        self._start_answer_first()
+
+        def _tool_call_running(call_id: str) -> Callable[[], bool] | None:
+            # A "let me check X" line is only worth saying while X runs.
+            return (lambda: call_id in tool_call_started_at) if call_id else None
+
+        def _tool_running(name: str) -> Callable[[], bool]:
+            return lambda: any(tool_names_by_call_id.get(cid) == name for cid in tool_call_started_at)
+
         async for event in events_source:
             if guard_task is not None and await _guard_refused():
                 aclose = getattr(events_source, "aclose", None)
@@ -722,14 +1079,28 @@ class GravitreCognitiveLLMService(LLMService):
                     self._conversation_id,
                 )
                 break
+            if hold_starts is not None and (
+                event is ACK_DUE
+                or (isinstance(event, AssistantStreamEvent) and event.sse_type in _OUTPUT_EVENT_TYPES)
+            ):
+                # voice_incomplete_turn_hold_v1: the committed final was cut off
+                # mid-thought ("I want to check"). Before anything of it is
+                # said, give the user a short window to go on.
+                starts, hold_starts = hold_starts, None
+                if await self._user_resumed_within(starts, hold_s):
+                    raise _TurnYieldedToUser(user_text)
             if event is ACK_DUE:
                 # The guard was settled at the top of this loop, so a refused
                 # turn never gets here. Only when nothing was said yet.
-                if first_delta_at is None and not self._turn_spoke:
+                if (
+                    first_delta_at is None
+                    and not self._turn_spoke
+                    and not (self._answer_first is not None and self._answer_first.has_pending())
+                ):
                     ack = pick_deep_acknowledgement(self._last_ack)
                     self._last_ack = ack
                     logger.info("pipecat_voice_deep_ack org_id=%s", self._org_id)
-                    await self._speak_narration(ack)
+                    await self._speak_narration(ack, kind=FILLER)
                 continue
             if event is SILENCE_TICK:
                 due = slow_tool_notices.due(
@@ -747,7 +1118,10 @@ class GravitreCognitiveLLMService(LLMService):
                         is_repeat,
                     )
                     await self._flush_client_text(client_text_filter)
-                    await self._speak_narration(narrate_tool_still_running(tool_name, repeat=is_repeat))
+                    await self._narrate_work(
+                        narrate_tool_still_running(tool_name, repeat=is_repeat),
+                        _tool_running(tool_name),
+                    )
                 continue
             if isinstance(event, AssistantStreamComplete):
                 complete_event = event
@@ -795,7 +1169,7 @@ class GravitreCognitiveLLMService(LLMService):
                     narrated_tool_starts.add(tool_name)
                     if not skip_spoken_tool_progress(tool_name):
                         await self._flush_client_text(client_text_filter)
-                        await self._speak_narration(narrate_tool_started(tool_name))
+                        await self._narrate_work(narrate_tool_started(tool_name), _tool_call_running(call_id))
                 continue
             if event.sse_type == "tool-output-available":
                 payload = event.payload if isinstance(event.payload, dict) else {}
@@ -813,7 +1187,12 @@ class GravitreCognitiveLLMService(LLMService):
                 narration = narrate_tool_completed(tool_name, payload.get("output"))
                 if narration and not skip_spoken_tool_progress(tool_name):
                     await self._flush_client_text(client_text_filter)
-                    await self._speak_narration(narration)
+                    if self._answer_first is not None:
+                        # A result line waits briefly: the answer usually
+                        # follows, and then the line is not needed.
+                        self._answer_first.enqueue(narration, PROGRESS, hold_s=RESULT_LINE_GRACE_S)
+                    else:
+                        await self._speak_narration(narration)
                 continue
             if event.sse_type != "text-delta":
                 continue
@@ -835,7 +1214,7 @@ class GravitreCognitiveLLMService(LLMService):
             if client_delta:
                 await self.push_frame(
                     OutputTransportMessageUrgentFrame(
-                        message={"type": "assistant_text", "delta": client_delta}
+                        message={"type": "assistant_text", "delta": client_delta, "kind": ANSWER}
                     )
                 )
             text_buffer += delta
@@ -852,9 +1231,17 @@ class GravitreCognitiveLLMService(LLMService):
                         first_speakable_chunk_at = time.perf_counter()
                         if trace is not None:
                             trace.note("first_speakable", first_speakable_chunk_at)
+                    if tool_call_started_at:
+                        answer_chunks_while_tool_pending += 1
+                    if self._answer_first is not None:
+                        # Held acknowledgement / tool lines are not said now.
+                        self._answer_first.mark_answer_ready()
                     await self._push_spoken_text(spoken)
                     if tts_requested_at is None:
                         tts_requested_at = time.perf_counter()
+        if trace is not None:
+            trace.add_extra("answer_chunks_while_tool_pending", answer_chunks_while_tool_pending)
+            trace.add_extra("tool_calls", len(tool_names_by_call_id))
         # A stream that produced no events (or was stopped) still settles the guard.
         if guard_task is not None and await _guard_refused():
             await self.stop_ttfb_metrics()
@@ -872,13 +1259,32 @@ class GravitreCognitiveLLMService(LLMService):
                 first_speakable_chunk_at = time.perf_counter()
                 if trace is not None:
                     trace.note("first_speakable", first_speakable_chunk_at)
+            if self._answer_first is not None:
+                self._answer_first.mark_answer_ready()
             await self._push_spoken_text(tail)
             if tts_requested_at is None:
                 tts_requested_at = time.perf_counter()
+        if self._answer_first is not None:
+            # Lines still held when the brain is done (a turn with no answer
+            # text): say the ones still true, now.
+            await self._answer_first.finish_turn()
+            if trace is not None:
+                trace.add_extra("answer_first", self._answer_first.stats.as_dict())
 
         def _ms(at: float | None) -> int | None:
             return int((at - turn_start) * 1000) if at is not None else None
 
+        speculation_snapshot: dict[str, Any] | None = None
+        if coordinator is not None:
+            speculation_snapshot = {
+                **coordinator.stats.snapshot(),
+                "reject_reason": coordinator.last_reject_reason,
+                "revision_delta": coordinator.last_revision_delta,
+                "revisions_v1": revisions_v1,
+            }
+            if trace is not None:
+                # End-of-turn counters (deferred writes replayed by now).
+                trace.set_turn_meta(speculation=speculation_snapshot)
         # Audit inserts block; the reply is still being spoken, so they run in
         # a worker thread instead of pausing its audio.
         await asyncio.to_thread(
@@ -893,6 +1299,7 @@ class GravitreCognitiveLLMService(LLMService):
             speculative_outcome=speculative_outcome,
             speculative_v2=spec_tuning.v2_enabled,
             tts_chunk_v2=chunk_tuning.v2_enabled,
+            speculation=speculation_snapshot,
         )
         if complete_event is not None and trace is not None:
             trace.set_turn_meta(turn_id=str(getattr(complete_event, "message_id", None) or "") or None)
@@ -1121,23 +1528,70 @@ class GravitreCognitiveLLMService(LLMService):
         if pending:
             await self.push_frame(
                 OutputTransportMessageUrgentFrame(
-                    message={"type": "assistant_text", "delta": pending}
+                    message={"type": "assistant_text", "delta": pending, "kind": ANSWER}
                 )
             )
 
-    async def _speak_narration(self, text: str) -> None:
+    def _start_answer_first(self) -> None:
+        """voice_answer_first_v1: hold this turn's filler / progress lines (voice_answer_first.py)."""
+        if not bool(getattr(self._app_settings, "voice_answer_first_v1", False)):
+            return
+        scheduler = AnswerFirstSpeech(speak=self._speak_narration_now, playout=self._playout_clock)
+        self._answer_first = scheduler
+        self._answer_first_task = asyncio.ensure_future(scheduler.run())
+
+    async def _stop_answer_first(self) -> None:
+        task, self._answer_first_task = self._answer_first_task, None
+        self._answer_first = None
+        if task is not None:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await task
+
+    async def _narrate_work(self, text: str, still_relevant: Callable[[], bool] | None) -> None:
+        """A tool line that is only true while the work runs ("Let me check X").
+
+        With voice_answer_first_v1 it is held with that condition (see
+        voice_answer_first.py); otherwise spoken now, as before.
+        """
+        if self._answer_first is not None and text:
+            self._answer_first.enqueue(text, PROGRESS, still_relevant)
+            return
+        await self._speak_narration(text)
+
+    async def _speak_narration(self, text: str, kind: str = PROGRESS) -> None:
+        """Speak a filler / progress / refusal line, or hold it (voice_answer_first_v1).
+
+        With answer-first on, a non-answer line said during a turn is held and
+        released just before the queued audio runs out; answer text drops it.
+        A spoken refusal (``answer``) is never held.
+        """
+        scheduler = self._answer_first
+        if scheduler is not None and text:
+            if kind == ANSWER:
+                scheduler.mark_answer_ready()
+            else:
+                scheduler.enqueue(text, kind)
+                return
+        await self._speak_narration_now(text, kind)
+
+    async def _speak_narration_now(self, text: str, kind: str = PROGRESS) -> None:
         """Phase 2 (conversational-realism): speak one real milestone sentence.
 
         Goes through the same security gate + normalization as every other
         piece of spoken output (``_sanitize_for_tts``), and through the same
         text-delta transport frame so the live transcript shows exactly what
         was said — narration is not a side channel, it is real turn content.
+
+        ``kind`` labels the segment: ``progress`` for tool narration (the
+        default), ``filler`` for an acknowledgement, ``answer`` for a spoken
+        refusal. Latency metrics and the heard-text history read the label.
         """
         if not text:
             return
         await self.push_frame(
             OutputTransportMessageUrgentFrame(
-                message={"type": "assistant_text", "delta": text + " "}
+                message={"type": "assistant_text", "delta": text + " ", "kind": kind}
             )
         )
         spoken = self._sanitize_for_tts(text)
@@ -1158,6 +1612,8 @@ class GravitreCognitiveLLMService(LLMService):
         interrupt reporter's draft, marked not for TTS and not for the context
         (the TTS's own spoken-text frames carry it there, as before).
         """
+        if self._speech_muted():
+            return
         if self._tts_text_pending:
             await self._push_spoken_text(spoken)
             return
@@ -1201,15 +1657,277 @@ class GravitreCognitiveLLMService(LLMService):
         this can never produce a double space; the next chunk's own leading
         strip means no chunk ever contributes a space of its own.
         """
+        if self._speech_muted() and not (self._answer_started and await self._resume_speech_for_result()):
+            # "Stop talking": the text already went to the client; nothing more is spoken.
+            return
         if self._turn_trace is not None:
             self._turn_trace.note("tts_requested")
         self._tts_text_pending = True
         self._turn_spoke = True
+        if self._answer_started:
+            self._answer_spoken = True
         self._note_bot_speech(spoken)
         await self._push_llm_text(spoken + " ")
 
     def _voice_session(self) -> Any:
         return getattr(self._interrupt_reporter, "_voice_session", None)
+
+    def _interrupt_intents_enabled(self) -> bool:
+        return bool(getattr(self._app_settings, "voice_interrupt_intents_v1", False))
+
+    def _user_turn_starts(self) -> int:
+        session = self._voice_session()
+        try:
+            return int(getattr(session, "user_turn_starts", 0) or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    async def _hold_bare_confirmation(self, user_text: str, hold_s: float) -> None:
+        """Act on a bare go-ahead only once it is final (voice_confirmation_hold_v1).
+
+        Flux can commit "yes" on a pause the user then breaks ("yes... wait").
+        Waits ``hold_s`` for the user to resume. If they do, waits for that
+        utterance to end and for the turn strategy's verdict:
+
+        - a stop / correction / request whose words arrived in time interrupts
+          this turn (CancelledError): the go-ahead is carried as a fragment,
+          so the next turn reads "yes wait" and nothing is sent;
+        - one first held as noise and then escalated by its words, or speech
+          still going after CONFIRMATION_HOLD_MAX_WAIT_S, yields the turn
+          (_TurnYieldedToUser) to what the user said;
+        - a cough, "um" or "you there?" changes nothing: the go-ahead proceeds.
+        """
+        session = self._voice_session()
+        if session is None:
+            return
+        # The go-ahead must not be read as this turn's request if it is
+        # cancelled here: it is carried below, as a fragment, instead.
+        self._active_user_text = ""
+        self._answer_started = False
+        starts = self._user_turn_starts()
+        escalations = int(getattr(session, "held_speech_escalations", 0) or 0)
+        began = time.monotonic()
+        stopped_at: float | None = None
+        try:
+            while True:
+                now = time.monotonic()
+                resumed = self._user_turn_starts() > starts
+                speaking = bool(getattr(session, "user_speaking", False))
+                if int(getattr(session, "held_speech_escalations", 0) or 0) > escalations:
+                    raise _TurnYieldedToUser(user_text)
+                if resumed and speaking:
+                    stopped_at = None
+                    if now - began >= CONFIRMATION_HOLD_MAX_WAIT_S:
+                        raise _TurnYieldedToUser(user_text)
+                elif resumed:
+                    if stopped_at is None:
+                        stopped_at = now
+                    elif now - stopped_at >= CONFIRMATION_HOLD_SETTLE_S:
+                        break
+                elif now - began >= hold_s:
+                    break
+                await asyncio.sleep(_INCOMPLETE_HOLD_POLL_S)
+        except _TurnYieldedToUser:
+            logger.info("pipecat_voice_confirmation_hold_yielded org_id=%s", self._org_id)
+            raise
+        except asyncio.CancelledError:
+            if not self._carry_user_text:
+                self._carry_user_text = user_text
+                self._carry_is_fragment = True
+            logger.info("pipecat_voice_confirmation_hold_interrupted org_id=%s", self._org_id)
+            raise
+        logger.info(
+            "pipecat_voice_confirmation_hold_released org_id=%s held_ms=%d user_resumed=%s",
+            self._org_id,
+            int((time.monotonic() - began) * 1000),
+            self._user_turn_starts() > starts,
+        )
+
+    async def _user_resumed_within(self, starts: int, hold_s: float) -> bool:
+        """Wait up to ``hold_s`` for a user turn start after ``starts``; True if one came."""
+        deadline = time.monotonic() + hold_s
+        while True:
+            if self._user_turn_starts() > starts:
+                return True
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return False
+            await asyncio.sleep(min(_INCOMPLETE_HOLD_POLL_S, remaining))
+
+    def _release_adopted_run(self) -> None:
+        """Stop the adopted speculative run's producer when its turn ends.
+
+        Barge-in cancels the turn's coroutine, but an adopted run produces on
+        its own task: left alone it keeps running the brain, outlives the stop
+        marker (released when the next turn starts) and then passes the write
+        gate, committing work the user cut off. The run belongs to this turn
+        only, so whatever ends the turn ends the run. A run that finished
+        normally has nothing left to cancel.
+        """
+        run, self._adopted_run = self._adopted_run, None
+        if run is None:
+            return
+        task = getattr(run, "task", None)
+        if task is None or task.done():
+            return
+        logger.info("pipecat_voice_adopted_run_cancelled org_id=%s", self._org_id)
+        with contextlib.suppress(Exception):
+            run.cancel()
+
+    def _interrupt_intent(self, user_text: str) -> InterruptIntent | None:
+        """The intent of a turn that cut off a reply, or None (flag off / no barge-in).
+
+        The barge-in record is consumed either way, so it never leaks onto a
+        later, unrelated turn.
+        """
+        reporter = self._interrupt_reporter
+        consume = getattr(reporter, "consume_barge_in", None)
+        barge_in = consume() if callable(consume) else None
+        if not self._interrupt_intents_enabled() or barge_in is None:
+            return None
+        intent = classify_interrupt_intent(user_text)
+        logger.info(
+            "pipecat_voice_interrupt_intent org_id=%s intent=%s interrupted_reply_id=%s",
+            self._org_id,
+            intent.value,
+            barge_in.get("reply_id"),
+        )
+        return intent
+
+    async def _resume_speech_for_result(self) -> bool:
+        """The silenced work finished: decide once how its result is delivered.
+
+        "Stop talking, keep working" silenced the reply, not the work. When the
+        answer arrives and the user has not started another turn since, the
+        result is spoken as a reply of its own: the silenced reply's response
+        is closed and a new one opens under a new reply id, so the client
+        (which dropped the silenced reply's audio) plays it and nothing the
+        silenced segments still emit can leak into it. If the user has moved
+        on, or the answer itself was what got silenced, nothing more is
+        spoken: the result goes out only as the turn's text, which the client
+        already shows. Either way it is delivered once and persisted with the
+        turn.
+        """
+        if self._result_delivery is not None:
+            return self._result_delivery == "spoken"
+        session = self._voice_session()
+        reply_id = self._reply_id
+        moved_on = getattr(session, "user_started_since_mute", None)
+        if (
+            self._answer_spoken
+            or session is None
+            or reply_id is None
+            or not callable(moved_on)
+            or moved_on(reply_id)
+        ):
+            # Silenced mid-answer ("stop talking" over the answer itself), or
+            # the user moved on: the rest is shown, not spoken.
+            self._result_delivery = "visible"
+        else:
+            self._result_delivery = "spoken"
+            await self.push_frame(LLMFullResponseEndFrame())
+            start = LLMFullResponseStartFrame()
+            self._reply_id = session.begin_reply()
+            setattr(start, "gravitre_reply_id", self._reply_id)
+            await self.push_frame(start)
+            self._tts_text_pending = False
+        logger.info(
+            "pipecat_voice_silenced_work_result org_id=%s reply_id=%s delivery=%s",
+            self._org_id,
+            reply_id,
+            self._result_delivery,
+        )
+        return self._result_delivery == "spoken"
+
+    def _speech_muted(self) -> bool:
+        """This reply was silenced ("stop talking"): its text still goes out, its speech does not."""
+        session = self._voice_session()
+        if session is None or self._reply_id is None:
+            return False
+        probe = getattr(session, "reply_muted", None)
+        return bool(callable(probe) and probe(self._reply_id))
+
+    async def _answer_task_cancel(self, user_text: str, *, since: float | None) -> None:
+        """Answer "cancel it" after a barge-in: stop the work, say truthfully what had happened.
+
+        The interrupted turn's coroutine is already cancelled. The stop marker
+        armed at the barge-in stays armed (``settle_barge_in(release=False)``)
+        so a write of that work still on its way to commit is refused; the
+        next ordinary turn releases it. The report comes from the write
+        effects the tool layer recorded, never from the cancellation itself:
+        a write that finished is reported as done, one still at the provider
+        as not confirmed either way.
+        """
+        from app.services.voice_barge_in_write import (
+            STATUS_BLOCKED,
+            STATUS_COMPLETED,
+            STATUS_STARTED,
+            STATUS_UNCERTAIN,
+            write_effects_since,
+        )
+
+        reporter = self._interrupt_reporter
+        if reporter is not None:
+            await reporter.settle_barge_in(release=False)
+            if reporter.conversation_id:
+                self._conversation_id = reporter.conversation_id
+        if self._speculative_coordinator is not None:
+            with contextlib.suppress(Exception):
+                self._speculative_coordinator.cancel()
+        # The cancelled request is withdrawn, not carried into the next turn.
+        self._carry_user_text = None
+        self._revisable_user_text = None
+        self._turn_was_carried = False
+        self._active_user_text = user_text
+        self._answer_started = False
+        if reporter is not None:
+            reporter.begin_turn(user_text)
+
+        effects: list[dict[str, Any]] = []
+        if since is not None:
+            deadline = time.monotonic() + TASK_CANCEL_SETTLE_WAIT_S
+            while True:
+                effects = write_effects_since(self._org_id, self._conversation_id, since)
+                if not any(e["status"] == STATUS_STARTED for e in effects) or time.monotonic() >= deadline:
+                    break
+                await asyncio.sleep(0.1)
+        report = describe_cancelled_work(
+            completed=[e["action"] for e in effects if e["status"] == STATUS_COMPLETED],
+            unconfirmed=[
+                e["action"] for e in effects if e["status"] in (STATUS_STARTED, STATUS_UNCERTAIN)
+            ],
+            blocked=[e["action"] for e in effects if e["status"] == STATUS_BLOCKED],
+        )
+        logger.info(
+            "pipecat_voice_task_cancel org_id=%s conversation_id=%s effects=%s",
+            self._org_id,
+            self._conversation_id,
+            [(e["action"], e["status"]) for e in effects],
+        )
+        await self._speak_narration(report)
+        complete = AssistantStreamComplete(
+            full_content=report, tool_results=[], react_result=None, model="voice_task_cancel"
+        )
+        persisted_id, assistant_id = await asyncio.to_thread(
+            self._persist_completed_voice_turn,
+            user_text=user_text,
+            assistant_text=report,
+            complete_event=complete,
+        )
+        if persisted_id:
+            self._conversation_id = persisted_id
+            if reporter is not None:
+                reporter.mark_turn_persisted(conversation_id=persisted_id, assistant_message_id=assistant_id)
+        await self.push_frame(
+            OutputTransportMessageUrgentFrame(
+                message={
+                    "type": "assistant_turn.complete",
+                    "turn_id": str(assistant_id or ""),
+                    "conversation_id": self._conversation_id,
+                    "text": report,
+                }
+            )
+        )
 
     def _note_bot_speech(self, spoken: str) -> None:
         session = self._voice_session()

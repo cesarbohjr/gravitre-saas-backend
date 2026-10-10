@@ -33,6 +33,27 @@ async def log_pipeline_latency(
 ) -> None:
     if duration_ms < 0:
         return
+    from app.services.speculative_execution import current_scope
+
+    scope = current_scope()
+    if scope is not None:
+        # A discarded speculative run must not leave latency rows behind.
+        scope.defer(
+            "latency.pipeline",
+            lambda: log_pipeline_latency(
+                settings,
+                org_id=org_id,
+                stage_name=stage_name,
+                duration_ms=duration_ms,
+                message_id=message_id,
+                cache_hit=cache_hit,
+                tier=tier,
+                model_used=model_used,
+                estimated_cost_usd=estimated_cost_usd,
+                client=client,
+            ),
+        )
+        return
     db = client or get_supabase_client(settings)
     row = {
         "id": str(uuid4()),

@@ -48,6 +48,30 @@ def resolve_voice_speculative_tuning(settings: Any) -> VoiceSpeculativeTuning:
     )
 
 
+def resolve_voice_speculative_bounds(settings: Any) -> Any:
+    """Per-run speculation limits (always on; Settings may tighten or loosen
+    within hard clamps)."""
+    from app.services.pipecat_voice.speculative_generation import SpeculativeBounds
+
+    def _num(name: str, default: float) -> float:
+        try:
+            raw = getattr(settings, name, default)
+            return float(default if raw is None else raw)
+        except (TypeError, ValueError):
+            return float(default)
+
+    return SpeculativeBounds(
+        timeout_s=max(0.5, min(_num("voice_speculative_timeout_s", 5.0), 20.0)),
+        max_buffered_chars=int(max(200, min(_num("voice_speculative_max_buffer_chars", 2000), 20000))),
+        max_buffered_events=int(max(32, min(_num("voice_speculative_max_buffer_events", 512), 4096))),
+    )
+
+
+def voice_request_revisions_enabled(settings: Any) -> bool:
+    """Versioned request revisions + strict adoption (default off)."""
+    return bool(getattr(settings, "voice_request_revisions_v1", False))
+
+
 def resolve_voice_tts_chunk_tuning(settings: Any) -> VoiceTtsChunkTuning:
     v2 = bool(getattr(settings, "voice_tts_chunk_v2", False))
     raw_min = int(getattr(settings, "voice_tts_chunk_min_chars", 12) or 12)
@@ -81,3 +105,30 @@ def speculative_interim_materially_changed(previous: str, new: str) -> bool:
     if curr.startswith(prev):
         return False
     return True
+
+
+def speculative_interim_breaks_run(
+    run_text: str,
+    new: str,
+    *,
+    strict: bool,
+    v2_enabled: bool,
+    max_extra_words: int,
+) -> bool:
+    """Should a new interim transcript cancel the pending speculative run?
+
+    v1: any change. v2: any change that is not a pure suffix extension.
+    Strict (voice_request_revisions_v1): any change that the strict adoption
+    check would reject anyway ("...last month" -> "...last month but"), so the
+    compute is freed at once instead of at confirmed end of turn.
+    """
+    if not v2_enabled and not strict:
+        return True
+    if strict:
+        from app.services.pipecat_voice.speculative_generation import strict_transcript_match
+
+        ok, _why = strict_transcript_match(
+            run_text, new, max_extra_words=max_extra_words if v2_enabled else 0
+        )
+        return not ok
+    return speculative_interim_materially_changed(run_text, new)

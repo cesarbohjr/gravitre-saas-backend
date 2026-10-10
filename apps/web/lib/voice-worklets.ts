@@ -7,7 +7,7 @@
  * so a cached copy is never paired with newer page code.
  */
 
-export const VOICE_WORKLET_VERSION = "2"
+export const VOICE_WORKLET_VERSION = "3"
 export const VOICE_PCM_PLAYER_PROCESSOR = "gravitre-pcm-player"
 export const VOICE_MIC_CAPTURE_PROCESSOR = "gravitre-mic-capture"
 

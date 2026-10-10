@@ -56,6 +56,30 @@ def request_stop(
     return True
 
 
+def arm_local_stop(org_id: str, conversation_id: str) -> bool:
+    """Arm the stop flag in this process only: no I/O, safe to call on the event loop.
+
+    A voice barge-in calls this synchronously before anything else is awaited,
+    so a write commit check running in this process (the voice turn's tools
+    run here) sees the stop at once; the shared Redis flag follows off-loop.
+    """
+    oid = (org_id or "").strip()
+    cid = (conversation_id or "").strip()
+    if not oid or not cid:
+        return False
+    with _lock:
+        _local_stops[stop_key(oid, cid)] = time.monotonic() + STOP_TTL_SECONDS
+    return True
+
+
+def _local_stop_active(key: str) -> bool:
+    now = time.monotonic()
+    with _lock:
+        _prune_local(now)
+        until = _local_stops.get(key)
+        return bool(until and until > now)
+
+
 def is_stop_requested(
     org_id: str,
     conversation_id: str | None,
@@ -70,14 +94,13 @@ def is_stop_requested(
     redis = get_redis_client(settings or get_settings())
     if redis is not None:
         try:
-            return bool(redis.get(key))
+            if redis.get(key):
+                return True
         except Exception as exc:  # noqa: BLE001
             logger.debug("chat stop redis get failed key=%s error=%s", key, str(exc)[:200])
-    now = time.monotonic()
-    with _lock:
-        _prune_local(now)
-        until = _local_stops.get(key)
-        return bool(until and until > now)
+    # A flag armed in this process (arm_local_stop, or request_stop without
+    # Redis) counts too, so a barge-in blocks commits before Redis is written.
+    return _local_stop_active(key)
 
 
 def clear_stop(

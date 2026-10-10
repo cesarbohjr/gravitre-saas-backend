@@ -5,6 +5,9 @@ this only maps conversation stop / barge-in onto ``interrupt_blocks_write_commit
 """
 from __future__ import annotations
 
+import itertools
+import threading
+import time
 from typing import Any
 
 from app.core.logging import get_logger
@@ -68,11 +71,33 @@ def raise_if_barge_in_blocks_invoke(ctx: Any, action: str) -> None:
     """Last-line invoke_tool defense: uncommitted WRITE after barge-in/stop."""
     if not conversation_stop_blocks_invoke(ctx, action):
         return
+    _note(ctx, action, STATUS_BLOCKED)
     from app.services.react_write_gate import WRITE_COMMIT_INTERRUPTED
     from app.services.tool_types import ToolValidationError
 
     raise ToolValidationError(
         "Stopped before sending. The write was not executed.",
+        code=WRITE_COMMIT_INTERRUPTED,
+    )
+
+
+def raise_if_speculative_blocks_invoke(action: str) -> None:
+    """No connector WRITE from a speculative (unconfirmed) voice run.
+
+    READs stay allowed (side-effect free). A mutating invoke marks the run
+    blocked, so it is never adopted, and fails like any refused write.
+    """
+    from app.services.speculative_execution import unadopted_scope
+
+    scope = unadopted_scope()
+    if scope is None or not action_is_mutating_write(action):
+        return
+    scope.mark_blocked(f"connector_write:{action}")
+    from app.services.react_write_gate import WRITE_COMMIT_INTERRUPTED
+    from app.services.tool_types import ToolValidationError
+
+    raise ToolValidationError(
+        "Not executed: the request was not confirmed yet.",
         code=WRITE_COMMIT_INTERRUPTED,
     )
 
@@ -121,3 +146,92 @@ def mark_voice_barge_in_stop(
         ok,
     )
     return ok
+
+
+# --- Write effect ledger -----------------------------------------------------
+#
+# What a cancelled voice turn already did. Cancelling the voice turn's
+# coroutine does not stop a connector call already running in a worker thread,
+# and it never undoes one that finished, so "cancel it" is answered from what
+# the tool layer recorded, not from what was cancelled. Process-local on
+# purpose: a voice socket's tools run in that socket's process.
+
+STATUS_STARTED = "started"
+STATUS_COMPLETED = "completed"
+STATUS_FAILED = "failed"
+STATUS_UNCERTAIN = "uncertain"
+STATUS_BLOCKED = "blocked"
+TERMINAL_STATUSES = frozenset({STATUS_COMPLETED, STATUS_FAILED, STATUS_UNCERTAIN, STATUS_BLOCKED})
+
+_EFFECT_TTL_S = 900.0
+_EFFECTS_PER_CONVERSATION = 50
+_effects_lock = threading.Lock()
+_effects: dict[tuple[str, str], list[dict[str, Any]]] = {}
+_effect_seq = itertools.count(1)
+
+
+def _conversation_key(ctx: Any) -> tuple[str, str] | None:
+    oid = str(getattr(ctx, "org_id", "") or "").strip()
+    cid = str(getattr(ctx, "conversation_id", "") or "").strip()
+    if not oid or not cid:
+        return None
+    return oid, cid
+
+
+def _note(ctx: Any, action: str, status: str) -> dict[str, Any] | None:
+    key = _conversation_key(ctx)
+    if key is None:
+        return None
+    now = time.monotonic()
+    entry: dict[str, Any] = {
+        "id": next(_effect_seq),
+        "action": str(action or ""),
+        "status": status,
+        "started_at": now,
+        "updated_at": now,
+    }
+    with _effects_lock:
+        rows = [row for row in _effects.get(key, []) if now - row["updated_at"] <= _EFFECT_TTL_S]
+        rows.append(entry)
+        _effects[key] = rows[-_EFFECTS_PER_CONVERSATION:]
+    return entry
+
+
+def begin_write_effect(ctx: Any, action: str) -> dict[str, Any] | None:
+    """Right before a WRITE reaches the provider: check the stop again, then record it.
+
+    The first check in ``invoke_tool`` runs before preflight, rate limits and
+    permission reads; a barge-in that lands in between is caught here, at the
+    last point before the provider call. Returns a handle for
+    :func:`finish_write_effect`, or None for a READ or a call with no
+    conversation.
+    """
+    if _conversation_key(ctx) is None or not action_is_mutating_write(action):
+        return None
+    raise_if_barge_in_blocks_invoke(ctx, action)
+    return _note(ctx, action, STATUS_STARTED)
+
+
+def finish_write_effect(handle: dict[str, Any] | None, status: str) -> None:
+    if handle is None:
+        return
+    with _effects_lock:
+        handle["status"] = status if status in TERMINAL_STATUSES else STATUS_UNCERTAIN
+        handle["updated_at"] = time.monotonic()
+
+
+def write_effects_since(
+    org_id: str | None, conversation_id: str | None, since: float
+) -> list[dict[str, Any]]:
+    """Copies of this conversation's WRITE effects recorded at or after ``since`` (monotonic)."""
+    oid = str(org_id or "").strip()
+    cid = str(conversation_id or "").strip()
+    if not oid or not cid:
+        return []
+    with _effects_lock:
+        return [dict(row) for row in _effects.get((oid, cid), []) if row["started_at"] >= since]
+
+
+def reset_write_effects_for_tests() -> None:
+    with _effects_lock:
+        _effects.clear()
