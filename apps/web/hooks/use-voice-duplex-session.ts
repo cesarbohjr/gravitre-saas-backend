@@ -265,6 +265,10 @@ export function useVoiceDuplexSession(options: Options) {
   // path has audio but cannot play it; this path means TTS/audio transport never
   // delivered anything to the browser.
   const audioReplyWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // After a barge-in, audio frames of the cancelled reply can still be on the
+  // wire. They are dropped until the user's next turn starts, so the stopped
+  // reply never resumes or replays.
+  const dropAudioAfterInterruptRef = useRef(false)
   const audioFramesReceivedRef = useRef(0)
   // performance.now() of the reply's first audio frame, for the playback.started report.
   const firstAudioReceivedAtRef = useRef<number | null>(null)
@@ -1341,6 +1345,7 @@ export function useVoiceDuplexSession(options: Options) {
           if (!text) return
           setProvisionalTranscript(text)
           if (msg.final) {
+            dropAudioAfterInterruptRef.current = false
             lastUserFinalRef.current = text
             browserAudioPlaybackStartedRef.current = false
             audioFallbackTriggeredRef.current = false
@@ -1366,7 +1371,11 @@ export function useVoiceDuplexSession(options: Options) {
           if (!delta) return
           const firstAssistantText = assistantTextRef.current.length === 0
           assistantTextRef.current += delta
-          if (firstAssistantText && audibleAudioFramesRef.current === 0) {
+          if (
+            firstAssistantText &&
+            audibleAudioFramesRef.current === 0 &&
+            !dropAudioAfterInterruptRef.current
+          ) {
             armAudioReplyWatchdog()
           }
           optsRef.current.onAssistantDelta?.(assistantTextRef.current)
@@ -1405,6 +1414,10 @@ export function useVoiceDuplexSession(options: Options) {
           // The server only sends this for a real barge-in. Drop the audio
           // already queued here (up to the jitter lead) so the bot stops the
           // moment the user cuts in, not after the buffer drains.
+          // The cancelled reply must not come back: no fallback replay of its
+          // full text, and no late frames of it.
+          clearAudioReplyWatchdog()
+          dropAudioAfterInterruptRef.current = true
           if (agentSpeakingRef.current || pcmPlayerRef.current?.isActive()) {
             stopPcmPlayback()
             agentSpeakingRef.current = false
@@ -1431,6 +1444,7 @@ export function useVoiceDuplexSession(options: Options) {
           // HTTP TTS owns this turn after the no-audio watchdog fires. A late
           // provider frame must not create overlapping speech.
           if (audioFallbackTriggeredRef.current) return
+          if (dropAudioAfterInterruptRef.current) return
           const pcm = pcmDecoderRef.current.decode(msg.pcm16_b64)
           if (pcm.length > 0) {
             if (firstAudioReceivedAtRef.current == null) {

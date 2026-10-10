@@ -13,27 +13,34 @@ EVIDENCE_PROVIDER = "provider_observation"
 EVIDENCE_CACHE = "authorized_cache"
 EVIDENCE_IDENTIFIED = "identified_source"
 
-_CLAIM_NOUNS = (
+# Things a read returns as rows. Only these are checked against the read's
+# result count; traffic metrics (sessions, users, clicks) are values inside a
+# report, not rows, so comparing them to a row count is meaningless.
+_RECORD_NOUNS = (
     r"deals?|invoices?|tickets?|customers?|contacts?|companies|"
-    r"sessions?|visitors?|users?|pageviews?|clicks?|impressions?|"
     r"records?|results?|workflows?|runs?"
+)
+_CLAIM_NOUNS = (
+    _RECORD_NOUNS + r"|sessions?|visitors?|users?|pageviews?|clicks?|impressions?"
 )
 _FOUND_COUNT = re.compile(
     rf"(?is)\b(?:found|listed|returned|pulled|there\s+are|i\s+(?:found|see))\s+"
     rf"(?:\*\*)?(\d+)(?:\*\*)?\s+(?:matching\s+)?(?:{_CLAIM_NOUNS})"
 )
-_NOUN_COUNT = re.compile(
-    rf"(?is)\b(\d+)\s+(?:matching\s+)?(?:{_CLAIM_NOUNS})\b"
+_FOUND_RECORD_COUNT = re.compile(
+    rf"(?is)\b(?:found|listed|returned|pulled|there\s+are|i\s+(?:found|see))\s+"
+    rf"(?:\*\*)?(\d+)(?:\*\*)?\s+(?:matching\s+)?(?:{_RECORD_NOUNS})"
 )
-_REVENUE = re.compile(r"(?is)\b(?:revenue|pipeline\s+value|arr|mrr)\b.{0,24}\b(\d[\d,]*)")
-_TRAFFIC_METRIC = re.compile(
-    r"(?is)\b(\d[\d,]*)\s+(?:active\s+users|sessions|pageviews|clicks)\b"
+_RECORD_COUNT = re.compile(
+    rf"(?is)(?<![\d,.])(\d+)\s+(?:matching\s+)?(?:{_RECORD_NOUNS})\b"
 )
+# Report reads return metric values, not records; their row count says
+# nothing about the numbers in the answer.
+_REPORT_ACTION_PREFIXES = ("google_analytics.", "google_search_console.")
 
 UNGROUNDED_FALLBACK = (
-    "I compiled that business read but I don't have a verified result from the "
-    "connected system yet, so I can't report counts or outcomes. Ask again and "
-    "I'll run the live read."
+    "I don't have confirmed numbers for that yet, so I'd rather not guess. "
+    "Want me to check the live data now?"
 )
 
 
@@ -82,12 +89,13 @@ def evidence_from_observation(
     }
 
 
-def claimed_business_numbers(text: str) -> list[int]:
+def claimed_record_counts(text: str) -> list[int]:
+    """Counts of records the text claims (deals, tickets...), not metric values."""
     found: list[int] = []
-    for pattern in (_FOUND_COUNT, _NOUN_COUNT, _REVENUE, _TRAFFIC_METRIC):
+    for pattern in (_FOUND_RECORD_COUNT, _RECORD_COUNT):
         for match in pattern.finditer(text or ""):
-            raw = match.group(1).replace(",", "")
-            if raw.isdigit():
+            raw = match.group(1)
+            if raw.isdigit() and int(raw) not in found:
                 found.append(int(raw))
     return found
 
@@ -155,14 +163,16 @@ def apply_provider_result_grounding(text: str, envelope: dict[str, Any] | None) 
         return cleaned
     if evidence is None:
         return UNGROUNDED_FALLBACK
+    if str(evidence.get("action_key") or "").startswith(_REPORT_ACTION_PREFIXES):
+        return cleaned
     count = evidence.get("result_count")
     if isinstance(count, int):
-        claimed = claimed_business_numbers(cleaned)
+        claimed = claimed_record_counts(cleaned)
         if claimed and any(n != count for n in claimed):
             if count == 0:
-                return "The connected system returned no matching records for that read."
+                return "I checked, and there are no matching records right now."
             return (
-                f"The connected system returned {count} matching record"
-                f"{'s' if count != 1 else ''} for that read."
+                f"I checked, and there {'are' if count != 1 else 'is'} {count} matching "
+                f"record{'s' if count != 1 else ''}."
             )
     return cleaned

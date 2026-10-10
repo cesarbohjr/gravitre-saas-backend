@@ -97,7 +97,7 @@ def test_silence_before_any_tool_is_not_narrated():
 
 def test_write_tool_uses_executing_phrasing():
     assert narrate_tool_still_running("updateDealStage").startswith("Still updating")
-    assert narrate_tool_still_running("searchDeals", repeat=True) == "That's still running."
+    assert narrate_tool_still_running("searchDeals", repeat=True) == "Still working on it."
 
 
 def test_notices_are_spaced_and_capped_per_call():

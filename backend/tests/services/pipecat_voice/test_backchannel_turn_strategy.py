@@ -53,7 +53,12 @@ class _Recorder:
         pass
 
 
-async def _make_strategy(*, grace_period_s: float = 0.9) -> tuple[BackchannelAwareUserTurnStartStrategy, _Recorder]:
+async def _make_strategy(
+    *,
+    grace_period_s: float = 0.9,
+    max_wordless_wait_s: float = 0.0,
+    voice_session=None,
+) -> tuple[BackchannelAwareUserTurnStartStrategy, _Recorder]:
     decisions = []
 
     async def _capture(decision):
@@ -62,7 +67,9 @@ async def _make_strategy(*, grace_period_s: float = 0.9) -> tuple[BackchannelAwa
     strategy = BackchannelAwareUserTurnStartStrategy(
         enable_interruptions=True,
         grace_period_s=grace_period_s,
+        max_wordless_wait_s=max_wordless_wait_s,
         on_classification=_capture,
+        voice_session=voice_session,
     )
     strategy.decisions = decisions  # type: ignore[attr-defined]
 
@@ -200,5 +207,55 @@ class TestBotStoppedSpeakingResetsGate:
         result = await strategy.process_frame(ProposedUserStartedSpeakingFrame())
         assert result is ProcessFrameResult.STOP
         assert len(recorder.turn_started_calls) == 1
+        assert recorder.turn_started_calls[0].enable_interruptions is True
+        await strategy.cleanup()
+
+
+class TestOwnVoiceEcho:
+    """The bot's own voice through a speaker must not cut it off."""
+
+    @pytest.mark.asyncio
+    async def test_echo_of_bot_speech_does_not_interrupt(self):
+        from app.services.pipecat_voice.voice_audio_origin import VoicePipelineSession
+
+        session = VoicePipelineSession()
+        session.note_bot_speech("Let me check your website traffic in Google Analytics.")
+        strategy, recorder = await _make_strategy(voice_session=session)
+
+        await strategy.process_frame(BotStartedSpeakingFrame())
+        await strategy.process_frame(ProposedUserStartedSpeakingFrame())
+        await strategy.process_frame(_transcription("check your website traffic in google"))
+
+        assert len(recorder.turn_started_calls) == 1
+        assert recorder.turn_started_calls[0].enable_interruptions is False
+        assert recorder.reset_aggregation_calls == 1
+        await strategy.cleanup()
+
+    @pytest.mark.asyncio
+    async def test_real_interruption_still_interrupts_with_echo_tracking(self):
+        from app.services.pipecat_voice.voice_audio_origin import VoicePipelineSession
+
+        session = VoicePipelineSession()
+        session.note_bot_speech("Let me check your website traffic in Google Analytics.")
+        strategy, recorder = await _make_strategy(voice_session=session)
+
+        await strategy.process_frame(BotStartedSpeakingFrame())
+        await strategy.process_frame(ProposedUserStartedSpeakingFrame())
+        await strategy.process_frame(_transcription("actually show me last month instead"))
+
+        assert recorder.turn_started_calls[0].enable_interruptions is True
+        await strategy.cleanup()
+
+    @pytest.mark.asyncio
+    async def test_wordless_start_waits_for_words_while_bot_speaks(self):
+        strategy, recorder = await _make_strategy(grace_period_s=0.05, max_wordless_wait_s=0.4)
+
+        await strategy.process_frame(BotStartedSpeakingFrame())
+        await strategy.process_frame(ProposedUserStartedSpeakingFrame())
+        await asyncio.sleep(0.15)
+        # Past the grace window but still no words: not yet an interruption.
+        assert recorder.turn_started_calls == []
+        await asyncio.sleep(0.5)
+        # Still nothing heard: the safe default (interrupt) applies.
         assert recorder.turn_started_calls[0].enable_interruptions is True
         await strategy.cleanup()

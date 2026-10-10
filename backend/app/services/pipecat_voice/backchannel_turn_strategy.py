@@ -74,6 +74,10 @@ logger = get_logger(__name__)
 # finalization time without adding perceptible extra latency to a genuine
 # interruption - Phase 6 instruments the real, live distribution of this.
 DEFAULT_GRACE_PERIOD_S = 0.6
+# While the bot is talking, a start with no words yet keeps waiting up to this
+# long before it counts as an interruption: the bot's own voice through a
+# speaker trips the start detector before any transcript arrives.
+MAX_WORDLESS_WAIT_WHILE_SPEAKING_S = 1.8
 
 # While the brain is still working and nothing is playing, these never cancel
 # the request in flight: hesitations, acknowledgements, presence checks and
@@ -148,6 +152,7 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         *,
         enable_interruptions: bool = True,
         grace_period_s: float = DEFAULT_GRACE_PERIOD_S,
+        max_wordless_wait_s: float = MAX_WORDLESS_WAIT_WHILE_SPEAKING_S,
         on_classification: ClassificationCallback | None = None,
         gravitre_settings: Any | None = None,
         gravitre_org_id: str | None = None,
@@ -158,6 +163,7 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
     ):
         super().__init__(enable_interruptions=enable_interruptions, **kwargs)
         self._grace_period_s = grace_period_s
+        self._max_wordless_wait_s = max(grace_period_s, max_wordless_wait_s)
         self._on_classification = on_classification
         self._gravitre_settings = gravitre_settings
         self._gravitre_org_id = gravitre_org_id
@@ -256,6 +262,7 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
                 is_hold_while_thinking(self._held_text)
                 if self._held_thinking
                 else is_backchannel(classify_user_utterance(self._held_text))
+                or self._is_bot_echo(self._held_text)
             )
             if still_hold:
                 await self.trigger_reset_aggregation()
@@ -279,6 +286,8 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             # new request for the whole grace window.
             interim = f"{self._buffer_text} {frame.text}".strip()
             interim_class = classify_user_utterance(interim)
+            if self._is_bot_echo(interim):
+                return ProcessFrameResult.CONTINUE
             if interim and (
                 interim_class in _CLEAR_INTERRUPTIONS
                 or (not is_backchannel(interim_class) and len(interim.split()) > 3)
@@ -322,6 +331,15 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
 
         return ProcessFrameResult.CONTINUE
 
+    def _is_bot_echo(self, text: str) -> bool:
+        probe = getattr(self._voice_session, "is_echo_of_bot", None)
+        if probe is None or not text:
+            return False
+        try:
+            return bool(probe(text))
+        except Exception:  # noqa: BLE001
+            return False
+
     def _assistant_thinking(self) -> bool:
         return bool(getattr(self._voice_session, "assistant_generating", False))
 
@@ -338,6 +356,13 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
     async def _grace_timeout_handler(self):
         try:
             await asyncio.sleep(self._grace_period_s)
+            while (
+                self._pending
+                and self._bot_speaking
+                and not self._buffer_text
+                and time.monotonic() - self._pending_started_at < self._max_wordless_wait_s
+            ):
+                await asyncio.sleep(0.05)
         except asyncio.CancelledError:
             return
         if self._pending:
@@ -379,6 +404,22 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
                 self._held_turn = True
                 self._held_text = self._buffer_text
                 self._held_thinking = True
+            return
+        if self._buffer_text and self._is_bot_echo(self._buffer_text):
+            # The mic heard the bot's own voice. Not the user: keep talking
+            # and drop the text so it never becomes a turn of its own.
+            logger.info(
+                "voice_turn_taking_echo_ignored text=%r decision_latency_ms=%.1f",
+                self._buffer_text[:80],
+                decision_latency_ms,
+            )
+            await self.trigger_user_turn_started(
+                enable_interruptions=False, enable_user_speaking_frames=False
+            )
+            await self.trigger_reset_aggregation()
+            self._held_turn = True
+            self._held_text = self._buffer_text
+            self._held_thinking = False
             return
         backchannel = is_backchannel(classification)
         if backchannel and self._voice_session is not None and self._voice_session.expects_answer():

@@ -209,4 +209,15 @@ describe("voice live turn completion lifecycle", () => {
     const handler = hook.slice(hook.indexOf('kind === "speech.interrupted"'))
     expect(handler.slice(0, 600)).toMatch(/stopPcmPlayback\(\)/)
   })
+
+  it("never replays or resumes a reply the user interrupted", () => {
+    const handler = hook.slice(hook.indexOf('kind === "speech.interrupted"'))
+    // The no-audio fallback would otherwise speak the whole reply again.
+    expect(handler.slice(0, 600)).toMatch(/clearAudioReplyWatchdog\(\)/)
+    expect(handler.slice(0, 600)).toMatch(/dropAudioAfterInterruptRef\.current = true/)
+    const audio = hook.slice(hook.indexOf('kind === "audio"'))
+    expect(audio.slice(0, 400)).toMatch(/if \(dropAudioAfterInterruptRef\.current\) return/)
+    // A new user turn lets audio through again.
+    expect(hook).toMatch(/if \(msg\.final\) \{\s+dropAudioAfterInterruptRef\.current = false/)
+  })
 })

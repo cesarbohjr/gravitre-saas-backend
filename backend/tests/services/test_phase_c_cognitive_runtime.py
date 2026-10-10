@@ -192,4 +192,4 @@ async def test_cross_source_analytics_turn_mocked() -> None:
         )
     assert turn is not None
     assert turn.get("stop_pipeline") is True
-    assert "connected sources" in str(turn.get("message") or "").lower()
+    assert "your website" in str(turn.get("message") or "").lower()

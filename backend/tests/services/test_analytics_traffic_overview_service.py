@@ -15,6 +15,7 @@ from app.services.analytics_traffic_overview_service import (
 from app.services.chat_connector_execution_service import ChatConnectorExecutionService
 from app.services.clarification_policy import decide_resource_clarification
 from app.services.execution_plan_service import ExecutionObservation
+from app.services.provider_result_grounding import apply_provider_result_grounding
 from app.services.tool_types import NormalizedResult
 
 
@@ -134,8 +135,19 @@ async def test_single_property_auto_executes_without_clarification() -> None:
     assert turn.get("stop_pipeline") is True
     message = str(turn.get("message") or "")
     assert "last 30 days" in message.lower()
-    assert "Active users" in message
+    assert "**Visitors:** 100" in message
     assert "property" not in message.lower() or "gravitre website" in message.lower()
+    # The answer carries the GA4 report as evidence, so the grounding gate
+    # keeps the real numbers instead of swapping in "no confirmed numbers".
+    assert turn.get("provider_result_evidence")
+    grounded = apply_provider_result_grounding(message, turn)
+    assert "**Visitors:** 100" in grounded
+    assert "confirmed numbers" not in grounded.lower()
+    # Voice gets a spoken sentence, not the bullet list.
+    spoken = str(turn.get("spoken_message") or "")
+    assert "100 visitors" in spoken
+    assert "**" not in spoken and "- " not in spoken
+    assert "compiled" not in (message + spoken).lower()
     assert "which one should i use" not in message.lower()
     assert "need the exact property" not in message.lower()
 

@@ -249,10 +249,12 @@ ASSISTANT_SURFACE_SYSTEM_PROMPT = (
     "Intelligence (/intelligence) for metrics/ROI/learning/models/memory; "
     "Settings (/settings) with Personal / Organization / Admin (Enterprise, "
     "Federation, Environments, Audit under Admin).\n"
-    "OUTPUT: Be concise. Use bullet points for lists. Cite the tool/source when "
-    "you state a fact from a tool result. If you cannot find something, say so "
-    "and suggest where to look. Do not invent agent names, connector states, or "
-    "metrics. Never reply with raw JSON — always use plain English sentences."
+    "OUTPUT: Talk like a friendly, sharp colleague, not a system. Be concise and "
+    "lead with the answer. Use bullet points only for real lists. Say where a fact "
+    "came from in plain words (\"from Google Analytics\"). If you cannot find "
+    "something, say so and suggest where to look. Do not invent agent names, "
+    "connector states, or metrics. Never reply with raw JSON or internal terms "
+    "(read, executable, verified, compiled, payload) — use everyday words."
 )
 
 
@@ -1062,12 +1064,12 @@ class AgentIntelligence:
             sections.extend(
                 [
                     "",
-                    "## Conversational Operator (v1-v8 intelligence)",
+                    "## How to chat",
                     (
-                        "Use layered intelligence while chatting: v1 strategy selection, v2 query observability, "
-                        "v3 knowledge gaps, v4 memory promotion, v5/v7 retrieval reliability, v6 entity graph context, "
-                        "v8 outcome-linked learning. For create/build requests: collect missing details, confirm once, "
-                        "execute through platform APIs, then return the Gravitre link (and external connector link when relevant)."
+                        "Chat the way a helpful teammate would: warm, direct, everyday words, short sentences. "
+                        "Answer small talk naturally. For a question, give the answer and what it means, then offer one next step. "
+                        "For create/build requests: ask for any missing details, confirm once, do it, then share the Gravitre link "
+                        "(and the link in the connected app when relevant)."
                     ),
                 ]
             )
@@ -2186,8 +2188,13 @@ class AgentIntelligence:
                     logger.debug("analytics_short_circuit_state_persist_skipped: %s", exc)
             from app.services.terminal_turn_policy import enforce_terminal_turn_outcome
 
+            # A written answer (headings, bullets) read aloud sounds robotic;
+            # turns that have a spoken version use it for voice.
+            _spoken_body = str(_analytics_turn.get("spoken_message") or "").strip()
             body = enforce_terminal_turn_outcome(
-                str(_analytics_turn.get("message") or ""),
+                _spoken_body
+                if spoken_mode and _spoken_body
+                else str(_analytics_turn.get("message") or ""),
                 task_state=_analytics_turn.get("task_state")
                 if isinstance(_analytics_turn.get("task_state"), dict)
                 else task_state,

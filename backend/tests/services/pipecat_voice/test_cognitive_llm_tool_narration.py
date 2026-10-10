@@ -188,7 +188,7 @@ class TestToolCompletedNarration:
         # pushed spoken segment now carries a trailing space so consecutive
         # TTS frames are never glued together with no separator (see
         # `_push_spoken_text`) — assert the exact fixed value, not a substring.
-        assert tts == ["I found 1. "]
+        assert tts == ["I found one. "]
 
 
 class TestPhase3HonestWriteStateSpeechEndToEnd:

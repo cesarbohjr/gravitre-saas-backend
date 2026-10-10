@@ -210,6 +210,9 @@ def _pct_change(current: float | None, previous: float | None) -> str | None:
     return f"{arrow} {abs(delta):.0f}%"
 
 
+_OVERVIEW_FOLLOW_UP = "Want me to dig into where the visits came from, or which pages did best?"
+
+
 def _compose_overview_message(
     *,
     property_name: str,
@@ -225,30 +228,90 @@ def _compose_overview_message(
     prev_views = _metric_total(previous, "screenPageViews")
 
     lines = [
-        f"Here's how **{property_name}** performed over **{timeframe_label}** "
-        "compared with the previous period.",
+        f"Here's how **{property_name}** did over **{timeframe_label}**, "
+        "compared with the period before.",
         "",
     ]
     if users is not None:
         change = _pct_change(users, prev_users)
         suffix = f" ({change})" if change else ""
-        lines.append(f"- **Active users:** {int(users):,}{suffix}")
+        lines.append(f"- **Visitors:** {int(users):,}{suffix}")
     if sessions is not None:
         change = _pct_change(sessions, prev_sessions)
         suffix = f" ({change})" if change else ""
-        lines.append(f"- **Sessions:** {int(sessions):,}{suffix}")
+        lines.append(f"- **Visits:** {int(sessions):,}{suffix}")
     if views is not None:
         change = _pct_change(views, prev_views)
         suffix = f" ({change})" if change else ""
-        lines.append(f"- **Views:** {int(views):,}{suffix}")
+        lines.append(f"- **Page views:** {int(views):,}{suffix}")
 
     lines.extend(
         [
             "",
-            "Want me to break this down by source, page, or conversion?",
+            _OVERVIEW_FOLLOW_UP,
         ]
     )
     return "\n".join(lines)
+
+
+def _ga4_evidence(*, plan_id: str | None, step_id: str | None, report: dict[str, Any]) -> dict[str, Any]:
+    """Provider evidence for a GA4 report, so its numbers are not treated as made up."""
+    from app.services.provider_result_grounding import evidence_from_observation
+
+    rows = report.get("rows") if isinstance(report, dict) else None
+    return evidence_from_observation(
+        action_key="google_analytics.reports.run",
+        result_count=len(rows) if isinstance(rows, list) else 0,
+        observation_id=None,
+        plan_id=plan_id,
+        step_id=step_id,
+        success=True,
+        provider_invoked=True,
+    )
+
+
+def _spoken_change(current: float | None, previous: float | None) -> str:
+    if current is None or previous is None or previous == 0:
+        return ""
+    delta = ((current - previous) / abs(previous)) * 100.0
+    if abs(delta) < 1:
+        return ", about the same as the period before"
+    direction = "up" if delta > 0 else "down"
+    return f", {direction} {abs(delta):.0f} percent from the period before"
+
+
+def _spoken_overview(
+    *,
+    current: dict[str, Any],
+    previous: dict[str, Any],
+    timeframe_label: str,
+    top_source: str | None,
+) -> str:
+    """The same overview as a person would say it, for voice."""
+    users = _metric_total(current, "activeUsers")
+    sessions = _metric_total(current, "sessions")
+    views = _metric_total(current, "screenPageViews")
+    when = timeframe_label.replace("**", "").strip() or "this period"
+    if users is None and sessions is None:
+        return f"I checked Google Analytics, but there's no traffic recorded for {when}."
+    parts: list[str] = []
+    if users is not None:
+        parts.append(
+            f"Over {when}, your site had {int(users):,} visitors"
+            f"{_spoken_change(users, _metric_total(previous, 'activeUsers'))}."
+        )
+    extras = []
+    if sessions is not None:
+        extras.append(f"{int(sessions):,} visits")
+    if views is not None:
+        extras.append(f"{int(views):,} page views")
+    if extras:
+        lead = "That's" if users is not None else f"Over {when}, you had"
+        parts.append(f"{lead} {' and '.join(extras)}.")
+    if top_source:
+        parts.append(f"Most of it came from {top_source}.")
+    parts.append("Want me to dig into where it came from, or which pages did best?")
+    return " ".join(parts)
 
 
 def _session_state_patch(
@@ -339,7 +402,8 @@ async def _try_cross_source_website_overview_turn(
             "stop_pipeline": True,
             "dialogue_mode": "answer",
             "message": enforce_terminal_turn_outcome(
-                "I couldn't pull live website performance from GA4 or Search Console on this turn.",
+                "I couldn't get your numbers from Google Analytics or Search Console just now. "
+                "Want me to try again?",
                 task_state=task_state,
                 workflow_status="blocked",
             ),
@@ -371,7 +435,27 @@ async def _try_cross_source_website_overview_turn(
         "business_intent": "analytics.traffic_overview",
         "execution_plan": plan.as_dict(),
         "response_blocks": response_blocks,
+        "execution_path": "analytics_traffic_overview",
+        "provider_result_evidence": _cross_source_evidence(plan, observations),
     }
+
+
+def _cross_source_evidence(plan: Any, observations: list[Any]) -> dict[str, Any] | None:
+    from app.services.provider_result_grounding import evidence_from_observation
+
+    ok = next((o for o in observations if getattr(o, "success", False)), None)
+    if ok is None:
+        return None
+    connector = str(getattr(ok, "connector_id", "") or "google_analytics")
+    return evidence_from_observation(
+        action_key=f"{connector}.reports.run",
+        result_count=int(getattr(ok, "result_count", 0) or 0),
+        observation_id=getattr(ok, "observation_id", None),
+        plan_id=getattr(plan, "plan_id", None),
+        step_id=getattr(ok, "step_id", None),
+        success=True,
+        provider_invoked=True,
+    )
 
 
 async def _ga4_read_observation(step: ExecutionStep, ctx: dict[str, Any]) -> ExecutionObservation:
@@ -512,25 +596,25 @@ def _compose_cross_source_message(observations: list[Any]) -> str:
         (o for o in observations if isinstance(o, ExecutionObservation) and o.connector_id == "google_search_console"),
         None,
     )
-    lines = ["Here's how your website is doing from connected sources:", ""]
+    lines = ["Here's how your website's doing:", ""]
     if ga4 and ga4.success:
         summary = ga4.summary.replace("GA4: ", "").replace("Analytics: ", "")
         lines.append(f"- **Analytics:** {summary}")
     elif gsc and gsc.success:
         lines.append(
-            "- **Analytics:** isn't connected yet, so this is search performance only. "
-            "Connect it at /connectors to include visits and sessions."
+            "- **Analytics:** Google Analytics isn't connected, so this is search only. "
+            "Connect it in Connectors and I can add visits too."
         )
     if gsc and gsc.success:
         summary = gsc.summary.replace("Search Console: ", "").replace("Search: ", "")
         lines.append(f"- **Search:** {summary}")
     elif ga4 and ga4.success:
         lines.append(
-            "- **Search:** isn't connected yet. Connect Search Console at /connectors "
-            "to include queries and landing pages."
+            "- **Search:** Search Console isn't connected yet. Connect it in Connectors "
+            "and I can add what people searched for."
         )
     lines.append("")
-    lines.append("Want a deeper breakdown by channel, landing page, or conversion event?")
+    lines.append("Want me to dig into where the visits came from or which pages did best?")
     return "\n".join(lines)
 
 
@@ -633,8 +717,7 @@ async def try_analytics_traffic_overview_turn(
             "stop_pipeline": True,
             "dialogue_mode": "answer",
             "message": (
-                "I'll keep using that same website. "
-                "Say a timeframe like last week or last month and I'll pull a fresh read."
+                "Sure, same site. Which time period, last week or last month?"
             ),
             "task_state": merged,
             "workflow_status": "partial",
@@ -679,8 +762,8 @@ async def try_analytics_traffic_overview_turn(
                 "stop_pipeline": True,
                 "dialogue_mode": "answer",
                 "message": (
-                    "Google Analytics is connected but needs re-authorization before I can "
-                    "read traffic. Open **Connectors** and refresh the Google Analytics connection."
+                    "Your Google Analytics sign-in has expired, so I can't see your traffic "
+                    "right now. Reconnect it in **Connectors** and I'll take another look."
                 ),
                 "task_state": task_state or {},
                 "workflow_status": "blocked",
@@ -689,9 +772,8 @@ async def try_analytics_traffic_overview_turn(
             "stop_pipeline": True,
             "dialogue_mode": "answer",
             "message": (
-                "Google Analytics is connected, but no GA4 property is linked yet. "
-                "Open **Connectors → Google Analytics** and link your property — "
-                "if you only have one, we'll select it automatically."
+                "Google Analytics is connected, but I don't know which website to look at yet. "
+                "Pick your site under **Connectors → Google Analytics** and I'll take it from there."
             ),
             "task_state": task_state or {},
             "workflow_status": "blocked",
@@ -787,8 +869,7 @@ async def try_analytics_traffic_overview_turn(
             "stop_pipeline": True,
             "dialogue_mode": "answer",
             "message": (
-                "Google Analytics is connected, but the traffic report request failed. "
-                f"{str(invoked.error_message or '')[:200]}"
+                "Google Analytics didn't give me your numbers just now. Want me to try again?"
             ),
             "task_state": {**(task_state or {}), **execution_plan_patch(plan)},
             "workflow_status": "blocked",
@@ -861,14 +942,15 @@ async def try_analytics_traffic_overview_turn(
         timeframe_label=timeframe_label,
     )
     source_rows = source_report.get("rows") or []
+    top_source: str | None = None
     if source_rows:
         dims = source_rows[0].get("dimensionValues") or []
         source_label = dims[0].get("value") if dims else None
         if source_label and source_label != "(not set)":
+            top_source = str(source_label)
             message_out = message_out.replace(
-                "Want me to break this down by source, page, or conversion?",
-                f"Top traffic source in {timeframe_label}: **{source_label}**.\n\n"
-                "Want me to break this down by source, page, or conversion?",
+                _OVERVIEW_FOLLOW_UP,
+                f"Most visits came from **{source_label}**.\n\n{_OVERVIEW_FOLLOW_UP}",
             )
 
     analytics_result = {
@@ -926,10 +1008,24 @@ async def try_analytics_traffic_overview_turn(
             timeframe_label=timeframe_label,
         )
     ]
+    evidence = _ga4_evidence(
+        plan_id=plan.plan_id,
+        step_id=primary_step.step_id,
+        report=current,
+    )
+    merged_state = {**merged_state, "provider_result_evidence": evidence}
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",
         "message": message_out,
+        "spoken_message": _spoken_overview(
+            current=current,
+            previous=previous_report,
+            timeframe_label=timeframe_label,
+            top_source=top_source,
+        ),
+        "provider_result_evidence": evidence,
+        "execution_path": "analytics_traffic_overview",
         "task_state": merged_state,
         "workflow_status": plan.terminal_status,
         "plan_terminal_status": plan.terminal_status,
