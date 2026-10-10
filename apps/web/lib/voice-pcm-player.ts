@@ -43,8 +43,17 @@ export type VoicePcmPlayer = {
   isActive: () => boolean
   /** Context time the first audio since the last flush started at, if any. */
   originTime: () => number | null
+  /**
+   * Seconds of reply audio actually played since the last flush: real audio
+   * only, never underrun gaps or the flush fade. Feeds the per-reply
+   * playback.progress reports the server uses to cut history to what was heard.
+   */
+  playedSeconds: () => number
   dispose: () => void
 }
+
+/** Most a worklet player extrapolates past its last progress report (s). */
+export const PLAYED_EXTRAPOLATION_MAX_S = 0.1
 
 export async function createVoicePcmPlayer(
   ctx: AudioContext,
@@ -80,8 +89,27 @@ export function createWorkletPcmPlayer(
   // processed. An "inactive" report from before audio we already posted (e.g. the
   // end of a barge-in flush fade) is stale and must not end the reply.
   let posted = 0
+  // Played-audio accounting, per flush epoch (the worklet restarts its count
+  // at each flush and tags reports with the epoch it belongs to).
+  let epoch = 0
+  let playedFrames = 0
+  let progressAt: number | null = null
+  let postedSeconds = 0
   node.port.onmessage = (event: MessageEvent) => {
-    const msg = event.data as { type?: string; active?: boolean; frame?: number; seq?: number }
+    const msg = event.data as {
+      type?: string
+      active?: boolean
+      frame?: number
+      seq?: number
+      epoch?: number
+      played?: number
+    }
+    if (msg?.type === "progress") {
+      if (msg.epoch !== epoch || typeof msg.played !== "number") return
+      playedFrames = Math.max(playedFrames, msg.played)
+      progressAt = typeof msg.frame === "number" ? msg.frame / ctx.sampleRate : ctx.currentTime
+      return
+    }
     if (msg?.type === "started") {
       const at = typeof msg.frame === "number" ? msg.frame / ctx.sampleRate : ctx.currentTime
       if (origin == null) origin = at
@@ -107,17 +135,30 @@ export function createWorkletPcmPlayer(
         options.onActiveChange?.(true)
       }
       posted += 1
+      postedSeconds += pcm.length / (sampleRate || 16000)
       node.port.postMessage(
         { type: "pcm", pcm: copy, sampleRate: sampleRate || 16000, seq: posted },
         [copy.buffer],
       )
     },
     flush() {
-      node.port.postMessage({ type: "flush" })
+      epoch += 1
+      playedFrames = 0
+      progressAt = null
+      postedSeconds = 0
+      node.port.postMessage({ type: "flush", epoch })
       origin = null
     },
     isActive: () => active,
     originTime: () => origin,
+    playedSeconds() {
+      let seconds = playedFrames / ctx.sampleRate
+      if (active && progressAt != null) {
+        // Between reports (~50 ms apart) assume playback kept going, briefly.
+        seconds += Math.min(PLAYED_EXTRAPOLATION_MAX_S, Math.max(0, ctx.currentTime - progressAt))
+      }
+      return Math.max(0, Math.min(postedSeconds, seconds))
+    },
     dispose() {
       try {
         node.port.postMessage({ type: "dispose" })
@@ -147,6 +188,10 @@ export function createBufferSourcePcmPlayer(
   let origin: number | null = null
   let fadeInPending = true
   const fadeFrames = Math.max(1, Math.round(0.004 * rate))
+  // Buffers scheduled since the last flush, for playedSeconds(); fully played
+  // ones are folded into playedDoneS.
+  let scheduled: Array<{ start: number; dur: number }> = []
+  let playedDoneS = 0
 
   const setActive = (next: boolean) => options.onActiveChange?.(next)
 
@@ -173,6 +218,7 @@ export function createBufferSourcePcmPlayer(
       src.buffer = buf
       src.connect(out)
       src.start(startFrame / rate)
+      scheduled.push({ start: startFrame / rate, dur: samples.length / rate })
       if (origin == null) origin = startFrame / rate
       nextFrame = startFrame + samples.length
       if (sources.length === 0) setActive(true)
@@ -218,10 +264,27 @@ export function createBufferSourcePcmPlayer(
       nextFrame = 0
       origin = null
       fadeInPending = true
+      scheduled = []
+      playedDoneS = 0
       if (wasActive) setActive(false)
     },
     isActive: () => sources.length > 0,
     originTime: () => origin,
+    playedSeconds() {
+      const now = ctx.currentTime
+      let partial = 0
+      const pending: Array<{ start: number; dur: number }> = []
+      for (const item of scheduled) {
+        const elapsed = now - item.start
+        if (elapsed >= item.dur) playedDoneS += item.dur
+        else {
+          if (elapsed > 0) partial += elapsed
+          pending.push(item)
+        }
+      }
+      scheduled = pending
+      return playedDoneS + partial
+    },
     dispose() {
       for (const src of sources) {
         src.onended = null

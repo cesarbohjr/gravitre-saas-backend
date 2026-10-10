@@ -207,7 +207,7 @@ describe("voice live turn completion lifecycle", () => {
 
   it("drops queued reply audio when the server reports a barge-in", () => {
     const handler = hook.slice(hook.indexOf('kind === "speech.interrupted"'))
-    expect(handler.slice(0, 1000)).toMatch(/stopPcmPlayback\(\)/)
+    expect(handler.slice(0, 1200)).toMatch(/stopPcmPlayback\(\)/)
   })
 
   it("never replays or resumes a reply the user interrupted", () => {
@@ -216,8 +216,8 @@ describe("voice live turn completion lifecycle", () => {
     expect(handler.slice(0, 600)).toMatch(/clearAudioReplyWatchdog\(\)/)
     // Frames are dropped by the interrupted reply's id; the time window is
     // only a fallback for servers that send no id.
-    expect(handler.slice(0, 900)).toMatch(/interruptedReplyIdRef\.current = Math\.max\(/)
-    expect(handler.slice(0, 900)).toMatch(/dropAudioUntilRef\.current = performance\.now\(\) \+ INTERRUPTED_AUDIO_DROP_MS/)
+    expect(handler.slice(0, 1100)).toMatch(/interruptedReplyIdRef\.current = Math\.max\(/)
+    expect(handler.slice(0, 1100)).toMatch(/dropAudioUntilRef\.current = performance\.now\(\) \+ INTERRUPTED_AUDIO_DROP_MS/)
     const audio = hook.slice(hook.indexOf('kind === "audio"'))
     expect(audio.slice(0, 400)).toMatch(/if \(isInterruptedReplyAudio\(msg\.reply_id\)\) return/)
     expect(hook).toMatch(/return cut !== null && replyId <= cut/)
@@ -228,7 +228,7 @@ describe("voice live turn completion lifecycle", () => {
     expect(text.slice(0, 900)).toMatch(/if \(firstAssistantText && audibleAudioFramesRef\.current === 0\) \{\s+armAudioReplyWatchdog\(\)/)
     // A new user turn lets audio through again, and the mute is time-bounded
     // so an out-of-order transcript can never silence the next answer.
-    expect(hook).toMatch(/if \(msg\.final\) \{\s+dropAudioUntilRef\.current = 0/)
+    expect(hook).toMatch(/if \(disposition === "final"\) \{\s+dropAudioUntilRef\.current = 0/)
     expect(hook).toMatch(/const INTERRUPTED_AUDIO_DROP_MS = \d{3,4}\n/)
   })
 })

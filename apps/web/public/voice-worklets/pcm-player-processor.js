@@ -7,11 +7,17 @@
  * chunk boundary: a click 25 times a second), and playout runs on the audio
  * thread from a queue with fades on underrun and flush.
  *
- * Messages in:  { type: "pcm", pcm: Int16Array, sampleRate, seq } | { type: "flush" } | { type: "dispose" }
+ * Messages in:  { type: "pcm", pcm: Int16Array, sampleRate, seq } | { type: "flush", epoch } | { type: "dispose" }
  * Messages out: { type: "started", frame } | { type: "active", active, underruns, seq }
+ *               | { type: "progress", epoch, played, frame }
  *
  * `seq` echoes the last pcm message processed, so the main thread can ignore an
  * "inactive" report that was overtaken by audio it has already posted.
+ *
+ * `progress` counts output frames of real audio played (never the silence of
+ * an underrun or a flush fade) since the flush that started `epoch`, about every
+ * 50 ms while playing and once at each flush. The main thread turns it into the
+ * played milliseconds it reports per reply to the server.
  */
 import { PcmPlayoutQueue, StreamingResampler, int16ArrayToFloat } from "./voice-dsp.js"
 
@@ -24,6 +30,10 @@ class GravitrePcmPlayerProcessor extends AudioWorkletProcessor {
     this.disposed = false
     this.active = false
     this.seq = 0
+    this.epoch = 0
+    this.epochBase = 0
+    this.lastProgress = 0
+    this.progressFrames = Math.max(128, Math.round(0.05 * sampleRate))
     this.port.onmessage = (event) => this.onMessage(event.data)
   }
 
@@ -41,10 +51,20 @@ class GravitrePcmPlayerProcessor extends AudioWorkletProcessor {
     } else if (msg.type === "flush") {
       this.queue.flush()
       if (this.resampler) this.resampler.reset()
+      this.epoch = typeof msg.epoch === "number" ? msg.epoch : this.epoch + 1
+      this.epochBase = this.queue.playedFrames
+      this.lastProgress = 0
+      this.reportProgress()
       this.reportActive()
     } else if (msg.type === "dispose") {
       this.disposed = true
     }
+  }
+
+  reportProgress() {
+    const played = this.queue.playedFrames - this.epochBase
+    this.lastProgress = played
+    this.port.postMessage({ type: "progress", epoch: this.epoch, played, frame: currentFrame })
   }
 
   reportActive() {
@@ -67,6 +87,10 @@ class GravitrePcmPlayerProcessor extends AudioWorkletProcessor {
     })
     for (let c = 1; c < outputs[0].length; c++) outputs[0][c].set(out)
     if (started) this.port.postMessage({ type: "started", frame: currentFrame })
+    const played = this.queue.playedFrames - this.epochBase
+    if (played - this.lastProgress >= this.progressFrames || (played > this.lastProgress && !this.queue.isActive())) {
+      this.reportProgress()
+    }
     this.reportActive()
     return true
   }
