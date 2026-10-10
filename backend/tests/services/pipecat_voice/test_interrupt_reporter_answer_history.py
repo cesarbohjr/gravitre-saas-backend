@@ -16,6 +16,7 @@ import pytest
 from pipecat.frames.frames import (
     Frame,
     InterruptionFrame,
+    LLMFullResponseEndFrame,
     LLMFullResponseStartFrame,
     OutputTransportMessageUrgentFrame,
     TTSAudioRawFrame,
@@ -189,9 +190,10 @@ async def test_grounded_history_cuts_at_the_browser_played_position_and_marks_it
     await _speak(env, words=SPOKEN)
     await reporter.process_frame(InterruptionFrame(), FrameDirection.DOWNSTREAM)
     # The server-side estimate is the whole spoken prefix; the browser had
-    # only played up to "was" (words start every 200 ms; "was" is word 10).
+    # only played through "was" (words start every 200 ms; "was" is word 10,
+    # 2000-2200 ms; a word counts once all of it has played).
     env["tracker"].note_client_report(
-        {"type": "playback.progress", "reply_id": env["session"].reply_id, "played_ms": 2050, "interrupted": True}
+        {"type": "playback.progress", "reply_id": env["session"].reply_id, "played_ms": 2250, "interrupted": True}
     )
     await _finish(reporter)
 
@@ -284,3 +286,90 @@ def test_resolve_heard_answer_keeps_legacy_text_without_labels():
     # No reply at all (draft from LLM frames only).
     text, _ = resolve_heard_answer(_ctx(None, None, "The sync finished."))
     assert text == "The sync finished."
+
+
+# ---- socket dropped mid-reply (voice_playback_grounded_history_v1) ----------
+
+
+async def _completed_turn(env: dict[str, Any], db: FakeSupabase, conv: str, *, words: list[str]) -> None:
+    reporter = env["reporter"]
+    reporter.begin_turn("How did revenue do?")
+    await _speak(env, words=words)
+    await reporter.process_frame(LLMFullResponseEndFrame(), FrameDirection.DOWNSTREAM)
+    _completed_row(db, conv)
+    reporter.mark_turn_persisted(conversation_id=conv, assistant_message_id=ASSISTANT_ID)
+
+
+@pytest.mark.asyncio
+async def test_drop_mid_reply_rewrites_the_stored_reply_to_what_was_heard(db: FakeSupabase) -> None:
+    conv = db.seed_conversation(org_id=ORG, user_id=USER)
+    env = await _setup(conv, grounded=True)
+    await _completed_turn(env, db, conv, words=SPOKEN)
+    # The last periodic report: played through "was" (2000-2200 ms).
+    env["tracker"].note_client_report(
+        {"type": "playback.progress", "reply_id": env["session"].reply_id, "played_ms": 2300}
+    )
+    meta = await env["reporter"].reconcile_on_disconnect()
+    await _finish(env["reporter"])
+
+    assert meta is not None and meta["action"] == "rewritten" and meta["heard_source"] == "client_playback"
+    stored = [row["content"] for row in db.rows("conversation_messages", role="assistant")]
+    assert stored == [f"Revenue was {TRUNCATION_MARKER}"]
+
+
+@pytest.mark.asyncio
+async def test_drop_without_a_report_uses_the_server_estimate(db: FakeSupabase) -> None:
+    conv = db.seed_conversation(org_id=ORG, user_id=USER)
+    env = await _setup(conv, grounded=True)
+    await _completed_turn(env, db, conv, words=SPOKEN)
+    meta = await env["reporter"].reconcile_on_disconnect()
+    await _finish(env["reporter"])
+
+    assert meta is not None and meta["heard_source"] == "server_estimate"
+    stored = [row["content"] for row in db.rows("conversation_messages", role="assistant")]
+    # "quarter." ends a sentence and all of its audio was sent: heard.
+    assert stored == [f"Revenue was up twelve percent this quarter. {TRUNCATION_MARKER}"]
+
+
+@pytest.mark.asyncio
+async def test_drop_after_the_reply_was_heard_in_full_changes_nothing(db: FakeSupabase) -> None:
+    conv = db.seed_conversation(org_id=ORG, user_id=USER)
+    env = await _setup(conv, grounded=True)
+    words = (FILLER_TEXT + PROGRESS_TEXT + ANSWER_TEXT).split()
+    await _completed_turn(env, db, conv, words=words)
+    meta = await env["reporter"].reconcile_on_disconnect()
+    await _finish(env["reporter"])
+
+    assert meta is not None and meta["action"] == "heard_in_full"
+    stored = [row["content"] for row in db.rows("conversation_messages", role="assistant")]
+    assert stored == [ANSWER_TEXT]
+
+
+@pytest.mark.asyncio
+async def test_drop_while_still_generating_cuts_the_row_once_it_is_stored(db: FakeSupabase) -> None:
+    conv = db.seed_conversation(org_id=ORG, user_id=USER)
+    env = await _setup(conv, grounded=True)
+    reporter = env["reporter"]
+    reporter.begin_turn("How did revenue do?")
+    await _speak(env, words=SPOKEN[:12])  # through "up"
+    meta = await reporter.reconcile_on_disconnect()
+    assert meta is not None and meta["action"] == "pending_until_persisted"
+    assert db.rows("conversation_messages", role="assistant") == []
+    # The completion writer stores the full reply afterwards...
+    _completed_row(db, conv)
+    reporter.mark_turn_persisted(conversation_id=conv, assistant_message_id=ASSISTANT_ID)
+    await _finish(reporter)
+    stored = [row["content"] for row in db.rows("conversation_messages", role="assistant")]
+    # ...and it is cut to what was heard ("up" was still arriving).
+    assert stored == [f"Revenue was {TRUNCATION_MARKER}"]
+
+
+@pytest.mark.asyncio
+async def test_drop_with_the_flag_off_leaves_the_stored_reply_alone(db: FakeSupabase) -> None:
+    conv = db.seed_conversation(org_id=ORG, user_id=USER)
+    env = await _setup(conv, grounded=False)
+    await _completed_turn(env, db, conv, words=SPOKEN)
+    assert await env["reporter"].reconcile_on_disconnect() is None
+    await _finish(env["reporter"])
+    stored = [row["content"] for row in db.rows("conversation_messages", role="assistant")]
+    assert stored == [ANSWER_TEXT]

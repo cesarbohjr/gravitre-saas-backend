@@ -31,6 +31,7 @@ from app.services.pipecat_voice.voice_reply_playback import (
     NOTHING_HEARD_MARKER,
     TRUNCATION_MARKER,
     ReplyPlayback,
+    disconnect_heard_offset,
     normalize_segment_kind,
 )
 
@@ -181,6 +182,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         # Called with (assistant_message_id, stored_text) after a barge-in
         # rewrote a stored assistant row, so cached copies can follow.
         self.on_assistant_rewritten: Any | None = None
+        # voice_playback_grounded_history_v1: heard text of a reply the socket
+        # dropped before the turn was stored, applied once it is.
+        self._pending_disconnect_cut: str | None = None
         if voice_session is not None:
             voice_session.answer_expected = self.answer_expected
             voice_session.speech_stop_handler = self.silence_current_reply
@@ -245,6 +249,64 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         if conversation_id:
             self._conversation_id = conversation_id
         self._active_assistant_message_id = assistant_message_id or None
+        pending, self._pending_disconnect_cut = self._pending_disconnect_cut, None
+        if pending is not None and assistant_message_id:
+            # The socket dropped while this reply was still generating; its
+            # completed row was just written in full. Cut it to what was heard.
+            task = self.create_task(self._persist_interrupted_assistant_text(pending))
+            self._post_interrupt_tasks.add(task)
+            task.add_done_callback(self._post_interrupt_tasks.discard)
+
+    async def reconcile_on_disconnect(self) -> dict[str, Any] | None:
+        """voice_playback_grounded_history_v1: store only what was heard of a dropped reply.
+
+        The socket went away mid-reply (network drop, tab closed): the browser
+        cannot report any more, and the full reply is (or is about to be)
+        stored. Cut it to the answer text heard, from the last periodic
+        playback report or the server estimate, and mark it as cut, so after a
+        reconnect the model sees only what the user heard. A reply that was
+        heard in full is left alone. Returns what was decided (for logs/tests).
+        """
+        if not self._playback_grounded or self._playback_tracker is None:
+            return None
+        tracker = self._playback_tracker
+        reply_id = tracker.audio_reply_id()
+        reply = tracker.reply(reply_id, create=False) if reply_id is not None else None
+        if reply is None or not reply.segments:
+            return None
+        offset, meta = disconnect_heard_offset(reply)
+        # Only the newest reply can still be generating; an older reply whose
+        # audio was the last to play is complete.
+        still_generating = bool(self._generating) and reply_id == tracker.current_reply_id()
+        heard = _HeardContext(
+            reply=reply,
+            reply_id=reply_id,
+            server_offset=offset,
+            server_text=reply.answer_text_upto(offset),
+            still_generating=still_generating,
+        )
+        text, resolved = resolve_heard_answer(heard, offset=offset, grounded=True)
+        meta.update(resolved)
+        meta["reply_id"] = reply_id
+        if not resolved.get("answer_truncated"):
+            meta["action"] = "heard_in_full"
+            return meta
+        turn = self._snapshot_turn()
+        if not turn.assistant_message_id:
+            # Not stored yet (still generating): cut it when it is.
+            self._pending_disconnect_cut = text
+            meta["action"] = "pending_until_persisted"
+        else:
+            await self._persist_interrupted_assistant_text(text, turn)
+            meta["action"] = "rewritten"
+        logger.info(
+            "pipecat_disconnect_heard_resolved reply_id=%s source=%s action=%s chars=%s",
+            reply_id,
+            meta.get("heard_source"),
+            meta.get("action"),
+            len(text),
+        )
+        return meta
 
     def _snapshot_turn(self) -> _InterruptedTurn:
         return _InterruptedTurn(

@@ -52,7 +52,13 @@ def _messages(run: Any) -> list[tuple[float, dict[str, Any]]]:
 
 
 def _heard_words(run: Any, chunks: list[dict[str, Any]], labels: set[str]) -> list[str]:
-    """Words of each segment in proportion to how much of its audio was played."""
+    """Words of each segment in proportion to how much of its audio was played.
+
+    A word counts as heard only once all of its audio has played (whole words,
+    rounded down). The server stores heard text by the same rule
+    (voice_reply_playback.ReplyPlayback.char_offset_for_played_ms), so the
+    history = heard column compares like with like.
+    """
     played_s: dict[int, float] = {}
     first_play: dict[int, float] = {}
     for c in chunks:
@@ -99,6 +105,12 @@ def run_metrics(result: Any) -> dict[str, Any]:
         m["first_filler_played_ms"] = _ms(first(mine, {"filler", "progress"}, "start"))
         m["first_answer_played_ms"] = _ms(first(mine, {"answer"}, "start"))
         m["first_answer_sent_ms"] = _ms(first(sent, {"answer"}, "recv"))
+        # Total talk time from the measured request on (played audio), and
+        # the part of it that was acknowledgement / tool narration.
+        m["talk_ms"] = _ms(sum(c["played_end"] - c["start"] for c in mine))
+        m["non_answer_talk_ms"] = _ms(
+            sum(c["played_end"] - c["start"] for c in mine if c["label"] in ("filler", "progress"))
+        )
         completes = [t for t, msg in msgs if msg.get("type") == "assistant_turn.complete" and t >= end]
         m["completion_ms"] = _ms((max(completes) - end) if completes else None)
 
@@ -209,6 +221,8 @@ TIMING_KEYS = (
     "first_filler_played_ms",
     "first_answer_played_ms",
     "first_answer_sent_ms",
+    "talk_ms",
+    "non_answer_talk_ms",
     "completion_ms",
     "interrupt_to_last_sent_ms",
     "interrupt_to_silence_ms",
@@ -295,14 +309,15 @@ def markdown_report(results: dict[str, Any]) -> str:
         "",
         "## Latency",
         "",
-        "| Scenario | first audio (any) | first filler/progress | first answer (played) | first answer (sent) | task completion |",
-        "|---|---|---|---|---|---|",
+        "| Scenario | first audio (any) | first filler/progress | first answer (played) | first answer (sent) | talk time (filler/progress part) | task completion |",
+        "|---|---|---|---|---|---|---|",
     ]
     for sid, sc in results["scenarios"].items():
         a = sc["aggregate"]
         lines.append(
             f"| {sid} {sc['title']} | {_cell(a['first_any_played_ms'])} | {_cell(a['first_filler_played_ms'])} | "
-            f"{_cell(a['first_answer_played_ms'])} | {_cell(a['first_answer_sent_ms'])} | {_cell(a['completion_ms'])} |"
+            f"{_cell(a['first_answer_played_ms'])} | {_cell(a['first_answer_sent_ms'])} | "
+            f"{_cell(a['talk_ms'])} ({_cell(a['non_answer_talk_ms'])}) | {_cell(a['completion_ms'])} |"
         )
     lines += [
         "",

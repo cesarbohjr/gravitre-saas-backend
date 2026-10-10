@@ -10,7 +10,7 @@ import asyncio
 import contextlib
 import re
 import time
-from typing import Any
+from typing import Any, Callable
 
 from pipecat.frames.frames import (
     AggregatedTextFrame,
@@ -50,6 +50,7 @@ from app.services.pipecat_voice.voice_latency_tuning import (
     resolve_voice_tts_chunk_tuning,
     voice_request_revisions_enabled,
 )
+from app.services.pipecat_voice.voice_answer_first import RESULT_LINE_GRACE_S, AnswerFirstSpeech
 from app.services.pipecat_voice.voice_reply_playback import (
     ANSWER,
     FILLER,
@@ -396,6 +397,11 @@ class GravitreCognitiveLLMService(LLMService):
         # voice_reply_playback.VoicePlaybackTracker, set by pipeline.py: knows
         # which spoken sentences were filler or tool narration.
         self._playback_tracker: Any | None = None
+        # voice_answer_first_v1: the playout clock (set by pipeline.py) and this
+        # turn's held filler / progress lines with the task releasing them.
+        self._playout_clock: Any | None = None
+        self._answer_first: AnswerFirstSpeech | None = None
+        self._answer_first_task: asyncio.Task[Any] | None = None
 
     async def _apply_tier_voice(self, tier: str | None) -> None:
         """Livelier delivery for light turns, steadier for deep (stability only).
@@ -656,6 +662,7 @@ class GravitreCognitiveLLMService(LLMService):
                 await self.push_frame(ErrorFrame(error=spoken))
             finally:
                 self._release_adopted_run()
+                await self._stop_answer_first()
                 await self.stop_processing_metrics()
                 await self.push_frame(LLMFullResponseEndFrame())
                 self._finish_turn_trace()
@@ -990,6 +997,15 @@ class GravitreCognitiveLLMService(LLMService):
         if should_acknowledge_turn(voice_tier):
             events_source = with_ack_deadline(events_source, delay_s=deep_ack_seconds(self._app_settings))
         last_stop_poll = time.perf_counter()
+        self._start_answer_first()
+
+        def _tool_call_running(call_id: str) -> Callable[[], bool] | None:
+            # A "let me check X" line is only worth saying while X runs.
+            return (lambda: call_id in tool_call_started_at) if call_id else None
+
+        def _tool_running(name: str) -> Callable[[], bool]:
+            return lambda: any(tool_names_by_call_id.get(cid) == name for cid in tool_call_started_at)
+
         async for event in events_source:
             if guard_task is not None and await _guard_refused():
                 aclose = getattr(events_source, "aclose", None)
@@ -1030,7 +1046,11 @@ class GravitreCognitiveLLMService(LLMService):
             if event is ACK_DUE:
                 # The guard was settled at the top of this loop, so a refused
                 # turn never gets here. Only when nothing was said yet.
-                if first_delta_at is None and not self._turn_spoke:
+                if (
+                    first_delta_at is None
+                    and not self._turn_spoke
+                    and not (self._answer_first is not None and self._answer_first.has_pending())
+                ):
                     ack = pick_deep_acknowledgement(self._last_ack)
                     self._last_ack = ack
                     logger.info("pipecat_voice_deep_ack org_id=%s", self._org_id)
@@ -1052,7 +1072,10 @@ class GravitreCognitiveLLMService(LLMService):
                         is_repeat,
                     )
                     await self._flush_client_text(client_text_filter)
-                    await self._speak_narration(narrate_tool_still_running(tool_name, repeat=is_repeat))
+                    await self._narrate_work(
+                        narrate_tool_still_running(tool_name, repeat=is_repeat),
+                        _tool_running(tool_name),
+                    )
                 continue
             if isinstance(event, AssistantStreamComplete):
                 complete_event = event
@@ -1100,7 +1123,7 @@ class GravitreCognitiveLLMService(LLMService):
                     narrated_tool_starts.add(tool_name)
                     if not skip_spoken_tool_progress(tool_name):
                         await self._flush_client_text(client_text_filter)
-                        await self._speak_narration(narrate_tool_started(tool_name))
+                        await self._narrate_work(narrate_tool_started(tool_name), _tool_call_running(call_id))
                 continue
             if event.sse_type == "tool-output-available":
                 payload = event.payload if isinstance(event.payload, dict) else {}
@@ -1118,7 +1141,12 @@ class GravitreCognitiveLLMService(LLMService):
                 narration = narrate_tool_completed(tool_name, payload.get("output"))
                 if narration and not skip_spoken_tool_progress(tool_name):
                     await self._flush_client_text(client_text_filter)
-                    await self._speak_narration(narration)
+                    if self._answer_first is not None:
+                        # A result line waits briefly: the answer usually
+                        # follows, and then the line is not needed.
+                        self._answer_first.enqueue(narration, PROGRESS, hold_s=RESULT_LINE_GRACE_S)
+                    else:
+                        await self._speak_narration(narration)
                 continue
             if event.sse_type != "text-delta":
                 continue
@@ -1159,6 +1187,9 @@ class GravitreCognitiveLLMService(LLMService):
                             trace.note("first_speakable", first_speakable_chunk_at)
                     if tool_call_started_at:
                         answer_chunks_while_tool_pending += 1
+                    if self._answer_first is not None:
+                        # Held acknowledgement / tool lines are not said now.
+                        self._answer_first.mark_answer_ready()
                     await self._push_spoken_text(spoken)
                     if tts_requested_at is None:
                         tts_requested_at = time.perf_counter()
@@ -1182,9 +1213,17 @@ class GravitreCognitiveLLMService(LLMService):
                 first_speakable_chunk_at = time.perf_counter()
                 if trace is not None:
                     trace.note("first_speakable", first_speakable_chunk_at)
+            if self._answer_first is not None:
+                self._answer_first.mark_answer_ready()
             await self._push_spoken_text(tail)
             if tts_requested_at is None:
                 tts_requested_at = time.perf_counter()
+        if self._answer_first is not None:
+            # Lines still held when the brain is done (a turn with no answer
+            # text): say the ones still true, now.
+            await self._answer_first.finish_turn()
+            if trace is not None:
+                trace.add_extra("answer_first", self._answer_first.stats.as_dict())
 
         def _ms(at: float | None) -> int | None:
             return int((at - turn_start) * 1000) if at is not None else None
@@ -1447,7 +1486,50 @@ class GravitreCognitiveLLMService(LLMService):
                 )
             )
 
+    def _start_answer_first(self) -> None:
+        """voice_answer_first_v1: hold this turn's filler / progress lines (voice_answer_first.py)."""
+        if not bool(getattr(self._app_settings, "voice_answer_first_v1", False)):
+            return
+        scheduler = AnswerFirstSpeech(speak=self._speak_narration_now, playout=self._playout_clock)
+        self._answer_first = scheduler
+        self._answer_first_task = asyncio.ensure_future(scheduler.run())
+
+    async def _stop_answer_first(self) -> None:
+        task, self._answer_first_task = self._answer_first_task, None
+        self._answer_first = None
+        if task is not None:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await task
+
+    async def _narrate_work(self, text: str, still_relevant: Callable[[], bool] | None) -> None:
+        """A tool line that is only true while the work runs ("Let me check X").
+
+        With voice_answer_first_v1 it is held with that condition (see
+        voice_answer_first.py); otherwise spoken now, as before.
+        """
+        if self._answer_first is not None and text:
+            self._answer_first.enqueue(text, PROGRESS, still_relevant)
+            return
+        await self._speak_narration(text)
+
     async def _speak_narration(self, text: str, kind: str = PROGRESS) -> None:
+        """Speak a filler / progress / refusal line, or hold it (voice_answer_first_v1).
+
+        With answer-first on, a non-answer line said during a turn is held and
+        released just before the queued audio runs out; answer text drops it.
+        A spoken refusal (``answer``) is never held.
+        """
+        scheduler = self._answer_first
+        if scheduler is not None and text:
+            if kind == ANSWER:
+                scheduler.mark_answer_ready()
+            else:
+                scheduler.enqueue(text, kind)
+                return
+        await self._speak_narration_now(text, kind)
+
+    async def _speak_narration_now(self, text: str, kind: str = PROGRESS) -> None:
         """Phase 2 (conversational-realism): speak one real milestone sentence.
 
         Goes through the same security gate + normalization as every other

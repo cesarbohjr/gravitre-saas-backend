@@ -535,8 +535,10 @@ class S12Reconnect(Scenario):
         prior = " ".join(str(h.get("content") or "") for h in follow[-1].history if h.get("role") == "assistant").lower()
         if "referrals dipped" in prior:
             return "brain_saw_full_unheard_reply"
-        if "twelve thousand" in prior:
-            return "brain_saw_partial_reply"
+        if "twelve thousand" in prior or "last month the site" in prior:
+            # With voice_playback_grounded_history_v1 the heard part is stored
+            # with a cut marker telling the model the rest was not heard.
+            return "brain_saw_partial_reply_marked" if "[interrupted:" in prior else "brain_saw_partial_reply"
         return "brain_saw_no_reply"
 
 

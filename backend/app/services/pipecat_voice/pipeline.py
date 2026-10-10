@@ -36,6 +36,7 @@ from app.services.pipecat_voice.krisp_factory import build_krisp_viva_input_filt
 from app.services.pipecat_voice.speculative_generation import SpeculativeGenerationCoordinator
 from app.services.pipecat_voice.speculative_prefetch import SpeculativePrefetchProcessor
 from app.services.pipecat_voice.spoken_text_tap import (
+    GeneratedSpeechTapProcessor,
     SpokenTextLedger,
     SpokenTextTapProcessor,
 )
@@ -298,6 +299,16 @@ def build_pipecat_voice_task(
     # A barge-in that rewrites a stored reply also fixes the bridge's cached copy.
     interrupt_reporter.on_assistant_rewritten = llm.patch_live_assistant_row
     llm._playback_tracker = playback_tracker
+    # voice_answer_first_v1: acknowledgement / tool lines wait for the audio
+    # queued ahead of them (measured just before the output transport).
+    answer_first = bool(getattr(settings, "voice_answer_first_v1", False))
+    playout_processors: list[Any] = []
+    if answer_first:
+        from app.services.pipecat_voice.voice_answer_first import PlayoutClock, PlayoutClockProcessor
+
+        playout_clock = PlayoutClock()
+        llm._playout_clock = playout_clock
+        playout_processors.append(PlayoutClockProcessor(playout_clock))
 
     # Share active durable turn identity so mid-generation interruption can
     # persist/update the exact current turn rather than targeting a prior row.
@@ -365,6 +376,10 @@ def build_pipecat_voice_task(
             # Binds each TTS context to the reply that generated it and drops
             # audio of a cut-off reply, so late frames never carry a new id.
             ReplyAudioStampProcessor(voice_session=voice_session),
+            # Where each word starts in its reply's audio, in TTS output order
+            # (maps the browser's played ms to heard text).
+            GeneratedSpeechTapProcessor(playback_tracker, voice_session=voice_session),
+            *playout_processors,
             transport.output(),
             # After the output transport: word-level TTSTextFrames ride the
             # transport clock queue, so this position tracks real playback rather
@@ -465,6 +480,7 @@ def build_pipecat_voice_task(
         "spoken_segment_labels": True,
         # The browser sends playback.progress reports only when this is on.
         "playback_grounded_history_v1": playback_grounded,
+        "answer_first_v1": answer_first,
         "playback_report_interval_ms": 500,
     }
     idle_refresh_enabled = bool(getattr(settings, "voice_tts_idle_refresh_v1", False))
@@ -511,6 +527,12 @@ def build_pipecat_voice_task(
     async def _on_client_disconnected(_transport, _websocket):
         while idle_refresh_tasks:
             idle_refresh_tasks.pop().cancel()
+        if playback_grounded:
+            # A reply cut off by the drop is stored as heard, not in full.
+            try:
+                await interrupt_reporter.reconcile_on_disconnect()
+            except Exception:  # noqa: BLE001 - the socket is closing either way
+                logger.warning("pipecat_disconnect_heard_reconcile_failed", exc_info=True)
 
     # The router releases this socket's stop marker when the socket closes.
     task.gravitre_interrupt_reporter = interrupt_reporter

@@ -108,3 +108,43 @@ class SpokenTextTapProcessor(FrameProcessor):
             except Exception:  # noqa: BLE001
                 logger.debug("spoken_tap_playback_audio_failed", exc_info=True)
         await self.push_frame(frame, direction)
+
+
+class GeneratedSpeechTapProcessor(FrameProcessor):
+    """Feeds the playback tracker the TTS output, in order, before the output transport.
+
+    Placed after the reply-audio stamp (so cut-off audio is already dropped and
+    each frame carries its reply id): the audio that came out before each word
+    frame is where that word starts in its reply's audio. That is what maps the
+    browser's played milliseconds to words (see
+    voice_reply_playback.ReplyPlayback.note_generated_word).
+    """
+
+    def __init__(self, playback: Any, *, voice_session: Any | None = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._playback = playback
+        self._session = voice_session
+
+    def _word_reply_id(self, frame: Frame) -> int | None:
+        # The stamp processor already bound this frame's TTS context to its reply.
+        context_id = getattr(frame, "context_id", None)
+        bound = getattr(self._session, "audio_context_replies", None)
+        if context_id and isinstance(bound, dict):
+            reply_id = bound.get(str(context_id))
+            if isinstance(reply_id, int):
+                return reply_id
+        return None
+
+    async def process_frame(self, frame: Frame, direction: FrameDirection):
+        await super().process_frame(frame, direction)
+        if direction == FrameDirection.DOWNSTREAM:
+            try:
+                if isinstance(frame, TTSTextFrame):
+                    self._playback.note_generated_word(
+                        str(getattr(frame, "text", None) or ""), self._word_reply_id(frame)
+                    )
+                elif isinstance(frame, OutputAudioRawFrame):
+                    self._playback.note_generated_audio_frame(frame)
+            except Exception:  # noqa: BLE001 - accounting must never break playback
+                logger.debug("generated_speech_tap_failed", exc_info=True)
+        await self.push_frame(frame, direction)

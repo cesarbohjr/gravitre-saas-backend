@@ -81,14 +81,91 @@ def test_played_ms_maps_to_heard_text_through_word_timings():
     for word in "Sure, let me look. Let me check your CRM. Revenue was up twelve percent.".split():
         reply.note_spoken_word(word, 0.0)
         reply.note_audio(int(RATE * 0.2) * 2, RATE)  # 200 ms per word
-    # Words 0..9 started at 0, 200, ..., 1800 ms: "Revenue" is word 9 (1800 ms).
+    # Words 0..9 started at 0, 200, ..., 1800 ms: "Revenue" is word 9 (1800-2000 ms).
+    # A word is heard only once all of its audio has played.
     offset, method = reply.char_offset_for_played_ms(1900)
     assert method == "word_timings"
+    assert reply.answer_text_upto(offset) == ""
+    offset, _ = reply.char_offset_for_played_ms(2000)
     assert reply.answer_text_upto(offset) == "Revenue"
     offset, _ = reply.char_offset_for_played_ms(2250)
-    assert reply.answer_text_upto(offset) == "Revenue was up"
+    assert reply.answer_text_upto(offset) == "Revenue was"
+    # "percent." is the last timed word: it ends a sentence, so the audio after
+    # it is its own and it is heard once all audio sent has played...
+    offset, _ = reply.char_offset_for_played_ms(2800)
+    assert reply.answer_text_upto(offset) == "Revenue was up twelve percent."
+    # ...whereas a last timed word inside a sentence has no known end yet.
+    reply.add_text(" And", ANSWER)
+    reply.note_spoken_word("And", 0.0)
+    reply.note_audio(int(RATE * 0.2) * 2, RATE)
+    reply.add_text(" more.", ANSWER)
+    offset, _ = reply.char_offset_for_played_ms(3000)
+    assert reply.answer_text_upto(offset) == "Revenue was up twelve percent."
     offset, _ = reply.char_offset_for_played_ms(100)
     assert reply.answer_text_upto(offset) == ""
+
+
+def test_word_positions_come_from_tts_output_order_not_the_transport_clock() -> None:
+    from types import SimpleNamespace
+
+    from app.services.pipecat_voice.json_audio_serializer import REPLY_ID_ATTR
+    from app.services.pipecat_voice.spoken_text_tap import GeneratedSpeechTapProcessor
+
+    async def _go() -> None:
+        session = SimpleNamespace(audio_context_replies={"ctx-1": 1})
+        tracker = VoicePlaybackTracker(reply_id_getter=lambda: 2)  # reply 2 already generating
+        tracker.note_assistant_text("Sure. ", FILLER, reply_id=1)
+        tracker.note_assistant_text("Revenue was up.", ANSWER, reply_id=1)
+        gen = GeneratedSpeechTapProcessor(tracker, voice_session=session)
+        await BaseObject.setup(gen, TaskManager())
+        async def _drop(frame: Frame, direction: FrameDirection = FrameDirection.DOWNSTREAM) -> None:
+            return None
+
+        gen.push_frame = _drop  # type: ignore[method-assign]
+        for word in ("Sure.", "Revenue", "was", "up."):
+            await gen.process_frame(TTSTextFrame(text=word, aggregated_by="word", context_id="ctx-1"), FrameDirection.DOWNSTREAM)
+            frame = _audio_ms(200)
+            setattr(frame, REPLY_ID_ATTR, 1)
+            await gen.process_frame(frame, FrameDirection.DOWNSTREAM)
+        reply = tracker.reply(1, create=False)
+        assert reply.generated_audio_ms == pytest.approx(800)
+        assert [round(ms) for ms, _ in reply.word_marks] == [0, 200, 400, 600]
+        # The post-transport tap no longer adds its own (clock-skewed) marks.
+        reply.note_spoken_word("Revenue", 0.0)
+        assert len(reply.word_marks) == 4
+        assert reply.answer_text_upto(reply.char_offset_for_played_ms(590)[0]) == "Revenue"
+        assert reply.answer_text_upto(reply.char_offset_for_played_ms(600)[0]) == "Revenue was"
+        assert reply.answer_text_upto(reply.char_offset_for_played_ms(800)[0]) == "Revenue was up."
+
+    asyncio.run(_go())
+
+
+def test_the_final_word_is_heard_once_all_of_the_replys_audio_played():
+    reply = ReplyPlayback(reply_id=1)
+    reply.add_text("Revenue was up.", ANSWER)
+    for word in ("Revenue", "was", "up."):
+        reply.note_spoken_word(word, 0.0)
+        reply.note_audio(int(RATE * 0.2) * 2, RATE)
+    assert reply.answer_text_upto(reply.char_offset_for_played_ms(590)[0]) == "Revenue was"
+    assert reply.answer_text_upto(reply.char_offset_for_played_ms(600)[0]) == "Revenue was up."
+
+
+def test_disconnect_offset_uses_the_last_report_but_never_more_than_was_sent():
+    from app.services.pipecat_voice.voice_reply_playback import disconnect_heard_offset
+
+    reply = ReplyPlayback(reply_id=1)
+    reply.add_text("one two three four five six", ANSWER)
+    for word in ("one", "two", "three", "four"):
+        reply.note_spoken_word(word, 0.0)
+        reply.note_audio(int(RATE * 0.2) * 2, RATE)  # 800 ms sent
+    offset, meta = disconnect_heard_offset(reply)
+    # Server estimate: "four" is still arriving (not the final word): three heard.
+    assert meta["heard_source"] == "server_estimate"
+    assert reply.answer_text_upto(offset) == "one two three"
+    reply.apply_client_report({"reply_id": 1, "played_ms": 450})
+    offset, meta = disconnect_heard_offset(reply)
+    assert meta["heard_source"] == "client_playback"
+    assert reply.answer_text_upto(offset) == "one two"
 
 
 def test_played_ms_without_word_timings_spreads_characters_over_sent_audio():
@@ -97,8 +174,11 @@ def test_played_ms_without_word_timings_spreads_characters_over_sent_audio():
     reply.note_audio(int(RATE * 1.0) * 2, RATE)  # 1 s sent, no words timed
     offset, method = reply.char_offset_for_played_ms(500)
     assert method == "char_spread"
-    # Half the characters, snapped to the end of the word it lands in.
+    # Half the characters, moved back to the end of the last whole word.
     assert reply.draft[:offset] == "abcd efgh"
+    offset, _ = reply.char_offset_for_played_ms(600)  # lands inside "ijkl"
+    assert reply.draft[:offset] == "abcd efgh"
+    assert reply.char_offset_for_played_ms(1000)[0] == len(reply.draft)
     assert reply.char_offset_for_played_ms(0)[0] == 0
 
 

@@ -879,6 +879,18 @@ class Settings(BaseSettings):
             "voice_tts_idle_refresh_v1",
         ),
     )
+    # Answer-first speech: acknowledgement and tool lines are held as text and
+    # spoken one at a time just before the queued audio runs out, instead of
+    # all being queued ahead of the answer. When the answer is ready, lines
+    # not yet spoken are dropped; a tool line is spoken only while its tool is
+    # still running. The answer itself is unchanged (voice_answer_first.py).
+    voice_answer_first_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_ANSWER_FIRST_V1",
+            "voice_answer_first_v1",
+        ),
+    )
     # Run context assembly concurrently with the unified-turn LIVE pass instead of
     # after it. LIVE is discarded on ~48% of turns (read/connector tool defer),
     # and on a measured spoken tool turn its 3.9s stacked in front of a 4.5s

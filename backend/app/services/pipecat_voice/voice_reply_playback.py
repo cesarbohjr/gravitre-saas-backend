@@ -20,11 +20,18 @@ From that it answers two questions: when the first audio of each kind went
 out (first-speech latency must use the answer, not the filler), and which
 answer text was heard when a reply was cut (history must hold only that).
 
-Played ms -> text uses the word timings: a word counts as heard once the audio
-sent before its frame (the audio that precedes its start) has been played.
-Without word timings it spreads the characters evenly over the reply's sent
-audio. Both map to a character offset in the draft, which the segments turn
-into answer-only text.
+Played ms -> text uses the word timings. **A word counts as heard only once
+all of its audio has played** (its audio runs from its own frame to the next
+word's frame; the last word of a sentence, or of the reply, ends with the
+audio generated after it so far, since the TTS speaks sentence by sentence;
+any other last word has no known end yet and is not counted). Word positions
+are taken in TTS output order, before the output transport (the transport's
+word clock runs ahead of its audio after a gap). A word cut part-way is not stored: the history never claims the user heard a
+word they only heard the start of. Without word timings the characters are
+spread evenly over the reply's sent audio and the offset is moved back to the
+end of the last whole word. Both map to a character offset in the draft, which
+the segments turn into answer-only text. The voice bench's history = heard
+metric counts heard words by the same rule.
 """
 from __future__ import annotations
 
@@ -66,6 +73,7 @@ _MAX_REPORT_MS = 30 * 60 * 1000
 _WORD_RE = re.compile(r"[\w'’-]+")
 # Punctuation that stays with the word it follows.
 _TRAILING_PUNCT = set(".,!?;:…\"')]}")
+_SENTENCE_END = {".", "!", "?", "…"}
 # How far ahead a spoken word may re-find its place in the draft after the
 # spoken form diverged (numbers, aliases).
 _ALIGN_LOOKAHEAD = 6
@@ -107,6 +115,17 @@ def text_for_kinds(
     return " ".join(pieces).strip()
 
 
+def snap_back_to_word_end(draft: str, offset: int) -> int:
+    """Move ``offset`` back out of a word it falls inside (a part-heard word is not heard)."""
+    offset = max(0, min(int(offset), len(draft)))
+    if 0 < offset < len(draft) and _WORD_RE.match(draft[offset]) and _WORD_RE.match(draft[offset - 1]):
+        while offset > 0 and _WORD_RE.match(draft[offset - 1]):
+            offset -= 1
+        while offset > 0 and draft[offset - 1].isspace():
+            offset -= 1
+    return offset
+
+
 def snap_to_word_end(draft: str, offset: int) -> int:
     """Move ``offset`` to the end of the word it falls in, plus trailing punctuation."""
     offset = max(0, min(int(offset), len(draft)))
@@ -126,7 +145,11 @@ class ReplyPlayback:
     segments: list[DraftSegment] = field(default_factory=list)
     # Audio that passed the output transport, in ms.
     sent_audio_ms: float = 0.0
-    # (sent audio ms when the word frame passed the tap, draft char end of the word)
+    # Audio of this reply that left the TTS (before the output transport).
+    generated_audio_ms: float = 0.0
+    # (audio ms of this reply before the word, draft char end of the word).
+    # Taken in TTS output order (before the transport) when the pipeline has
+    # that tap, else when the word frame passed the output transport.
     word_marks: list[tuple[float, int]] = field(default_factory=list)
     spoken_words: int = 0
     first_audio_at: dict[str, float] = field(default_factory=dict)
@@ -142,6 +165,9 @@ class ReplyPlayback:
     _tokens_for_len: int = -1
     _cursor: int = 0
     _last_char_end: int = 0
+    _gen_cursor: int = 0
+    _gen_last_char_end: int = 0
+    _gen_words: int = 0
     _report_event: asyncio.Event | None = None
 
     # ---- generated ---------------------------------------------------------
@@ -180,6 +206,37 @@ class ReplyPlayback:
         frames = num_bytes / (2 * max(1, int(num_channels)))
         self.sent_audio_ms += frames * 1000.0 / float(sample_rate)
 
+    def note_generated_audio(self, num_bytes: int, sample_rate: int, num_channels: int = 1) -> None:
+        if num_bytes <= 0 or sample_rate <= 0:
+            return
+        frames = num_bytes / (2 * max(1, int(num_channels)))
+        self.generated_audio_ms += frames * 1000.0 / float(sample_rate)
+
+    def note_generated_word(self, text: str) -> None:
+        """A TTS word frame in TTS output order, before the output transport.
+
+        The transport releases word frames on its clock, which runs ahead of
+        the audio after any gap in it (the word timestamps do not count the
+        gap), so a word mark taken after the transport can sit earlier in the
+        audio than the word really is. Before the transport, word frames and
+        audio come out of the TTS in order: the audio before a word frame is
+        the audio before that word.
+        """
+        for match in _WORD_RE.finditer(text or ""):
+            found = self._align(match.group(0).casefold(), self._gen_cursor)
+            if found is not None:
+                self._gen_cursor = found + 1
+                self._gen_last_char_end = self._draft_tokens()[found][1]
+            self._gen_words += 1
+            self.word_marks.append((self.generated_audio_ms, self._gen_last_char_end))
+
+    def _align(self, word: str, cursor: int) -> int | None:
+        tokens = self._draft_tokens()
+        for idx in range(cursor, min(len(tokens), cursor + _ALIGN_LOOKAHEAD)):
+            if tokens[idx][0] == word:
+                return idx
+        return None
+
     def _draft_tokens(self) -> list[tuple[str, int]]:
         if self._tokens_for_len != len(self.draft):
             self._tokens = [(m.group(0).casefold(), m.end()) for m in _WORD_RE.finditer(self.draft)]
@@ -195,18 +252,15 @@ class ReplyPlayback:
         for match in _WORD_RE.finditer(text or ""):
             word = match.group(0).casefold()
             tokens = self._draft_tokens()
-            found = None
-            for idx in range(self._cursor, min(len(tokens), self._cursor + _ALIGN_LOOKAHEAD)):
-                if tokens[idx][0] == word:
-                    found = idx
-                    break
+            found = self._align(word, self._cursor)
             if found is not None:
                 self._cursor = found + 1
                 self._last_char_end = tokens[found][1]
             # A word whose spoken form differs from the draft ("$5" -> "five
             # dollars") keeps the last aligned position: never over-claim.
             self.spoken_words += 1
-            self.word_marks.append((self.sent_audio_ms, self._last_char_end))
+            if not self._gen_words:
+                self.word_marks.append((self.sent_audio_ms, self._last_char_end))
             # Which segment is being spoken: the token being aligned next, or
             # the one just aligned.
             probe = self._last_char_end - 1 if found is not None else (
@@ -239,19 +293,35 @@ class ReplyPlayback:
     def char_offset_for_played_ms(self, played_ms: float) -> tuple[int, str]:
         """Draft offset heard after ``played_ms`` of this reply's audio, and the method."""
         played = max(0.0, float(played_ms))
+        slack_ms = 5.0  # frame rounding
         if self.word_marks:
             heard = 0
-            for sent_at, char_end in self.word_marks:
-                # The word's audio starts at sent_at; it is heard once that much
-                # audio has played (with a few ms of slack for frame rounding).
-                if sent_at <= played + 5.0:
+            marks = self.word_marks
+            marks_audio_ms = self.generated_audio_ms if self._gen_words else self.sent_audio_ms
+            tokens = self._draft_tokens()
+            final_char_end = tokens[-1][1] if tokens else 0
+            for idx, (_sent_at, char_end) in enumerate(marks):
+                # A word's audio runs from its frame to the next word's frame.
+                # The last timed word's end is only known when it is the
+                # reply's final word (then it ends with the reply's audio);
+                # otherwise its audio may still have been arriving.
+                if idx + 1 < len(marks):
+                    word_end_ms = marks[idx + 1][0]
+                elif char_end >= final_char_end or self.draft[char_end : char_end + 1] in _SENTENCE_END:
+                    # The reply's final word, or a sentence's last word: the
+                    # TTS speaks sentence by sentence, so the audio after it so
+                    # far is its own.
+                    word_end_ms = marks_audio_ms
+                else:
+                    break
+                if word_end_ms <= played + slack_ms:
                     heard = max(heard, char_end)
                 else:
                     break
             return snap_to_word_end(self.draft, heard), "word_timings"
         if self.sent_audio_ms > 0:
             share = min(1.0, played / self.sent_audio_ms)
-            return snap_to_word_end(self.draft, int(len(self.draft) * share)), "char_spread"
+            return snap_back_to_word_end(self.draft, int(len(self.draft) * share)), "char_spread"
         return 0, "no_audio"
 
     def summary(self) -> dict[str, Any]:
@@ -295,8 +365,8 @@ class VoicePlaybackTracker:
         self,
         *,
         reply_id_getter: Callable[[], int | None] | None = None,
-        clock: Callable[[], float] = time.perf_counter,
-        monotonic: Callable[[], float] = time.monotonic,
+        clock: Callable[[], float] = lambda: time.perf_counter(),
+        monotonic: Callable[[], float] = lambda: time.monotonic(),
         on_first_audio: FirstAudioCallback | None = None,
     ) -> None:
         self._reply_id_getter = reply_id_getter
@@ -313,6 +383,8 @@ class VoicePlaybackTracker:
         # heard, which can be older than the session's current reply id (a cut
         # reply's tail, or the next reply already generating).
         self._audio_reply_id: int | None = None
+        # Reply of the last audio frame that left the TTS (stamped).
+        self._gen_reply_id: int | None = None
 
     def set_first_audio_callback(self, callback: FirstAudioCallback | None) -> None:
         self._on_first_audio = callback
@@ -370,6 +442,28 @@ class VoicePlaybackTracker:
                 except Exception:  # noqa: BLE001 - metrics must never break playback
                     logger.debug("voice_playback_first_audio_callback_failed", exc_info=True)
 
+    def note_generated_word(self, text: str, reply_id: int | None = None) -> None:
+        """A word frame as it left the TTS (see ReplyPlayback.note_generated_word)."""
+        rid = reply_id if reply_id is not None else self._gen_reply_id
+        reply = self.reply(rid if rid is not None else self.current_reply_id(), create=False)
+        if reply is not None:
+            reply.note_generated_word(text)
+
+    def note_generated_audio_frame(self, frame: Any) -> None:
+        stamped = getattr(frame, AUDIO_REPLY_ID_ATTR, None)
+        if isinstance(stamped, int) and not isinstance(stamped, bool):
+            self._gen_reply_id = stamped
+        rid = self._gen_reply_id if self._gen_reply_id is not None else self.current_reply_id()
+        reply = self.reply(rid, create=False)
+        if reply is None:
+            return
+        audio = getattr(frame, "audio", None) or b""
+        reply.note_generated_audio(
+            len(audio),
+            int(getattr(frame, "sample_rate", None) or 0),
+            int(getattr(frame, "num_channels", None) or 1),
+        )
+
     def note_audio_frame(self, frame: Any) -> None:
         audio = getattr(frame, "audio", None) or b""
         self.last_audio_activity = self._monotonic()
@@ -424,6 +518,34 @@ class VoicePlaybackTracker:
 
     def non_answer_phrases(self) -> list[str]:
         return list(self._non_answer_phrases)
+
+
+def disconnect_heard_offset(reply: ReplyPlayback) -> tuple[int, dict[str, Any]]:
+    """Draft offset heard when the socket went away mid-reply, and how it was found.
+
+    No report can follow a dropped socket, so the last periodic
+    ``playback.progress`` report is used when there was one; otherwise the
+    server estimate (all audio that left the output transport). Audio cannot be
+    played before it was sent, so the smaller of the two wins.
+    """
+    server_offset, server_method = reply.char_offset_for_played_ms(reply.sent_audio_ms)
+    meta: dict[str, Any] = {
+        "heard_source": "server_estimate",
+        "played_to_text": server_method,
+        "sent_audio_ms": int(round(reply.sent_audio_ms)),
+    }
+    offset = server_offset
+    if reply.client_reports and reply.client_played_ms is not None:
+        client_offset, client_method = reply.char_offset_for_played_ms(reply.client_played_ms)
+        offset = min(client_offset, server_offset)
+        meta.update(
+            {
+                "heard_source": "client_playback",
+                "played_to_text": client_method,
+                "client_played_ms": int(round(reply.client_played_ms)),
+            }
+        )
+    return offset, meta
 
 
 def strip_non_answer_speech(text: str, phrases: list[str]) -> str:
