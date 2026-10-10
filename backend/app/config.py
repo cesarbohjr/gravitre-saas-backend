@@ -797,6 +797,19 @@ class Settings(BaseSettings):
             "voice_played_audio_reconcile_v1",
         ),
     )
+    # Meaningful interruption types on the live voice path: a backchannel keeps
+    # the reply going, "explain that" pauses and answers with the task kept,
+    # a correction revises the active request, "stop talking" silences speech
+    # without cancelling authorized work, and "cancel it" stops pending
+    # execution and reports what had already happened. Off: every non-
+    # backchannel interruption stops the reply and becomes an ordinary turn.
+    voice_interrupt_intents_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_INTERRUPT_INTENTS_V1",
+            "voice_interrupt_intents_v1",
+        ),
+    )
     # Run context assembly concurrently with the unified-turn LIVE pass instead of
     # after it. LIVE is discarded on ~48% of turns (read/connector tool defer),
     # and on a measured spoken tool turn its 3.9s stacked in front of a 4.5s

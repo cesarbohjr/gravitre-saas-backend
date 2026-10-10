@@ -8,6 +8,7 @@ full_draft plus optional client playback_offset_ms.
 from __future__ import annotations
 
 import asyncio
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -100,8 +101,11 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         # speculative run in particular) saw the marker and returned nothing.
         self._generating = False
         self._bot_speaking = False
+        # The last real barge-in, until the next confirmed turn consumes it.
+        self._last_barge_in: dict[str, Any] | None = None
         if voice_session is not None:
             voice_session.answer_expected = self.answer_expected
+            voice_session.speech_stop_handler = self.silence_current_reply
 
     @property
     def assistant_turn_live(self) -> bool:
@@ -248,19 +252,12 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         reconcile_meta: dict[str, Any] | None,
         playback_offset_ms: float | None,
     ) -> bool:
-        """Blocking barge-in bookkeeping. Runs in a worker thread, never on the loop.
+        """Blocking barge-in audit rows. Runs in a worker thread, never on the loop.
 
-        Returns whether a conversation stop marker was armed.
+        The stop marker is not armed here: it is armed in-process before the
+        interruption leaves this processor and shared through Redis by
+        :meth:`_arm_shared_stop_sync`, which does not wait for the TTS cancel.
         """
-        from app.services.voice_barge_in_write import mark_voice_barge_in_stop
-
-        # First, so an in-flight ReAct write sees the barge-in as early as possible.
-        armed = mark_voice_barge_in_stop(
-            org_id=turn.org_id,
-            conversation_id=turn.conversation_id,
-            settings=self._settings,
-            user_id=turn.user_id,
-        )
         if tts_cancel:
             from app.services.pipecat_voice.tts_context_cancel import record_tts_context_cancel
 
@@ -284,7 +281,73 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 reconcile_meta=reconcile_meta,
                 playback_offset_ms=playback_offset_ms,
             )
-        return bool(armed)
+        return True
+
+    def _arm_stop_now(self, turn: _InterruptedTurn) -> bool:
+        """Block uncommitted writes for this conversation before anything is awaited.
+
+        In-process and I/O free, so it runs on the loop the moment the
+        barge-in is recognized: a write commit check in this process sees it
+        even while the TTS cancel or the Redis write are still in flight.
+        """
+        if not turn.org_id or not turn.conversation_id:
+            return False
+        from app.services.chat_turn_cancel_service import arm_local_stop
+
+        armed = arm_local_stop(str(turn.org_id), str(turn.conversation_id))
+        if armed:
+            self._armed_stop = (str(turn.org_id), str(turn.conversation_id))
+        return armed
+
+    def _arm_shared_stop_sync(self, turn: _InterruptedTurn) -> bool:
+        """Share the stop with other workers (Redis) and audit it. Worker thread."""
+        from app.services.voice_barge_in_write import mark_voice_barge_in_stop
+
+        return bool(
+            mark_voice_barge_in_stop(
+                org_id=turn.org_id,
+                conversation_id=turn.conversation_id,
+                settings=self._settings,
+                user_id=turn.user_id,
+            )
+        )
+
+    def _tts_context_ids(self) -> list[str]:
+        """Audio contexts the TTS currently holds (synchronous getters only)."""
+        tts = self._tts_service
+        if tts is None:
+            return []
+        ids: list[str] = []
+        try:
+            getter = getattr(tts, "get_audio_contexts", None)
+            if callable(getter):
+                ids.extend(str(c) for c in (getter() or []) if c)
+            for attr in ("get_active_audio_context_id",):
+                active = getattr(tts, attr, None)
+                if callable(active) and active():
+                    ids.append(str(active()))
+            turn_id = getattr(tts, "_turn_context_id", None)
+            if isinstance(turn_id, str) and turn_id:
+                ids.append(turn_id)
+        except Exception:  # noqa: BLE001 - identity binding is best effort
+            pass
+        return list(dict.fromkeys(ids))
+
+    async def _cancel_tts_context(self) -> dict[str, Any] | None:
+        if self._tts_service is None:
+            return None
+        from app.services.pipecat_voice.tts_context_cancel import (
+            cancel_elevenlabs_tts_context,
+        )
+
+        try:
+            return await cancel_elevenlabs_tts_context(
+                self._tts_service,
+                keep_session=True,
+            ) or None
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("pipecat_tts_context_cancel_failed error=%s", str(exc))
+            return None
 
     async def _post_interrupt(
         self,
@@ -294,29 +357,22 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         playback_offset_ms: float | None,
         reconciled_text: str | None,
     ) -> None:
-        tts_cancel: dict[str, Any] | None = None
-        if self._tts_service is not None:
-            from app.services.pipecat_voice.tts_context_cancel import (
-                cancel_elevenlabs_tts_context,
-            )
-
-            try:
-                tts_cancel = await cancel_elevenlabs_tts_context(
-                    self._tts_service,
-                    keep_session=True,
-                ) or None
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("pipecat_tts_context_cancel_failed error=%s", str(exc))
+        # The in-process stop is already armed (_arm_stop_now). The shared one
+        # and the TTS cancel are independent: neither waits for the other.
+        shared_stop = asyncio.ensure_future(asyncio.to_thread(self._arm_shared_stop_sync, turn))
+        tts_cancel = await self._cancel_tts_context()
         try:
-            armed = await asyncio.to_thread(
+            await shared_stop
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("pipecat_barge_in_shared_stop_failed error=%s", str(exc))
+        try:
+            await asyncio.to_thread(
                 self._run_post_interrupt_writes_sync,
                 turn,
                 tts_cancel=tts_cancel,
                 reconcile_meta=reconcile_meta,
                 playback_offset_ms=playback_offset_ms,
             )
-            if armed and turn.org_id and turn.conversation_id:
-                self._armed_stop = (str(turn.org_id), str(turn.conversation_id))
         except Exception as exc:  # noqa: BLE001
             logger.warning("pipecat_post_interrupt_writes_failed error=%s", str(exc))
         if reconciled_text is not None:
@@ -337,17 +393,31 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 logger.warning("pipecat_interrupted_detached_persist_failed error=%s", str(exc))
         task.add_done_callback(_consume)
 
-    async def settle_barge_in(self) -> None:
+    def consume_barge_in(self) -> dict[str, Any] | None:
+        """The barge-in the next confirmed turn follows, once: reply id and time.
+
+        None when the turn did not cut anything off (the bot was idle).
+        """
+        info, self._last_barge_in = self._last_barge_in, None
+        return info
+
+    async def settle_barge_in(self, *, release: bool = True) -> None:
         """Called at the start of the next confirmed user turn.
 
         Waits for the previous interruption's bookkeeping, then releases the
         conversation stop marker this socket armed for that interrupted turn.
         Without the release the marker (120 s TTL) would make the next voice
         turn in the same conversation return without answering.
+
+        ``release=False`` (a "cancel it" turn) keeps the marker armed so a
+        write of the cancelled work that is still on its way to commit is
+        refused; the next ordinary turn releases it.
         """
         pending = [task for task in self._post_interrupt_tasks if not task.done()]
         if pending:
             await asyncio.gather(*(asyncio.shield(task) for task in pending), return_exceptions=True)
+        if not release:
+            return
         armed = self._armed_stop
         self._armed_stop = None
         if armed is None:
@@ -377,6 +447,75 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("pipecat_stop_marker_release_failed error=%s", str(exc))
+
+    async def silence_current_reply(self) -> bool:
+        """Silence this reply ("stop talking") and keep the work behind it running.
+
+        Nothing goes upstream, so the brain's turn (and any authorized tool
+        call in it) is not cancelled, and no stop marker is armed, so its
+        writes are not refused. Downstream, the reply's audio is cut by
+        identity, the TTS and output transport are flushed, and the client is
+        told speech stopped while work continues. The reply's text and its
+        normal completion still go out; nothing more of it is spoken.
+        Returns False when there was nothing to silence.
+        """
+        session = self._voice_session
+        if session is None or not (self.assistant_turn_live or getattr(session, "assistant_generating", False)):
+            return False
+        reply_id = getattr(session, "reply_id", None)
+        if not isinstance(reply_id, int):
+            return False
+        session.mute_reply(reply_id)
+        work_continues = bool(self._generating or getattr(session, "assistant_generating", False))
+        spoken = ""
+        if self._spoken_ledger is not None and self._spoken_ledger.ever_recorded:
+            spoken = self._spoken_ledger.snapshot()
+        logger.info(
+            "pipecat_speech_silenced reply_id=%s work_continues=%s spoken_chars=%s",
+            reply_id,
+            work_continues,
+            len(spoken),
+        )
+        await self.push_frame(
+            OutputTransportMessageUrgentFrame(
+                message={
+                    "type": "speech.interrupted",
+                    "tts_provider": "elevenlabs",
+                    "interrupted": True,
+                    "intent": "speech_stop",
+                    "work_continues": work_continues,
+                    "reply_id": reply_id,
+                    "spoken_text": spoken[:2000],
+                    "full_draft_text": (self._draft_client or self._draft_llm or "").strip()[:2000],
+                    "playback_offset_ms": None,
+                    "tts_context_cancel": None,
+                }
+            ),
+            FrameDirection.DOWNSTREAM,
+        )
+        notice_sent = getattr(session, "muted_notice_sent", None)
+        if work_continues and isinstance(notice_sent, set) and reply_id not in notice_sent:
+            notice_sent.add(reply_id)
+            await self.push_frame(
+                OutputTransportMessageUrgentFrame(
+                    message={
+                        "type": "assistant_notice",
+                        "kind": "speech_stopped_work_continues",
+                        "reply_id": reply_id,
+                        "text": "Okay, I'll stop talking. I'm still working on it, and the answer will show here.",
+                    }
+                ),
+                FrameDirection.DOWNSTREAM,
+            )
+        # Flush what the TTS and the output transport already hold for this
+        # reply. Pushed downstream only: the brain upstream keeps running.
+        flush = InterruptionFrame()
+        setattr(flush, "gravitre_speech_only", True)
+        await self.push_frame(flush, FrameDirection.DOWNSTREAM)
+        task = self.create_task(self._cancel_tts_context())
+        self._post_interrupt_tasks.add(task)
+        task.add_done_callback(self._post_interrupt_tasks.discard)
+        return True
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         if isinstance(frame, BotStartedSpeakingFrame):
@@ -432,6 +571,25 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                     warming,
                 )
                 return
+            # A real barge-in. Before anything is awaited (the base class's
+            # interruption handling, the provider cancel, Redis): refuse
+            # uncommitted writes of the interrupted work, and cut the
+            # interrupted reply's audio off by identity.
+            interrupted_turn = self._snapshot_turn()
+            self._arm_stop_now(interrupted_turn)
+            interrupted_reply_id = getattr(self._voice_session, "reply_id", None)
+            cancel_audio = getattr(self._voice_session, "cancel_reply_audio", None)
+            if isinstance(interrupted_reply_id, int) and callable(cancel_audio):
+                # The TTS has not seen this interruption yet (it is downstream),
+                # so every context it holds belongs to the reply being cut off,
+                # including one whose audio was never seen downstream.
+                for context_id in self._tts_context_ids():
+                    self._voice_session.bind_audio_context(context_id, interrupted_reply_id)
+                cancel_audio(interrupted_reply_id)
+            self._last_barge_in = {
+                "reply_id": interrupted_reply_id if isinstance(interrupted_reply_id, int) else None,
+                "at": time.monotonic(),
+            }
         await super().process_frame(frame, direction)
 
         if isinstance(frame, LLMFullResponseStartFrame):
@@ -562,7 +720,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             # heard. The turn identity is captured now, before a new turn can
             # replace it.
             self._schedule_post_interrupt(
-                self._snapshot_turn(),
+                interrupted_turn,
                 reconcile_meta=reconcile_audit,
                 playback_offset_ms=self._last_playback_offset_ms,
                 reconciled_text=(

@@ -28,7 +28,10 @@ from app.services.pipecat_voice.backchannel_turn_strategy import (
 )
 from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
 from app.services.pipecat_voice.interrupt_reporter import ElevenLabsInterruptReporter
-from app.services.pipecat_voice.json_audio_serializer import GravitreJsonAudioSerializer
+from app.services.pipecat_voice.json_audio_serializer import (
+    GravitreJsonAudioSerializer,
+    ReplyAudioStampProcessor,
+)
 from app.services.pipecat_voice.krisp_factory import build_krisp_viva_input_filter
 from app.services.pipecat_voice.speculative_generation import SpeculativeGenerationCoordinator
 from app.services.pipecat_voice.speculative_prefetch import SpeculativePrefetchProcessor
@@ -340,6 +343,9 @@ def build_pipecat_voice_task(
             llm,
             interrupt_reporter,
             tts,
+            # Binds each TTS context to the reply that generated it and drops
+            # audio of a cut-off reply, so late frames never carry a new id.
+            ReplyAudioStampProcessor(voice_session=voice_session),
             transport.output(),
             # After the output transport: word-level TTSTextFrames ride the
             # transport clock queue, so this position tracks real playback rather

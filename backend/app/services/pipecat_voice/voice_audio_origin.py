@@ -77,10 +77,62 @@ class VoicePipelineSession:
     # interruption event carry it, so the browser can drop the cancelled
     # reply's late frames by identity instead of by a timer.
     reply_id: int = 0
+    # Audio identity is bound when the audio is generated, never read from
+    # ``reply_id`` at send time: the TTS context that produced a frame maps to
+    # the reply that opened it, so a late frame of a cancelled reply keeps its
+    # own (old) id after the next reply has begun.
+    audio_context_replies: dict[str, int] = field(default_factory=dict)
+    # Every reply up to and including this id was cut off by a barge-in
+    # (-1: none yet; reply 0 is audio sent before the first answer).
+    cancelled_through_reply_id: int = -1
+    # Replies whose speech was silenced while their work goes on ("stop
+    # talking, keep working"); their text and completion still go out.
+    muted_reply_ids: set[int] = field(default_factory=set)
+    # Muted replies that already showed the "still working" note (once each).
+    muted_notice_sent: set[int] = field(default_factory=set)
+    # Set by the interrupt reporter: silence the current reply without
+    # cancelling its work. Zero-arg coroutine function.
+    speech_stop_handler: Any = None
 
     def begin_reply(self) -> int:
         self.reply_id += 1
         return self.reply_id
+
+    def bind_audio_context(self, context_id: str | None, reply_id: int) -> int:
+        """Bind a TTS context to the reply that generated it; first binding wins."""
+        if not context_id:
+            return reply_id
+        bound = self.audio_context_replies.get(context_id)
+        if bound is not None:
+            return bound
+        if len(self.audio_context_replies) >= 256:
+            # Contexts are per reply segment; old ones are long finished.
+            for stale in list(self.audio_context_replies)[:128]:
+                self.audio_context_replies.pop(stale, None)
+        self.audio_context_replies[context_id] = reply_id
+        return reply_id
+
+    def cancel_reply_audio(self, reply_id: int | None = None) -> int:
+        """A barge-in cut off ``reply_id`` (default: the latest reply) and everything before it."""
+        through = self.reply_id if reply_id is None else int(reply_id)
+        self.cancelled_through_reply_id = max(self.cancelled_through_reply_id, through)
+        return self.cancelled_through_reply_id
+
+    def mute_reply(self, reply_id: int | None = None) -> int:
+        rid = self.reply_id if reply_id is None else int(reply_id)
+        self.muted_reply_ids.add(rid)
+        # Only the most recent few can still be producing audio.
+        if len(self.muted_reply_ids) > 16:
+            self.muted_reply_ids = set(sorted(self.muted_reply_ids)[-16:])
+        return rid
+
+    def reply_muted(self, reply_id: int | None = None) -> bool:
+        rid = self.reply_id if reply_id is None else int(reply_id)
+        return rid in self.muted_reply_ids
+
+    def reply_audio_suppressed(self, reply_id: int) -> bool:
+        """True when audio of ``reply_id`` must not reach the listener any more."""
+        return reply_id <= self.cancelled_through_reply_id or reply_id in self.muted_reply_ids
 
     def note_bot_speech(self, text: str) -> None:
         text = (text or "").strip()

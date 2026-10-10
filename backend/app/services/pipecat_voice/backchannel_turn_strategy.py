@@ -48,6 +48,7 @@ from pipecat.frames.frames import (
     BotStoppedSpeakingFrame,
     Frame,
     InterimTranscriptionFrame,
+    InterruptionFrame,
     ProposedUserStartedSpeakingFrame,
     ProposedUserStoppedSpeakingFrame,
     TranscriptionFrame,
@@ -61,7 +62,10 @@ from pipecat.turns.user_start.external_user_turn_start_strategy import (
 from app.core.logging import get_logger
 from app.services.pipecat_voice.backchannel_classifier import (
     BackchannelClassification,
+    InterruptIntent,
+    classify_interrupt_intent,
     classify_user_utterance,
+    could_become_speech_stop,
     is_backchannel,
 )
 
@@ -185,6 +189,14 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         self._held_turn = False
         self._held_text = ""
         self._held_thinking = False
+        # voice_interrupt_intents_v1: the held utterance asked to silence
+        # speech only ("stop talking, keep working").
+        self._held_speech_stop = False
+        # Latest interim text of the pending utterance (finals go to _buffer_text).
+        self._interim_text = ""
+
+    def _intents_enabled(self) -> bool:
+        return bool(getattr(self._gravitre_settings, "voice_interrupt_intents_v1", False))
 
     async def cleanup(self):
         await self._cancel_grace_task()
@@ -244,6 +256,7 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
                 return ProcessFrameResult.STOP
             self._held_turn = False
             self._held_text = ""
+            self._held_speech_stop = False
             # The brain mid-turn with nothing playing is protected too: Pipecat
             # would otherwise cancel the in-flight request on any sound.
             thinking = not self._bot_speaking and self._assistant_thinking()
@@ -258,11 +271,32 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             # while the held utterance is still only filler / small talk, so
             # "you there?" never becomes a queued turn of its own.
             self._held_text = f"{self._held_text} {frame.text}".strip()
+            if self._held_speech_stop:
+                # A silenced reply's work keeps running only while the words
+                # still ask for silence alone. "...and cancel it" (or any real
+                # request) turns into an ordinary interruption after all.
+                if classify_interrupt_intent(self._held_text) in (
+                    InterruptIntent.SPEECH_STOP,
+                    InterruptIntent.BACKCHANNEL,
+                ):
+                    await self.trigger_reset_aggregation()
+                else:
+                    self._held_turn = False
+                    self._held_speech_stop = False
+                    logger.info(
+                        "voice_turn_taking_speech_stop_escalated text=%r", self._held_text[:80]
+                    )
+                    await self.broadcast_frame(InterruptionFrame)
+                return ProcessFrameResult.CONTINUE
             still_hold = (
                 is_hold_while_thinking(self._held_text)
                 if self._held_thinking
                 else is_backchannel(classify_user_utterance(self._held_text))
                 or self._is_bot_echo(self._held_text)
+                or (
+                    self._intents_enabled()
+                    and classify_interrupt_intent(self._held_text) is InterruptIntent.BACKCHANNEL
+                )
             )
             if still_hold:
                 await self.trigger_reset_aggregation()
@@ -288,6 +322,17 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             interim_class = classify_user_utterance(interim)
             if self._is_bot_echo(interim):
                 return ProcessFrameResult.CONTINUE
+            if self._intents_enabled() and interim:
+                self._interim_text = interim
+                if classify_interrupt_intent(interim) is InterruptIntent.SPEECH_STOP:
+                    # "stop talking" is unambiguous: silence now, keep the work.
+                    self._buffer_text = interim
+                    await self._resolve(interim_class, resolved_by_timeout=False)
+                    return ProcessFrameResult.CONTINUE
+                if could_become_speech_stop(interim):
+                    # "stop" may still become "stop talking, keep working";
+                    # cancelling the work on the first word would be wrong.
+                    return ProcessFrameResult.CONTINUE
             if interim and (
                 interim_class in _CLEAR_INTERRUPTIONS
                 or (not is_backchannel(interim_class) and len(interim.split()) > 3)
@@ -340,6 +385,17 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         except Exception:  # noqa: BLE001
             return False
 
+    async def _silence_reply(self) -> bool:
+        """Ask the interrupt reporter to silence the current reply. False: nothing silenced."""
+        handler = getattr(self._voice_session, "speech_stop_handler", None)
+        if not callable(handler):
+            return False
+        try:
+            return bool(await handler())
+        except Exception as exc:  # noqa: BLE001 - fall back to an ordinary interruption
+            logger.warning("voice_turn_taking_speech_stop_failed error=%s", exc)
+            return False
+
     def _assistant_thinking(self) -> bool:
         return bool(getattr(self._voice_session, "assistant_generating", False))
 
@@ -347,6 +403,7 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         self._pending = True
         self._pending_thinking = thinking
         self._buffer_text = ""
+        self._interim_text = ""
         self._pending_started_at = time.monotonic()
         await self._cancel_grace_task()
         self._grace_task = self.create_task(
@@ -358,8 +415,15 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             await asyncio.sleep(self._grace_period_s)
             while (
                 self._pending
-                and self._bot_speaking
-                and not self._buffer_text
+                and (self._bot_speaking or self._pending_thinking)
+                and (
+                    (self._bot_speaking and not self._buffer_text)
+                    or (
+                        self._intents_enabled()
+                        and not self._buffer_text
+                        and could_become_speech_stop(self._interim_text)
+                    )
+                )
                 and time.monotonic() - self._pending_started_at < self._max_wordless_wait_s
             ):
                 await asyncio.sleep(0.05)
@@ -368,6 +432,9 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         if self._pending:
             # Timed out without a confident classification. Safe default:
             # treat as a real interruption, never suppress on ambiguity.
+            if self._intents_enabled() and not self._buffer_text and self._interim_text:
+                # Decide on the words heard so far: a bare "stop" stays a stop.
+                self._buffer_text = self._interim_text
             classification = classify_user_utterance(self._buffer_text)
             await self._resolve(classification, resolved_by_timeout=True)
 
@@ -422,6 +489,14 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             self._held_thinking = False
             return
         backchannel = is_backchannel(classification)
+        if (
+            not backchannel
+            and self._intents_enabled()
+            and classify_interrupt_intent(self._buffer_text) is InterruptIntent.BACKCHANNEL
+        ):
+            # "mm-hmm" (normalized "mm hmm") is outside the closed set above.
+            backchannel = True
+            classification = BackchannelClassification.BACKCHANNEL
         if backchannel and self._voice_session is not None and self._voice_session.expects_answer():
             # The bot just asked something; "yes" / "sure" is the answer.
             backchannel = False
@@ -451,6 +526,31 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             await self.trigger_user_turn_started(
                 enable_interruptions=False, enable_user_speaking_frames=False
             )
+            return
+
+        if (
+            not backchannel
+            and self._intents_enabled()
+            and classify_interrupt_intent(self._buffer_text) is InterruptIntent.SPEECH_STOP
+            and await self._silence_reply()
+        ):
+            # "Stop talking (, keep working)": silence the reply, never cancel
+            # the work. No interruption goes upstream, so the brain's turn and
+            # its authorized tools keep running, and the words never become a
+            # turn of their own.
+            logger.info(
+                "voice_turn_taking_speech_stop text=%r decision_latency_ms=%.1f",
+                self._buffer_text[:80],
+                decision_latency_ms,
+            )
+            await self.trigger_user_turn_started(
+                enable_interruptions=False, enable_user_speaking_frames=False
+            )
+            await self.trigger_reset_aggregation()
+            self._held_turn = True
+            self._held_text = self._buffer_text
+            self._held_thinking = False
+            self._held_speech_stop = True
             return
 
         if backchannel:
