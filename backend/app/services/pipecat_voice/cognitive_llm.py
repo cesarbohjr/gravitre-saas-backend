@@ -87,9 +87,10 @@ _CONTINUES_PREVIOUS_RE = re.compile(
     r"only|just|in|on|from|by|via|about|same|make\s+it|over|during|since|between|"
     r"(?:can|could|would|will)\s+you\s+(?:also|then)|do\s+(?:it|that|this|the\s+same))\b"
 )
-# "also", "too" or "as well" anywhere ("can you cc Mike too") ties the
-# utterance to the request it interrupted.
-_ADDS_TO_PREVIOUS_RE = re.compile(r"(?i)\b(?:also|too|as\s+well|instead)\b")
+# "also"/"as well" anywhere, or a closing "too" ("can you cc Mike too"), ties
+# the utterance to the request it interrupted. A "too" mid-sentence is a degree
+# word ("is that too high?") and "instead" usually changes topic, so neither counts.
+_ADDS_TO_PREVIOUS_RE = re.compile(r"(?i)\b(?:also|as\s+well)\b|\btoo\s*[.!?]*\s*$")
 _STANDALONE_ASK_RE = re.compile(
     r"(?i)^\s*(?:who|what|which|when|where|why|how|can|could|would|will|do|does|did|is|are|"
     r"show|tell|create|send|draft|find|list|give|pull|check|schedule|book|add|update)\b"

@@ -182,6 +182,12 @@ def test_question_shaped_continuations_still_complete_the_cancelled_request() ->
         assert text.startswith("Email Sarah the deck from yesterday"), follow
 
 
+def test_degree_too_and_instead_do_not_glue_a_new_question_on() -> None:
+    for ask in ("is the Acme deal too risky to close?", "show me the Acme pipeline instead"):
+        text, _history = merge_unanswered_turn("Email Sarah the deck from yesterday", ask, HISTORY)
+        assert text == ask
+
+
 def test_reporter_tracks_the_thinking_window() -> None:
     import asyncio
 
