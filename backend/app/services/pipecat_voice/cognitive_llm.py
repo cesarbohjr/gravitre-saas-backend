@@ -474,6 +474,8 @@ class GravitreCognitiveLLMService(LLMService):
             user_text, history = merge_unanswered_turn(carried, user_text, history)
         self._active_user_text = user_text
         self._answer_started = False
+        if session is not None:
+            session.begin_reply()
         if self._interrupt_reporter is not None:
             self._interrupt_reporter.begin_turn(user_text)
         if await asyncio.to_thread(

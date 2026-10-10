@@ -554,3 +554,60 @@ def test_bulk_delete_conversations_dedupes_ids(monkeypatch):
     )
     assert response.status_code == 204
     assert supabase.table.call_count == 1
+
+
+def test_create_conversation_survives_a_dropped_connection(monkeypatch):
+    """Prod 2026-10-10: httpx.ReadError on insert returned 500."""
+    import httpx
+
+    _authenticate()
+    created = {
+        "id": "conv-2",
+        "title": "New conversation",
+        "preview": None,
+        "message_count": 0,
+        "created_at": "2026-10-10T05:00:00+00:00",
+        "updated_at": "2026-10-10T05:00:00+00:00",
+    }
+    dedup_chain = _table_chain([])
+    failing_insert = _table_chain([])
+    failing_insert.execute.side_effect = httpx.ReadError("[Errno 11] Resource temporarily unavailable")
+    landed_lookup = _table_chain([])
+    retry_insert = _table_chain([created])
+    supabase = MagicMock()
+    supabase.table.side_effect = [dedup_chain, failing_insert, landed_lookup, retry_insert]
+    monkeypatch.setattr(
+        "app.routers.conversations.create_client",
+        lambda *_args, **_kwargs: supabase,
+    )
+    response = client.post("/api/conversations", json={})
+    assert response.status_code == 201
+    assert response.json()["id"] == "conv-2"
+
+
+def test_create_conversation_returns_the_row_a_dropped_response_already_wrote(monkeypatch):
+    import httpx
+
+    _authenticate()
+    landed = {
+        "id": "conv-3",
+        "title": "New conversation",
+        "preview": None,
+        "message_count": 0,
+        "created_at": "2026-10-10T05:00:00+00:00",
+        "updated_at": "2026-10-10T05:00:00+00:00",
+    }
+    dedup_chain = _table_chain([])
+    failing_insert = _table_chain([])
+    failing_insert.execute.side_effect = httpx.ReadError("[Errno 11] Resource temporarily unavailable")
+    landed_lookup = _table_chain([landed])
+    supabase = MagicMock()
+    supabase.table.side_effect = [dedup_chain, failing_insert, landed_lookup]
+    monkeypatch.setattr(
+        "app.routers.conversations.create_client",
+        lambda *_args, **_kwargs: supabase,
+    )
+    response = client.post("/api/conversations", json={})
+    assert response.status_code == 201
+    assert response.json()["id"] == "conv-3"
+    assert supabase.table.call_count == 3

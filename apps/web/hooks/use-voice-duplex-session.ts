@@ -276,6 +276,17 @@ export function useVoiceDuplexSession(options: Options) {
   // transcript/interrupt arriving out of order can never mute the next answer.
   const dropAudioUntilRef = useRef(0)
   const droppingInterruptedAudio = () => performance.now() < dropAudioUntilRef.current
+  // Newer servers tag every audio frame and the interruption with the reply
+  // they belong to; frames of an interrupted reply are dropped by that id,
+  // and the time window above only covers servers that send no id.
+  const interruptedReplyIdRef = useRef<number | null>(null)
+  const isInterruptedReplyAudio = (replyId: unknown): boolean => {
+    if (typeof replyId === "number") {
+      const cut = interruptedReplyIdRef.current
+      return cut !== null && replyId <= cut
+    }
+    return droppingInterruptedAudio()
+  }
   const audioFramesReceivedRef = useRef(0)
   // performance.now() of the reply's first audio frame, for the playback.started report.
   const firstAudioReceivedAtRef = useRef<number | null>(null)
@@ -1297,6 +1308,9 @@ export function useVoiceDuplexSession(options: Options) {
       socketOpenedRef.current = false
       assistantTextRef.current = ""
       lastUserFinalRef.current = ""
+      // Reply ids restart with every server session.
+      interruptedReplyIdRef.current = null
+      dropAudioUntilRef.current = 0
 
       ws.onopen = () => {
         activeRef.current = true
@@ -1423,7 +1437,11 @@ export function useVoiceDuplexSession(options: Options) {
           // The cancelled reply must not come back: no fallback replay of its
           // full text, and no late frames of it.
           clearAudioReplyWatchdog()
-          dropAudioUntilRef.current = performance.now() + INTERRUPTED_AUDIO_DROP_MS
+          if (typeof msg.reply_id === "number") {
+            interruptedReplyIdRef.current = Math.max(interruptedReplyIdRef.current ?? -1, msg.reply_id)
+          } else {
+            dropAudioUntilRef.current = performance.now() + INTERRUPTED_AUDIO_DROP_MS
+          }
           if (agentSpeakingRef.current || pcmPlayerRef.current?.isActive()) {
             stopPcmPlayback()
             agentSpeakingRef.current = false
@@ -1450,7 +1468,7 @@ export function useVoiceDuplexSession(options: Options) {
           // HTTP TTS owns this turn after the no-audio watchdog fires. A late
           // provider frame must not create overlapping speech.
           if (audioFallbackTriggeredRef.current) return
-          if (droppingInterruptedAudio()) return
+          if (isInterruptedReplyAudio(msg.reply_id)) return
           const pcm = pcmDecoderRef.current.decode(msg.pcm16_b64)
           if (pcm.length > 0) {
             if (firstAudioReceivedAtRef.current == null) {

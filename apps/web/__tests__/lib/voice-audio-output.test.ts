@@ -207,16 +207,22 @@ describe("voice live turn completion lifecycle", () => {
 
   it("drops queued reply audio when the server reports a barge-in", () => {
     const handler = hook.slice(hook.indexOf('kind === "speech.interrupted"'))
-    expect(handler.slice(0, 800)).toMatch(/stopPcmPlayback\(\)/)
+    expect(handler.slice(0, 1000)).toMatch(/stopPcmPlayback\(\)/)
   })
 
   it("never replays or resumes a reply the user interrupted", () => {
     const handler = hook.slice(hook.indexOf('kind === "speech.interrupted"'))
     // The no-audio fallback would otherwise speak the whole reply again.
     expect(handler.slice(0, 600)).toMatch(/clearAudioReplyWatchdog\(\)/)
-    expect(handler.slice(0, 600)).toMatch(/dropAudioUntilRef\.current = performance\.now\(\) \+ INTERRUPTED_AUDIO_DROP_MS/)
+    // Frames are dropped by the interrupted reply's id; the time window is
+    // only a fallback for servers that send no id.
+    expect(handler.slice(0, 900)).toMatch(/interruptedReplyIdRef\.current = Math\.max\(/)
+    expect(handler.slice(0, 900)).toMatch(/dropAudioUntilRef\.current = performance\.now\(\) \+ INTERRUPTED_AUDIO_DROP_MS/)
     const audio = hook.slice(hook.indexOf('kind === "audio"'))
-    expect(audio.slice(0, 400)).toMatch(/if \(droppingInterruptedAudio\(\)\) return/)
+    expect(audio.slice(0, 400)).toMatch(/if \(isInterruptedReplyAudio\(msg\.reply_id\)\) return/)
+    expect(hook).toMatch(/return cut !== null && replyId <= cut/)
+    // A reconnect starts a new server session whose reply ids restart.
+    expect(hook).toMatch(/Reply ids restart with every server session\.\n\s+interruptedReplyIdRef\.current = null/)
     // The next reply's no-audio fallback still arms inside the drop window.
     const text = hook.slice(hook.indexOf('kind === "assistant_text"'))
     expect(text.slice(0, 900)).toMatch(/if \(firstAssistantText && audibleAudioFramesRef\.current === 0\) \{\s+armAudioReplyWatchdog\(\)/)

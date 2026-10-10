@@ -511,6 +511,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 # awaiting the provider here held the interruption back.
                 "tts_context_cancel": None,
             }
+            reply_id = getattr(self._voice_session, "reply_id", None)
+            if isinstance(reply_id, int):
+                payload["reply_id"] = reply_id
             # Phase 5 (conversational polish): tell the client which text was
             # actually heard so the next turn's history is not padded with a tail
             # the user never received. Flag-gated; off means legacy payload only.

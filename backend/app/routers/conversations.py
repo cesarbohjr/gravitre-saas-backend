@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
@@ -526,7 +527,24 @@ def create_conversation(
         "created_at": now,
         "updated_at": now,
     }
-    response = client.table("conversations").insert(row).execute()
+    try:
+        response = client.table("conversations").insert(row).execute()
+    except httpx.TransportError as exc:
+        # A dropped connection can lose the response after the row was
+        # written, so look for it before trying the insert once more.
+        logger.warning("conversation_create_transport_retry org_id=%s error=%s", org_id, type(exc).__name__)
+        landed = (
+            client.table("conversations")
+            .select("*")
+            .eq("org_id", org_id)
+            .eq("user_id", user["user_id"])
+            .eq("created_at", now)
+            .limit(1)
+            .execute()
+        )
+        if landed.data:
+            return _normalize_conversation(landed.data[0])
+        response = client.table("conversations").insert(row).execute()
     if _is_missing_table_error(response_error(response)):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
