@@ -159,8 +159,9 @@ def test_disconnect_offset_uses_the_last_report_but_never_more_than_was_sent():
         reply.note_spoken_word(word, 0.0)
         reply.note_audio(int(RATE * 0.2) * 2, RATE)  # 800 ms sent
     offset, meta = disconnect_heard_offset(reply)
-    # Server estimate: "four" is still arriving (not the final word): three heard.
-    assert meta["heard_source"] == "server_estimate"
+    # Server estimate: "four" is still arriving (not the final word): three
+    # sent. With no browser report, whether any of it was heard is unknown.
+    assert meta["heard_source"] == "unknown"
     assert reply.answer_text_upto(offset) == "one two three"
     reply.apply_client_report({"reply_id": 1, "played_ms": 450})
     offset, meta = disconnect_heard_offset(reply)
@@ -336,3 +337,20 @@ async def test_tap_feeds_sent_audio_and_word_timings_to_the_tracker():
     assert first == [(FILLER, 5), (ANSWER, 5)]
     assert tracker.last_audio_activity is not None
     assert tracker.non_answer_phrases() == ["One moment."]
+
+
+def test_client_reports_are_clamped_to_what_was_sent_and_received():
+    reply = ReplyPlayback(reply_id=1)
+    reply.add_text("one two three", ANSWER)
+    reply.note_audio(int(RATE * 0.5) * 2, RATE)  # 500 ms sent
+    reply.apply_client_report({"reply_id": 1, "played_ms": 5000, "received_ms": 9000})
+    assert reply.client_received_ms == pytest.approx(540)  # sent + frame slack
+    assert reply.client_played_ms == pytest.approx(540)
+    reply2 = ReplyPlayback(reply_id=2)
+    reply2.add_text("one two three", ANSWER)
+    reply2.note_audio(int(RATE * 1.0) * 2, RATE)
+    reply2.apply_client_report({"reply_id": 2, "played_ms": 800, "received_ms": 300})
+    assert reply2.client_played_ms == pytest.approx(340), "never more played than received"
+    # Late, out-of-order reports never move played backwards.
+    reply2.apply_client_report({"reply_id": 2, "played_ms": 100, "received_ms": 900})
+    assert reply2.client_played_ms == pytest.approx(340)

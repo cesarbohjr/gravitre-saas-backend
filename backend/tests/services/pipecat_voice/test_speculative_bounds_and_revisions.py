@@ -1,5 +1,5 @@
-"""Speculative generation: side-effect scope, bounds, counters and (behind
-voice_request_revisions_v1) versioned request revisions with strict adoption."""
+"""Speculative generation: side-effect scope, bounds, counters, and versioned
+request revisions with strict adoption (always on)."""
 from __future__ import annotations
 
 import asyncio
@@ -24,6 +24,7 @@ from app.services.pipecat_voice.speculative_generation import (
     extract_request_constraints,
     start_speculative_run,
     strict_transcript_match,
+    with_turn_inputs,
 )
 from app.services.pipecat_voice.speculative_prefetch import SpeculativePrefetchProcessor
 from app.services.pipecat_voice.voice_latency_tuning import (
@@ -36,6 +37,10 @@ from app.services.speculative_execution import (
     block_if_speculative,
     run_or_defer,
 )
+from tests.services.pipecat_voice.speculation_helpers import (
+    adoptable,
+    confirmed_turn_sees_matching_versions,
+)
 
 
 def _delta(text: str) -> AssistantStreamEvent:
@@ -45,6 +50,18 @@ def _delta(text: str) -> AssistantStreamEvent:
 async def _events(*items):
     for item in items:
         yield item
+
+
+def _bound(versions: Any, **overrides: Any):
+    """Bind principal and prompt the way the confirmed test service will."""
+    base: dict[str, Any] = dict(
+        org_id="00000000-0000-4000-8000-000000000001",
+        user_id="00000000-0000-4000-8000-000000000002",
+        agent_id=None,
+        turn_inputs={"assistant_base_prompt": None},
+    )
+    base.update(overrides)
+    return with_turn_inputs(versions, **base)
 
 
 def _versions(**overrides: Any):
@@ -163,10 +180,11 @@ class TestBounds:
         from app.config import Settings
 
         fields = Settings.model_fields
-        assert fields["voice_request_revisions_v1"].default is False
         assert fields["voice_speculative_timeout_s"].default == 5.0
         assert fields["voice_speculative_max_buffer_chars"].default == 2000
-        assert voice_request_revisions_enabled(SimpleNamespace()) is False
+        # Strict adoption no longer depends on the retired setting.
+        assert voice_request_revisions_enabled(SimpleNamespace()) is True
+        assert voice_request_revisions_enabled(SimpleNamespace(voice_request_revisions_v1=False)) is True
 
     @pytest.mark.asyncio
     async def test_unadopted_run_times_out_and_counts_wasted_time(self):
@@ -472,7 +490,7 @@ def _slow_intelligence():
 class TestProcessorWiring:
     @pytest.mark.asyncio
     @pytest.mark.parametrize("flag", [False, True])
-    async def test_qualifier_interim_cancels_only_with_revisions_flag(self, flag):
+    async def test_qualifier_interim_cancels_whatever_the_retired_flag_says(self, flag):
         settings = SimpleNamespace(voice_speculative_v2=True, voice_request_revisions_v1=flag)
         coordinator = SpeculativeGenerationCoordinator()
         proc = await _processor(settings, coordinator)
@@ -483,9 +501,9 @@ class TestProcessorWiring:
             assert coordinator.has_pending_run
             run = coordinator.pending_run
             assert run.bounds == SpeculativeBounds()
-            assert (run.revision is not None) is flag
+            assert run.revision is not None
             await proc.process_frame(_interim("show me sessions last month but"), FrameDirection.DOWNSTREAM)
-        assert coordinator.has_pending_run is (not flag)
+        assert coordinator.has_pending_run is False
         coordinator.cancel()
 
 
@@ -585,14 +603,16 @@ class TestConfirmedTurnWiring:
 
         coordinator = SpeculativeGenerationCoordinator()
         run = start_speculative_run(text="what is two plus two", runner=_runner, create_task=asyncio.ensure_future)
-        coordinator.set_run(run)
+        coordinator.set_run(adoptable(run))
         await run.task
         assert written == []
 
         service, deltas = _service(SimpleNamespace(), coordinator)
         trace = _Trace()
         service._turn_trace = trace
-        with patch("app.operators.agent_intelligence.get_agent_intelligence") as intel:
+        with confirmed_turn_sees_matching_versions(), patch(
+            "app.operators.agent_intelligence.get_agent_intelligence"
+        ) as intel:
             intel.return_value.execute_task_streaming = AsyncMock(side_effect=AssertionError("must adopt"))
             await service._run_gravitre_turn(_Ctx())
 
@@ -608,7 +628,7 @@ class TestConfirmedTurnWiring:
         run = await _finished_run(
             coordinator,
             "what is two plus two",
-            versions=_versions(conversation_id=None, history=[{"role": "user", "content": "older context"}]),
+            versions=_bound(_versions(conversation_id=None, history=[{"role": "user", "content": "older context"}])),
         )
         service, deltas = _service(SimpleNamespace(voice_request_revisions_v1=True), coordinator)
         trace = _Trace()
@@ -632,10 +652,196 @@ class TestConfirmedTurnWiring:
         await _finished_run(
             coordinator,
             "what is two plus two",
-            versions=_versions(conversation_id=None, history=[], task_state=None),
+            versions=_bound(_versions(conversation_id=None, history=[], task_state=None)),
         )
         service, deltas = _service(SimpleNamespace(voice_request_revisions_v1=True), coordinator)
         with patch("app.operators.agent_intelligence.get_agent_intelligence") as intel:
             intel.return_value.execute_task_streaming = AsyncMock(side_effect=AssertionError("must adopt"))
             await service._run_gravitre_turn(_Ctx())
         assert coordinator.stats.adopted == 1
+
+
+# ---------------------------------------------------------------------------
+# The adoption contract (audit 2026-10-10, finding 3)
+# ---------------------------------------------------------------------------
+
+
+class TestAdoptionContract:
+    @pytest.mark.asyncio
+    async def test_two_unreadable_states_never_match(self):
+        unknown = _bound(_versions(task_state={"_unavailable": True}))
+        assert unknown.known is False
+        c = SpeculativeGenerationCoordinator()
+        await _finished_run(c, "what is two plus two", versions=unknown)
+        assert c.adopt("what is two plus two", strict=True, versions=unknown) is None
+        assert c.last_reject_reason == "versions_unknown"
+
+    @pytest.mark.asyncio
+    async def test_unreadable_confirmed_state_rejects_a_known_run(self):
+        c = SpeculativeGenerationCoordinator()
+        await _finished_run(c, "what is two plus two", versions=_bound(_versions()))
+        unknown = _bound(_versions(task_state={"_unavailable": True}))
+        assert c.adopt("what is two plus two", strict=True, versions=unknown) is None
+        assert c.last_reject_reason == "versions_unknown"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("field", "override"),
+        [
+            ("principal_version", {"user_id": "someone-else"}),
+            ("principal_version", {"agent_id": "agent-2"}),
+            ("prompt_version", {"turn_inputs": {"assistant_base_prompt": "new instructions"}}),
+        ],
+    )
+    async def test_principal_or_prompt_changes_reject(self, field, override):
+        c = SpeculativeGenerationCoordinator()
+        await _finished_run(c, "what is two plus two", versions=_bound(_versions()))
+        assert c.adopt("what is two plus two", strict=True, versions=_bound(_versions(), **override)) is None
+        assert c.last_reject_reason == f"version_mismatch:{field}"
+
+    @pytest.mark.asyncio
+    async def test_matching_known_versions_adopt(self):
+        c = SpeculativeGenerationCoordinator()
+        run = await _finished_run(c, "what is two plus two", versions=_bound(_versions()))
+        assert c.adopt("What is two plus two?", strict=True, versions=_bound(_versions())) is run
+
+    @pytest.mark.parametrize(
+        ("spec", "final"),
+        [
+            ("Compute 1.5 plus 2", "Compute 1 5 plus 2"),
+            ("move it to -5", "move it to 5"),
+            ("book 10/12", "book 10 12"),
+            ("set the budget to $40", "set the budget to 40"),
+            ("raise it 5%", "raise it 5"),
+            ("send the report", "send the report again"),
+        ],
+    )
+    def test_meaning_carrying_punctuation_and_again_are_preserved(self, spec, final):
+        ok, _why = strict_transcript_match(spec, final, max_extra_words=3)
+        assert ok is False
+
+    @pytest.mark.parametrize(
+        ("spec", "final"),
+        [
+            ("What is two plus two", "what is two plus two?"),
+            ("Show me sessions, last month", "show me sessions last month."),
+            ("revenue was 1,000 dollars", "Revenue was 1000 dollars"),
+            ("show me sessions", "show me sessions please"),
+            ("compute 1.5 plus 2", "Compute 1.5 plus 2."),
+        ],
+    )
+    def test_benign_punctuation_case_and_inert_tails_still_adopt(self, spec, final):
+        ok, _why = strict_transcript_match(spec, final, max_extra_words=3)
+        assert ok is True
+
+
+class TestAdoptedReplayOffTheFirstWord:
+    @pytest.mark.asyncio
+    async def test_first_buffered_event_does_not_wait_for_the_deferred_replay(self):
+        """Audit finding 5: a 120 ms deferred write delayed the first adopted
+        event by 120 ms. The replay now runs behind the first words, in order,
+        and the turn still ends only after it lands."""
+        release = asyncio.Event()
+        order: list[str] = []
+
+        async def _slow_write():
+            await release.wait()
+            order.append("deferred")
+
+        async def _runner():
+            await run_or_defer("kernel.active_objective", _slow_write)
+            yield _delta("Four.")
+
+        coordinator = SpeculativeGenerationCoordinator()
+        run = start_speculative_run(text="what is two plus two", runner=_runner, create_task=asyncio.ensure_future)
+        coordinator.set_run(adoptable(run))
+        await run.task
+
+        service, deltas = _service(SimpleNamespace(), coordinator)
+        with confirmed_turn_sees_matching_versions(), patch(
+            "app.operators.agent_intelligence.get_agent_intelligence"
+        ) as intel:
+            intel.return_value.execute_task_streaming = AsyncMock(side_effect=AssertionError("must adopt"))
+            turn = asyncio.create_task(service._run_gravitre_turn(_Ctx()))
+            for _ in range(200):
+                if any("four" in d.lower() for d in deltas):
+                    break
+                await asyncio.sleep(0.01)
+            assert any("four" in d.lower() for d in deltas), "first words before the replay finished"
+            assert order == [] and not turn.done(), "the turn waits for the replay"
+            release.set()
+            await asyncio.wait_for(turn, timeout=5.0)
+        assert order == ["deferred"]
+        assert coordinator.stats.deferred_writes_replayed == 1
+
+    @pytest.mark.asyncio
+    async def test_a_blocked_run_still_fails_before_any_output(self):
+        run = start_speculative_run(text="email sarah", runner=lambda: _events(_delta("Sent.")), create_task=asyncio.ensure_future)
+        await run.task
+        run.scope.mark_blocked("connector_write:email.send")
+        with pytest.raises(SpeculativeSideEffectBlocked):
+            run.start_commit()
+
+
+class TestRetainedBudget:
+    """Audit finding 7: the character budget counted only text deltas."""
+
+    @pytest.mark.asyncio
+    async def test_an_oversized_complete_payload_discards_the_run(self):
+        from app.operators.stream_events import AssistantStreamComplete
+
+        big = AssistantStreamComplete(full_content="x" * 1_000_000, tool_results=[], react_result=None, model="t")
+        coordinator = SpeculativeGenerationCoordinator()
+        run = start_speculative_run(
+            text="what is two plus two", runner=lambda: _events(_delta("ok"), big), create_task=asyncio.ensure_future
+        )
+        coordinator.set_run(run)
+        await run.task
+        assert run.outcome == "over_budget"
+        from app.services.pipecat_voice.speculative_generation import _DONE
+
+        left = [run.queue.get_nowait() for _ in range(run.queue.qsize())]
+        assert left == [_DONE], "what it buffered is released; only the end marker remains"
+        assert coordinator.stats.over_budget == 1
+        assert coordinator.adopt("what is two plus two") is None
+
+    @pytest.mark.asyncio
+    async def test_tool_payloads_count_toward_the_budget(self):
+        tool = AssistantStreamEvent(
+            sse_type="tool-output-available",
+            payload={"toolCallId": "c1", "output": {"rows": ["y" * 1000] * 600}},
+        )
+        run = start_speculative_run(
+            text="pull every deal", runner=lambda: _events(tool), create_task=asyncio.ensure_future
+        )
+        await run.task
+        assert run.retained_bytes > 512_000 and run.outcome == "over_budget"
+
+    @pytest.mark.asyncio
+    async def test_too_many_deferred_writes_block_the_run(self):
+        async def _noop():
+            return None
+
+        async def _runner():
+            for _ in range(300):
+                await run_or_defer("audit.write_audit_event", _noop)
+            yield _delta("done")
+
+        run = start_speculative_run(
+            text="what is two plus two", runner=_runner, create_task=asyncio.ensure_future,
+            bounds=SpeculativeBounds(max_deferred_writes=10),
+        )
+        await run.task
+        assert run.scope.blocked_reason == "deferred_write_limit"
+        assert run.outcome == "blocked"
+        assert run.dropped_writes == 10
+
+    @pytest.mark.asyncio
+    async def test_a_normal_answer_stays_well_inside_the_budget(self):
+        run = start_speculative_run(
+            text="what is two plus two",
+            runner=lambda: _events(*[_delta("Four. ") for _ in range(40)]),
+            create_task=asyncio.ensure_future,
+        )
+        await run.task
+        assert run.outcome is None and run.retained_bytes < 10_000

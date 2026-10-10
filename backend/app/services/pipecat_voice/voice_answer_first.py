@@ -135,6 +135,7 @@ class AnswerFirstStats:
     dropped_for_answer: int = 0
     dropped_stale: int = 0
     dropped_repeat: int = 0
+    dropped_for_stop: int = 0
     released_by_kind: dict[str, int] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
@@ -144,6 +145,7 @@ class AnswerFirstStats:
             "dropped_for_answer": self.dropped_for_answer,
             "dropped_stale": self.dropped_stale,
             "dropped_repeat": self.dropped_repeat,
+            "dropped_for_stop": self.dropped_for_stop,
             "released_by_kind": dict(self.released_by_kind),
         }
 
@@ -284,6 +286,13 @@ class AnswerFirstSpeech:
                 await asyncio.wait_for(self._wake.wait(), timeout=self._poll_s)
             except (TimeoutError, asyncio.TimeoutError):
                 pass
+
+    def discard(self) -> int:
+        """The turn was stopped: drop every held line unsaid."""
+        dropped = len(self._pending)
+        self._pending.clear()
+        self.stats.dropped_for_stop += dropped
+        return dropped
 
     async def finish_turn(self) -> None:
         """The brain is done: speak the held lines still relevant, in order.

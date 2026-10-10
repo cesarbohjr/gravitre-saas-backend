@@ -42,6 +42,10 @@ from app.services.pipecat_voice.speculative_generation import (
     start_speculative_run,
 )
 from app.services.pipecat_voice.utterance_gate import UtteranceGateProcessor
+from tests.services.pipecat_voice.speculation_helpers import (
+    adoptable,
+    confirmed_turn_sees_matching_versions,
+)
 from app.services.pipecat_voice.voice_audio_origin import VoicePipelineSession
 from tests.services.pipecat_voice.test_interrupt_intents import (  # noqa: F401 - autouse fixture
     FLAG_STATES,
@@ -68,7 +72,7 @@ def _adoptable_run(h: _Harness, text: str, writes: list[str], *, commit_after_s:
 
     coordinator = SpeculativeGenerationCoordinator()
     run = start_speculative_run(text=text, runner=_runner, create_task=asyncio.create_task)
-    coordinator.set_run(run)
+    coordinator.set_run(adoptable(run))
     h.service._speculative_coordinator = coordinator
     return run
 
@@ -91,7 +95,8 @@ def test_barge_in_cancels_the_adopted_run_so_its_write_never_lands() -> None:
         await asyncio.sleep(3.0)
         assert run.task.cancelled() or run.task.done()
 
-    h.run(_script)
+    with confirmed_turn_sees_matching_versions():
+        h.run(_script)
     assert writes == [], "a run cut off by a barge-in never commits afterwards"
 
 
@@ -104,7 +109,8 @@ def test_an_adopted_run_that_finishes_normally_is_unaffected() -> None:
         _adoptable_run(h, text, writes, commit_after_s=0.1)
         await h.turn(text)
 
-    h.run(_script)
+    with confirmed_turn_sees_matching_versions():
+        h.run(_script)
     assert writes == ["crm.update"], "an approved write in a turn nobody interrupted still lands"
     assert h.service._adopted_run is None
 

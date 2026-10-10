@@ -109,6 +109,8 @@ class VoicePipelineSession:
     # Utterances first held while the brain was working (no words yet, or
     # hold-worthy words) whose final words turned out to be a real turn.
     held_speech_escalations: int = 0
+    # turn_cancellation.TurnCancellation of the turn whose work is current.
+    turn_cancellation: Any = None
     # Muted reply -> user_turn_starts when it was muted: a later start means
     # the user moved on, so the reply's result is shown instead of spoken.
     muted_at_turn_starts: dict[int, int] = field(default_factory=dict)
@@ -125,6 +127,21 @@ class VoicePipelineSession:
 
     def note_held_speech_escalated(self) -> None:
         self.held_speech_escalations += 1
+
+    def bind_turn_work(self, token: Any) -> None:
+        """The turn whose work a stop, cancel or correction now cancels."""
+        self.turn_cancellation = token
+
+    def cancel_turn_work(self, reason: str) -> bool:
+        """Cancel the current turn's work at once (no I/O, safe on the loop).
+
+        Its writes are refused from here on, by any worker still holding it,
+        whatever later turns do to the conversation stop marker.
+        """
+        token = self.turn_cancellation
+        if token is None:
+            return False
+        return bool(token.cancel(reason))
 
     def user_started_since_mute(self, reply_id: int) -> bool:
         """True when a user turn started after ``reply_id`` was silenced."""

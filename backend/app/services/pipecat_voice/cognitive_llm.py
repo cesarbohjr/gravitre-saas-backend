@@ -39,7 +39,9 @@ from app.services.pipecat_voice.backchannel_classifier import (
 from app.services.pipecat_voice.llm_context_utils import messages_from_context as _messages_from_context
 from app.services.pipecat_voice.speculative_generation import (
     SpeculativeGenerationCoordinator,
-    load_revision_versions,
+    compute_revision_versions,
+    load_revision_task_state,
+    with_turn_inputs,
 )
 from app.services.speculative_execution import SpeculativeSideEffectBlocked
 from app.services.pipecat_voice.spoken_stream_filter import SpokenMarkdownStreamFilter
@@ -61,6 +63,7 @@ from app.services.pipecat_voice.voice_reply_playback import (
 from app.services.pipecat_voice.voice_silence_guard import (
     ACK_DUE,
     SILENCE_TICK,
+    TURN_CANCELLED,
     SlowToolNotices,
     deep_ack_seconds,
     pick_deep_acknowledgement,
@@ -80,6 +83,7 @@ from app.services.voice_session_service import (
     split_speakable_chunks,
 )
 from app.services.chat_turn_cancel_service import is_stop_requested
+from app.services.turn_cancellation import TurnCancellation, bound_turn_cancellation
 
 logger = get_logger(__name__)
 
@@ -426,6 +430,10 @@ class GravitreCognitiveLLMService(LLMService):
         # own, so cancelling the turn does not stop it: the turn ending, for
         # any reason, cancels it (see _release_adopted_run).
         self._adopted_run: Any | None = None
+        # The current turn's TurnCancellation (process_frame).
+        self._turn_work: TurnCancellation | None = None
+        # Assistant row id -> heard text from a barge-in (patch_live_assistant_row).
+        self._assistant_rewrites: dict[str, str] = {}
         # How a silenced reply's result was delivered: None (not yet), "spoken"
         # or "visible" (see _resume_speech_for_result).
         self._result_delivery: str | None = None
@@ -573,6 +581,8 @@ class GravitreCognitiveLLMService(LLMService):
             role = str(row.get("role") or "")
             content = str(row.get("content") or "")
             if role in {"user", "assistant"} and content.strip():
+                if role == "assistant" and row.get("id"):
+                    content = self._assistant_rewrites.get(str(row.get("id")), content)
                 live = {"role": role, "content": content}
                 if row.get("id"):
                     live["_id"] = str(row.get("id"))
@@ -588,6 +598,11 @@ class GravitreCognitiveLLMService(LLMService):
         """
         if not message_id:
             return
+        # Kept for rows not read yet: the rewrite can land (or be noted in
+        # memory at the barge-in) before the next tail refresh reads the row.
+        self._assistant_rewrites[message_id] = content
+        if len(self._assistant_rewrites) > 64:
+            self._assistant_rewrites.pop(next(iter(self._assistant_rewrites)))
         for row in self._durable_live_rows:
             if row.get("_id") == message_id and row.get("role") == "assistant":
                 row["content"] = content
@@ -649,10 +664,18 @@ class GravitreCognitiveLLMService(LLMService):
             self._tts_text_pending = False
             self._result_delivery = None
             self._answer_spoken = False
+            # This turn's own work token. A barge-in, "cancel it" or a
+            # correction cancels it; later turns get a new one and never
+            # un-cancel it, so a straggling worker of this turn stays refused.
+            turn_work = TurnCancellation()
+            self._turn_work = turn_work
+            if session is not None:
+                session.bind_turn_work(turn_work)
             try:
                 await self.start_processing_metrics()
                 self._turn_brain_marks = []
-                await self._run_gravitre_turn(frame.context)
+                with bound_turn_cancellation(turn_work):
+                    await self._run_gravitre_turn(frame.context)
             except _TurnYieldedToUser as yielded:
                 # Nothing of the fragment was said or shown. It is answered
                 # together with what the user says next, as one request.
@@ -816,6 +839,16 @@ class GravitreCognitiveLLMService(LLMService):
             )
             return
         intelligence = get_agent_intelligence()
+        coordinator = self._speculative_coordinator
+        revision_state: asyncio.Task[Any] | None = None
+        if coordinator is not None and coordinator.has_pending_run and intent is not InterruptIntent.EXPLAIN:
+            # The state a speculative run must still match before adoption,
+            # read alongside the prompt build instead of after it.
+            revision_state = asyncio.create_task(
+                load_revision_task_state(
+                    self._app_settings, org_id=self._org_id, conversation_id=self._conversation_id
+                )
+            )
         turn_inputs = await self.shared_turn_inputs(user_text)
         if trace is not None:
             trace.note("prompt_ready")
@@ -952,16 +985,21 @@ class GravitreCognitiveLLMService(LLMService):
         coordinator = self._speculative_coordinator
         revisions_v1 = voice_request_revisions_enabled(self._app_settings)
         confirmed_versions = None
-        if coordinator is not None and revisions_v1 and coordinator.has_pending_run:
-            # voice_request_revisions_v1: the run may be adopted only if the
-            # conversation, pending task, approval state and context it was
-            # produced under are still what this confirmed turn sees.
-            confirmed_versions = await load_revision_versions(
-                self._app_settings,
+        if coordinator is not None and revision_state is not None and coordinator.has_pending_run:
+            # The run may be adopted only if the conversation, principal,
+            # prompt, pending task, approval state and context it was produced
+            # under are still what this confirmed turn sees.
+            confirmed_versions = with_turn_inputs(
+                compute_revision_versions(
+                    conversation_id=self._conversation_id,
+                    task_state=await revision_state,
+                    history=history,
+                    history_summary=self._durable_summary,
+                ),
                 org_id=self._org_id,
-                conversation_id=self._conversation_id,
-                history=history,
-                history_summary=self._durable_summary,
+                user_id=self._user_id,
+                agent_id=str((self._agent or {}).get("id") or "") or None,
+                turn_inputs=turn_inputs,
             )
         speculative_run = (
             coordinator.adopt(
@@ -1019,15 +1057,26 @@ class GravitreCognitiveLLMService(LLMService):
         if speculative_run is not None:
             adopted_run = speculative_run
             self._adopted_run = adopted_run
+            if self._turn_work is not None:
+                self._turn_work.link(adopted_run.cancellation)
 
             async def _adopted_events():
-                # Durable writes the run deferred while speculative land now,
-                # before any of its output is used (raises if it was blocked).
-                replayed = await adopted_run.commit()
-                if coordinator is not None:
-                    coordinator.note_replayed(replayed)
+                # Adopted now (raises if the run was blocked, before any of its
+                # output is used). The durable writes it deferred replay in the
+                # background, in order, instead of holding back its first
+                # buffered words; the turn ends only once they have landed.
+                replay = adopted_run.start_commit()
+                if replay is not None and coordinator is not None:
+                    replay.add_done_callback(
+                        lambda t: t.cancelled()
+                        or t.exception() is not None
+                        or coordinator.note_replayed(t.result())
+                    )
                 async for adopted_event in adopted_run.events():
                     yield adopted_event
+                if replay is not None:
+                    # A cut-off turn leaves the replay running on its own.
+                    await asyncio.shield(replay)
 
             events_source = adopt_or_fresh(_adopted_events(), _fresh_stream)
         else:
@@ -1036,13 +1085,19 @@ class GravitreCognitiveLLMService(LLMService):
         # (honestly) that it is still running instead of leaving the line quiet.
         notice_interval_s = slow_tool_notice_seconds(self._app_settings)
         slow_tool_notices = SlowToolNotices(notice_interval_s)
-        events_source = with_silence_ticks(events_source, interval_s=notice_interval_s)
+        events_source = with_silence_ticks(
+            events_source,
+            interval_s=notice_interval_s,
+            cancelled=self._turn_work.waiter() if self._turn_work is not None else None,
+        )
         # Medium and deep turns run the pipeline before their first token: if
         # nothing has been said shortly after the turn is confirmed, acknowledge
         # it. Light turns and backing off ("never mind") are answered at once.
         if should_acknowledge_turn(voice_tier):
             events_source = with_ack_deadline(events_source, delay_s=deep_ack_seconds(self._app_settings))
         last_stop_poll = time.perf_counter()
+        # Set when the turn is stopped mid-stream: nothing left over is said.
+        turn_stopped = False
         self._start_answer_first()
 
         def _tool_call_running(call_id: str) -> Callable[[], bool] | None:
@@ -1064,6 +1119,16 @@ class GravitreCognitiveLLMService(LLMService):
             # audio pacing of every live session. Check off-loop, at most every
             # STOP_POLL_INTERVAL_S (barge-in also cancels this task directly).
             now = time.perf_counter()
+            if event is TURN_CANCELLED or (self._turn_work is not None and self._turn_work.cancelled):
+                # Cancelled in-process (barge-in, "cancel it" while thinking):
+                # no store read needed, so checked on every event.
+                logger.info(
+                    "pipecat_voice_turn_work_cancelled org_id=%s reason=%s",
+                    self._org_id,
+                    self._turn_work.reason,
+                )
+                turn_stopped = True
+                break
             poll_stop = now - last_stop_poll >= STOP_POLL_INTERVAL_S
             if poll_stop:
                 last_stop_poll = now
@@ -1078,6 +1143,7 @@ class GravitreCognitiveLLMService(LLMService):
                     self._org_id,
                     self._conversation_id,
                 )
+                turn_stopped = True
                 break
             if hold_starts is not None and (
                 event is ACK_DUE
@@ -1246,9 +1312,15 @@ class GravitreCognitiveLLMService(LLMService):
         if guard_task is not None and await _guard_refused():
             await self.stop_ttfb_metrics()
             return
-        # A construct the model never closed (e.g. a stray "*") is still held in
-        # the filter; emit it so the transcript is not truncated.
-        await self._flush_client_text(client_text_filter)
+        if turn_stopped:
+            # A stopped turn says nothing more: no buffered tail, no held lines.
+            text_buffer = ""
+            if self._answer_first is not None:
+                self._answer_first.discard()
+        else:
+            # A construct the model never closed (e.g. a stray "*") is still held in
+            # the filter; emit it so the transcript is not truncated.
+            await self._flush_client_text(client_text_filter)
         # Flush any trailing clause that never hit a sentence boundary (e.g.
         # a short answer with no terminal punctuation) so the tail of the
         # reply is not silently dropped from speech.
@@ -1308,6 +1380,9 @@ class GravitreCognitiveLLMService(LLMService):
             if durable_assistant_text:
                 preassigned_assistant_id = str(getattr(complete_event, "message_id", None) or "") or None
                 if self._interrupt_reporter is not None:
+                    # The previous barge-in's rewrite lands before this turn's
+                    # rows, so stored rows stay in order.
+                    await self._interrupt_reporter.flush_bookkeeping()
                     self._interrupt_reporter.mark_turn_persisted(
                         conversation_id=self._conversation_id,
                         assistant_message_id=preassigned_assistant_id,
@@ -1908,6 +1983,8 @@ class GravitreCognitiveLLMService(LLMService):
         complete = AssistantStreamComplete(
             full_content=report, tool_results=[], react_result=None, model="voice_task_cancel"
         )
+        if reporter is not None:
+            await reporter.flush_bookkeeping()
         persisted_id, assistant_id = await asyncio.to_thread(
             self._persist_completed_voice_turn,
             user_text=user_text,

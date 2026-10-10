@@ -71,6 +71,11 @@ from app.services.pipecat_voice.backchannel_classifier import (
 
 logger = get_logger(__name__)
 
+# Held words that end the running work: its writes are refused at once.
+_CANCELS_RUNNING_WORK = frozenset(
+    {InterruptIntent.TASK_CANCEL, InterruptIntent.STOP, InterruptIntent.CORRECTION}
+)
+
 # Bounded wait for a transcript before a still-unclassified, bot-speaking-
 # overlapping turn start is forced to resolve as a real interruption (safe
 # default: never let an unclassified utterance suppress agent audio
@@ -329,6 +334,16 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
                     # here: queued behind this transcript it would reach the
                     # LLM after the new turn's context and flush it.
                     self._held_thinking = False
+                    escalated_intent = classify_interrupt_intent(self._held_text)
+                    if escalated_intent in _CANCELS_RUNNING_WORK:
+                        # The stop must not wait behind the work it stops: the
+                        # running turn's token is cancelled now, before this
+                        # transcript is queued, so a write of that work still
+                        # on its way to the provider is refused and the turn
+                        # ends at once. A new request leaves the work running.
+                        cancel_work = getattr(self._voice_session, "cancel_turn_work", None)
+                        if callable(cancel_work):
+                            cancel_work(f"held_{escalated_intent.value}")
                     note = getattr(self._voice_session, "note_held_speech_escalated", None)
                     if callable(note):
                         note()

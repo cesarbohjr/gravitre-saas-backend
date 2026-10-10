@@ -30,6 +30,7 @@ from app.services.pipecat_voice.voice_reply_playback import (
     ANSWER,
     NOTHING_HEARD_MARKER,
     TRUNCATION_MARKER,
+    UNCONFIRMED_MARKER,
     ReplyPlayback,
     disconnect_heard_offset,
     normalize_segment_kind,
@@ -75,6 +76,7 @@ def resolve_heard_answer(
     *,
     offset: int | None = None,
     grounded: bool = False,
+    exposure_unknown: bool = False,
 ) -> tuple[str, dict[str, Any]]:
     """The assistant text to store for a cut reply, and how it was derived.
 
@@ -109,7 +111,13 @@ def resolve_heard_answer(
         )
     truncated = ctx.still_generating or len(text.strip()) < len((answer_full or "").strip())
     meta["answer_truncated"] = bool(truncated)
-    if grounded and truncated:
+    if grounded and exposure_unknown:
+        # No playback evidence: what was sent is kept, marked as unconfirmed,
+        # so the next turn does not take it as heard.
+        text = f"{text.strip()} {UNCONFIRMED_MARKER}" if text.strip() else UNCONFIRMED_MARKER
+        meta["exposure"] = "unknown"
+        meta["truncation_marked"] = True
+    elif grounded and truncated:
         text = f"{text.strip()} {TRUNCATION_MARKER}" if text.strip() else NOTHING_HEARD_MARKER
         meta["truncation_marked"] = True
     return text, meta
@@ -162,6 +170,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         # after the InterruptionFrame is pushed. The next turn waits on this
         # task before it clears the stop marker this socket armed.
         self._post_interrupt_tasks: set[asyncio.Task[Any]] = set()
+        # Shared (Redis) stop marker writes still in flight; the marker can be
+        # released only after they land, or the late write re-arms it.
+        self._shared_stop_writes: set[asyncio.Future[Any]] = set()
         self._armed_stop: tuple[str, str] | None = None
         # Whether an assistant turn is live: the brain is still producing text
         # (LLMFullResponseStart..End) or the bot is still audibly speaking
@@ -286,10 +297,13 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             server_text=reply.answer_text_upto(offset),
             still_generating=still_generating,
         )
-        text, resolved = resolve_heard_answer(heard, offset=offset, grounded=True)
+        exposure_unknown = meta.get("heard_source") == "unknown"
+        text, resolved = resolve_heard_answer(
+            heard, offset=offset, grounded=True, exposure_unknown=exposure_unknown
+        )
         meta.update(resolved)
         meta["reply_id"] = reply_id
-        if not resolved.get("answer_truncated"):
+        if not resolved.get("answer_truncated") and not exposure_unknown:
             meta["action"] = "heard_in_full"
             return meta
         turn = self._snapshot_turn()
@@ -466,6 +480,11 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         barge-in is recognized: a write commit check in this process sees it
         even while the TTS cancel or the Redis write are still in flight.
         """
+        cancel_work = getattr(self._voice_session, "cancel_turn_work", None)
+        if callable(cancel_work):
+            # The interrupted turn's own token: unlike the marker below, the
+            # next turn or a reconnect never releases it.
+            cancel_work("barge_in")
         if not turn.org_id or not turn.conversation_id:
             return False
         from app.services.chat_turn_cancel_service import arm_local_stop
@@ -539,9 +558,15 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 reported = await tracker.wait_for_client_report(heard.reply_id)
             except Exception:  # noqa: BLE001
                 reported = None
-        meta: dict[str, Any] = {"heard_source": "server_estimate"}
+        meta: dict[str, Any] = {"heard_source": "unknown"}
         offset: int | None = None
+        exposure_unknown = True
+        if reply is not None and reply.client_reports and reply.client_played_ms is not None and reported is None:
+            # No report for the cut itself, but periodic ones arrived: at
+            # least that much was played.
+            reported = reply
         if reported is not None and reply is not None and reported.client_played_ms is not None:
+            exposure_unknown = False
             offset, method = reply.char_offset_for_played_ms(reported.client_played_ms)
             if heard.server_offset is not None:
                 # Audio cannot be played before it was sent: the server estimate
@@ -555,7 +580,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                     "sent_audio_ms": int(round(reply.sent_audio_ms)),
                 }
             )
-        text, resolved = resolve_heard_answer(heard, offset=offset, grounded=True)
+        text, resolved = resolve_heard_answer(
+            heard, offset=offset, grounded=True, exposure_unknown=exposure_unknown
+        )
         meta.update(resolved)
         logger.info(
             "pipecat_interrupted_heard_resolved reply_id=%s source=%s played_ms=%s chars=%s",
@@ -574,10 +601,13 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         playback_offset_ms: float | None,
         reconciled_text: str | None,
         heard: _HeardContext | None = None,
+        shared_stop: asyncio.Future[Any] | None = None,
     ) -> None:
         # The in-process stop is already armed (_arm_stop_now). The shared one
-        # and the TTS cancel are independent: neither waits for the other.
-        shared_stop = asyncio.ensure_future(asyncio.to_thread(self._arm_shared_stop_sync, turn))
+        # (started when this was scheduled) and the TTS cancel are
+        # independent: neither waits for the other.
+        if shared_stop is None:
+            shared_stop = asyncio.ensure_future(asyncio.to_thread(self._arm_shared_stop_sync, turn))
         tts_cancel = await self._cancel_tts_context()
         try:
             await shared_stop
@@ -622,8 +652,18 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         )
 
     def _schedule_post_interrupt(self, turn: _InterruptedTurn, **kwargs: Any) -> None:
-        """Run barge-in bookkeeping after the stop frame is already moving."""
-        task = self.create_task(self._post_interrupt(turn, **kwargs))
+        """Run barge-in bookkeeping after the stop frame is already moving.
+
+        The shared stop marker write starts here, synchronously, so the next
+        turn can wait for that one write (and then release the marker) without
+        waiting for the rest: TTS cancel, audits, the browser's playback report
+        and the durable rewrite. Those finish in the background; the next turn
+        waits for them only before it stores its own rows (flush_bookkeeping).
+        """
+        shared_stop = asyncio.ensure_future(asyncio.to_thread(self._arm_shared_stop_sync, turn))
+        self._shared_stop_writes.add(shared_stop)
+        shared_stop.add_done_callback(self._shared_stop_writes.discard)
+        task = self.create_task(self._post_interrupt(turn, shared_stop=shared_stop, **kwargs))
         self._post_interrupt_tasks.add(task)
 
         def _consume(done: asyncio.Task[Any]) -> None:
@@ -655,10 +695,17 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         ``release=False`` (a "cancel it" turn) keeps the marker armed so a
         write of the cancelled work that is still on its way to commit is
         refused; the next ordinary turn releases it.
+
+        Only the shared marker write is waited for. The rest of the
+        bookkeeping (TTS cancel, audits, the playback report wait of up to
+        CLIENT_REPORT_WAIT_S, the durable rewrite) keeps running and is
+        awaited by :meth:`flush_bookkeeping` before the turn stores its rows.
+        The interrupted work cannot resume meanwhile: its own cancellation
+        token (turn_cancellation) is final.
         """
-        pending = [task for task in self._post_interrupt_tasks if not task.done()]
-        if pending:
-            await asyncio.gather(*(asyncio.shield(task) for task in pending), return_exceptions=True)
+        writes = [fut for fut in self._shared_stop_writes if not fut.done()]
+        if writes:
+            await asyncio.gather(*(asyncio.shield(fut) for fut in writes), return_exceptions=True)
         if not release:
             return
         armed = self._armed_stop
@@ -672,6 +719,31 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         except Exception as exc:  # noqa: BLE001
             logger.warning("pipecat_barge_in_stop_release_failed error=%s", str(exc))
 
+    def _note_provisional_heard(self, turn: _InterruptedTurn, heard: _HeardContext) -> None:
+        callback = self.on_assistant_rewritten
+        if callback is None or not turn.assistant_message_id:
+            return
+        try:
+            if self._playback_grounded:
+                # Until the browser reports, nothing is known to be heard.
+                text, _meta = resolve_heard_answer(heard, grounded=True, exposure_unknown=True)
+            else:
+                text, _meta = resolve_heard_answer(heard)
+            if text.strip():
+                callback(str(turn.assistant_message_id), text.strip())
+        except Exception:  # noqa: BLE001 - the durable rewrite still follows
+            logger.debug("pipecat_provisional_heard_failed", exc_info=True)
+
+    async def flush_bookkeeping(self) -> None:
+        """Wait for every barge-in's bookkeeping, durable rewrite included.
+
+        Called before the next turn stores its own rows, so an interrupted
+        reply's stored text is settled first and rows stay in order.
+        """
+        pending = [task for task in self._post_interrupt_tasks if not task.done()]
+        if pending:
+            await asyncio.gather(*(asyncio.shield(task) for task in pending), return_exceptions=True)
+
     async def release_stop_marker(self) -> None:
         """Socket open/close: drop any stop marker left for this conversation.
 
@@ -680,6 +752,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         every voice turn would then return without answering.
         """
         await self.settle_barge_in()
+        await self.flush_bookkeeping()
         if not self._org_id or not self._conversation_id:
             return
         from app.services.chat_turn_cancel_service import clear_stop
@@ -1011,6 +1084,11 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             )
             # Stop buffered output before any database/network reconciliation.
             await self.push_frame(frame, direction)
+            if heard_ctx is not None:
+                # The next turn may start before the durable rewrite lands (it
+                # waits for the browser's report): give it the conservative
+                # heard text now, in memory. The rewrite replaces it later.
+                self._note_provisional_heard(interrupted_turn, heard_ctx)
             # Everything below is bookkeeping, run off the event loop after the
             # stop is in flight: the conversation stop marker, the audit rows,
             # and (P0 parity) the durable rewrite to what the user actually

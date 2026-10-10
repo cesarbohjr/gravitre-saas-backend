@@ -68,6 +68,8 @@ class SpeculativeScope:
     # (conversation_id, org_id) -> merged task_state the run would have stored.
     task_state_overlay: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
     _flushed: asyncio.Event | None = None
+    # Most writes an unadopted run may defer; beyond it the run is blocked.
+    max_deferred: int | None = None
     # True while commit() replays the deferred writes. The producer is already
     # running again, so its writes keep queueing behind the replay instead of
     # reaching the database ahead of older deferred ones.
@@ -112,9 +114,18 @@ class SpeculativeScope:
             # The run was discarded: whatever it still tries to write is dropped.
             return
         with self._lock:
-            if not self.adopted or self.flushing:
-                self.deferred.append(_Deferred(label=label, factory=factory, blocking=blocking))
-                return
+            if not self.adopted and self.max_deferred is not None and len(self.deferred) >= self.max_deferred:
+                # Over budget: this run can no longer be adopted (its writes
+                # would be incomplete), so nothing more is kept for it.
+                over = True
+            else:
+                over = False
+                if not self.adopted or self.flushing:
+                    self.deferred.append(_Deferred(label=label, factory=factory, blocking=blocking))
+                    return
+        if over:
+            self.mark_blocked("deferred_write_limit")
+            return
         # The writer saw the scope during the replay but the replay has since
         # finished: nothing will drain the main queue again, so write now.
         self._write_late(_Deferred(label=label, factory=factory, blocking=blocking))
@@ -174,8 +185,21 @@ class SpeculativeScope:
 
         Returns the number of writes replayed. Idempotent.
         """
-        if self.adopted or self.discarded:
+        if not self.begin_commit():
             return 0
+        return await self.replay()
+
+    def begin_commit(self) -> bool:
+        """Adopt now, synchronously; the replay itself runs in :meth:`replay`.
+
+        From here on the run may do side effects (it is adopted), and its new
+        durable writes queue behind the replay. Returns False when there is
+        nothing to replay (already adopted, or discarded). Raises
+        :class:`SpeculativeSideEffectBlocked` for a run that hit a refused
+        side effect: its output must not be used at all.
+        """
+        if self.adopted or self.discarded:
+            return False
         if self.blocked:
             # Never replay the writes of a run that hit a refused side effect.
             raise SpeculativeSideEffectBlocked(self.blocked_reason or "blocked")
@@ -185,6 +209,10 @@ class SpeculativeScope:
             # not flushing" before the replay has even started.
             self.adopted = True
             self.flushing = True
+        return True
+
+    async def replay(self) -> int:
+        """Replay the deferred writes after :meth:`begin_commit`."""
         token = _CURRENT.set(None)
         replayed = 0
         try:

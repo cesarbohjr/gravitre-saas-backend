@@ -55,6 +55,12 @@ SEGMENT_KINDS = (FILLER, PROGRESS, ANSWER)
 # finished answer and never repeats the part that was lost).
 TRUNCATION_MARKER = "[interrupted: the user did not hear the rest of this reply]"
 NOTHING_HEARD_MARKER = "[interrupted: the user did not hear this reply]"
+# No playback evidence at all (no browser report before the cut or the drop):
+# the text was sent, but whether it was heard is unknown.
+UNCONFIRMED_MARKER = "[interrupted: it is not known how much of this reply the user heard]"
+
+# Frame rounding between the server's and the browser's audio clocks.
+REPORT_SLACK_MS = 40.0
 
 # How long the interrupt bookkeeping waits for the browser's report of what it
 # played. The browser sends it on receipt of speech.interrupted, so one round
@@ -279,10 +285,21 @@ class ReplyPlayback:
         received = _ms_or_none(report.get("received_ms"))
         if played is None and received is None:
             return False
-        if played is not None:
-            self.client_played_ms = max(self.client_played_ms or 0.0, played)
+        # played <= received <= sent: the browser cannot receive audio the
+        # server never sent, nor play audio it never received. Frame rounding
+        # gets a little slack; anything beyond it is clamped, not believed.
+        # (No ceiling while the server has seen none of this reply's audio.)
+        ceiling = self.sent_audio_ms + REPORT_SLACK_MS if self.sent_audio_ms > 0 else float("inf")
         if received is not None:
+            received = min(received, ceiling)
             self.client_received_ms = max(self.client_received_ms or 0.0, received)
+        if played is not None:
+            limit = min(ceiling, (self.client_received_ms or 0.0) + REPORT_SLACK_MS) if (
+                self.client_received_ms is not None
+            ) else ceiling
+            played = min(played, limit)
+            # Reports can arrive late or out of order: played only grows.
+            self.client_played_ms = max(self.client_played_ms or 0.0, played)
         self.client_reports += 1
         if bool(report.get("interrupted")):
             self.client_interrupted = True
@@ -524,13 +541,16 @@ def disconnect_heard_offset(reply: ReplyPlayback) -> tuple[int, dict[str, Any]]:
     """Draft offset heard when the socket went away mid-reply, and how it was found.
 
     No report can follow a dropped socket, so the last periodic
-    ``playback.progress`` report is used when there was one; otherwise the
-    server estimate (all audio that left the output transport). Audio cannot be
+    ``playback.progress`` report is used when there was one. Otherwise the
+    offset is the server estimate (all audio that left the output transport)
+    and ``heard_source`` is ``unknown``: sent audio may never have played
+    (buffering, a suspended tab, a socket that dropped first). Audio cannot be
     played before it was sent, so the smaller of the two wins.
     """
     server_offset, server_method = reply.char_offset_for_played_ms(reply.sent_audio_ms)
     meta: dict[str, Any] = {
-        "heard_source": "server_estimate",
+        # Sent is not heard: with no browser report the exposure is unknown.
+        "heard_source": "unknown",
         "played_to_text": server_method,
         "sent_audio_ms": int(round(reply.sent_audio_ms)),
     }

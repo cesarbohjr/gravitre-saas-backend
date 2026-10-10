@@ -42,6 +42,7 @@ from app.services.pipecat_voice.voice_reply_playback import (
     NOTHING_HEARD_MARKER,
     PROGRESS,
     TRUNCATION_MARKER,
+    UNCONFIRMED_MARKER,
     ReplyPlayback,
     VoicePlaybackTracker,
 )
@@ -199,11 +200,13 @@ async def test_grounded_history_cuts_at_the_browser_played_position_and_marks_it
 
     stored = [row["content"] for row in db.rows("conversation_messages", role="assistant")]
     assert stored == [f"Revenue was {TRUNCATION_MARKER}"]
-    assert rewrites == [(ASSISTANT_ID, f"Revenue was {TRUNCATION_MARKER}")]
+    # In memory at once (nothing confirmed heard yet), then the durable text.
+    assert rewrites[0] == (ASSISTANT_ID, f"Revenue was up twelve percent this quarter. {UNCONFIRMED_MARKER}")
+    assert rewrites[-1] == (ASSISTANT_ID, f"Revenue was {TRUNCATION_MARKER}")
 
 
 @pytest.mark.asyncio
-async def test_grounded_history_without_a_report_uses_the_server_estimate(
+async def test_grounded_history_without_a_report_is_marked_unconfirmed(
     db: FakeSupabase, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(voice_reply_playback, "CLIENT_REPORT_WAIT_S", 0.01)
@@ -220,8 +223,9 @@ async def test_grounded_history_without_a_report_uses_the_server_estimate(
     await reporter.process_frame(InterruptionFrame(), FrameDirection.DOWNSTREAM)
     await _finish(reporter)
 
+    # Sent is not heard: kept, but never presented to the model as heard.
     stored = [row["content"] for row in db.rows("conversation_messages", role="assistant")]
-    assert stored == [f"Revenue was up twelve percent this quarter. {TRUNCATION_MARKER}"]
+    assert stored == [f"Revenue was up twelve percent this quarter. {UNCONFIRMED_MARKER}"]
 
 
 @pytest.mark.asyncio
@@ -318,17 +322,31 @@ async def test_drop_mid_reply_rewrites_the_stored_reply_to_what_was_heard(db: Fa
 
 
 @pytest.mark.asyncio
-async def test_drop_without_a_report_uses_the_server_estimate(db: FakeSupabase) -> None:
+async def test_drop_without_a_report_is_marked_unconfirmed(db: FakeSupabase) -> None:
     conv = db.seed_conversation(org_id=ORG, user_id=USER)
     env = await _setup(conv, grounded=True)
     await _completed_turn(env, db, conv, words=SPOKEN)
     meta = await env["reporter"].reconcile_on_disconnect()
     await _finish(env["reporter"])
 
-    assert meta is not None and meta["heard_source"] == "server_estimate"
+    assert meta is not None and meta["heard_source"] == "unknown" and meta["exposure"] == "unknown"
     stored = [row["content"] for row in db.rows("conversation_messages", role="assistant")]
-    # "quarter." ends a sentence and all of its audio was sent: heard.
-    assert stored == [f"Revenue was up twelve percent this quarter. {TRUNCATION_MARKER}"]
+    # Audio through "quarter." was sent; whether it played is unknown.
+    assert stored == [f"Revenue was up twelve percent this quarter. {UNCONFIRMED_MARKER}"]
+
+
+@pytest.mark.asyncio
+async def test_drop_after_a_full_reply_with_no_report_is_marked_unconfirmed(db: FakeSupabase) -> None:
+    conv = db.seed_conversation(org_id=ORG, user_id=USER)
+    env = await _setup(conv, grounded=True)
+    words = (FILLER_TEXT + PROGRESS_TEXT + ANSWER_TEXT).split()
+    await _completed_turn(env, db, conv, words=words)
+    meta = await env["reporter"].reconcile_on_disconnect()
+    await _finish(env["reporter"])
+
+    assert meta is not None and meta["action"] == "rewritten"
+    stored = [row["content"] for row in db.rows("conversation_messages", role="assistant")]
+    assert stored == [f"{ANSWER_TEXT} {UNCONFIRMED_MARKER}"]
 
 
 @pytest.mark.asyncio
@@ -337,6 +355,11 @@ async def test_drop_after_the_reply_was_heard_in_full_changes_nothing(db: FakeSu
     env = await _setup(conv, grounded=True)
     words = (FILLER_TEXT + PROGRESS_TEXT + ANSWER_TEXT).split()
     await _completed_turn(env, db, conv, words=words)
+    reply = env["tracker"].reply(env["session"].reply_id, create=False)
+    # The browser's last cumulative report: all of it played.
+    env["tracker"].note_client_report(
+        {"type": "playback.progress", "reply_id": env["session"].reply_id, "played_ms": reply.sent_audio_ms}
+    )
     meta = await env["reporter"].reconcile_on_disconnect()
     await _finish(env["reporter"])
 
@@ -360,8 +383,9 @@ async def test_drop_while_still_generating_cuts_the_row_once_it_is_stored(db: Fa
     reporter.mark_turn_persisted(conversation_id=conv, assistant_message_id=ASSISTANT_ID)
     await _finish(reporter)
     stored = [row["content"] for row in db.rows("conversation_messages", role="assistant")]
-    # ...and it is cut to what was heard ("up" was still arriving).
-    assert stored == [f"Revenue was {TRUNCATION_MARKER}"]
+    # ...and it is cut to what was sent ("up" was still arriving), with no
+    # report: marked as not known to be heard.
+    assert stored == [f"Revenue was {UNCONFIRMED_MARKER}"]
 
 
 @pytest.mark.asyncio

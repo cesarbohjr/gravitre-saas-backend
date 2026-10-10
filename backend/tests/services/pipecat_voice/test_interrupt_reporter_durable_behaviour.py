@@ -122,6 +122,7 @@ async def test_stop_frame_is_pushed_before_any_database_or_stop_write(db: FakeSu
     assert isinstance(pushed[-1], InterruptionFrame)
 
     await reporter.settle_barge_in()
+    await reporter.flush_bookkeeping()
     assert writes, "barge-in bookkeeping never ran"
     assert all(stop_pushed for _, _, stop_pushed, _ in writes)
     assert not any(on_loop for _, _, _, on_loop in writes), "a barge-in write ran on the event loop"
@@ -141,6 +142,7 @@ async def test_completed_row_is_rewritten_to_the_heard_prefix(db: FakeSupabase) 
 
     await _speak_then_interrupt(reporter, heard=HEARD, full=FULL)
     await reporter.settle_barge_in()
+    await reporter.flush_bookkeeping()
 
     assistant = db.rows("conversation_messages", role="assistant")
     assert [row["content"] for row in assistant] == [HEARD]
@@ -157,6 +159,7 @@ async def test_interrupt_before_completion_commits_keeps_one_heard_turn(db: Fake
 
     await _speak_then_interrupt(reporter, heard=HEARD, full=FULL)
     await reporter.settle_barge_in()
+    await reporter.flush_bookkeeping()
     assert _completion_writer(conv, "Walk me through the rollout plan") == (None, None)
 
     assistant = db.rows("conversation_messages", role="assistant")
@@ -183,6 +186,7 @@ async def test_completion_landing_between_update_and_insert_still_ends_heard(db:
     db.hooks.append(_race)
     await _speak_then_interrupt(reporter, heard=HEARD, full=FULL)
     await reporter.settle_barge_in()
+    await reporter.flush_bookkeeping()
 
     assert fired["done"]
     assistant = db.rows("conversation_messages", role="assistant")
@@ -203,6 +207,7 @@ async def test_previous_turn_answer_is_never_rewritten(db: FakeSupabase) -> None
 
     await _speak_then_interrupt(reporter, heard=HEARD, full=FULL)
     await reporter.settle_barge_in()
+    await reporter.flush_bookkeeping()
 
     contents = sorted(row["content"] for row in db.rows("conversation_messages", role="assistant"))
     assert contents == sorted(["Twelve thousand.", HEARD])
@@ -220,6 +225,7 @@ async def test_foreign_conversation_rows_are_untouched(db: FakeSupabase) -> None
 
     await _speak_then_interrupt(reporter, heard=HEARD, full=FULL)
     await reporter.settle_barge_in()
+    await reporter.flush_bookkeeping()
 
     assert db.rows("conversation_messages", conversation_id=foreign)[0]["content"] == FULL
 
@@ -234,6 +240,7 @@ async def test_heard_prefix_stays_with_the_interrupted_turn_when_next_turn_start
     await _speak_then_interrupt(reporter, heard=HEARD, full=FULL)
     reporter.begin_turn("Actually, just the pilot part")
     await reporter.settle_barge_in()
+    await reporter.flush_bookkeeping()
 
     users = [row["content"] for row in db.rows("conversation_messages", role="user")]
     assert users == ["Walk me through the rollout plan"]
@@ -254,4 +261,59 @@ async def test_barge_in_stop_is_released_for_the_next_turn(db: FakeSupabase) -> 
 
     # ...and the next confirmed turn releases it instead of being skipped.
     await reporter.settle_barge_in()
+    await reporter.flush_bookkeeping()
     assert not chat_turn_cancel_service.is_stop_requested(ORG, conv, settings=SETTINGS)
+
+
+# --- Bookkeeping stays off the next turn's critical path (audit finding 5) ----
+
+
+@pytest.mark.asyncio
+async def test_next_turn_does_not_wait_for_the_durable_rewrite(db: FakeSupabase) -> None:
+    """A slow history write (or the playback report wait) no longer holds the
+    next turn back; only the shared stop marker write is waited for, then the
+    marker is released. The rewrite still lands before the next turn's rows."""
+    conv = db.seed_conversation(org_id=ORG, user_id=USER)
+    reporter, _ = await _reporter(conversation_id=conv)
+    reporter.begin_turn("Walk me through the rollout plan")
+    release = threading.Event()
+
+    def _slow_history(query: FakeQuery) -> None:
+        if query.table == "conversation_messages" and query.op in {"insert", "update"}:
+            assert release.wait(5)
+
+    db.hooks.append(_slow_history)
+    await _speak_then_interrupt(reporter, heard=HEARD, full=FULL)
+
+    await asyncio.wait_for(reporter.settle_barge_in(), timeout=1.0)
+    assert chat_turn_cancel_service.is_stop_requested(ORG, conv) is False, "the next turn is not refused"
+    assert reporter._post_interrupt_tasks, "the rewrite is still running"
+
+    release.set()
+    await asyncio.wait_for(reporter.flush_bookkeeping(), timeout=5.0)
+    assert [r["content"] for r in db.rows("conversation_messages", role="assistant")] == [HEARD]
+
+
+@pytest.mark.asyncio
+async def test_marker_release_waits_for_the_shared_stop_write(db: FakeSupabase, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Released before the shared write lands, the late write would re-arm
+    the marker and the next turn would answer nothing."""
+    conv = db.seed_conversation(org_id=ORG, user_id=USER)
+    reporter, _ = await _reporter(conversation_id=conv)
+    reporter.begin_turn("Walk me through the rollout plan")
+    release = threading.Event()
+    real = reporter._arm_shared_stop_sync
+
+    def _slow_shared(turn: Any) -> bool:
+        assert release.wait(5)
+        return real(turn)
+
+    monkeypatch.setattr(reporter, "_arm_shared_stop_sync", _slow_shared)
+    await _speak_then_interrupt(reporter, heard=HEARD, full=FULL)
+    settle = asyncio.create_task(reporter.settle_barge_in())
+    await asyncio.sleep(0.05)
+    assert not settle.done()
+    release.set()
+    await asyncio.wait_for(settle, timeout=5.0)
+    assert chat_turn_cancel_service.is_stop_requested(ORG, conv) is False
+    await reporter.flush_bookkeeping()

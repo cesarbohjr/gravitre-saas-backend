@@ -34,7 +34,15 @@ export type PlaybackProgressReport = {
   reason: PlaybackProgressReason
 }
 
-type ReplyEntry = { startS: number; receivedS: number; final: boolean }
+/**
+ * `receiving`: more audio of this reply may still arrive. A newer reply's
+ * audio ends it, but the reply keeps playing (and being reported) until its
+ * queued audio has played out or it is interrupted; only then is it `final`.
+ */
+type ReplyEntry = { startS: number; receivedS: number; receiving: boolean; final: boolean }
+
+// Played time within this of received time counts as played out (frame rounding).
+const PLAYED_OUT_SLACK_S = 0.005
 
 export type PlaybackProgressTracker = {
   /** PCM of `replyId` was queued to the player. Ignores frames with no reply id. */
@@ -64,11 +72,13 @@ export function createPlaybackProgressTracker(): PlaybackProgressTracker {
   const entryFor = (replyId: number): ReplyEntry => {
     let entry = entries.get(replyId)
     if (!entry) {
-      entry = { startS: timelineS, receivedS: 0, final: false }
+      entry = { startS: timelineS, receivedS: 0, receiving: true, final: false }
       entries.set(replyId, entry)
       if (entries.size > MAX_TRACKED_REPLIES) {
-        const oldest = Math.min(...entries.keys())
-        entries.delete(oldest)
+        // Drop the oldest reply whose reporting is complete; an open one only
+        // when every tracked reply is still open.
+        const finals = [...entries.entries()].filter(([, e]) => e.final).map(([id]) => id)
+        entries.delete(Math.min(...(finals.length ? finals : [...entries.keys()])))
       }
     }
     return entry
@@ -79,8 +89,9 @@ export function createPlaybackProgressTracker(): PlaybackProgressTracker {
       if (!isReplyId(replyId) || samples <= 0) return
       const seconds = samples / (sampleRate > 0 ? sampleRate : 16000)
       if (!entries.has(replyId)) {
-        // A newer reply's audio means older replies will get no more audio.
-        for (const [otherId, other] of entries) if (otherId < replyId) other.final = true
+        // A newer reply's audio means older replies get no more audio. They
+        // may still be playing, so they stay open until played out.
+        for (const [otherId, other] of entries) if (otherId < replyId) other.receiving = false
       }
       const entry = entryFor(replyId)
       entry.receivedS += seconds
@@ -93,7 +104,11 @@ export function createPlaybackProgressTracker(): PlaybackProgressTracker {
       for (const [replyId, entry] of [...entries.entries()].sort((a, b) => a[0] - b[0])) {
         if (entry.final) continue
         const replyPlayed = Math.min(entry.receivedS, Math.max(0, played - entry.startS))
-        if (interrupted) entry.final = true
+        // Final: cut off, or no more audio coming and all of it played. This
+        // report is then the reply's last, cumulative one.
+        if (interrupted || (!entry.receiving && replyPlayed >= entry.receivedS - PLAYED_OUT_SLACK_S)) {
+          entry.final = true
+        }
         out.push({
           type: "playback.progress",
           reply_id: replyId,

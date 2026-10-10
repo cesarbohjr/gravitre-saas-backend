@@ -65,11 +65,12 @@ import json
 import re
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any
 
 from app.core.logging import get_logger
 from app.services.speculative_execution import SpeculativeScope, speculative_scope
+from app.services.turn_cancellation import TurnCancellation, bound_turn_cancellation
 
 logger = get_logger(__name__)
 
@@ -79,13 +80,22 @@ logger = get_logger(__name__)
 _DONE = object()
 
 
+# A number keeps the punctuation that carries its meaning: sign, currency,
+# decimal point, time and date separators, percent. Thousands commas go.
+_NUMBER_RE = re.compile(r"[-+]?[$€£]?\d[\d,]*(?:[.:/]\d+)*%?")
+_TOKEN_RE = re.compile(r"[-+]?[$€£]?\d[\d,]*(?:[.:/]\d+)*%?|\w+")
+
+
 def _normalize_for_match(text: str) -> str:
     """Whitespace/case/punctuation-insensitive comparison — Deepgram framing
     can differ trivially between an interim partial and the final transcript
     without the underlying words actually differing.
+
+    Punctuation inside a number is kept: "1.5" and "1 5", "-5" and "5",
+    "10/12" and "10 12" are different requests.
     """
-    cleaned = re.sub(r"[^\w\s]", " ", (text or "").strip().casefold())
-    return " ".join(cleaned.split())
+    tokens = _TOKEN_RE.findall((text or "").strip().casefold())
+    return " ".join(tok.replace(",", "") if _NUMBER_RE.fullmatch(tok) else tok for tok in tokens)
 
 
 def _word_prefix_extra(norm_spec: str, norm_final: str) -> list[str] | None:
@@ -107,7 +117,8 @@ def _word_prefix_extra(norm_spec: str, norm_final: str) -> list[str] | None:
 # Trailing phrases that never change what was asked. Anything else after the
 # speculative text (a qualifier, a negation, a new constraint, a correction)
 # rejects adoption. Kept deliberately small: a miss costs one fresh call, a
-# false accept answers a different question.
+# false accept answers a different question. ("again" is not inert: it can
+# ask for a repeat of the action.)
 _INERT_TAIL_PHRASES: tuple[tuple[str, ...], ...] = (
     ("thank", "you"),
     ("thanks",),
@@ -116,7 +127,6 @@ _INERT_TAIL_PHRASES: tuple[tuple[str, ...], ...] = (
     ("for", "me"),
     ("real", "quick"),
     ("quickly",),
-    ("again",),
     ("ok",),
     ("okay",),
     ("um",),
@@ -279,6 +289,13 @@ class RevisionVersions:
     pending_task_version: str
     approval_version: str
     context_version: str
+    # False when the state could not be read: unknown never matches anything,
+    # not even another unknown.
+    known: bool = True
+    # Who asks, and the prompt (instructions, retrieved knowledge, injection
+    # notes) the answer was produced under; set once the turn inputs exist.
+    principal_version: str = ""
+    prompt_version: str = ""
 
 
 def compute_revision_versions(
@@ -320,7 +337,39 @@ def compute_revision_versions(
         pending_task_version=_digest({"pending_task": pending, "plan": state.get("current_plan")}),
         approval_version=_digest(approval),
         context_version=_digest(context),
+        known=not bool(state.get("_unavailable")),
     )
+
+
+def with_turn_inputs(
+    versions: RevisionVersions,
+    *,
+    org_id: str | None,
+    user_id: str | None,
+    agent_id: str | None,
+    turn_inputs: dict[str, Any] | None,
+) -> RevisionVersions:
+    """Bind the principal and the prompt the brain is about to run under."""
+    return replace(
+        versions,
+        principal_version=_digest({"org": org_id, "user": user_id, "agent": agent_id}),
+        prompt_version=_digest(turn_inputs or {}),
+    )
+
+
+async def load_revision_task_state(
+    settings: Any, *, org_id: str, conversation_id: str | None
+) -> dict[str, Any] | None:
+    """The task_state revisions are computed from; ``{"_unavailable": True}`` on a failed read."""
+    if not (conversation_id and org_id):
+        return None
+    try:
+        from app.services.conversation_state_service import get_conversation_state_service
+
+        return await get_conversation_state_service(settings).get_task_state(conversation_id, org_id)
+    except Exception as exc:  # noqa: BLE001 - an unknown state never matches anything
+        logger.debug("speculative_revision_state_unavailable error=%s", exc)
+        return {"_unavailable": True}
 
 
 async def load_revision_versions(
@@ -332,15 +381,7 @@ async def load_revision_versions(
     history_summary: str | None,
 ) -> RevisionVersions:
     """Read task_state (one small query, off the loop) and fingerprint it."""
-    task_state: dict[str, Any] | None = None
-    if conversation_id and org_id:
-        try:
-            from app.services.conversation_state_service import get_conversation_state_service
-
-            task_state = await get_conversation_state_service(settings).get_task_state(conversation_id, org_id)
-        except Exception as exc:  # noqa: BLE001 - an unknown state never matches a known one
-            logger.debug("speculative_revision_state_unavailable error=%s", exc)
-            task_state = {"_unavailable": True}
+    task_state = await load_revision_task_state(settings, org_id=org_id, conversation_id=conversation_id)
     return compute_revision_versions(
         conversation_id=conversation_id,
         task_state=task_state,
@@ -370,6 +411,10 @@ class SpeculativeBounds:
     timeout_s: float = 5.0
     max_buffered_chars: int = 2000
     max_buffered_events: int = 512
+    # Hard limits: a run that keeps more than this alive (complete events,
+    # tool payloads) or defers more writes than this is discarded, not paused.
+    max_retained_bytes: int = 512_000
+    max_deferred_writes: int = 256
 
 
 @dataclass
@@ -381,6 +426,7 @@ class SpeculativeStats:
     discarded: int = 0
     timeouts: int = 0
     blocked: int = 0
+    over_budget: int = 0
     buffer_pauses: int = 0
     rejected_revisions: int = 0
     deferred_writes_replayed: int = 0
@@ -409,6 +455,28 @@ def _event_text_len(event: Any) -> int:
     return 0
 
 
+def _retained_size(value: Any, depth: int = 0) -> int:
+    """Approximate bytes a buffered value keeps alive (strings and bytes)."""
+    if isinstance(value, (str, bytes, bytearray)):
+        return len(value)
+    if depth >= 6:
+        return 0
+    if isinstance(value, dict):
+        return sum(_retained_size(k, depth + 1) + _retained_size(v, depth + 1) for k, v in value.items())
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return sum(_retained_size(v, depth + 1) for v in value)
+    return 0
+
+
+def _event_retained_size(event: Any) -> int:
+    """Everything an event holds, not only its text delta: a complete event's
+    full content, tool inputs and results, any payload."""
+    total = 0
+    for attr in ("payload", "full_content", "tool_results", "react_result"):
+        total += _retained_size(getattr(event, attr, None))
+    return total
+
+
 @dataclass
 class SpeculativeGenerationRun:
     """One in-flight or completed speculative generation attempt.
@@ -429,6 +497,8 @@ class SpeculativeGenerationRun:
     latency_marks: dict[str, Any] = field(default_factory=dict)
     # Side-effect ledger: deferred durable writes, refused side effects.
     scope: SpeculativeScope = field(default_factory=SpeculativeScope)
+    # The run's own work token; the turn that adopts it links it to its own.
+    cancellation: TurnCancellation = field(default_factory=TurnCancellation)
     bounds: SpeculativeBounds = field(default_factory=SpeculativeBounds)
     started_at: float = field(default_factory=time.monotonic)
     ended_at: float | None = None
@@ -436,6 +506,7 @@ class SpeculativeGenerationRun:
     outcome: str | None = None
     buffered_chars: int = 0
     buffered_events: int = 0
+    retained_bytes: int = 0
     paused: bool = False
     dropped_writes: int = 0
     # voice_request_revisions_v1: the revision this run answers and the state
@@ -486,6 +557,8 @@ class SpeculativeGenerationRun:
             self._timer = None
         if outcome != "adopted":
             self.dropped_writes = self.scope.discard()
+            # A worker thread of the run outlives the task cancel below.
+            self.cancellation.cancel(f"speculative_{outcome}")
             if not self.task.done() and self.task is not _current_task():
                 self.task.cancel()
             # Release a producer paused on the buffer cap so its cancellation lands.
@@ -522,11 +595,36 @@ class SpeculativeGenerationRun:
         SpeculativeSideEffectBlocked when the run hit a refused side effect."""
         return await self.scope.commit()
 
-    async def _admit(self, event: Any) -> None:
+    def start_commit(self) -> "asyncio.Task[int] | None":
+        """Adopt now and replay the deferred writes in the background.
+
+        The adoption check (blocked or not) is synchronous, so a refused run
+        still fails before any of its output is used; the replay does not
+        hold the first buffered event back. Writes the producer makes from
+        here on queue behind the replay, in order. None when there is nothing
+        to replay.
+        """
+        if not self.scope.begin_commit():
+            return None
+        return asyncio.ensure_future(self.scope.replay())
+
+    async def _admit(self, event: Any) -> bool:
+        """Account for one produced event; False when the run must stop."""
         self.buffered_events += 1
         self.buffered_chars += _event_text_len(event)
+        self.retained_bytes += _event_retained_size(event)
         if self.consumed:
-            return
+            return True
+        if self.retained_bytes > self.bounds.max_retained_bytes:
+            # Over the hard budget: free it now. The confirmed turn runs fresh.
+            logger.info(
+                "pipecat_voice_speculative_generation_over_budget bytes=%s", self.retained_bytes
+            )
+            self._settle("over_budget")
+            # Drop what it buffered so the memory goes with it.
+            while not self.queue.empty():
+                self.queue.get_nowait()
+            return False
         if (
             self.buffered_chars > self.bounds.max_buffered_chars
             or self.buffered_events > self.bounds.max_buffered_events
@@ -538,6 +636,7 @@ class SpeculativeGenerationRun:
                 if self.on_pause is not None:
                     self.on_pause()
             await self._adopted_evt.wait()
+        return True
 
     async def events(self) -> AsyncIterator[Any]:
         """Yield every event this run has produced (already-buffered ones
@@ -568,7 +667,8 @@ async def _drive_into_queue(
     run: SpeculativeGenerationRun | None = None,
 ) -> None:
     scope = run.scope if run is not None else SpeculativeScope()
-    with speculative_scope(scope):
+    cancellation = run.cancellation if run is not None else None
+    with speculative_scope(scope), bound_turn_cancellation(cancellation):
         try:
             async for event in runner():
                 if run is not None:
@@ -577,7 +677,8 @@ async def _drive_into_queue(
                         # so stop spending on it now.
                         run._settle("blocked")
                         break
-                    await run._admit(event)
+                    if not await run._admit(event):
+                        break
                 await queue.put(event)
         except asyncio.CancelledError:
             raise
@@ -614,6 +715,7 @@ def start_speculative_run(
         revision=revision,
     )
     holder.append(run)
+    run.scope.max_deferred = run.bounds.max_deferred_writes
     if run.bounds.timeout_s and run.bounds.timeout_s > 0:
         try:
             run._timer = asyncio.get_running_loop().call_later(run.bounds.timeout_s, run._expire)
@@ -670,6 +772,8 @@ class SpeculativeGenerationCoordinator:
             self.stats.timeouts += 1
         elif run.outcome == "blocked":
             self.stats.blocked += 1
+        elif run.outcome == "over_budget":
+            self.stats.over_budget += 1
         self.stats.discarded += 1
         self.stats.wasted_s += run.wasted_s
         self.stats.deferred_writes_dropped += run.dropped_writes
@@ -788,7 +892,16 @@ class SpeculativeGenerationCoordinator:
                 return f"newer_revision:{why}"
         if run.versions is None or versions is None:
             return "versions_unbound"
-        for name in ("conversation_id", "pending_task_version", "approval_version", "context_version"):
+        if not run.versions.known or not versions.known:
+            return "versions_unknown"
+        for name in (
+            "conversation_id",
+            "principal_version",
+            "prompt_version",
+            "pending_task_version",
+            "approval_version",
+            "context_version",
+        ):
             if getattr(run.versions, name) != getattr(versions, name):
                 return f"version_mismatch:{name}"
         return None

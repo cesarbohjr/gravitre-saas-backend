@@ -1,6 +1,7 @@
 """Cooperative cancel for governed chat streams (Phase F1).
 
-Stop is conversation-scoped. Redis coordinates across workers; when Redis is
+Stop is conversation-scoped; a voice turn's own work also carries a
+task-scoped token (``turn_cancellation``) that later turns cannot clear. Redis coordinates across workers; when Redis is
 unavailable the flag lives in-process (single worker only).
 """
 from __future__ import annotations
@@ -86,6 +87,12 @@ def is_stop_requested(
     *,
     settings: Settings | None = None,
 ) -> bool:
+    from app.services.turn_cancellation import current_turn_cancelled
+
+    if current_turn_cancelled():
+        # This turn's own work was cancelled. Final, whatever later turns do
+        # to the conversation marker below.
+        return True
     oid = (org_id or "").strip()
     cid = (conversation_id or "").strip() if conversation_id else ""
     if not oid or not cid:
