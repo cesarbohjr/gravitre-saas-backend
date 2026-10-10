@@ -207,17 +207,19 @@ describe("voice live turn completion lifecycle", () => {
 
   it("drops queued reply audio when the server reports a barge-in", () => {
     const handler = hook.slice(hook.indexOf('kind === "speech.interrupted"'))
-    expect(handler.slice(0, 600)).toMatch(/stopPcmPlayback\(\)/)
+    expect(handler.slice(0, 800)).toMatch(/stopPcmPlayback\(\)/)
   })
 
   it("never replays or resumes a reply the user interrupted", () => {
     const handler = hook.slice(hook.indexOf('kind === "speech.interrupted"'))
     // The no-audio fallback would otherwise speak the whole reply again.
     expect(handler.slice(0, 600)).toMatch(/clearAudioReplyWatchdog\(\)/)
-    expect(handler.slice(0, 600)).toMatch(/dropAudioAfterInterruptRef\.current = true/)
+    expect(handler.slice(0, 600)).toMatch(/dropAudioUntilRef\.current = performance\.now\(\) \+ INTERRUPTED_AUDIO_DROP_MS/)
     const audio = hook.slice(hook.indexOf('kind === "audio"'))
-    expect(audio.slice(0, 400)).toMatch(/if \(dropAudioAfterInterruptRef\.current\) return/)
-    // A new user turn lets audio through again.
-    expect(hook).toMatch(/if \(msg\.final\) \{\s+dropAudioAfterInterruptRef\.current = false/)
+    expect(audio.slice(0, 400)).toMatch(/if \(droppingInterruptedAudio\(\)\) return/)
+    // A new user turn lets audio through again, and the mute is time-bounded
+    // so an out-of-order transcript can never silence the next answer.
+    expect(hook).toMatch(/if \(msg\.final\) \{\s+dropAudioUntilRef\.current = 0/)
+    expect(hook).toMatch(/const INTERRUPTED_AUDIO_DROP_MS = \d{3,4}\n/)
   })
 })

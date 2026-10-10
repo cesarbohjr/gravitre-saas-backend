@@ -441,6 +441,13 @@ class GravitreCognitiveLLMService(LLMService):
             # Backstop for UtteranceGateProcessor: a hesitation is not a request.
             logger.info("pipecat_voice_filler_turn_skipped org_id=%s", self._org_id)
             return
+        session = self._voice_session()
+        if session is not None and session.is_echo_of_bot(user_text, strict=True):
+            # The mic picked up Gravitre's own voice. Answering it would
+            # restart the reply from the beginning. Checked before anything is
+            # stored, and any carried request stays carried for the next turn.
+            logger.info("pipecat_voice_echo_turn_skipped org_id=%s", self._org_id)
+            return
         trace = self._turn_trace
         if trace is not None:
             trace.begin_turn()
@@ -462,12 +469,6 @@ class GravitreCognitiveLLMService(LLMService):
         history = self._merge_durable_and_socket_history(self._durable_rows(), history)
         user_text = reconstitute_spoken_identity_fields(user_text)
         carried, self._carry_user_text = self._carry_user_text, None
-        session = self._voice_session()
-        if session is not None and session.is_echo_of_bot(user_text, strict=True):
-            # The mic picked up Gravitre's own voice. Answering it would
-            # restart the reply from the beginning.
-            logger.info("pipecat_voice_echo_turn_skipped org_id=%s", self._org_id)
-            return
         self._turn_was_carried = bool(carried)
         if carried:
             user_text, history = merge_unanswered_turn(carried, user_text, history)

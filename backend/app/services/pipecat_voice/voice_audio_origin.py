@@ -24,6 +24,9 @@ SPEAKING = "speaking"
 # what the mic heard so the echo is not taken for the user cutting in.
 ECHO_WINDOW_S = 15.0
 _ECHO_MIN_OVERLAP = 0.6
+# A two-word reply ("which pages", "the first") can reuse the bot's words on
+# purpose, so it takes three words before a phrase can count as echo.
+_ECHO_MIN_WORDS = 3
 
 
 def _speech_words(text: str) -> list[str]:
@@ -34,12 +37,12 @@ def is_echo_of(
     heard: str,
     spoken: list[str],
     *,
-    min_words: int = 2,
+    min_words: int = _ECHO_MIN_WORDS,
     min_overlap: float = _ECHO_MIN_OVERLAP,
 ) -> bool:
     """True when ``heard`` is mostly a replay of the bot's recent ``spoken`` text."""
     words = _speech_words(heard)
-    if len(words) < max(2, min_words):
+    if len(words) < max(_ECHO_MIN_WORDS, min_words):
         return False
     bot_words = [w for text in spoken for w in _speech_words(text)]
     if not bot_words:

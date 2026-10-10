@@ -387,3 +387,26 @@ def test_echo_needs_a_near_verbatim_replay() -> None:
     assert session.is_echo_of_bot("dig into where the visits came from")
     assert not session.is_echo_of_bot("where the visits came from", strict=True)
     assert not session.is_echo_of_bot("yes show me the pages")
+    # A short reply that reuses the bot's words is the user talking.
+    assert not session.is_echo_of_bot("which pages")
+
+
+def test_an_echo_turn_keeps_the_carried_request() -> None:
+    """An unanswered request survives an echo turn instead of being dropped."""
+    import asyncio
+
+    from pipecat.processors.frame_processor import FrameDirection
+
+    service, session = _echo_loop_service()
+    session.note_bot_speech("Want me to dig into where the visits came from, or which pages did best?")
+    service._carry_user_text = "what's my website traffic"
+
+    async def _script() -> None:
+        await service.process_frame(
+            _context_frame("want me to dig into where the visits came from or which pages did best"),
+            FrameDirection.DOWNSTREAM,
+        )
+        assert service._carry_user_text == "what's my website traffic"
+
+    queries = _run_turns(service, _script)
+    assert queries == []
