@@ -262,6 +262,16 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             # is still qualifying ("yes... wait"), so these wait for the
             # confirmed turn.
             return
+        if bool(getattr(self._app_settings, "voice_interrupt_intents_v1", False)):
+            from app.services.pipecat_voice.backchannel_classifier import (
+                InterruptIntent,
+                classify_interrupt_intent,
+            )
+
+            if classify_interrupt_intent(text) in (InterruptIntent.SPEECH_STOP, InterruptIntent.TASK_CANCEL):
+                # voice_interrupt_intents_v1: "stop talking" and "cancel it" are
+                # handled without the brain; speculating on them only burns a call.
+                return
         from app.services.voice_session_service import reconstitute_spoken_identity_fields
 
         query = reconstitute_spoken_identity_fields(text)

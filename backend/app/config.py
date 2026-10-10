@@ -837,6 +837,26 @@ class Settings(BaseSettings):
             "voice_interrupt_intents_v1",
         ),
     )
+    # A committed final that is syntactically incomplete ("I want to check",
+    # "...and the", "um") holds the turn's first spoken output for a short,
+    # bounded window. If the user resumes inside it the fragment is not
+    # answered: it is carried into the turn that follows. Off: the fragment
+    # is answered as soon as it is committed, as before.
+    voice_incomplete_turn_hold_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_INCOMPLETE_TURN_HOLD_V1",
+            "voice_incomplete_turn_hold_v1",
+        ),
+    )
+    # Length of that hold in milliseconds; capped at 700.
+    voice_incomplete_turn_hold_ms: int = Field(
+        default=600,
+        validation_alias=AliasChoices(
+            "VOICE_INCOMPLETE_TURN_HOLD_MS",
+            "voice_incomplete_turn_hold_ms",
+        ),
+    )
     # The browser reports how much of each reply it actually played
     # (playback.progress). On a barge-in the stored assistant message is cut to
     # the answer text that was played, mapped from played audio ms through the

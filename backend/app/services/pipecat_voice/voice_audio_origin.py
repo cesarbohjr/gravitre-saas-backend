@@ -93,6 +93,26 @@ class VoicePipelineSession:
     # Set by the interrupt reporter: silence the current reply without
     # cancelling its work. Zero-arg coroutine function.
     speech_stop_handler: Any = None
+    # Final transcripts the utterance gate dropped as filler ("mm-hmm", "uh").
+    # The turn strategy compares counts: a held start whose only words were
+    # dropped filler was a backchannel, not an interruption.
+    filler_finals_dropped: int = 0
+    # User turn starts the turn strategy has seen (any start, held or not).
+    user_turn_starts: int = 0
+    # Muted reply -> user_turn_starts when it was muted: a later start means
+    # the user moved on, so the reply's result is shown instead of spoken.
+    muted_at_turn_starts: dict[int, int] = field(default_factory=dict)
+
+    def note_filler_dropped(self) -> None:
+        self.filler_finals_dropped += 1
+
+    def note_user_turn_start(self) -> None:
+        self.user_turn_starts += 1
+
+    def user_started_since_mute(self, reply_id: int) -> bool:
+        """True when a user turn started after ``reply_id`` was silenced."""
+        at = self.muted_at_turn_starts.get(int(reply_id))
+        return at is None or self.user_turn_starts > at
 
     def begin_reply(self) -> int:
         self.reply_id += 1
@@ -121,6 +141,10 @@ class VoicePipelineSession:
     def mute_reply(self, reply_id: int | None = None) -> int:
         rid = self.reply_id if reply_id is None else int(reply_id)
         self.muted_reply_ids.add(rid)
+        self.muted_at_turn_starts.setdefault(rid, self.user_turn_starts)
+        if len(self.muted_at_turn_starts) > 16:
+            for stale in sorted(self.muted_at_turn_starts)[:-16]:
+                self.muted_at_turn_starts.pop(stale, None)
         # Only the most recent few can still be producing audio.
         if len(self.muted_reply_ids) > 16:
             self.muted_reply_ids = set(sorted(self.muted_reply_ids)[-16:])

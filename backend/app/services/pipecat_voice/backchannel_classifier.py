@@ -343,3 +343,32 @@ def classify_interrupt_intent(text: str) -> InterruptIntent:
         if not re.match(r"^(?:no|nope)(?:\s+(?:thanks|thank\s+you|wait))?$", normalized):
             return InterruptIntent.CORRECTION
     return InterruptIntent.NEW_REQUEST
+
+
+# A committed final ending on one of these words was cut off mid-thought:
+# "I want to check", "compare it to the", "um". Deliberately small; a word
+# that often ends a complete request ("it", "now", "them") is not here.
+_INCOMPLETE_TRAILING_WORDS = frozenset(
+    {
+        "to", "the", "a", "an", "and", "or", "but", "of", "for", "with", "about",
+        "from", "into", "at", "by", "my", "our", "your", "their", "check",
+        "um", "umm", "uh", "er", "erm",
+    }
+)
+_TRAILING_ELLIPSIS_RE = re.compile(r"(?:\.\.\.|\u2026|,|-)\s*$")
+
+
+def is_syntactically_incomplete(text: str) -> bool:
+    """True when a committed final reads as a thought the user has not finished.
+
+    Trailing "..." (or a dangling comma or dash), or a last word that cannot
+    end a request (an article, preposition, conjunction, possessive, "check",
+    or a hesitation). A question mark always reads as complete.
+    """
+    stripped = (text or "").strip()
+    if not stripped or stripped.endswith("?"):
+        return False
+    if _TRAILING_ELLIPSIS_RE.search(stripped):
+        return True
+    words = _WORD_RE.findall(stripped.lower().rstrip(".!"))
+    return bool(words) and words[-1] in _INCOMPLETE_TRAILING_WORDS

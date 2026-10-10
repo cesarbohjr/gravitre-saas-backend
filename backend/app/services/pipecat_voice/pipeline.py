@@ -349,7 +349,7 @@ def build_pipecat_voice_task(
             stt,
             # Before anything reads a final transcript: a cough, breath or "uh"
             # Flux finalizes as a turn must never reach the brain.
-            UtteranceGateProcessor(app_settings=settings, org_id=org_id),
+            UtteranceGateProcessor(app_settings=settings, org_id=org_id, voice_session=voice_session),
             # user_agg consumes TranscriptionFrame before transport.output(), so
             # the serializer never sees one and the client got no transcript at
             # all. Mirror finals as a message frame, which passes through.

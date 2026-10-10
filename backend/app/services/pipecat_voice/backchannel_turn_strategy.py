@@ -194,6 +194,8 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         self._held_speech_stop = False
         # Latest interim text of the pending utterance (finals go to _buffer_text).
         self._interim_text = ""
+        # voice_session.filler_finals_dropped when the pending start opened.
+        self._filler_drops_at_start = 0
 
     def _intents_enabled(self) -> bool:
         return bool(getattr(self._gravitre_settings, "voice_interrupt_intents_v1", False))
@@ -227,6 +229,9 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             return ProcessFrameResult.CONTINUE
 
         if isinstance(frame, ProposedUserStartedSpeakingFrame):
+            note_start = getattr(self._voice_session, "note_user_turn_start", None)
+            if callable(note_start):
+                note_start()
             from app.services.pipecat_voice.voice_audio_origin import (
                 SPEAKING,
                 WARMING,
@@ -396,6 +401,25 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             logger.warning("voice_turn_taking_speech_stop_failed error=%s", exc)
             return False
 
+    def _filler_drop_count(self) -> int:
+        try:
+            return int(getattr(self._voice_session, "filler_finals_dropped", 0) or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    def _only_filler_heard(self) -> bool:
+        """The held utterance's only final was filler the utterance gate dropped.
+
+        The gate sits before this strategy, so "Mm-hmm." never arrives as text:
+        without this, the start resolved with no words at all and counted as
+        an interruption.
+        """
+        return (
+            not self._buffer_text
+            and not self._interim_text
+            and self._filler_drop_count() > self._filler_drops_at_start
+        )
+
     def _assistant_thinking(self) -> bool:
         return bool(getattr(self._voice_session, "assistant_generating", False))
 
@@ -404,6 +428,7 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         self._pending_thinking = thinking
         self._buffer_text = ""
         self._interim_text = ""
+        self._filler_drops_at_start = self._filler_drop_count()
         self._pending_started_at = time.monotonic()
         await self._cancel_grace_task()
         self._grace_task = self.create_task(
@@ -501,6 +526,11 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             # The bot just asked something; "yes" / "sure" is the answer.
             backchannel = False
             classification = BackchannelClassification.INTERRUPTION
+        if not backchannel and self._only_filler_heard():
+            # "Mm-hmm." while the bot talks: the gate dropped it as filler, so
+            # nothing was asked. Keep talking; it never becomes a turn.
+            backchannel = True
+            classification = BackchannelClassification.BACKCHANNEL
 
         logger.info(
             "voice_turn_taking_classification classification=%s backchannel=%s "
