@@ -60,12 +60,15 @@ prefetch — no second task-management system.
 from __future__ import annotations
 
 import asyncio
+import datetime
+import decimal
 import enum
 import hashlib
 import json
 import re
 import sys
 import time
+import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import asdict, dataclass, field, replace
 from typing import Any
@@ -417,7 +420,7 @@ class SpeculativeBounds:
     max_buffered_events: int = 512
     # Hard limits: a run that keeps more than this alive (complete events,
     # tool payloads) or defers more writes than this is discarded, not paused.
-    max_retained_bytes: int = 512_000
+    max_retained_bytes: int = 2_000_000
     max_deferred_writes: int = 256
 
 
@@ -463,16 +466,37 @@ def _event_text_len(event: Any) -> int:
 # as over any budget, so the run is dropped instead of undercounted.
 _RETAINED_MAX_DEPTH = 32
 _RETAINED_MAX_NODES = 50_000
-_SCALAR_BYTES = 8
+# Leaf types measured by their own in-memory size; they hold no references.
+_RETAINED_LEAVES = (
+    type(None), bool, int, float, complex, str, bytes, bytearray, memoryview,
+    enum.Enum, datetime.date, datetime.time, datetime.timedelta, decimal.Decimal, uuid.UUID,
+)
+
+
+def _slot_values(item: Any) -> list[Any] | None:
+    """The attribute values held in ``__slots__`` (across the MRO), or None."""
+    names: list[str] = []
+    found = False
+    for klass in type(item).__mro__:
+        slots = klass.__dict__.get("__slots__")
+        if slots is None:
+            continue
+        found = True
+        names.extend([slots] if isinstance(slots, str) else list(slots))
+    if not found:
+        return None
+    return [getattr(item, name) for name in names if name not in ("__dict__", "__weakref__") and hasattr(item, name)]
 
 
 def _retained_size(value: Any, limit: int | None = None) -> int:
     """Conservative bytes a buffered value keeps alive.
 
-    Strings and bytes count their length, containers and plain objects are
-    walked, anything else counts its in-memory size. A payload too deep or too
-    large to walk returns more than ``limit`` (or a huge number), so it can
-    never pass as small. Stops early once ``limit`` is exceeded.
+    Every node counts its own in-memory size (``sys.getsizeof``, so a
+    four-byte-per-character string counts as such), containers and objects
+    are walked through ``__dict__`` and ``__slots__``. A payload too deep or
+    too large to walk, or an object of a shape this cannot see into, returns
+    more than ``limit`` (or a huge number), so it can never pass as small.
+    Stops early once ``limit`` is exceeded.
     """
     ceiling = limit if limit is not None else 1 << 62
     over = ceiling + 1
@@ -485,24 +509,34 @@ def _retained_size(value: Any, limit: int | None = None) -> int:
         nodes += 1
         if nodes > _RETAINED_MAX_NODES or depth > _RETAINED_MAX_DEPTH:
             return over
-        if item is None or isinstance(item, (bool, int, float, enum.Enum)):
-            total += _SCALAR_BYTES
-        elif isinstance(item, (str, bytes, bytearray, memoryview)):
-            total += len(item)
+        if isinstance(item, _RETAINED_LEAVES):
+            # Counted per reference: a value repeated in a payload is counted
+            # each time, which only ever overestimates.
+            total += sys.getsizeof(item, 64)
+            if total > ceiling:
+                return over
+            continue
+        if id(item) in seen:
+            # A container or object reached twice (or a cycle): counted once.
+            continue
+        seen.add(id(item))
+        total += sys.getsizeof(item, 64)
+        if isinstance(item, dict):
+            for key, val in item.items():
+                stack.append((key, depth + 1))
+                stack.append((val, depth + 1))
+        elif isinstance(item, (list, tuple, set, frozenset)):
+            stack.extend((child, depth + 1) for child in item)
         else:
-            if id(item) in seen:
-                continue
-            seen.add(id(item))
-            if isinstance(item, dict):
-                for key, val in item.items():
-                    stack.append((key, depth + 1))
-                    stack.append((val, depth + 1))
-            elif isinstance(item, (list, tuple, set, frozenset)):
-                stack.extend((child, depth + 1) for child in item)
-            elif hasattr(item, "__dict__"):
-                stack.append((vars(item), depth + 1))
-            else:
-                total += sys.getsizeof(item, _SCALAR_BYTES)
+            held = getattr(item, "__dict__", None)
+            slots = _slot_values(item)
+            if held is None and slots is None:
+                # An object this cannot see into: never treat it as small.
+                return over
+            if held is not None:
+                stack.append((held, depth + 1))
+            if slots:
+                stack.extend((child, depth + 1) for child in slots)
         if total > ceiling:
             return over
     return total

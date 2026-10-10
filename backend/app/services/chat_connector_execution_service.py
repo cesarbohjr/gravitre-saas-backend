@@ -3505,6 +3505,10 @@ class ChatConnectorExecutionService:
             plan=plan,
         ):
             return
+        from app.services.turn_cancellation import superseded_write
+
+        if superseded_write("memory.confirmed_workspace_memory"):
+            return
         try:
             from app.services.cross_conversation_ledger_memory import (
                 promote_confirmed_ledger_slots,

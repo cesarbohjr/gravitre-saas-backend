@@ -210,6 +210,10 @@ async def resolve_unified_live_channel_override_reply(
     # including live-battery fixture args (demo@example.com).
     conv_id = str(conversation_id or "").strip()
     def _write_override() -> None:
+        from app.services.turn_cancellation import superseded_write
+
+        if superseded_write("conversation.channel_override"):
+            return
         try:
             if client and org_id and conv_id:
                 from datetime import datetime, timezone

@@ -64,7 +64,7 @@ Confirmed and **not fixed in this pass**. An explain answer during a running tas
 Confirmed. The limits counted characters and events, not the size of tool outputs or the final payload.
 
 Fixes:
-- Each buffered event's retained size is counted. Past 512 KB the run stops, releases its buffer and is never adopted (`over_budget`).
+- Each buffered event's retained size is counted. Past the retained budget (512 KB in #351, 2 MB since the full-audit pass) the run stops, releases its buffer and is never adopted (`over_budget`).
 - A run that reaches 256 deferred writes is blocked from adoption.
 
 Tests: `TestRetainedBudget`.
@@ -107,3 +107,21 @@ The review of #351 at 7ef50af reproduced three gaps. All three were confirmed in
 3. **The size count missed deep and unknown payloads.** The count now walks the whole event, including objects.
    - A payload deeper than 32 levels or over 50,000 nodes counts as over budget.
    - Unknown objects count their in-memory size.
+
+## Full audit, step 1 (F1, F2, F6)
+
+The full voice audit (`/mnt/project-files/audits/chatgpt-voice-full-prompt-audit-2026-10-10.md`) recommended five steps. This pass does step 1. Tests: `tests/services/pipecat_voice/test_audit_followup_fences.py`.
+
+1. **F1: task_state saves blocked the voice event loop.** `_persist_state` ran its read and update on the loop.
+   - The read-merge-write now runs on the I/O pool, on one worker thread, under a striped per-conversation lock, so concurrent writers cannot lose updates.
+   - The cancellation fence sits under the lock, right before the update.
+   - Regression: a 150 ms database no longer delays a 10 ms timer on the loop (it fired after 331 ms before the fix).
+2. **F2: a cancelled turn could still promote memory.** Writers that change what later turns believe are now dropped when their turn is cancelled (`superseded_write` in `turn_cancellation.py`):
+   - task_state and the active objective;
+   - the channel override;
+   - turn memory promotion and confirmed workspace memory.
+
+   Factual records still land for a cancelled turn: audit events, latency and turn traces, connector outcomes, created recommendations and conversations.
+3. **F6: the size count missed slotted objects and wide text.** Strings count their real in-memory size, objects are walked through `__slots__` as well as `__dict__`, and an unknown opaque container counts as over budget. Because real sizes are larger than character counts, the retained budget is now 2 MB (a normal answer measures about 22 KB).
+
+Not in this pass: separate task and reply lifetimes (step 2, also finding 6 above), real-device validation (step 3), dependency-scoped preparation reuse (step 4) and held audio (step 5).

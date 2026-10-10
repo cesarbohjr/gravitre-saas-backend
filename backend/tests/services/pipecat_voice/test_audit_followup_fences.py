@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
@@ -209,14 +210,14 @@ def test_a_large_payload_inside_an_object_is_counted() -> None:
 
 
 def test_shallow_small_payloads_stay_small() -> None:
-    assert _retained_size({"delta": "Four.", "n": 3, "ok": True}) < 100
+    assert _retained_size({"delta": "Four.", "n": 3, "ok": True}) < 2_000
 
 
 @pytest.mark.asyncio
 async def test_a_deep_tool_payload_discards_the_run() -> None:
     tool = AssistantStreamEvent(
         sse_type="tool-output-available",
-        payload={"toolCallId": "c1", "output": _nested(40, "z" * 1_000_000)},
+        payload={"toolCallId": "c1", "output": _nested(40, "z" * 3_000_000)},
     )
     done = AssistantStreamComplete(full_content="ok", tool_results=[], react_result=None, model="t")
 
@@ -227,3 +228,142 @@ async def test_a_deep_tool_payload_discards_the_run() -> None:
     run = start_speculative_run(text="pull every deal", runner=_run, create_task=asyncio.ensure_future)
     await run.task
     assert run.outcome == "over_budget"
+
+
+# ---------------------------------------------------------------------------
+# Full audit (2026-10-10), step 1
+# ---------------------------------------------------------------------------
+
+
+class _SlowDB(FakeSupabaseDB):
+    """Every query takes 150 ms of blocking I/O, like a slow database."""
+
+    def table(self, name: str) -> Any:
+        query = super().table(name)
+        execute = query.execute
+
+        def _slow_execute() -> Any:
+            time.sleep(0.15)
+            return execute()
+
+        query.execute = _slow_execute
+        return query
+
+
+@pytest.mark.asyncio
+async def test_slow_state_persistence_never_blocks_the_event_loop() -> None:
+    """F1: two 150 ms database calls used to delay a 10 ms timer to ~300 ms."""
+    db = _SlowDB()
+    db.tables["conversations"] = [{"id": CONV, "org_id": ORG, "user_id": USER, "task_state": {}}]
+    service = ConversationStateService(SETTINGS)
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    fired: list[float] = []
+    timer = asyncio.ensure_future(asyncio.sleep(0.01))
+    timer.add_done_callback(lambda _t: fired.append(loop.time() - started))
+    write = asyncio.ensure_future(
+        service.update_task_state(CONV, ORG, {"current_plan": {"objective": "email the team"}}, client=db)
+    )
+    await asyncio.gather(timer, write)
+    assert fired[0] < 0.1, f"an independent 10 ms timer fired after {fired[0] * 1000:.0f} ms"
+    assert _plan(db) == {"objective": "email the team"}
+
+
+@pytest.mark.asyncio
+async def test_concurrent_writers_do_not_lose_updates() -> None:
+    """Off the loop, the read-merge-write of one conversation is still serial."""
+    db = _SlowDB()
+    db.tables["conversations"] = [{"id": CONV, "org_id": ORG, "user_id": USER, "task_state": {}}]
+    service = ConversationStateService(SETTINGS)
+    await asyncio.gather(
+        service.update_task_state(CONV, ORG, {"rejected_options": ["a"]}, client=db),
+        service.update_task_state(CONV, ORG, {"rejected_options": ["b"]}, client=db),
+    )
+    assert sorted(db.tables["conversations"][0]["task_state"]["rejected_options"]) == ["a", "b"]
+
+
+def _memory_writes(db: FakeSupabaseDB) -> list[Any]:
+    return [w for w in db.writes if w[1] == "agent_memories"]
+
+
+async def _replay_memory_promotion(*, cancel_before_release: bool) -> FakeSupabaseDB:
+    from app.services.workspace_memory_service import promote_turn_memories
+
+    db = _seeded_db()
+    db.tables["agents"] = [{"id": "44444444-4444-4444-8444-444444444444", "org_id": ORG}]
+    origin = TurnCancellation()
+    scope = SpeculativeScope()
+    gate = asyncio.Event()
+
+    async def _audit() -> None:
+        await gate.wait()
+
+    with bound_turn_cancellation(origin), speculative_scope(scope):
+        scope.defer("audit.write_audit_event", _audit)
+        promote_turn_memories(
+            db,
+            org_id=ORG,
+            user_id=USER,
+            conversation_id=CONV,
+            settings=SETTINGS,
+            memories=[{"category": "preference", "content": "Send updates to the whole team", "key": "updates"}],
+        )
+    assert _memory_writes(db) == [], "deferred, not written"
+    assert scope.begin_commit()
+    replay = asyncio.ensure_future(scope.replay())
+    await asyncio.sleep(0)  # the replay is paused inside the audit write
+    if cancel_before_release:
+        origin.cancel("held_correction")
+    gate.set()
+    await replay
+    return db
+
+
+@pytest.mark.asyncio
+async def test_a_cancelled_replay_does_not_promote_memory() -> None:
+    """F2: replay paused, origin turn cancelled, replay released: no memory row."""
+    db = await _replay_memory_promotion(cancel_before_release=True)
+    assert _memory_writes(db) == []
+
+
+@pytest.mark.asyncio
+async def test_a_live_replay_still_promotes_memory() -> None:
+    db = await _replay_memory_promotion(cancel_before_release=False)
+    assert _memory_writes(db), "control: an uncancelled replay writes the memory"
+
+
+@pytest.mark.asyncio
+async def test_a_cancelled_turn_drops_its_channel_override_and_ledger_promotion() -> None:
+    from app.services.turn_cancellation import superseded_write
+
+    turn = TurnCancellation()
+    with bound_turn_cancellation(turn):
+        assert superseded_write("conversation.channel_override") is False
+        turn.cancel("barge_in")
+        assert superseded_write("conversation.channel_override") is True
+    assert superseded_write("conversation.channel_override") is False, "no turn bound: nothing to fence"
+
+
+def test_a_slotted_object_is_counted_through_its_slots() -> None:
+    class _Slotted:
+        __slots__ = ("payload",)
+
+        def __init__(self, payload: str) -> None:
+            self.payload = payload
+
+    assert _retained_size(_Slotted("s" * 1_000_000)) >= 1_000_000
+
+
+def test_wide_characters_count_their_real_size() -> None:
+    text = "\U0001F600" * 200_000
+    assert _retained_size(text) >= 800_000
+
+
+def test_an_opaque_object_counts_as_over_budget() -> None:
+    class _Opaque:
+        __slots__ = ()
+
+    import array
+
+    assert _retained_size({"x": array.array("b", b"x" * 10)}, 512_000) > 512_000
+    assert _retained_size(_Opaque(), 512_000) <= 512_000, "an empty slotted object is still visible"

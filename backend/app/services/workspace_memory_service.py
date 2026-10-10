@@ -110,6 +110,11 @@ def promote_turn_memories(
     ):
         # Unconfirmed speech never writes memory; replayed only if adopted.
         return []
+    from app.services.turn_cancellation import superseded_write
+
+    if superseded_write("memory.promote_turn_memories"):
+        # The turn these memories came from was cancelled or corrected.
+        return []
 
     written: list[dict[str, Any]] = []
     base_prov = (provenance or "confirmed_turn").strip() or "confirmed_turn"

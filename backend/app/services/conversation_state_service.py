@@ -1,6 +1,7 @@
 """Structured multi-turn task state within a conversation thread."""
 from __future__ import annotations
 
+import threading
 from contextvars import ContextVar
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -21,6 +22,14 @@ logger = get_logger(__name__)
 # Set while this service reads task_state to merge into and write back, so that
 # read stays on the event loop with the write (see get_task_state).
 _read_on_loop: ContextVar[bool] = ContextVar("task_state_read_on_loop", default=False)
+
+# Striped locks: task_state read-merge-write for one conversation never
+# interleaves with another in this process (writers run on the I/O pool).
+_TASK_STATE_LOCKS = [threading.Lock() for _ in range(64)]
+
+
+def _task_state_lock(conversation_id: str, org_id: str) -> threading.Lock:
+    return _TASK_STATE_LOCKS[hash((conversation_id, org_id)) % len(_TASK_STATE_LOCKS)]
 
 DEFAULT_TASK_STATE: dict[str, Any] = {
     "clarified_params": {},
@@ -171,6 +180,85 @@ class ConversationStateService:
             )
         return deepcopy(DEFAULT_TASK_STATE)
 
+    @staticmethod
+    def _merge_task_state(current: dict[str, Any], updates: dict[str, Any]) -> dict[str, Any]:
+        merged = deepcopy(current)
+        for key, value in updates.items():
+            if key == "clarified_params" and isinstance(value, dict):
+                merged["clarified_params"] = {
+                    **(merged.get("clarified_params") or {}),
+                    **value,
+                }
+            elif key == "rejected_options" and isinstance(value, list):
+                existing = list(merged.get("rejected_options") or [])
+                merged["rejected_options"] = list(dict.fromkeys(existing + value))
+            elif key == "suppressed_suggestions" and isinstance(value, list):
+                existing = list(merged.get("suppressed_suggestions") or [])
+                merged["suppressed_suggestions"] = list(dict.fromkeys(existing + value))
+            elif key == "connector_session" and isinstance(value, dict):
+                merged["connector_session"] = {
+                    **(merged.get("connector_session") or {}),
+                    **value,
+                }
+            elif key == "resolved_entities" and isinstance(value, dict):
+                merged["resolved_entities"] = {
+                    **(merged.get("resolved_entities") or {}),
+                    **value,
+                }
+            elif key == "parameter_ledger" and isinstance(value, dict):
+                # Deep-merge slots; pending_missing replaces when provided.
+                current_ledger = (
+                    merged.get("parameter_ledger")
+                    if isinstance(merged.get("parameter_ledger"), dict)
+                    else {}
+                )
+                current_slots = (
+                    safe_normalize_stored_dict(current_ledger, key="slots")
+                    if isinstance(current_ledger.get("slots"), dict)
+                    else {}
+                )
+                incoming_slots = (
+                    safe_normalize_stored_dict(value, key="slots")
+                    if isinstance(value.get("slots"), dict)
+                    else {}
+                )
+                merged["parameter_ledger"] = {
+                    "slots": {**current_slots, **incoming_slots},
+                    "pending_missing": list(
+                        value["pending_missing"]
+                        if "pending_missing" in value
+                        else (current_ledger.get("pending_missing") or [])
+                    ),
+                }
+            elif key == "recent_user_messages" and isinstance(value, list):
+                existing = list(merged.get("recent_user_messages") or [])
+                merged["recent_user_messages"] = (existing + list(value))[-12:]
+            elif key == "recent_connector_invocations" and isinstance(value, list):
+                existing = list(merged.get("recent_connector_invocations") or [])
+                combined = [row for row in list(value) + existing if isinstance(row, dict)]
+                deduped: list[dict[str, Any]] = []
+                seen: set[str] = set()
+                for row in combined:
+                    vendor = str(row.get("vendor") or "").strip().lower()
+                    action = str(row.get("action") or "").strip().lower()
+                    marker = f"{vendor}:{action}"
+                    if not vendor or marker in seen:
+                        continue
+                    seen.add(marker)
+                    deduped.append(
+                        {
+                            "vendor": vendor,
+                            "action": action,
+                            "error_code": str(row.get("error_code") or "")[:80],
+                        }
+                    )
+                    if len(deduped) >= 8:
+                        break
+                merged["recent_connector_invocations"] = deduped
+            else:
+                merged[key] = value
+        return merged
+
     async def _persist_state(
         self,
         conversation_id: str,
@@ -181,128 +269,99 @@ class ConversationStateService:
     ) -> None:
         if not conversation_id or not org_id:
             return
-        token = _read_on_loop.set(True)
+        # The read-merge-write is synchronous I/O: it runs on the I/O pool, in
+        # a copy of this context (speculative scope, turn token), so a slow
+        # database never stalls the voice event loop. A per-conversation lock
+        # keeps concurrent writers in this process from losing each other's
+        # updates, as running it on the loop with no await used to.
+        await run_io(self._persist_state_sync, conversation_id, org_id, updates, client)
+
+    def _read_task_state_sync(self, conversation_id: str, org_id: str, client: Any | None) -> dict[str, Any]:
+        from app.services.speculative_execution import current_scope
+
+        scope = current_scope()
+        if scope is not None:
+            overlay = scope.task_state_overlay.get((conversation_id, org_id))
+            if overlay is not None:
+                return deepcopy(overlay)
+        rows = (
+            self._client(client)
+            .table("conversations")
+            .select("task_state")
+            .eq("id", conversation_id)
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        return self._normalize_state(rows[0].get("task_state")) if rows else deepcopy(DEFAULT_TASK_STATE)
+
+    def _persist_state_sync(
+        self,
+        conversation_id: str,
+        org_id: str,
+        updates: dict[str, Any],
+        client: Any | None,
+    ) -> None:
         original_updates = updates
         try:
-            current = await self.get_task_state(conversation_id, org_id, client=client)
-            from app.services.execution_plan_adapters import enrich_task_state_patch
+            with _task_state_lock(conversation_id, org_id):
+                try:
+                    current = self._read_task_state_sync(conversation_id, org_id, client)
+                except Exception as exc:  # noqa: BLE001 - same fallback get_task_state uses
+                    logger.debug("get_task_state fallback conversation_id=%s error=%s", conversation_id, exc)
+                    current = deepcopy(DEFAULT_TASK_STATE)
+                from app.services.execution_plan_adapters import enrich_task_state_patch
 
-            updates = enrich_task_state_patch(updates, current_state=current)
-            merged = deepcopy(current)
-            for key, value in updates.items():
-                if key == "clarified_params" and isinstance(value, dict):
-                    merged["clarified_params"] = {
-                        **(merged.get("clarified_params") or {}),
-                        **value,
-                    }
-                elif key == "rejected_options" and isinstance(value, list):
-                    existing = list(merged.get("rejected_options") or [])
-                    merged["rejected_options"] = list(dict.fromkeys(existing + value))
-                elif key == "suppressed_suggestions" and isinstance(value, list):
-                    existing = list(merged.get("suppressed_suggestions") or [])
-                    merged["suppressed_suggestions"] = list(dict.fromkeys(existing + value))
-                elif key == "connector_session" and isinstance(value, dict):
-                    merged["connector_session"] = {
-                        **(merged.get("connector_session") or {}),
-                        **value,
-                    }
-                elif key == "resolved_entities" and isinstance(value, dict):
-                    merged["resolved_entities"] = {
-                        **(merged.get("resolved_entities") or {}),
-                        **value,
-                    }
-                elif key == "parameter_ledger" and isinstance(value, dict):
-                    # Deep-merge slots; pending_missing replaces when provided.
-                    current_ledger = (
-                        merged.get("parameter_ledger")
-                        if isinstance(merged.get("parameter_ledger"), dict)
-                        else {}
-                    )
-                    current_slots = (
-                        safe_normalize_stored_dict(current_ledger, key="slots")
-                        if isinstance(current_ledger.get("slots"), dict)
-                        else {}
-                    )
-                    incoming_slots = (
-                        safe_normalize_stored_dict(value, key="slots")
-                        if isinstance(value.get("slots"), dict)
-                        else {}
-                    )
-                    merged["parameter_ledger"] = {
-                        "slots": {**current_slots, **incoming_slots},
-                        "pending_missing": list(
-                            value["pending_missing"]
-                            if "pending_missing" in value
-                            else (current_ledger.get("pending_missing") or [])
-                        ),
-                    }
-                elif key == "recent_user_messages" and isinstance(value, list):
-                    existing = list(merged.get("recent_user_messages") or [])
-                    merged["recent_user_messages"] = (existing + list(value))[-12:]
-                elif key == "recent_connector_invocations" and isinstance(value, list):
-                    existing = list(merged.get("recent_connector_invocations") or [])
-                    combined = [row for row in list(value) + existing if isinstance(row, dict)]
-                    deduped: list[dict[str, Any]] = []
-                    seen: set[str] = set()
-                    for row in combined:
-                        vendor = str(row.get("vendor") or "").strip().lower()
-                        action = str(row.get("action") or "").strip().lower()
-                        marker = f"{vendor}:{action}"
-                        if not vendor or marker in seen:
-                            continue
-                        seen.add(marker)
-                        deduped.append(
-                            {
-                                "vendor": vendor,
-                                "action": action,
-                                "error_code": str(row.get("error_code") or "")[:80],
-                            }
+                updates = enrich_task_state_patch(updates, current_state=current)
+                merged = self._merge_task_state(current, updates)
+                from app.services.speculative_execution import current_scope
+
+                scope = current_scope()
+                if scope is None:
+                    from app.services.turn_cancellation import current_turn_cancelled
+
+                    if current_turn_cancelled():
+                        # Fence: the turn this write belongs to was cancelled
+                        # (stopped, cut off, superseded). Its state must not
+                        # overwrite what the user did next, even when a
+                        # background replay lands late. Checked under the lock,
+                        # right before the write.
+                        logger.info(
+                            "persist_task_state_dropped_for_cancelled_turn conversation_id=%s keys=%s",
+                            conversation_id,
+                            sorted(original_updates)[:12],
                         )
-                        if len(deduped) >= 8:
-                            break
-                    merged["recent_connector_invocations"] = deduped
-                else:
-                    merged[key] = value
-            from app.services.speculative_execution import current_scope
-
-            scope = current_scope()
-            if scope is not None:
+                        return
+                    self._client(client).table("conversations").update(
+                        {"task_state": merged}
+                    ).eq("id", conversation_id).eq("org_id", org_id).execute()
+                    return
                 # Speculative (unconfirmed) run: keep the result for its own reads
-                # and replay the original patch only if the run is adopted.
+                # and replay the original patch only if the run is adopted. The
+                # replay is queued under the same lock as the overlay, so
+                # concurrent writers replay in the order their overlays merged.
                 scope.task_state_overlay[(conversation_id, org_id)] = deepcopy(merged)
                 try:
                     patch = deepcopy(original_updates)
                 except Exception:  # noqa: BLE001 - non-copyable value: keep the reference
                     patch = dict(original_updates)
-                scope.defer(
-                    "conversation.task_state",
-                    lambda: self._persist_state(conversation_id, org_id, patch, client=client),
-                )
-                return
-            from app.services.turn_cancellation import current_turn_cancelled
 
-            if current_turn_cancelled():
-                # Fence: the turn this write belongs to was cancelled (stopped,
-                # cut off, superseded). Its state must not overwrite what the
-                # user did next, even when a background replay lands late.
-                # Checked with no await before the write.
-                logger.info(
-                    "persist_task_state_dropped_for_cancelled_turn conversation_id=%s keys=%s",
-                    conversation_id,
-                    sorted(original_updates)[:12],
-                )
-                return
-            self._client(client).table("conversations").update(
-                {"task_state": merged}
-            ).eq("id", conversation_id).eq("org_id", org_id).execute()
+                def replay() -> Any:
+                    return self._persist_state(conversation_id, org_id, patch, client=client)
+
+                if scope.defer_queued("conversation.task_state", replay):
+                    return
+            # The replay already finished: write late, outside the lock (the
+            # late write takes it, and this thread waits for that write).
+            scope.defer("conversation.task_state", replay)
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "persist_task_state failed conversation_id=%s error=%s",
                 conversation_id,
                 exc,
             )
-        finally:
-            _read_on_loop.reset(token)
 
     async def update_task_state(
         self,
