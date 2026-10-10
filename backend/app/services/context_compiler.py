@@ -53,6 +53,26 @@ def merge_kernel_sections(turn_ctx: Any, cognitive_ctx: Any) -> bool:
         return False
 
 
+def _intent_class_from_state(task_state: dict[str, Any] | None) -> str | None:
+    needs = (task_state or {}).get("cognitive_resolution_needs")
+    if isinstance(needs, dict):
+        reason = str(needs.get("reason") or "").strip()
+        if reason:
+            return reason
+    return None
+
+
+def classification_for_context(
+    classification: dict[str, Any], task_state: dict[str, Any] | None
+) -> dict[str, Any]:
+    """The classification context assembly is given (inline or prefetched)."""
+    intent_class = _intent_class_from_state(task_state)
+    enriched = dict(classification)
+    if intent_class and not enriched.get("intent_class"):
+        enriched["intent_class"] = intent_class
+    return enriched
+
+
 async def compile_assistant_turn_context(
     *,
     classification: dict[str, Any],
@@ -63,17 +83,9 @@ async def compile_assistant_turn_context(
     workspace_focus: dict[str, Any] | None = None,
 ) -> tuple[Any, CompiledTurnContextMeta]:
     """Run orchestrator context assembly once; merge kernel sections when present."""
-    intent_class = None
-    needs = (task_state or {}).get("cognitive_resolution_needs")
-    if isinstance(needs, dict):
-        reason = str(needs.get("reason") or "").strip()
-        if reason:
-            intent_class = reason
-
+    intent_class = _intent_class_from_state(task_state)
     capability_id = str(classification.get("capability_id") or "").strip() or None
-    enriched = dict(classification)
-    if intent_class and not enriched.get("intent_class"):
-        enriched["intent_class"] = intent_class
+    enriched = classification_for_context(classification, task_state)
 
     if prefetched_turn_ctx is not None:
         turn_ctx = prefetched_turn_ctx

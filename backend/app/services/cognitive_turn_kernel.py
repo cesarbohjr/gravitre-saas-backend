@@ -176,11 +176,47 @@ class CognitiveTurnKernel:
             )
         )
 
+        conversational = (request.reasoning_depth or "full").strip().lower() == "conversational"
+
+        # RECALL, KNOWLEDGE, the outcome bias and the metric lookup read
+        # different stores and none uses another's result, but each waited for
+        # the one before (a dozen sequential round trips, most of them blocking
+        # the event loop). They now start together; each result is still
+        # applied below in the original order, with the original error handling.
+        async def _knowledge() -> dict[str, Any]:
+            from app.services.cognitive_knowledge_layer import merge as merge_knowledge
+
+            return await merge_knowledge(
+                client=client,
+                org_id=request.org_id,
+                query=request.message or "",
+                agent=request.agent or ({"id": request.agent_id} if request.agent_id else None),
+                settings=self.settings,
+                user_id=request.user_id,
+            )
+
+        async def _bias() -> dict[str, Any] | None:
+            from app.services.cognitive_outcome_loop import bias_from_outcomes
+
+            if client is None:
+                return None
+            return await asyncio.to_thread(
+                bias_from_outcomes, client, request.org_id, request.message or "", self.settings
+            )
+
+        knowledge_started = time.perf_counter()
+        knowledge_task = bias_task = metrics_task = None
+        if not conversational:
+            knowledge_task = _started(_knowledge())
+            bias_task = _started(_bias())
+            metrics_task = _started(
+                asyncio.to_thread(_resolve_mentioned_metrics, client, request.org_id, request.message or "")
+            )
+
         # 2 RECALL — skip heavy multi-store fetch on spoken conversational depth.
         # Same honesty as KNOWLEDGE skip: keep GOVERN; do not pretend memory was
         # consulted. Write/full depth still recalls all five stores.
         t0 = time.perf_counter()
-        conversational = (request.reasoning_depth or "full").strip().lower() == "conversational"
         try:
             if conversational and request.spoken_mode:
                 ctx.memory_pack = _empty_memory_pack()
@@ -223,7 +259,7 @@ class CognitiveTurnKernel:
 
         # 3 KNOWLEDGE — full fabric merge for consequential/full turns only.
         # Conversational spoken depth keeps RECALL + GOVERN; skips heavy retrieval.
-        t0 = time.perf_counter()
+        t0 = knowledge_started
         try:
             if conversational:
                 ctx.knowledge_pack = {
@@ -242,16 +278,7 @@ class CognitiveTurnKernel:
                     )
                 )
             else:
-                from app.services.cognitive_knowledge_layer import merge as merge_knowledge
-
-                ctx.knowledge_pack = await merge_knowledge(
-                    client=client,
-                    org_id=request.org_id,
-                    query=request.message or "",
-                    agent=request.agent or ({"id": request.agent_id} if request.agent_id else None),
-                    settings=self.settings,
-                    user_id=request.user_id,
-                )
+                ctx.knowledge_pack = await knowledge_task
                 ctx.stages.append(
                     StageRecord(
                         stage="KNOWLEDGE",
@@ -276,10 +303,9 @@ class CognitiveTurnKernel:
         bias: dict[str, Any] = {"bias_notes": [], "weight_delta": 0.0}
         if not conversational:
             try:
-                from app.services.cognitive_outcome_loop import bias_from_outcomes
-
-                if client is not None:
-                    bias = bias_from_outcomes(client, request.org_id, request.message or "", self.settings)
+                computed_bias = await bias_task
+                if computed_bias is not None:
+                    bias = computed_bias
             except Exception as exc:  # noqa: BLE001
                 logger.debug("cognitive_outcome_bias_skipped error=%s", exc)
 
@@ -287,7 +313,7 @@ class CognitiveTurnKernel:
         metric_hits: list[dict[str, Any]] = []
         if not conversational:
             try:
-                metric_hits = _resolve_mentioned_metrics(client, request.org_id, request.message or "")
+                metric_hits = await metrics_task
                 if metric_hits and isinstance(ctx.knowledge_pack, dict):
                     ctx.knowledge_pack = dict(ctx.knowledge_pack)
                     ctx.knowledge_pack["org_metrics"] = metric_hits
@@ -1063,7 +1089,8 @@ class CognitiveTurnKernel:
                 "knowledge_summary": knowledge_summary,
                 "confidence_summary": confidence_summary,
             }
-            client.table("cognitive_turn_traces").insert(payload).execute()
+            # Still awaited, but the blocking insert no longer holds the event loop.
+            await asyncio.to_thread(client.table("cognitive_turn_traces").insert(payload).execute)
         except Exception as exc:  # noqa: BLE001
             logger.debug("cognitive_turn_trace_persist_skipped error=%s", exc)
 
@@ -1448,6 +1475,13 @@ def _derive_field_keys(params: dict[str, Any]) -> list[str]:
         for item in explicit:
             _add(item)
     return keys[:40]
+
+
+def _started(awaitable: Any) -> "asyncio.Future[Any]":
+    """Start ``awaitable`` now; its outcome is retrieved even if the turn never awaits it."""
+    future = asyncio.ensure_future(awaitable)
+    future.add_done_callback(lambda f: f.cancelled() or f.exception())
+    return future
 
 
 def _resolve_mentioned_metrics(client: Any, org_id: str, message: str) -> list[dict[str, Any]]:

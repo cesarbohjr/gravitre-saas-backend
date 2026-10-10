@@ -596,6 +596,17 @@ def _build_assistant_system_prompt(
     )
 
 
+def _background(awaitable: Any) -> "asyncio.Future[Any]":
+    """Start ``awaitable`` now and await it later.
+
+    When the request fails before the result is awaited, the outcome is still
+    retrieved so it never surfaces as "exception was never retrieved".
+    """
+    future = asyncio.ensure_future(awaitable)
+    future.add_done_callback(lambda f: f.cancelled() or f.exception())
+    return future
+
+
 def _estimate_model_response(
     *,
     content: str,
@@ -644,8 +655,13 @@ def _build_stream(
     intelligence_hub_deterministic_answer: str | None = None,
     http_request: Request | None = None,
     workspace_focus: dict[str, Any] | None = None,
+    interrupt: dict[str, Any] | None = None,
 ):
-    """Yield AI SDK UI stream via AgentIntelligence + ReActEngine."""
+    """Yield AI SDK UI stream via AgentIntelligence + ReActEngine.
+
+    ``interrupt`` is the interrupted-turn record the handler already read for
+    this conversation (it was read again here, blocking the event loop).
+    """
 
     async def generator():
         from app.operators.react_engine import force_serial_react_tools, reset_serial_react_tools
@@ -772,7 +788,6 @@ def _build_stream(
         seen_tool_names: list[str] = []
         last_pending_task: dict[str, Any] | None = None
         last_task_state: dict[str, Any] | None = None
-        interrupt = load_interrupted_turn(org_id, conversation_id, settings=settings)
         model_query = resume_instruction(interrupt, user_text)
         try:
             if await stream_should_stop(http_request, org_id, conversation_id, settings=settings):
@@ -849,6 +864,10 @@ def _build_stream(
                 len("".join(streamed_text_parts)),
             )
         finally:
+            from app.core.turn_read_memo import end_turn_memo
+
+            # A turn that returned before its model call leaves its read memo set.
+            end_turn_memo()
             clear_stop(org_id, conversation_id, settings=settings)
 
         if cancelled:
@@ -1212,152 +1231,8 @@ async def assistant_chat(
 
     intelligence_hub_visualization: dict[str, Any] | None = None
     intelligence_hub_deterministic_answer: str | None = None
-    # Org context reads are blocking Supabase round trips. This handler runs on
-    # the single uvicorn event loop, so doing them inline froze every other
-    # request (and this turn's own stream) for their duration.
-    system_prompt = await run_io(
-        _build_assistant_system_prompt,
-        settings,
-        org_id,
-        user_id=str(current_user.get("user_id") or "") or None,
-        agent_id=body.agent_id,
-        query=last_user,
-        environment_name=environment_name,
-    )
-    if (body.surface or "").strip() == "intelligence_hub":
-        from app.services.intelligence_context_compiler import (
-            compile_intelligence_context_for_query,
-            resolve_intelligence_hub_deterministic_answer,
-        )
-        from app.services.intelligence_projection_service import get_intelligence_projection_service
-
-        snapshot = await get_intelligence_projection_service(settings).build_snapshot(
-            org_id,
-            environment_name=environment_name,
-        )
-        intel_block, viz = compile_intelligence_context_for_query(snapshot, last_user)
-        intelligence_hub_visualization = viz.model_dump() if viz else None
-        intelligence_hub_deterministic_answer = resolve_intelligence_hub_deterministic_answer(
-            snapshot,
-            last_user,
-        )
-        system_prompt = (
-            f"{system_prompt}\n\n<intelligence_hub_context>\n{intel_block}\n"
-            "</intelligence_hub_context>\n"
-            "You are answering from the Intelligence hub. Use ONLY the canonical intelligence "
-            "state above for agent status, predictions, and learning claims. "
-            "Do not say data is unavailable when canonical state lists it."
-        )
-    from app.services.shared_turn_preparation import apply_department_scope
-
-    system_prompt = apply_department_scope(system_prompt, department_scope, cross_department)
-
     user_id = str(current_user.get("user_id") or "")
-    conversation_id = (body.conversation_id or "").strip() or None
-    if conversation_id:
-        # A Stop that arrived before this message was sent belongs to an earlier
-        # turn (the web app also sends one when switching conversations). Left in
-        # place for its 120s TTL it cancelled this new turn with "You stopped me
-        # before I finished that" and nothing ran. Stops sent from now on still
-        # cancel this turn.
-        await run_io(clear_stop, org_id, conversation_id, settings=settings)
-    existing_summary: str | None = None
-    if conversation_id and user_id:
-        # STA-306 — row must exist before ReAct write-gate persists pending_task mid-stream.
-        conversation_id = await get_conversation_state_service(settings).ensure_owned_conversation(
-            org_id=org_id,
-            user_id=user_id,
-            conversation_id=conversation_id,
-            title=(last_user or "New conversation")[:80],
-        )
-        existing_summary = await run_io(
-            load_conversation_summary,
-            get_supabase_client(settings),
-            conversation_id=conversation_id,
-            org_id=org_id,
-            user_id=user_id,
-        )
-        # Module B — write-on-mention into the conversation ledger BEFORE streaming.
-        # Must not depend on agent_intelligence reaching the mid-pipeline ingest
-        # (fast-path / early returns / swallowed errors were dropping unprompted emails).
-        if conversation_id and ((last_user or "").strip() or body.connected_file_refs):
-            try:
-                from app.services.parameter_ledger import (
-                    get_ledger,
-                    ingest_message_slots,
-                    ledger_patch,
-                )
-
-                state_svc = get_conversation_state_service(settings)
-                prior = await state_svc.get_task_state(conversation_id, org_id)
-                connected_attachment_prompt = ""
-                ledger = ingest_message_slots(
-                    last_user,
-                    turn_index=len(list((prior or {}).get("recent_user_messages") or [])) + 1,
-                    ledger=get_ledger(prior),
-                )
-                if body.connected_file_refs:
-                    from app.services.connected_files_service import prefetch_connected_file_attachments
-                    from app.services.parameter_ledger import ingest_connected_file_hits, merge_ledger_into_task_state
-                    from app.services.tool_types import ToolContext
-
-                    ref_dicts = [ref.model_dump() for ref in body.connected_file_refs]
-                    file_ctx = ToolContext(
-                        settings=settings,
-                        client=get_supabase_client(settings),
-                        org_id=org_id,
-                        actor_id=user_id,
-                        environment_name=environment_name,
-                    )
-                    hits, connected_attachment_prompt = await prefetch_connected_file_attachments(
-                        file_ctx, ref_dicts
-                    )
-                    if hits:
-                        merged_state = merge_ledger_into_task_state(prior, ledger)
-                        merged_state = ingest_connected_file_hits(
-                            merged_state,
-                            hits,
-                            turn_index=len(list((prior or {}).get("recent_user_messages") or [])) + 1,
-                        )
-                        ledger = get_ledger(merged_state)
-                # Phase 2: recall confirmed slots from prior conversations (when enabled).
-                try:
-                    from app.services.cross_conversation_ledger_memory import (
-                        feature_enabled as _xconv_enabled,
-                        recall_slots_into_ledger,
-                    )
-
-                    if _xconv_enabled(settings):
-                        aliases = [last_user]
-                        for tok in (last_user or "").split():
-                            if len(tok) >= 3:
-                                aliases.append(tok.strip(",.!?"))
-                        ledger = await run_io(
-                            recall_slots_into_ledger,
-                            get_supabase_client(settings),
-                            org_id=org_id,
-                            ledger=ledger,
-                            aliases=aliases,
-                            settings=settings,
-                        )
-                except Exception:  # noqa: BLE001
-                    pass
-                await state_svc.update_task_state(
-                    conversation_id,
-                    org_id,
-                    {
-                        **ledger_patch(ledger),
-                        "recent_user_messages": [last_user],
-                    },
-                )
-                if connected_attachment_prompt:
-                    system_prompt = f"{system_prompt}\n\n{connected_attachment_prompt}"
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "parameter_ledger pre-stream ingest failed conversation_id=%s error=%s",
-                    conversation_id,
-                    exc,
-                )
+    requested_conversation_id = (body.conversation_id or "").strip() or None
 
     history_messages: list[dict[str, Any]] = []
     for message in body.messages[:-1][-_MAX_HISTORY:]:
@@ -1366,11 +1241,6 @@ async def assistant_chat(
             text = _message_text(message)
             if text.strip():
                 history_messages.append({"role": role, "content": text})
-
-    interrupt = await run_io(load_interrupted_turn, org_id, conversation_id, settings=settings)
-    history_messages = merge_history_with_interrupt(history_messages, interrupt)
-
-    prepared_holder = {"model_override": model_override, "task_type": task_type}
 
     preferred_persona = (body.preferred_persona or "").strip() or None
     from app.services.computer_browser_read_turn import (
@@ -1381,54 +1251,280 @@ async def assistant_chat(
     _computer_compiled_ingress = match_computer_browser_intent(last_user) or match_computer_browser_resume_phrase(
         last_user
     )
-    if not preferred_persona and user_id and not _computer_compiled_ingress:
+
+    # Turn preparation. The system prompt, the conversation row and ledger, the
+    # interrupted-turn record and the user's preferences are independent of
+    # each other, and used to be fetched one after another (about twenty
+    # Supabase round trips in a row before the first SSE byte). They now run
+    # concurrently. Each is the same call as before, results are applied in the
+    # same order, and the guardrails below still gate the turn before any model
+    # call or stream starts.
+    async def _system_prompt_for_turn() -> str:
+        nonlocal intelligence_hub_visualization, intelligence_hub_deterministic_answer
+        # Org context reads are blocking Supabase round trips. This handler runs on
+        # the single uvicorn event loop, so doing them inline froze every other
+        # request (and this turn's own stream) for their duration.
+        prompt = await run_io(
+            _build_assistant_system_prompt,
+            settings,
+            org_id,
+            user_id=user_id or None,
+            agent_id=body.agent_id,
+            query=last_user,
+            environment_name=environment_name,
+        )
+        if (body.surface or "").strip() == "intelligence_hub":
+            from app.services.intelligence_context_compiler import (
+                compile_intelligence_context_for_query,
+                resolve_intelligence_hub_deterministic_answer,
+            )
+            from app.services.intelligence_projection_service import get_intelligence_projection_service
+
+            snapshot = await get_intelligence_projection_service(settings).build_snapshot(
+                org_id,
+                environment_name=environment_name,
+            )
+            intel_block, viz = compile_intelligence_context_for_query(snapshot, last_user)
+            intelligence_hub_visualization = viz.model_dump() if viz else None
+            intelligence_hub_deterministic_answer = resolve_intelligence_hub_deterministic_answer(
+                snapshot,
+                last_user,
+            )
+            prompt = (
+                f"{prompt}\n\n<intelligence_hub_context>\n{intel_block}\n"
+                "</intelligence_hub_context>\n"
+                "You are answering from the Intelligence hub. Use ONLY the canonical intelligence "
+                "state above for agent status, predictions, and learning claims. "
+                "Do not say data is unavailable when canonical state lists it."
+            )
+        from app.services.shared_turn_preparation import apply_department_scope
+
+        return apply_department_scope(prompt, department_scope, cross_department)
+
+    async def _ingest_turn_ledger(conv_id: str, row_ready: "asyncio.Future[Any]") -> str:
+        """Module B ledger write; returns the connected-file attachment prompt ('' when none)."""
+        # Module B — write-on-mention into the conversation ledger BEFORE streaming.
+        # Must not depend on agent_intelligence reaching the mid-pipeline ingest
+        # (fast-path / early returns / swallowed errors were dropping unprompted emails).
+        if not ((last_user or "").strip() or body.connected_file_refs):
+            return ""
+        state_svc = get_conversation_state_service(settings)
+        try:
+            from app.services.parameter_ledger import (
+                get_ledger,
+                ingest_message_slots,
+                ledger_patch,
+            )
+
+            prior = await state_svc.get_task_state(conv_id, org_id)
+            connected_attachment_prompt = ""
+            ledger = ingest_message_slots(
+                last_user,
+                turn_index=len(list((prior or {}).get("recent_user_messages") or [])) + 1,
+                ledger=get_ledger(prior),
+            )
+            if body.connected_file_refs:
+                from app.services.connected_files_service import prefetch_connected_file_attachments
+                from app.services.parameter_ledger import ingest_connected_file_hits, merge_ledger_into_task_state
+                from app.services.tool_types import ToolContext
+
+                ref_dicts = [ref.model_dump() for ref in body.connected_file_refs]
+                file_ctx = ToolContext(
+                    settings=settings,
+                    client=get_supabase_client(settings),
+                    org_id=org_id,
+                    actor_id=user_id,
+                    environment_name=environment_name,
+                )
+                hits, connected_attachment_prompt = await prefetch_connected_file_attachments(
+                    file_ctx, ref_dicts
+                )
+                if hits:
+                    merged_state = merge_ledger_into_task_state(prior, ledger)
+                    merged_state = ingest_connected_file_hits(
+                        merged_state,
+                        hits,
+                        turn_index=len(list((prior or {}).get("recent_user_messages") or [])) + 1,
+                    )
+                    ledger = get_ledger(merged_state)
+            # Phase 2: recall confirmed slots from prior conversations (when enabled).
+            try:
+                from app.services.cross_conversation_ledger_memory import (
+                    feature_enabled as _xconv_enabled,
+                    recall_slots_into_ledger,
+                )
+
+                if _xconv_enabled(settings):
+                    aliases = [last_user]
+                    for tok in (last_user or "").split():
+                        if len(tok) >= 3:
+                            aliases.append(tok.strip(",.!?"))
+                    ledger = await run_io(
+                        recall_slots_into_ledger,
+                        get_supabase_client(settings),
+                        org_id=org_id,
+                        ledger=ledger,
+                        aliases=aliases,
+                        settings=settings,
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+            patch = {
+                **ledger_patch(ledger),
+                "recent_user_messages": [last_user],
+            }
+        except Exception as exc:  # noqa: BLE001
+            _log_ledger_failure(exc)
+            return ""
+        # The reads above overlap the conversation-row check; the write needs
+        # the row (STA-306), so it waits for it. A refusal there propagates.
+        await row_ready
+        try:
+            await state_svc.update_task_state(conv_id, org_id, patch)
+        except Exception as exc:  # noqa: BLE001
+            _log_ledger_failure(exc)
+            return ""
+        return connected_attachment_prompt
+
+    def _log_ledger_failure(exc: Exception) -> None:
+        # As before, a failed ingest adds no attachment prompt.
+        logger.warning(
+            "parameter_ledger pre-stream ingest failed conversation_id=%s error=%s",
+            requested_conversation_id,
+            exc,
+        )
+
+    async def _prepare_conversation() -> tuple[str | None, str | None, str]:
+        conv_id = requested_conversation_id
+        if conv_id:
+            # A Stop that arrived before this message was sent belongs to an earlier
+            # turn (the web app also sends one when switching conversations). Left in
+            # place for its 120s TTL it cancelled this new turn with "You stopped me
+            # before I finished that" and nothing ran. Stops sent from now on still
+            # cancel this turn.
+            await run_io(clear_stop, org_id, conv_id, settings=settings)
+        if not (conv_id and user_id):
+            return conv_id, None, ""
+        # STA-306 — row must exist before ReAct write-gate persists pending_task mid-stream.
+        # ensure_owned_conversation returns the id it is given (or refuses), so
+        # the summary read and the ledger reads start alongside it; nothing is
+        # written to the row before it exists.
+        row_task = _background(
+            get_conversation_state_service(settings).ensure_owned_conversation(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conv_id,
+                title=(last_user or "New conversation")[:80],
+            )
+        )
+        summary_task = _background(
+            run_io(
+                load_conversation_summary,
+                get_supabase_client(settings),
+                conversation_id=conv_id,
+                org_id=org_id,
+                user_id=user_id,
+            )
+        )
+        ledger_task = _background(_ingest_turn_ledger(conv_id, row_task))
+        try:
+            conv_id = await row_task
+            attachment_prompt = await ledger_task
+            summary = await summary_task
+        finally:
+            for task in (row_task, summary_task, ledger_task):
+                if not task.done():
+                    task.cancel()
+        return conv_id, summary, attachment_prompt
+
+    async def _load_preferred_persona() -> str | None:
+        if preferred_persona or not user_id or _computer_compiled_ingress:
+            return preferred_persona
         prefs = await get_user_intelligence_service().get_preferences(
             settings,
             user_id=user_id,
         )
-        preferred_persona = (prefs.get("preferred_persona") or "").strip() or None
+        return (prefs.get("preferred_persona") or "").strip() or None
 
     from app.services.shared_turn_preparation import enforce_turn_guardrails, harden_against_injection
 
-    system_prompt = await harden_against_injection(
-        settings,
-        org_id=org_id,
-        conversation_id=conversation_id,
-        system_prompt=system_prompt,
-        user_text=last_user,
-        surface="text",
-    )
+    async def _harden(prompt: str, conv_id: str | None) -> str:
+        return await harden_against_injection(
+            settings,
+            org_id=org_id,
+            conversation_id=conv_id,
+            system_prompt=prompt,
+            user_text=last_user,
+            surface="text",
+        )
 
-    try:
+    async def _guard(prompt: str) -> None:
         # Computer Use READ already has a deterministic public-browser path.
         # OpenAI input moderation there delayed first SSE ~4s past server work.
         await enforce_turn_guardrails(
             settings,
             org_id=org_id,
             user_text=last_user,
-            system_prompt=system_prompt,
+            system_prompt=prompt,
             history=history_messages,
             task_type=task_type,
             model_override=model_override,
             light=bool(_computer_compiled_ingress),
             router=get_model_router(),
         )
-    except AIServiceDisabledError:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI assistant is temporarily disabled")
-    except AIRateLimitError as exc:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc))
-    except AIBudgetExceededError as exc:
-        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(exc))
-    except AIContentFlaggedError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    except ProviderInvalidResponseError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    except AllProvidersFailedError as exc:
-        logger.error("assistant all providers failed org_id=%s error=%s", org_id, str(exc))
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI providers are unavailable")
-    except Exception as exc:  # noqa: BLE001
-        logger.error("assistant stream prepare failed org_id=%s error=%s", org_id, str(exc))
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Assistant request failed")
+
+    prompt_task = _background(_system_prompt_for_turn())
+    conversation_task = _background(_prepare_conversation())
+    # ensure_owned_conversation returns the id it is given, so the interrupted
+    # turn is read for that id without waiting for it.
+    interrupt_task = _background(
+        run_io(load_interrupted_turn, org_id, requested_conversation_id, settings=settings)
+    )
+    persona_task = _background(_load_preferred_persona())
+    guard_task: asyncio.Future[None] | None = None
+    try:
+        system_prompt = await prompt_task
+        if not body.connected_file_refs:
+            # Only a connected-file attachment from the conversation step can
+            # change the prompt, so without one the guardrails start now and
+            # overlap the conversation reads and writes. A refusal is still
+            # raised only after those, in the same order as before.
+            system_prompt = await _harden(system_prompt, requested_conversation_id)
+            guard_task = _background(_guard(system_prompt))
+        conversation_id, existing_summary, connected_attachment_prompt = await conversation_task
+        if guard_task is None:
+            if connected_attachment_prompt:
+                system_prompt = f"{system_prompt}\n\n{connected_attachment_prompt}"
+            system_prompt = await _harden(system_prompt, conversation_id)
+            guard_task = _background(_guard(system_prompt))
+        interrupt = await interrupt_task
+        preferred_persona = await persona_task
+        try:
+            await guard_task
+        except AIServiceDisabledError:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI assistant is temporarily disabled")
+        except AIRateLimitError as exc:
+            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc))
+        except AIBudgetExceededError as exc:
+            raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=str(exc))
+        except AIContentFlaggedError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+        except ProviderInvalidResponseError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+        except AllProvidersFailedError as exc:
+            logger.error("assistant all providers failed org_id=%s error=%s", org_id, str(exc))
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI providers are unavailable")
+        except Exception as exc:  # noqa: BLE001
+            logger.error("assistant stream prepare failed org_id=%s error=%s", org_id, str(exc))
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Assistant request failed")
+    finally:
+        for task in (prompt_task, conversation_task, interrupt_task, persona_task, guard_task):
+            if task is not None and not task.done():
+                task.cancel()
+
+    history_messages = merge_history_with_interrupt(history_messages, interrupt)
+
+    prepared_holder = {"model_override": model_override, "task_type": task_type}
 
     force_serial = str(
         request.headers.get("x-gravitre-react-serial")
@@ -1472,6 +1568,7 @@ async def assistant_chat(
             intelligence_hub_deterministic_answer=intelligence_hub_deterministic_answer,
             http_request=request,
             workspace_focus=body.workspace_focus.model_dump() if body.workspace_focus else None,
+            interrupt=interrupt,
         ),
         media_type="text/event-stream",
         headers=_STREAM_HEADERS,

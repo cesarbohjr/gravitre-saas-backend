@@ -1799,6 +1799,11 @@ class AgentIntelligence:
         from app.services.sealed_read_latency_marks import begin_p2_marks, merge_p2_into, record_p2_mark
 
         begin_p2_marks(_pre_kernel_t0)
+        from app.core.turn_read_memo import begin_turn_memo, end_turn_memo
+
+        # Org configuration rows this turn reads repeatedly before the model
+        # runs are read once (see app.core.turn_read_memo); dropped at react entry.
+        begin_turn_memo()
 
         # Caller-owned copy of the checkpoints (the voice bridge's per-turn
         # latency record); "_t0_perf" anchors them on the caller's clock.
@@ -3792,6 +3797,109 @@ class AgentIntelligence:
             current=reasoning_depth,
         )
 
+        async def _prepare_turn_context(
+            query: str,
+            *,
+            classification: dict[str, Any] | None = None,
+            state: dict[str, Any] | None = None,
+        ) -> Any:
+            """Context assembly, callable either inline or concurrently with LIVE.
+
+            The import is repeated here deliberately. `intelligence_orchestrator`
+            imports `resolve_agent_record` back from this module, so the name can
+            only be bound inside a function. Relying on the caller's later local
+            import made it a closure cell that is still unset when the prefetch
+            task starts, which raised NameError and failed the whole voice turn.
+
+            ``classification`` / ``state`` pin the inputs a prefetch was started
+            with; by default the current values are used.
+            """
+            from app.services.intelligence_orchestrator import (
+                get_intelligence_orchestrator as _get_orchestrator,
+            )
+
+            return await _get_orchestrator(active_settings).prepare_assistant_turn(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id or "",
+                query=query,
+                classification=pipeline_classification if classification is None else classification,
+                client=client,
+                agent_id=agent_id,
+                environment_name=environment_name,
+                engine_settings=engine_settings,
+                task_state=task_state if state is None else state,
+                persona=persona,
+                conversation_history=conversation_history,
+                routing_tier=routing_control.tier,
+                mode=requested_mode,
+                research_scope=research_scope,
+                # Already resolved above (off-thread, cache-backed for spoken
+                # non-write turns); re-deriving it here cost a blocking 1.6s.
+                connected_integrations=list(connected_early or []),
+                spoken_tier=conversation_tier.tier if spoken_mode else None,
+            )
+
+        _context_task: asyncio.Task | None = None
+        _context_task_query: str | None = None
+        _context_task_inputs: str | None = None
+
+        def _context_inputs_fingerprint() -> str:
+            """Every input of context assembly other than the query, for a prefetch check.
+
+            The kernel's own bookkeeping keys on task_state are left out: context
+            assembly never reads them.
+            """
+            state = task_state if isinstance(task_state, dict) else {}
+            return json.dumps(
+                {
+                    "classification": pipeline_classification,
+                    "task_state": {
+                        k: v
+                        for k, v in state.items()
+                        if k not in ("_cognitive_turn_id", "_reasoning_depth", "_workspace_focus_turn")
+                    },
+                    "routing_tier": routing_control.tier,
+                    "mode": requested_mode,
+                    "mode_key": mode_key,
+                    "connected": list(connected_early or []),
+                    "engine_settings": engine_settings,
+                    "persona": persona,
+                },
+                sort_keys=True,
+                default=str,
+            )
+
+        # Text chat: context assembly (prepare_assistant_turn, the largest block
+        # of reads before the model) used to start only after the cognitive
+        # kernel finished, though it does not use the kernel's result. It now
+        # starts alongside the kernel and is adopted at context entry only when
+        # every input it was built from is still the same (the query, the
+        # classification, task_state, routing tier, mode, connectors, engine
+        # settings, persona); otherwise it is discarded and context is assembled
+        # inline exactly as before. A non-fast mode rewrites the query and a
+        # "mixed" turn reassigns it, so neither is prefetched.
+        if not spoken_mode and mode_key == "fast":
+            from app.services.context_compiler import classification_for_context
+            from app.services.conversational_turn_gate import heuristic_turn_shape
+
+            _shape_hint = heuristic_turn_shape(task_text)
+            if _shape_hint is None or getattr(_shape_hint, "shape", "") != "mixed":
+                _prefetch_state = task_state if isinstance(task_state, dict) else None
+                _context_task_query = task_text
+                _context_task_inputs = _context_inputs_fingerprint()
+                _context_task = asyncio.create_task(
+                    _prepare_turn_context(
+                        task_text,
+                        classification=classification_for_context(
+                            pipeline_classification, _prefetch_state
+                        ),
+                        state=_prefetch_state,
+                    )
+                )
+                # A turn that returns before context entry drops this task.
+                _context_task.add_done_callback(lambda t: t.cancelled() or t.exception())
+
         # CognitiveTurnKernel: RETRIEVE→GOVERN before any LIVE ACT (fixes LIVE-before-retrieve).
         cognitive_ctx = None
         _surface = (
@@ -3931,41 +4039,6 @@ class AgentIntelligence:
                 exc,
             )
 
-        async def _prepare_turn_context(query: str) -> Any:
-            """Context assembly, callable either inline or concurrently with LIVE.
-
-            The import is repeated here deliberately. `intelligence_orchestrator`
-            imports `resolve_agent_record` back from this module, so the name can
-            only be bound inside a function. Relying on the caller's later local
-            import made it a closure cell that is still unset when the prefetch
-            task starts, which raised NameError and failed the whole voice turn.
-            """
-            from app.services.intelligence_orchestrator import (
-                get_intelligence_orchestrator as _get_orchestrator,
-            )
-
-            return await _get_orchestrator(active_settings).prepare_assistant_turn(
-                org_id=org_id,
-                user_id=user_id,
-                conversation_id=conversation_id or "",
-                query=query,
-                classification=pipeline_classification,
-                client=client,
-                agent_id=agent_id,
-                environment_name=environment_name,
-                engine_settings=engine_settings,
-                task_state=task_state,
-                persona=persona,
-                conversation_history=conversation_history,
-                routing_tier=routing_control.tier,
-                mode=requested_mode,
-                research_scope=research_scope,
-                # Already resolved above (off-thread, cache-backed for spoken
-                # non-write turns); re-deriving it here cost a blocking 1.6s.
-                connected_integrations=list(connected_early or []),
-                spoken_tier=conversation_tier.tier if spoken_mode else None,
-            )
-
         # LIVE is discarded on ~48% of turns (audit: unified_turn.live.fallthrough,
         # dominated by read_tool_classical / defer_classical_tool_sse), and on a
         # measured spoken tool turn its 3.9s sat entirely in front of a 4.5s
@@ -3977,10 +4050,9 @@ class AgentIntelligence:
         # and a "mixed" turn shape reassigns task_text after the social ack. Both
         # would leave the prefetched context answering a different question, so
         # the guard below only overlaps when the query provably cannot change.
-        _context_task: asyncio.Task | None = None
-        _context_task_query: str | None = None
         if (
-            bool(getattr(active_settings, "voice_context_overlap_v1", False))
+            _context_task is None
+            and bool(getattr(active_settings, "voice_context_overlap_v1", False))
             and bool(spoken_mode)
             and mode_key == "fast"
             and bool(getattr(active_settings, "unified_turn_live_enabled", False))
@@ -5022,7 +5094,11 @@ class AgentIntelligence:
         # being asked; otherwise discard it and assemble for the real one.
         _context_prefetched = False
         _prefetched_turn_ctx = None
-        if _context_task is not None and _context_task_query == refined_query:
+        if (
+            _context_task is not None
+            and _context_task_query == refined_query
+            and (_context_task_inputs is None or _context_task_inputs == _context_inputs_fingerprint())
+        ):
             _prefetched_turn_ctx = await _context_task
             _context_prefetched = True
         else:
@@ -5687,6 +5763,8 @@ class AgentIntelligence:
         generation_started = time.monotonic()
 
         _mark("react_entry")
+        # From here tools can run, so nothing is served from the turn memo.
+        end_turn_memo()
         from app.services.canonical_cognitive_resolution import try_compiled_operational_read_turn
 
         _analytics_task_state = task_state if isinstance(task_state, dict) else _canonical_task_state
@@ -5774,9 +5852,14 @@ class AgentIntelligence:
             plan_runtime=_react_plan_runtime,
             conversation_history=prepared_context.messages,
             interrupt=live_interrupt,
-            # Spoken turns hear the answer while it is generated; text chat
-            # keeps the whole-call path.
-            stream_answer=bool(spoken_mode),
+            # The answer is shown (or spoken) while it is generated, whole
+            # sentences at a time, instead of after the whole model call
+            # returns. Text chat already emitted these exact words right after
+            # the call, through the same filters below; only the wait for the
+            # rest of the generation is gone. Tool rounds, the
+            # NEEDS_HUMAN_INPUT marker and non-OpenAI models keep the
+            # whole-call path inside the engine.
+            stream_answer=True,
         ):
             if event.kind == "routing_escalation":
                 esc = event.result if isinstance(event.result, dict) else {}

@@ -354,14 +354,16 @@ class ConversationStateService:
             return conv_id
         try:
             db = self._client(client)
-            owned = (
+            # Both round trips run off the event loop (they ran on it, in front
+            # of every text turn's first byte); the create guard stays on it.
+            owned = await run_io(
                 db.table("conversations")
                 .select("id")
                 .eq("id", conv_id)
                 .eq("org_id", org_id)
                 .eq("user_id", uid)
                 .limit(1)
-                .execute()
+                .execute
             )
             if owned.data:
                 return conv_id
@@ -369,19 +371,21 @@ class ConversationStateService:
             assert_conversation_create_allowed(org_id, actor_id=uid)
             now = datetime.now(timezone.utc).isoformat()
             safe_title = (title or "New conversation").strip()[:80] or "New conversation"
-            db.table("conversations").insert(
-                {
-                    "id": conv_id,
-                    "org_id": org_id,
-                    "user_id": uid,
-                    "title": safe_title,
-                    "preview": safe_title[:200],
-                    "message_count": 0,
-                    "task_state": dict(DEFAULT_TASK_STATE),
-                    "created_at": now,
-                    "updated_at": now,
-                }
-            ).execute()
+            await run_io(
+                db.table("conversations").insert(
+                    {
+                        "id": conv_id,
+                        "org_id": org_id,
+                        "user_id": uid,
+                        "title": safe_title,
+                        "preview": safe_title[:200],
+                        "message_count": 0,
+                        "task_state": dict(DEFAULT_TASK_STATE),
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                ).execute
+            )
             return conv_id
         except ConversationWriteBlockedError:
             raise

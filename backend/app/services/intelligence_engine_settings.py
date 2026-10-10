@@ -78,7 +78,17 @@ async def load_intelligence_engine_settings(
 ) -> IntelligenceEngineSettings:
     db = client or get_supabase_client(settings)
     try:
-        result = db.table("org_intelligence_engine_settings").select("*").eq("org_id", org_id).limit(1).execute()
+        from app.core.io_pool import run_io
+        from app.core.turn_read_memo import memo_read_async
+
+        # The same row is read several times per chat turn; one turn reads it
+        # once (app.core.turn_read_memo), off the event loop.
+        query = db.table("org_intelligence_engine_settings").select("*").eq("org_id", org_id).limit(1)
+        result = await memo_read_async(
+            ("org_intelligence_engine_settings:*", org_id),
+            db,
+            lambda: run_io(query.execute),
+        )
         if result.data:
             row = result.data[0]
             return IntelligenceEngineSettings(
