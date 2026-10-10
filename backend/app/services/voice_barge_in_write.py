@@ -87,9 +87,9 @@ def raise_if_speculative_blocks_invoke(action: str) -> None:
     READs stay allowed (side-effect free). A mutating invoke marks the run
     blocked, so it is never adopted, and fails like any refused write.
     """
-    from app.services.speculative_execution import current_scope
+    from app.services.speculative_execution import unadopted_scope
 
-    scope = current_scope()
+    scope = unadopted_scope()
     if scope is None or not action_is_mutating_write(action):
         return
     scope.mark_blocked(f"connector_write:{action}")

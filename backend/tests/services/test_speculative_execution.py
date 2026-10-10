@@ -305,3 +305,37 @@ class TestScopePropagationAndLifecycle:
         await task
         assert db.tables["conversations"][0]["task_state"]["rejected_options"] == ["early", "late"]
         assert current_scope() is None
+
+    @pytest.mark.asyncio
+    async def test_writes_made_during_the_replay_queue_behind_it(self):
+        """The producer resumes at adoption, before commit() has replayed the
+        deferred writes; a write it makes then must not overtake them."""
+        from app.services.speculative_execution import defer_if_speculative
+
+        scope = SpeculativeScope()
+        order: list[str] = []
+        release = asyncio.Event()
+
+        async def _older():
+            await release.wait()
+            order.append("older")
+
+        scope.defer("older", _older)
+        commit = asyncio.create_task(scope.commit())
+        await asyncio.sleep(0)
+        assert scope.flushing
+
+        def _producer_write():
+            if not defer_if_speculative("newer", order.append, "newer"):
+                order.append("newer")
+            # An adopted run may perform connector writes and approvals.
+            block_if_speculative("connector_write")
+
+        with speculative_scope(scope):
+            _producer_write()
+        release.set()
+        assert await commit == 2
+        assert order == ["older", "newer"]
+        assert not scope.flushing
+        with speculative_scope(scope):
+            assert current_scope() is None

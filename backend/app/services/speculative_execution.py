@@ -67,6 +67,10 @@ class SpeculativeScope:
     # (conversation_id, org_id) -> merged task_state the run would have stored.
     task_state_overlay: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
     _flushed: asyncio.Event | None = None
+    # True while commit() replays the deferred writes. The producer is already
+    # running again, so its writes keep queueing behind the replay instead of
+    # reaching the database ahead of older deferred ones.
+    flushing: bool = False
 
     # -- state -----------------------------------------------------------------
     @property
@@ -111,13 +115,14 @@ class SpeculativeScope:
             # Never replay the writes of a run that hit a refused side effect.
             raise SpeculativeSideEffectBlocked(self.blocked_reason or "blocked")
         self.adopted = True
+        self.flushing = True
         self._flushed = asyncio.Event()
-        pending, self.deferred = self.deferred, []
-        self.task_state_overlay.clear()
         token = _CURRENT.set(None)
         replayed = 0
         try:
-            for item in pending:
+            # Drain in order, including writes the producer queues meanwhile.
+            while self.deferred:
+                item = self.deferred.pop(0)
                 try:
                     if item.blocking:
                         await asyncio.to_thread(item.factory)
@@ -130,6 +135,8 @@ class SpeculativeScope:
                     logger.warning("speculative_deferred_write_failed label=%s error=%s", item.label, exc)
         finally:
             _CURRENT.reset(token)
+            self.flushing = False
+            self.task_state_overlay.clear()
             self._flushed.set()
         return replayed
 
@@ -150,7 +157,21 @@ _CURRENT: contextvars.ContextVar[SpeculativeScope | None] = contextvars.ContextV
 
 
 def current_scope() -> SpeculativeScope | None:
-    """The open speculative scope, or None (confirmed work, or an adopted run)."""
+    """The scope deferrable writes must queue on, or None (confirmed work, or
+    an adopted run whose deferred writes have all been replayed).
+
+    While an adopted run's deferred writes are still being replayed, its new
+    writes queue behind them so they land in call order.
+    """
+    scope = _CURRENT.get()
+    if scope is None or not (scope.active or scope.flushing):
+        return None
+    return scope
+
+
+def unadopted_scope() -> SpeculativeScope | None:
+    """The scope only while the run is still unconfirmed. Refused side effects
+    (connector writes, approvals) check this: an adopted run may do them."""
     scope = _CURRENT.get()
     if scope is None or not scope.active:
         return None
@@ -158,7 +179,7 @@ def current_scope() -> SpeculativeScope | None:
 
 
 def is_speculative() -> bool:
-    return current_scope() is not None
+    return unadopted_scope() is not None
 
 
 @contextmanager
@@ -228,7 +249,7 @@ def bind_scope(coro: Any) -> Any:
 
 def block_if_speculative(label: str) -> None:
     """Refuse a non-deferrable side effect (connector write, approval) while speculating."""
-    scope = current_scope()
+    scope = unadopted_scope()
     if scope is None:
         return
     scope.mark_blocked(label)
