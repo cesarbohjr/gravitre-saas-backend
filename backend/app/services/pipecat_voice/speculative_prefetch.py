@@ -216,6 +216,19 @@ class SpeculativePrefetchProcessor(FrameProcessor):
         return tuning.prefix_max_extra_words if tuning.prefix_adopt else 0
 
     def _maybe_start_speculative_generation(self) -> None:
+        """Start speculation without ever blocking the frame that triggered it.
+
+        Called before the eager/proposed-stop frame is pushed on: an error here
+        used to propagate out of process_frame, so the frame was never
+        forwarded and the turn lost its stop signal. Speculation is optional;
+        the frame is not.
+        """
+        try:
+            self._start_speculative_generation()
+        except Exception as exc:  # noqa: BLE001 - logged; the confirmed turn still runs fresh
+            logger.exception("pipecat_voice_speculative_generation_start_failed error=%s", exc)
+
+    def _start_speculative_generation(self) -> None:
         """Deepgram Flux's own 'probably done' signal — begin a real,
         cancelable reasoning call now, ahead of confirmed end-of-turn.
         """

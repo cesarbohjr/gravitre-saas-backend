@@ -434,9 +434,10 @@ def bench_patches() -> Iterator[None]:
     # and whether the confirmed turn adopted the run.
     real_start = speculative_prefetch.start_speculative_run
 
-    def _start(*, text: str, runner: Any, create_task: Any) -> Any:
+    def _start(*, text: str, runner: Any, create_task: Any, **kwargs: Any) -> Any:
+        # **kwargs: bounds/revision added by the production signature; passed through.
         if _CURRENT["run"] is None:
-            return real_start(text=text, runner=runner, create_task=create_task)
+            return real_start(text=text, runner=runner, create_task=create_task, **kwargs)
         rec = _current().rec
         info: dict[str, Any] = {"text": text, "started_at": rec.now(), "adopted": False, "call": None}
         rec.spec_runs.append(info)
@@ -446,7 +447,7 @@ def bench_patches() -> Iterator[None]:
             SPEC_RUN.set(info)
             return runner()
 
-        run = real_start(text=text, runner=_wrapped, create_task=create_task)
+        run = real_start(text=text, runner=_wrapped, create_task=create_task, **kwargs)
         run.bench_info = info
         return run
 

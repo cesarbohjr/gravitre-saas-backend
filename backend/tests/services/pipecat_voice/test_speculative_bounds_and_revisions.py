@@ -489,6 +489,22 @@ class TestProcessorWiring:
         coordinator.cancel()
 
 
+class TestStartFailureNeverDropsTheFrame:
+    @pytest.mark.asyncio
+    async def test_proposed_stop_is_forwarded_even_if_starting_the_run_fails(self):
+        coordinator = SpeculativeGenerationCoordinator()
+        proc = await _processor(SimpleNamespace(), coordinator)
+        await proc.process_frame(_interim("what is my revenue"), FrameDirection.DOWNSTREAM)
+        with patch(
+            "app.services.pipecat_voice.speculative_prefetch.start_speculative_run",
+            side_effect=TypeError("unexpected keyword argument 'bounds'"),
+        ):
+            frame = ProposedUserStoppedSpeakingFrame()
+            await proc.process_frame(frame, FrameDirection.DOWNSTREAM)
+        assert any(call.args and call.args[0] is frame for call in proc.push_frame.await_args_list)
+        assert coordinator.has_pending_run is False
+
+
 class TestRunnerScope:
     @pytest.mark.asyncio
     async def test_brain_runs_inside_the_scope_but_barge_in_bookkeeping_does_not(self):
