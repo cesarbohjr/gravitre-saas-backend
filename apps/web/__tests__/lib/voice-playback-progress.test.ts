@@ -35,13 +35,46 @@ describe("playback progress tracker", () => {
     expect(t.reports(5, { reason: "periodic" })[0].played_ms).toBe(1000)
   })
 
-  it("starts a newer reply where the older one's audio ends and finalises the older", () => {
+  it("starts a newer reply where the older one's audio ends and closes the older once played out", () => {
     const t = createPlaybackProgressTracker()
     t.noteReceived(1, 8000, 16000) // 0.5 s
     t.noteReceived(2, 16000, 16000) // 1.0 s, queued after reply 1
     const reports = t.reports(0.8, { reason: "periodic" })
-    // Reply 1 is final (newer audio arrived), so only reply 2 is reported.
-    expect(reports.map((r) => [r.reply_id, r.played_ms])).toEqual([[2, 300]])
+    // Reply 1 has played out: its last, cumulative report is final.
+    expect(reports.map((r) => [r.reply_id, r.played_ms, r.final])).toEqual([
+      [1, 500, true],
+      [2, 300, false],
+    ])
+    expect(t.reports(0.9, { reason: "periodic" }).map((r) => r.reply_id)).toEqual([2])
+  })
+
+  it("keeps reporting an older reply that is still playing when a newer one arrives", () => {
+    // Audit probe 2026-10-10: reply 1 reported at 100 ms, reply 2 queued while
+    // reply 1 had played 500 ms; reply 1 then vanished from every report.
+    const t = createPlaybackProgressTracker()
+    t.noteReceived(1, 32000, 16000) // 2.0 s
+    expect(t.reports(0.1, { reason: "periodic" })[0]).toMatchObject({ reply_id: 1, played_ms: 100 })
+    t.noteReceived(2, 16000, 16000) // queued after reply 1, which has played 0.5 s
+    const periodic = t.reports(0.5, { reason: "periodic" })
+    expect(periodic.map((r) => [r.reply_id, r.played_ms, r.final])).toEqual([
+      [1, 500, false],
+      [2, 0, false],
+    ])
+    const cut = t.reports(1.2, { reason: "barge_in", interrupted: true })
+    expect(cut.map((r) => [r.reply_id, r.played_ms, r.interrupted, r.final])).toEqual([
+      [1, 1200, true, true],
+      [2, 0, true, true],
+    ])
+  })
+
+  it("never evicts an open reply while a closed one can go", () => {
+    const t = createPlaybackProgressTracker()
+    t.noteReceived(1, 1600, 16000) // 0.1 s
+    for (const id of [2, 3, 4]) t.noteReceived(id, 16000, 16000)
+    t.reports(0.2, { reason: "periodic" }) // reply 1 played out: final
+    t.noteReceived(5, 16000, 16000)
+    const ids = t.reports(0.3, { reason: "periodic" }).map((r) => r.reply_id)
+    expect(ids).toEqual([2, 3, 4, 5])
   })
 
   it("finalises on interruption and does not report the same reply twice", () => {

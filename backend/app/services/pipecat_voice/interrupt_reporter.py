@@ -30,6 +30,7 @@ from app.services.pipecat_voice.voice_reply_playback import (
     ANSWER,
     NOTHING_HEARD_MARKER,
     TRUNCATION_MARKER,
+    UNCONFIRMED_MARKER,
     ReplyPlayback,
     disconnect_heard_offset,
     normalize_segment_kind,
@@ -75,6 +76,7 @@ def resolve_heard_answer(
     *,
     offset: int | None = None,
     grounded: bool = False,
+    exposure_unknown: bool = False,
 ) -> tuple[str, dict[str, Any]]:
     """The assistant text to store for a cut reply, and how it was derived.
 
@@ -109,7 +111,13 @@ def resolve_heard_answer(
         )
     truncated = ctx.still_generating or len(text.strip()) < len((answer_full or "").strip())
     meta["answer_truncated"] = bool(truncated)
-    if grounded and truncated:
+    if grounded and exposure_unknown:
+        # No playback evidence: what was sent is kept, marked as unconfirmed,
+        # so the next turn does not take it as heard.
+        text = f"{text.strip()} {UNCONFIRMED_MARKER}" if text.strip() else UNCONFIRMED_MARKER
+        meta["exposure"] = "unknown"
+        meta["truncation_marked"] = True
+    elif grounded and truncated:
         text = f"{text.strip()} {TRUNCATION_MARKER}" if text.strip() else NOTHING_HEARD_MARKER
         meta["truncation_marked"] = True
     return text, meta
@@ -286,10 +294,13 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             server_text=reply.answer_text_upto(offset),
             still_generating=still_generating,
         )
-        text, resolved = resolve_heard_answer(heard, offset=offset, grounded=True)
+        exposure_unknown = meta.get("heard_source") == "unknown"
+        text, resolved = resolve_heard_answer(
+            heard, offset=offset, grounded=True, exposure_unknown=exposure_unknown
+        )
         meta.update(resolved)
         meta["reply_id"] = reply_id
-        if not resolved.get("answer_truncated"):
+        if not resolved.get("answer_truncated") and not exposure_unknown:
             meta["action"] = "heard_in_full"
             return meta
         turn = self._snapshot_turn()
@@ -544,9 +555,15 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 reported = await tracker.wait_for_client_report(heard.reply_id)
             except Exception:  # noqa: BLE001
                 reported = None
-        meta: dict[str, Any] = {"heard_source": "server_estimate"}
+        meta: dict[str, Any] = {"heard_source": "unknown"}
         offset: int | None = None
+        exposure_unknown = True
+        if reply is not None and reply.client_reports and reply.client_played_ms is not None and reported is None:
+            # No report for the cut itself, but periodic ones arrived: at
+            # least that much was played.
+            reported = reply
         if reported is not None and reply is not None and reported.client_played_ms is not None:
+            exposure_unknown = False
             offset, method = reply.char_offset_for_played_ms(reported.client_played_ms)
             if heard.server_offset is not None:
                 # Audio cannot be played before it was sent: the server estimate
@@ -560,7 +577,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                     "sent_audio_ms": int(round(reply.sent_audio_ms)),
                 }
             )
-        text, resolved = resolve_heard_answer(heard, offset=offset, grounded=True)
+        text, resolved = resolve_heard_answer(
+            heard, offset=offset, grounded=True, exposure_unknown=exposure_unknown
+        )
         meta.update(resolved)
         logger.info(
             "pipecat_interrupted_heard_resolved reply_id=%s source=%s played_ms=%s chars=%s",
