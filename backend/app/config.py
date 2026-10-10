@@ -780,9 +780,8 @@ class Settings(BaseSettings):
             "voice_speculative_max_buffer_events",
         ),
     )
-    # Versioned request revisions: speculative adoption bound to transcript,
-    # conversation, pending-task, approval and context versions, with a
-    # stricter transcript check (default OFF).
+    # Retired: strict speculative adoption (versioned request revisions) is
+    # always on. Kept so an existing VOICE_REQUEST_REVISIONS_V1 still parses.
     voice_request_revisions_v1: bool = Field(
         default=False,
         validation_alias=AliasChoices("VOICE_REQUEST_REVISIONS_V1", "voice_request_revisions_v1"),

@@ -19,6 +19,10 @@ from app.services.pipecat_voice.speculative_generation import (
     SpeculativeGenerationCoordinator,
     start_speculative_run,
 )
+from tests.services.pipecat_voice.speculation_helpers import (
+    adoptable,
+    confirmed_turn_sees_matching_versions,
+)
 
 
 def _text_delta(text: str) -> AssistantStreamEvent:
@@ -73,12 +77,12 @@ class TestMatchingSpeculativeRunIsAdoptedInsteadOfARefreshCall:
             runner=lambda: _events(_text_delta("Four.")),
             create_task=asyncio.ensure_future,
         )
-        coordinator.set_run(run)
+        coordinator.set_run(adoptable(run))
         await run.task
 
         service, display, tts = _service(coordinator)
 
-        with patch(
+        with confirmed_turn_sees_matching_versions(), patch(
             "app.operators.agent_intelligence.get_agent_intelligence",
         ) as mock_get_intel:
             mock_get_intel.return_value.execute_task_streaming = AsyncMock(
@@ -111,11 +115,13 @@ class TestMatchingSpeculativeRunIsAdoptedInsteadOfARefreshCall:
         run = start_speculative_run(
             text="what is two plus two", runner=_events_seq, create_task=asyncio.ensure_future
         )
-        coordinator.set_run(run)
+        coordinator.set_run(adoptable(run))
         await run.task
 
         service, display, tts = _service(coordinator)
-        with patch("app.operators.agent_intelligence.get_agent_intelligence") as mock_get_intel:
+        with confirmed_turn_sees_matching_versions(), patch(
+            "app.operators.agent_intelligence.get_agent_intelligence"
+        ) as mock_get_intel:
             mock_get_intel.return_value.execute_task_streaming = AsyncMock(
                 side_effect=AssertionError("must not be called")
             )

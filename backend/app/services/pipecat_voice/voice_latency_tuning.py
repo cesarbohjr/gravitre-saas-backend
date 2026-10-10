@@ -68,8 +68,14 @@ def resolve_voice_speculative_bounds(settings: Any) -> Any:
 
 
 def voice_request_revisions_enabled(settings: Any) -> bool:
-    """Versioned request revisions + strict adoption (default off)."""
-    return bool(getattr(settings, "voice_request_revisions_v1", False))
+    """Versioned request revisions + strict adoption: always on.
+
+    Was voice_request_revisions_v1 (default off). A speculative answer is only
+    safe to adopt under the strict contract, so it no longer depends on a
+    setting; the variable is ignored.
+    """
+    del settings
+    return True
 
 
 def resolve_voice_tts_chunk_tuning(settings: Any) -> VoiceTtsChunkTuning:

@@ -51,6 +51,7 @@ from app.services.pipecat_voice.speculative_generation import (
     SpeculativeGenerationCoordinator,
     SpeculativeGenerationRun,
     load_revision_versions,
+    with_turn_inputs,
     start_speculative_run,
 )
 from app.services.pipecat_voice.voice_latency_tuning import (
@@ -143,8 +144,8 @@ class SpeculativePrefetchProcessor(FrameProcessor):
         spec_tuning = resolve_voice_speculative_tuning(app_settings)
         self._spec_tuning = spec_tuning
         self._min_chars = spec_tuning.min_chars if spec_tuning.v2_enabled else min_chars
-        # Always-on run bounds, and (behind voice_request_revisions_v1)
-        # versioned request revisions with the strict adoption check.
+        # Always-on run bounds, versioned request revisions and the strict
+        # adoption check.
         self._spec_bounds = resolve_voice_speculative_bounds(app_settings)
         self._revisions_v1 = voice_request_revisions_enabled(app_settings)
         self._last_partial = ""
@@ -311,6 +312,14 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                     history_summary=history_summary,
                 )
             turn_inputs = await self._turn_inputs_provider(query) if self._turn_inputs_provider is not None else {}
+            if run_holder and run_holder[0].versions is not None:
+                run_holder[0].versions = with_turn_inputs(
+                    run_holder[0].versions,
+                    org_id=self._org_id,
+                    user_id=self._user_id,
+                    agent_id=str(self._agent.get("id") or "") or None,
+                    turn_inputs=turn_inputs,
+                )
             # Same helper and inputs as the confirmed turn (adopt-on-match parity).
             spec_tier, spec_mode = resolve_voice_turn_routing(query, history=history or None)
             if run_holder:

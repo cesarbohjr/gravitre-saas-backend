@@ -65,7 +65,7 @@ import json
 import re
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any
 
 from app.core.logging import get_logger
@@ -80,13 +80,22 @@ logger = get_logger(__name__)
 _DONE = object()
 
 
+# A number keeps the punctuation that carries its meaning: sign, currency,
+# decimal point, time and date separators, percent. Thousands commas go.
+_NUMBER_RE = re.compile(r"[-+]?[$€£]?\d[\d,]*(?:[.:/]\d+)*%?")
+_TOKEN_RE = re.compile(r"[-+]?[$€£]?\d[\d,]*(?:[.:/]\d+)*%?|\w+")
+
+
 def _normalize_for_match(text: str) -> str:
     """Whitespace/case/punctuation-insensitive comparison — Deepgram framing
     can differ trivially between an interim partial and the final transcript
     without the underlying words actually differing.
+
+    Punctuation inside a number is kept: "1.5" and "1 5", "-5" and "5",
+    "10/12" and "10 12" are different requests.
     """
-    cleaned = re.sub(r"[^\w\s]", " ", (text or "").strip().casefold())
-    return " ".join(cleaned.split())
+    tokens = _TOKEN_RE.findall((text or "").strip().casefold())
+    return " ".join(tok.replace(",", "") if _NUMBER_RE.fullmatch(tok) else tok for tok in tokens)
 
 
 def _word_prefix_extra(norm_spec: str, norm_final: str) -> list[str] | None:
@@ -108,7 +117,8 @@ def _word_prefix_extra(norm_spec: str, norm_final: str) -> list[str] | None:
 # Trailing phrases that never change what was asked. Anything else after the
 # speculative text (a qualifier, a negation, a new constraint, a correction)
 # rejects adoption. Kept deliberately small: a miss costs one fresh call, a
-# false accept answers a different question.
+# false accept answers a different question. ("again" is not inert: it can
+# ask for a repeat of the action.)
 _INERT_TAIL_PHRASES: tuple[tuple[str, ...], ...] = (
     ("thank", "you"),
     ("thanks",),
@@ -117,7 +127,6 @@ _INERT_TAIL_PHRASES: tuple[tuple[str, ...], ...] = (
     ("for", "me"),
     ("real", "quick"),
     ("quickly",),
-    ("again",),
     ("ok",),
     ("okay",),
     ("um",),
@@ -280,6 +289,13 @@ class RevisionVersions:
     pending_task_version: str
     approval_version: str
     context_version: str
+    # False when the state could not be read: unknown never matches anything,
+    # not even another unknown.
+    known: bool = True
+    # Who asks, and the prompt (instructions, retrieved knowledge, injection
+    # notes) the answer was produced under; set once the turn inputs exist.
+    principal_version: str = ""
+    prompt_version: str = ""
 
 
 def compute_revision_versions(
@@ -321,7 +337,39 @@ def compute_revision_versions(
         pending_task_version=_digest({"pending_task": pending, "plan": state.get("current_plan")}),
         approval_version=_digest(approval),
         context_version=_digest(context),
+        known=not bool(state.get("_unavailable")),
     )
+
+
+def with_turn_inputs(
+    versions: RevisionVersions,
+    *,
+    org_id: str | None,
+    user_id: str | None,
+    agent_id: str | None,
+    turn_inputs: dict[str, Any] | None,
+) -> RevisionVersions:
+    """Bind the principal and the prompt the brain is about to run under."""
+    return replace(
+        versions,
+        principal_version=_digest({"org": org_id, "user": user_id, "agent": agent_id}),
+        prompt_version=_digest(turn_inputs or {}),
+    )
+
+
+async def load_revision_task_state(
+    settings: Any, *, org_id: str, conversation_id: str | None
+) -> dict[str, Any] | None:
+    """The task_state revisions are computed from; ``{"_unavailable": True}`` on a failed read."""
+    if not (conversation_id and org_id):
+        return None
+    try:
+        from app.services.conversation_state_service import get_conversation_state_service
+
+        return await get_conversation_state_service(settings).get_task_state(conversation_id, org_id)
+    except Exception as exc:  # noqa: BLE001 - an unknown state never matches anything
+        logger.debug("speculative_revision_state_unavailable error=%s", exc)
+        return {"_unavailable": True}
 
 
 async def load_revision_versions(
@@ -333,15 +381,7 @@ async def load_revision_versions(
     history_summary: str | None,
 ) -> RevisionVersions:
     """Read task_state (one small query, off the loop) and fingerprint it."""
-    task_state: dict[str, Any] | None = None
-    if conversation_id and org_id:
-        try:
-            from app.services.conversation_state_service import get_conversation_state_service
-
-            task_state = await get_conversation_state_service(settings).get_task_state(conversation_id, org_id)
-        except Exception as exc:  # noqa: BLE001 - an unknown state never matches a known one
-            logger.debug("speculative_revision_state_unavailable error=%s", exc)
-            task_state = {"_unavailable": True}
+    task_state = await load_revision_task_state(settings, org_id=org_id, conversation_id=conversation_id)
     return compute_revision_versions(
         conversation_id=conversation_id,
         task_state=task_state,
@@ -794,7 +834,16 @@ class SpeculativeGenerationCoordinator:
                 return f"newer_revision:{why}"
         if run.versions is None or versions is None:
             return "versions_unbound"
-        for name in ("conversation_id", "pending_task_version", "approval_version", "context_version"):
+        if not run.versions.known or not versions.known:
+            return "versions_unknown"
+        for name in (
+            "conversation_id",
+            "principal_version",
+            "prompt_version",
+            "pending_task_version",
+            "approval_version",
+            "context_version",
+        ):
             if getattr(run.versions, name) != getattr(versions, name):
                 return f"version_mismatch:{name}"
         return None

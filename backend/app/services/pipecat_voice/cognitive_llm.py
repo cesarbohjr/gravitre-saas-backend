@@ -39,7 +39,9 @@ from app.services.pipecat_voice.backchannel_classifier import (
 from app.services.pipecat_voice.llm_context_utils import messages_from_context as _messages_from_context
 from app.services.pipecat_voice.speculative_generation import (
     SpeculativeGenerationCoordinator,
-    load_revision_versions,
+    compute_revision_versions,
+    load_revision_task_state,
+    with_turn_inputs,
 )
 from app.services.speculative_execution import SpeculativeSideEffectBlocked
 from app.services.pipecat_voice.spoken_stream_filter import SpokenMarkdownStreamFilter
@@ -828,6 +830,16 @@ class GravitreCognitiveLLMService(LLMService):
             )
             return
         intelligence = get_agent_intelligence()
+        coordinator = self._speculative_coordinator
+        revision_state: asyncio.Task[Any] | None = None
+        if coordinator is not None and coordinator.has_pending_run and intent is not InterruptIntent.EXPLAIN:
+            # The state a speculative run must still match before adoption,
+            # read alongside the prompt build instead of after it.
+            revision_state = asyncio.create_task(
+                load_revision_task_state(
+                    self._app_settings, org_id=self._org_id, conversation_id=self._conversation_id
+                )
+            )
         turn_inputs = await self.shared_turn_inputs(user_text)
         if trace is not None:
             trace.note("prompt_ready")
@@ -964,16 +976,21 @@ class GravitreCognitiveLLMService(LLMService):
         coordinator = self._speculative_coordinator
         revisions_v1 = voice_request_revisions_enabled(self._app_settings)
         confirmed_versions = None
-        if coordinator is not None and revisions_v1 and coordinator.has_pending_run:
-            # voice_request_revisions_v1: the run may be adopted only if the
-            # conversation, pending task, approval state and context it was
-            # produced under are still what this confirmed turn sees.
-            confirmed_versions = await load_revision_versions(
-                self._app_settings,
+        if coordinator is not None and revision_state is not None and coordinator.has_pending_run:
+            # The run may be adopted only if the conversation, principal,
+            # prompt, pending task, approval state and context it was produced
+            # under are still what this confirmed turn sees.
+            confirmed_versions = with_turn_inputs(
+                compute_revision_versions(
+                    conversation_id=self._conversation_id,
+                    task_state=await revision_state,
+                    history=history,
+                    history_summary=self._durable_summary,
+                ),
                 org_id=self._org_id,
-                conversation_id=self._conversation_id,
-                history=history,
-                history_summary=self._durable_summary,
+                user_id=self._user_id,
+                agent_id=str((self._agent or {}).get("id") or "") or None,
+                turn_inputs=turn_inputs,
             )
         speculative_run = (
             coordinator.adopt(

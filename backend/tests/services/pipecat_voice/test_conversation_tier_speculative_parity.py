@@ -29,6 +29,7 @@ from app.services.pipecat_voice.speculative_generation import (
     start_speculative_run,
 )
 from app.services.pipecat_voice.speculative_prefetch import SpeculativePrefetchProcessor
+from tests.services.pipecat_voice.speculation_helpers import state_reads_return_nothing
 
 DURABLE = [
     {"role": "user", "content": "morning!"},
@@ -63,16 +64,23 @@ async def _speculate(text: str, coordinator: SpeculativeGenerationCoordinator, c
     async def _durable():
         return list(DURABLE), None, "conv-1"
 
+    async def _turn_inputs(_query: str) -> dict[str, Any]:
+        # What the confirmed service's shared_turn_inputs returns here (the
+        # prompt build has no database): the same prompt on both sides.
+        return {"assistant_base_prompt": None}
+
+    # Same socket identity as the confirmed service: adoption binds it.
     proc = SpeculativePrefetchProcessor(
         app_settings=SimpleNamespace(),
-        org_id="org-1",
-        user_id="user-1",
-        agent={"id": "agent-1"},
+        org_id="00000000-0000-4000-8000-000000000001",
+        user_id="00000000-0000-4000-8000-000000000002",
+        agent={},
         conversation_id="conv-1",
         speculative_coordinator=coordinator,
         min_chars=3,
         llm_context=_Ctx(SOCKET_PRIOR),
         durable_context_provider=_durable,
+        turn_inputs_provider=_turn_inputs,
     )
     await BaseObject.setup(proc, TaskManager())
     proc.push_frame = AsyncMock()
@@ -126,7 +134,9 @@ async def test_speculative_and_confirmed_turn_compute_the_same_tier(text, expect
     calls: list[tuple[str, list | None, Any, str]] = []
     captured: dict[str, Any] = {}
     coordinator = SpeculativeGenerationCoordinator()
-    with patch.object(operator_task_intent, "resolve_voice_turn_routing", _recording_router(calls)):
+    with state_reads_return_nothing(), patch.object(
+        operator_task_intent, "resolve_voice_turn_routing", _recording_router(calls)
+    ):
         await _speculate(text, coordinator, captured)
         service = _confirmed_service(coordinator)
         with patch("app.operators.agent_intelligence.get_agent_intelligence") as mock_get_intel:
