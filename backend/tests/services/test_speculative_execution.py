@@ -357,13 +357,16 @@ class TestScopePropagationAndLifecycle:
         """Async writes that reach the scope after the replay finished run in
         call order, and wait_flushed() covers them, so a later direct write
         never overtakes them and teardown does not drop them."""
+        import threading
+
         scope = SpeculativeScope()
         await scope.commit()
         order: list[str] = []
-        release = asyncio.Event()
+        # Late writes run on their own thread and loop: use a thread-safe gate.
+        release = threading.Event()
 
         async def _first():
-            await release.wait()
+            await asyncio.to_thread(release.wait)
             order.append("first")
 
         async def _second():
@@ -372,10 +375,10 @@ class TestScopePropagationAndLifecycle:
         scope.defer("first", _first)
         scope.defer("second", _second)
         waiter = asyncio.create_task(scope.wait_flushed())
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.05)
         assert not waiter.done()
         release.set()
-        await waiter
+        await asyncio.wait_for(waiter, 5)
         assert order == ["first", "second"]
 
         with speculative_scope(scope):
@@ -394,6 +397,66 @@ class TestScopePropagationAndLifecycle:
         scope.defer("sync", lambda: seen.append(threading.get_ident()), blocking=True)
         await scope.wait_flushed()
         assert len(seen) == 1 and seen[0] != loop_thread
+
+
+    @pytest.mark.asyncio
+    async def test_late_write_from_another_event_loop_is_still_awaited(self):
+        """A late write deferred on the bridge loop is covered by wait_flushed()
+        on the voice loop, so a later direct write cannot overtake it."""
+        import threading
+
+        scope = SpeculativeScope()
+        await scope.commit()
+        order: list[str] = []
+        release = threading.Event()
+
+        async def _slow():
+            await asyncio.to_thread(release.wait)
+            order.append("bridge")
+
+        def _bridge():
+            async def _defer_on_other_loop():
+                scope.defer("bridge", _slow)
+
+            asyncio.run(_defer_on_other_loop())
+
+        t = threading.Thread(target=_bridge, daemon=True)
+        t.start()
+        try:
+            t.join(5)
+            assert not t.is_alive(), "the bridge loop must not wait on the late write"
+            waiter = asyncio.create_task(scope.wait_flushed())
+            await asyncio.sleep(0.05)
+            assert not waiter.done()
+        finally:
+            release.set()
+        await asyncio.wait_for(waiter, 5)
+        with speculative_scope(scope):
+            await run_or_defer("direct", lambda: _append_async(order, "direct"))
+        assert order == ["bridge", "direct"]
+
+    def test_concurrent_late_writes_are_never_dropped(self):
+        import threading
+
+        scope = SpeculativeScope()
+        asyncio.run(scope.commit())
+        written: list[int] = []
+        lock = threading.Lock()
+
+        def _write(i: int) -> None:
+            with lock:
+                written.append(i)
+
+        for _ in range(20):
+            threads = [
+                threading.Thread(target=scope.defer, args=(f"w{i}", lambda i=i: _write(i))) for i in range(25)
+            ]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+        assert scope._late_idle.wait(5)
+        assert len(written) == 500
 
 
 async def _append_async(order: list[str], value: str) -> None:

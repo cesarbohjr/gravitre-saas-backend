@@ -75,10 +75,15 @@ class SpeculativeScope:
     # Guards deferred/flushing: writers on worker threads can defer while the
     # replay is finishing on the event loop.
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
-    # Writes that reach the scope after the replay finished, drained in call
-    # order by one task so wait_flushed() also covers them.
+    # Writes that reach the scope after the replay finished. One worker thread
+    # drains them in call order, whichever thread or event loop deferred them,
+    # and _late_idle lets wait_flushed() (on any loop) wait for it.
     _late: list[_Deferred] = field(default_factory=list, repr=False, compare=False)
-    _late_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
+    _late_draining: bool = field(default=False, repr=False, compare=False)
+    _late_idle: threading.Event = field(default_factory=threading.Event, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        self._late_idle.set()
 
     # -- state -----------------------------------------------------------------
     @property
@@ -115,39 +120,34 @@ class SpeculativeScope:
         self._write_late(_Deferred(label=label, factory=factory, blocking=blocking))
 
     def _write_late(self, item: _Deferred) -> None:
+        with self._lock:
+            self._late.append(item)
+            if not self._late_draining:
+                self._late_draining = True
+                self._late_idle.clear()
+                threading.Thread(target=self._drain_late, name="speculative-late-writes", daemon=True).start()
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
         except RuntimeError:
-            loop = None
-        if loop is None:
-            # Worker thread with no event loop: run it to completion here.
-            token = _CURRENT.set(None)
+            # Worker thread: the writer would have written inline, so wait for it.
+            self._late_idle.wait()
+
+    def _drain_late(self) -> None:
+        while True:
+            with self._lock:
+                if not self._late:
+                    # Cleared under the lock, so a concurrent _write_late either
+                    # appended before this check or starts a fresh drain.
+                    self._late_draining = False
+                    self._late_idle.set()
+                    return
+                item = self._late.pop(0)
             try:
                 result = item.factory()
                 if inspect.isawaitable(result):
                     asyncio.run(result)
             except Exception as exc:  # noqa: BLE001 - same fail-open as the writers themselves
                 logger.warning("speculative_late_write_failed label=%s error=%s", item.label, exc)
-            finally:
-                _CURRENT.reset(token)
-            return
-        with self._lock:
-            self._late.append(item)
-            if self._late_task is not None and not self._late_task.done():
-                return
-            self._late_task = loop.create_task(self._drain_late())
-
-    async def _drain_late(self) -> None:
-        token = _CURRENT.set(None)
-        try:
-            while True:
-                with self._lock:
-                    if not self._late:
-                        return
-                    item = self._late.pop(0)
-                await self._run_item(item)
-        finally:
-            _CURRENT.reset(token)
 
     @staticmethod
     async def _run_item(item: _Deferred) -> bool:
@@ -166,9 +166,8 @@ class SpeculativeScope:
     async def wait_flushed(self) -> None:
         if self._flushed is not None:
             await self._flushed.wait()
-        task = self._late_task
-        if task is not None and not task.done() and task.get_loop() is asyncio.get_running_loop():
-            await asyncio.shield(task)
+        if not self._late_idle.is_set():
+            await asyncio.to_thread(self._late_idle.wait)
 
     async def commit(self) -> int:
         """Adopt: replay every deferred write in order, outside the scope.
