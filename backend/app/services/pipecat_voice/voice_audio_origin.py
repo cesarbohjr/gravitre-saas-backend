@@ -44,13 +44,27 @@ def is_echo_of(
     words = _speech_words(heard)
     if len(words) < max(_ECHO_MIN_WORDS, min_words):
         return False
-    bot_words = [w for text in spoken for w in _speech_words(text)]
-    if not bot_words:
+    # A genuine correction often repeats words from the assistant's sentence.
+    # Never suppress an explicit correction/stop as echo on lexical overlap alone.
+    if words[0] in {"actually", "no", "stop", "wait", "instead", "but"}:
         return False
-    bot_pairs = set(zip(bot_words, bot_words[1:]))
-    pairs = list(zip(words, words[1:]))
-    matched = sum(1 for pair in pairs if pair in bot_pairs)
-    return matched / len(pairs) >= min_overlap
+
+    # Match a continuous excerpt from ONE spoken segment. Counting unordered
+    # bigrams across 15 seconds of speech can incorrectly swallow a user who
+    # reuses familiar phrases in a different order.
+    for segment in spoken:
+        bot_words = _speech_words(segment)
+        if len(bot_words) < 3:
+            continue
+        for start in range(len(bot_words)):
+            matched = 0
+            for left, right in zip(words, bot_words[start:]):
+                if left != right:
+                    break
+                matched += 1
+            if matched >= 3 and matched / len(words) >= min_overlap:
+                return True
+    return False
 
 _current_origin: ContextVar[str] = ContextVar("gravitre_audio_origin", default=USER_MIC)
 _current_turn_state: ContextVar[str] = ContextVar("gravitre_turn_state", default=LISTENING)
