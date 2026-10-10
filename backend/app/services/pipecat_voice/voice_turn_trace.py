@@ -485,7 +485,7 @@ def build_turn_record(turn: _TurnTimes) -> dict[str, Any]:
         "extra": {
             **turn.extra,
             "first_audio_kind": first_speech.get("first_audio_kind"),
-            "first_audio_by_kind_e2e_ms": dict(first_speech.get("by_kind_e2e_ms") or {}),
+            "first_audio_by_kind_e2e_ms": safe_normalize_stored_dict(first_speech.get("by_kind_e2e_ms")),
             "speculative_outcome": turn.speculative_outcome,
             "speculation": dict(turn.speculation) or None,
             "effective_mode": turn.intelligence.get("effectiveMode"),
@@ -510,7 +510,7 @@ def first_speech_slo_sample(record: dict[str, Any]) -> tuple[int, dict[str, Any]
     ms = first.get("slo_ms")
     if ms is None:
         return None
-    by_kind = dict(first.get("by_kind_e2e_ms") or {})
+    by_kind = safe_normalize_stored_dict(first.get("by_kind_e2e_ms"))
     extra: dict[str, Any] = {"first_audio_kind": first.get("first_audio_kind"), "slo_basis": "first_answer_audio"}
     if first.get("first_audio_kind") == "unlabelled":
         extra["slo_basis"] = "first_audio_unlabelled"
