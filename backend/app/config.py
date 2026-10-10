@@ -837,6 +837,28 @@ class Settings(BaseSettings):
             "voice_interrupt_intents_v1",
         ),
     )
+    # The browser reports how much of each reply it actually played
+    # (playback.progress). On a barge-in the stored assistant message is cut to
+    # the answer text that was played, mapped from played audio ms through the
+    # reply's word timings, and marked as cut so the model knows the rest was not
+    # heard. Without a report the server-side estimate is used, as before.
+    voice_playback_grounded_history_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_PLAYBACK_GROUNDED_HISTORY_V1",
+            "voice_playback_grounded_history_v1",
+        ),
+    )
+    # Reconnect the ElevenLabs websocket when it has been idle for the expiry
+    # (45 s) and is no longer open, so the next reply does not pay the connect.
+    # A healthy socket is never torn down (Pipecat's keepalive holds it open).
+    voice_tts_idle_refresh_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_TTS_IDLE_REFRESH_V1",
+            "voice_tts_idle_refresh_v1",
+        ),
+    )
     # Run context assembly concurrently with the unified-turn LIVE pass instead of
     # after it. LIVE is discarded on ~48% of turns (read/connector tool defer),
     # and on a measured spoken tool turn its 3.9s stacked in front of a 4.5s

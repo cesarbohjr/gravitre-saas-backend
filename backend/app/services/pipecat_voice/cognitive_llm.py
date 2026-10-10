@@ -49,6 +49,12 @@ from app.services.pipecat_voice.voice_latency_tuning import (
     resolve_voice_tts_chunk_tuning,
     voice_request_revisions_enabled,
 )
+from app.services.pipecat_voice.voice_reply_playback import (
+    ANSWER,
+    FILLER,
+    PROGRESS,
+    strip_non_answer_speech,
+)
 from app.services.pipecat_voice.voice_silence_guard import (
     ACK_DUE,
     SILENCE_TICK,
@@ -343,6 +349,9 @@ class GravitreCognitiveLLMService(LLMService):
         # When the current (or last) confirmed turn started, monotonic: a
         # "cancel it" reports the write effects recorded since then.
         self._turn_started_mono: float | None = None
+        # voice_reply_playback.VoicePlaybackTracker, set by pipeline.py: knows
+        # which spoken sentences were filler or tool narration.
+        self._playback_tracker: Any | None = None
 
     async def _apply_tier_voice(self, tier: str | None) -> None:
         """Livelier delivery for light turns, steadier for deep (stability only).
@@ -450,7 +459,8 @@ class GravitreCognitiveLLMService(LLMService):
     def _durable_rows(self) -> list[dict[str, Any]]:
         """Seed plus rows persisted since; merged with the socket by merge_durable_and_socket_history."""
         return [dict(m) for m in self._durable_history] + [
-            {**dict(m), "_live": True} for m in self._durable_live_rows
+            {**{k: v for k, v in dict(m).items() if k != "_id"}, "_live": True}
+            for m in self._durable_live_rows
         ]
 
     async def _refresh_durable_tail(self) -> None:
@@ -473,8 +483,46 @@ class GravitreCognitiveLLMService(LLMService):
             role = str(row.get("role") or "")
             content = str(row.get("content") or "")
             if role in {"user", "assistant"} and content.strip():
-                self._durable_live_rows.append({"role": role, "content": content})
+                live = {"role": role, "content": content}
+                if row.get("id"):
+                    live["_id"] = str(row.get("id"))
+                self._durable_live_rows.append(live)
         self._durable_live_rows = self._durable_live_rows[-96:]
+
+    def patch_live_assistant_row(self, message_id: str, content: str) -> None:
+        """A barge-in rewrote a stored assistant row: update the cached copy.
+
+        Live rows are read once (by creation time), so a completed reply that
+        was cached before the user cut it in would keep its full, unheard text
+        in every later turn's history.
+        """
+        if not message_id:
+            return
+        for row in self._durable_live_rows:
+            if row.get("_id") == message_id and row.get("role") == "assistant":
+                row["content"] = content
+
+    def _strip_spoken_fillers(self, history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Drop filler and tool narration from the socket's assistant messages.
+
+        The in-socket context is built from the words the TTS spoke, so it
+        holds "Sure, let me look." and "Let me check your CRM." as if they were
+        part of the answer; the stored rows do not. Only text this socket spoke
+        as filler/progress is removed.
+        """
+        tracker = self._playback_tracker
+        phrases = tracker.non_answer_phrases() if tracker is not None else []
+        if not phrases:
+            return history
+        cleaned: list[dict[str, Any]] = []
+        for message in history or []:
+            if str(message.get("role") or "") == "assistant":
+                text = strip_non_answer_speech(str(message.get("content") or ""), phrases)
+                if not text.strip():
+                    continue
+                message = {**message, "content": text}
+            cleaned.append(message)
+        return cleaned
 
     def _load_rows_since(self, conversation_id: str, watermark: str | None) -> list[dict[str, Any]]:
         from app.workflows.repository import get_supabase_client
@@ -482,7 +530,7 @@ class GravitreCognitiveLLMService(LLMService):
         query = (
             get_supabase_client(self._app_settings)
             .table("conversation_messages")
-            .select("role,content,created_at")
+            .select("id,role,content,created_at")
             .eq("conversation_id", conversation_id)
         )
         if watermark:
@@ -619,7 +667,9 @@ class GravitreCognitiveLLMService(LLMService):
         await self._refresh_durable_tail()
         if trace is not None:
             trace.note("durable_ready")
-        history = self._merge_durable_and_socket_history(self._durable_rows(), history)
+        history = self._merge_durable_and_socket_history(
+            self._durable_rows(), self._strip_spoken_fillers(history)
+        )
         user_text = reconstitute_spoken_identity_fields(user_text)
         carried, self._carry_user_text = self._carry_user_text, None
         revisable, self._revisable_user_text = self._revisable_user_text, None
@@ -711,7 +761,8 @@ class GravitreCognitiveLLMService(LLMService):
                 await task
             except TurnGuardrailBlocked as blocked:
                 logger.info("pipecat_voice_guardrail_blocked org_id=%s kind=%s", self._org_id, blocked.kind)
-                await self._speak_narration(blocked.spoken)
+                # The refusal is this turn's answer.
+                await self._speak_narration(blocked.spoken, kind=ANSWER)
                 return True
             return False
         # `normalize_spoken_text` forces sentence-terminal punctuation onto
@@ -746,6 +797,9 @@ class GravitreCognitiveLLMService(LLMService):
         # tool's tool-input-available and tool-output-available, logged per
         # call so the next probe can name the slow tool instead of the round.
         tool_call_started_at: dict[str, float] = {}
+        # Evidence for TTS chunking: answer sentences released while a tool
+        # call of this turn was still running (none are held for tools today).
+        answer_chunks_while_tool_pending = 0
         first_delta_at: float | None = None
         first_speakable_chunk_at: float | None = None
         tts_requested_at: float | None = None
@@ -908,7 +962,7 @@ class GravitreCognitiveLLMService(LLMService):
                     ack = pick_deep_acknowledgement(self._last_ack)
                     self._last_ack = ack
                     logger.info("pipecat_voice_deep_ack org_id=%s", self._org_id)
-                    await self._speak_narration(ack)
+                    await self._speak_narration(ack, kind=FILLER)
                 continue
             if event is SILENCE_TICK:
                 due = slow_tool_notices.due(
@@ -1014,7 +1068,7 @@ class GravitreCognitiveLLMService(LLMService):
             if client_delta:
                 await self.push_frame(
                     OutputTransportMessageUrgentFrame(
-                        message={"type": "assistant_text", "delta": client_delta}
+                        message={"type": "assistant_text", "delta": client_delta, "kind": ANSWER}
                     )
                 )
             text_buffer += delta
@@ -1031,9 +1085,14 @@ class GravitreCognitiveLLMService(LLMService):
                         first_speakable_chunk_at = time.perf_counter()
                         if trace is not None:
                             trace.note("first_speakable", first_speakable_chunk_at)
+                    if tool_call_started_at:
+                        answer_chunks_while_tool_pending += 1
                     await self._push_spoken_text(spoken)
                     if tts_requested_at is None:
                         tts_requested_at = time.perf_counter()
+        if trace is not None:
+            trace.add_extra("answer_chunks_while_tool_pending", answer_chunks_while_tool_pending)
+            trace.add_extra("tool_calls", len(tool_names_by_call_id))
         # A stream that produced no events (or was stopped) still settles the guard.
         if guard_task is not None and await _guard_refused():
             await self.stop_ttfb_metrics()
@@ -1312,23 +1371,27 @@ class GravitreCognitiveLLMService(LLMService):
         if pending:
             await self.push_frame(
                 OutputTransportMessageUrgentFrame(
-                    message={"type": "assistant_text", "delta": pending}
+                    message={"type": "assistant_text", "delta": pending, "kind": ANSWER}
                 )
             )
 
-    async def _speak_narration(self, text: str) -> None:
+    async def _speak_narration(self, text: str, kind: str = PROGRESS) -> None:
         """Phase 2 (conversational-realism): speak one real milestone sentence.
 
         Goes through the same security gate + normalization as every other
         piece of spoken output (``_sanitize_for_tts``), and through the same
         text-delta transport frame so the live transcript shows exactly what
         was said — narration is not a side channel, it is real turn content.
+
+        ``kind`` labels the segment: ``progress`` for tool narration (the
+        default), ``filler`` for an acknowledgement, ``answer`` for a spoken
+        refusal. Latency metrics and the heard-text history read the label.
         """
         if not text:
             return
         await self.push_frame(
             OutputTransportMessageUrgentFrame(
-                message={"type": "assistant_text", "delta": text + " "}
+                message={"type": "assistant_text", "delta": text + " ", "kind": kind}
             )
         )
         spoken = self._sanitize_for_tts(text)

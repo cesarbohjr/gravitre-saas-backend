@@ -331,6 +331,6 @@ def test_gate_is_wired_ahead_of_every_transcript_reader_and_silence_is_never_ans
     source = inspect.getsource(pipeline_module.build_pipecat_voice_task)
     listing = source[source.index("pipeline = Pipeline(") :]
     gate = listing.index("UtteranceGateProcessor(")
-    assert listing.index("stt,") < gate < listing.index("TranscriptRelayProcessor()")
+    assert listing.index("stt,") < gate < listing.index("TranscriptRelayProcessor(")
     assert gate < listing.index("speculative,") < listing.index("user_agg,")
     assert 'user_params_kwargs["empty_user_turn"] = None' in source

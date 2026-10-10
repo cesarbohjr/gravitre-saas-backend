@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pipecat.frames.frames import Frame, TTSTextFrame
+from pipecat.frames.frames import Frame, OutputAudioRawFrame, TTSTextFrame
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
 from app.core.logging import get_logger
@@ -73,14 +73,38 @@ class SpokenTextLedger:
 
 
 class SpokenTextTapProcessor(FrameProcessor):
-    """Pass-through processor recording TTSTextFrame text into a ledger."""
+    """Pass-through processor recording TTSTextFrame text into a ledger.
 
-    def __init__(self, ledger: SpokenTextLedger, **kwargs: Any) -> None:
+    With a ``playback`` tracker (voice_reply_playback.VoicePlaybackTracker) it
+    also records, per reply, the audio that left the output transport (the
+    output transport pushes each audio frame downstream once it was written)
+    and where each timed word fell in that audio. That is what maps the
+    browser's played milliseconds back to text, and what tells filler audio
+    from answer audio for first-speech latency.
+    """
+
+    def __init__(self, ledger: SpokenTextLedger, *, playback: Any | None = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._ledger = ledger
+        self._playback = playback
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
         if isinstance(frame, TTSTextFrame):
-            self._ledger.append(str(getattr(frame, "text", None) or ""))
+            text = str(getattr(frame, "text", None) or "")
+            self._ledger.append(text)
+            if self._playback is not None and direction == FrameDirection.DOWNSTREAM:
+                try:
+                    self._playback.note_spoken_word(text)
+                except Exception:  # noqa: BLE001 - accounting must never break playback
+                    logger.debug("spoken_tap_playback_word_failed", exc_info=True)
+        elif (
+            self._playback is not None
+            and isinstance(frame, OutputAudioRawFrame)
+            and direction == FrameDirection.DOWNSTREAM
+        ):
+            try:
+                self._playback.note_audio_frame(frame)
+            except Exception:  # noqa: BLE001
+                logger.debug("spoken_tap_playback_audio_failed", exc_info=True)
         await self.push_frame(frame, direction)

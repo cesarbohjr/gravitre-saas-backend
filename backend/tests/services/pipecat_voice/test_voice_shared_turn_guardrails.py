@@ -54,7 +54,7 @@ def _drive(guard: Any) -> dict[str, Any]:
     async def _push_llm_text(text: str) -> None:
         seen["spoken"].append(text)
 
-    async def _narrate(text: str) -> None:
+    async def _narrate(text: str, kind: str = "progress") -> None:
         seen["narration"].append(text)
 
     service.push_frame = AsyncMock(side_effect=_push_frame)
