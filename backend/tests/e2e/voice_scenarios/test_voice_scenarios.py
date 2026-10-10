@@ -77,6 +77,32 @@ def test_scenario_runs_once(bench: dict[str, Any], scenario_id: str) -> None:
     bench["results"][scenario_id] = m
 
 
+def test_barge_in_sends_playback_report_when_grounded_history_is_on(bench: dict[str, Any]) -> None:
+    """The modelled browser reports the cut reply's playback, as the web hook does."""
+    from app.config import get_settings
+
+    key = "VOICE_PLAYBACK_GROUNDED_HISTORY_V1"
+    saved = os.environ.get(key)
+    try:
+        settings = bench["harness"].build_settings({key: "true"})
+        (scenario,) = bench["scenarios"].get_scenarios(["S4"])
+        result = bench["harness"].run_scenario(scenario, seed=1234, settings=settings)
+        assert result.error is None, result.error
+        reports = [r for sock in result.run.sockets for _, r in sock.browser.reports_sent]
+        assert reports, "no playback.progress report at the barge-in"
+        assert all(r["interrupted"] and r["played_ms"] <= r["received_ms"] for r in reports)
+        m = bench["metrics"].run_metrics(result)
+        assert m["error"] is None
+        assert isinstance(m["history_matches_heard"], bool)
+    finally:
+        if saved is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = saved
+        get_settings.cache_clear()
+        bench["settings"] = bench["harness"].build_settings()
+
+
 def test_report_renders(bench: dict[str, Any]) -> None:
     per_scenario = bench["results"]
     if not per_scenario:

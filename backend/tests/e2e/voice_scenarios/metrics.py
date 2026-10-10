@@ -18,7 +18,16 @@ import math
 from collections import Counter
 from typing import Any
 
+from app.services.pipecat_voice.voice_reply_playback import NOTHING_HEARD_MARKER, TRUNCATION_MARKER
 from tests.e2e.voice_scenarios.fakes import norm_words
+
+
+def _stored_words(content: str) -> list[str]:
+    """Words of a stored assistant message, without the cut markers
+    (voice_playback_grounded_history_v1), which are notes to the model, not speech."""
+    for marker in (TRUNCATION_MARKER, NOTHING_HEARD_MARKER):
+        content = content.replace(marker, " ")
+    return norm_words(content)
 
 
 def _ms(value: float | None) -> float | None:
@@ -145,7 +154,7 @@ def run_metrics(result: Any) -> dict[str, Any]:
     m["writes_blocked"] = sum(1 for w in run.rec.writes if not w["committed"])
 
     rows = run.db.tables.get("conversation_messages", [])[run.seed_rows :]
-    persisted = [w for row in rows if row.get("role") == "assistant" for w in norm_words(str(row.get("content") or ""))]
+    persisted = [w for row in rows if row.get("role") == "assistant" for w in _stored_words(str(row.get("content") or ""))]
     heard_all = _heard_words(run, kept, {"filler", "progress", "answer"})
     heard_answer = _heard_words(run, kept, {"answer"})
     unheard_persisted = len(persisted) - _matched(persisted, heard_all)

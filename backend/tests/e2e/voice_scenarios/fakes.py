@@ -215,6 +215,11 @@ class BrowserPlaybackModel:
       the lead by 60 ms up to 320 ms (the jitter buffer's real constants).
     - ``network_s`` is a fixed one-way delay applied to every message (0 by
       default: the network is not modelled).
+    - When ``session.ready`` turns on ``playback_grounded_history_v1``, a real
+      barge-in (not a ``speech_stop``) sends the interrupted reply's
+      ``playback.progress`` report (played / received ms) before the flush, as
+      the web hook does. The periodic reports are not modelled: only the one
+      at the cut feeds the history rewrite.
     """
 
     def __init__(self, recorder: Recorder, *, initial_lead_s: float = 0.12, network_s: float = 0.0) -> None:
@@ -231,6 +236,11 @@ class BrowserPlaybackModel:
         self.dropped: list[dict[str, Any]] = []
         self.messages: list[tuple[float, dict[str, Any]]] = []
         self.interrupts: list[tuple[float, dict[str, Any]]] = []
+        # Browser -> server channel (set by FakeClientWebSocket) and whether the
+        # server asked for playback reports.
+        self.client_send: Any = None
+        self.playback_reports = False
+        self.reports_sent: list[tuple[float, dict[str, Any]]] = []
 
     def _now(self) -> float:
         return self.rec.now() + self.network_s
@@ -240,8 +250,12 @@ class BrowserPlaybackModel:
         kind = str(msg.get("type") or "")
         if kind != "audio":
             self.messages.append((now, msg))
+        if kind == "session.ready":
+            self.playback_reports = msg.get("playback_grounded_history_v1") is True
         if kind == "speech.interrupted":
             rid = msg.get("reply_id")
+            if isinstance(rid, int) and msg.get("intent") != "speech_stop":
+                self._report_playback(rid, now)
             if isinstance(rid, int):
                 self.cut = max(self.cut if self.cut is not None else -1, rid)
             self.interrupts.append((now, msg))
@@ -282,6 +296,25 @@ class BrowserPlaybackModel:
         self.next_time = entry["end"]
         self.chunks.append(entry)
 
+    def _report_playback(self, reply_id: int, now: float) -> None:
+        """The interrupted reply's played / received audio, before the flush."""
+        if not self.playback_reports or self.client_send is None:
+            return
+        mine = [c for c in self.chunks if c.get("reply_stamp") == reply_id]
+        played = sum(max(0.0, min(c["played_end"], now) - c["start"]) for c in mine)
+        received = sum(c["dur"] for c in mine)
+        report = {
+            "type": "playback.progress",
+            "reply_id": reply_id,
+            "received_ms": round(received * 1000),
+            "played_ms": round(min(played, received) * 1000),
+            "interrupted": True,
+            "final": True,
+            "reason": "interrupted",
+        }
+        self.reports_sent.append((now, report))
+        self.client_send(report)
+
     def _flush(self, now: float) -> None:
         for c in self.chunks:
             if c["start"] >= now:
@@ -307,6 +340,7 @@ class FakeClientWebSocket:
         self._inbound: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
         self.ready = asyncio.Event()
         self.sent: list[tuple[float, dict[str, Any]]] = []
+        browser.client_send = self.client_send
 
     async def receive(self) -> dict[str, Any]:
         return await self._inbound.get()
