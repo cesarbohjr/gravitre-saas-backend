@@ -247,6 +247,30 @@ class TestOwnVoiceEcho:
         await strategy.cleanup()
 
     @pytest.mark.asyncio
+    async def test_correction_repeating_bot_words_is_not_dropped_as_echo(self):
+        from app.services.pipecat_voice.voice_audio_origin import VoicePipelineSession
+
+        session = VoicePipelineSession()
+        session.note_bot_speech("Let me check your website traffic in Google Analytics.")
+        strategy, recorder = await _make_strategy(voice_session=session)
+
+        await strategy.process_frame(BotStartedSpeakingFrame())
+        await strategy.process_frame(ProposedUserStartedSpeakingFrame())
+        await strategy.process_frame(_transcription("actually check your website traffic in Google Analytics"))
+
+        assert recorder.turn_started_calls[0].enable_interruptions is True
+        assert recorder.reset_aggregation_calls == 0
+        await strategy.cleanup()
+
+    def test_echo_match_requires_contiguous_order_within_one_utterance(self):
+        from app.services.pipecat_voice.voice_audio_origin import is_echo_of
+
+        spoken = ["check your website traffic", "show your website visitors"]
+        assert is_echo_of("check your website traffic", spoken)
+        assert not is_echo_of("check your website visitors", spoken)
+        assert not is_echo_of("actually check your website traffic", spoken)
+
+    @pytest.mark.asyncio
     async def test_wordless_start_waits_for_words_while_bot_speaks(self):
         strategy, recorder = await _make_strategy(grace_period_s=0.05, max_wordless_wait_s=0.4)
 
