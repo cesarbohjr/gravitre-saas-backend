@@ -84,8 +84,12 @@ VOICE_NO_VOLUNTEERED_DATA_NOTE = (
 
 _CONTINUES_PREVIOUS_RE = re.compile(
     r"(?i)^\s*(?:and|also|plus|but|with|without|for|to|or|then|cc|bcc|including|except|"
-    r"only|just|in|on|from|by|via|about|same|make\s+it|over|during|since|between)\b"
+    r"only|just|in|on|from|by|via|about|same|make\s+it|over|during|since|between|"
+    r"(?:can|could|would|will)\s+you\s+(?:also|then)|do\s+(?:it|that|this|the\s+same))\b"
 )
+# "also", "too" or "as well" anywhere ("can you cc Mike too") ties the
+# utterance to the request it interrupted.
+_ADDS_TO_PREVIOUS_RE = re.compile(r"(?i)\b(?:also|too|as\s+well|instead)\b")
 _STANDALONE_ASK_RE = re.compile(
     r"(?i)^\s*(?:who|what|which|when|where|why|how|can|could|would|will|do|does|did|is|are|"
     r"show|tell|create|send|draft|find|list|give|pull|check|schedule|book|add|update)\b"
@@ -99,7 +103,7 @@ def _replaces_unanswered_turn(text: str) -> bool:
     owns the Acme account?" is a different question and must be answered as
     asked, not glued onto the request it interrupted.
     """
-    if _CONTINUES_PREVIOUS_RE.match(text):
+    if _CONTINUES_PREVIOUS_RE.match(text) or _ADDS_TO_PREVIOUS_RE.search(text):
         return False
     from app.services.conversation_tier import _content_tier
 

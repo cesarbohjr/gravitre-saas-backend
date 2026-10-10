@@ -11,6 +11,8 @@ def test_shared_http_options_use_http1_pool() -> None:
     assert isinstance(http, httpx.Client)
     assert http._transport._pool._http2 is False  # noqa: SLF001
     assert http._transport._pool._http1 is True  # noqa: SLF001
+    assert http._transport._pool._keepalive_expiry == 30.0  # noqa: SLF001
+    assert http._transport._pool._max_connections == 100  # noqa: SLF001
 
 
 def test_shared_service_client_is_built_with_http1(monkeypatch) -> None:

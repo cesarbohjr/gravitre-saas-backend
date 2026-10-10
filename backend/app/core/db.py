@@ -41,9 +41,10 @@ def shared_http_options() -> ClientOptions:
     http = httpx.Client(
         http2=False,
         timeout=_SHARED_HTTP_TIMEOUT,
-        limits=_SHARED_HTTP_LIMITS,
         follow_redirects=True,
-        transport=httpx.HTTPTransport(retries=2),
+        # A custom transport ignores the client's own limits/http2 arguments,
+        # so the pool settings go on the transport itself.
+        transport=httpx.HTTPTransport(retries=2, http2=False, limits=_SHARED_HTTP_LIMITS),
     )
     return ClientOptions(httpx_client=http)
 

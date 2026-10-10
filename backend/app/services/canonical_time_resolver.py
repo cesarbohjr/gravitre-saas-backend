@@ -71,7 +71,9 @@ class TimeWindow:
         }
 
 
-def time_window_from_mapping(payload: dict[str, Any] | None) -> TimeWindow | None:
+def time_window_from_mapping(payload: dict[str, Any] | TimeWindow | None) -> TimeWindow | None:
+    if isinstance(payload, TimeWindow):
+        return payload
     if not isinstance(payload, dict):
         return None
     start_raw = str(payload.get("start") or payload.get("start_iso") or "").strip()

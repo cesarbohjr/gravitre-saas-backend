@@ -176,6 +176,12 @@ def test_a_fragment_still_completes_the_cancelled_request() -> None:
     assert text == "what's my website traffic, for last month"
 
 
+def test_question_shaped_continuations_still_complete_the_cancelled_request() -> None:
+    for follow in ("can you also cc Mike", "do it for last month", "could you send it to Jo too"):
+        text, _history = merge_unanswered_turn("Email Sarah the deck from yesterday", follow, HISTORY)
+        assert text.startswith("Email Sarah the deck from yesterday"), follow
+
+
 def test_reporter_tracks_the_thinking_window() -> None:
     import asyncio
 
