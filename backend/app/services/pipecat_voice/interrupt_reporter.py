@@ -466,6 +466,11 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         barge-in is recognized: a write commit check in this process sees it
         even while the TTS cancel or the Redis write are still in flight.
         """
+        cancel_work = getattr(self._voice_session, "cancel_turn_work", None)
+        if callable(cancel_work):
+            # The interrupted turn's own token: unlike the marker below, the
+            # next turn or a reconnect never releases it.
+            cancel_work("barge_in")
         if not turn.org_id or not turn.conversation_id:
             return False
         from app.services.chat_turn_cancel_service import arm_local_stop

@@ -35,6 +35,16 @@ class _SilenceTick:
 SILENCE_TICK = _SilenceTick()
 
 
+class _TurnCancelled:
+    __slots__ = ()
+
+    def __repr__(self) -> str:  # pragma: no cover - debugging aid
+        return "TURN_CANCELLED"
+
+
+TURN_CANCELLED = _TurnCancelled()
+
+
 def slow_tool_notice_seconds(settings: Any) -> float:
     """Seconds of silence during an open tool call before a spoken notice (0 disables)."""
     raw = getattr(settings, "voice_slow_tool_notice_seconds", None)
@@ -43,19 +53,41 @@ def slow_tool_notice_seconds(settings: Any) -> float:
     return max(0.0, float(raw))
 
 
-async def with_silence_ticks(source: AsyncIterator[Any], *, interval_s: float) -> AsyncIterator[Any]:
-    """Yield every event from ``source``, plus ``SILENCE_TICK`` after each quiet interval."""
+async def with_silence_ticks(
+    source: AsyncIterator[Any],
+    *,
+    interval_s: float,
+    cancelled: asyncio.Event | None = None,
+) -> AsyncIterator[Any]:
+    """Yield every event from ``source``, plus ``SILENCE_TICK`` after each quiet interval.
+
+    When ``cancelled`` is set, ``TURN_CANCELLED`` is yielded at once, even in
+    the middle of a silent tool call, so the turn can stop without waiting
+    for the next event or tick.
+    """
     it = source.__aiter__()
-    if interval_s <= 0:
+    if interval_s <= 0 and cancelled is None:
         async for event in it:
             yield event
         return
     pending: asyncio.Future[Any] | None = None
+    cancel_wait: asyncio.Future[Any] | None = (
+        asyncio.ensure_future(cancelled.wait()) if cancelled is not None else None
+    )
     try:
         while True:
             if pending is None:
                 pending = asyncio.ensure_future(it.__anext__())
-            done, _ = await asyncio.wait({pending}, timeout=interval_s)
+            waiting = {pending} if cancel_wait is None else {pending, cancel_wait}
+            done, _ = await asyncio.wait(
+                waiting,
+                timeout=interval_s if interval_s > 0 else None,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if cancel_wait is not None and cancel_wait in done:
+                cancel_wait = None
+                yield TURN_CANCELLED
+                continue
             if not done:
                 yield SILENCE_TICK
                 continue
@@ -66,6 +98,8 @@ async def with_silence_ticks(source: AsyncIterator[Any], *, interval_s: float) -
                 return
             yield event
     finally:
+        if cancel_wait is not None:
+            cancel_wait.cancel()
         if pending is not None:
             pending.cancel()
             with contextlib.suppress(BaseException):

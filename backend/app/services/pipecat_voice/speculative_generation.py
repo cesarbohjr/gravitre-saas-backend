@@ -70,6 +70,7 @@ from typing import Any
 
 from app.core.logging import get_logger
 from app.services.speculative_execution import SpeculativeScope, speculative_scope
+from app.services.turn_cancellation import TurnCancellation, bound_turn_cancellation
 
 logger = get_logger(__name__)
 
@@ -429,6 +430,8 @@ class SpeculativeGenerationRun:
     latency_marks: dict[str, Any] = field(default_factory=dict)
     # Side-effect ledger: deferred durable writes, refused side effects.
     scope: SpeculativeScope = field(default_factory=SpeculativeScope)
+    # The run's own work token; the turn that adopts it links it to its own.
+    cancellation: TurnCancellation = field(default_factory=TurnCancellation)
     bounds: SpeculativeBounds = field(default_factory=SpeculativeBounds)
     started_at: float = field(default_factory=time.monotonic)
     ended_at: float | None = None
@@ -486,6 +489,8 @@ class SpeculativeGenerationRun:
             self._timer = None
         if outcome != "adopted":
             self.dropped_writes = self.scope.discard()
+            # A worker thread of the run outlives the task cancel below.
+            self.cancellation.cancel(f"speculative_{outcome}")
             if not self.task.done() and self.task is not _current_task():
                 self.task.cancel()
             # Release a producer paused on the buffer cap so its cancellation lands.
@@ -568,7 +573,8 @@ async def _drive_into_queue(
     run: SpeculativeGenerationRun | None = None,
 ) -> None:
     scope = run.scope if run is not None else SpeculativeScope()
-    with speculative_scope(scope):
+    cancellation = run.cancellation if run is not None else None
+    with speculative_scope(scope), bound_turn_cancellation(cancellation):
         try:
             async for event in runner():
                 if run is not None:

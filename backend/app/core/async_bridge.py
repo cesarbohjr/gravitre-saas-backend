@@ -64,10 +64,12 @@ def run_coro_sync(coro: Coroutine[Any, Any, T], *, timeout: float | None = None)
 
     bridge = _ensure_bridge_loop()
     # The bridge loop does not inherit this thread's context; keep a
-    # speculative voice run's dry-run scope attached to the work it awaits.
+    # speculative voice run's dry-run scope, and a voice turn's cancellation,
+    # attached to the work it awaits.
     from app.services.speculative_execution import bind_scope
+    from app.services.turn_cancellation import bind_cancellation
 
-    future = asyncio.run_coroutine_threadsafe(bind_scope(coro), bridge)
+    future = asyncio.run_coroutine_threadsafe(bind_scope(bind_cancellation(coro)), bridge)
     return future.result(timeout=timeout)
 
 
@@ -149,8 +151,11 @@ def spawn_background(coro: Coroutine[Any, Any, Any]) -> "asyncio.Future[Any] | a
         dropped.cancel()
         return dropped
     from app.services.speculative_execution import bind_scope
+    from app.services.turn_cancellation import bind_cancellation
 
-    return asyncio.run_coroutine_threadsafe(bind_scope(coro), _ensure_background_loop())
+    return asyncio.run_coroutine_threadsafe(
+        bind_scope(bind_cancellation(coro)), _ensure_background_loop()
+    )
 
 
 def is_resource_unavailable(exc: BaseException) -> bool:

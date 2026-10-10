@@ -61,6 +61,7 @@ from app.services.pipecat_voice.voice_reply_playback import (
 from app.services.pipecat_voice.voice_silence_guard import (
     ACK_DUE,
     SILENCE_TICK,
+    TURN_CANCELLED,
     SlowToolNotices,
     deep_ack_seconds,
     pick_deep_acknowledgement,
@@ -80,6 +81,7 @@ from app.services.voice_session_service import (
     split_speakable_chunks,
 )
 from app.services.chat_turn_cancel_service import is_stop_requested
+from app.services.turn_cancellation import TurnCancellation, bound_turn_cancellation
 
 logger = get_logger(__name__)
 
@@ -426,6 +428,8 @@ class GravitreCognitiveLLMService(LLMService):
         # own, so cancelling the turn does not stop it: the turn ending, for
         # any reason, cancels it (see _release_adopted_run).
         self._adopted_run: Any | None = None
+        # The current turn's TurnCancellation (process_frame).
+        self._turn_work: TurnCancellation | None = None
         # How a silenced reply's result was delivered: None (not yet), "spoken"
         # or "visible" (see _resume_speech_for_result).
         self._result_delivery: str | None = None
@@ -649,10 +653,18 @@ class GravitreCognitiveLLMService(LLMService):
             self._tts_text_pending = False
             self._result_delivery = None
             self._answer_spoken = False
+            # This turn's own work token. A barge-in, "cancel it" or a
+            # correction cancels it; later turns get a new one and never
+            # un-cancel it, so a straggling worker of this turn stays refused.
+            turn_work = TurnCancellation()
+            self._turn_work = turn_work
+            if session is not None:
+                session.bind_turn_work(turn_work)
             try:
                 await self.start_processing_metrics()
                 self._turn_brain_marks = []
-                await self._run_gravitre_turn(frame.context)
+                with bound_turn_cancellation(turn_work):
+                    await self._run_gravitre_turn(frame.context)
             except _TurnYieldedToUser as yielded:
                 # Nothing of the fragment was said or shown. It is answered
                 # together with what the user says next, as one request.
@@ -1019,6 +1031,8 @@ class GravitreCognitiveLLMService(LLMService):
         if speculative_run is not None:
             adopted_run = speculative_run
             self._adopted_run = adopted_run
+            if self._turn_work is not None:
+                self._turn_work.link(adopted_run.cancellation)
 
             async def _adopted_events():
                 # Durable writes the run deferred while speculative land now,
@@ -1036,7 +1050,11 @@ class GravitreCognitiveLLMService(LLMService):
         # (honestly) that it is still running instead of leaving the line quiet.
         notice_interval_s = slow_tool_notice_seconds(self._app_settings)
         slow_tool_notices = SlowToolNotices(notice_interval_s)
-        events_source = with_silence_ticks(events_source, interval_s=notice_interval_s)
+        events_source = with_silence_ticks(
+            events_source,
+            interval_s=notice_interval_s,
+            cancelled=self._turn_work.waiter() if self._turn_work is not None else None,
+        )
         # Medium and deep turns run the pipeline before their first token: if
         # nothing has been said shortly after the turn is confirmed, acknowledge
         # it. Light turns and backing off ("never mind") are answered at once.
@@ -1064,6 +1082,15 @@ class GravitreCognitiveLLMService(LLMService):
             # audio pacing of every live session. Check off-loop, at most every
             # STOP_POLL_INTERVAL_S (barge-in also cancels this task directly).
             now = time.perf_counter()
+            if event is TURN_CANCELLED or (self._turn_work is not None and self._turn_work.cancelled):
+                # Cancelled in-process (barge-in, "cancel it" while thinking):
+                # no store read needed, so checked on every event.
+                logger.info(
+                    "pipecat_voice_turn_work_cancelled org_id=%s reason=%s",
+                    self._org_id,
+                    self._turn_work.reason,
+                )
+                break
             poll_stop = now - last_stop_poll >= STOP_POLL_INTERVAL_S
             if poll_stop:
                 last_stop_poll = now
