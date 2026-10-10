@@ -837,6 +837,19 @@ class Settings(BaseSettings):
             "voice_interrupt_intents_v1",
         ),
     )
+    # While a user turn that overlaps the bot's speech is being classified
+    # (backchannel / echo / real interruption), the client is told to duck the
+    # reply's audio (speech.duck) instead of playing it at full level, and to
+    # restore it (speech.unduck) when the overlap turns out not to be an
+    # interruption. A real interruption still cuts via speech.interrupted.
+    # Off: nothing is sent and the reply plays at full level until resolved.
+    voice_overlap_duck_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_OVERLAP_DUCK_V1",
+            "voice_overlap_duck_v1",
+        ),
+    )
     # A committed final that is syntactically incomplete ("I want to check",
     # "...and the", "um") holds the turn's first spoken output for a short,
     # bounded window. If the user resumes inside it the fragment is not

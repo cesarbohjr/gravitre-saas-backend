@@ -196,6 +196,9 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         self._interim_text = ""
         # voice_session.filler_finals_dropped when the pending start opened.
         self._filler_drops_at_start = 0
+        # voice_overlap_duck_v1: the client was told to duck the reply's audio
+        # while this pending start is classified.
+        self._ducked = False
 
     def _intents_enabled(self) -> bool:
         return bool(getattr(self._gravitre_settings, "voice_interrupt_intents_v1", False))
@@ -206,6 +209,9 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
 
     async def handle_user_turn_started(self):
         """A turn just opened (resolved by us or adopted elsewhere) - clear per-turn state."""
+        if self._ducked:
+            # Adopted elsewhere while ducked: never leave the reply ducked.
+            await self._send_duck(False)
         await self._cancel_grace_task()
         self._pending = False
         self._buffer_text = ""
@@ -423,6 +429,38 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
     def _assistant_thinking(self) -> bool:
         return bool(getattr(self._voice_session, "assistant_generating", False))
 
+    async def _send_duck(self, ducked: bool) -> None:
+        """voice_overlap_duck_v1: tell the client to duck / restore the reply's audio."""
+        self._ducked = ducked
+        handler = getattr(self._voice_session, "speech_duck_handler", None)
+        if not callable(handler):
+            return
+        try:
+            await handler(ducked)
+        except Exception as exc:  # noqa: BLE001 - ducking is cosmetic; never block the turn
+            logger.warning("voice_turn_taking_duck_failed ducked=%s error=%s", ducked, exc)
+
+    async def trigger_user_turn_started(
+        self,
+        *,
+        enable_interruptions: bool | None = None,
+        enable_user_speaking_frames: bool | None = None,
+    ):
+        if self._ducked:
+            interrupts = (
+                self._enable_interruptions if enable_interruptions is None else enable_interruptions
+            )
+            if interrupts:
+                # speech.interrupted cuts the reply and resets the client's gain.
+                self._ducked = False
+            else:
+                # Backchannel, echo, speech-hold: the reply goes on at full level.
+                await self._send_duck(False)
+        await super().trigger_user_turn_started(
+            enable_interruptions=enable_interruptions,
+            enable_user_speaking_frames=enable_user_speaking_frames,
+        )
+
     async def _begin_pending_classification(self, *, thinking: bool = False):
         self._pending = True
         self._pending_thinking = thinking
@@ -430,6 +468,14 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         self._interim_text = ""
         self._filler_drops_at_start = self._filler_drop_count()
         self._pending_started_at = time.monotonic()
+        if (
+            self._bot_speaking
+            and not self._ducked
+            and getattr(self._gravitre_settings, "voice_overlap_duck_v1", False) is True
+        ):
+            # Lower the reply while the overlap is classified instead of
+            # playing it at full level for the whole wordless wait.
+            await self._send_duck(True)
         await self._cancel_grace_task()
         self._grace_task = self.create_task(
             self._grace_timeout_handler(), f"{self}::backchannel_grace_window"

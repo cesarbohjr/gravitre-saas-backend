@@ -188,6 +188,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         if voice_session is not None:
             voice_session.answer_expected = self.answer_expected
             voice_session.speech_stop_handler = self.silence_current_reply
+            voice_session.speech_duck_handler = self.send_speech_duck
 
     @property
     def assistant_turn_live(self) -> bool:
@@ -689,6 +690,23 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("pipecat_stop_marker_release_failed error=%s", str(exc))
+
+    async def send_speech_duck(self, ducked: bool) -> None:
+        """Tell the client to duck (or restore) the current reply's audio.
+
+        voice_overlap_duck_v1: sent while an overlapping user turn is being
+        classified. Audio is untouched here; the browser lowers its output gain.
+        A real interruption still ends with speech.interrupted, which resets it.
+        """
+        reply_id = getattr(self._voice_session, "reply_id", None)
+        message: dict[str, Any] = {"type": "speech.duck" if ducked else "speech.unduck"}
+        if isinstance(reply_id, int):
+            message["reply_id"] = reply_id
+        logger.info("pipecat_speech_duck ducked=%s reply_id=%s", ducked, reply_id)
+        await self.push_frame(
+            OutputTransportMessageUrgentFrame(message=message),
+            FrameDirection.DOWNSTREAM,
+        )
 
     async def silence_current_reply(self) -> bool:
         """Silence this reply ("stop talking") and keep the work behind it running.

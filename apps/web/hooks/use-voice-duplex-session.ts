@@ -59,6 +59,7 @@ import {
   createVoicePcmPlayer,
   type VoicePcmPlayer,
 } from "@/lib/voice-pcm-player"
+import { createOverlapDuckState } from "@/lib/voice-overlap-duck"
 import {
   PLAYBACK_PROGRESS_INTERVAL_MS,
   assistantTextKind,
@@ -328,6 +329,12 @@ export function useVoiceDuplexSession(options: Options) {
   // they belong to; frames of an interrupted reply are dropped by that id,
   // and the time window above only covers servers that send no id.
   const interruptedReplyIdRef = useRef<number | null>(null)
+  // voice_overlap_duck_v1: the reply is ducked while the server classifies a
+  // user turn that overlaps it (speech.duck / speech.unduck).
+  const overlapDuckRef = useRef(createOverlapDuckState())
+  const endOverlapDuck = () => {
+    if (overlapDuckRef.current.reset()) pcmPlayerRef.current?.setDuck(false)
+  }
   // The current reply was silenced by a "stop talking" (speech_stop) while its
   // text keeps streaming: no HTTP TTS fallback may speak it again.
   const speechMutedRef = useRef(false)
@@ -470,6 +477,8 @@ export function useVoiceDuplexSession(options: Options) {
     // Short fade-out in the player rather than a hard stop: cutting a waveform
     // mid-cycle is itself a click.
     pcmPlayerRef.current?.flush()
+    // The flush also restores the player's gain, so no duck is left pending.
+    overlapDuckRef.current.reset()
     // The player's played count restarts at the flush; so does the timeline.
     playbackTrackerRef.current.reset()
     pcmBlockedQueueRef.current = []
@@ -1406,6 +1415,7 @@ export function useVoiceDuplexSession(options: Options) {
       lastUserFinalRef.current = ""
       // Reply ids restart with every server session.
       interruptedReplyIdRef.current = null
+      overlapDuckRef.current = createOverlapDuckState()
       playbackTrackerRef.current = createPlaybackProgressTracker()
       playbackReportsEnabledRef.current = false
       stopPlaybackReportTimer()
@@ -1565,6 +1575,18 @@ export function useVoiceDuplexSession(options: Options) {
           optsRef.current.onAssistantNotice?.({ kind: noticeKind, text, replyId })
           return
         }
+        if (kind === "speech.duck" || kind === "speech.unduck") {
+          // Overlap ducking: lower the reply while the server decides whether
+          // the person is interrupting; restore it when they were not. A real
+          // interruption arrives as speech.interrupted and cuts instead.
+          if (kind === "speech.duck") {
+            if (typeof msg.reply_id === "number" && isInterruptedReplyAudio(msg.reply_id)) return
+            if (overlapDuckRef.current.duck(msg.reply_id)) pcmPlayerRef.current?.setDuck(true)
+          } else if (overlapDuckRef.current.unduck(msg.reply_id)) {
+            pcmPlayerRef.current?.setDuck(false)
+          }
+          return
+        }
         if (kind === "speech.interrupted" && speechInterruptionKind(msg) === "speech_stop") {
           // "Stop talking, keep working": silence this reply and drop the rest
           // of its audio by reply id, but keep its text. It keeps streaming
@@ -1579,6 +1601,7 @@ export function useVoiceDuplexSession(options: Options) {
             dropAudioUntilRef.current = performance.now() + INTERRUPTED_AUDIO_DROP_MS
           }
           stopPcmPlayback()
+          endOverlapDuck()
           agentSpeakingRef.current = false
           const workContinues = msg.work_continues === true
           if (activeRef.current) setPresence(workContinues ? "thinking" : "listening")
@@ -1604,6 +1627,8 @@ export function useVoiceDuplexSession(options: Options) {
             agentSpeakingRef.current = false
             if (activeRef.current) setPresence("listening")
           }
+          // The flush already restored the gain; this covers an idle player.
+          endOverlapDuck()
           // Phase 5: reconcile the visible/stored assistant text down to the
           // portion that was actually spoken aloud. Without this the drafted
           // tail the user never heard is replayed as history next turn.
@@ -1630,6 +1655,8 @@ export function useVoiceDuplexSession(options: Options) {
           // provider frame must not create overlapping speech.
           if (audioFallbackTriggeredRef.current) return
           if (isInterruptedReplyAudio(msg.reply_id)) return
+          // A newer reply never plays ducked.
+          if (overlapDuckRef.current.audio(msg.reply_id)) pcmPlayerRef.current?.setDuck(false)
           const pcm = pcmDecoderRef.current.decode(msg.pcm16_b64)
           if (pcm.length > 0) {
             if (firstAudioReceivedAtRef.current == null) {

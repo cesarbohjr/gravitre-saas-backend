@@ -93,6 +93,10 @@ class VoicePipelineSession:
     # Set by the interrupt reporter: silence the current reply without
     # cancelling its work. Zero-arg coroutine function.
     speech_stop_handler: Any = None
+    # Set by the interrupt reporter (voice_overlap_duck_v1): tell the client to
+    # duck (True) or restore (False) the current reply's audio while an
+    # overlapping user turn is classified. Coroutine function (ducked: bool).
+    speech_duck_handler: Any = None
     # Final transcripts the utterance gate dropped as filler ("mm-hmm", "uh").
     # The turn strategy compares counts: a held start whose only words were
     # dropped filler was a backchannel, not an interruption.

@@ -19,7 +19,7 @@ from collections import Counter
 from typing import Any
 
 from app.services.pipecat_voice.voice_reply_playback import NOTHING_HEARD_MARKER, TRUNCATION_MARKER
-from tests.e2e.voice_scenarios.fakes import norm_words
+from tests.e2e.voice_scenarios.fakes import BrowserPlaybackModel, norm_words
 
 
 def _stored_words(content: str) -> list[str]:
@@ -83,6 +83,42 @@ def _matched(a: list[str], b: list[str]) -> int:
     return sum(block.size for block in difflib.SequenceMatcher(a=a, b=b, autojunk=False).get_matching_blocks())
 
 
+def _duck_metrics(run: Any, played: list[dict[str, Any]], m: dict[str, Any]) -> None:
+    """voice_overlap_duck_v1. Keys are added only when the server sent a duck,
+    so runs without the flag produce exactly the metrics they always did.
+
+    - barge_to_ducked_ms: from the overlap's start (barge_start, or
+      backchannel_start) until the old reply is no longer heard at full level:
+      the duck's gain ramp has finished, or its audio has stopped, whichever is
+      first.
+    - ducked_ms: how long that duck lasted (until unduck, interrupt or a newer
+      reply).
+    - duck_restored: the duck ended with speech.unduck (the reply went on).
+    """
+    ducks = [d for sock in run.sockets for d in sock.browser.ducks]
+    if not ducks:
+        return
+    name = "barge_start" if "barge_start" in run.marks else "backchannel_start"
+    t0 = run.marks.get(name)
+    if t0 is None:
+        return
+    old = run.mark_replies.get(name, 0)
+    after = sorted((d for d in ducks if d["start"] >= t0), key=lambda d: d["start"])
+    old_played = [
+        c["played_end"] for c in played
+        if c["reply_truth"] is not None and c["reply_truth"] <= old and c["played_end"] > t0
+    ]
+    candidates = [max(old_played) if old_played else t0]
+    if after:
+        candidates.append(after[0]["start"] + BrowserPlaybackModel.DUCK_RAMP_S)
+    m["barge_to_ducked_ms"] = _ms(min(candidates) - t0)
+    if after:
+        duck = after[0]
+        end = duck["end"] if duck["end"] is not None else run.now
+        m["ducked_ms"] = _ms(end - duck["start"])
+        m["duck_restored"] = duck["end_reason"] == "unduck"
+
+
 def run_metrics(result: Any) -> dict[str, Any]:
     run = result.run
     scenario = run.scenario
@@ -132,6 +168,7 @@ def run_metrics(result: Any) -> dict[str, Any]:
         else:
             m["late_frames_received"] = 0
             m["late_frames_played"] = 0
+    _duck_metrics(run, played, m)
     # Frames stamped with a newer reply id than the reply they belong to: the
     # browser's reply-id drop cannot catch these.
     m["misstamped_frames"] = sum(
@@ -249,6 +286,9 @@ COUNT_KEYS = (
     "interrupt_events",
 )
 BOOL_KEYS = ("premature_response", "history_matches_heard", "interrupted_event")
+# voice_overlap_duck_v1: aggregated only when some run has them.
+DUCK_TIMING_KEYS = ("barge_to_ducked_ms", "ducked_ms")
+DUCK_BOOL_KEYS = ("duck_restored",)
 
 
 def percentile(values: list[float], q: float) -> float | None:
@@ -273,6 +313,14 @@ def aggregate(per_run: list[dict[str, Any]]) -> dict[str, Any]:
     for key in BOOL_KEYS:
         vals = [bool(r[key]) for r in per_run if key in r]
         out[key] = {"n": len(vals), "true": sum(vals), "rate": round(sum(vals) / len(vals), 3) if vals else None}
+    for key in DUCK_TIMING_KEYS:
+        vals = [r[key] for r in per_run if isinstance(r.get(key), (int, float))]
+        if vals:
+            out[key] = {"n": len(vals), "p50": percentile(vals, 0.5), "p95": percentile(vals, 0.95)}
+    for key in DUCK_BOOL_KEYS:
+        vals = [bool(r[key]) for r in per_run if key in r]
+        if vals:
+            out[key] = {"n": len(vals), "true": sum(vals), "rate": round(sum(vals) / len(vals), 3)}
     out["outcomes"] = dict(Counter(str(r.get("outcome")) for r in per_run))
     return out
 
@@ -341,6 +389,26 @@ def markdown_report(results: dict[str, Any]) -> str:
             f"{a['misstamped_frames']['total']} | {_rate(a['premature_response'])} | {a['premature_actions']['total']} | "
             f"{_rate(a['history_matches_heard'])} | {orphan} | {spec} | {outcomes} |"
         )
+    ducked = {sid: sc for sid, sc in results["scenarios"].items() if "barge_to_ducked_ms" in sc["aggregate"]}
+    if ducked:
+        lines += [
+            "",
+            "## Overlap ducking (voice_overlap_duck_v1)",
+            "",
+            "\"ducked (played)\" is the time from the overlap's start until the old reply is no longer heard at full "
+            "level: the duck ramp has finished, or its audio has stopped, whichever comes first. Ducked audio still "
+            "counts as heard.",
+            "",
+            "| Scenario | barge-in → ducked (played) | barge-in → silence (played) | ducked for | duck restored | outcome |",
+            "|---|---|---|---|---|---|",
+        ]
+        for sid, sc in ducked.items():
+            a = sc["aggregate"]
+            outcomes = ", ".join(f"{k} {v}" for k, v in sorted(a["outcomes"].items(), key=lambda kv: -kv[1]))
+            lines.append(
+                f"| {sid} | {_cell(a['barge_to_ducked_ms'])} | {_cell(a['interrupt_to_silence_ms'])} | "
+                f"{_cell(a.get('ducked_ms', {}))} | {_rate(a.get('duck_restored', {}))} | {outcomes} |"
+            )
     lines += ["", "## Scenario conditions", ""]
     for sid, sc in results["scenarios"].items():
         cond = ", ".join(f"{k}={v}" for k, v in sc["conditions"].items())

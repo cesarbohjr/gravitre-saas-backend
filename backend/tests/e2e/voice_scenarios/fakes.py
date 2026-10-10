@@ -220,7 +220,16 @@ class BrowserPlaybackModel:
       ``playback.progress`` report (played / received ms) before the flush, as
       the web hook does. The periodic reports are not modelled: only the one
       at the cut feeds the history rewrite.
+    - ``speech.duck`` / ``speech.unduck`` (voice_overlap_duck_v1) model the
+      player's output gain: ramp to ``DUCK_GAIN`` over ``DUCK_RAMP_S``, back
+      to 1 over ``UNDUCK_RAMP_S``; ``speech.interrupted`` or audio of a newer
+      reply resets it. Ducked audio is still played (and heard): the gain only
+      lowers it, so played_end and the heard rule are untouched.
     """
+
+    DUCK_GAIN = 0.15
+    DUCK_RAMP_S = 0.06
+    UNDUCK_RAMP_S = 0.12
 
     def __init__(self, recorder: Recorder, *, initial_lead_s: float = 0.12, network_s: float = 0.0) -> None:
         self.rec = recorder
@@ -241,6 +250,17 @@ class BrowserPlaybackModel:
         self.client_send: Any = None
         self.playback_reports = False
         self.reports_sent: list[tuple[float, dict[str, Any]]] = []
+        # Duck intervals: dict(start, end, reply_id, end_reason); end None while ducked.
+        self.ducks: list[dict[str, Any]] = []
+
+    def _ducked(self) -> dict[str, Any] | None:
+        return self.ducks[-1] if self.ducks and self.ducks[-1]["end"] is None else None
+
+    def _end_duck(self, now: float, reason: str) -> None:
+        duck = self._ducked()
+        if duck is not None:
+            duck["end"] = now
+            duck["end_reason"] = reason
 
     def _now(self) -> float:
         return self.rec.now() + self.network_s
@@ -252,7 +272,15 @@ class BrowserPlaybackModel:
             self.messages.append((now, msg))
         if kind == "session.ready":
             self.playback_reports = msg.get("playback_grounded_history_v1") is True
+        if kind == "speech.duck":
+            if self._ducked() is None:
+                self.ducks.append({"start": now, "end": None, "reply_id": msg.get("reply_id"), "end_reason": None})
+            return
+        if kind == "speech.unduck":
+            self._end_duck(now, "unduck")
+            return
         if kind == "speech.interrupted":
+            self._end_duck(now, "interrupted")
             rid = msg.get("reply_id")
             if isinstance(rid, int) and msg.get("intent") != "speech_stop":
                 self._report_playback(rid, now)
@@ -282,6 +310,9 @@ class BrowserPlaybackModel:
         if isinstance(rid, int) and self.cut is not None and rid <= self.cut:
             self.dropped.append(entry)
             return
+        duck = self._ducked()
+        if duck is not None and isinstance(rid, int) and isinstance(duck["reply_id"], int) and rid > duck["reply_id"]:
+            self._end_duck(now, "new_reply")
         same_reply = self.last_chunk_at is not None and now - self.last_chunk_at <= 0.4
         self.last_chunk_at = now
         if self.next_time > now + 0.005:
