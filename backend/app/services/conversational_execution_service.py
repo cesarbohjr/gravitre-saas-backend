@@ -336,15 +336,12 @@ class ConversationalExecutionService:
             )
         if task_type == "execute_workflow":
             wf_name = str(clarified.get("workflow_name") or clarified.get("query") or "this workflow")
-            wf_id = str(clarified.get("workflow_id") or "").strip()
-            id_bit = f" (id `{wf_id}`)" if wf_id else ""
             goal = str(clarified.get("workflow_goal") or "").strip()
             goal_line = f"\nGoal: {goal}" if goal else ""
             return (
-                f"I'll **execute** the workflow **{wf_name}**{id_bit}.{goal_line}\n\n"
-                "This starts a new run and may trigger connected steps "
-                "(connectors, agents, notifications).\n\n"
-                "Reply **yes** to run it now, or **no** to cancel."
+                f"I'll run **{wf_name}** now.{goal_line}\n\n"
+                "It might send emails or update other tools. Okay to go ahead?\n\n"
+                "Reply **yes** to run it, or **no** to cancel."
             )
         if task_type == "run_agent_task":
             agent_name = str(clarified.get("agent_name") or "the agent")

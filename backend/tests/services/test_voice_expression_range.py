@@ -59,7 +59,7 @@ def test_bound_state_avoids_immediate_repeat():
 
     assert first != second
     assert second != third
-    assert "Slack" in first and "Slack" in second and "/connectors" in third
+    assert "Slack" in first and "Slack" in second and "Settings → Connectors" in third
 
 
 def test_same_history_reproduces_same_selection():
@@ -111,7 +111,7 @@ def test_excluded_categories_do_not_vary():
             error_code="write_approval_required",
             integration="slack",
         )
-        assert e == f == "This write needs your approval before it runs."
+        assert e == f == "This needs your okay before I go ahead."
     finally:
         reset_voice_expression_state(token)
 
@@ -122,12 +122,12 @@ def test_excluded_categories_do_not_vary():
         (
             "connector_connect_to_run",
             {"integration": "Slack"},
-            ["Slack", "/connectors"],
+            ["Slack", "Settings → Connectors"],
         ),
         (
             "tool_error.connector_not_connected",
             {"integration": "Slack", "action_suffix": ""},
-            ["Slack", "Connected", "/connectors", "yes"],
+            ["Slack", "connected", "Settings → Connectors", "yes"],
         ),
         (
             "tool_error.validation_error",
@@ -221,7 +221,7 @@ def test_write_status_sample_still_fact_consistent():
         "tool_error.connector_not_connected",
         ctx={"integration": "Gmail", "action_suffix": ""},
     )
-    assert_fact_tokens_consistent(variants, ["Gmail", "Connected", "/connectors"])
+    assert_fact_tokens_consistent(variants, ["Gmail", "connected", "Settings → Connectors"])
 
 
 def test_conversational_banks_do_not_expose_operator_jargon():

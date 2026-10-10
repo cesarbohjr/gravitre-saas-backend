@@ -1,7 +1,7 @@
 """Gravitre Voice Layer (Module D).
 
-Single source of truth for product persona — calm expert, facts-first,
-Connected/Healthy/Executable/Verified vocabulary. Chat, ReAct, canvas turn
+Single source of truth for product persona — a warm, competent colleague,
+facts-first, everyday words for readiness (connected, working, confirmed). Chat, ReAct, canvas turn
 copy, errors, notifications, and Meson MUST call into this module rather than
 pasting per-surface VOICE prose.
 
@@ -57,6 +57,7 @@ __all__ = (
     "format_outcome_digest",
     "house_phrase",
     "humor_permitted",
+    "is_voice_shaped_blocker",
     "reset_voice_expression_state",
     "tool_error_template",
     "voice_expression_state_snapshot",
@@ -92,15 +93,15 @@ HOUSE_PHRASING: dict[str, str] = {
     "no_executable_action": EXPRESSION_BANKS["no_executable_action"][0],
     "skipped_connector": EXPRESSION_BANKS["skipped_connector"][0],
     "canvas_write_blocked": (
-        "Write blocked: this canvas step needs an approved run "
-        "(required_approvals>=1). In-graph approval alone is not enough."
+        "I can't run this step yet. It changes things in another tool, so the run "
+        "needs your okay first. An approval step inside the workflow isn't enough on its own."
     ),
     "workflow_explain_fallback": (
         "{name} runs these steps in order: {chain}."
     ),
     "canvas_governed_write": (
-        "Governed write — runs only after Decision Queue approval "
-        "(same catalog write authority as chat)."
+        "This step changes things in another tool, so it only runs after someone "
+        "approves it in the Decision Queue, same as in chat."
     ),
     "correction_ack": EXPRESSION_BANKS["correction_ack"][0],
     "pending_plan_cancelled": EXPRESSION_BANKS["pending_plan_cancelled"][0],
@@ -176,13 +177,13 @@ def anti_repeat_prompt_section(recent_assistant: list[str] | None) -> str:
     )
 
 GRAVITRE_VOICE_RULES: tuple[str, ...] = (
-    "Calm expert: capable operator, not a chatbot persona. Smart, cool geek — precise, not cute.",
+    "Sound like a warm, competent colleague talking: natural, friendly, contractions, everyday words. Precise, not cute.",
     "Lead with the fact, then the implication, then the one best next move.",
-    "Show your work when a fact comes from a tool or connector result — cite the source briefly in plain language.",
+    "Mention where a fact came from (\"in HubSpot\", \"from Google Analytics\") only when it helps the person trust or act on it.",
     "State uncertainty plainly when you do not know; never invent connector states, metrics, or agent names.",
     "Never hedge with \"I think\" when you have a real answer from tools or state.",
     "Never over-apologize; refuse safety and governance limits plainly.",
-    "Use Connected / Healthy / Executable / Verified (and Configured / Authenticated when describing readiness) — not vague \"working\" or \"smart\".",
+    "Describe status in everyday words (\"HubSpot is connected and working\", \"I checked and it went through\", \"your Slack sign-in expired\"). Never use capitalised status labels like Connected, Healthy, Executable, or Verified, and name the product instead of saying connector, provider, or system.",
     "Avoid buzzwords entirely (synergy, leverage, unlock, seamless, delightful, magical).",
     "Humor is light and rare; never cute; never during errors, approvals, or governance moments.",
     "Complete sentences in chat; short bullets only for 3+ items. No report headers like \"Workflow health:\".",
@@ -191,8 +192,8 @@ GRAVITRE_VOICE_RULES: tuple[str, ...] = (
 _CONFIDENCE_REGISTER_RULES = (
     "Confidence register (match phrasing to certainty):\n"
     "- certain: short, declarative; no fake hedges.\n"
-    "- estimate: label it (\"Estimate — based on what's Connected so far\") and allow "
-    "\"likely\" / \"based on what's Connected so far\" — never present as Verified.\n"
+    "- estimate: label it (\"Estimate — based on what's connected so far\") and allow "
+    "\"likely\" / \"based on what's connected so far\" — never present it as confirmed.\n"
     "- blocked: name the blocker, state the next action, no apology loop."
 )
 
@@ -203,18 +204,18 @@ _HUMOR_BUDGET_RULES = (
 )
 
 _HOUSE_PHRASE_RULES = (
-    "House phrasing (prefer these exact shapes when they fit):\n"
+    "House phrasing (loose examples of the tone, not scripts; reword freely):\n"
     f"- Insufficient info: \"{HOUSE_PHRASING['insufficient_info']}\"\n"
     f"- Flagging an assumption: \"{HOUSE_PHRASING['assumption_flag']}\"\n"
     f"- Reporting a win: \"{HOUSE_PHRASING['success_win']}\""
 )
 
 _VOICE_SECTION_BODY = (
-    "You are Gravitre — a calm expert operator for enterprise automation.\n"
+    "You are Gravitre — a warm, natural colleague who's great at getting business work done.\n"
     "Speak the same way on every surface (chat, ReAct, canvas, Meson, errors, notifications).\n"
-    "- Lead with the fact. Show your work when citing tools. State uncertainty plainly.\n"
+    "- Lead with the fact. Mention the source only when it helps. State uncertainty plainly.\n"
     "- Never hedge with \"I think\" when you have a real answer. Never over-apologize.\n"
-    "- Use Connected / Healthy / Executable / Verified for readiness and outcomes.\n"
+    "- Describe readiness and outcomes in everyday words (connected, working, confirmed), not capitalised status labels.\n"
     "- No buzzwords. Humor light and rare; never cute.\n"
     "- Refuse safety or governance limits plainly. Never invent names, states, or metrics."
 )
@@ -231,7 +232,7 @@ _TOOL_ERROR_TEMPLATES: dict[str, str] = {
     "rate_limited": EXPRESSION_BANKS["tool_error.rate_limited"][0],
     "connector_timeout": EXPRESSION_BANKS["tool_error.connector_timeout"][0],
     "statement_timeout": EXPRESSION_BANKS["tool_error.connector_timeout"][0],
-    "write_approval_required": "This write needs your approval before it runs.",
+    "write_approval_required": "This needs your okay before I go ahead.",
     "tool_not_available": EXPRESSION_BANKS["tool_error.tool_not_available"][0],
     "action_not_found": EXPRESSION_BANKS["tool_error.action_not_found"][0],
     "tool_error": EXPRESSION_BANKS["tool_error.tool_error"][0],
@@ -332,6 +333,28 @@ def coerce_outcome_digest_item(raw: OutcomeDigestItem | dict[str, Any]) -> Outco
     )
 
 
+# Openers of text already shaped by this module (old and current wording), so
+# stored run errors are passed through instead of being wrapped twice.
+_VOICE_SHAPED_BLOCKER_PREFIXES: tuple[str, ...] = (
+    "blocked",
+    "write blocked",
+    "connect ",
+    "i can't run this step",
+    "i'm stuck on this one",
+    "i can't go further yet",
+    "this is on hold for now",
+    "i hit a snag",
+    "i couldn't get past this",
+    "i'm held up here",
+)
+
+
+def is_voice_shaped_blocker(text: str | None) -> bool:
+    """True when ``text`` already reads as a blocked/connect message from this module."""
+    lowered = str(text or "").strip().lower()
+    return lowered.startswith(_VOICE_SHAPED_BLOCKER_PREFIXES) or "isn't connected" in lowered
+
+
 def chev_term(status: str | None) -> str:
     """Return canonical CHEV / Verified label for a readiness or outcome status."""
     key = str(status or "").strip().lower()
@@ -362,7 +385,8 @@ def confidence_register_hint(register: ConfidenceRegister | str | None) -> str:
         return (
             "Register=estimate: lead with "
             f"\"{HOUSE_PHRASING['estimate_prefix']}\" "
-            "and use likely/based-on-Connected hedges. Do not claim Verified."
+            "and use hedges like 'likely' or 'based on what's connected so far'. "
+            "Don't present it as confirmed."
         )
     if key == "blocked":
         return (
@@ -436,10 +460,16 @@ def domain_focus_section(modifier: str | None) -> str:
 
 
 def _integration_label(integration: str | None) -> str:
-    value = str(integration or "").strip().replace("_", " ")
-    if not value:
-        return "the connector"
-    return value.title()
+    raw = str(integration or "").strip()
+    if not raw:
+        return "that tool"
+    try:
+        from app.services.connector_semantic_registry import connector_display_name
+
+        label = connector_display_name(raw)
+    except Exception:  # noqa: BLE001 — copy only; never fail over a label
+        label = ""
+    return label or raw.replace("_", " ").title()
 
 
 def _action_suffix(action: str | None) -> str:
@@ -623,15 +653,10 @@ def format_operator_message(
                 integration=_integration_label(ctx.get("integration")),
                 action_suffix=_action_suffix(ctx.get("action")),
             ).strip()
-        detail = str(ctx.get("error_message") or "").strip()
-        if detail:
-            if len(detail) > 400:
-                detail = detail[:397] + "..."
-            label = _integration_label(ctx.get("integration"))
-            if label != "the connector":
-                return f"{label} action failed: {detail}"
-            return detail
-        return "The connector action failed."
+        # Never echo raw vendor error text to the user; it lives in the audit trail.
+        if ctx.get("integration"):
+            return f"That didn't work in {_integration_label(ctx.get('integration'))}."
+        return "That didn't work."
 
     if key == "write_approval":
         # Governance — humor always off regardless of allow_humor.
@@ -675,7 +700,7 @@ def format_operator_message(
             # Failures: reshape through blocked register unless already voiced.
             if status == "failed":
                 lowered = explicit.lower()
-                if lowered.startswith(("blocked", "write blocked", "connect ")):
+                if is_voice_shaped_blocker(lowered):
                     return explicit[:2000]
                 return house_phrase(
                     "blocked_generic",
@@ -687,7 +712,7 @@ def format_operator_message(
         if status == "failed":
             detail = error_summary or "Review the run details for step-level errors."
             lowered = detail.lower()
-            if lowered.startswith(("blocked", "write blocked", "connect ")):
+            if is_voice_shaped_blocker(lowered):
                 return detail[:2000]
             return house_phrase(
                 "blocked_generic",
@@ -704,7 +729,7 @@ def format_operator_message(
     if key == "audit_failure_summary":
         err = str(ctx.get("error_summary") or "execution failed").strip()
         lowered = err.lower()
-        if lowered.startswith(("blocked", "write blocked", "failed —", "failed -")):
+        if is_voice_shaped_blocker(lowered) or lowered.startswith(("failed —", "failed -")):
             return err[:500]
         return f"Failed — {err}"[:500]
 

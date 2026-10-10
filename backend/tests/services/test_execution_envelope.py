@@ -15,7 +15,7 @@ def test_build_not_executable_shape():
 def test_format_not_executable_message():
     payload = build_not_executable("requires_approval", next_step="Confirm in chat.")
     text = format_not_executable_message(payload)
-    assert "approval" in text.lower()
+    assert "needs your okay" in text.lower()
     assert "Confirm" in text
 
 

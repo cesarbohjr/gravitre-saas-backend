@@ -162,8 +162,8 @@ def test_general_catalog_lists_writes_as_approval_required():
     assert turn["writes_started"] is False
     message = str(turn["message"])
     if turn.get("writes_listed"):
-        assert "approval required" in message.lower()
-        assert "not executed" in message.lower()
+        assert "needs your okay" in message.lower()
+        assert "haven't started" in message.lower()
 
 
 def test_catalog_search_skips_unified_live():

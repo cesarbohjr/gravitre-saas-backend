@@ -59,7 +59,7 @@ def test_why_pipeline_observed_only_not_causal() -> None:
         ],
     )
     assert verdict["sufficient"] is True
-    assert "not a causal explanation" in verdict["message"]
+    assert "doesn't explain why the number moved" in verdict["message"]
     assert "12 open deals" in verdict["message"]
 
 

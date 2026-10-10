@@ -498,19 +498,19 @@ def bind_finished_work(
     elif terminal == "partial":
         outcome = "partial"
         default_title = "Partial work"
-        default_diagnosis = "This work is only partial. I am not treating it as complete."
+        default_diagnosis = "I only got partway through this, so I'm not calling it finished."
     elif terminal == "blocked":
         outcome = "blocked"
         default_title = "Work blocked"
-        default_diagnosis = "This work is blocked. No provider WRITE was claimed complete."
+        default_diagnosis = "I'm stuck on this one, so I'm not counting any changes as made."
     elif terminal == "cancelled":
         outcome = "cancelled"
         default_title = "Work cancelled"
-        default_diagnosis = "This work was cancelled. Nothing further was invoked."
+        default_diagnosis = "This was cancelled, and I didn't do anything more after that."
     else:
         outcome = "failed"
         default_title = "Work failed"
-        default_diagnosis = "This work failed. I am not reporting a successful result."
+        default_diagnosis = "This didn't work, so I'm not reporting it as a success."
     evidence = _observation_evidence_lines(source_rows) if source_rows else (
         [f"plan_terminal={terminal}"] if terminal else []
     )

@@ -132,7 +132,7 @@ def test_g_deals_plus_tickets_does_not_need_ga() -> None:
     assert all(s.kind != "write" for s in parallel)
     conclusion = conclude_diagnostic(plan, [])
     assert conclusion["sufficient"] is False
-    assert "enough live system evidence" in conclusion["message"]
+    assert "enough from your connected tools" in conclusion["message"]
 
 
 def test_h_expanded_continuity_phrases() -> None:

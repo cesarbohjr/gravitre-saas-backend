@@ -4,9 +4,30 @@ from __future__ import annotations
 from app.capability_ontology.registry import CapabilityDefinition
 from app.capability_ontology.resolver import CapabilityResolution
 
+# Products whose real names aren't plain title case ("Hubspot" reads as a typo).
+_BRAND_CASING: dict[str, str] = {
+    "hubspot": "HubSpot",
+    "quickbooks": "QuickBooks",
+    "github": "GitHub",
+    "linkedin": "LinkedIn",
+    "pagerduty": "PagerDuty",
+    "sendgrid": "SendGrid",
+    "netsuite": "NetSuite",
+    "youtube": "YouTube",
+    "clickup": "ClickUp",
+    "servicenow": "ServiceNow",
+    "activecampaign": "ActiveCampaign",
+    "docusign": "DocuSign",
+    "bigquery": "BigQuery",
+}
+
 
 def vendor_display_label(vendor: str | None) -> str:
-    text = str(vendor or "").strip().replace("_", " ")
+    raw = str(vendor or "").strip()
+    branded = _BRAND_CASING.get(raw.lower())
+    if branded:
+        return branded
+    text = raw.replace("_", " ")
     return text.title() if text else "your connected app"
 
 

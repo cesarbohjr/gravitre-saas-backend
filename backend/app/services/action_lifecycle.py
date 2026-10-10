@@ -589,14 +589,14 @@ def composer_truth_headline(
     detail = (body or "").strip()
     if uncertain:
         return (
-            f"I attempted **{title}**, but the provider result is not confirmed yet. "
-            f"I have not marked it complete.{(' ' + detail) if detail else ''}"
+            f"I tried **{title}**, but I can't confirm it worked yet, "
+            f"so I haven't marked it as done.{(' ' + detail) if detail else ''}"
         ).strip()
     if not success:
         return f"I couldn't complete **{title}**. {detail}".strip()
     if not verified:
         return (
-            f"**{title}** was sent to the provider. I'm confirming the record before treating it as complete."
+            f"**{title}** is on its way. I'm still checking whether it worked before I call it done."
             + (f" {detail}" if detail else "")
         ).strip()
     return f"**{title}** is confirmed.\n\n{detail}".strip()
@@ -675,12 +675,12 @@ def recent_write_status_turn(
         }
 
     if stage in {"REJECTED", "CANCELLED"}:
-        return _reply("That write was cancelled. Nothing was created.")
+        return _reply("That was cancelled, so nothing was created.")
     if stage == "FAILED":
-        return _reply("That write did not complete. I have not treated it as created.")
+        return _reply("That didn't finish, so I'm not counting it as created.")
     if stage == "OUTCOME_UNCERTAIN":
         return _reply(
-            "I attempted that write, but the outcome is still uncertain. I will not treat it as created."
+            "I tried that, but I can't tell yet whether it worked, so I'm not counting it as created."
         )
     if stage == "AWAITING_APPROVAL":
         target = f" for {email}" if email else ""

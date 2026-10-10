@@ -30,6 +30,19 @@ _CATALOG_INTENT = re.compile(
 )
 
 
+def _vendor_name(slug: str | None) -> str:
+    """Product name for a vendor slug (``google_analytics`` -> Google Analytics)."""
+    raw = str(slug or "").strip()
+    if not raw:
+        return ""
+    try:
+        from app.services.connector_semantic_registry import connector_display_name
+
+        return connector_display_name(raw) or raw
+    except Exception:  # noqa: BLE001 — copy only; never fail the turn over a label
+        return raw.replace("_", " ").title()
+
+
 def match_catalog_search_intent(message: str) -> bool:
     return bool(_CATALOG_INTENT.search(message or ""))
 
@@ -68,12 +81,12 @@ def try_catalog_search_turn(
         label = str(row.name or "").strip() or row.action_id
         if row.governed_write:
             writes += 1
-            gate = "WRITE, approval required — not executed"
+            gate = "makes changes, needs your okay first"
         elif row.f1_read:
-            gate = "READ, connected"
+            gate = "looks things up"
         else:
-            gate = f"{row.kind} READ, connected"
-        lines.append(f"- {label} ({row.vendor}; {gate})")
+            gate = "looks things up"
+        lines.append(f"- {label} ({_vendor_name(row.vendor)}; {gate})")
         table_rows.append(
             {
                 "action": label,
@@ -82,19 +95,19 @@ def try_catalog_search_turn(
             }
         )
     intro = (
-        "Here are connected actions that match that search. This is a catalog lookup, not a live provider run."
+        "Here's what I can do with your connected tools that matches that search. I haven't run any of it."
         if include_writes
-        else "Here are connected READ actions that match that search. This is a catalog lookup, not a live provider run."
+        else "Here's what I can look up with your connected tools that matches that search. I haven't run any of it."
     )
     if writes:
-        intro += " WRITE capabilities are listed only as discoverable; they still require the canonical approval path and were not started."
+        intro += " Anything that makes changes needs your okay before I run it, and I haven't started any of those."
     body_bits = [
         intro,
-        "\n".join(lines) if lines else "No eligible connected actions matched.",
-        f"I found {len(found)} eligible action{'s' if len(found) != 1 else ''} (cap {HARD_CAP_ELIGIBLE}).",
+        "\n".join(lines) if lines else "Nothing I can do with your connected tools matched that.",
+        f"That's {len(found)} match{'es' if len(found) != 1 else ''} (I show up to {HARD_CAP_ELIGIBLE}).",
     ]
     if github_excluded:
-        body_bits.append("GitHub is not connected on this org, so GitHub issue tools are not eligible.")
+        body_bits.append("GitHub isn't connected yet, so I can't work with GitHub issues.")
     body = "\n\n".join(body_bits)
     plan = mark_plan_terminal(
         ExecutionPlan(

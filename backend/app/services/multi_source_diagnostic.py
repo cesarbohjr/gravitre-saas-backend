@@ -27,9 +27,22 @@ _DIAGNOSTICS: tuple[tuple[str, str, str], ...] = (
 )
 
 INSUFFICIENT_EVIDENCE = (
-    "I don't have enough live system evidence to explain that. "
-    "I won't guess a cause from knowledge or the model."
+    "I don't have enough from your connected tools to explain that, "
+    "and I won't guess at a cause."
 )
+
+
+def _tool_label(action_key: str | None) -> str:
+    """Product name for an action key's vendor prefix, for user-facing copy."""
+    vendor = str(action_key or "").split(".", 1)[0].strip()
+    if not vendor:
+        return "that tool"
+    try:
+        from app.services.connector_semantic_registry import connector_display_name
+
+        return connector_display_name(vendor) or "that tool"
+    except Exception:  # noqa: BLE001 — copy only; never fail the turn over a label
+        return "that tool"
 
 
 def match_diagnostic_recipe(message: str) -> str | None:
@@ -165,10 +178,11 @@ def conclude_diagnostic(
             if text.lower() in {"ok", "success", "done"}:
                 count = structured.get("result_count")
                 action = str(structured.get("action_key") or "")
+                label = _tool_label(action)
                 if isinstance(count, int):
-                    text = f"The connected read {action or step_id} returned {count} record(s)."
+                    text = f"I checked {label} and found {count} matching item{'s' if count != 1 else ''}."
                 else:
-                    text = f"The connected read {action or step_id} completed, but no field-level findings were stored."
+                    text = f"I checked {label}, but didn't get any specific details back."
             live.append(text or step_id)
             findings.append(
                 {
@@ -195,14 +209,13 @@ def conclude_diagnostic(
     fact = live[0]
     if len(live) > 1:
         fact = " ".join(live[:5])
-    inference = "That is not a causal explanation of why the metric moved."
+    inference = "That doesn't explain why the number moved, though."
     limitation = (
-        "I can use this live sample to describe what the connected system returned. "
-        "I cannot establish why a business outcome changed without a comparable window "
-        "and the relevant missing sources."
+        "I can tell you what your tools show right now, but I can't say why it changed "
+        "without an earlier period to compare against and the data that's still missing."
     )
     recommendation = (
-        "If you want a cause, connect the missing source or ask me to refresh a named period."
+        "If you want to know why, connect the missing tool or ask me to look at a specific time period."
     )
     message = f"{fact}\n\n{inference} {limitation}\n\n{recommendation}"
     fact_label = {

@@ -238,7 +238,7 @@ def narrate_tool_completed(tool_name: str, output: Any) -> str | None:
 
         if not evidence_is_verified(output):
             # Provider acceptance only: say exactly that, never "done".
-            return "That went through. I'm just double-checking it stuck."
+            return "I've sent that over. I'm still confirming it stuck."
         for key in _CONFIRMED_DETAIL_KEYS:
             val = output.get(key)
             if isinstance(val, str) and val.strip():

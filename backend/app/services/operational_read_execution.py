@@ -201,21 +201,25 @@ def _pipeline_coverage_line(data: Any, returned: int) -> str:
     total_n = int(total) if isinstance(total, (int, float)) else None
     if coverage is not None:
         if coverage.get("complete"):
-            return f"This read paged through HubSpot and covers all {returned} deal(s) returned by the search."
+            return f"I went through every page in HubSpot, so this covers all {_deals(returned)} the search found."
         reported = coverage.get("total_reported")
         of_bit = f" of {int(reported)}" if isinstance(reported, (int, float)) else ""
         return (
-            f"This read paged through HubSpot but stopped at {returned}{of_bit} deal(s) "
-            f"(cap {coverage.get('max_records')}); totals cover only those rows."
+            f"I went through HubSpot page by page but stopped at {returned}{of_bit} deals "
+            f"(my limit is {coverage.get('max_records')}), so the totals only cover those."
         )
     paging_next = ((payload.get("paging") or {}).get("next") or {}) if isinstance(payload.get("paging"), dict) else {}
     if paging_next.get("after") or (total_n is not None and total_n > returned):
         of_bit = f" of {total_n}" if total_n is not None and total_n > returned else ""
         return (
-            f"This read is a single HubSpot page ({returned}{of_bit} deal(s)); more deals exist, "
-            "so totals are not a complete census."
+            f"This is only the first page from HubSpot ({returned}{of_bit} deals). There are more deals, "
+            "so the totals aren't the full picture."
         )
-    return f"This read returned {returned} deal(s) with no further HubSpot pages reported."
+    return f"HubSpot sent back {_deals(returned)}, and there weren't any more pages."
+
+
+def _deals(n: int) -> str:
+    return f"{n} deal{'s' if n != 1 else ''}"
 
 
 def _synthesize_pipeline(data: Any, *, pending_auth: str = "") -> str:
@@ -224,12 +228,12 @@ def _synthesize_pipeline(data: Any, *, pending_auth: str = "") -> str:
     n = len(rows) or _result_count(data)
     if n <= 0:
         body = (
-            "The connected CRM returned no deals in this read.\n"
-            "What is happening: I have a live HubSpot connection, but this list is empty.\n"
-            "What appears important: I cannot rank pipeline risk without records.\n"
-            "What I cannot conclude: revenue, stage mix, or close timing.\n"
-            "What is missing: deal rows from HubSpot for this org.\n"
-            "What to do next: confirm deals exist in HubSpot, or name a specific pipeline or owner."
+            "HubSpot didn't send back any deals.\n"
+            "What's going on: HubSpot is connected, but the deal list came back empty.\n"
+            "What stands out: I can't rank pipeline risk without any deals to look at.\n"
+            "What I can't tell yet: revenue, stage mix, or close timing.\n"
+            "What's missing: the deals themselves from HubSpot.\n"
+            "Next step: check that deals exist in HubSpot, or name a specific pipeline or owner."
         )
         return f"{body}\n\n{pending_auth}".strip() if pending_auth else body
     by_stage: dict[str, int] = {}
@@ -253,48 +257,58 @@ def _synthesize_pipeline(data: Any, *, pending_auth: str = "") -> str:
     stage_bits = ", ".join(f"{stage} ({count})" for stage, count in sorted(by_stage.items(), key=lambda kv: (-kv[1], kv[0]))[:8])
     top_stage = max(by_stage.items(), key=lambda kv: kv[1])[0] if by_stage else "unspecified"
     amount_line = (
-        f"Among deals with a numeric amount ({len(amounts)} of {n}), the listed total is {sum(amounts):,.0f} in HubSpot's amount field."
+        f"Of the deals with an amount filled in ({len(amounts)} of {n}), the total is {sum(amounts):,.0f} based on HubSpot's amount field."
         if amounts
-        else "No numeric amounts were present on these rows, so I am not stating a pipeline value."
+        else "None of these deals have an amount filled in, so I won't put a number on the pipeline."
     )
-    examples = ", ".join(named[:3]) if named else "none named"
+    examples = ", ".join(named[:3]) if named else "none of them have names"
     missing_bits = [_pipeline_coverage_line(data, len(rows) or n)]
     if missing_amount:
-        missing_bits.append(f"{missing_amount} deal(s) have no usable amount.")
+        missing_bits.append(f"{_deals(missing_amount)} {'has' if missing_amount == 1 else 'have'} no usable amount.")
     if missing_stage:
-        missing_bits.append(f"{missing_stage} deal(s) have no stage.")
+        missing_bits.append(f"{_deals(missing_stage)} {'has' if missing_stage == 1 else 'have'} no stage.")
     if pending_auth:
         missing_bits.append(pending_auth)
-    else:
-        missing_bits.append("I am not using Google Analytics or Search Console in this answer.")
     important = (
-        f"The largest stage bucket in this sample is {top_stage}."
+        f"Most of these deals are in {top_stage}."
         if n
-        else "There is no stage mix to rank."
+        else "There's no stage mix to rank."
     )
     return (
-        f"From the connected CRM I received {n} deal{'s' if n != 1 else ''} in this sample.\n"
-        f"What is happening: HubSpot returned those records. Stage mix in this sample: {stage_bits or 'not labeled'}. {amount_line}\n"
-        f"What appears important: {important} Named examples: {examples}.\n"
-        "What I cannot conclude: overall company health, win rate, or traffic — those are not in this deal list.\n"
-        f"What is missing: {' '.join(missing_bits)}\n"
-        "What to do next: pick a stage, owner, or amount cutoff to inspect, or connect a live traffic source if you need acquisition evidence."
+        f"I looked at {_deals(n)} in HubSpot.\n"
+        f"What's going on: by stage, that's {stage_bits or 'no stages labeled'}. {amount_line}\n"
+        f"What stands out: {important} A few examples: {examples}.\n"
+        "What I can't tell yet: overall company health, win rate, or traffic. Those aren't in this deal list.\n"
+        f"What's missing: {' '.join(missing_bits)}\n"
+        "Next step: pick a stage, owner, or amount cutoff to dig into, or connect Google Analytics if you want to see where your traffic comes from."
     )
+
+
+def _vendor_label(action_key: str | None, fallback: str = "your connected tools") -> str:
+    """Product name for an action key's vendor prefix (``hubspot.deals.list`` -> HubSpot)."""
+    vendor = str(action_key or "").split(".", 1)[0].strip()
+    if not vendor:
+        return fallback
+    try:
+        label = connector_display_name(vendor)
+    except Exception:  # noqa: BLE001 — copy only; never fail the turn over a label
+        return fallback
+    return label or fallback
 
 
 def _summarize_read(action_key: str, data: Any, *, pending_auth: str = "") -> str:
     n = _result_count(data)
     if n <= 0:
-        empty = "The connected system returned no matching records for that read."
+        empty = f"I checked {_vendor_label(action_key)} and didn't find anything that matches."
         return f"{empty}\n\n{pending_auth}".strip() if pending_auth else empty
     if "deal" in action_key:
         return _synthesize_pipeline(data, pending_auth=pending_auth)
     if "invoice" in action_key:
-        base = f"I found {n} invoice{'s' if n != 1 else ''} in the connected finance system."
+        base = f"I found {n} invoice{'s' if n != 1 else ''} in {_vendor_label(action_key, 'your accounting tool')}."
     elif "ticket" in action_key:
-        base = f"I found {n} ticket{'s' if n != 1 else ''} in the connected support system."
+        base = f"I found {n} ticket{'s' if n != 1 else ''} in {_vendor_label(action_key, 'your help desk')}."
     else:
-        base = f"I found {n} matching records."
+        base = f"I found {n} match{'es' if n != 1 else ''}."
     return f"{base}\n\n{pending_auth}".strip() if pending_auth else base
 
 
@@ -377,7 +391,7 @@ async def try_operational_read_short_circuit_turn(
             "stop_pipeline": True,
             "dialogue_mode": "clarifying",
             "message": (
-                f"I still have {count_bit} from the connected CRM. "
+                f"I still have {count_bit} from your CRM. "
                 "What amount should count as large so I can filter them? "
                 "I won't guess a cutoff."
             ),
@@ -589,7 +603,8 @@ async def try_operational_read_short_circuit_turn(
         _mark_step(plan, step, status="failed", action_key=action_key)
         plan = mark_plan_terminal(plan, "failed")
         fail_msg = invoked.error_message or (
-            "I couldn't complete that read. Try reconnecting the system at /connectors."
+            f"I couldn't get that from {_vendor_label(action_key, 'that tool')}. "
+            "Try reconnecting it in Settings → Connectors."
         )
         from app.services.durable_work_session import bind_finished_work, execution_result_from_finished_work
 

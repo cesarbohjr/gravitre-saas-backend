@@ -510,23 +510,23 @@ def synthesize_health_findings(
         bullets = "\n".join(f"- {line}" for line in findings[:8])
         prefix = "I found things that need attention:"
         if partial:
-            prefix = "I couldn't finish every check, but here is what I can see:"
+            prefix = "I couldn't finish every check, but here's what I can see:"
         return f"{prefix}\n\n{bullets}{timeout_note}".strip()
 
     if failures and not tool_results:
-        return "I couldn't complete the health check because the required systems didn't respond."
+        return "I couldn't finish the health check because the tools I needed didn't respond."
     if failures:
         joined = ", ".join(failures)
         return (
-            f"I couldn't complete the full check. {joined} did not respond."
+            f"I couldn't finish the full check. {joined} didn't respond."
             f"{timeout_note}"
         ).strip()
     if timed_out:
         return (
-            "I couldn't complete the health check because the required systems didn't respond."
+            "I couldn't finish the health check because the tools I needed didn't respond."
             f"{timeout_note}"
         ).strip()
-    return "I checked the available systems and didn't find anything urgent right now."
+    return "I checked your connected tools and didn't find anything urgent right now."
 
 
 async def execute_offered_read(

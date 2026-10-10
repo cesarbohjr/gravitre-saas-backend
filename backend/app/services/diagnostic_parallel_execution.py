@@ -98,11 +98,11 @@ def _compose_message(
         join_reason = str(verdict.get("join_reason") or "")
         if entity_id and join_reason == "accepted_entity_bindings":
             parts.append(
-                "An accepted company join exists for those systems. I am still reporting each live read separately and will not mix their metrics."
+                "I've matched this company across those tools, but I'm still showing each one's results separately and won't mix their numbers."
             )
         elif entity_id and join_reason:
             parts.append(
-                "I have a stored company identity, but I do not have enough overlapping live sources to join those reads into one result."
+                "I know which company this is, but there isn't enough overlap between your tools to combine their results into one."
             )
     return "\n\n".join(part for part in parts if part).strip()
 
@@ -177,7 +177,7 @@ def _invoke_evidence_step(
             plan_id=plan.plan_id,
             connector_id=vendor or "unknown",
             success=False,
-            summary="That source is not available as a sealed READ on this plan.",
+            summary="I can't check that tool as part of this request.",
             structured={"action_key": action_key, "provider_invoked": False},
         )
     tool_ctx: ToolContext = ctx["tool_ctx"]

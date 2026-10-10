@@ -177,27 +177,25 @@ def stamp_pending_write_binding(
 
 
 def format_spoken_hold_commit(*, pending_action_id: str | None = None) -> str:
-    bound = f" (`{pending_action_id}`)" if pending_action_id else ""
-    return (
-        f"Write is on hold{bound}. I will not send or execute until you confirm with **yes**."
-    )
+    del pending_action_id  # kept for callers; ids never go in spoken copy
+    return "I'm holding off on this. I won't send or change anything until you say **yes**."
 
 
 def format_spoken_clarify() -> str:
     return (
-        "I am not sure that was a clear approval. Say yes to run the staged action, "
-        "or tell me what to change. I will not execute until then."
+        "I'm not sure that was a yes. Say yes and I'll go ahead, "
+        "or tell me what to change. I won't do anything until then."
     )
 
 
 def format_spoken_stale(*, reason: str) -> str:
     if reason in {"already_done", "pending_completed"}:
-        return "That action already finished. I will not run it again."
+        return "That's already been taken care of, so I won't run it again."
     if reason in {"already_claimed", "pending_in_flight"}:
-        return "That action is already running. I will not start a second write."
+        return "That's already running, so I won't start it a second time."
     if reason in {"pending_expired", "expired"}:
-        return "That approval expired. I can stage the action again if you still want it."
-    return "That pending action is no longer waiting for approval. I will not execute it."
+        return "That approval expired. I can set it up again if you still want it."
+    return "That isn't waiting on your okay anymore, so I won't run it."
 
 
 def format_spoken_unauthorized() -> str:

@@ -223,18 +223,18 @@ ComposeFn = Callable[..., Awaitable[str]]
 TTS_SAFE_ERROR = _FALLBACK_BY_KIND["request_failed"]
 
 CHIP_STATUS: dict[str, str] = {
-    "permission_denied": "This step needs permission.",
-    "missing_scope": "This step needs additional access.",
-    "auth_expired": "This connection needs to be signed in again.",
-    "connector_timeout": "This step timed out.",
-    "timeout": "This step timed out.",
-    "statement_timeout": "This step timed out.",
-    "validation_error": "This step is missing something required.",
-    "connector_not_connected": "This system isn't connected.",
-    "channel_not_found": "That destination wasn't found.",
-    "rate_limited": "This step was rate-limited.",
-    "tool_not_available": "This connector isn't connected.",
-    "tool_error": "This step didn't complete.",
+    "permission_denied": "You don't have permission for this step.",
+    "missing_scope": "This step needs a bit more access.",
+    "auth_expired": "You'll need to sign in to this tool again.",
+    "connector_timeout": "This step took too long.",
+    "timeout": "This step took too long.",
+    "statement_timeout": "This step took too long.",
+    "validation_error": "This step is missing something it needs.",
+    "connector_not_connected": "That tool isn't connected yet.",
+    "channel_not_found": "I couldn't find where to send that.",
+    "rate_limited": "Too many requests at once. Try again in a moment.",
+    "tool_not_available": "That tool isn't connected yet.",
+    "tool_error": "This step didn't finish.",
 }
 
 
@@ -347,12 +347,27 @@ def chip_status_text(envelope: dict[str, Any] | None) -> str:
     code = str(env.get("error_code") or "tool_error").strip().lower()
     integration = str(env.get("integration") or "").strip()
     if code == "auth_expired":
-        who = integration or "this"
-        return f"This {who} connection expired — reconnect it and I'll pick this up."
+        if integration:
+            return f"Your {_product_label(integration)} sign-in expired. Reconnect it and I'll pick this up."
+        return "That sign-in expired. Reconnect it and I'll pick this up."
     if code == "tool_not_available":
-        who = integration or "required"
-        return f"The {who} connector isn't connected."
+        if integration:
+            return f"{_product_label(integration)} isn't connected yet."
+        return CHIP_STATUS["tool_not_available"]
     return CHIP_STATUS.get(code, CHIP_STATUS["tool_error"])
+
+
+def _product_label(integration: str | None) -> str:
+    """Product name for a vendor slug (``google_analytics`` -> Google Analytics)."""
+    slug = str(integration or "").strip()
+    if not slug:
+        return ""
+    try:
+        from app.services.connector_semantic_registry import connector_display_name
+
+        return connector_display_name(slug) or slug
+    except Exception:  # noqa: BLE001 — copy only; never fail the turn over a label
+        return slug.replace("_", " ").title()
 
 
 def _prompt_safe_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
@@ -414,6 +429,9 @@ def _system_prompt(*, spoken: bool) -> str:
         + "\n## Response Composer (mandatory)\n"
         "You are writing the only text the user will see for this turn's outcome.\n"
         "Describe the structured result in natural, register-correct language.\n"
+        "Write like a friendly colleague: use contractions and everyday words. Name the "
+        "product (HubSpot, Google Analytics, QuickBooks) instead of words like connector, "
+        "provider, system, read, record, verified, or observation.\n"
         "Never quote stack traces, SQL, exception class names, error codes, catalog "
         "action keys, or internal ids. Never say you are an AI or a composer.\n"
         "If the outcome is a failure, say what happened and, when useful, what happens next.\n"
@@ -744,7 +762,10 @@ def _postprocess_composed_text(
             text = (
                 (draft or "").strip()
                 if draft and not has_completion_claim(draft) and not looks_like_raw_backend(draft)
-                else "The action ran, but I have not confirmed the result in the source system yet."
+                else (
+                    f"That ran, but I haven't been able to confirm it in "
+                    f"{_product_label(str(env.get('integration') or '')) or 'the other tool'} yet."
+                )
             )
     from app.services.provider_result_grounding import apply_provider_result_grounding
 
