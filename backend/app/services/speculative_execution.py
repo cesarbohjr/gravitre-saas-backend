@@ -33,6 +33,7 @@ from __future__ import annotations
 import asyncio
 import contextvars
 import inspect
+import threading
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -71,6 +72,9 @@ class SpeculativeScope:
     # running again, so its writes keep queueing behind the replay instead of
     # reaching the database ahead of older deferred ones.
     flushing: bool = False
+    # Guards deferred/flushing: writers on worker threads can defer while the
+    # replay is finishing on the event loop.
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
 
     # -- state -----------------------------------------------------------------
     @property
@@ -98,7 +102,28 @@ class SpeculativeScope:
         if self.discarded:
             # The run was discarded: whatever it still tries to write is dropped.
             return
-        self.deferred.append(_Deferred(label=label, factory=factory, blocking=blocking))
+        with self._lock:
+            if not self.adopted or self.flushing:
+                self.deferred.append(_Deferred(label=label, factory=factory, blocking=blocking))
+                return
+        # The writer saw the scope during the replay but the replay has since
+        # finished: nothing will drain the queue again, so write now.
+        self._write_now(label, factory)
+
+    @staticmethod
+    def _write_now(label: str, factory: Callable[[], Any]) -> None:
+        token = _CURRENT.set(None)
+        try:
+            result = factory()
+            if inspect.isawaitable(result):
+                try:
+                    asyncio.get_running_loop().create_task(result)
+                except RuntimeError:
+                    asyncio.run(result)
+        except Exception as exc:  # noqa: BLE001 - same fail-open as the writers themselves
+            logger.warning("speculative_late_write_failed label=%s error=%s", label, exc)
+        finally:
+            _CURRENT.reset(token)
 
     async def wait_flushed(self) -> None:
         if self._flushed is not None:
@@ -121,8 +146,12 @@ class SpeculativeScope:
         replayed = 0
         try:
             # Drain in order, including writes the producer queues meanwhile.
-            while self.deferred:
-                item = self.deferred.pop(0)
+            while True:
+                with self._lock:
+                    if not self.deferred:
+                        self.flushing = False
+                        break
+                    item = self.deferred.pop(0)
                 try:
                     if item.blocking:
                         await asyncio.to_thread(item.factory)
@@ -135,7 +164,8 @@ class SpeculativeScope:
                     logger.warning("speculative_deferred_write_failed label=%s error=%s", item.label, exc)
         finally:
             _CURRENT.reset(token)
-            self.flushing = False
+            with self._lock:
+                self.flushing = False
             self.task_state_overlay.clear()
             self._flushed.set()
         return replayed

@@ -339,3 +339,15 @@ class TestScopePropagationAndLifecycle:
         assert not scope.flushing
         with speculative_scope(scope):
             assert current_scope() is None
+
+    def test_a_write_deferred_after_the_replay_finished_still_lands(self):
+        """A worker thread can see the scope while the replay runs and only
+        defer after it finished; nothing drains the queue again, so the write
+        must happen at once instead of being lost."""
+        scope = SpeculativeScope()
+        asyncio.run(scope.commit())
+        assert scope.adopted and not scope.flushing
+        written: list[str] = []
+        scope.defer("late", lambda: written.append("late"), blocking=True)
+        assert written == ["late"]
+        assert scope.deferred == []
