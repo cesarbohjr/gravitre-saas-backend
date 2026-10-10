@@ -163,6 +163,19 @@ def test_a_repeat_is_not_doubled() -> None:
     assert history == HISTORY[:2]
 
 
+def test_a_new_request_replaces_the_cancelled_one_instead_of_merging() -> None:
+    text, history = merge_unanswered_turn(
+        "Email Sarah the deck from yesterday", "who owns the Acme account?", HISTORY
+    )
+    assert text == "who owns the Acme account?"
+    assert history == HISTORY
+
+
+def test_a_fragment_still_completes_the_cancelled_request() -> None:
+    text, _history = merge_unanswered_turn("what's my website traffic", "for last month", HISTORY)
+    assert text == "what's my website traffic, for last month"
+
+
 def test_reporter_tracks_the_thinking_window() -> None:
     import asyncio
 

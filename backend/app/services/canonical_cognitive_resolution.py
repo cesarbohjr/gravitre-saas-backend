@@ -52,6 +52,23 @@ def assess_cognitive_resolution_needs(
     if not text:
         return CognitiveResolutionNeeds(run_semantic=False, run_resource=False, reason="empty")
 
+    from app.services.analytics_followup import resolve_analytics_followup
+
+    followup = resolve_analytics_followup(
+        text,
+        state,
+        connected_integrations=connected_integrations,
+    )
+    if followup is not None:
+        # An edit of the traffic answer just given ("no, last month", "which
+        # pages did best?", "sure"): the traffic handler owns it.
+        return CognitiveResolutionNeeds(
+            run_semantic=True,
+            run_resource=followup.kind != "decline_offer",
+            analytics_short_circuit=True,
+            reason=f"analytics_followup:{followup.kind}",
+        )
+
     reference = resolve_reference(text, state)
     if reference.matched and reference.kind in {"confirm", "reject", "select_all_options", "select_option"}:
         return CognitiveResolutionNeeds(
@@ -228,10 +245,13 @@ def should_skip_unified_live_for_compiled_read(
         or match_computer_browser_resume_phrase(message or "")
     ):
         return True
-    if frame_is_analytics(task_state):
-        return True
     from app.services.operational_read_execution import infer_operational_recipe_id
-    from app.services.task_continuity import decide_task_continuity
+    from app.services.task_continuity import decide_task_continuity, is_continuity_followup
+
+    if frame_is_analytics(task_state) and is_continuity_followup(message, task_state):
+        # Only a turn that continues the analytics answer stays off LIVE; a
+        # finished traffic answer must not pin every later turn to this path.
+        return True
 
     if decide_task_continuity(message, task_state) == "continue":
         cap = infer_operational_recipe_id(task_state)
@@ -273,6 +293,9 @@ async def apply_canonical_cognitive_resolution(
         skip_resource=not needs.run_resource,
     )
     merged = attach_resolution_trace(state, result.trace)
+    previous_message = str(state.get("cognitive_resolution_message") or "").strip()
+    if previous_message and previous_message != (message or "").strip():
+        merged["previous_resolution_message"] = previous_message
     merged["cognitive_resolution_message"] = (message or "").strip()
     merged["cognitive_resolution_needs"] = {
         "run_resource": needs.run_resource,

@@ -536,6 +536,10 @@ async def _llm_compose(
         return str(getattr(response, "content", "") or "").strip()
     except Exception as exc:  # noqa: BLE001
         logger.warning("response_composer_llm_failed kind=%s error=%s", kind, type(exc).__name__)
+        from app.services.ai_guardrails import AIContentFlaggedError
+
+        if isinstance(exc, AIContentFlaggedError):
+            return _GUARDRAIL_FLAGGED
         return ""
 
 
@@ -686,18 +690,53 @@ def _compose_inputs(
     return env, resolved_kind, must_compose, text, len(structured_blocks)
 
 
+# Kinds whose draft is already user-facing prose written by our own code (an
+# approval prompt, a specific question, a progress line). When the Composer
+# model is unavailable the draft says more than the generic line for its kind
+# ("what's the target?"). Error kinds keep the generic line: their drafts can
+# carry provider detail.
+_DRAFT_SAFE_KINDS = frozenset(
+    {"progress", "clarify", "validation", "workflow_waiting", "plan_hold", "correction", "shortcut", "canned"}
+)
+
+
+def _usable_draft(draft: str | None, resolved_kind: str, user_message: str = "") -> str | None:
+    text = (draft or "").strip()
+    if not text or resolved_kind not in _DRAFT_SAFE_KINDS:
+        return None
+    if looks_like_raw_backend(text) or looks_like_system_state_only(text):
+        return None
+    if user_message and text.lower() == user_message.strip().lower():
+        # Some callers pass the user's own words as the draft.
+        return None
+    return text
+
+
+# Returned by ``_llm_compose`` when a guardrail refused the turn (not an outage).
+_GUARDRAIL_FLAGGED = "\x00guardrail_flagged"
+
+
 def _resolve_composed(
     composed: str,
     *,
     draft: str | None,
     resolved_kind: str,
     env: dict[str, Any],
+    user_message: str = "",
+    guardrail_flagged: bool = False,
 ) -> tuple[str, bool, bool]:
-    """(text, used_model, fallback) for a Composer LLM result (empty = failed)."""
+    """(text, used_model, fallback) for a Composer LLM result (empty = failed).
+
+    A guardrail refusal always takes the generic line for the kind; only a
+    model outage may fall back to a safe draft.
+    """
+    if composed == _GUARDRAIL_FLAGGED:
+        composed, guardrail_flagged = "", True
     if composed and not looks_like_raw_backend(composed):
         return composed, True, False
-    if resolved_kind == "progress" and draft and not looks_like_raw_backend(draft):
-        return draft.strip(), False, True
+    usable = None if guardrail_flagged else _usable_draft(draft, resolved_kind, user_message)
+    if usable:
+        return usable, False, True
     return _fallback_text(resolved_kind, env), False, True
 
 
@@ -817,7 +856,7 @@ async def compose_user_reply(
             compose_fn=compose_fn,
         )
         text, used_model, fallback = _resolve_composed(
-            composed, draft=draft, resolved_kind=resolved_kind, env=env
+            composed, draft=draft, resolved_kind=resolved_kind, env=env, user_message=user_message
         )
     elif looks_like_raw_backend(text):
         composed = await _llm_compose(
@@ -831,7 +870,7 @@ async def compose_user_reply(
             org_id=org_id,
             compose_fn=compose_fn,
         )
-        if composed and not looks_like_raw_backend(composed):
+        if composed and composed != _GUARDRAIL_FLAGGED and not looks_like_raw_backend(composed):
             text = composed
             used_model = True
         else:
@@ -1052,6 +1091,7 @@ async def stream_compose_reply_events(
     pending: list[tuple[str, asyncio.Task[None]]] = []
     stopped = False  # no further sentence is accepted
     blocked = False  # moderation flagged a sentence: nothing more is released
+    flagged = False  # a guardrail refused input or output (not an outage)
     buffer = ""
     composed = ""
 
@@ -1089,6 +1129,7 @@ async def stream_compose_reply_events(
             if blocked or task.cancelled() or task.exception() is not None:
                 if not task.cancelled() and isinstance(task.exception(), AIContentFlaggedError):
                     logger.warning("response_composer_spoken_sentence_flagged org_id=%s", org_id)
+                    flagged = True
                 stopped = blocked = True
                 continue
             start = _start_text()
@@ -1155,6 +1196,7 @@ async def stream_compose_reply_events(
         logger.warning("response_composer_stream_failed kind=%s error=%s", resolved_kind, type(exc).__name__)
         composed = ""
         stopped = blocked = True
+        flagged = flagged or isinstance(exc, AIContentFlaggedError)
         for _sentence, task in pending:
             task.cancel()
     finally:
@@ -1169,7 +1211,12 @@ async def stream_compose_reply_events(
         yield event
 
     text, used_model, fallback = _resolve_composed(
-        composed, draft=draft, resolved_kind=resolved_kind, env=env
+        composed,
+        draft=draft,
+        resolved_kind=resolved_kind,
+        env=env,
+        user_message=user_message,
+        guardrail_flagged=flagged,
     )
     text, post_fallback = _postprocess_composed_text(
         text, env=env, resolved_kind=resolved_kind, draft=draft

@@ -79,7 +79,13 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "capability_id": None,
     "capability_route_reason": None,
     "cognitive_resolution_message": None,
+    # The message resolved on the turn before, so a follow-up can tell whether
+    # the answer it edits was the last thing said.
+    "previous_resolution_message": None,
     "cognitive_resolution_needs": None,
+    # Website-traffic answer under discussion (period, sources, open offer), so
+    # "no, last month" or "which pages did best?" edit it instead of starting over.
+    "analytics_frame": None,
     # READ-only Chromium visits must survive get_task_state normalize.
     "computer_browser_evidence": None,
     # Objective-first: the conversation's current business objective (contract,

@@ -479,3 +479,36 @@ async def test_genuine_pre_execution_refusal_is_kept():
     )
     assert "permission" in text.lower()
     assert "confirmed" not in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_model_outage_keeps_a_specific_clarifying_draft_not_the_generic_line():
+    async def unavailable(**kwargs):
+        raise RuntimeError("provider down")
+
+    text = await compose_user_reply(
+        {"success": True, "data": {"text": "What due date should I use?"}},
+        kind="clarify",
+        draft="I need one more detail to create the Asana task: what due date should I use?",
+        user_message="create a follow-up task for Acme",
+        org_id="org",
+        compose_fn=unavailable,
+    )
+    assert "due date" in text
+    assert "target" not in text
+
+
+@pytest.mark.asyncio
+async def test_model_outage_never_echoes_the_user_message_as_the_reply():
+    async def unavailable(**kwargs):
+        raise RuntimeError("provider down")
+
+    text = await compose_user_reply(
+        {"success": True, "data": {"text": "help me improve our SEO"}},
+        kind="clarify",
+        draft="help me improve our SEO",
+        user_message="help me improve our SEO",
+        org_id="org",
+        compose_fn=unavailable,
+    )
+    assert text != "help me improve our SEO"

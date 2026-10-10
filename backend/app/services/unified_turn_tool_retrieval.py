@@ -193,7 +193,9 @@ def embed_narrow_tools_for_turn(
 
         focus = _mentioned_connectors(query, classification, connected)
         if not focus and connected:
-            focus = set(connected[:3])
+            from app.services.agent_platform_optimizer import connectors_matching_query
+
+            focus = set(connected[:3]) | connectors_matching_query(connector_tools, query, connected)
 
         action_required = (
             bool(requires_action)

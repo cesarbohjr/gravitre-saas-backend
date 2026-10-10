@@ -2987,6 +2987,9 @@ class AgentIntelligence:
                                 "cognitive_resolution_needs": _canonical_task_state.get(
                                     "cognitive_resolution_needs"
                                 ),
+                                "previous_resolution_message": _canonical_task_state.get(
+                                    "previous_resolution_message"
+                                ),
                             },
                             client=client,
                         )
@@ -5616,6 +5619,8 @@ class AgentIntelligence:
             rag_sources=rag_sources,
             settings=active_settings,
             permitted_registry=permitted_registry,
+            connected_integrations=connected_list,
+            conversation_history=conversation_history,
         ):
             bounded = build_bounded_unavailable_answer(
                 web_configured=is_web_search_configured(active_settings),
@@ -6175,6 +6180,7 @@ class AgentIntelligence:
             tool_results=tool_results,
             settings=active_settings,
             connected_integrations=connected_list,
+            conversation_history=conversation_history,
         )
 
         finalized = await self._finalize_assistant_response(
@@ -6200,7 +6206,11 @@ class AgentIntelligence:
             clarification_suffix = (
                 "\n\nI may be missing context — could you clarify or point me to a specific record or document?"
             )
-            if clarification_suffix.strip() not in full_content:
+            # An answer that already asks its own question must not gain a
+            # second, generic one ("Which numbers do you mean…? I may be
+            # missing context — could you clarify…?").
+            already_asks = "?" in (full_content.strip().split("\n\n")[-1] if full_content.strip() else "")
+            if clarification_suffix.strip() not in full_content and not already_asks:
                 full_content = f"{full_content.rstrip()}{clarification_suffix}"
 
         consensus_result = await get_conversational_consensus_service(active_settings).refine_if_warranted(

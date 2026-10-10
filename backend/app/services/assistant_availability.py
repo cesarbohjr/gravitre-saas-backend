@@ -43,7 +43,29 @@ def rag_sources_effectively_empty(rag_sources: list[dict[str, Any]] | None) -> b
     return True
 
 
-def is_external_or_general_question(query: str) -> bool:
+def _has_prior_assistant_turn(history: list[dict[str, Any]] | None) -> bool:
+    for row in history or []:
+        if not isinstance(row, dict):
+            continue
+        if str(row.get("role") or "").lower() == "assistant" and str(row.get("content") or "").strip():
+            return True
+    return False
+
+
+def is_external_or_general_question(
+    query: str,
+    *,
+    connected_integrations: list[str] | None = None,
+    conversation_history: list[dict[str, Any]] | None = None,
+) -> bool:
+    """True when ``query`` reads as a question about the outside world.
+
+    A short question with no other signal is only treated as external when the
+    workspace has nothing of its own to answer from: no real connectors and no
+    earlier assistant turn it could be following up on. "which pages did best?"
+    after a traffic answer, or "who owns the Acme account?" with a CRM
+    connected, are questions about the user's own data, not the web.
+    """
     cleaned = (query or "").strip()
     if not cleaned:
         return False
@@ -52,6 +74,21 @@ def is_external_or_general_question(query: str) -> bool:
     if any(pattern.search(cleaned) for pattern in _EXTERNAL_PATTERNS):
         return True
     if cleaned.endswith("?") and len(cleaned.split()) <= 14:
+        if _real_connectors(connected_integrations) or _has_prior_assistant_turn(conversation_history):
+            return False
+        return True
+    return False
+
+
+def _used_workspace_tools(tool_results: list[dict[str, Any]] | None) -> bool:
+    """True when the answer was grounded on a connector read (not KB / web)."""
+    for row in tool_results or []:
+        name = str(row.get("name") or "")
+        if not name or name in _WEB_TOOL_NAMES or name == "knowledge_base":
+            continue
+        output = row.get("output")
+        if isinstance(output, dict) and (output.get("error") or output.get("success") is False):
+            continue
         return True
     return False
 
@@ -125,6 +162,8 @@ def should_short_circuit_before_generation(
     rag_sources: list[dict[str, Any]] | None,
     settings: Settings,
     permitted_registry: set[str] | frozenset[str] | list[str] | None,
+    connected_integrations: list[str] | None = None,
+    conversation_history: list[dict[str, Any]] | None = None,
 ) -> bool:
     from app.services.operator_task_intent import looks_like_operator_task
 
@@ -132,7 +171,11 @@ def should_short_circuit_before_generation(
         return False
     if len((query or "").strip()) > 400:
         return False
-    if not is_external_or_general_question(query):
+    if not is_external_or_general_question(
+        query,
+        connected_integrations=connected_integrations,
+        conversation_history=conversation_history,
+    ):
         return False
     if not rag_sources_effectively_empty(rag_sources):
         return False
@@ -150,8 +193,15 @@ def apply_bounded_answer_if_needed(
     tool_results: list[dict[str, Any]] | None,
     settings: Settings,
     connected_integrations: list[str] | None = None,
+    conversation_history: list[dict[str, Any]] | None = None,
 ) -> str:
-    if not is_external_or_general_question(query):
+    if not is_external_or_general_question(
+        query,
+        connected_integrations=connected_integrations,
+        conversation_history=conversation_history,
+    ):
+        return answer
+    if _used_workspace_tools(tool_results):
         return answer
     if not rag_sources_effectively_empty(rag_sources):
         return answer

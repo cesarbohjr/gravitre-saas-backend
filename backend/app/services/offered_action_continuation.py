@@ -219,6 +219,18 @@ def _scopes_from_text(text: str) -> list[str]:
     return found
 
 
+_GENERIC_HEALTH_OFFER_RE = re.compile(
+    r"(?i)\b(health\s+check|needs?\s+attention|what'?s\s+(?:wrong|broken|going\s+on)|"
+    r"across\s+(?:the|your)\s+(?:workspace|org(?:anization)?|account)|"
+    r"everything|the\s+whole\s+(?:workspace|org))\b"
+)
+
+
+def _sentences(text: str) -> list[str]:
+    parts = re.split(r"(?<=[.!?])\s+|\n+", text or "")
+    return [part.strip() for part in parts if part and part.strip()]
+
+
 def extract_offered_action(text: str) -> OfferedAction | None:
     """Parse an assistant offer into structured READ continuation state.
 
@@ -232,8 +244,17 @@ def extract_offered_action(text: str) -> OfferedAction | None:
         return None
     if re.search(r"(?i)\b(send|create|post|delete)\b.{0,40}\b(email|message|campaign|workflow)\b", body):
         return None
-    scopes = _scopes_from_text(body)
+    # Only the sentence that makes the offer says what was offered. Scanning
+    # the whole reply let data labels ("**Analytics:** 1,200 users") turn an
+    # unrelated offer ("want me to break that down by page?") into a
+    # workspace health check.
+    offer_text = " ".join(
+        sentence for sentence in _sentences(body) if _OFFER_RE.search(sentence)
+    ) or body
+    scopes = _scopes_from_text(offer_text)
     if not scopes:
+        if not _GENERIC_HEALTH_OFFER_RE.search(offer_text):
+            return None
         scopes = list(READ_TOOLS_BY_SCOPE.keys())
     tools = [READ_TOOLS_BY_SCOPE[s] for s in scopes if s in READ_TOOLS_BY_SCOPE]
     if not tools:

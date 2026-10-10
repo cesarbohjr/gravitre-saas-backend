@@ -21,7 +21,16 @@ from app.services.connector_semantic_registry import (
     resolve_analytics_capabilities_for_message,
     resolve_connector_from_text,
 )
+from app.services.analytics_followup import (
+    GA,
+    GSC,
+    AnalyticsFollowup,
+    analytics_frame,
+    analytics_frame_patch,
+    resolve_analytics_followup,
+)
 from app.services.canonical_time_resolver import (
+    TimeWindow,
     previous_comparable_window,
     resolve_time_window,
     time_window_from_mapping,
@@ -350,8 +359,15 @@ async def _try_cross_source_website_overview_turn(
     connected_integrations: list[str] | None,
     task_state: dict[str, Any] | None,
     user_id: str | None = None,
+    window: TimeWindow | None = None,
+    sources: tuple[str, ...] | None = None,
 ) -> dict[str, Any] | None:
-    """Phase C — parallel GA4 + GSC reads when both connectors are connected."""
+    """Phase C — parallel GA4 + GSC reads when both connectors are connected.
+
+    ``window`` and ``sources`` carry a follow-up's edit of the previous answer
+    (a corrected period, or one named source); without them the period comes
+    from the message and both sources are read.
+    """
     from app.services.cognitive_execution_engine import (
         apply_observations_to_plan,
         execute_read_steps_parallel,
@@ -370,7 +386,13 @@ async def _try_cross_source_website_overview_turn(
         capability_id="analytics.traffic_overview",
         connected_integrations=connected_integrations,
     )
-    if plan is None or len(plan.steps) < 2:
+    if plan is None:
+        return None
+    if sources:
+        plan.steps = [step for step in plan.steps if step.connector_id in sources]
+        if not plan.steps:
+            return None
+    elif len(plan.steps) < 2:
         return None
 
     async def _handler(step: ExecutionStep, ctx: dict[str, Any]) -> ExecutionObservation:
@@ -394,6 +416,7 @@ async def _try_cross_source_website_overview_turn(
         "plan": plan,
         "connected_integrations": list(connected_integrations or []),
         "user_id": user_id,
+        "time_window": window,
     }
     observations = await execute_read_steps_parallel(plan, context=ctx, handler=_handler)
     plan = apply_observations_to_plan(plan, observations)
@@ -412,10 +435,23 @@ async def _try_cross_source_website_overview_turn(
         }
 
     message_out = _compose_cross_source_message(observations)
+    read_window = window or next(
+        (
+            time_window_from_mapping((o.structured or {}).get("time_window"))
+            for o in observations
+            if o.success and isinstance(o.structured, dict) and o.structured.get("time_window")
+        ),
+        None,
+    )
     merged_state = {
         **(task_state or {}),
         **execution_plan_patch(plan),
         **observations_patch(observations),
+        **analytics_frame_patch(
+            message=message,
+            window=read_window,
+            sources=[o.connector_id for o in observations if o.success],
+        ),
     }
     from app.services.structured_assistant_response import blocks_from_execution_observations
 
@@ -437,6 +473,7 @@ async def _try_cross_source_website_overview_turn(
         "response_blocks": response_blocks,
         "execution_path": "analytics_traffic_overview",
         "provider_result_evidence": _cross_source_evidence(plan, observations),
+        "spoken_message": _spoken_cross_source(observations),
     }
 
 
@@ -496,6 +533,7 @@ async def _ga4_read_observation(step: ExecutionStep, ctx: dict[str, Any]) -> Exe
         plan=plan,
         step=step,
         proposed_args={"metrics": ["activeUsers", "sessions"]},
+        time_window_override=ctx.get("time_window"),
         capability_id="analytics.traffic_overview",
     )
     report = unwrap_report_payload(_invoked.data) if _invoked.success else {}
@@ -511,6 +549,7 @@ async def _ga4_read_observation(step: ExecutionStep, ctx: dict[str, Any]) -> Exe
             "active_users": users,
             "sessions": sessions,
             "timeframe_label": label,
+            "time_window": proof.time_window,
         }
     return obs
 
@@ -553,6 +592,7 @@ async def _gsc_read_observation(step: ExecutionStep, ctx: dict[str, Any]) -> Exe
         plan=plan,
         step=step,
         proposed_args={"dimensions": ["page"], "row_limit": 5},
+        time_window_override=ctx.get("time_window"),
         capability_id="analytics.traffic_overview",
     )
     report = unwrap_report_payload(_invoked.data) if _invoked.success else {}
@@ -581,6 +621,7 @@ async def _gsc_read_observation(step: ExecutionStep, ctx: dict[str, Any]) -> Exe
             "top_page": top_page,
             "top_clicks": top_clicks,
             "timeframe_label": label,
+            "time_window": proof.time_window,
         }
     return obs
 
@@ -630,21 +671,46 @@ async def try_analytics_traffic_overview_turn(
 ) -> dict[str, Any] | None:
     """Execute a READ-only traffic overview or return an honest clarify/connect message."""
     active_settings = settings or get_settings()
-    cross = await _try_cross_source_website_overview_turn(
-        message=message,
-        org_id=org_id,
-        client=client,
-        settings=active_settings,
-        connected_integrations=connected_integrations,
-        task_state=task_state,
-        user_id=user_id,
+    state = task_state if isinstance(task_state, dict) else {}
+    pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+    if str(pending.get("status") or "").startswith("awaiting") and not is_analytics_traffic_overview_intent(
+        message, task_state=task_state
+    ):
+        # An open approval or question owns this reply ("yes", "the 16th").
+        return None
+    needs = state.get("cognitive_resolution_needs")
+    resolved_message = str(state.get("cognitive_resolution_message") or "").strip()
+    # Ingress routing applies to the message it was computed for, not to a
+    # later turn that inherited the stored needs.
+    e1_routed = (
+        isinstance(needs, dict)
+        and bool(needs.get("analytics_short_circuit"))
+        and (not resolved_message or resolved_message == (message or "").strip())
     )
-    if cross is not None:
-        return cross
-    needs = (task_state or {}).get("cognitive_resolution_needs") if isinstance(task_state, dict) else {}
-    e1_routed = isinstance(needs, dict) and bool(needs.get("analytics_short_circuit"))
-    if e1_routed:
-        intent = AnalyticsTrafficIntent(connector_id="google_analytics")
+    followup = resolve_analytics_followup(
+        message,
+        task_state,
+        connected_integrations=connected_integrations,
+    )
+    if followup is not None and followup.kind == "decline_offer":
+        return _declined_offer_turn(message=message, task_state=task_state)
+    if followup is not None and followup.breakdowns:
+        breakdown = await _try_breakdown_turn(
+            message=message,
+            followup=followup,
+            org_id=org_id,
+            client=client,
+            settings=active_settings,
+            connected_integrations=connected_integrations,
+            task_state=task_state,
+            user_id=user_id,
+        )
+        if breakdown is not None:
+            return breakdown
+    followup_window = followup.window if followup is not None else None
+    followup_sources = followup.sources if followup is not None else None
+    if e1_routed or followup is not None:
+        intent: AnalyticsTrafficIntent | None = AnalyticsTrafficIntent(connector_id="google_analytics")
     else:
         intent = detect_analytics_traffic_intent(
             message,
@@ -653,6 +719,20 @@ async def try_analytics_traffic_overview_turn(
         )
     if intent is None:
         return None
+    if followup_sources != (GA,):
+        cross = await _try_cross_source_website_overview_turn(
+            message=message,
+            org_id=org_id,
+            client=client,
+            settings=active_settings,
+            connected_integrations=connected_integrations,
+            task_state=task_state,
+            user_id=user_id,
+            window=followup_window,
+            sources=followup_sources,
+        )
+        if cross is not None:
+            return cross
 
     connected = {str(v).strip().lower() for v in (connected_integrations or []) if str(v).strip()}
     if intent.connector_id not in connected:
@@ -707,7 +787,8 @@ async def try_analytics_traffic_overview_turn(
         )
     )
     if (
-        reference.matched
+        followup is None
+        and reference.matched
         and reference.kind == "referent"
         and reference.referent
         and not time_refine
@@ -833,6 +914,7 @@ async def try_analytics_traffic_overview_turn(
             plan=plan,
             step=primary_step,
             proposed_args={"metrics": ["activeUsers", "sessions", "screenPageViews"]},
+            time_window_override=followup_window,
             capability_id="analytics.traffic_overview",
         )
     except ToolValidationError as exc:
@@ -1013,7 +1095,15 @@ async def try_analytics_traffic_overview_turn(
         step_id=primary_step.step_id,
         report=current,
     )
-    merged_state = {**merged_state, "provider_result_evidence": evidence}
+    merged_state = {
+        **merged_state,
+        "provider_result_evidence": evidence,
+        **analytics_frame_patch(
+            message=message,
+            window=compiled_window or proof.time_window,
+            sources=[GA],
+        ),
+    }
     return {
         "stop_pipeline": True,
         "dialogue_mode": "answer",
@@ -1041,3 +1131,275 @@ async def try_analytics_traffic_overview_turn(
             "resolution_reason": (proof.resource or {}).get("reason") or resolution.resolution_reason,
         },
     }
+
+
+def _declined_offer_turn(*, message: str, task_state: dict[str, Any] | None) -> dict[str, Any]:
+    """The user turned down the breakdown offer: acknowledge, run nothing."""
+    del message
+    frame = dict(analytics_frame(task_state) or {})
+    frame["offer"] = []
+    return {
+        "stop_pipeline": True,
+        "dialogue_mode": "answer",
+        "message": "No problem. Let me know if you want to dig into it later.",
+        "task_state": {**(task_state or {}), "analytics_frame": frame},
+        "workflow_status": "completed",
+        "execution_path": "analytics_traffic_overview",
+        "business_intent": "analytics.traffic_overview",
+    }
+
+
+def _report_rows(report: dict[str, Any]) -> list[tuple[str, float]]:
+    """(label, first metric) rows from a GA4 or Search Console report."""
+    out: list[tuple[str, float]] = []
+    for row in report.get("rows") or []:
+        if not isinstance(row, dict):
+            continue
+        dims = row.get("dimensionValues")
+        if isinstance(dims, list) and dims:
+            label = str((dims[0] or {}).get("value") or "")
+            values = row.get("metricValues") or []
+            try:
+                value = float((values[0] or {}).get("value") or 0) if values else 0.0
+            except (TypeError, ValueError):
+                value = 0.0
+        else:
+            keys = row.get("keys") or []
+            label = str(keys[0]) if keys else ""
+            try:
+                value = float(row.get("clicks") or 0)
+            except (TypeError, ValueError):
+                value = 0.0
+        if label and label != "(not set)":
+            out.append((label, value))
+    out.sort(key=lambda item: item[1], reverse=True)
+    return out
+
+
+async def _try_breakdown_turn(
+    *,
+    message: str,
+    followup: AnalyticsFollowup,
+    org_id: str,
+    client: Any,
+    settings: Settings,
+    connected_integrations: list[str] | None,
+    task_state: dict[str, Any] | None,
+    user_id: str | None,
+) -> dict[str, Any] | None:
+    """Pages / traffic-source breakdown for the period under discussion."""
+    from app.services.sealed_read_execution import attributable_read_actor_id
+
+    connected = {str(v).strip().lower() for v in (connected_integrations or []) if str(v).strip()}
+    sources = [s for s in (followup.sources or (GA, GSC)) if s in connected]
+    if not sources:
+        return None
+    reads: list[tuple[str, str, str, dict[str, Any], str]] = []
+    for breakdown in followup.breakdowns:
+        if breakdown == "pages":
+            if GA in sources:
+                reads.append(
+                    (
+                        "pages",
+                        GA,
+                        "google_analytics.reports.run",
+                        {"metrics": ["screenPageViews"], "dimensions": ["pagePath"], "limit": 5},
+                        "views",
+                    )
+                )
+            elif GSC in sources:
+                reads.append(
+                    (
+                        "pages",
+                        GSC,
+                        "google_search_console.searchAnalytics.query",
+                        {"dimensions": ["page"], "row_limit": 5},
+                        "clicks",
+                    )
+                )
+        elif breakdown == "sources" and GA in sources:
+            reads.append(
+                (
+                    "sources",
+                    GA,
+                    "google_analytics.reports.run",
+                    {"metrics": ["sessions"], "dimensions": ["sessionDefaultChannelGroup"], "limit": 5},
+                    "visits",
+                )
+            )
+    if not reads:
+        return None
+
+    plan = reconcile_execution_plan(
+        message=message,
+        task_state=task_state,
+        capability_id="analytics.traffic_overview",
+        connected_integrations=list(connected),
+    )
+    plan.execution_strategy = "FAST_PATH"
+    plan.capability_id = plan.capability_id or "analytics.traffic_overview"
+    actor_id = attributable_read_actor_id(user_id) or "analytics-traffic-overview"
+    tool_ctx = ToolContext(
+        settings=settings,
+        client=client,
+        org_id=org_id,
+        actor_id=actor_id,
+        environment_name="production",
+        cognitive_invoke=True,
+        plan_id=plan.plan_id,
+        capability_id="analytics.traffic_overview",
+        conversation_id=plan.conversation_id,
+    )
+    steps = {
+        kind: ensure_plan_read_step(
+            plan,
+            step_id=f"read_{connector}_{kind}",
+            action_key=action_key,
+            connector_id=connector,
+            title="Top pages" if kind == "pages" else "Traffic sources",
+        )
+        for kind, connector, action_key, _args, _unit in reads
+    }
+
+    def _read(kind: str, action_key: str, args: dict[str, Any]):
+        return invoke_sealed_f1_read(
+            ctx=tool_ctx,
+            action_key=action_key,
+            user_message=message,
+            task_state=task_state or {},
+            connected_integrations=list(connected),
+            plan=plan,
+            step=steps[kind],
+            proposed_args=args,
+            time_window_override=followup.window,
+            capability_id="analytics.traffic_overview",
+        )
+
+    try:
+        packs = await asyncio.gather(
+            *(asyncio.to_thread(_read, kind, action_key, args) for kind, _c, action_key, args, _u in reads)
+        )
+    except ToolValidationError as exc:
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": str(exc),
+            "task_state": {**(task_state or {}), **execution_plan_patch(plan)},
+            "workflow_status": "blocked",
+        }
+
+    sections: list[tuple[str, str, list[tuple[str, float]]]] = []
+    window_used: dict[str, Any] | None = followup.window.as_dict() if followup.window else None
+    blocked_message: str | None = None
+    for (kind, _connector, _action, _args, unit), (invoked, proof, _obs) in zip(reads, packs):
+        if not proof.ok:
+            blocked_message = blocked_message or proof.user_message()
+            continue
+        if not invoked.success:
+            continue
+        window_used = window_used or proof.time_window
+        sections.append((kind, unit, _report_rows(unwrap_report_payload(invoked.data))[:5]))
+
+    if not sections:
+        plan = mark_plan_terminal(plan, "failed")
+        return {
+            "stop_pipeline": True,
+            "dialogue_mode": "answer",
+            "message": blocked_message
+            or "I couldn't get that breakdown from your analytics just now. Want me to try again?",
+            "task_state": {**(task_state or {}), **execution_plan_patch(plan)},
+            "workflow_status": "blocked",
+            "execution_path": "analytics_traffic_overview",
+        }
+
+    label = user_facing_time_label(window_used).replace("**", "")
+    text_lines: list[str] = []
+    spoken: list[str] = []
+    for kind, unit, rows in sections:
+        heading = "Top pages" if kind == "pages" else "Where visits came from"
+        if not rows:
+            text_lines.append(f"**{heading}:** nothing recorded for {label}.")
+            spoken.append(f"I didn't find any {'page' if kind == 'pages' else 'source'} data for {label}.")
+            continue
+        text_lines.append(f"**{heading}** ({label}):")
+        for idx, (name, value) in enumerate(rows, start=1):
+            text_lines.append(f"{idx}. {name} — {int(value):,} {unit}")
+        text_lines.append("")
+        lead_name, lead_value = rows[0]
+        if kind == "pages":
+            sentence = f"For {label}, your top page was {lead_name} with {int(lead_value):,} {unit}"
+        else:
+            sentence = f"Most visits came from {lead_name}, {int(lead_value):,} of them"
+        if len(rows) > 1:
+            sentence += f", then {rows[1][0]} with {int(rows[1][1]):,}"
+        spoken.append(sentence + ".")
+    message_out = "\n".join(text_lines).strip()
+
+    plan = mark_plan_terminal(plan, "completed")
+    merged_state = {
+        **(task_state or {}),
+        **execution_plan_patch(plan),
+        **analytics_frame_patch(message=message, window=window_used, sources=sources, offer=[]),
+    }
+    merged_state = store_active_analysis(
+        merged_state,
+        {"kind": "analytics.traffic_overview", "connector_id": sources[0]},
+    )
+    from app.services.provider_result_grounding import evidence_from_observation
+
+    first_connector = reads[0][1]
+    evidence = evidence_from_observation(
+        action_key=(
+            "google_search_console.searchAnalytics.query"
+            if first_connector == GSC
+            else "google_analytics.reports.run"
+        ),
+        result_count=len(sections[0][2]),
+        observation_id=None,
+        plan_id=plan.plan_id,
+        step_id=steps[reads[0][0]].step_id,
+        success=True,
+        provider_invoked=True,
+    )
+    merged_state["provider_result_evidence"] = evidence
+    return {
+        "stop_pipeline": True,
+        "dialogue_mode": "answer",
+        "message": message_out,
+        "spoken_message": " ".join(spoken),
+        "provider_result_evidence": evidence,
+        "execution_path": "analytics_traffic_overview",
+        "task_state": merged_state,
+        "workflow_status": plan.terminal_status,
+        "plan_terminal_status": plan.terminal_status,
+        "execution_strategy": "FAST_PATH",
+        "business_intent": "analytics.traffic_overview",
+        "execution_plan": plan.as_dict(),
+    }
+
+
+def _spoken_cross_source(observations: list[Any]) -> str:
+    """The cross-source answer as a person would say it (no markdown)."""
+    parts: list[str] = []
+    for obs in observations:
+        if not getattr(obs, "success", False):
+            continue
+        data = obs.structured if isinstance(getattr(obs, "structured", None), dict) else {}
+        when = str(data.get("timeframe_label") or "this period").replace("**", "")
+        if obs.connector_id == GA and data.get("active_users") is not None:
+            parts.append(
+                f"Over {when}, your site had {int(data.get('active_users') or 0):,} visitors "
+                f"across {int(data.get('sessions') or 0):,} visits."
+            )
+        elif obs.connector_id == GSC:
+            if data.get("top_page"):
+                parts.append(
+                    f"From search, your top page was {data.get('top_page')} "
+                    f"with {int(data.get('top_clicks') or 0):,} clicks."
+                )
+            else:
+                parts.append(f"Search didn't record any page clicks for {when}.")
+    if not parts:
+        return ""
+    parts.append("Want me to dig into where the visits came from, or which pages did best?")
+    return " ".join(parts)

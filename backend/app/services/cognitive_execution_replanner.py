@@ -7,6 +7,7 @@ from app.capability_ontology.recipe_resolver import resolve_recipe
 from app.services.connector_semantic_registry import (
     mentions_analytics_traffic_language,
     mentions_website_performance_language,
+    resolve_all_connectors_from_text,
 )
 from app.services.execution_plan_service import ExecutionPlan, ExecutionStep
 
@@ -26,9 +27,15 @@ def build_cross_source_analytics_plan(
         return None
     cap = str(capability_id or "").strip().lower()
     traffic_shaped = (
-        cap in {"", "analytics.traffic_overview", "analytics.query", "search.performance"}
+        # No capability is not a traffic capability: without one, the message
+        # itself must be about traffic or name the analytics sources
+        # ("create a follow-up task" is neither).
+        cap in {"analytics.traffic_overview", "analytics.query", "search.performance"}
         or mentions_analytics_traffic_language(text)
         or mentions_website_performance_language(text)
+        or bool(
+            {"google_analytics", "google_search_console"}.intersection(resolve_all_connectors_from_text(text))
+        )
     )
     if not traffic_shaped:
         return None
