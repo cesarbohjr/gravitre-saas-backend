@@ -385,6 +385,21 @@ def _persist_voice_expression_sync() -> None:
         return
     conversation_id, org_id, client, settings = target
     snap = dict(state)
+    from app.services.speculative_execution import current_scope
+
+    scope = current_scope()
+    if scope is not None:
+        # Speculative (unconfirmed) voice run: same patch, applied only on adoption.
+        def _deferred_patch():
+            from app.config import get_settings
+            from app.services.conversation_state_service import get_conversation_state_service
+
+            return get_conversation_state_service(settings or get_settings()).update_task_state(
+                conversation_id, org_id, {VOICE_EXPRESSION_STATE_KEY: snap}, client=client
+            )
+
+        scope.defer("voice.expression_rotation", _deferred_patch)
+        return
     try:
         from app.config import get_settings
         from app.workflows.repository import get_supabase_client

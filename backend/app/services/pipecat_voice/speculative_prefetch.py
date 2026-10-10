@@ -21,6 +21,11 @@ Two distinct mechanisms, both cancel-and-restart on partial-transcript change:
      cancelled — composes with, but is a separate mechanism from, barge-in
      (ElevenLabsInterruptReporter cancels BOT SPEECH; this cancels a
      background LLM call that hasn't been adopted/spoken yet).
+
+     The run executes as a dry run (app.services.speculative_execution):
+     durable writes are deferred until adoption, connector WRITEs and approval
+     staging/consumption are refused, and the run is bounded by a timeout and
+     a buffer cap (speculative_generation.SpeculativeBounds).
 """
 from __future__ import annotations
 
@@ -45,12 +50,16 @@ from app.services.pipecat_voice.utterance_gate import is_non_utterance
 from app.services.pipecat_voice.speculative_generation import (
     SpeculativeGenerationCoordinator,
     SpeculativeGenerationRun,
+    load_revision_versions,
     start_speculative_run,
 )
 from app.services.pipecat_voice.voice_latency_tuning import (
+    resolve_voice_speculative_bounds,
     resolve_voice_speculative_tuning,
-    speculative_interim_materially_changed,
+    speculative_interim_breaks_run,
+    voice_request_revisions_enabled,
 )
+from app.services.speculative_execution import outside_speculation
 
 logger = get_logger(__name__)
 
@@ -134,6 +143,10 @@ class SpeculativePrefetchProcessor(FrameProcessor):
         spec_tuning = resolve_voice_speculative_tuning(app_settings)
         self._spec_tuning = spec_tuning
         self._min_chars = spec_tuning.min_chars if spec_tuning.v2_enabled else min_chars
+        # Always-on run bounds, and (behind voice_request_revisions_v1)
+        # versioned request revisions with the strict adoption check.
+        self._spec_bounds = resolve_voice_speculative_bounds(app_settings)
+        self._revisions_v1 = voice_request_revisions_enabled(app_settings)
         self._last_partial = ""
         self._task: asyncio.Task[None] | None = None
         # Voice-SLO follow-up (2026-09-05): genuine speculative generation —
@@ -167,9 +180,15 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                 # run to adopt on stale text (adopt() would reject the
                 # mismatch anyway, but cancelling here frees the compute
                 # immediately instead of at confirmed-EOT).
-                if self._speculative_coordinator is not None and text != self._last_speculative_text:
-                    if not self._spec_tuning.v2_enabled or speculative_interim_materially_changed(
-                        self._last_speculative_text, text
+                if self._speculative_coordinator is not None:
+                    if self._revisions_v1:
+                        self._speculative_coordinator.note_transcript(text)
+                    if text != self._last_speculative_text and speculative_interim_breaks_run(
+                        self._last_speculative_text,
+                        text,
+                        strict=self._revisions_v1,
+                        v2_enabled=self._spec_tuning.v2_enabled,
+                        max_extra_words=self._prefix_extra_words(),
                     ):
                         self._speculative_coordinator.cancel()
         elif isinstance(frame, EagerTranscriptionFrame):
@@ -179,6 +198,8 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             text = (frame.text or "").strip()
             if text:
                 self._last_partial = text
+                if self._speculative_coordinator is not None and self._revisions_v1:
+                    self._speculative_coordinator.note_transcript(text)
             self._maybe_start_speculative_generation()
         elif isinstance(frame, EagerEndOfTurnCancelFrame):
             # The user kept talking. Free the run now; the next eager or
@@ -189,6 +210,10 @@ class SpeculativePrefetchProcessor(FrameProcessor):
         elif isinstance(frame, ProposedUserStoppedSpeakingFrame):
             self._maybe_start_speculative_generation()
         await self.push_frame(frame, direction)
+
+    def _prefix_extra_words(self) -> int:
+        tuning = self._spec_tuning
+        return tuning.prefix_max_extra_words if tuning.prefix_adopt else 0
 
     def _maybe_start_speculative_generation(self) -> None:
         """Deepgram Flux's own 'probably done' signal — begin a real,
@@ -228,6 +253,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
 
         query = reconstitute_spoken_identity_fields(text)
         self._last_speculative_text = text
+        revision = self._speculative_coordinator.note_transcript(text) if self._revisions_v1 else None
         run_holder: list[SpeculativeGenerationRun] = []
         latency_marks: dict[str, Any] = {}
 
@@ -236,7 +262,10 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             from app.services.operator_task_intent import resolve_voice_turn_routing
 
             if self.before_run is not None:
-                await self.before_run()
+                # The previous turn's barge-in bookkeeping is confirmed work,
+                # not part of this speculation: never deferred or dropped.
+                with outside_speculation():
+                    await self.before_run()
             intelligence = get_agent_intelligence()
             _, socket_history = messages_from_context(self._llm_context) if self._llm_context else ("", [])
             history = socket_history
@@ -248,6 +277,16 @@ class SpeculativePrefetchProcessor(FrameProcessor):
                 durable, history_summary, provider_conversation_id = await self._durable_context_provider()
                 history = merge_durable_and_socket_history(list(durable or []), list(socket_history or []))
                 conversation_id = provider_conversation_id or conversation_id
+            if self._revisions_v1 and run_holder:
+                # Bind the run to the state it answers; adoption requires the
+                # confirmed turn to see the same versions.
+                run_holder[0].versions = await load_revision_versions(
+                    self._app_settings,
+                    org_id=self._org_id,
+                    conversation_id=conversation_id,
+                    history=history,
+                    history_summary=history_summary,
+                )
             turn_inputs = await self._turn_inputs_provider(query) if self._turn_inputs_provider is not None else {}
             # Same helper and inputs as the confirmed turn (adopt-on-match parity).
             spec_tier, spec_mode = resolve_voice_turn_routing(query, history=history or None)
@@ -274,6 +313,8 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             text=query,
             runner=_runner,
             create_task=self.create_task,
+            bounds=self._spec_bounds,
+            revision=revision,
         )
         run_holder.append(run)
         run.latency_marks = latency_marks

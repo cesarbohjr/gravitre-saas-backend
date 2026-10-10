@@ -127,6 +127,15 @@ class ConversationStateService:
     ) -> dict[str, Any]:
         if not conversation_id or not org_id:
             return deepcopy(DEFAULT_TASK_STATE)
+        from app.services.speculative_execution import current_scope
+
+        scope = current_scope()
+        if scope is not None:
+            # A speculative run reads back what it would have written (its writes
+            # are deferred until adoption), so it behaves like a confirmed run.
+            overlay = scope.task_state_overlay.get((conversation_id, org_id))
+            if overlay is not None:
+                return deepcopy(overlay)
         try:
             query = (
                 self._client(client)
@@ -164,6 +173,7 @@ class ConversationStateService:
         if not conversation_id or not org_id:
             return
         token = _read_on_loop.set(True)
+        original_updates = updates
         try:
             current = await self.get_task_state(conversation_id, org_id, client=client)
             from app.services.execution_plan_adapters import enrich_task_state_patch
@@ -244,6 +254,22 @@ class ConversationStateService:
                     merged["recent_connector_invocations"] = deduped
                 else:
                     merged[key] = value
+            from app.services.speculative_execution import current_scope
+
+            scope = current_scope()
+            if scope is not None:
+                # Speculative (unconfirmed) run: keep the result for its own reads
+                # and replay the original patch only if the run is adopted.
+                scope.task_state_overlay[(conversation_id, org_id)] = deepcopy(merged)
+                try:
+                    patch = deepcopy(original_updates)
+                except Exception:  # noqa: BLE001 - non-copyable value: keep the reference
+                    patch = dict(original_updates)
+                scope.defer(
+                    "conversation.task_state",
+                    lambda: self._persist_state(conversation_id, org_id, patch, client=client),
+                )
+                return
             self._client(client).table("conversations").update(
                 {"task_state": merged}
             ).eq("id", conversation_id).eq("org_id", org_id).execute()
@@ -277,6 +303,10 @@ class ConversationStateService:
         actor_id: str | None = None,
     ) -> bool:
         """SQL compare-and-set on pending_task.status (not a process lock)."""
+        from app.services.speculative_execution import block_if_speculative
+
+        # Claiming a pending task consumes an approval: never on unconfirmed speech.
+        block_if_speculative("approval.compare_and_set_pending_status")
         token = _read_on_loop.set(True)
         try:
             current = await self.get_task_state(conversation_id, org_id, client=client)
@@ -375,6 +405,18 @@ class ConversationStateService:
                 return conv_id
             # Create path only — test credentials default-deny outside isolated org.
             assert_conversation_create_allowed(org_id, actor_id=uid)
+            from app.services.speculative_execution import current_scope
+
+            scope = current_scope()
+            if scope is not None:
+                # Unconfirmed speech never creates a conversation row; adoption replays this.
+                scope.defer(
+                    "conversation.create",
+                    lambda: self.ensure_owned_conversation(
+                        org_id=org_id, user_id=uid, conversation_id=conv_id, title=title, client=client
+                    ),
+                )
+                return conv_id
             now = datetime.now(timezone.utc).isoformat()
             safe_title = (title or "New conversation").strip()[:80] or "New conversation"
             await run_io(

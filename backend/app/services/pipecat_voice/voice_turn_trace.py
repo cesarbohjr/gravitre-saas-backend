@@ -98,6 +98,7 @@ class _TurnTimes:
     intelligence: dict[str, Any] = field(default_factory=dict)
     turn_id: str | None = None
     speculative_outcome: str | None = None
+    speculation: dict[str, Any] = field(default_factory=dict)
     tier_override: str | None = None
 
 
@@ -210,10 +211,13 @@ class VoiceTurnTrace:
         turn_id: str | None = None,
         speculative_outcome: str | None = None,
         tier: str | None = None,
+        speculation: dict[str, Any] | None = None,
     ) -> None:
         turn = self._turn
         if turn is None:
             return
+        if speculation:
+            turn.speculation = dict(speculation)
         if turn_id:
             turn.turn_id = turn_id
         if speculative_outcome:
@@ -403,6 +407,7 @@ def build_turn_record(turn: _TurnTimes) -> dict[str, Any]:
         "stage_durations_ms": {k: v for k, v in durations.items() if v is not None},
         "extra": {
             "speculative_outcome": turn.speculative_outcome,
+            "speculation": dict(turn.speculation) or None,
             "effective_mode": turn.intelligence.get("effectiveMode"),
             "routing_tier": turn.intelligence.get("routingTier"),
             "tier_reason": routing.get("conversationTierReason") if isinstance(routing, dict) else None,

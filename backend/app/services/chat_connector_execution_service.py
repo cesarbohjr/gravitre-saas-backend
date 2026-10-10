@@ -2967,6 +2967,23 @@ class ChatConnectorExecutionService:
         Returns run_id when created. Population follow-up settle is scheduled async
         (Phase 3) so TTFT is not blocked by F6 backoff sleeps.
         """
+        from app.services.speculative_execution import defer_if_speculative
+
+        if defer_if_speculative(
+            "connector.finalize_outcome",
+            self._finalize_connector_outcome,
+            client,
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            plan=plan,
+            result=result,
+            tool_ctx=tool_ctx,
+            connector_id=connector_id,
+        ):
+            # Speculative (unconfirmed) voice run: the run row, audit,
+            # notification and learning fan-out happen only if it is adopted.
+            return None
         from uuid import uuid4
 
         from datetime import datetime, timezone
@@ -3476,6 +3493,18 @@ class ChatConnectorExecutionService:
         plan: ConnectorActionPlan | None,
     ) -> None:
         """Persist typed memories after a confirmed connector turn (best-effort)."""
+        from app.services.speculative_execution import defer_if_speculative
+
+        if defer_if_speculative(
+            "memory.confirmed_workspace_memory",
+            self._promote_confirmed_workspace_memory,
+            client,
+            org_id=org_id,
+            conversation_id=conversation_id,
+            task_state=task_state,
+            plan=plan,
+        ):
+            return
         try:
             from app.services.cross_conversation_ledger_memory import (
                 promote_confirmed_ledger_slots,

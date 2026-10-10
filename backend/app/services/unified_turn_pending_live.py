@@ -209,15 +209,22 @@ async def resolve_unified_live_channel_override_reply(
     # overwrote every org conversation's task_state (451 rows @ 2026-07-25T05:12:32Z),
     # including live-battery fixture args (demo@example.com).
     conv_id = str(conversation_id or "").strip()
-    try:
-        if client and org_id and conv_id:
-            from datetime import datetime, timezone
+    def _write_override() -> None:
+        try:
+            if client and org_id and conv_id:
+                from datetime import datetime, timezone
 
-            client.table("conversations").update(
-                {"task_state": state, "updated_at": datetime.now(timezone.utc).isoformat()}
-            ).eq("id", conv_id).eq("org_id", org_id).execute()
-    except Exception:
-        pass
+                client.table("conversations").update(
+                    {"task_state": state, "updated_at": datetime.now(timezone.utc).isoformat()}
+                ).eq("id", conv_id).eq("org_id", org_id).execute()
+        except Exception:
+            pass
+
+    from app.services.speculative_execution import defer_if_speculative
+
+    # Unconfirmed speech: the write lands only if the speculative run is adopted.
+    if not defer_if_speculative("conversation.channel_override", _write_override):
+        _write_override()
 
     label = override.replace("_", " ").title()
     text = f"Got it — I'll use {label} for this. What should I send?"

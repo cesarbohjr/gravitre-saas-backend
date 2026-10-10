@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import logging
 import threading
 import time
@@ -112,6 +113,21 @@ def write_audit_event(
     metadata: dict[str, Any] | None = None,
 ) -> None:
     """Insert audit rows. Never raises — audit must not break product flows."""
+    from app.services.speculative_execution import defer_if_speculative
+
+    if defer_if_speculative(
+        "audit.write_audit_event",
+        write_audit_event,
+        client,
+        org_id,
+        actor_id,
+        action,
+        resource_type,
+        resource_id,
+        metadata,
+    ):
+        # Speculative (unconfirmed) voice run: the row lands only if adopted.
+        return
     resource_id_str = str(resource_id)
     pii_mode = _get_org_pii_mode(client, org_id)
     meta = redact_metadata(metadata or {}, mode=pii_mode)
@@ -223,6 +239,9 @@ def submit_audit_off_loop(write: Any, /, *args: Any, **kwargs: Any) -> None:
         except Exception as exc:  # noqa: BLE001
             logger.debug("audit_write_failed error=%s", exc)
 
-    future = loop.run_in_executor(None, _run)
+    # Same context as the caller (like asyncio.to_thread), so a speculative
+    # voice run's scope still defers this write in the worker thread.
+    ctx = contextvars.copy_context()
+    future = loop.run_in_executor(None, ctx.run, _run)
     _OFF_LOOP_WRITES.add(future)
     future.add_done_callback(_OFF_LOOP_WRITES.discard)

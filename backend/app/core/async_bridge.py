@@ -63,7 +63,11 @@ def run_coro_sync(coro: Coroutine[Any, Any, T], *, timeout: float | None = None)
         return asyncio.run(coro)
 
     bridge = _ensure_bridge_loop()
-    future = asyncio.run_coroutine_threadsafe(coro, bridge)
+    # The bridge loop does not inherit this thread's context; keep a
+    # speculative voice run's dry-run scope attached to the work it awaits.
+    from app.services.speculative_execution import bind_scope
+
+    future = asyncio.run_coroutine_threadsafe(bind_scope(coro), bridge)
     return future.result(timeout=timeout)
 
 
@@ -144,7 +148,9 @@ def spawn_background(coro: Coroutine[Any, Any, Any]) -> "asyncio.Future[Any] | a
         dropped: "asyncio.Future[Any]" = concurrent.futures.Future()  # type: ignore[assignment]
         dropped.cancel()
         return dropped
-    return asyncio.run_coroutine_threadsafe(coro, _ensure_background_loop())
+    from app.services.speculative_execution import bind_scope
+
+    return asyncio.run_coroutine_threadsafe(bind_scope(coro), _ensure_background_loop())
 
 
 def is_resource_unavailable(exc: BaseException) -> bool:

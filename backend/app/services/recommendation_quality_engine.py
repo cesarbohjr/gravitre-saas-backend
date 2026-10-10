@@ -73,6 +73,31 @@ class RecommendationQualityEngine:
         confidence_score: float | None = None,
         strategy_key: str | None = None,
     ) -> None:
+        from app.services.speculative_execution import run_or_defer
+
+        # Deferred inside a speculative (unconfirmed) voice run until adoption.
+        await run_or_defer(
+            "recommendation.created",
+            lambda: self._record_recommendation_created(
+                org_id=org_id,
+                recommendation_id=recommendation_id,
+                department=department,
+                task_type=task_type,
+                confidence_score=confidence_score,
+                strategy_key=strategy_key,
+            ),
+        )
+
+    async def _record_recommendation_created(
+        self,
+        *,
+        org_id: str,
+        recommendation_id: str,
+        department: str | None,
+        task_type: str | None,
+        confidence_score: float | None,
+        strategy_key: str | None,
+    ) -> None:
         await self._outcomes.record_recommendation_outcome(
             org_id,
             recommendation_id,

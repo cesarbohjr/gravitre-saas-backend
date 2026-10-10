@@ -81,6 +81,27 @@ def raise_if_barge_in_blocks_invoke(ctx: Any, action: str) -> None:
     )
 
 
+def raise_if_speculative_blocks_invoke(action: str) -> None:
+    """No connector WRITE from a speculative (unconfirmed) voice run.
+
+    READs stay allowed (side-effect free). A mutating invoke marks the run
+    blocked, so it is never adopted, and fails like any refused write.
+    """
+    from app.services.speculative_execution import current_scope
+
+    scope = current_scope()
+    if scope is None or not action_is_mutating_write(action):
+        return
+    scope.mark_blocked(f"connector_write:{action}")
+    from app.services.react_write_gate import WRITE_COMMIT_INTERRUPTED
+    from app.services.tool_types import ToolValidationError
+
+    raise ToolValidationError(
+        "Not executed: the request was not confirmed yet.",
+        code=WRITE_COMMIT_INTERRUPTED,
+    )
+
+
 def mark_voice_barge_in_stop(
     *,
     org_id: str | None,

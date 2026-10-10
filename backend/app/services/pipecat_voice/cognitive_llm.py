@@ -35,7 +35,11 @@ from app.services.pipecat_voice.backchannel_classifier import (
     classify_interrupt_intent,
 )
 from app.services.pipecat_voice.llm_context_utils import messages_from_context as _messages_from_context
-from app.services.pipecat_voice.speculative_generation import SpeculativeGenerationCoordinator
+from app.services.pipecat_voice.speculative_generation import (
+    SpeculativeGenerationCoordinator,
+    load_revision_versions,
+)
+from app.services.speculative_execution import SpeculativeSideEffectBlocked
 from app.services.pipecat_voice.spoken_stream_filter import SpokenMarkdownStreamFilter
 from app.services.pipecat_voice.utterance_gate import is_filler_only
 from app.services.pipecat_voice.voice_delivery_tags import strip_and_validate_delivery_tags
@@ -43,6 +47,7 @@ from app.services.pipecat_voice.voice_latency_metrics import record_voice_llm_st
 from app.services.pipecat_voice.voice_latency_tuning import (
     resolve_voice_speculative_tuning,
     resolve_voice_tts_chunk_tuning,
+    voice_request_revisions_enabled,
 )
 from app.services.pipecat_voice.voice_silence_guard import (
     ACK_DUE,
@@ -224,24 +229,39 @@ async def adopt_or_fresh(adopted: Any, fresh: Any):
     with an empty ``cancelled`` completion and no text. Adopting that verbatim
     meant the user's turn got no answer at all, so the confirmed turn falls
     back to the same fresh call it would have made without speculation.
+
+    The same fallback applies when the adopted run turns out to have hit a
+    side effect it may not perform unconfirmed (SpeculativeSideEffectBlocked
+    from the commit of its deferred writes): nothing was replayed, so the turn
+    is redone on the normal path.
     """
     produced_text = False
-    async for event in adopted:
-        if isinstance(event, AssistantStreamComplete):
-            if (
-                not produced_text
-                and str(getattr(event, "model", "") or "") == "cancelled"
-                and not str(getattr(event, "full_content", "") or "").strip()
-            ):
-                logger.info("pipecat_voice_speculative_cancelled_fallback_fresh")
-                async for fresh_event in fresh():
-                    yield fresh_event
-                return
+    produced_any = False
+    try:
+        async for event in adopted:
+            if isinstance(event, AssistantStreamComplete):
+                if (
+                    not produced_text
+                    and str(getattr(event, "model", "") or "") == "cancelled"
+                    and not str(getattr(event, "full_content", "") or "").strip()
+                ):
+                    logger.info("pipecat_voice_speculative_cancelled_fallback_fresh")
+                    async for fresh_event in fresh():
+                        yield fresh_event
+                    return
+                produced_any = True
+                yield event
+                continue
+            if isinstance(event, AssistantStreamEvent) and event.sse_type == "text-delta":
+                produced_text = True
+            produced_any = True
             yield event
-            continue
-        if isinstance(event, AssistantStreamEvent) and event.sse_type == "text-delta":
-            produced_text = True
-        yield event
+    except SpeculativeSideEffectBlocked:
+        if produced_any:
+            raise
+        logger.info("pipecat_voice_speculative_blocked_fallback_fresh")
+        async for fresh_event in fresh():
+            yield fresh_event
 
 
 class GravitreCognitiveLLMService(LLMService):
@@ -761,13 +781,29 @@ class GravitreCognitiveLLMService(LLMService):
             # nor the fast mode; never adopt it for an explanation.
             with contextlib.suppress(Exception):
                 self._speculative_coordinator.cancel()
+        coordinator = self._speculative_coordinator
+        revisions_v1 = voice_request_revisions_enabled(self._app_settings)
+        confirmed_versions = None
+        if coordinator is not None and revisions_v1 and coordinator.has_pending_run:
+            # voice_request_revisions_v1: the run may be adopted only if the
+            # conversation, pending task, approval state and context it was
+            # produced under are still what this confirmed turn sees.
+            confirmed_versions = await load_revision_versions(
+                self._app_settings,
+                org_id=self._org_id,
+                conversation_id=self._conversation_id,
+                history=history,
+                history_summary=self._durable_summary,
+            )
         speculative_run = (
-            self._speculative_coordinator.adopt(
+            coordinator.adopt(
                 user_text,
                 prefix_max_extra_words=prefix_extra,
                 tier=voice_tier.tier,
+                strict=revisions_v1,
+                versions=confirmed_versions,
             )
-            if self._speculative_coordinator and intent is not InterruptIntent.EXPLAIN
+            if coordinator and intent is not InterruptIntent.EXPLAIN
             else None
         )
         speculative_outcome = "adopted" if speculative_run is not None else "fresh"
@@ -779,6 +815,15 @@ class GravitreCognitiveLLMService(LLMService):
             self._turn_brain_marks.append(getattr(speculative_run, "latency_marks", None) or {})
         if trace is not None:
             trace.set_turn_meta(speculative_outcome=speculative_outcome)
+            if coordinator is not None:
+                trace.set_turn_meta(
+                    speculation={
+                        **coordinator.stats.snapshot(),
+                        "reject_reason": coordinator.last_reject_reason,
+                        "revision_delta": coordinator.last_revision_delta,
+                        "revisions_v1": revisions_v1,
+                    }
+                )
         if speculative_run is not None:
             logger.info(
                 "pipecat_voice_speculative_generation_adopted org_id=%s chars=%s prefix_adopt=%s",
@@ -804,7 +849,18 @@ class GravitreCognitiveLLMService(LLMService):
             )
 
         if speculative_run is not None:
-            events_source = adopt_or_fresh(speculative_run.events(), _fresh_stream)
+            adopted_run = speculative_run
+
+            async def _adopted_events():
+                # Durable writes the run deferred while speculative land now,
+                # before any of its output is used (raises if it was blocked).
+                replayed = await adopted_run.commit()
+                if coordinator is not None:
+                    coordinator.note_replayed(replayed)
+                async for adopted_event in adopted_run.events():
+                    yield adopted_event
+
+            events_source = adopt_or_fresh(_adopted_events(), _fresh_stream)
         else:
             events_source = _fresh_stream()
         # Dead-air guard: while one slow tool call keeps the stream silent, say
@@ -1002,6 +1058,17 @@ class GravitreCognitiveLLMService(LLMService):
         def _ms(at: float | None) -> int | None:
             return int((at - turn_start) * 1000) if at is not None else None
 
+        speculation_snapshot: dict[str, Any] | None = None
+        if coordinator is not None:
+            speculation_snapshot = {
+                **coordinator.stats.snapshot(),
+                "reject_reason": coordinator.last_reject_reason,
+                "revision_delta": coordinator.last_revision_delta,
+                "revisions_v1": revisions_v1,
+            }
+            if trace is not None:
+                # End-of-turn counters (deferred writes replayed by now).
+                trace.set_turn_meta(speculation=speculation_snapshot)
         # Audit inserts block; the reply is still being spoken, so they run in
         # a worker thread instead of pausing its audio.
         await asyncio.to_thread(
@@ -1016,6 +1083,7 @@ class GravitreCognitiveLLMService(LLMService):
             speculative_outcome=speculative_outcome,
             speculative_v2=spec_tuning.v2_enabled,
             tts_chunk_v2=chunk_tuning.v2_enabled,
+            speculation=speculation_snapshot,
         )
         if complete_event is not None and trace is not None:
             trace.set_turn_meta(turn_id=str(getattr(complete_event, "message_id", None) or "") or None)

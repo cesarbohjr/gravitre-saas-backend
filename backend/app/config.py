@@ -760,6 +760,33 @@ class Settings(BaseSettings):
             "voice_speculative_prefix_max_words",
         ),
     )
+    # Speculative run bounds (always on, conservative): an unadopted run is
+    # cancelled after this long; past the buffer caps its producer pauses.
+    voice_speculative_timeout_s: float = Field(
+        default=5.0,
+        validation_alias=AliasChoices("VOICE_SPECULATIVE_TIMEOUT_S", "voice_speculative_timeout_s"),
+    )
+    voice_speculative_max_buffer_chars: int = Field(
+        default=2000,
+        validation_alias=AliasChoices(
+            "VOICE_SPECULATIVE_MAX_BUFFER_CHARS",
+            "voice_speculative_max_buffer_chars",
+        ),
+    )
+    voice_speculative_max_buffer_events: int = Field(
+        default=512,
+        validation_alias=AliasChoices(
+            "VOICE_SPECULATIVE_MAX_BUFFER_EVENTS",
+            "voice_speculative_max_buffer_events",
+        ),
+    )
+    # Versioned request revisions: speculative adoption bound to transcript,
+    # conversation, pending-task, approval and context versions, with a
+    # stricter transcript check (default OFF).
+    voice_request_revisions_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_REQUEST_REVISIONS_V1", "voice_request_revisions_v1"),
+    )
     voice_tts_chunk_v2: bool = Field(
         default=False,
         validation_alias=AliasChoices("VOICE_TTS_CHUNK_V2", "voice_tts_chunk_v2"),
