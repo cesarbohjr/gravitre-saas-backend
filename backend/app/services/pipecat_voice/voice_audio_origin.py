@@ -103,6 +103,12 @@ class VoicePipelineSession:
     filler_finals_dropped: int = 0
     # User turn starts the turn strategy has seen (any start, held or not).
     user_turn_starts: int = 0
+    # Between a proposed user turn start and its proposed stop (Flux StartOfTurn
+    # .. EndOfTurn): the user is mid-utterance.
+    user_speaking: bool = False
+    # Utterances first held while the brain was working (no words yet, or
+    # hold-worthy words) whose final words turned out to be a real turn.
+    held_speech_escalations: int = 0
     # Muted reply -> user_turn_starts when it was muted: a later start means
     # the user moved on, so the reply's result is shown instead of spoken.
     muted_at_turn_starts: dict[int, int] = field(default_factory=dict)
@@ -112,6 +118,13 @@ class VoicePipelineSession:
 
     def note_user_turn_start(self) -> None:
         self.user_turn_starts += 1
+        self.user_speaking = True
+
+    def note_user_turn_stop(self) -> None:
+        self.user_speaking = False
+
+    def note_held_speech_escalated(self) -> None:
+        self.held_speech_escalations += 1
 
     def user_started_since_mute(self, reply_id: int) -> bool:
         """True when a user turn started after ``reply_id`` was silenced."""

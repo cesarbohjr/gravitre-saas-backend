@@ -372,3 +372,30 @@ def is_syntactically_incomplete(text: str) -> bool:
         return True
     words = _WORD_RE.findall(stripped.lower().rstrip(".!"))
     return bool(words) and words[-1] in _INCOMPLETE_TRAILING_WORDS
+
+
+# A bare go-ahead: the whole utterance says yes and nothing else ("yes",
+# "yeah go ahead", "sure, send it", "ok do it now"). Anything more ("yes but
+# change the subject", "yes wait") is not bare and is not matched.
+_CONFIRM_LEAD = (
+    r"(?:yes|yeah|yea|yep|yup|ya|sure|ok|okay|alright|all\s+right|absolutely|definitely|"
+    r"correct|right|perfect|great|cool|please|confirm(?:ed)?|approved?)"
+)
+_CONFIRM_ACT = (
+    r"(?:go\s+ahead(?:\s+and\s+(?:send|do|post|create|book|schedule|submit|run)\s+(?:it|that))?|"
+    r"(?:send|do|post|create|book|schedule|submit|run|execute|approve|publish|ship)\s+(?:it|that|this)|"
+    r"go\s+for\s+it|proceed|please\s+do|let'?s\s+do\s+it|sounds\s+good|"
+    r"that\s+works|looks\s+good|that'?s\s+fine|fine)"
+)
+_BARE_CONFIRMATION_RE = re.compile(
+    rf"^(?:{_CONFIRM_LEAD}(?:\s+{_CONFIRM_LEAD})*(?:\s+{_CONFIRM_ACT})?|{_CONFIRM_ACT})"
+    r"(?:\s+(?:now|please|right\s+away|thanks|thank\s+you))*$"
+)
+
+
+def is_bare_confirmation(text: str) -> bool:
+    """True when the utterance is only a go-ahead: "yes", "yeah go ahead", "send it"."""
+    normalized = _normalize(text)
+    if not normalized or len(normalized.split()) > 8:
+        return False
+    return bool(_BARE_CONFIRMATION_RE.match(normalized))

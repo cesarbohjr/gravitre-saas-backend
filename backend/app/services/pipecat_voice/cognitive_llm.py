@@ -33,6 +33,7 @@ from app.operators.stream_events import AssistantStreamComplete, AssistantStream
 from app.services.pipecat_voice.backchannel_classifier import (
     InterruptIntent,
     classify_interrupt_intent,
+    is_bare_confirmation,
     is_syntactically_incomplete,
 )
 from app.services.pipecat_voice.llm_context_utils import messages_from_context as _messages_from_context
@@ -130,6 +131,45 @@ def incomplete_turn_hold_seconds(settings: Any) -> float:
     except (TypeError, ValueError):
         ms = 600.0
     return max(0.0, min(INCOMPLETE_TURN_HOLD_MAX_S, ms / 1000.0))
+
+
+# voice_confirmation_hold_v1: once the user resumed, how long the go-ahead may
+# wait for them to finish before it is set aside (never sent while they talk),
+# and how long after they stop for the turn strategy's verdict to land.
+CONFIRMATION_HOLD_MAX_WAIT_S = 8.0
+CONFIRMATION_HOLD_SETTLE_S = 0.1
+
+
+def confirmation_hold_seconds(settings: Any) -> float:
+    """Hold before acting on a bare go-ahead, in seconds (0 when off)."""
+    if not bool(getattr(settings, "voice_confirmation_hold_v1", True)):
+        return 0.0
+    try:
+        ms = float(getattr(settings, "voice_incomplete_turn_hold_ms", 600) or 0)
+    except (TypeError, ValueError):
+        ms = 600.0
+    return max(0.0, min(INCOMPLETE_TURN_HOLD_MAX_S, ms / 1000.0))
+
+
+def answers_assistant_question(user_text: str, history: list[dict[str, Any]] | None) -> bool:
+    """A bare go-ahead ("yes", "send it") replying to an assistant turn that asked something."""
+    if not is_bare_confirmation(user_text):
+        return False
+    for message in reversed(list(history or [])):
+        if not isinstance(message, dict):
+            continue
+        role = str(message.get("role") or "")
+        if role == "user":
+            continue
+        if role != "assistant":
+            return False
+        content = message.get("content")
+        if isinstance(content, list):
+            content = " ".join(
+                str(part.get("text") or "") for part in content if isinstance(part, dict)
+            )
+        return str(content or "").rstrip().rstrip("\"')]*").endswith("?")
+    return False
 
 
 _CONTINUES_PREVIOUS_RE = re.compile(
@@ -716,6 +756,12 @@ class GravitreCognitiveLLMService(LLMService):
         if intent is InterruptIntent.TASK_CANCEL:
             await self._answer_task_cancel(user_text, since=previous_turn_started)
             return
+        confirm_hold_s = confirmation_hold_seconds(self._app_settings)
+        if confirm_hold_s > 0 and answers_assistant_question(user_text, history):
+            # voice_confirmation_hold_v1: before the brain runs (so before any
+            # approval is consumed or write executed) make sure the go-ahead
+            # is final. Raises _TurnYieldedToUser when the user went on.
+            await self._hold_bare_confirmation(user_text, confirm_hold_s)
         if self._interrupt_reporter is not None:
             # A confirmed new user turn ends the interrupted one: let its
             # bookkeeping finish and release the stop marker it armed, so this
@@ -1635,6 +1681,67 @@ class GravitreCognitiveLLMService(LLMService):
             return int(getattr(session, "user_turn_starts", 0) or 0)
         except (TypeError, ValueError):
             return 0
+
+    async def _hold_bare_confirmation(self, user_text: str, hold_s: float) -> None:
+        """Act on a bare go-ahead only once it is final (voice_confirmation_hold_v1).
+
+        Flux can commit "yes" on a pause the user then breaks ("yes... wait").
+        Waits ``hold_s`` for the user to resume. If they do, waits for that
+        utterance to end and for the turn strategy's verdict:
+
+        - a stop / correction / request whose words arrived in time interrupts
+          this turn (CancelledError): the go-ahead is carried as a fragment,
+          so the next turn reads "yes wait" and nothing is sent;
+        - one first held as noise and then escalated by its words, or speech
+          still going after CONFIRMATION_HOLD_MAX_WAIT_S, yields the turn
+          (_TurnYieldedToUser) to what the user said;
+        - a cough, "um" or "you there?" changes nothing: the go-ahead proceeds.
+        """
+        session = self._voice_session()
+        if session is None:
+            return
+        # The go-ahead must not be read as this turn's request if it is
+        # cancelled here: it is carried below, as a fragment, instead.
+        self._active_user_text = ""
+        self._answer_started = False
+        starts = self._user_turn_starts()
+        escalations = int(getattr(session, "held_speech_escalations", 0) or 0)
+        began = time.monotonic()
+        stopped_at: float | None = None
+        try:
+            while True:
+                now = time.monotonic()
+                resumed = self._user_turn_starts() > starts
+                speaking = bool(getattr(session, "user_speaking", False))
+                if int(getattr(session, "held_speech_escalations", 0) or 0) > escalations:
+                    raise _TurnYieldedToUser(user_text)
+                if resumed and speaking:
+                    stopped_at = None
+                    if now - began >= CONFIRMATION_HOLD_MAX_WAIT_S:
+                        raise _TurnYieldedToUser(user_text)
+                elif resumed:
+                    if stopped_at is None:
+                        stopped_at = now
+                    elif now - stopped_at >= CONFIRMATION_HOLD_SETTLE_S:
+                        break
+                elif now - began >= hold_s:
+                    break
+                await asyncio.sleep(_INCOMPLETE_HOLD_POLL_S)
+        except _TurnYieldedToUser:
+            logger.info("pipecat_voice_confirmation_hold_yielded org_id=%s", self._org_id)
+            raise
+        except asyncio.CancelledError:
+            if not self._carry_user_text:
+                self._carry_user_text = user_text
+                self._carry_is_fragment = True
+            logger.info("pipecat_voice_confirmation_hold_interrupted org_id=%s", self._org_id)
+            raise
+        logger.info(
+            "pipecat_voice_confirmation_hold_released org_id=%s held_ms=%d user_resumed=%s",
+            self._org_id,
+            int((time.monotonic() - began) * 1000),
+            self._user_turn_starts() > starts,
+        )
 
     async def _user_resumed_within(self, starts: int, hold_s: float) -> bool:
         """Wait up to ``hold_s`` for a user turn start after ``starts``; True if one came."""

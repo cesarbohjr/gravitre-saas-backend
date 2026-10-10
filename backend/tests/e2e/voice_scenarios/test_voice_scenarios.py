@@ -128,3 +128,84 @@ def test_report_renders(bench: dict[str, Any]) -> None:
     report = metrics.markdown_report(results)
     for sid in per_scenario:
         assert f"| {sid} " in report
+
+
+# --- voice_confirmation_hold_v1 (S8 "yes... wait") ------------------------------
+#
+# Flux commits the bare "yes" on the pause and the brain used to start the
+# approved send before the "wait" was heard. These assert on outcomes (unlike
+# the smoke tests above) because they pin a safety fix: the listed seeds sent
+# the email before it. A "yes" with no follow-up, or followed only by filler,
+# must still send.
+
+# Bench seeds (--seed 7, scenario S8) whose "yes" was committed and sent.
+SENT_BEFORE_FIX = [61834, 69753, 77672, 125186, 148943]
+
+
+def _scenario(bench: dict[str, Any], follow_up: str | None, *, pause_s: float = 0.5) -> Any:
+    base = bench["scenarios"].S8ApprovalWait
+
+    class _Variant(base):  # type: ignore[misc, valid-type]
+        async def script(self, run: Any) -> None:
+            await run.say("draft the follow-up email to Sarah at Acme")
+            await run.wait_for(lambda: run.audio_received("answer"), timeout=15)
+            await run.wait_for(lambda: run.playback_idle(), timeout=15)
+            await run.sleep(0.4)
+            if follow_up is None:
+                utt = await run.say("yes", mark_start="request_start", mark_end="request_end")
+            else:
+                utt = await run.say(
+                    f"yes {follow_up}",
+                    pauses={0: pause_s},
+                    commit_on_pause=True,
+                    mark_start="request_start",
+                    mark_end="request_end",
+                )
+            run.notes["yes_final_at"] = utt.final_at if follow_up is None else None
+
+    return _Variant()
+
+
+def _committed(result: Any) -> list[dict[str, Any]]:
+    return [w for w in result.run.rec.writes if w["committed"]]
+
+
+@pytest.mark.parametrize("seed", SENT_BEFORE_FIX)
+def test_yes_then_wait_never_sends(bench: dict[str, Any], seed: int) -> None:
+    (scenario,) = bench["scenarios"].get_scenarios(["S8"])
+    result = bench["harness"].run_scenario(scenario, seed=seed, settings=bench["settings"])
+    assert result.error is None, result.error
+    assert _committed(result) == [], "the email went out although the user said wait"
+    # The "wait" is answered, not dropped.
+    assert any("won't send" in (c.full_content or "") for c in result.run.rec.brain_calls)
+
+
+@pytest.mark.parametrize("seed", [7, 1234, 61834])
+def test_yes_then_long_correction_never_sends(bench: dict[str, Any], seed: int) -> None:
+    """The correction's words land after the grace window (wordless start held as noise)."""
+    scenario = _scenario(bench, "wait change the subject line before you send it")
+    result = bench["harness"].run_scenario(scenario, seed=seed, settings=bench["settings"])
+    assert result.error is None, result.error
+    assert _committed(result) == []
+    queries = [c.query for c in result.run.rec.brain_calls]
+    assert any("subject line" in q for q in queries), queries
+
+
+@pytest.mark.parametrize("seed", [7, 1234, 61834, 77672])
+def test_bare_yes_still_sends_once(bench: dict[str, Any], seed: int) -> None:
+    scenario = _scenario(bench, None)
+    result = bench["harness"].run_scenario(scenario, seed=seed, settings=bench["settings"])
+    assert result.error is None, result.error
+    committed = _committed(result)
+    assert len(committed) == 1
+    yes_final = result.run.notes["yes_final_at"]
+    # Hold (600 ms) + scripted think (0.5 s +/- 25 %) + pre-commit (0.4 s).
+    assert committed[0]["t"] - yes_final < 0.6 + 0.625 + 0.4 + 0.1
+
+
+@pytest.mark.parametrize("seed", [7, 1234])
+def test_yes_then_filler_still_sends(bench: dict[str, Any], seed: int) -> None:
+    scenario = _scenario(bench, "um")
+    result = bench["harness"].run_scenario(scenario, seed=seed, settings=bench["settings"])
+    assert result.error is None, result.error
+    assert len(_committed(result)) == 1

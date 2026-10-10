@@ -870,6 +870,21 @@ class Settings(BaseSettings):
             "voice_incomplete_turn_hold_ms",
         ),
     )
+    # Safety (on by default): a bare go-ahead ("yes", "send it") answering the
+    # assistant's question is not acted on until it is final. The brain does
+    # not start (so no approval is consumed and no write runs) for
+    # voice_incomplete_turn_hold_ms; if the user resumes inside that window the
+    # turn waits for what they say, and a stop, correction or request
+    # ("yes... wait") replaces the go-ahead. Costs that window on such
+    # confirmations only; every other turn is unaffected. Off: the go-ahead is
+    # answered the moment Flux commits it, as before.
+    voice_confirmation_hold_v1: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "VOICE_CONFIRMATION_HOLD_V1",
+            "voice_confirmation_hold_v1",
+        ),
+    )
     # The browser reports how much of each reply it actually played
     # (playback.progress). On a barge-in the stored assistant message is cut to
     # the answer text that was played, mapped from played audio ms through the

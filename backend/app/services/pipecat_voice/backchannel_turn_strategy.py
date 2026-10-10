@@ -234,6 +234,11 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
                 self._voice_session.set_turn_state(LISTENING)
             return ProcessFrameResult.CONTINUE
 
+        if isinstance(frame, ProposedUserStoppedSpeakingFrame):
+            note_stop = getattr(self._voice_session, "note_user_turn_stop", None)
+            if callable(note_stop):
+                note_stop()
+
         if isinstance(frame, ProposedUserStartedSpeakingFrame):
             note_start = getattr(self._voice_session, "note_user_turn_start", None)
             if callable(note_start):
@@ -313,6 +318,23 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
                 await self.trigger_reset_aggregation()
             else:
                 self._held_turn = False
+                if self._held_thinking:
+                    # The hold was decided before these words arrived (often on
+                    # a wordless start whose grace window ran out: Flux sends
+                    # the words only at EndOfTurn). They are a stop, correction
+                    # or request after all, so they stay in the aggregation and
+                    # become the next turn. Recorded so a turn waiting on the
+                    # user (the confirmation hold in cognitive_llm) yields to
+                    # it instead of going ahead. No interruption is broadcast
+                    # here: queued behind this transcript it would reach the
+                    # LLM after the new turn's context and flush it.
+                    self._held_thinking = False
+                    note = getattr(self._voice_session, "note_held_speech_escalated", None)
+                    if callable(note):
+                        note()
+                    logger.info(
+                        "voice_turn_taking_thinking_hold_escalated text=%r", self._held_text[:80]
+                    )
             return ProcessFrameResult.CONTINUE
 
         if isinstance(frame, TranscriptionFrame) and self._pending:
@@ -539,9 +561,14 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             )
             if self._buffer_text:
                 await self.trigger_reset_aggregation()
-                self._held_turn = True
-                self._held_text = self._buffer_text
-                self._held_thinking = True
+            # Held even when no words arrived yet (the grace window ran out on
+            # a wordless start; Flux sends the words only at EndOfTurn): the
+            # utterance's transcript is still checked when it lands: filler is
+            # dropped, and a stop / correction / request is kept as the next
+            # turn and recorded as an escalation (see the held-turn branch).
+            self._held_turn = True
+            self._held_text = self._buffer_text
+            self._held_thinking = True
             return
         if self._buffer_text and self._is_bot_echo(self._buffer_text):
             # The mic heard the bot's own voice. Not the user: keep talking
