@@ -62,7 +62,7 @@ def is_echo_of(
                 if left != right:
                     break
                 matched += 1
-            if matched >= 3 and matched / len(words) >= min_overlap:
+            if matched >= 3 and matched / len(words) >= max(min_overlap, 0.8):
                 return True
     return False
 
