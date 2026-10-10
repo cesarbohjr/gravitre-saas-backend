@@ -1,6 +1,7 @@
 """Phase D — structured AssistantResponse blocks (metrics, trends, prose)."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -66,7 +67,9 @@ def blocks_from_execution_observations(
             title = "Google Analytics" if connector_id == "google_analytics" else "Search Console"
             blocks.append(ResponseBlock(type="metrics", title=title, metrics=tuple(metrics)))
         elif summary:
-            blocks.append(ResponseBlock(type="prose", title=connector_id.replace("_", " ").title(), lines=(summary,)))
+            # Never title a block with an id: only a vendor name reads as a title.
+            title = connector_id.replace("_", " ").title() if re.fullmatch(r"[a-z][a-z0-9_]*", connector_id) else ""
+            blocks.append(ResponseBlock(type="prose", title=title, lines=(summary,)))
     return blocks
 
 
