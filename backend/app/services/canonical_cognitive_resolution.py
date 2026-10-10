@@ -212,7 +212,10 @@ def should_skip_unified_live_for_compiled_read(
 
     if match_catalog_search_intent(message or "") or match_diagnostic_recipe(message or ""):
         return True
-    from app.services.listing_f2_read_turn import match_listing_f2_intent
+    from app.services.listing_f2_read_turn import match_listing_f2_intent, resolve_listing_read_message
+
+    if match_listing_f2_intent(resolve_listing_read_message(message, state)):
+        return True
     from app.services.entity_join_answer_turn import match_cross_system_entity_intent
     from app.services.computer_browser_read_turn import (
         match_computer_browser_followup,
@@ -333,8 +336,28 @@ async def try_compiled_operational_read_turn(
     user_id: str | None = None,
     conversation_id: str | None = None,
 ) -> dict[str, Any] | None:
-    """Analytics first, then other F1 department READs, before ReAct."""
+    """Resolve explicit/continued listing reads before analytics and other F1 READs."""
     from app.services.capability_evidence_plan import looks_like_ceo_ops_question
+
+    from app.services.listing_f2_read_turn import resolve_listing_read_message
+
+    message = resolve_listing_read_message(message, task_state)
+
+    from app.services.listing_f2_read_turn import try_listing_f2_read_turn
+    from app.core.io_pool import run_io
+
+    listing = await run_io(try_listing_f2_read_turn,
+        message=message,
+        org_id=org_id,
+        client=client,
+        settings=settings,
+        connected_integrations=connected_integrations,
+        task_state=task_state,
+        user_id=user_id,
+        conversation_id=conversation_id,
+    )
+    if listing:
+        return listing
 
     if not looks_like_ceo_ops_question(message or ""):
         analytics = await try_analytics_short_circuit_turn(
@@ -409,20 +432,6 @@ async def try_compiled_operational_read_turn(
     )
     if interact:
         return interact
-    from app.services.listing_f2_read_turn import try_listing_f2_read_turn
-
-    listing = try_listing_f2_read_turn(
-        message=message,
-        org_id=org_id,
-        client=client,
-        settings=settings,
-        connected_integrations=connected_integrations,
-        task_state=task_state,
-        user_id=user_id,
-        conversation_id=conversation_id,
-    )
-    if listing:
-        return listing
     from app.services.operational_read_execution import try_operational_read_short_circuit_turn
 
     operational = await try_operational_read_short_circuit_turn(

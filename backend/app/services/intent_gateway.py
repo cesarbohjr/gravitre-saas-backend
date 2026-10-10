@@ -28,6 +28,7 @@ speculative read-warm, retrieve_plan_gate, pack-common orch, connector mapper.
 from __future__ import annotations
 
 import hashlib
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal
@@ -102,6 +103,15 @@ def response_cache_eligible(question: str) -> bool:
     if CONFIRM_PATTERN.match(text) or DECLINE_PATTERN.match(text):
         return False
     if is_operator_task_shaped(text):
+        return False
+    # Live business reads must invoke the connected system again. A cached
+    # refusal or partial answer is not a completed-turn replay.
+    from app.services.connector_semantic_registry import resolve_all_connectors_from_text
+
+    business_records = re.search(r"(?i)\b(companies|contacts|leads|deals|invoices|tickets|records)\b", text)
+    if (resolve_all_connectors_from_text(text) or business_records) and re.search(
+        r"(?i)\b(how many|count|list|show|check|latest|current|refresh)\b", text
+    ):
         return False
     from app.services.connector_status_reply_service import is_connector_status_question
 
