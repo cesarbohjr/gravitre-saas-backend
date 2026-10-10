@@ -351,3 +351,50 @@ class TestScopePropagationAndLifecycle:
         scope.defer("late", lambda: written.append("late"), blocking=True)
         assert written == ["late"]
         assert scope.deferred == []
+
+    @pytest.mark.asyncio
+    async def test_late_async_writes_land_in_order_and_are_awaited(self):
+        """Async writes that reach the scope after the replay finished run in
+        call order, and wait_flushed() covers them, so a later direct write
+        never overtakes them and teardown does not drop them."""
+        scope = SpeculativeScope()
+        await scope.commit()
+        order: list[str] = []
+        release = asyncio.Event()
+
+        async def _first():
+            await release.wait()
+            order.append("first")
+
+        async def _second():
+            order.append("second")
+
+        scope.defer("first", _first)
+        scope.defer("second", _second)
+        waiter = asyncio.create_task(scope.wait_flushed())
+        await asyncio.sleep(0)
+        assert not waiter.done()
+        release.set()
+        await waiter
+        assert order == ["first", "second"]
+
+        with speculative_scope(scope):
+            deferred, _ = await run_or_defer("third", lambda: _append_async(order, "third"))
+        assert not deferred
+        assert order == ["first", "second", "third"]
+
+    @pytest.mark.asyncio
+    async def test_late_blocking_write_runs_off_the_event_loop(self):
+        import threading
+
+        scope = SpeculativeScope()
+        await scope.commit()
+        loop_thread = threading.get_ident()
+        seen: list[int] = []
+        scope.defer("sync", lambda: seen.append(threading.get_ident()), blocking=True)
+        await scope.wait_flushed()
+        assert len(seen) == 1 and seen[0] != loop_thread
+
+
+async def _append_async(order: list[str], value: str) -> None:
+    order.append(value)

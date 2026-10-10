@@ -75,6 +75,10 @@ class SpeculativeScope:
     # Guards deferred/flushing: writers on worker threads can defer while the
     # replay is finishing on the event loop.
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
+    # Writes that reach the scope after the replay finished, drained in call
+    # order by one task so wait_flushed() also covers them.
+    _late: list[_Deferred] = field(default_factory=list, repr=False, compare=False)
+    _late_task: asyncio.Task | None = field(default=None, repr=False, compare=False)
 
     # -- state -----------------------------------------------------------------
     @property
@@ -107,27 +111,64 @@ class SpeculativeScope:
                 self.deferred.append(_Deferred(label=label, factory=factory, blocking=blocking))
                 return
         # The writer saw the scope during the replay but the replay has since
-        # finished: nothing will drain the queue again, so write now.
-        self._write_now(label, factory)
+        # finished: nothing will drain the main queue again, so write now.
+        self._write_late(_Deferred(label=label, factory=factory, blocking=blocking))
 
-    @staticmethod
-    def _write_now(label: str, factory: Callable[[], Any]) -> None:
+    def _write_late(self, item: _Deferred) -> None:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop is None:
+            # Worker thread with no event loop: run it to completion here.
+            token = _CURRENT.set(None)
+            try:
+                result = item.factory()
+                if inspect.isawaitable(result):
+                    asyncio.run(result)
+            except Exception as exc:  # noqa: BLE001 - same fail-open as the writers themselves
+                logger.warning("speculative_late_write_failed label=%s error=%s", item.label, exc)
+            finally:
+                _CURRENT.reset(token)
+            return
+        with self._lock:
+            self._late.append(item)
+            if self._late_task is not None and not self._late_task.done():
+                return
+            self._late_task = loop.create_task(self._drain_late())
+
+    async def _drain_late(self) -> None:
         token = _CURRENT.set(None)
         try:
-            result = factory()
-            if inspect.isawaitable(result):
-                try:
-                    asyncio.get_running_loop().create_task(result)
-                except RuntimeError:
-                    asyncio.run(result)
-        except Exception as exc:  # noqa: BLE001 - same fail-open as the writers themselves
-            logger.warning("speculative_late_write_failed label=%s error=%s", label, exc)
+            while True:
+                with self._lock:
+                    if not self._late:
+                        return
+                    item = self._late.pop(0)
+                await self._run_item(item)
         finally:
             _CURRENT.reset(token)
+
+    @staticmethod
+    async def _run_item(item: _Deferred) -> bool:
+        try:
+            if item.blocking:
+                await asyncio.to_thread(item.factory)
+            else:
+                result = item.factory()
+                if inspect.isawaitable(result):
+                    await result
+            return True
+        except Exception as exc:  # noqa: BLE001 - same fail-open as the writers themselves
+            logger.warning("speculative_deferred_write_failed label=%s error=%s", item.label, exc)
+            return False
 
     async def wait_flushed(self) -> None:
         if self._flushed is not None:
             await self._flushed.wait()
+        task = self._late_task
+        if task is not None and not task.done() and task.get_loop() is asyncio.get_running_loop():
+            await asyncio.shield(task)
 
     async def commit(self) -> int:
         """Adopt: replay every deferred write in order, outside the scope.
@@ -139,9 +180,12 @@ class SpeculativeScope:
         if self.blocked:
             # Never replay the writes of a run that hit a refused side effect.
             raise SpeculativeSideEffectBlocked(self.blocked_reason or "blocked")
-        self.adopted = True
-        self.flushing = True
         self._flushed = asyncio.Event()
+        with self._lock:
+            # Together, so a writer on another thread never sees "adopted and
+            # not flushing" before the replay has even started.
+            self.adopted = True
+            self.flushing = True
         token = _CURRENT.set(None)
         replayed = 0
         try:
@@ -152,16 +196,8 @@ class SpeculativeScope:
                         self.flushing = False
                         break
                     item = self.deferred.pop(0)
-                try:
-                    if item.blocking:
-                        await asyncio.to_thread(item.factory)
-                    else:
-                        result = item.factory()
-                        if inspect.isawaitable(result):
-                            await result
+                if await self._run_item(item):
                     replayed += 1
-                except Exception as exc:  # noqa: BLE001 - same fail-open as the writers themselves
-                    logger.warning("speculative_deferred_write_failed label=%s error=%s", item.label, exc)
         finally:
             _CURRENT.reset(token)
             with self._lock:
