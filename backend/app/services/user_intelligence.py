@@ -258,16 +258,18 @@ class UserIntelligenceService:
         user_id: str,
     ) -> dict[str, Any]:
         try:
+            from app.core.io_pool import run_io
+
             client = get_supabase_client(settings)
-            rows = (
+            # Off the event loop: this read sits in front of every text turn.
+            response = await run_io(
                 client.table("user_preferences")
                 .select("preferred_model, preferred_mode, preferred_persona, personalized_suggestions, last_session_at")
                 .eq("user_id", user_id)
                 .limit(1)
-                .execute()
-                .data
-                or []
+                .execute
             )
+            rows = response.data or []
             if rows:
                 return rows[0]
         except Exception as exc:  # noqa: BLE001

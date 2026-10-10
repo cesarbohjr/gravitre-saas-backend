@@ -63,6 +63,54 @@ def _is_write_tool(tool: dict[str, Any]) -> bool:
     return any(token in name for token in ("create", "update", "delete", "send", "post", "write", "assign"))
 
 
+_GENERIC_TOOL_WORDS = frozenset(
+    {
+        "create", "update", "delete", "get", "list", "search", "run", "send", "post", "add",
+        "make", "show", "find", "query", "read", "write", "set", "new", "the", "a", "an",
+        "for", "to", "of", "in", "on", "my", "our", "me", "and", "or", "up", "with", "by",
+        "stage", "status", "data", "info", "item", "items", "record", "records",
+    }
+)
+
+
+def _noun(token: str) -> str:
+    token = token.lower()
+    if len(token) > 3 and token.endswith("ies"):
+        return token[:-3] + "y"
+    if len(token) > 3 and token.endswith("s") and not token.endswith("ss"):
+        return token[:-1]
+    return token
+
+
+def connectors_matching_query(
+    tools: list[dict[str, Any]],
+    query: str,
+    connected: list[str],
+) -> set[str]:
+    """Connected integrations whose tools name what the query is about.
+
+    "create a follow-up task for Acme" names no connector, but only the task
+    tracker has a ``tasks`` tool. Without this, a turn that names no connector
+    was focused on whichever three connectors happened to be listed first.
+    """
+    wanted = {_noun(t) for t in _query_tokens(query)} - _GENERIC_TOOL_WORDS
+    if not wanted:
+        return set()
+    allowed = {c.lower() for c in connected}
+    hits: set[str] = set()
+    for tool in tools:
+        if _is_platform_tool(tool):
+            continue
+        integration = _tool_integration(tool)
+        if allowed and integration not in allowed:
+            continue
+        words = {_noun(w) for w in _tool_name(tool).lower().replace("-", "_").split("_") if w}
+        words.discard(_noun(integration))
+        if (words - _GENERIC_TOOL_WORDS) & wanted:
+            hits.add(integration)
+    return hits
+
+
 def _query_tokens(query: str) -> set[str]:
     return {t.lower() for t in _TOKEN.findall(query or "")}
 
@@ -297,9 +345,13 @@ def narrow_tools_for_turn(
     connector_tools = [t for t in tools if not _is_platform_tool(t)]
 
     focus = {str(c).strip().lower() for c in (connector_names or []) if str(c).strip()}
-    focus |= _mentioned_connectors(query, classification, connected)
+    mentioned = _mentioned_connectors(query, classification, connected)
+    focus |= mentioned
     if not focus and connected:
         focus = set(connected[:3])
+    if not mentioned and connected:
+        # No connector named: also keep the ones whose tools fit the ask.
+        focus |= connectors_matching_query(connector_tools, query, connected)
 
     action_required = (
         bool(requires_action)

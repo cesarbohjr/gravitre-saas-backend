@@ -79,7 +79,13 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "capability_id": None,
     "capability_route_reason": None,
     "cognitive_resolution_message": None,
+    # The message resolved on the turn before, so a follow-up can tell whether
+    # the answer it edits was the last thing said.
+    "previous_resolution_message": None,
     "cognitive_resolution_needs": None,
+    # Website-traffic answer under discussion (period, sources, open offer), so
+    # "no, last month" or "which pages did best?" edit it instead of starting over.
+    "analytics_frame": None,
     # READ-only Chromium visits must survive get_task_state normalize.
     "computer_browser_evidence": None,
     # Objective-first: the conversation's current business objective (contract,
@@ -354,14 +360,16 @@ class ConversationStateService:
             return conv_id
         try:
             db = self._client(client)
-            owned = (
+            # Both round trips run off the event loop (they ran on it, in front
+            # of every text turn's first byte); the create guard stays on it.
+            owned = await run_io(
                 db.table("conversations")
                 .select("id")
                 .eq("id", conv_id)
                 .eq("org_id", org_id)
                 .eq("user_id", uid)
                 .limit(1)
-                .execute()
+                .execute
             )
             if owned.data:
                 return conv_id
@@ -369,19 +377,21 @@ class ConversationStateService:
             assert_conversation_create_allowed(org_id, actor_id=uid)
             now = datetime.now(timezone.utc).isoformat()
             safe_title = (title or "New conversation").strip()[:80] or "New conversation"
-            db.table("conversations").insert(
-                {
-                    "id": conv_id,
-                    "org_id": org_id,
-                    "user_id": uid,
-                    "title": safe_title,
-                    "preview": safe_title[:200],
-                    "message_count": 0,
-                    "task_state": dict(DEFAULT_TASK_STATE),
-                    "created_at": now,
-                    "updated_at": now,
-                }
-            ).execute()
+            await run_io(
+                db.table("conversations").insert(
+                    {
+                        "id": conv_id,
+                        "org_id": org_id,
+                        "user_id": uid,
+                        "title": safe_title,
+                        "preview": safe_title[:200],
+                        "message_count": 0,
+                        "task_state": dict(DEFAULT_TASK_STATE),
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                ).execute
+            )
             return conv_id
         except ConversationWriteBlockedError:
             raise

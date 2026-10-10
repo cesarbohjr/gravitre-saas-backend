@@ -51,7 +51,12 @@ def _get_cached_service_client(settings: Settings) -> Client:
     key = (settings.supabase_url, settings.supabase_service_role_key)
     client = _service_client_cache.get(key)
     if client is None:
-        client = create_client(*key)
+        if getattr(create_client, "__module__", "").startswith("supabase"):
+            from app.core.db import shared_http_options
+
+            client = create_client(*key, options=shared_http_options())
+        else:
+            client = create_client(*key)
         _service_client_cache[key] = client
     return client
 

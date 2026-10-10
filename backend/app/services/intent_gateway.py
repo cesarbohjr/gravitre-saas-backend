@@ -28,6 +28,7 @@ speculative read-warm, retrieve_plan_gate, pack-common orch, connector mapper.
 from __future__ import annotations
 
 import hashlib
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal
@@ -49,7 +50,22 @@ _GREETING_BANK = {
     "greeting": "Hey — I'm here. What do you want to get done?",
     "thanks": "Glad that helped. What should we do next?",
     "banter": "I'm with you. What do you need?",
+    "how_are_you": "Doing well, thanks for asking! What can I help you with?",
+    "decline": "No problem.",
 }
+
+_HOW_ARE_YOU_RE = re.compile(r"(?i)\b(how'?s\s+it\s+going|how\s+are\s+you|how\s+are\s+things|how'?s\s+your\s+day)\b")
+
+
+def _last_assistant_asked(history: list[dict[str, Any]] | None) -> bool:
+    """True when the previous assistant turn ended on a question or an offer."""
+    from app.services.offered_action_continuation import _OFFER_RE, last_assistant_text
+
+    last = last_assistant_text(history).strip()
+    if not last:
+        return False
+    tail = last.splitlines()[-1] if last.splitlines() else last
+    return tail.rstrip().endswith("?") or bool(_OFFER_RE.search(tail))
 _VENTING_REPLY = (
     "That sounds frustrating. When you're ready, tell me the specific thing you want done."
 )
@@ -232,13 +248,24 @@ def _propose_phrase_bank(ctx: GatewayContext) -> CandidateVerdict | None:
     from app.services.conversational_turn_gate import heuristic_turn_shape
     from app.services.pending_reply_classifier import has_pending_family
 
+    from app.services.offered_action_continuation import is_confirm_utterance, is_decline_utterance
+
     if has_pending_family(ctx.task_state):
         return None
     decision = heuristic_turn_shape(ctx.message)
     if decision is None or decision.shape != "conversational":
         return None
+    # "no thanks" / "sure" answer the question the assistant just asked; they
+    # are not a greeting. Leave them to the offer / follow-up handling.
+    replying = is_decline_utterance(ctx.message) or is_confirm_utterance(ctx.message)
+    if replying and _last_assistant_asked(ctx.conversation_history):
+        return None
     category = str(decision.category or "")
-    if category == "small_talk":
+    if category in {"small_talk", "greeting"} and _HOW_ARE_YOU_RE.search(ctx.message or ""):
+        category = "how_are_you"
+    elif is_decline_utterance(ctx.message):
+        category = "decline"
+    elif category == "small_talk":
         category = "greeting"
     if category == "meta_capability":
         reply = "I can operate the tools connected in this workspace. Tell me the specific job."

@@ -230,17 +230,20 @@ def _match_installed_workflow(
     except Exception:  # noqa: BLE001
         return None
 
-    try:
-        workflows = list_workflows(client, org_id) or []
-    except Exception:  # noqa: BLE001
-        return None
-
     text = message.lower()
-    # Prefer explicit "run/start/trigger workflow X" phrasing
+    # Prefer explicit "run/start/trigger workflow X" phrasing. Checked before
+    # listing the org's workflows: without that phrasing the answer is None
+    # whatever the list holds, and the two reads it costs sat on the event loop
+    # in front of every chat turn.
     if not re.search(r"\b(?:run|start|trigger|execute|launch)\b.+\bworkflow\b", text) and not re.search(
         r"\bworkflow\b.+\b(?:named|called)\b",
         text,
     ):
+        return None
+
+    try:
+        workflows = list_workflows(client, org_id) or []
+    except Exception:  # noqa: BLE001
         return None
 
     for wf in workflows:

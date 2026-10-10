@@ -15,13 +15,38 @@ from __future__ import annotations
 import threading
 from collections.abc import Callable
 
+import httpx
 import supabase
-from supabase import Client, create_client
+from supabase import Client, ClientOptions, create_client
 
 from app.config import Settings
 
 _shared_clients: dict[tuple[str, str], Client] = {}
 _shared_lock = threading.Lock()
+
+
+# supabase-py's REST, auth and storage clients open HTTP/2 connections by
+# default. One HTTP/2 connection multiplexed across the threadpool that runs
+# sync endpoints fails intermittently with
+# ``httpx.ReadError: [Errno 11] Resource temporarily unavailable`` (seen in
+# production right after deploys on POST /api/conversations). A shared
+# HTTP/1.1 pool is thread-safe and gives each concurrent request its own
+# connection.
+_SHARED_HTTP_TIMEOUT = httpx.Timeout(120.0, connect=10.0)
+_SHARED_HTTP_LIMITS = httpx.Limits(max_connections=100, max_keepalive_connections=20, keepalive_expiry=30.0)
+
+
+def shared_http_options() -> ClientOptions:
+    """Client options for a long-lived, thread-shared service client."""
+    http = httpx.Client(
+        http2=False,
+        timeout=_SHARED_HTTP_TIMEOUT,
+        follow_redirects=True,
+        # A custom transport ignores the client's own limits/http2 arguments,
+        # so the pool settings go on the transport itself.
+        transport=httpx.HTTPTransport(retries=2, http2=False, limits=_SHARED_HTTP_LIMITS),
+    )
+    return ClientOptions(httpx_client=http)
 
 
 def shared_service_client(
@@ -44,7 +69,7 @@ def shared_service_client(
         with _shared_lock:
             client = _shared_clients.get(key)
             if client is None:
-                client = create_client(*key)
+                client = create_client(*key, options=shared_http_options())
                 _shared_clients[key] = client
     return client
 

@@ -133,3 +133,17 @@ def test_rag_empty_detection():
     assert rag_sources_effectively_empty([])
     assert rag_sources_effectively_empty([{"content": ""}])
     assert not rag_sources_effectively_empty([{"content": "hello"}])
+
+
+def test_short_question_is_not_external_when_it_can_be_about_workspace_data():
+    assert is_external_or_general_question("which pages did best?")
+    assert not is_external_or_general_question(
+        "which pages did best?", connected_integrations=["google_analytics"]
+    )
+    assert not is_external_or_general_question(
+        "and the week before?",
+        conversation_history=[
+            {"role": "user", "content": "traffic last week"},
+            {"role": "assistant", "content": "You had 1,200 visitors."},
+        ],
+    )

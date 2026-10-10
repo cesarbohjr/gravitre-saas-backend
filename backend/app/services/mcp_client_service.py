@@ -617,16 +617,28 @@ class MCPClientService:
             return {"status": "failed", "error": str(exc), "latency_ms": latency_ms}
 
     async def get_enabled_tools_for_org(self, org_id: str) -> list[dict[str, Any]]:
+        # Read up to five times per chat turn before the model runs; one turn
+        # reads it once (app.core.turn_read_memo), off the event loop.
+        from app.core.turn_read_memo import memo_read_async
+
         client = self._client()
-        rows = (
+        return await memo_read_async(
+            ("mcp_enabled_tools", org_id),
+            client,
+            lambda: self._load_enabled_tools(client, org_id),
+        )
+
+    async def _load_enabled_tools(self, client: Any, org_id: str) -> list[dict[str, Any]]:
+        from app.core.io_pool import run_io
+
+        response = await run_io(
             client.table("mcp_tools")
             .select("*, mcp_servers(server_name,enabled,activation_state)")
             .eq("org_id", org_id)
             .eq("enabled", True)
-            .execute()
-            .data
-            or []
+            .execute
         )
+        rows = response.data or []
         tools: list[dict[str, Any]] = []
         for row in rows:
             server_name = ""

@@ -163,6 +163,31 @@ def test_a_repeat_is_not_doubled() -> None:
     assert history == HISTORY[:2]
 
 
+def test_a_new_request_replaces_the_cancelled_one_instead_of_merging() -> None:
+    text, history = merge_unanswered_turn(
+        "Email Sarah the deck from yesterday", "who owns the Acme account?", HISTORY
+    )
+    assert text == "who owns the Acme account?"
+    assert history == HISTORY
+
+
+def test_a_fragment_still_completes_the_cancelled_request() -> None:
+    text, _history = merge_unanswered_turn("what's my website traffic", "for last month", HISTORY)
+    assert text == "what's my website traffic, for last month"
+
+
+def test_question_shaped_continuations_still_complete_the_cancelled_request() -> None:
+    for follow in ("can you also cc Mike", "do it for last month", "could you send it to Jo too"):
+        text, _history = merge_unanswered_turn("Email Sarah the deck from yesterday", follow, HISTORY)
+        assert text.startswith("Email Sarah the deck from yesterday"), follow
+
+
+def test_degree_too_and_instead_do_not_glue_a_new_question_on() -> None:
+    for ask in ("is the Acme deal too risky to close?", "show me the Acme pipeline instead"):
+        text, _history = merge_unanswered_turn("Email Sarah the deck from yesterday", ask, HISTORY)
+        assert text == ask
+
+
 def test_reporter_tracks_the_thinking_window() -> None:
     import asyncio
 
@@ -410,3 +435,35 @@ def test_an_echo_turn_keeps_the_carried_request() -> None:
 
     queries = _run_turns(service, _script)
     assert queries == []
+
+
+def test_audio_frames_carry_the_reply_they_belong_to() -> None:
+    """The browser drops a cancelled reply's late frames by id, not by a timer."""
+    import asyncio
+    import json
+
+    from pipecat.frames.frames import TTSAudioRawFrame
+
+    from app.services.pipecat_voice.json_audio_serializer import GravitreJsonAudioSerializer
+
+    session = VoicePipelineSession()
+    serializer = GravitreJsonAudioSerializer(session=session)
+    frame = TTSAudioRawFrame(audio=b"\x00\x01" * 160, sample_rate=16000, num_channels=1)
+    assert json.loads(asyncio.run(serializer.serialize(frame)))["reply_id"] == 0
+    assert session.begin_reply() == 1
+    assert json.loads(asyncio.run(serializer.serialize(frame)))["reply_id"] == 1
+
+
+def test_each_answered_turn_gets_a_new_reply_id() -> None:
+    import asyncio
+
+    from pipecat.processors.frame_processor import FrameDirection
+
+    service, session = _echo_loop_service()
+
+    async def _script() -> None:
+        await service.process_frame(_context_frame("hello there"), FrameDirection.DOWNSTREAM)
+        await service.process_frame(_context_frame("hello there", "and what about last week"), FrameDirection.DOWNSTREAM)
+
+    _run_turns(service, _script)
+    assert session.reply_id == 2

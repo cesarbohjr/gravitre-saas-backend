@@ -317,3 +317,18 @@ async def test_flag_off_emits_no_reconcile_fields():
     payload = payloads[0]
     assert "reconcile_played_audio" not in payload
     assert "match_strategy" not in payload
+
+
+@pytest.mark.asyncio
+async def test_interruption_names_the_reply_it_cut_off():
+    """The browser drops that reply's late audio by this id."""
+    from app.services.pipecat_voice.voice_audio_origin import VoicePipelineSession
+
+    session = VoicePipelineSession()
+    session.begin_reply()
+    session.begin_reply()
+    payloads = await _drive(
+        [LLMFullResponseStartFrame(), LLMTextFrame(text="Your site had "), InterruptionFrame()],
+        voice_session=session,
+    )
+    assert payloads and payloads[0]["reply_id"] == 2

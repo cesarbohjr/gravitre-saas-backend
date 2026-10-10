@@ -18,11 +18,16 @@ import re
 import threading
 import time
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 
 from app.config import Settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
+
+# The budget gate's blocking billing reads fan out here (the gate itself already
+# runs on a worker thread, so it must not wait on the pool it runs in).
+_BUDGET_POOL = ThreadPoolExecutor(max_workers=12, thread_name_prefix="ai-budget")
 
 
 class AIGuardrailError(RuntimeError):
@@ -308,18 +313,36 @@ def enforce_budget(org_id: str | None, settings: Settings) -> None:
         )
 
         client = get_supabase_client(settings)
-        override = get_org_hard_budget_override(client, org_id)
+        period_start, period_end = get_current_period()
+        # The override, plan and usage reads are independent round trips that
+        # sit in front of every model call (and every turn's first byte). When
+        # the gate is on globally (the default) all three are needed on almost
+        # every call, so they are issued together; the decision below reads
+        # them in the same order and with the same outcome as when they ran one
+        # after another (a read that turns out not to be needed is ignored).
+        # With the gate off globally the override usually ends it, so the plan
+        # and usage reads wait for it as before.
+        override_f = _BUDGET_POOL.submit(get_org_hard_budget_override, client, org_id)
+        if global_enabled:
+            plan_f = _BUDGET_POOL.submit(get_plan_for_org, client, org_id)
+            used_f = _BUDGET_POOL.submit(_sum_usage, client, org_id, "ai_credits", period_start, period_end)
+        else:
+            plan_f = used_f = None
+        override = override_f.result()
         effective_enabled = override if override is not None else global_enabled
         if not effective_enabled:
             return
-        plan = get_plan_for_org(client, org_id)
+        plan = plan_f.result() if plan_f is not None else get_plan_for_org(client, org_id)
         included = int(plan.get("ai_credits_included") or 0)
         if included <= 0:
             return  # unlimited / enterprise
         multiplier = float(getattr(settings, "ai_budget_overage_multiplier", 2.0) or 2.0)
         cap = int(included * max(1.0, multiplier))
-        period_start, period_end = get_current_period()
-        used = _sum_usage(client, org_id, "ai_credits", period_start, period_end)
+        used = (
+            used_f.result()
+            if used_f is not None
+            else _sum_usage(client, org_id, "ai_credits", period_start, period_end)
+        )
     except Exception as exc:  # noqa: BLE001
         logger.warning("ai budget check skipped org_id=%s error=%s", org_id, str(exc))
         return

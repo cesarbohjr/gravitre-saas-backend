@@ -6,7 +6,6 @@ from typing import Any, Callable
 
 from app.connectors.action_catalog.models import ActionWorkflowSchema, WorkflowFieldSpec
 from app.services.chat_connector_models import ConnectorActionPlan
-from app.services.execution_envelope import format_operator_response
 
 FieldValidator = Callable[[dict[str, Any], WorkflowFieldSpec], bool]
 
@@ -192,14 +191,33 @@ def validate_plan_against_schema(
         missing=tuple(missing),
         known=known,
         dialogue_mode="clarify",
-        message=format_operator_response(
-            intent=schema.intent_label,
-            status="needs clarification",
-            matched_action=plan.invoke_action,
-            planned=known,
-            missing_parameters=missing,
-            next_step="Reply with the missing details (task title, project, and due date)."
-            if plan.invoke_action == "asana.tasks.create"
-            else "Reply with the missing details for this action.",
-        ),
+        message=missing_details_question(schema.intent_label, missing, args),
     )
+
+
+def _join_labels(labels: list[str]) -> str:
+    if len(labels) <= 1:
+        return "".join(labels)
+    return ", ".join(labels[:-1]) + " and " + labels[-1]
+
+
+def missing_details_question(intent_label: str, missing: list[str], args: dict[str, Any]) -> str:
+    """One natural question for the details a write still needs.
+
+    Asks only for what is missing (not every required field), names the
+    record when it has a name, and ends in a single question.
+    """
+    words = (intent_label or "").strip().split(" ", 1)
+    if len(words) == 2:
+        doing = f"{words[0].lower()} the {words[1]}"
+    else:
+        doing = (intent_label or "do that").strip().lower() or "do that"
+    title = next(
+        (str(args.get(key)).strip() for key in ("name", "title", "subject") if str(args.get(key) or "").strip()),
+        "",
+    )
+    if title:
+        doing = f"{doing} \u201c{title}\u201d"
+    labels = [str(item).strip() for item in missing if str(item).strip()]
+    lead = "I need one more detail" if len(labels) == 1 else "I need a few more details"
+    return f"{lead} to {doing}: what {_join_labels(labels)} should I use?"

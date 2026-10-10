@@ -1,6 +1,7 @@
 """Merged knowledge pack for CognitiveTurnKernel KNOWLEDGE stage."""
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -34,48 +35,56 @@ async def merge(
     if not org_id:
         return _empty_pack()
 
-    fabric_chunks: list[dict[str, Any]] = []
-    fabric_route: dict[str, Any] | None = None
-    try:
-        from app.knowledge_fabric.router import classify_knowledge_query
-        from app.knowledge_fabric.retrieval import retrieve_knowledge_fabric
+    # The fabric retrieval, the entity section and the graph node/edge reads
+    # are independent; they used to run one after another, mostly as blocking
+    # calls on the event loop. They now run together (the blocking ones on
+    # worker threads); each keeps its own fallback, and the pack is assembled
+    # from their results exactly as before.
+    def _fabric() -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+        fabric_chunks: list[dict[str, Any]] = []
+        fabric_route: dict[str, Any] | None = None
+        try:
+            from app.knowledge_fabric.router import classify_knowledge_query
+            from app.knowledge_fabric.retrieval import retrieve_knowledge_fabric
 
-        agent_dept = None
-        if isinstance(agent, dict):
-            agent_dept = agent.get("department") or (agent.get("config") or {}).get("department")
-        route = classify_knowledge_query(query or "", agent_department=agent_dept)
-        fabric_route = route.to_dict() if hasattr(route, "to_dict") else None
-        retrieved = retrieve_knowledge_fabric(
-            client,
-            query or "",
-            route=route,
-            agent_department=str(agent_dept) if agent_dept else None,
-            settings=active,
-        )
-        if isinstance(retrieved, dict):
-            fabric_chunks = list(retrieved.get("results") or [])
-            if fabric_route is None and isinstance(retrieved.get("route"), dict):
-                fabric_route = retrieved.get("route")
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("cognitive_knowledge_fabric_skipped error=%s", exc)
+            agent_dept = None
+            if isinstance(agent, dict):
+                agent_dept = agent.get("department") or (agent.get("config") or {}).get("department")
+            route = classify_knowledge_query(query or "", agent_department=agent_dept)
+            fabric_route = route.to_dict() if hasattr(route, "to_dict") else None
+            retrieved = retrieve_knowledge_fabric(
+                client,
+                query or "",
+                route=route,
+                agent_department=str(agent_dept) if agent_dept else None,
+                settings=active,
+            )
+            if isinstance(retrieved, dict):
+                fabric_chunks = list(retrieved.get("results") or [])
+                if fabric_route is None and isinstance(retrieved.get("route"), dict):
+                    fabric_route = retrieved.get("route")
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("cognitive_knowledge_fabric_skipped error=%s", exc)
+        return fabric_chunks, fabric_route
 
-    entity_section = ""
-    try:
-        from app.services.entity_relationship_service import build_entity_context_section
+    async def _entity_section() -> str:
+        try:
+            from app.services.entity_relationship_service import build_entity_context_section
 
-        entity_section = await build_entity_context_section(
-            org_id,
-            query or "",
-            settings=active,
-            client=client,
-        )
-        entity_section = entity_section or ""
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("cognitive_knowledge_entity_skipped error=%s", exc)
+            section = await build_entity_context_section(
+                org_id,
+                query or "",
+                settings=active,
+                client=client,
+            )
+            return section or ""
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("cognitive_knowledge_entity_skipped error=%s", exc)
+            return ""
 
-    graph_nodes: list[dict[str, Any]] = []
-    graph_edges: list[dict[str, Any]] = []
-    if client is not None:
+    def _graph_nodes() -> list[dict[str, Any]]:
+        if client is None:
+            return []
         try:
             nodes = (
                 client.table("org_knowledge_nodes")
@@ -86,9 +95,14 @@ async def merge(
                 .data
                 or []
             )
-            graph_nodes = [n for n in nodes if str(n.get("org_id") or "") == org_id]
+            return [n for n in nodes if str(n.get("org_id") or "") == org_id]
         except Exception as exc:  # noqa: BLE001
             logger.debug("cognitive_knowledge_nodes_skipped error=%s", exc)
+            return []
+
+    def _graph_edges() -> list[dict[str, Any]]:
+        if client is None:
+            return []
         try:
             # Columns match org_entity_relationships migration (no metadata column).
             edges = (
@@ -103,9 +117,17 @@ async def merge(
                 .data
                 or []
             )
-            graph_edges = [e for e in edges if str(e.get("org_id") or "") == org_id]
+            return [e for e in edges if str(e.get("org_id") or "") == org_id]
         except Exception as exc:  # noqa: BLE001
             logger.debug("cognitive_knowledge_edges_skipped error=%s", exc)
+            return []
+
+    (fabric_chunks, fabric_route), entity_section, graph_nodes, graph_edges = await asyncio.gather(
+        asyncio.to_thread(_fabric),
+        _entity_section(),
+        asyncio.to_thread(_graph_nodes),
+        asyncio.to_thread(_graph_edges),
+    )
 
     graph_section = ""
     if graph_nodes or graph_edges:

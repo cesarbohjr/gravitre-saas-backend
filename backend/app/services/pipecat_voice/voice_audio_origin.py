@@ -73,6 +73,14 @@ class VoicePipelineSession:
     answer_expected: Any = None
     # (monotonic time, text) of what the bot recently said, newest last.
     recent_bot_speech: list[tuple[float, str]] = field(default_factory=list)
+    # Increases once per answered user turn. Outbound audio and the
+    # interruption event carry it, so the browser can drop the cancelled
+    # reply's late frames by identity instead of by a timer.
+    reply_id: int = 0
+
+    def begin_reply(self) -> int:
+        self.reply_id += 1
+        return self.reply_id
 
     def note_bot_speech(self, text: str) -> None:
         text = (text or "").strip()

@@ -9,6 +9,7 @@ Uses durable ``org_entity_resolution_records`` — no parallel memory store.
 """
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -22,6 +23,10 @@ from app.services.entity_resolution_store import (
 from app.services.parameter_ledger import ParameterLedger, get_ledger
 
 logger = get_logger(__name__)
+
+# Recall lookups are blocking Supabase reads; they fan out on their own small
+# pool (recall itself already runs on the I/O pool, so sharing it could starve).
+_RECALL_POOL = ThreadPoolExecutor(max_workers=8, thread_name_prefix="xconv-recall")
 
 # Slot keys we may promote / recall across conversations.
 _CROSS_SLOT_TYPES: dict[str, str] = {
@@ -109,15 +114,21 @@ def recall_slots_into_ledger(
         return ledger
     if not client or not org_id or not aliases:
         return ledger
-    hits = lookup_resolutions(client, org_id, aliases, limit=20)
+    # One exact lookup plus one fuzzy lookup per alias (one per word of the
+    # message), each a Supabase round trip, used to run one after another in
+    # front of every text turn. They are independent reads, so they run
+    # concurrently; results are merged in the same order as before.
+    exact = _RECALL_POOL.submit(lookup_resolutions, client, org_id, aliases, limit=20)
+    fuzzy_by_alias = list(
+        _RECALL_POOL.map(
+            lambda alias: lookup_fuzzy_resolutions(client, org_id, alias, limit=10),
+            aliases,
+        )
+    )
+    hits = exact.result()
     seen_aliases = {h.alias_normalized for h in hits}
-    for alias in aliases:
-        for hit in lookup_fuzzy_resolutions(
-            client,
-            org_id,
-            alias,
-            limit=10,
-        ):
+    for fuzzy_hits in fuzzy_by_alias:
+        for hit in fuzzy_hits:
             if hit.alias_normalized not in seen_aliases:
                 hits.append(hit)
                 seen_aliases.add(hit.alias_normalized)

@@ -23,7 +23,7 @@ _CANCEL_RESTART = re.compile(
 
 _REFINE_RE = re.compile(
     r"(?is)\b("
-    r"that|this|those|them|\bit\b|same(?:\s+(?:one|site|property|as\s+before))?|"
+    r"that|this|those|them|\bit\b(?!\s+going)|same(?:\s+(?:one|site|property|as\s+before))?|"
     r"break\s+(?:that|it)\s+down|for\s+that|use\s+that|compare\s+that|"
     r"instead|also\s+show|last\s+(?:week|month)|this\s+week|yesterday|"
     r"the\s+(?:first|second|third|last)\s+one|"
@@ -94,9 +94,25 @@ def active_task_frame(task_state: dict[str, Any] | None) -> dict[str, Any] | Non
     }
 
 
+# A question about a CRM / work record while the frame is website analytics is
+# a new subject even when it carries a refine word ("who owns the Acme account?").
+_ANALYTICS_OFF_TOPIC = re.compile(
+    r"\b(accounts?|contacts?|compan(?:y|ies)|owners?|owns|deals?|tasks?|emails?|meetings?|"
+    r"hubspot|asana|salesforce|crm)\b",
+    re.I,
+)
+_ANALYTICS_ON_TOPIC = re.compile(
+    r"\b(traffic|visits?|visitors?|sessions?|page\s*views?|pages?|analytics|ga4|website|"
+    r"search\s*console|clicks?|impressions?)\b",
+    re.I,
+)
+
+
 def _topic_switch(message: str, capability_id: str | None) -> bool:
     text = message or ""
     cap = str(capability_id or "")
+    if cap.startswith("analytics.") and _ANALYTICS_OFF_TOPIC.search(text) and not _ANALYTICS_ON_TOPIC.search(text):
+        return True
     for prefix, pattern in _TOPIC_SWITCH:
         if cap == prefix or cap.startswith(prefix.split(".")[0] + "."):
             if pattern.search(text) and not _REFINE_RE.search(text):

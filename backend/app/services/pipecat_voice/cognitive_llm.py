@@ -82,6 +82,37 @@ VOICE_NO_VOLUNTEERED_DATA_NOTE = (
 )
 
 
+_CONTINUES_PREVIOUS_RE = re.compile(
+    r"(?i)^\s*(?:and|also|plus|but|with|without|for|to|or|then|cc|bcc|including|except|"
+    r"only|just|in|on|from|by|via|about|same|make\s+it|over|during|since|between|"
+    r"(?:can|could|would|will)\s+you\s+(?:also|then)|do\s+(?:it|that|this|the\s+same))\b"
+)
+# "also"/"as well" anywhere, or a closing "too" ("can you cc Mike too"), ties
+# the utterance to the request it interrupted. A "too" mid-sentence is a degree
+# word ("is that too high?") and "instead" usually changes topic, so neither counts.
+_ADDS_TO_PREVIOUS_RE = re.compile(r"(?i)\b(?:also|as\s+well)\b|\btoo\s*[.!?]*\s*$")
+_STANDALONE_ASK_RE = re.compile(
+    r"(?i)^\s*(?:who|what|which|when|where|why|how|can|could|would|will|do|does|did|is|are|"
+    r"show|tell|create|send|draft|find|list|give|pull|check|schedule|book|add|update)\b"
+)
+
+
+def _replaces_unanswered_turn(text: str) -> bool:
+    """True when the new utterance is its own request, not the rest of the last one.
+
+    "and cc Mike" or "for last month" finish the interrupted request; "who
+    owns the Acme account?" is a different question and must be answered as
+    asked, not glued onto the request it interrupted.
+    """
+    if _CONTINUES_PREVIOUS_RE.match(text) or _ADDS_TO_PREVIOUS_RE.search(text):
+        return False
+    from app.services.conversation_tier import _content_tier
+
+    if _content_tier(text).tier == "deep":
+        return True
+    return bool(_STANDALONE_ASK_RE.match(text)) and len(text.split()) >= 3
+
+
 def merge_unanswered_turn(
     carried: str, user_text: str, history: list[dict[str, Any]]
 ) -> tuple[str, list[dict[str, Any]]]:
@@ -90,7 +121,8 @@ def merge_unanswered_turn(
     The cancelled utterance is still the last user message in the context;
     it is removed from history and joined to the new text, so "Email Sarah the
     deck" + "and cc Mike" is answered as one request. Backing off ("never
-    mind", "stop") withdraws it, and an exact repeat is not doubled.
+    mind", "stop") withdraws it, an exact repeat is not doubled, and a new,
+    self-contained request replaces it rather than being merged into it.
     """
     from app.services.conversation_tier import _DECLINE_CONTINUATION_RE
 
@@ -112,6 +144,8 @@ def merge_unanswered_turn(
             break
     if _norm(carried) == _norm(text) or _norm(text).startswith(_norm(carried)):
         return text, trimmed
+    if _replaces_unanswered_turn(text):
+        return user_text, history
     joiner = " " if carried[-1] in ".!?," else ", "
     return f"{carried}{joiner}{text}", trimmed
 
@@ -474,6 +508,8 @@ class GravitreCognitiveLLMService(LLMService):
             user_text, history = merge_unanswered_turn(carried, user_text, history)
         self._active_user_text = user_text
         self._answer_started = False
+        if session is not None:
+            session.begin_reply()
         if self._interrupt_reporter is not None:
             self._interrupt_reporter.begin_turn(user_text)
         if await asyncio.to_thread(

@@ -48,14 +48,16 @@ class GravitreJsonAudioSerializer(FrameSerializer):
 
     async def serialize(self, frame: Frame) -> str | bytes | None:
         if isinstance(frame, (OutputAudioRawFrame, TTSAudioRawFrame)):
-            return json.dumps(
-                {
-                    "type": "audio",
-                    "pcm16_b64": base64.b64encode(frame.audio).decode("ascii"),
-                    "sample_rate": int(getattr(frame, "sample_rate", None) or 16000),
-                    "num_channels": int(getattr(frame, "num_channels", None) or 1),
-                }
-            )
+            payload: dict[str, Any] = {
+                "type": "audio",
+                "pcm16_b64": base64.b64encode(frame.audio).decode("ascii"),
+                "sample_rate": int(getattr(frame, "sample_rate", None) or 16000),
+                "num_channels": int(getattr(frame, "num_channels", None) or 1),
+            }
+            reply_id = getattr(self._voice_session, "reply_id", None)
+            if isinstance(reply_id, int):
+                payload["reply_id"] = reply_id
+            return json.dumps(payload)
         if isinstance(frame, InterimTranscriptionFrame):
             return json.dumps(
                 {

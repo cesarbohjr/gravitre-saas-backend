@@ -36,15 +36,23 @@ async def load_chat_dialogue_settings(
     active_settings = settings or get_settings()
     db = client or get_supabase_client(active_settings)
     try:
-        rows = (
+        from app.core.io_pool import run_io
+        from app.core.turn_read_memo import memo_read_async
+
+        # Read up to four times per chat turn; one turn reads it once
+        # (app.core.turn_read_memo), off the event loop.
+        query = (
             db.table("org_intelligence_engine_settings")
             .select("dialogue_settings, default_persona")
             .eq("org_id", org_id)
             .limit(1)
-            .execute()
-            .data
-            or []
         )
+        response = await memo_read_async(
+            ("org_intelligence_engine_settings:dialogue", org_id),
+            db,
+            lambda: run_io(query.execute),
+        )
+        rows = response.data or []
         if rows:
             row = rows[0]
             merged = merge_dialogue_settings(row.get("dialogue_settings") or {})
