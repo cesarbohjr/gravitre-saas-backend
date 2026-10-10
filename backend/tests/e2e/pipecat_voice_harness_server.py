@@ -228,7 +228,10 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8799)
     args = parser.parse_args()
-    uvicorn.run(build_app(), host="127.0.0.1", port=args.port, log_level="info")
+    # The spec reads /harness/state before and after a turn on one pooled
+    # connection. Uvicorn closes idle keep-alive sockets after 5 s, so a turn
+    # that takes about 5 s races the close and the second read gets ECONNRESET.
+    uvicorn.run(build_app(), host="127.0.0.1", port=args.port, log_level="info", timeout_keep_alive=120)
 
 
 if __name__ == "__main__":
