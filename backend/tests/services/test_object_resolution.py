@@ -584,3 +584,40 @@ async def test_an_outlook_send_grounds_its_recipient_with_the_same_contract(read
     clarification, patch = apply_resolution_to_stage(staged, found)
     assert clarification.message == "I found two Stephanies: Stephanie Khan and Stephanie Wu. Which one?"
     assert [c["source"] for c in patch["recipient_candidates"]] == ["microsoft365", "microsoft365"]
+
+
+@pytest.mark.asyncio
+async def test_an_outlook_choice_sends_from_the_mailbox_that_was_searched() -> None:
+    import time
+
+    from app.services import recipient_resolution as rr
+
+    work = obr.Account(id="outlook-work", vendor="microsoft365", label="work", stamp="s1")
+    home = obr.Account(id="outlook-home", vendor="microsoft365", label="home", stamp="s2")
+    offered = [
+        obr.ResolutionCandidate(
+            name=name,
+            address=addr,
+            source="microsoft365",
+            account="outlook-work",
+            account_stamp="s1",
+            object_type="person",
+            object_id=addr,
+            resolved_at=time.time(),
+        ).to_dict()
+        for name, addr in (("Stephanie Khan", "sk@acme.example"), ("Stephanie Wu", "swu@globex.example"))
+    ]
+    state = {"pending_task": {"status": "awaiting_params"}, rr.CANDIDATES_KEY: offered}
+    args: dict = {}
+    res = await rr._ground_recipient(
+        "microsoft365",
+        args,
+        "Khan",
+        state,
+        accounts=[home, work],
+        account=None,
+        how="default",
+        lookup_kwargs={},
+    )
+    assert res is not None and res.status == "resolved"
+    assert args == {"to": "sk@acme.example", "connector_id": "outlook-work"}

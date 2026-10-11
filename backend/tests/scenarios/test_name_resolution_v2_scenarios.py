@@ -262,6 +262,9 @@ def _age_state(h: ScenarioHarness, key: str, seconds: float) -> None:
         if key == rr.CANDIDATES_KEY:
             for cand in state.get(key) or []:
                 cand["resolved_at"] = float(cand.get("resolved_at") or 0) - seconds
+        if key == rr.FILE_KEY:
+            for cand in (state.get(key) or {}).get("candidates") or []:
+                cand["resolved_at"] = float(cand.get("resolved_at") or 0) - seconds
 
 
 @pytest.mark.asyncio
@@ -339,6 +342,23 @@ async def test_a_permission_failure_drops_cached_candidates_and_asks_for_the_add
 
 
 # --- "Send Stephanie the budget spreadsheet" ----------------------------------
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("surface", SURFACES)
+async def test_stale_file_choices_are_searched_again_by_name_not_the_kind_word(surface: str) -> None:
+    with ScenarioHarness() as h:
+        h.connected += ["gmail", "google_drive"]
+        h.connectors.mailbox += [mail(1, KHAN, ME), mail(2, ME, KHAN, ("SENT",))]
+        h.connectors.files += budget_files()
+        conv = h.conversation(surface)
+        await conv.say("Send Stephanie the budget spreadsheet", _guessing_model)
+        _age_state(h, rr.FILE_KEY, rr.CANDIDATE_TTL_S + 60)
+
+        picked = await conv.say("The Finance one.", "Okay.")
+        searches = [c for c in picked.connector_calls if c.action == "google_drive.search_files"]
+        assert searches and searches[0].params["query"] == "budget", "stale file choices were not searched again"
+        assert _args(picked)["file_id"] == "f-budget-finance"
 
 
 def _two_budget_files(surface: str) -> str:

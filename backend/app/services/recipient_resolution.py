@@ -765,7 +765,8 @@ async def _ground_recipient(
 
     def _settle(picked: ResolutionCandidate) -> None:
         args["to"] = picked.address
-        if picked.account and vendor == "gmail" and accounts:
+        if picked.account and accounts:
+            # Send from the mailbox that was searched (Gmail or Outlook).
             args["connector_id"] = picked.account
 
     stored = stored_candidates(task_state)
@@ -891,6 +892,7 @@ async def _ground_file(
             "status": res.status,
             "reason": res.reason,
             "query": req.phrase,
+            "search": req.query,
             "kind": req.kind,
             "candidates": [c.to_dict() for c in res.candidates],
         }
@@ -925,7 +927,8 @@ async def _ground_file(
     if offered:
         if not all(is_fresh(c, ttl_s=CANDIDATE_TTL_S) for c in offered):
             # Offered too long ago: search again, then take the reply.
-            req = FileRequest(phrase=str(fstate.get("query") or ""), query=str(fstate.get("query") or ""), kind=str(fstate.get("kind") or ""))
+            phrase = str(fstate.get("query") or "")
+            req = FileRequest(phrase=phrase, query=str(fstate.get("search") or phrase), kind=str(fstate.get("kind") or ""))
             res = await resolve_file(req, connected=connected, **file_kwargs)
             offered = res.candidates
         picked = pick_from(message, offered)
