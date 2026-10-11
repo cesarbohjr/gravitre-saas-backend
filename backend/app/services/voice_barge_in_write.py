@@ -118,8 +118,12 @@ def mark_voice_barge_in_stop(
     conversation_id: str | None,
     settings: Any | None = None,
     user_id: str | None = None,
+    owner: str | None = None,
 ) -> bool:
-    """Arm conversation stop so in-flight ReAct WRITEs see barge-in before commit."""
+    """Arm conversation stop so in-flight ReAct WRITEs see barge-in before commit.
+
+    ``owner`` is the voice connection's token, so only that connection releases it.
+    """
     oid = str(org_id or "").strip()
     cid = str(conversation_id or "").strip()
     if not oid or not cid:
@@ -134,7 +138,7 @@ def mark_voice_barge_in_stop(
         except Exception:  # noqa: BLE001
             settings = None
 
-    ok = request_stop(oid, cid, settings=settings)
+    ok = request_stop(oid, cid, settings=settings, owner=owner)
     if ok and settings and user_id:
         try:
             from app.services.pipecat_voice.voice_latency_metrics import _write

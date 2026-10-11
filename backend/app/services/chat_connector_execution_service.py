@@ -2727,6 +2727,37 @@ class ChatConnectorExecutionService:
             )
             if gate is not None:
                 return gate
+        from app.services.approval_expectation import (
+            APPROVAL_REVISION_STALE,
+            approval_mismatch_reason,
+        )
+
+        mismatch = (
+            approval_mismatch_reason(pending)
+            if str(pending.get("status") or "").strip().lower() in {"awaiting_confirm", "awaiting_admin_approval"}
+            else None
+        )
+        if mismatch is not None:
+            # The go-ahead was for another version of this draft (revised or
+            # never read back on this connection). Nothing is claimed or sent.
+            from app.services.spoken_write_approval import format_spoken_stale
+
+            logger.info(
+                "write_claim_refused_approval_mismatch conversation_id=%s reason=%s",
+                conversation_id,
+                mismatch,
+            )
+            return ExecutionResult(
+                success=False,
+                entity_type="connector",
+                entity_id="",
+                result_url=f"/ai?c={conversation_id}" if conversation_id else "/ai",
+                title=plan.label,
+                body=format_spoken_stale(reason=mismatch),
+                integration=plan.integration,
+                task_label=plan.label,
+                error_code=APPROVAL_REVISION_STALE,
+            )
         outcome, claimed = claim_pending_write(pending, actor_id=actor_id)
         if outcome == "unauthorized":
             return ExecutionResult(

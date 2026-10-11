@@ -202,6 +202,13 @@ def format_spoken_stale(*, reason: str) -> str:
         return "That's already running, so I won't start it a second time."
     if reason in {"pending_expired", "expired"}:
         return "That approval expired. I can set it up again if you still want it."
+    if reason == "approval_revised":
+        return (
+            "The draft changed after I read it to you, so I haven't sent it. "
+            "Ask me to read it again, or say what to change."
+        )
+    if reason == "approval_not_read_back":
+        return "I haven't read you that draft yet, so I haven't sent it. Ask me to read it to you first."
     return "That isn't waiting on your okay anymore, so I won't run it."
 
 
@@ -340,6 +347,14 @@ def classify_spoken_write_approval(
 
     if _mentions_unrelated_vendor(text, _pending_integration(row)):
         return _result("clarify", invoke_allowed=False, reason="unrelated_vendor_confirm", matched=True)
+
+    from app.services.approval_expectation import approval_mismatch_reason
+
+    # The confirmation answers the version that was read back (bound by the
+    # voice turn), not whatever is staged now.
+    mismatch = approval_mismatch_reason(row)
+    if mismatch is not None:
+        return _result("stale", invoke_allowed=False, reason=mismatch, matched=True)
 
     if not pending_target:
         return _result("confirm", invoke_allowed=False, reason="no_pending_confirmation", matched=False)

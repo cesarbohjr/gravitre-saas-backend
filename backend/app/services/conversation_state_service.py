@@ -505,6 +505,12 @@ class ConversationStateService:
             pending = current.get("pending_task") if isinstance(current.get("pending_task"), dict) else {}
             if str(pending.get("status") or "") != str(expected_status or ""):
                 return False
+            from app.services.approval_expectation import approval_mismatch_reason
+
+            if approval_mismatch_reason(pending) is not None:
+                # Re-checked under the lock: the draft was revised between the
+                # caller's read and this claim.
+                return False
             bound = str(pending.get("actor_id") or "").strip()
             requester = str(actor_id or "").strip()
             if bound and requester and bound != requester:

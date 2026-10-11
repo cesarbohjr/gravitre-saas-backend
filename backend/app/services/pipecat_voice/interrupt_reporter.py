@@ -215,13 +215,28 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         )
 
     def answer_expected(self) -> bool:
-        """True when the reply ends in a question the listener has already heard."""
+        """True when the listener has heard a question or an approval readback they can answer.
+
+        An approval readback is known from state (the session's pending
+        approval and the reply that read it back), however its copy ends. Any
+        other reply expects an answer only when it ends in a question.
+        """
         from app.services.pipecat_voice.backchannel_classifier import question_tail_start
 
         draft = (self._draft_client or self._draft_llm or "").rstrip()
-        # Ends in "?" or in an approval invitation ("Say yes, or tell me what
-        # to change."), which expects an answer just the same.
         question_start = question_tail_start(draft)
+        session = self._voice_session
+        readback_reply = getattr(session, "approval_readback_reply_id", None)
+        if (
+            getattr(session, "pending_approval", None) is not None
+            and readback_reply is not None
+            and readback_reply == self._current_reply_id()
+            and draft
+        ):
+            # The go-ahead is expected once the readback's details were heard:
+            # from its closing question if it has one, else from its last part.
+            if question_start is None:
+                question_start = int(len(draft) * 0.85)
         if question_start is None:
             return False
         if self._spoken_ledger is not None and self._spoken_ledger.ever_recorded:
@@ -232,6 +247,10 @@ class ElevenLabsInterruptReporter(FrameProcessor):
     @property
     def conversation_id(self) -> str | None:
         return self._conversation_id
+
+    @property
+    def voice_session(self) -> Any | None:
+        return self._voice_session
 
     def _current_reply_id(self) -> int | None:
         reply_id = getattr(self._voice_session, "reply_id", None)
@@ -499,7 +518,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             return False
         from app.services.chat_turn_cancel_service import arm_local_stop
 
-        armed = arm_local_stop(str(turn.org_id), str(turn.conversation_id))
+        armed = arm_local_stop(
+            str(turn.org_id), str(turn.conversation_id), owner=self._connection_token()
+        )
         if armed:
             self._armed_stop = (str(turn.org_id), str(turn.conversation_id))
         return armed
@@ -514,6 +535,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 conversation_id=turn.conversation_id,
                 settings=self._settings,
                 user_id=turn.user_id,
+                owner=self._connection_token(),
             )
         )
 
@@ -725,7 +747,13 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         from app.services.chat_turn_cancel_service import clear_stop
 
         try:
-            await asyncio.to_thread(clear_stop, armed[0], armed[1], settings=self._settings)
+            await asyncio.to_thread(
+                clear_stop,
+                armed[0],
+                armed[1],
+                settings=self._settings,
+                owner=self._connection_token(),
+            )
         except Exception as exc:  # noqa: BLE001
             logger.warning("pipecat_barge_in_stop_release_failed error=%s", str(exc))
 
@@ -754,12 +782,43 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         if pending:
             await asyncio.gather(*(asyncio.shield(task) for task in pending), return_exceptions=True)
 
-    async def release_stop_marker(self) -> None:
-        """Socket open/close: drop any stop marker left for this conversation.
+    async def arm_cancel_stop(self) -> bool:
+        """"Cancel it" with no barge-in armed on this connection: arm one now.
 
-        A marker armed by a previous socket (reconnect, or Talk closed and
-        reopened inside the 120 s TTL) has no reporter left to release it, and
-        every voice turn would then return without answering.
+        After a reconnect the work being cancelled may belong to the previous
+        connection (still running in this or another worker). The marker,
+        owned by this connection, makes its uncommitted write refuse to
+        commit; the next ordinary turn on this connection releases it, and the
+        old socket closing cannot.
+        """
+        if self._armed_stop is not None or not self._org_id or not self._conversation_id:
+            return False
+        from app.services.chat_turn_cancel_service import arm_local_stop, request_stop
+
+        org_id, conversation_id = str(self._org_id), str(self._conversation_id)
+        owner = self._connection_token()
+        if not arm_local_stop(org_id, conversation_id, owner=owner):
+            return False
+        self._armed_stop = (org_id, conversation_id)
+        try:
+            await asyncio.to_thread(
+                request_stop, org_id, conversation_id, settings=self._settings, owner=owner
+            )
+        except Exception as exc:  # noqa: BLE001 - the in-process marker already holds
+            logger.warning("pipecat_cancel_stop_shared_failed error=%s", str(exc))
+        return True
+
+    def _connection_token(self) -> str | None:
+        token = getattr(self._voice_session, "connection_token", None)
+        return str(token) if token else None
+
+    async def release_stop_marker(self) -> None:
+        """Socket close: drop the stop marker this connection armed.
+
+        Scoped to this connection: a newer connection on the same conversation
+        may have armed its own marker since (the user said "cancel" there), and
+        clearing that one would let a write it stopped commit. A marker left by
+        an earlier socket is cleared when the next socket opens (router).
         """
         await self.settle_barge_in()
         await self.flush_bookkeeping()
@@ -769,7 +828,11 @@ class ElevenLabsInterruptReporter(FrameProcessor):
 
         try:
             await asyncio.to_thread(
-                clear_stop, str(self._org_id), str(self._conversation_id), settings=self._settings
+                clear_stop,
+                str(self._org_id),
+                str(self._conversation_id),
+                settings=self._settings,
+                owner=self._connection_token(),
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("pipecat_stop_marker_release_failed error=%s", str(exc))

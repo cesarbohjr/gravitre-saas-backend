@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 import time
+import uuid
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
@@ -66,6 +67,24 @@ class VoicePipelineSession:
 
     origin: str = USER_MIC
     turn_state: str = LISTENING
+    # Identifies this connection. Stop markers it arms carry it, so releasing
+    # them (barge-in settled, socket closed) never clears a marker that a newer
+    # connection on the same conversation armed.
+    connection_token: str = field(default_factory=lambda: uuid.uuid4().hex)
+    # Set when a newer connection took over this conversation: this one's
+    # output is obsolete and is not delivered (its work still finishes and is
+    # recorded, and the newer connection recovers the outcome).
+    superseded: bool = False
+    # False once the client socket disconnected (the work may still be running).
+    client_connected: bool = True
+    # Approval contract (approval_expectation): the staged write waiting on a
+    # go-ahead (PendingApproval or None), the version of it that was read back
+    # on THIS connection, and the reply that read it. A "yes" approves only the
+    # version read back here; answer expectation comes from this, not from
+    # how the last sentence ends.
+    pending_approval: Any = None
+    approval_read_back_id: str | None = None
+    approval_readback_reply_id: int | None = None
     tts_warming: bool = False
     # Zero-arg callable set by the interrupt reporter: True once the bot has
     # spoken a question that is still waiting for the user's answer. A short
@@ -227,7 +246,11 @@ class VoicePipelineSession:
 
     def reply_audio_suppressed(self, reply_id: int) -> bool:
         """True when audio of ``reply_id`` must not reach the listener any more."""
-        return reply_id <= self.cancelled_through_reply_id or reply_id in self.muted_reply_ids
+        return (
+            self.superseded
+            or reply_id <= self.cancelled_through_reply_id
+            or reply_id in self.muted_reply_ids
+        )
 
     def note_bot_speech(self, text: str) -> None:
         text = (text or "").strip()
