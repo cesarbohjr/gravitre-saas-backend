@@ -138,3 +138,18 @@ def speculative_interim_breaks_run(
         )
         return not ok
     return speculative_interim_materially_changed(run_text, new)
+
+
+def effective_voice_flags(settings: Any) -> dict[str, bool]:
+    """Every boolean voice flag as this process actually resolved it.
+
+    Sent in session.ready and logged at session start, so what a deployment
+    runs with can be read off a live session instead of inferred from code
+    defaults.
+    """
+    fields = getattr(type(settings), "model_fields", None) or {}
+    return {
+        name: bool(getattr(settings, name, False))
+        for name, field in sorted(fields.items())
+        if name.startswith("voice_") and getattr(field, "annotation", None) is bool
+    }

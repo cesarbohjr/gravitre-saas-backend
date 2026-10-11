@@ -119,7 +119,7 @@ class TestPrefetchDoesNotDependOnACallerLocalImport:
         # The prefetch is created well before the caller's local import line, so
         # ordering alone must not be what makes the closure work.
         closure_at = _SRC.index("async def _prepare_turn_context(")
-        create_at = _SRC.index("asyncio.create_task(_prepare_turn_context(")
+        create_at = _SRC.index("_start_context_prefetch(task_text)")
         caller_import_at = _SRC.index(
             "from app.services.intelligence_orchestrator import get_intelligence_orchestrator",
             closure_at,
@@ -235,7 +235,7 @@ def _make_intelligence(*, overlap: bool) -> AgentIntelligence:
     return intel
 
 
-async def _run_overlap_turn(*, overlap: bool) -> dict[str, object]:
+async def _run_overlap_turn(*, overlap: bool, live_changes_state: bool = False) -> dict[str, object]:
     """Drive a real spoken fast turn where LIVE streams then falls through.
 
     Returns the event list plus a timeline of when LIVE and context assembly
@@ -265,6 +265,9 @@ async def _run_overlap_turn(*, overlap: bool) -> dict[str, object]:
     async def fake_live(**kwargs):
         """LIVE emits text, then declines -- the ~48% fallthrough case."""
         live_starts.append(time.perf_counter())
+        if live_changes_state and isinstance(kwargs.get("task_state"), dict):
+            # Something context assembly reads changes after the prefetch started.
+            kwargs["task_state"]["pending_task"] = {"status": "awaiting_approval"}
         on_delta = kwargs.get("on_text_delta")
         for _ in range(_N_DELTAS):
             await asyncio.sleep(_DELTA_GAP)
@@ -423,11 +426,16 @@ class TestFlagOnPathActuallyRuns:
         tool registry, taxonomy, model router TLS context). Those are not what this
         pins and on a slow CI runner they alone exceed the budget, so the measured
         turn is the second one. A per-turn block still shows on every turn.
+
+        A shared CI runner can also pause the whole process once (seen: a 0.63s
+        stall, longer than the 0.30s assembly itself). A per-turn block stalls
+        every turn, so the best of three measured turns still catches it while a
+        single runner pause does not fail the build.
         """
         await _run_overlap_turn(overlap=True)
-        result = await _run_overlap_turn(overlap=True)
-
-        worst = result["worst_beat_gap"]
+        worst = min(
+            [(await _run_overlap_turn(overlap=True))["worst_beat_gap"] for _ in range(3)]
+        )
         assert worst < _CTX_COST * 0.5, (
             f"event loop stalled for {worst:.3f}s against a {_CTX_COST:.2f}s "
             "context-assembly cost -- the blocking read was not offloaded"
@@ -467,3 +475,54 @@ class TestSingleSourceOfTruth:
         start = _SRC.index("async def _prepare_turn_context(")
         end = _SRC.index("_context_task: asyncio.Task | None = None", start)
         assert "connected_integrations=list(connected_early or [])" in _SRC[start:end]
+
+
+class TestEveryPrefetchIsPinnedToItsInputs:
+    """Audit F5: the spoken prefetches recorded no input fingerprint, and context
+    entry treated "no fingerprint" as a match, so a spoken turn could answer from
+    context built for state that changed after the prefetch started.
+    """
+
+    @pytest.mark.asyncio
+    async def test_a_spoken_prefetch_is_reassembled_when_its_inputs_change(self) -> None:
+        result = await _run_overlap_turn(overlap=True, live_changes_state=True)
+
+        complete = next(e for e in result["events"] if isinstance(e, AssistantStreamComplete))
+        assert complete.full_content == _ANSWER
+        assert result["ctx_calls"] == 2, "a prefetch built for stale state was adopted"
+
+    @pytest.mark.asyncio
+    async def test_the_live_prefetch_is_pinned_too(self) -> None:
+        # The flag-off path starts its prefetch at the LIVE site instead.
+        result = await _run_overlap_turn(overlap=False, live_changes_state=True)
+
+        assert result["ctx_calls"] == 2, "a prefetch built for stale state was adopted"
+
+    def test_every_start_site_goes_through_the_pinned_helper(self) -> None:
+        assert _SRC.count("_start_context_prefetch(task_text)") == 3
+        assert _SRC.count("_prepare_turn_context(") == 2  # the definition and the helper's call
+
+    def test_adoption_never_skips_the_fingerprint(self) -> None:
+        idx = _SRC.index("_context_task_query == refined_query")
+        window = _SRC[idx : idx + 200]
+        assert "_context_task_inputs == _context_inputs_fingerprint()" in window
+        assert "_context_task_inputs is None" not in _SRC
+
+    def test_the_fingerprint_covers_every_assembly_input(self) -> None:
+        start = _SRC.index("def _context_inputs_fingerprint()")
+        body = _SRC[start : _SRC.index("def _start_context_prefetch(", start)]
+        for key in (
+            "classification",
+            "task_state",
+            "routing_tier",
+            "mode",
+            "connected",
+            "engine_settings",
+            "persona",
+            "agent_id",
+            "environment_name",
+            "research_scope",
+            "spoken_tier",
+            "history",
+        ):
+            assert f'"{key}"' in body, key
