@@ -507,3 +507,21 @@ def test_session_ready_reports_the_flags_this_process_runs_with() -> None:
     assert flags["voice_interrupt_intents_v1"] is False
     assert "voice_context_overlap_v1" in flags
     assert all(isinstance(v, bool) for v in flags.values())
+
+
+def test_session_ready_reports_tuning_values_and_no_secrets() -> None:
+    from app.config import Settings
+    from app.services.pipecat_voice.voice_latency_tuning import (
+        effective_voice_flags,
+        effective_voice_settings,
+    )
+
+    settings = Settings(voice_deep_ack_seconds=0.0, elevenlabs_api_key="sk-secret", deepgram_api_key="dg-secret")
+    values = effective_voice_settings(settings)
+    assert values["voice_deep_ack_seconds"] == 0.0
+    assert values["elevenlabs_tts_model"] == "eleven_flash_v2_5"
+    assert "unified_turn_live_enabled" in values and "internet_research_enabled" in values
+    assert not any("key" in k or "token" in k or "secret" in k for k in values)
+    assert "sk-secret" not in repr(values) and "dg-secret" not in repr(values)
+    # A retired flag is not reported as if it still did something.
+    assert "voice_request_revisions_v1" not in effective_voice_flags(settings)

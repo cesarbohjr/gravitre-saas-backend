@@ -134,3 +134,39 @@ async def test_late_filler_after_a_wordless_hold_stays_held() -> None:
     assert session.held_speech_escalations == 0
     assert recorder.reset_aggregation_calls == 1
     await strategy.cleanup()
+
+
+# The real email approval prompt ends in an invitation, not "?" (gravitre_voice
+# _format_email_send_approval). "Yes... wait" over it must still be held, and a
+# "yes" heard over its last sentence is an answer, not a backchannel.
+APPROVAL_PROMPT = (
+    "Here's the email to Stephanie:\n\n- Subject: Weekly update\n- Message: We're on track.\n\n"
+    "Should I send it? Say **yes**, or tell me what to change."
+)
+
+
+def test_yes_to_the_email_approval_prompt_is_held() -> None:
+    assert answers_assistant_question("yes", [{"role": "assistant", "content": APPROVAL_PROMPT}])
+    generic = "I'll run this in Asana: **Create task**.\n\nReply **yes** to approve, or say what to change."
+    assert answers_assistant_question("yes", [{"role": "assistant", "content": generic}])
+    assert not answers_assistant_question("yes", [{"role": "assistant", "content": "I said yes to that."}])
+
+
+@pytest.mark.parametrize(
+    ("reply", "asks_from"),
+    [
+        (APPROVAL_PROMPT, "Should I send it?"),
+        ("Reply yes to approve and create it, or say what to change (name, modality).", "Reply yes"),
+        ("Want me to send it?", "Want me"),
+        ("Last month you had 400 visits.", None),
+        ("Do you know? I just say yes all the time.", None),
+    ],
+)
+def test_question_tail_start(reply: str, asks_from: str | None) -> None:
+    from app.services.pipecat_voice.backchannel_classifier import question_tail_start
+
+    start = question_tail_start(reply)
+    if asks_from is None:
+        assert start is None
+    else:
+        assert start is not None and reply[start:].startswith(asks_from)

@@ -187,7 +187,10 @@ def answers_assistant_question(user_text: str, history: list[dict[str, Any]] | N
             content = " ".join(
                 str(part.get("text") or "") for part in content if isinstance(part, dict)
             )
-        return str(content or "").rstrip().rstrip("\"')]*").endswith("?")
+        from app.services.pipecat_voice.backchannel_classifier import ends_with_question
+
+        # "Should I send it? Say yes, or tell me what to change." asks too.
+        return ends_with_question(str(content or ""))
     return False
 
 
@@ -331,6 +334,42 @@ def describe_cancelled_work(
     if not parts:
         return "Okay, cancelled. Nothing had been sent or changed yet."
     return " ".join(parts)
+
+
+# What a withdrawn pending write is called when the cancel report mentions it.
+_PENDING_WRITE_THING = {"messages.send": "the email", "chat.post_message": "the message"}
+
+
+def withdraw_unclaimed_pending_write(state: dict[str, Any]) -> dict[str, Any] | None:
+    """The patch that drops a staged write still waiting on the user, or None.
+
+    "Cancel it" said over the reply must also withdraw a write that was
+    waiting for approval or details; otherwise a later "yes" approves the
+    draft the user just heard cancelled. A write already claimed for
+    execution is left to finish and record its outcome.
+    """
+    pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else None
+    if not pending or pending.get("execution_claim_id"):
+        return None
+    if str(pending.get("status") or "") not in {"awaiting_confirm", "awaiting_params"}:
+        return None
+    return {
+        "current_plan": None,
+        "pending_task": None,
+        "pending_hold_prompt": False,
+        "pending_steps": [],
+        "completed_steps": [],
+        "recipient_candidates": [],
+    }
+
+
+def _withdrawn_write_line(pending: dict[str, Any]) -> str:
+    params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+    action = str(params.get("invoke_action") or "")
+    thing = next((name for suffix, name in _PENDING_WRITE_THING.items() if action.endswith(suffix)), "that")
+    return f"I've dropped {thing} too, so nothing will be sent." if thing != "that" else (
+        "I've dropped what was waiting for your approval too."
+    )
 
 
 async def adopt_or_fresh(adopted: Any, fresh: Any):
@@ -2392,6 +2431,9 @@ class GravitreCognitiveLLMService(LLMService):
             self._conversation_id,
             [(e["action"], e["status"]) for e in effects],
         )
+        withdrawn = await self._withdraw_pending_write()
+        if withdrawn is not None:
+            report = f"{report} {_withdrawn_write_line(withdrawn)}"
         await self._speak_narration(report)
         complete = AssistantStreamComplete(
             full_content=report, tool_results=[], react_result=None, model="voice_task_cancel"
@@ -2418,6 +2460,33 @@ class GravitreCognitiveLLMService(LLMService):
                 }
             )
         )
+
+    async def _withdraw_pending_write(self) -> dict[str, Any] | None:
+        """Drop a staged write still awaiting the user; return it, or None."""
+        if not self._conversation_id:
+            return None
+        from app.services.conversation_state_service import get_conversation_state_service
+
+        dropped: dict[str, Any] = {}
+
+        def build(state: dict[str, Any]) -> dict[str, Any] | None:
+            patch = withdraw_unclaimed_pending_write(state)
+            if patch is not None:
+                dropped.update(state.get("pending_task") or {})
+            return patch
+
+        try:
+            await get_conversation_state_service().update_task_state_from(
+                self._conversation_id, self._org_id, build
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "pipecat_voice_task_cancel_pending_withdraw_failed org_id=%s error=%s", self._org_id, exc
+            )
+            return None
+        if dropped:
+            logger.info("pipecat_voice_task_cancel_withdrew_pending org_id=%s", self._org_id)
+        return dropped or None
 
     def _note_bot_speech(self, spoken: str) -> None:
         session = self._voice_session()

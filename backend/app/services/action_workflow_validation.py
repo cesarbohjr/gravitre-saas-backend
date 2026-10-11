@@ -209,7 +209,9 @@ def missing_details_question(intent_label: str, missing: list[str], args: dict[s
     than "what to, subject and message should I use?".
     """
     words = (intent_label or "").strip().split(" ", 1)
-    noun = words[1].lower() if len(words) == 2 else "message"
+    # "Asana task", "email": the vendor keeps its capital, the noun does not.
+    noun_words = words[1].split() if len(words) == 2 else ["message"]
+    noun = " ".join([*noun_words[:-1], noun_words[-1].lower()])
     title = next(
         (str(args.get(key)).strip() for key in ("name", "title") if str(args.get(key) or "").strip()),
         "",

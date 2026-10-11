@@ -216,12 +216,14 @@ class ElevenLabsInterruptReporter(FrameProcessor):
 
     def answer_expected(self) -> bool:
         """True when the reply ends in a question the listener has already heard."""
+        from app.services.pipecat_voice.backchannel_classifier import question_tail_start
+
         draft = (self._draft_client or self._draft_llm or "").rstrip()
-        if not draft.endswith("?"):
+        # Ends in "?" or in an approval invitation ("Say yes, or tell me what
+        # to change."), which expects an answer just the same.
+        question_start = question_tail_start(draft)
+        if question_start is None:
             return False
-        body = draft[:-1]
-        question_start = max(body.rfind(". "), body.rfind("! "), body.rfind("? "))
-        question_start = question_start + 2 if question_start >= 0 else 0
         if self._spoken_ledger is not None and self._spoken_ledger.ever_recorded:
             # Playback has reached (roughly) the start of the question.
             return len(self._spoken_ledger.snapshot()) >= int(question_start * 0.9)
