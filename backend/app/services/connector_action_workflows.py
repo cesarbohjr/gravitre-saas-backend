@@ -270,6 +270,11 @@ def _approval_details(plan: ConnectorActionPlan) -> dict[str, str]:
             _display("subject", "Subject", subject)
         if body:
             details["Body"] = body[:200] + ("…" if len(body) > 200 else "")
+        from app.services.object_resolution import file_approval_line
+
+        link = file_approval_line(args)
+        if link:
+            details["File"] = link
     elif plan.invoke_action == "slack.post_message":
         channel = str(args.get("channel") or "").strip()
         text = str(args.get("text") or args.get("message") or "").strip()

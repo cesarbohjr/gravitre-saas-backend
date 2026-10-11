@@ -1808,7 +1808,11 @@ class ChatConnectorExecutionService:
             pass
         refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
         if user_can_approve:
-            approval_message = format_write_approval_message(plan)
+            from app.services.recipient_resolution import approval_notice
+
+            approval_message = format_write_approval_message(
+                plan, grace_prefix=approval_notice(recipient_lookup)
+            )
             # Prefer in-chat Approve button over "reply yes" for admins.
             approval_message = approval_message.replace(
                 "Reply **yes** to proceed, or tell me what to change.",
@@ -2059,6 +2063,34 @@ class ChatConnectorExecutionService:
                     conversation_id=conversation_id,
                 ),
             )
+            from app.services.object_resolution import revalidate_bound_targets
+
+            # The approved send names a file by id: it must still open for
+            # the account it was found in, or nothing is sent.
+            target_problem = revalidate_bound_targets(ctx, dict(plan.args or {}))
+            if target_problem:
+                blocked = ExecutionResult(
+                    success=False,
+                    entity_type="connector",
+                    entity_id="",
+                    connector_management_url="/connectors",
+                    result_url=(f"/ai?c={conversation_id}" if conversation_id else "/ai"),
+                    title=plan.label,
+                    body=target_problem,
+                    integration=plan.integration,
+                    task_label=plan.label,
+                    error_code="TARGET_REVALIDATION_FAILED",
+                )
+                if own_terminal_outcome:
+                    self._finalize_connector_outcome(
+                        client,
+                        org_id=org_id,
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        plan=plan,
+                        result=blocked,
+                    )
+                return blocked
             from app.services.sync_back_policy_service import (
                 evaluate_sync_back_gate,
                 is_crm_sync_invoke_action,
