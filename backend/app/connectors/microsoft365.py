@@ -71,11 +71,19 @@ def list_mail_messages(
     user_id: str = "me",
     top: int = 25,
     filter_query: str | None = None,
+    search: str | None = None,
 ) -> dict[str, Any]:
-    params: dict[str, Any] = {
-        "$top": min(max(int(top), 1), 50),
-        "$orderby": "receivedDateTime desc",
-    }
+    """Messages, newest first, or the ones a KQL ``search`` matches.
+
+    Graph does not accept ``$orderby`` together with ``$search``; search
+    results come back in relevance order. ``@odata.nextLink`` in the response
+    means more results remain.
+    """
+    params: dict[str, Any] = {"$top": min(max(int(top), 1), 50)}
+    if search:
+        params["$search"] = f'"{search}"' if not search.startswith('"') else search
+    else:
+        params["$orderby"] = "receivedDateTime desc"
     if filter_query:
         params["$filter"] = filter_query
     return _request(access_token, "GET", f"{_graph_user_root(user_id)}/messages", params=params)
