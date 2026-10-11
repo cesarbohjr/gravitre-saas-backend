@@ -426,11 +426,16 @@ class TestFlagOnPathActuallyRuns:
         tool registry, taxonomy, model router TLS context). Those are not what this
         pins and on a slow CI runner they alone exceed the budget, so the measured
         turn is the second one. A per-turn block still shows on every turn.
+
+        A shared CI runner can also pause the whole process once (seen: a 0.63s
+        stall, longer than the 0.30s assembly itself). A per-turn block stalls
+        every turn, so the best of three measured turns still catches it while a
+        single runner pause does not fail the build.
         """
         await _run_overlap_turn(overlap=True)
-        result = await _run_overlap_turn(overlap=True)
-
-        worst = result["worst_beat_gap"]
+        worst = min(
+            [(await _run_overlap_turn(overlap=True))["worst_beat_gap"] for _ in range(3)]
+        )
         assert worst < _CTX_COST * 0.5, (
             f"event loop stalled for {worst:.3f}s against a {_CTX_COST:.2f}s "
             "context-assembly cost -- the blocking read was not offloaded"
