@@ -141,8 +141,9 @@ class TrainingWorker:
                 await registry.add_version(
                     model_id=model_id, artifact_data=model_artifact, metrics=metrics, created_by=job["created_by"]
                 )
-            if model_type == ModelType.FINE_TUNED_LLM:
-                await registry.deploy_version(model_id)
+            # Fine-tuned models are no longer deployed automatically: there is no
+            # held-out evaluation here, so a person deploys the version explicitly
+            # (POST /api/ml/models/{id}/deploy) after reviewing it.
 
             client.table("training_jobs").update(
                 {
