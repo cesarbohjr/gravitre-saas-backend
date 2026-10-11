@@ -85,3 +85,11 @@ def test_legacy_run_timestamp_used_when_no_cursor():
     _, fetch, _ = _run(client, [])
     assert fetch.call_args[1]["since_iso"] == "2026-10-01T10:30:00Z"
     assert _saved_config(client)["zendesk_sync_cursor"]["updated_at"] == "2026-10-01T10:30:00Z"
+
+
+def test_full_page_at_one_instant_reports_stall_instead_of_silently_looping():
+    client = _client({"zendesk_sync_cursor": {"updated_at": "2026-10-01T05:00:00Z", "ids_at_since": ["1", "2"]}})
+    with patch.object(svc, "MAX_TICKETS_PER_SYNC", 2):
+        result, _, ingest = _run(client, [_ticket(1, "2026-10-01T05:00:00Z"), _ticket(2, "2026-10-01T05:00:00Z")])
+    ingest.assert_not_called()
+    assert any("cursor_stalled" in e for e in result["errors"])

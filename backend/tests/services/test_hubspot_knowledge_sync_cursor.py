@@ -119,3 +119,13 @@ def test_boundary_record_already_processed_is_not_requeued_and_cap_resumes():
     assert notes.call_args[1]["since_ms"] == 5000
     assert _saved_config(client)["hubspot_sync_cursors"]["note"] == {"since_ms": 6000, "ids_at_since": ["11"]}
     assert result["has_more"] is True
+
+
+def test_full_page_at_one_timestamp_reports_stall_instead_of_silently_looping():
+    client = _client({"hubspot_sync_cursors": {"note": {"since_ms": 5000, "ids_at_since": ["1", "2"]}}})
+    notes = MagicMock(return_value=[_note("1", "5000"), _note("2", "5000")])
+    with patch.object(svc, "MAX_OBJECTS_PER_SYNC", 2):
+        result, ingest = _run(client, notes, MagicMock(return_value=[]))
+    ingest.assert_not_called()
+    assert any("cursor_stalled" in e for e in result["errors"])
+    assert _saved_config(client)["hubspot_sync_cursors"]["note"]["since_ms"] == 5000

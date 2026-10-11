@@ -252,6 +252,11 @@ def run_zendesk_knowledge_sync(
             elif updated == cursor_dt:
                 ids_at_cursor.add(tid)
 
+    if has_more and records_synced == 0 and not errors:
+        # A full page, all already processed at the cursor instant: more tickets share
+        # this updated_at than one run can page through. Report it instead of looping.
+        errors.append(f"cursor_stalled: more than {MAX_TICKETS_PER_SYNC} tickets updated at {since_iso}")
+        logger.warning("zendesk_knowledge_sync_cursor_stalled org_id=%s since=%s", org_id, since_iso)
     cursor = {"updated_at": _iso_z(cursor_dt), "ids_at_since": sorted(ids_at_cursor)} if cursor_dt else None
     # ``zendesk_last_synced_at`` is the run time used for scheduling; the data cursor
     # lives in ``zendesk_sync_cursor``.

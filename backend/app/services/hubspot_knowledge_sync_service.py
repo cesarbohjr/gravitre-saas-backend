@@ -221,6 +221,8 @@ def run_hubspot_knowledge_sync(
         # Advance only to the last record that was queued successfully.
         cursor_ms = since_ms
         ids_at_cursor = set(seen_at_since)
+        synced_for_kind = 0
+        kind_failed = False
         for item in items:
             rid = str(item.get("id") or "")
             props = item.get("properties") or {}
@@ -248,15 +250,22 @@ def run_hubspot_knowledge_sync(
                 # Stop here so the cursor never moves past an unprocessed record.
                 errors.append(f"{kind} {item.get('id')}: {exc}")
                 has_more[kind] = True
+                kind_failed = True
                 break
             job_ids.append(job_id)
             records_synced += 1
+            synced_for_kind += 1
             if modified_ms is not None:
                 if cursor_ms is None or modified_ms > cursor_ms:
                     cursor_ms = modified_ms
                     ids_at_cursor = {rid}
                 elif modified_ms == cursor_ms:
                     ids_at_cursor.add(rid)
+        if has_more[kind] and synced_for_kind == 0 and not kind_failed:
+            # A full page, all already processed at the cursor instant: more records share
+            # this timestamp than one run can page through. Report it instead of looping.
+            errors.append(f"{kind}: cursor_stalled: more than {MAX_OBJECTS_PER_SYNC} records modified at {since_ms}")
+            logger.warning("hubspot_knowledge_sync_cursor_stalled org_id=%s kind=%s since_ms=%s", org_id, kind, since_ms)
         if cursor_ms is not None:
             cursors[kind] = {"since_ms": cursor_ms, "ids_at_since": sorted(ids_at_cursor)}
 

@@ -54,3 +54,36 @@ def test_keyword_arm_filters_to_active_documents(monkeypatch, query_text):
     assert "rag_documents!inner(is_active)" in select[0]
     assert ("eq", ("rag_documents.is_active", True)) in client.chunk_calls
     assert [r["id"] for r in out] == ["c1"]
+
+
+def test_legacy_keyword_fallback_filters_to_active_documents(monkeypatch):
+    import app.services.rag_service as rag_service
+
+    rows = [{"id": "c1", "content": "payroll policy v2", "document_id": "d-active", "chunk_index": 0}]
+    client = _Client(rows)
+    monkeypatch.setattr(rag_service, "get_supabase_client", lambda *_a, **_k: client)
+    service = rag_service.RAGService.__new__(rag_service.RAGService)
+    service.settings = SimpleNamespace()
+
+    service._keyword_search("org-1", "payroll policy", 5, "production")
+
+    select = next(a for name, a in client.chunk_calls if name == "select")
+    assert "rag_documents!inner(is_active)" in select[0]
+    assert ("eq", ("rag_documents.is_active", True)) in client.chunk_calls
+
+
+@pytest.mark.asyncio
+async def test_glossary_extraction_reads_only_active_documents(monkeypatch):
+    import app.services.knowledge_intelligence_service as kis
+
+    client = _Client([{"content": "Net revenue retention"}])
+
+    async def _no_candidates(**_k):
+        return []
+
+    monkeypatch.setattr(kis, "extract_glossary_candidates", _no_candidates)
+    await kis.run_glossary_extraction(SimpleNamespace(), "org-1", [], client=client)
+
+    select = next(a for name, a in client.chunk_calls if name == "select")
+    assert "rag_documents!inner(is_active)" in select[0]
+    assert ("eq", ("rag_documents.is_active", True)) in client.chunk_calls
