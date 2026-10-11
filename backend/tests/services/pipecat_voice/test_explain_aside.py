@@ -495,3 +495,15 @@ def test_settings_default_off() -> None:
 
     assert Settings.model_fields["voice_explain_aside_v1"].default is False
 
+
+
+def test_session_ready_reports_the_flags_this_process_runs_with() -> None:
+    from app.config import Settings
+    from app.services.pipecat_voice.voice_latency_tuning import effective_voice_flags
+
+    settings = Settings(voice_explain_aside_v1=True, voice_interrupt_intents_v1=False)
+    flags = effective_voice_flags(settings)
+    assert flags["voice_explain_aside_v1"] is True
+    assert flags["voice_interrupt_intents_v1"] is False
+    assert "voice_context_overlap_v1" in flags
+    assert all(isinstance(v, bool) for v in flags.values())

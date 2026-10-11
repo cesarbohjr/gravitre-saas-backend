@@ -50,7 +50,7 @@ from app.services.pipecat_voice.voice_conversational_polish import (
 )
 from app.services.pipecat_voice.voice_latency_metrics import record_voice_e2e_latency_sample
 from app.services.pipecat_voice.voice_latency_observer import GravitreVoiceLatencyObserver
-from app.services.pipecat_voice.voice_latency_tuning import resolve_voice_tts_ab_eval
+from app.services.pipecat_voice.voice_latency_tuning import effective_voice_flags, resolve_voice_tts_ab_eval
 from app.services.tier1_voice_service import CONVERSATIONAL_VOICE_SETTINGS, resolve_voice_id
 
 logger = get_logger(__name__)
@@ -490,7 +490,13 @@ def build_pipecat_voice_task(
         "playback_grounded_history_v1": playback_grounded,
         "answer_first_v1": answer_first,
         "playback_report_interval_ms": 500,
+        "effective_flags": effective_voice_flags(settings),
     }
+    logger.info(
+        "pipecat_voice_effective_flags conversation_id=%s on=%s",
+        conversation_id,
+        sorted(k for k, v in session_meta["effective_flags"].items() if v),
+    )
     idle_refresh_enabled = bool(getattr(settings, "voice_tts_idle_refresh_v1", False))
     idle_refresh_tasks: list[asyncio.Task[Any]] = []
 

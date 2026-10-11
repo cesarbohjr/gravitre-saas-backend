@@ -3850,7 +3850,10 @@ class AgentIntelligence:
         def _context_inputs_fingerprint() -> str:
             """Every input of context assembly other than the query, for a prefetch check.
 
-            The kernel's own bookkeeping keys on task_state are left out: context
+            One contract for every surface: a prefetch is adopted only when each
+            of these is unchanged, so typed and spoken turns can never answer from
+            context built for different state, history, agent or scope. The
+            kernel's own bookkeeping keys on task_state are left out: context
             assembly never reads them.
             """
             state = task_state if isinstance(task_state, dict) else {}
@@ -3868,10 +3871,41 @@ class AgentIntelligence:
                     "connected": list(connected_early or []),
                     "engine_settings": engine_settings,
                     "persona": persona,
+                    "agent_id": agent_id,
+                    "environment_name": environment_name,
+                    "research_scope": research_scope,
+                    "spoken_tier": conversation_tier.tier if spoken_mode else None,
+                    "history": conversation_history,
                 },
                 sort_keys=True,
                 default=str,
             )
+
+        def _start_context_prefetch(query: str) -> None:
+            """Start context assembly early, pinned to the inputs it is built from.
+
+            Every start site goes through here, so each prefetch records the same
+            fingerprint and is built from the same classification inline assembly
+            would use (classification_for_context). Context entry adopts it only
+            when the query and every pinned input still match.
+            """
+            nonlocal _context_task, _context_task_query, _context_task_inputs
+            from app.services.context_compiler import classification_for_context
+
+            state = task_state if isinstance(task_state, dict) else None
+            _context_task_query = query
+            _context_task_inputs = _context_inputs_fingerprint()
+            _context_task = asyncio.create_task(
+                _prepare_turn_context(
+                    query,
+                    classification=classification_for_context(pipeline_classification, state),
+                    state=state,
+                )
+            )
+            # A turn that returns before context entry (LIVE served, preflight,
+            # connector turn) drops this task; retrieve its result so a discarded
+            # prefetch can never surface as "exception never retrieved".
+            _context_task.add_done_callback(lambda t: t.cancelled() or t.exception())
 
         # Text chat: context assembly (prepare_assistant_turn, the largest block
         # of reads before the model) used to start only after the cognitive
@@ -3883,25 +3917,11 @@ class AgentIntelligence:
         # inline exactly as before. A non-fast mode rewrites the query and a
         # "mixed" turn reassigns it, so neither is prefetched.
         if not spoken_mode and mode_key == "fast":
-            from app.services.context_compiler import classification_for_context
             from app.services.conversational_turn_gate import heuristic_turn_shape
 
             _shape_hint = heuristic_turn_shape(task_text)
             if _shape_hint is None or getattr(_shape_hint, "shape", "") != "mixed":
-                _prefetch_state = task_state if isinstance(task_state, dict) else None
-                _context_task_query = task_text
-                _context_task_inputs = _context_inputs_fingerprint()
-                _context_task = asyncio.create_task(
-                    _prepare_turn_context(
-                        task_text,
-                        classification=classification_for_context(
-                            pipeline_classification, _prefetch_state
-                        ),
-                        state=_prefetch_state,
-                    )
-                )
-                # A turn that returns before context entry drops this task.
-                _context_task.add_done_callback(lambda t: t.cancelled() or t.exception())
+                _start_context_prefetch(task_text)
 
         # CognitiveTurnKernel: RETRIEVE→GOVERN before any LIVE ACT (fixes LIVE-before-retrieve).
         cognitive_ctx = None
@@ -4064,12 +4084,7 @@ class AgentIntelligence:
 
             _shape_hint = heuristic_turn_shape(task_text)
             if _shape_hint is None or getattr(_shape_hint, "shape", "") != "mixed":
-                _context_task_query = task_text
-                _context_task = asyncio.create_task(_prepare_turn_context(task_text))
-                # A turn that early-returns (LIVE served, preflight, connector
-                # turn) drops this task; swallow its result so a discarded
-                # prefetch can never surface as "exception never retrieved".
-                _context_task.add_done_callback(lambda t: t.cancelled() or t.exception())
+                _start_context_prefetch(task_text)
 
         # Phase 4 cutover (flagged): unified turn serves the user; classical remains rollback.
         # LIVE is an ACT strategy only — never runs before kernel RECALL/KNOWLEDGE.
@@ -4252,9 +4267,7 @@ class AgentIntelligence:
         if _unified_live_ok and _context_task is None:
             _live_prefetch_shape = _pre_live_shape
             if _live_prefetch_shape is None or getattr(_live_prefetch_shape, "shape", "") != "mixed":
-                _context_task_query = task_text
-                _context_task = asyncio.create_task(_prepare_turn_context(task_text))
-                _context_task.add_done_callback(lambda t: t.cancelled() or t.exception())
+                _start_context_prefetch(task_text)
 
         if _unified_live_ok:
             from app.services.unified_turn_reasoning_service import apply_unified_turn_live
@@ -5100,7 +5113,7 @@ class AgentIntelligence:
         if (
             _context_task is not None
             and _context_task_query == refined_query
-            and (_context_task_inputs is None or _context_task_inputs == _context_inputs_fingerprint())
+            and _context_task_inputs == _context_inputs_fingerprint()
         ):
             _prefetched_turn_ctx = await _context_task
             _context_prefetched = True
