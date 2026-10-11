@@ -302,7 +302,8 @@ def _sent_record_id(sent: dict[str, Any]) -> str:
     params = safe_normalize_stored_dict(sent, key="params")
     result = safe_normalize_stored_dict(sent, key="result")
     structured = safe_normalize_stored_dict(result, key="structured")
-    record = str(params.get("provider_record_id") or structured.get("provider_record_id") or result.get("entity_id") or "")
+    # Not result["entity_id"]: with no provider id it holds the connector's id.
+    record = str(params.get("provider_record_id") or structured.get("provider_record_id") or "")
     if record:
         return record
     # Microsoft 365 sendMail returns no message id: name the send by its recipient.

@@ -536,7 +536,7 @@ def test_a_resend_after_a_send_with_no_provider_id_is_not_its_replay() -> None:
     from app.services.pending_write_revision import _sent_record_id
 
     first = {"params": {"invoke_action": "microsoft365.mail.send", "args": {"to": "Steph@Acme.example"}},
-             "result": {"success": True, "structured": {"accepted_async": True}}}
+             "result": {"success": True, "entity_id": "connector-1", "structured": {"accepted_async": True}}}
     earlier = _sent_record_id(first)
     assert earlier == "to:steph@acme.example"
     sent = {
