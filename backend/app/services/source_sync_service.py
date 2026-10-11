@@ -245,11 +245,14 @@ async def sync_source_row(
         metadata["lastSyncError"] = error_message
 
     duration_ms = int((time.perf_counter() - started) * 1000)
+    # This run is a connection test plus schema discovery; no data is ingested. So it
+    # records the health-check time in metadata and leaves ``last_sync_at`` alone:
+    # that column means data moved, and freshness readers treat it that way.
+    metadata["lastCheckedAt"] = _now_iso()
     client.table("rag_sources").update(
         {
             "status": status,
             "tables_count": tables_count,
-            "last_sync_at": _now_iso(),
             "metadata": metadata,
         }
     ).eq("id", source_id).execute()
@@ -309,15 +312,26 @@ def _is_due(row: dict[str, Any], *, now: datetime) -> bool:
     metadata = row.get("metadata") or {}
     if isinstance(metadata, dict) and metadata.get("syncEnabled") is False:
         return False
-    last_sync_raw = row.get("last_sync_at")
     interval = _sync_interval_seconds(metadata if isinstance(metadata, dict) else {})
-    if not last_sync_raw:
+    # The scheduled run is a health check, so the most recent check (or a real sync,
+    # for rows written before checks were recorded separately) decides when it is due.
+    candidates = [
+        row.get("last_sync_at"),
+        metadata.get("lastCheckedAt") if isinstance(metadata, dict) else None,
+    ]
+    latest: datetime | None = None
+    for raw in candidates:
+        if not raw:
+            continue
+        try:
+            parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if latest is None or parsed > latest:
+            latest = parsed
+    if latest is None:
         return True
-    try:
-        last_sync = datetime.fromisoformat(str(last_sync_raw).replace("Z", "+00:00"))
-    except ValueError:
-        return True
-    return last_sync <= now - timedelta(seconds=interval)
+    return latest <= now - timedelta(seconds=interval)
 
 
 async def run_scheduled_source_syncs(settings: Settings) -> dict[str, Any]:

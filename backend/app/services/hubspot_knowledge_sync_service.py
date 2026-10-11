@@ -14,7 +14,11 @@ from app.core.safe_dict import safe_normalize_stored_dict
 logger = logging.getLogger(__name__)
 
 DEFAULT_LOOKBACK_HOURS = 24
-MAX_OBJECTS_PER_SYNC = 100
+# Per-object-type cap for one run. Records are fetched oldest change first, so when the
+# cap is hit the per-type cursor stops at the last processed record and the next run
+# continues from there (nothing beyond the cap is skipped).
+MAX_OBJECTS_PER_SYNC = 100  # same per-run volume as before Phase 1
+CURSORS_CONFIG_KEY = "hubspot_sync_cursors"
 
 
 def _now_iso() -> str:
@@ -44,6 +48,39 @@ def _since_ms(config: dict[str, Any], *, full_sync: bool) -> int | None:
     if last:
         return int(last.timestamp() * 1000)
     return int((datetime.now(timezone.utc) - timedelta(hours=DEFAULT_LOOKBACK_HOURS)).timestamp() * 1000)
+
+
+def _modified_ms(value: Any) -> int | None:
+    """HubSpot ``hs_lastmodifieddate`` (ISO string or epoch ms) -> epoch ms."""
+    if value is None or value == "":
+        return None
+    raw = str(value).strip()
+    if raw.isdigit():
+        return int(raw)
+    parsed = _parse_ts(raw)
+    if parsed is None:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return int(parsed.timestamp() * 1000)
+
+
+def _kind_cursor(config: dict[str, Any], kind: str, *, full_sync: bool) -> tuple[int | None, set[str]]:
+    """Per-object-type cursor: (since_ms, ids already processed at exactly since_ms)."""
+    if full_sync:
+        return None, set()
+    cursors = config.get(CURSORS_CONFIG_KEY)
+    entry = cursors.get(kind) if isinstance(cursors, dict) else None
+    if isinstance(entry, dict) and entry.get("since_ms") is not None:
+        try:
+            since = int(entry["since_ms"])
+        except (TypeError, ValueError):
+            since = None
+        if since is not None:
+            ids = entry.get("ids_at_since") or []
+            return since, {str(i) for i in ids if i is not None}
+    # Legacy connectors only have the run timestamp; fall back to it.
+    return _since_ms(config, full_sync=False), set()
 
 
 def ensure_hubspot_rag_source(
@@ -159,28 +196,41 @@ def run_hubspot_knowledge_sync(
         raise ValueError(err or "HubSpot not connected")
 
     config = safe_normalize_stored_dict(connector, key="config")
-    since_ms = _since_ms(config, full_sync=full_sync)
     source_id = ensure_hubspot_rag_source(client, org_id, connector, settings, created_by=actor_id)
     environment = str(connector.get("environment") or "production")
 
     job_ids: list[str] = []
     records_synced = 0
     errors: list[str] = []
+    cursors = config.get(CURSORS_CONFIG_KEY)
+    cursors = dict(cursors) if isinstance(cursors, dict) else {}
+    has_more: dict[str, bool] = {}
 
     for fetcher, formatter, kind in (
         (list_notes_since, _format_note, "note"),
         (list_emails_since, _format_email, "email"),
     ):
+        since_ms, seen_at_since = _kind_cursor(config, kind, full_sync=full_sync)
         try:
             items = fetcher(token, since_ms=since_ms, limit=MAX_OBJECTS_PER_SYNC)
         except HubSpotAPIError as exc:
+            # Cursor for this kind stays where it was; the next run retries the same window.
             errors.append(f"{kind}: {exc}")
             continue
+        has_more[kind] = len(items) >= MAX_OBJECTS_PER_SYNC
+        # Advance only to the last record that was queued successfully.
+        cursor_ms = since_ms
+        ids_at_cursor = set(seen_at_since)
+        synced_for_kind = 0
+        kind_failed = False
         for item in items:
+            rid = str(item.get("id") or "")
+            props = item.get("properties") or {}
+            modified_ms = _modified_ms(props.get("hs_lastmodifieddate"))
+            if since_ms is not None and modified_ms == since_ms and rid in seen_at_since:
+                continue  # already queued on a previous run (GTE boundary)
             try:
                 title, text = formatter(item)
-                rid = str(item.get("id") or "")
-                props = item.get("properties") or {}
                 job_id = _queue_ingest(
                     client,
                     org_id=org_id,
@@ -196,12 +246,33 @@ def run_hubspot_knowledge_sync(
                         "hubspot_lastmodified": props.get("hs_lastmodifieddate"),
                     },
                 )
-                job_ids.append(job_id)
-                records_synced += 1
             except Exception as exc:  # noqa: BLE001
+                # Stop here so the cursor never moves past an unprocessed record.
                 errors.append(f"{kind} {item.get('id')}: {exc}")
+                has_more[kind] = True
+                kind_failed = True
+                break
+            job_ids.append(job_id)
+            records_synced += 1
+            synced_for_kind += 1
+            if modified_ms is not None:
+                if cursor_ms is None or modified_ms > cursor_ms:
+                    cursor_ms = modified_ms
+                    ids_at_cursor = {rid}
+                elif modified_ms == cursor_ms:
+                    ids_at_cursor.add(rid)
+        if has_more[kind] and synced_for_kind == 0 and not kind_failed:
+            # A full page, all already processed at the cursor instant: more records share
+            # this timestamp than one run can page through. Report it instead of looping.
+            errors.append(f"{kind}: cursor_stalled: more than {MAX_OBJECTS_PER_SYNC} records modified at {since_ms}")
+            logger.warning("hubspot_knowledge_sync_cursor_stalled org_id=%s kind=%s since_ms=%s", org_id, kind, since_ms)
+        if cursor_ms is not None:
+            cursors[kind] = {"since_ms": cursor_ms, "ids_at_since": sorted(ids_at_cursor)}
 
+    # ``hubspot_last_synced_at`` is the run time used for scheduling; the data cursor lives
+    # per object type in ``hubspot_sync_cursors``.
     config["hubspot_last_synced_at"] = _now_iso()
+    config[CURSORS_CONFIG_KEY] = cursors
     config["hubspot_rag_source_id"] = source_id
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
 
@@ -219,4 +290,6 @@ def run_hubspot_knowledge_sync(
         "job_ids": job_ids[:20],
         "errors": errors,
         "last_synced_at": config["hubspot_last_synced_at"],
+        "cursors": cursors,
+        "has_more": any(has_more.values()),
     }
