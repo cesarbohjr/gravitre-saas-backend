@@ -331,7 +331,7 @@ def test_awaiting_without_observation_stays_awaiting() -> None:
     assert semantic_stage_from_state(state) == "AWAITING_APPROVAL"
     turn = recent_write_status_turn("Did that contact already get created?", state)
     assert turn is not None
-    assert "waiting for your approval" in turn["message"].lower()
+    assert "need your approval" in turn["message"].lower()
     assert reconcile_stale_pending_to_observation(state) is None
 
 

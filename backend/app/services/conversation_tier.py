@@ -233,9 +233,21 @@ _LIGHT_BODY_RE = re.compile(
 )
 
 
+_SOCIAL_REPAIR_RE = re.compile(
+    r"(?i)^\s*(?:sorry|(?:i['’]?m|i am)\s+(?:so\s+)?sorry|my\s+bad|pardon\s+me)"
+    r"(?:\s+(?:about\s+that|for\s+that|again))?[.!?\s]*$"
+)
+
+
+def is_social_repair(message: str) -> bool:
+    """A complete apology, never a correction, request, or approval."""
+    return bool(_SOCIAL_REPAIR_RE.fullmatch(message or ""))
+
+
 def _is_social_clause(clause: str) -> bool:
     return bool(
-        _ACK_ONLY_RE.match(clause) or _GREETING_ONLY_RE.match(clause) or _LIGHT_BODY_RE.search(clause)
+        is_social_repair(clause)
+        or _ACK_ONLY_RE.match(clause) or _GREETING_ONLY_RE.match(clause) or _LIGHT_BODY_RE.search(clause)
     )
 
 

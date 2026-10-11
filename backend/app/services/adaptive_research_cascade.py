@@ -195,6 +195,10 @@ def should_run_internet_research(
     search (confirmed incident: unrelated third-party "Gravite" cited as a source).
     """
     if query:
+        from app.services.conversation_tier import is_social_repair
+
+        if is_social_repair(query):
+            return False
         from app.services.analytics_traffic_overview_service import (
             is_analytics_traffic_overview_intent,
         )

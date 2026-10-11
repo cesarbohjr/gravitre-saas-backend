@@ -164,13 +164,15 @@ def _gerund_phrase(tool_name: str) -> str:
 
 
 def skip_spoken_tool_progress(tool_name: str) -> bool:
-    """Connector-status tools must not replace the spoken answer with check-narration."""
+    """Keep internal retrieval/status chatter out of the spoken business answer."""
     key = re.sub(r"[^a-z]", "", (tool_name or "").lower())
     return key in {
         "getconnectorstatus",
         "assistantgetconnectorstatus",
         "listconnectors",
         "assistantlistconnectors",
+        "searchknowledgebase",
+        "assistantsearchknowledgebase",
     } or "connectorstatus" in key
 
 
