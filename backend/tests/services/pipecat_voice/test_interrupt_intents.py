@@ -97,7 +97,12 @@ def _isolated(monkeypatch: pytest.MonkeyPatch):
         ("don't send it", InterruptIntent.TASK_CANCEL),
         ("stop talking and cancel it", InterruptIntent.TASK_CANCEL),
         ("stop", InterruptIntent.STOP),
-        ("hold on", InterruptIntent.STOP),
+        ("hold on", InterruptIntent.PAUSE),
+        ("wait", InterruptIntent.PAUSE),
+        ("one sec", InterruptIntent.PAUSE),
+        ("why?", InterruptIntent.EXPLAIN),
+        ("how come?", InterruptIntent.EXPLAIN),
+        ("wait, why?", InterruptIntent.EXPLAIN),
         ("no thanks", InterruptIntent.NEW_REQUEST),
         ("who owns the Acme account?", InterruptIntent.NEW_REQUEST),
         ("now show me the pipeline", InterruptIntent.NEW_REQUEST),
@@ -459,19 +464,20 @@ def test_explain_keeps_the_paused_request(intents_on: bool) -> None:
 def test_correction_revises_the_interrupted_request(intents_on: bool) -> None:
     h = _Harness(intents_on)
     first = "show revenue for this quarter"
-    # An acknowledgement was already spoken, so nothing is carried today.
+    # Only an acknowledgement was spoken: the request is still owed, so it is carried.
     h.first_turn_narration = "Let me check revenue."
 
     async def _script() -> None:
         await h.barge_in_during(first)
-        assert h.service._carry_user_text is None
+        assert h.service._carry_user_text == first
         await h.turn(first, "use last quarter instead")
 
     h.run(_script)
+    query = h.calls[1]["query"]
     if intents_on:
-        assert h.calls[1]["query"] == "show revenue for this quarter (correction: use last quarter instead)"
+        assert query == "show revenue for this quarter (correction: use last quarter instead)"
     else:
-        assert h.calls[1]["query"] == "use last quarter instead"
+        assert first in query and "use last quarter instead" in query
 
 
 @FLAG_STATES

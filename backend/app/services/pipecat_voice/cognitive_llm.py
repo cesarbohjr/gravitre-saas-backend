@@ -35,6 +35,7 @@ from app.services.pipecat_voice.backchannel_classifier import (
     InterruptIntent,
     classify_interrupt_intent,
     is_bare_confirmation,
+    is_resume_request,
     is_syntactically_incomplete,
 )
 from app.services.pipecat_voice.llm_context_utils import messages_from_context as _messages_from_context
@@ -106,9 +107,11 @@ VOICE_NO_VOLUNTEERED_DATA_NOTE = (
 
 # voice_interrupt_intents_v1: the user cut in to ask what something just said means.
 VOICE_EXPLAIN_INTERRUPTION_NOTE = (
-    "The user interrupted your last reply to ask what part of it means. Explain that part "
-    "briefly from the conversation so far. Do not start, change or cancel any task, and do not "
-    "repeat the whole reply."
+    "The user interrupted your last reply to ask what part of it means, or why (\"why?\", "
+    "\"how come?\"). Explain that part, or the reason for what you said or are doing, briefly "
+    "from the conversation so far and the active task below. Do not start, change or cancel any "
+    "task, and do not repeat the whole reply. If a request is paused, end by asking in a few "
+    "words whether to carry on with it."
 )
 # voice_explain_aside_v1: "what does that mean?" while a task still runs.
 VOICE_EXPLAIN_ASIDE_NOTE = (
@@ -151,6 +154,11 @@ def incomplete_turn_hold_seconds(settings: Any) -> float:
         ms = 600.0
     return max(0.0, min(INCOMPLETE_TURN_HOLD_MAX_S, ms / 1000.0))
 
+
+#: _approval_expectation_for_yes read the staged approval back instead of approving.
+#: How long the first turn after connect waits for connection recovery.
+RECOVERY_WAIT_S = 1.5
+_REREAD_APPROVAL = object()
 
 # voice_confirmation_hold_v1: once the user resumed, how long the go-ahead may
 # wait for them to finish before it is set aside (never sent while they talk),
@@ -340,6 +348,21 @@ def describe_cancelled_work(
 _PENDING_WRITE_THING = {"messages.send": "the email", "chat.post_message": "the message"}
 
 
+# Everything a later "yes" could still approve: a staged write, one still
+# collecting details, and a multi-step plan or its next step (OC-2).
+_WITHDRAWABLE_STATUSES = frozenset(
+    {
+        "awaiting_confirm",
+        "awaiting_params",
+        "awaiting_plan_confirm",
+        "awaiting_step_confirm",
+        "awaiting_user_confirmation",
+        "awaiting_approval",
+        "awaiting_admin_approval",
+    }
+)
+
+
 def withdraw_unclaimed_pending_write(state: dict[str, Any]) -> dict[str, Any] | None:
     """The patch that drops a staged write still waiting on the user, or None.
 
@@ -351,7 +374,7 @@ def withdraw_unclaimed_pending_write(state: dict[str, Any]) -> dict[str, Any] | 
     pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else None
     if not pending or pending.get("execution_claim_id"):
         return None
-    if str(pending.get("status") or "") not in {"awaiting_confirm", "awaiting_params"}:
+    if str(pending.get("status") or "") not in _WITHDRAWABLE_STATUSES:
         return None
     return {
         "current_plan": None,
@@ -361,6 +384,9 @@ def withdraw_unclaimed_pending_write(state: dict[str, Any]) -> dict[str, Any] | 
         "completed_steps": [],
         "recipient_candidates": [],
     }
+
+
+_WITHDRAW_FAILED = "_withdraw_failed"
 
 
 def _withdrawn_write_line(pending: dict[str, Any]) -> str:
@@ -480,6 +506,19 @@ class GravitreCognitiveLLMService(LLMService):
         self._carry_user_text: str | None = None
         # The current turn already merged a request carried from a cancelled one.
         self._turn_was_carried = False
+        # What a previous connection's work did while the user was away
+        # (voice_connection_recovery), said once at the start of the next turn.
+        self._recovery_line: str | None = None
+        #: Set by the pipeline on connect: prepare_connection_recovery() running.
+        self.recovery_task: asyncio.Task[Any] | None = None
+        # This connection replaced an earlier one on the conversation (set by
+        # the pipeline when it claims ownership).
+        self.replaced_connection = False
+        # The approval version this turn's bare "yes" answers, bound for the
+        # turn's work (approval_expectation) and released when the turn ends.
+        self._approval_ctx_token: Any = None
+        # Fire-and-forget bookkeeping (kept referenced until done).
+        self._background_tasks: set[asyncio.Task[Any]] = set()
         self._active_user_text = ""
         self._answer_started = False
         # ElevenLabs stability currently applied; the pipeline starts on the
@@ -768,10 +807,12 @@ class GravitreCognitiveLLMService(LLMService):
                 # Barge-in cancelled this turn. If none of the answer was spoken
                 # yet, keep the request for the next turn ("Email Sarah the
                 # deck" ... "and cc Mike").
-                # Only when nothing at all was said: once Gravitre has started
-                # talking (even "let me check"), repeating the request would
-                # restart the answer from the top. A request that was itself
-                # carried is never carried again, so it cannot loop.
+                # An acknowledgement or progress line ("Sure, one moment.") is
+                # not an answer: the request it acknowledged is still owed, so
+                # it is carried too. Once answer words were spoken it is not
+                # (repeating it would restart the answer from the top); a stop
+                # or cancel on the next turn drops it. A request that was
+                # itself carried is never carried again, so it cannot loop.
                 # Never when the turn already reached a provider with a write:
                 # re-running the request would send it again. That write
                 # finishes and records its outcome on its own.
@@ -779,7 +820,7 @@ class GravitreCognitiveLLMService(LLMService):
                 if (
                     self._active_user_text
                     and not self._answer_started
-                    and not self._turn_spoke
+                    and not self._answer_spoken
                     and not self._turn_was_carried
                     and not wrote
                 ):
@@ -816,6 +857,7 @@ class GravitreCognitiveLLMService(LLMService):
                 await self.push_error(error_msg=spoken, exception=exc)
                 await self.push_frame(ErrorFrame(error=spoken))
             finally:
+                self._release_approval_expectation()
                 self._release_adopted_run()
                 await self._stop_answer_first()
                 await self.stop_processing_metrics()
@@ -828,8 +870,346 @@ class GravitreCognitiveLLMService(LLMService):
                 self._turn_active = False
                 await self.push_frame(LLMFullResponseEndFrame())
                 self._finish_turn_trace()
+                self._note_undelivered_outcome()
             return
         await self.push_frame(frame, direction)
+
+    async def _replacement_cancel_intent(self, user_text: str) -> InterruptIntent | None:
+        """"Cancel it" on a replacement connection reaches the previous connection's work.
+
+        Nothing was cut off on this connection, so there is no barge-in for
+        the intent path. A stop this connection owns is armed at once, so a
+        write the old connection has not committed is refused (in any
+        worker). The cancel is then answered from the old work's write effects
+        when it runs in this process, else from the stored task state.
+        """
+        if classify_interrupt_intent(user_text) is not InterruptIntent.TASK_CANCEL:
+            return None
+        reporter = self._interrupt_reporter
+        if reporter is not None:
+            await reporter.arm_cancel_stop()
+        return InterruptIntent.TASK_CANCEL
+
+    async def _previous_connection_write(self, completed: list[str], unconfirmed: list[str]) -> None:
+        from app.services.pipecat_voice.voice_connection_recovery import (
+            COMPLETED,
+            IN_PROGRESS,
+            UNKNOWN,
+            classify_recovery,
+        )
+
+        state = await load_revision_task_state(
+            self._app_settings, org_id=self._org_id, conversation_id=self._conversation_id
+        )
+        outcome = classify_recovery(state)
+        label = outcome.label or "the action you approved"
+        if outcome.kind == COMPLETED and outcome.undelivered:
+            completed.append(label)
+        elif outcome.kind in (IN_PROGRESS, UNKNOWN):
+            unconfirmed.append(label)
+
+    def _approval_read_back_here(self) -> bool:
+        """A staged write's current version was read back on this connection."""
+        session = self._voice_session()
+        approval = getattr(session, "pending_approval", None)
+        return bool(
+            approval is not None
+            and getattr(session, "approval_read_back_id", None) == approval.approval_action_id
+        )
+
+    def _note_pending_approval(
+        self,
+        state: dict[str, Any] | None,
+        *,
+        read_back: bool,
+        reply_id: int | None = None,
+    ) -> None:
+        """Record the staged approval in the session (approval_expectation contract).
+
+        ``read_back`` says this connection just presented that version to the
+        user (the turn that staged or revised it). An unchanged version keeps
+        whatever read-back status it had; a new one read elsewhere is not.
+        """
+        from app.services.approval_expectation import pending_approval_from_state
+
+        session = self._voice_session()
+        if session is None or not isinstance(state, dict) or state.get("_unavailable"):
+            return
+        approval = pending_approval_from_state(state)
+        previous = getattr(session, "pending_approval", None)
+        session.pending_approval = approval
+        if approval is None:
+            session.approval_read_back_id = None
+            session.approval_readback_reply_id = None
+            return
+        same = previous is not None and previous.approval_action_id == approval.approval_action_id
+        if read_back:
+            session.approval_read_back_id = approval.approval_action_id
+            session.approval_readback_reply_id = reply_id
+        elif not same:
+            session.approval_read_back_id = None
+            session.approval_readback_reply_id = None
+
+    def _note_turn_approval(self, complete_event: Any) -> None:
+        """After a turn: a version it staged or revised was read back by this reply."""
+        state = getattr(complete_event, "task_state", None)
+        if not isinstance(state, dict):
+            pending = getattr(complete_event, "pending_task", None)
+            if pending is None:
+                return
+            state = {"pending_task": pending}
+        from app.services.approval_expectation import pending_approval_from_state
+
+        session = self._voice_session()
+        previous = getattr(session, "pending_approval", None)
+        current = pending_approval_from_state(state)
+        presented = current is not None and (
+            previous is None
+            or previous.approval_action_id != current.approval_action_id
+            or str(getattr(complete_event, "dialogue_mode", "") or "") in {"confirm", "awaiting_approval"}
+        )
+        self._note_pending_approval(
+            state,
+            read_back=presented and not self._superseded(),
+            reply_id=self._reply_id,
+        )
+
+    def _release_approval_expectation(self) -> None:
+        token, self._approval_ctx_token = self._approval_ctx_token, None
+        if token is None:
+            return
+        from app.services.approval_expectation import reset_expected_approval
+
+        with contextlib.suppress(ValueError, RuntimeError):
+            reset_expected_approval(token)
+
+    async def _approval_expectation_for_yes(self) -> Any:
+        """Which approval version a bare "yes" answers.
+
+        Returns its id when this connection read that version back; ``""``
+        when nothing is staged (a "yes" then approves nothing); None when the
+        state is unknown (legacy behavior, the staged binding still holds);
+        or _REREAD_APPROVAL after reading back a version this connection never
+        presented (a reconnect during the readback, a draft staged on another
+        device, or revised since): the user approves what they heard.
+        """
+        session = self._voice_session()
+        if session is None or not self._conversation_id or not self._org_id:
+            return None
+        approval = getattr(session, "pending_approval", None)
+        state = await load_revision_task_state(
+            self._app_settings, org_id=self._org_id, conversation_id=self._conversation_id
+        )
+        if not isinstance(state, dict) or state.get("_unavailable"):
+            if approval is not None and session.approval_read_back_id == approval.approval_action_id:
+                return approval.approval_action_id
+            return None
+        self._note_pending_approval(state, read_back=False)
+        current = getattr(session, "pending_approval", None)
+        if current is None:
+            return ""
+        if session.approval_read_back_id == current.approval_action_id:
+            return current.approval_action_id
+        if await self._reread_pending_approval(state):
+            return _REREAD_APPROVAL
+        return ""
+
+    async def _reread_pending_approval(self, state: dict[str, Any]) -> bool:
+        """Read the staged version back before anything is approved; it becomes the one a "yes" answers."""
+        from app.services.approval_expectation import pending_approval_from_state
+        from app.services.chat_connector_execution_service import ChatConnectorExecutionService
+        from app.services.connector_action_workflows import format_write_approval_message
+
+        approval = pending_approval_from_state(state)
+        pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+        params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+        if approval is None or not params:
+            return False
+        try:
+            plan = ChatConnectorExecutionService.plan_from_dict(params)
+            prompt = format_write_approval_message(plan)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("pipecat_voice_approval_reread_failed error=%s", exc)
+            return False
+        prompt = re.sub(r"\*\*(.+?)\*\*", r"\1", str(prompt or "")).strip()
+        if not prompt:
+            return False
+        logger.info(
+            "pipecat_voice_approval_reread conversation_id=%s reason=not_read_back_here",
+            self._conversation_id,
+        )
+        await self._speak_narration_now(f"Before I send anything, here's what I have. {prompt}", kind=ANSWER)
+        session = self._voice_session()
+        if session is not None:
+            session.pending_approval = approval
+            session.approval_read_back_id = approval.approval_action_id
+            session.approval_readback_reply_id = self._reply_id
+        return True
+
+    async def resume_paused_reply(self) -> bool:
+        """"Go on" after "hold on": release held writes and say what was not heard yet.
+
+        The paused reply's unheard part (from the sentence it stopped in) is
+        spoken as a reply of its own; while the turn's work is still running,
+        what it says next is spoken under that reply too. Never approves
+        anything. False when nothing was paused.
+        """
+        from app.services import voice_pause_gate
+
+        session = self._voice_session()
+        paused = getattr(session, "paused_reply", None)
+        if session is None or paused is None:
+            return False
+        session.paused_reply = None
+        voice_pause_gate.resume(self._org_id, self._conversation_id)
+        reporter = self._interrupt_reporter
+        remainder = reporter.paused_remainder(paused) if reporter is not None else ""
+        logger.info(
+            "pipecat_voice_pause_resumed org_id=%s turn_active=%s remainder_chars=%d",
+            self._org_id,
+            self._turn_active,
+            len(remainder),
+        )
+        if self._turn_active:
+            # This turn's later words belong to the resumed reply, not the muted one.
+            self._result_delivery = "spoken"
+        await self.push_frame(LLMFullResponseEndFrame())
+        start = LLMFullResponseStartFrame()
+        self._reply_id = session.begin_reply()
+        setattr(start, "gravitre_reply_id", self._reply_id)
+        await self.push_frame(start)
+        self._tts_text_pending = False
+        if remainder:
+            await self._push_spoken_text(remainder)
+        if not self._turn_active:
+            await self.push_frame(LLMFullResponseEndFrame())
+        return True
+
+    def _end_pause_for(self, intent: InterruptIntent | None) -> None:
+        """A turn other than an explanation ends a pause; its held writes are refused."""
+        from app.services import voice_pause_gate
+
+        session = self._voice_session()
+        if session is None or getattr(session, "paused_reply", None) is None:
+            return
+        if intent is InterruptIntent.EXPLAIN:
+            return
+        session.paused_reply = None
+        voice_pause_gate.end_pause(self._org_id, self._conversation_id)
+
+    async def prepare_connection_recovery(self) -> None:
+        """On connect: what did earlier work on this conversation do while the user was away?
+
+        Reads task_state once (off the loop) and classifies the latest write
+        from the stored records only (voice_connection_recovery). A result the
+        user was never told is said once, at the start of their next turn, and
+        shown at once; nothing is re-run. A pending approval is loaded too, as
+        not yet read back on this connection: a bare "yes" re-reads it first.
+        """
+        from app.services.pipecat_voice.speculative_generation import load_revision_task_state
+        from app.services.pipecat_voice.voice_connection_recovery import (
+            classify_recovery,
+            recovery_line,
+        )
+
+        if not self._conversation_id or not self._org_id:
+            return
+        try:
+            state = await load_revision_task_state(
+                self._app_settings, org_id=self._org_id, conversation_id=self._conversation_id
+            )
+        except Exception as exc:  # noqa: BLE001 - recovery is best effort
+            logger.debug("pipecat_voice_recovery_read_failed error=%s", exc)
+            return
+        self._note_pending_approval(state, read_back=False)
+        outcome = classify_recovery(state)
+        logger.info(
+            "pipecat_voice_connection_recovery conversation_id=%s outcome=%s undelivered=%s",
+            self._conversation_id,
+            outcome.kind,
+            outcome.undelivered,
+        )
+        if not outcome.should_announce:
+            return
+        line = recovery_line(outcome)
+        if not line:
+            return
+        self._recovery_line = line
+        with contextlib.suppress(Exception):
+            await self.push_frame(
+                OutputTransportMessageUrgentFrame(
+                    message={"type": "session.recovered", "outcome": outcome.kind, "text": line}
+                )
+            )
+
+    async def _say_recovery_line(self) -> str | None:
+        """Say the recovered outcome once, before this turn's answer; clear its marker."""
+        line, self._recovery_line = self._recovery_line, None
+        if not line:
+            return None
+        await self._speak_narration_now(line, kind=ANSWER)
+        from app.services.pipecat_voice.voice_connection_recovery import UNDELIVERED_KEY
+
+        def _clear(state: dict[str, Any]) -> dict[str, Any] | None:
+            return {UNDELIVERED_KEY: None} if state.get(UNDELIVERED_KEY) else None
+
+        with contextlib.suppress(Exception):
+            from app.services.conversation_state_service import get_conversation_state_service
+
+            await get_conversation_state_service().update_task_state_from(
+                str(self._conversation_id), str(self._org_id), _clear
+            )
+        return line
+
+    def _note_undelivered_outcome(self) -> None:
+        """This turn reached a write but its connection is gone or replaced: leave a marker.
+
+        The next connection reads it (prepare_connection_recovery) and tells
+        the user what happened. Written in the background, from the stored
+        state, so it never delays or blocks the turn's own bookkeeping.
+        """
+        session = self._voice_session()
+        if session is None or not self._conversation_id or not self._org_id:
+            return
+        if not (getattr(session, "superseded", False) or not getattr(session, "client_connected", True)):
+            return
+        if not self._turn_reached_a_write():
+            return
+        from app.services.pipecat_voice.voice_connection_recovery import (
+            UNDELIVERED_KEY,
+            undelivered_marker,
+        )
+
+        token = str(getattr(session, "connection_token", "") or "")
+
+        def _mark(state: dict[str, Any]) -> dict[str, Any] | None:
+            pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+            return {
+                UNDELIVERED_KEY: undelivered_marker(
+                    status=str(pending.get("status") or ""),
+                    label=str(pending.get("label") or ""),
+                    connection=token,
+                )
+            }
+
+        async def _write() -> None:
+            try:
+                from app.services.conversation_state_service import get_conversation_state_service
+
+                await get_conversation_state_service().update_task_state_from(
+                    str(self._conversation_id), str(self._org_id), _mark, effect_record=True
+                )
+                logger.info(
+                    "pipecat_voice_outcome_undelivered conversation_id=%s superseded=%s",
+                    self._conversation_id,
+                    bool(getattr(session, "superseded", False)),
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("pipecat_voice_undelivered_marker_failed error=%s", exc)
+
+        task = asyncio.create_task(_write())
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
     def _turn_reached_a_write(self) -> bool:
         """True when this turn's WRITE reached the provider (started, done or uncertain).
@@ -883,6 +1263,15 @@ class GravitreCognitiveLLMService(LLMService):
             logger.info("pipecat_voice_echo_turn_skipped org_id=%s", self._org_id)
             return
         intent = self._interrupt_intent(user_text)
+        session_paused = getattr(self._voice_session(), "paused_reply", None) is not None
+        if session_paused and is_resume_request(user_text):
+            # "Go on" reached the brain as a turn (the pause outlived its turn).
+            await self.resume_paused_reply()
+            return
+        if session_paused:
+            self._end_pause_for(intent or classify_interrupt_intent(user_text))
+        if intent is None and self.replaced_connection and self._interrupt_intents_enabled():
+            intent = await self._replacement_cancel_intent(user_text)
         if intent is InterruptIntent.SPEECH_STOP:
             # "stop talking" reached the brain as a turn (the turn strategy
             # normally keeps it out). It asks for silence, not an answer.
@@ -900,7 +1289,10 @@ class GravitreCognitiveLLMService(LLMService):
             await self._answer_task_cancel(user_text, since=previous_turn_started)
             return
         confirm_hold_s = confirmation_hold_seconds(self._app_settings)
-        if confirm_hold_s > 0 and answers_assistant_question(user_text, history):
+        bare_yes = is_bare_confirmation(user_text)
+        if confirm_hold_s > 0 and bare_yes and (
+            self._approval_read_back_here() or answers_assistant_question(user_text, history)
+        ):
             # voice_confirmation_hold_v1: before the brain runs (so before any
             # approval is consumed or write executed) make sure the go-ahead
             # is final. Raises _TurnYieldedToUser when the user went on.
@@ -925,9 +1317,14 @@ class GravitreCognitiveLLMService(LLMService):
         user_text = reconstitute_spoken_identity_fields(user_text)
         carried, self._carry_user_text = self._carry_user_text, None
         revisable, self._revisable_user_text = self._revisable_user_text, None
+        if carried and (intent or classify_interrupt_intent(user_text)) is InterruptIntent.STOP:
+            # "Stop" after the request was cut off: the user dropped it.
+            logger.info("pipecat_voice_carried_request_dropped_on_stop org_id=%s", self._org_id)
+            carried = None
         if intent is InterruptIntent.EXPLAIN:
-            # "Wait, what does that mean?" is answered on its own; the request
-            # it paused stays exactly as it was, still carried.
+            # "Wait, why?" is answered on its own, from the active task; the
+            # request it paused stays exactly as it was, still carried, and
+            # "go on" / "yes" on the next turn continues it.
             self._carry_user_text = carried
             carried = None
         elif intent is InterruptIntent.CORRECTION and not carried and revisable:
@@ -959,6 +1356,25 @@ class GravitreCognitiveLLMService(LLMService):
                 self._conversation_id,
             )
             return
+        await self._await_connection_recovery()
+        if await self._lost_ownership():
+            return
+        # What an earlier connection's work did while the user was away, said
+        # once before this answer (voice_connection_recovery).
+        recovered = await self._say_recovery_line() if self._recovery_line else None
+        if bare_yes and not carried and intent is not InterruptIntent.EXPLAIN:
+            expected = await self._approval_expectation_for_yes()
+            if expected is _REREAD_APPROVAL:
+                return
+            if isinstance(expected, str):
+                from app.services.approval_expectation import set_expected_approval
+
+                self._approval_ctx_token = set_expected_approval(expected)
+                if self._speculative_coordinator is not None:
+                    # A run speculated before the go-ahead was bound to this
+                    # version could not claim it anyway; run fresh, bound.
+                    with contextlib.suppress(Exception):
+                        self._speculative_coordinator.cancel()
         intelligence = get_agent_intelligence()
         coordinator = self._speculative_coordinator
         revision_state: asyncio.Task[Any] | None = None
@@ -971,6 +1387,14 @@ class GravitreCognitiveLLMService(LLMService):
                 )
             )
         turn_inputs = await self.shared_turn_inputs(user_text)
+        if recovered:
+            turn_inputs = dict(turn_inputs)
+            note = (
+                "The voice connection dropped and reconnected. At the start of this reply you "
+                f"already told the user: \"{recovered}\" Do not repeat it."
+            )
+            base = str(turn_inputs.get("assistant_base_prompt") or "")
+            turn_inputs["assistant_base_prompt"] = f"{base}\n\n{note}" if base else note
         if trace is not None:
             trace.note("prompt_ready")
         # Same helper and inputs (final text + merged history) as the
@@ -984,9 +1408,8 @@ class GravitreCognitiveLLMService(LLMService):
             voice_mode = tier_to_execution_mode("light")
             turn_inputs = dict(turn_inputs)
             base = str(turn_inputs.get("assistant_base_prompt") or "")
-            turn_inputs["assistant_base_prompt"] = (
-                f"{base}\n\n{VOICE_EXPLAIN_INTERRUPTION_NOTE}" if base else VOICE_EXPLAIN_INTERRUPTION_NOTE
-            )
+            note = f"{VOICE_EXPLAIN_INTERRUPTION_NOTE}\n\n{self._active_task_context()}"
+            turn_inputs["assistant_base_prompt"] = f"{base}\n\n{note}" if base else note
         if trace is not None:
             # Fallback only: the brain's own routing.conversationTier wins.
             trace.set_turn_meta(tier=voice_tier.tier)
@@ -1531,6 +1954,7 @@ class GravitreCognitiveLLMService(LLMService):
         if complete_event is not None and trace is not None:
             trace.set_turn_meta(turn_id=str(getattr(complete_event, "message_id", None) or "") or None)
         if complete_event is not None:
+            self._note_turn_approval(complete_event)
             durable_assistant_text = str(getattr(complete_event, "full_content", None) or "").strip()
             if durable_assistant_text:
                 preassigned_assistant_id = str(getattr(complete_event, "message_id", None) or "") or None
@@ -1848,7 +2272,7 @@ class GravitreCognitiveLLMService(LLMService):
         interrupt reporter's draft, marked not for TTS and not for the context
         (the TTS's own spoken-text frames carry it there, as before).
         """
-        if self._speech_muted():
+        if self._speech_muted() or self._superseded():
             return
         if self._tts_text_pending:
             await self._push_spoken_text(spoken)
@@ -1893,6 +2317,8 @@ class GravitreCognitiveLLMService(LLMService):
         this can never produce a double space; the next chunk's own leading
         strip means no chunk ever contributes a space of its own.
         """
+        if self._superseded():
+            return
         if self._speech_muted() and not (self._answer_started and await self._resume_speech_for_result()):
             # "Stop talking": the text already went to the client; nothing more is spoken.
             return
@@ -2055,6 +2481,21 @@ class GravitreCognitiveLLMService(LLMService):
             if detail:
                 line = f"{line} Result: {detail[:_ASIDE_FACT_CHARS]}"
             done.append(line)
+
+    def _active_task_context(self) -> str:
+        """The task a bare "why?" is about: the paused request, the staged approval, the progress."""
+        lines = ["Active task:"]
+        paused = str(self._carry_user_text or "").strip()
+        lines.append(f"- Paused request (not done yet): {paused or 'none'}")
+        approval = getattr(self._voice_session(), "pending_approval", None)
+        if approval is not None:
+            what = approval.label or approval.invoke_action or "an action"
+            lines.append(f"- Waiting on the user's approval: {what}")
+        progress = self._task_progress or {}
+        done = [str(d) for d in progress.get("done") or []]
+        if done:
+            lines.append("- Finished in the last turn: " + "; ".join(done))
+        return "\n".join(lines)
 
     def _task_facts_note(self) -> str:
         progress = self._task_progress or {}
@@ -2373,6 +2814,59 @@ class GravitreCognitiveLLMService(LLMService):
         )
         return self._result_delivery == "spoken"
 
+    async def _await_connection_recovery(self) -> None:
+        """The first turn after connect waits for recovery (pending approval, recovery line)."""
+        task, self.recovery_task = self.recovery_task, None
+        if task is None or task.done():
+            return
+        try:
+            await asyncio.wait_for(asyncio.shield(task), RECOVERY_WAIT_S)
+        except TimeoutError:
+            # Too slow: answer without it rather than hold the user.
+            logger.info("pipecat_voice_recovery_wait_timeout conversation_id=%s", self._conversation_id)
+        except Exception:  # noqa: BLE001 - recovery is best effort
+            logger.debug("pipecat_voice_recovery_wait_failed", exc_info=True)
+
+    async def _lost_ownership(self) -> bool:
+        """A newer connection on another worker owns this conversation: stop answering here.
+
+        Same-process supersede sets the session flag directly; across workers
+        only the Redis owner key shows it, so it is read once per turn.
+        """
+        session = self._voice_session()
+        if session is None:
+            return False
+        if getattr(session, "superseded", False):
+            return True
+        token = str(getattr(session, "connection_token", "") or "")
+        if not token or not self._conversation_id:
+            return False
+        from app.services.pipecat_voice.voice_connection_recovery import is_current_connection
+
+        try:
+            current = await asyncio.to_thread(
+                is_current_connection,
+                self._org_id,
+                self._conversation_id,
+                token,
+                settings=self._app_settings,
+            )
+        except Exception:  # noqa: BLE001 - ownership is best effort, never blocks a turn
+            return False
+        if current:
+            return False
+        session.superseded = True
+        logger.info(
+            "pipecat_voice_turn_skipped_superseded org_id=%s conversation_id=%s",
+            self._org_id,
+            self._conversation_id,
+        )
+        return True
+
+    def _superseded(self) -> bool:
+        """A newer connection owns this conversation: nothing more is delivered here."""
+        return bool(getattr(self._voice_session(), "superseded", False))
+
     def _speech_muted(self) -> bool:
         """This reply was silenced ("stop talking"): its text still goes out, its speech does not."""
         session = self._voice_session()
@@ -2405,6 +2899,15 @@ class GravitreCognitiveLLMService(LLMService):
             await reporter.settle_barge_in(release=False)
             if reporter.conversation_id:
                 self._conversation_id = reporter.conversation_id
+            # Nothing was cut off on this connection (a reconnect): the work
+            # being cancelled may be the previous connection's. Arm a stop this
+            # connection owns so its uncommitted write is refused.
+            await reporter.arm_cancel_stop()
+        from app.services.pipecat_voice.voice_connection_recovery import cancel_superseded_work
+
+        superseded_since = cancel_superseded_work(self._org_id, self._conversation_id, "task_cancel")
+        if superseded_since is not None:
+            since = superseded_since if since is None else min(since, superseded_since)
         if self._speculative_coordinator is not None:
             with contextlib.suppress(Exception):
                 self._speculative_coordinator.cancel()
@@ -2425,11 +2928,16 @@ class GravitreCognitiveLLMService(LLMService):
                 if not any(e["status"] == STATUS_STARTED for e in effects) or time.monotonic() >= deadline:
                     break
                 await asyncio.sleep(0.1)
+        completed = [e["action"] for e in effects if e["status"] == STATUS_COMPLETED]
+        unconfirmed = [e["action"] for e in effects if e["status"] in (STATUS_STARTED, STATUS_UNCERTAIN)]
+        if not effects and self.replaced_connection:
+            # The cancelled work may be the previous connection's, in another
+            # worker: report what its stored record says, never "nothing sent"
+            # for a write that is out or still in flight.
+            await self._previous_connection_write(completed, unconfirmed)
         report = describe_cancelled_work(
-            completed=[e["action"] for e in effects if e["status"] == STATUS_COMPLETED],
-            unconfirmed=[
-                e["action"] for e in effects if e["status"] in (STATUS_STARTED, STATUS_UNCERTAIN)
-            ],
+            completed=completed,
+            unconfirmed=unconfirmed,
             blocked=[e["action"] for e in effects if e["status"] == STATUS_BLOCKED],
         )
         logger.info(
@@ -2439,8 +2947,17 @@ class GravitreCognitiveLLMService(LLMService):
             [(e["action"], e["status"]) for e in effects],
         )
         withdrawn = await self._withdraw_pending_write()
-        if withdrawn is not None:
+        if withdrawn is not None and withdrawn.get(_WITHDRAW_FAILED):
+            report = (
+                f"{report} I couldn't clear what was waiting for your approval, so it may still be there. "
+                "Nothing will be sent unless you approve it again."
+            )
+        elif withdrawn is not None:
             report = f"{report} {_withdrawn_write_line(withdrawn)}"
+        if withdrawn is not None:
+            # Nothing staged is read back any more: a later "yes" approves
+            # nothing, or (if the withdraw failed) re-reads it first.
+            self._note_pending_approval({"pending_task": None}, read_back=False)
         await self._speak_narration(report)
         complete = AssistantStreamComplete(
             full_content=report, tool_results=[], react_result=None, model="voice_task_cancel"
@@ -2482,15 +2999,23 @@ class GravitreCognitiveLLMService(LLMService):
                 dropped.update(state.get("pending_task") or {})
             return patch
 
-        try:
-            await get_conversation_state_service().update_task_state_from(
-                self._conversation_id, self._org_id, build
-            )
-        except Exception as exc:  # noqa: BLE001
+        last_exc: Exception | None = None
+        for _attempt in range(2):
+            try:
+                await get_conversation_state_service().update_task_state_from(
+                    self._conversation_id, self._org_id, build
+                )
+                last_exc = None
+                break
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                dropped.clear()
+        if last_exc is not None:
             logger.warning(
-                "pipecat_voice_task_cancel_pending_withdraw_failed org_id=%s error=%s", self._org_id, exc
+                "pipecat_voice_task_cancel_pending_withdraw_failed org_id=%s error=%s", self._org_id, last_exc
             )
-            return None
+            # Never "cancelled" while the draft may still be approvable (OC-3).
+            return {_WITHDRAW_FAILED: True}
         if dropped:
             logger.info("pipecat_voice_task_cancel_withdrew_pending org_id=%s", self._org_id)
         return dropped or None
@@ -2530,9 +3055,9 @@ class GravitreCognitiveLLMService(LLMService):
                 self._org_id,
                 scan.rejected_raw_tags[:5],
             )
-        from app.services.pipecat_voice.spoken_pronunciations import apply_spoken_aliases
+        from app.services.pipecat_voice.spoken_formatting import to_spoken_form
 
-        return apply_spoken_aliases(
+        return to_spoken_form(
             normalize_spoken_text(scan.clean_text),
             str(getattr(self._app_settings, "voice_spoken_aliases", "") or ""),
         )

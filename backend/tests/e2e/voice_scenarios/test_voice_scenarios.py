@@ -12,14 +12,22 @@ bench defaults into unrelated tests.
 """
 from __future__ import annotations
 
+import json
 import os
 import socket
 import time
+from pathlib import Path
 from typing import Any, Iterator
 
 import pytest
 
-SCENARIO_IDS = ["S1", "S1b", "S2", "S2b", "S3", "S4", "S5", "S6", "S7", "S7b", "S8", "S9", "S10", "S11", "S12"]
+SCENARIO_IDS = [
+    "S1", "S1b", "S2", "S2b", "S3", "S4", "S5", "S6", "S7", "S7b", "S8", "S9", "S10", "S11", "S12",
+    "S13", "S13b", "S14", "S15", "S16", "S17", "S18",
+]
+# Flag-interaction scenarios: also run once under the production profile.
+INTERACTION_IDS = ["S13", "S13b", "S14", "S15", "S16", "S17", "S18"]
+PROFILE_DIR = Path(__file__).resolve().parents[3] / "scripts" / "bench_profiles"
 
 _ENV_KEYS = (
     "APP_ENV",
@@ -74,7 +82,45 @@ def test_scenario_runs_once(bench: dict[str, Any], scenario_id: str) -> None:
     assert m["error"] is None
     assert m["first_any_played_ms"] is not None
     assert isinstance(m["outcome"], str) and not m["outcome"].startswith(("outcome_error", "run_error"))
+    # Every scenario grades itself (the bench's accuracy column).
+    assert isinstance(m["passed"], bool)
+    for key in ("answer_words_heard", "filler_words_heard", "duplicate_lines", "spoken_not_displayed_words"):
+        assert isinstance(m[key], int), key
     bench["results"][scenario_id] = m
+
+
+@pytest.mark.parametrize("scenario_id", INTERACTION_IDS)
+def test_interaction_scenario_runs_under_production_profile(bench: dict[str, Any], scenario_id: str) -> None:
+    """Smoke: each flag-interaction scenario runs once with the production profile's flags.
+
+    Like the test above, this does not assert the outcome (that is what the
+    bench measures); it checks the run completes and grades itself.
+    """
+    from app.config import get_settings
+
+    profile = json.loads((PROFILE_DIR / "production_inferred.json").read_text())
+    flags = {str(k).upper(): str(v) for k, v in profile["settings"].items()}
+    saved = {key: os.environ.get(key) for key in flags}
+    try:
+        settings = bench["harness"].build_settings(flags)
+        assert settings.voice_interrupt_intents_v1 and settings.voice_overlap_duck_v1
+        (scenario,) = bench["scenarios"].get_scenarios([scenario_id])
+        result = bench["harness"].run_scenario(scenario, seed=1234, settings=settings)
+        assert result.error is None, result.error
+        assert result.run.rec.brain_calls, "the scripted brain was never called"
+        m = bench["metrics"].run_metrics(result)
+        assert m["error"] is None
+        assert not str(m["outcome"]).startswith(("outcome_error", "run_error")), m["outcome"]
+        assert isinstance(m["passed"], bool)
+        assert m.get("barge_to_quiet_ms") is not None or scenario_id == "S17"
+    finally:
+        for key, value in saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+        get_settings.cache_clear()
+        bench["settings"] = bench["harness"].build_settings()
 
 
 def test_barge_in_sends_playback_report_when_grounded_history_is_on(bench: dict[str, Any]) -> None:

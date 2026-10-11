@@ -20,7 +20,21 @@ STOP_TTL_SECONDS = 120
 _KEY_PREFIX = "chat:stop:"
 
 _lock = threading.Lock()
-_local_stops: dict[str, float] = {}
+# key -> (expires at, owner). The owner is whoever armed the marker (a voice
+# connection token; "1" for text chat's Stop) so a release can be scoped to it.
+_local_stops: dict[str, tuple[float, str]] = {}
+
+#: Owner stored by callers that do not name one (text chat's Stop button).
+ANONYMOUS_OWNER = "1"
+
+# Delete the key only while it still holds the caller's owner: a socket closing
+# must never clear a marker a newer connection armed in the meantime.
+_COMPARE_AND_DELETE = """
+if redis.call('get', KEYS[1]) == ARGV[1] then
+  return redis.call('del', KEYS[1])
+end
+return 0
+"""
 
 
 def stop_key(org_id: str, conversation_id: str) -> str:
@@ -28,7 +42,7 @@ def stop_key(org_id: str, conversation_id: str) -> str:
 
 
 def _prune_local(now: float) -> None:
-    expired = [key for key, until in _local_stops.items() if until <= now]
+    expired = [key for key, (until, _owner) in _local_stops.items() if until <= now]
     for key in expired:
         _local_stops.pop(key, None)
 
@@ -38,26 +52,32 @@ def request_stop(
     conversation_id: str,
     *,
     settings: Settings | None = None,
+    owner: str | None = None,
 ) -> bool:
-    """Mark the active turn for this conversation as cancelled. Returns True if stored."""
+    """Mark the active turn for this conversation as cancelled. Returns True if stored.
+
+    ``owner`` names who armed it (a voice connection's token); only that owner,
+    or an unscoped clear, releases it.
+    """
     oid = (org_id or "").strip()
     cid = (conversation_id or "").strip()
     if not oid or not cid:
         return False
     key = stop_key(oid, cid)
+    value = (owner or "").strip() or ANONYMOUS_OWNER
     redis = get_redis_client(settings or get_settings())
     if redis is not None:
         try:
-            redis.setex(key, STOP_TTL_SECONDS, "1")
+            redis.setex(key, STOP_TTL_SECONDS, value)
             return True
         except Exception as exc:  # noqa: BLE001
             logger.warning("chat stop redis setex failed key=%s error=%s", key, str(exc)[:200])
     with _lock:
-        _local_stops[key] = time.monotonic() + STOP_TTL_SECONDS
+        _local_stops[key] = (time.monotonic() + STOP_TTL_SECONDS, value)
     return True
 
 
-def arm_local_stop(org_id: str, conversation_id: str) -> bool:
+def arm_local_stop(org_id: str, conversation_id: str, *, owner: str | None = None) -> bool:
     """Arm the stop flag in this process only: no I/O, safe to call on the event loop.
 
     A voice barge-in calls this synchronously before anything else is awaited,
@@ -69,7 +89,10 @@ def arm_local_stop(org_id: str, conversation_id: str) -> bool:
     if not oid or not cid:
         return False
     with _lock:
-        _local_stops[stop_key(oid, cid)] = time.monotonic() + STOP_TTL_SECONDS
+        _local_stops[stop_key(oid, cid)] = (
+            time.monotonic() + STOP_TTL_SECONDS,
+            (owner or "").strip() or ANONYMOUS_OWNER,
+        )
     return True
 
 
@@ -77,8 +100,8 @@ def _local_stop_active(key: str) -> bool:
     now = time.monotonic()
     with _lock:
         _prune_local(now)
-        until = _local_stops.get(key)
-        return bool(until and until > now)
+        entry = _local_stops.get(key)
+        return bool(entry and entry[0] > now)
 
 
 def is_stop_requested(
@@ -115,20 +138,74 @@ def clear_stop(
     conversation_id: str | None,
     *,
     settings: Settings | None = None,
+    owner: str | None = None,
 ) -> None:
+    """Release the conversation's stop marker.
+
+    With ``owner`` only a marker that owner armed is released (compare and
+    delete), so a connection releasing its own marker can never clear one a
+    newer connection armed since. Without it the marker is cleared whoever
+    armed it (text chat's next turn).
+    """
     oid = (org_id or "").strip()
     cid = (conversation_id or "").strip() if conversation_id else ""
     if not oid or not cid:
         return
     key = stop_key(oid, cid)
+    scoped = (owner or "").strip()
     redis = get_redis_client(settings or get_settings())
     if redis is not None:
         try:
-            redis.delete(key)
+            if scoped:
+                _redis_compare_and_delete(redis, key, scoped)
+            else:
+                redis.delete(key)
         except Exception as exc:  # noqa: BLE001
             logger.debug("chat stop redis delete failed key=%s error=%s", key, str(exc)[:200])
     with _lock:
-        _local_stops.pop(key, None)
+        entry = _local_stops.get(key)
+        if entry is not None and (not scoped or entry[1] == scoped):
+            _local_stops.pop(key, None)
+
+
+def _redis_compare_and_delete(redis: Any, key: str, owner: str) -> None:
+    try:
+        redis.eval(_COMPARE_AND_DELETE, 1, key, owner)
+        return
+    except Exception as exc:  # noqa: BLE001 - no scripting (or a test double)
+        logger.debug("chat stop redis eval unavailable key=%s error=%s", key, str(exc)[:200])
+    current = redis.get(key)
+    if isinstance(current, bytes):
+        current = current.decode("utf-8", "replace")
+    if current is not None and str(current) == owner:
+        redis.delete(key)
+
+
+def stop_owner(
+    org_id: str,
+    conversation_id: str | None,
+    *,
+    settings: Settings | None = None,
+) -> str | None:
+    """Who armed the current marker (None when there is none). For tests and logs."""
+    oid = (org_id or "").strip()
+    cid = (conversation_id or "").strip() if conversation_id else ""
+    if not oid or not cid:
+        return None
+    key = stop_key(oid, cid)
+    redis = get_redis_client(settings or get_settings())
+    if redis is not None:
+        try:
+            value = redis.get(key)
+            if value is not None:
+                return value.decode("utf-8", "replace") if isinstance(value, bytes) else str(value)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("chat stop redis get failed key=%s error=%s", key, str(exc)[:200])
+    now = time.monotonic()
+    with _lock:
+        _prune_local(now)
+        entry = _local_stops.get(key)
+        return entry[1] if entry else None
 
 
 def reset_local_stops_for_tests() -> None:

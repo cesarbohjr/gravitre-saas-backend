@@ -326,6 +326,15 @@ async def pipecat_voice_ws(
                 await reporter.release_stop_marker()
             except Exception as exc:  # noqa: BLE001
                 logger.warning("pipecat_voice_stop_marker_release_failed error=%s", exc)
+            session = getattr(reporter, "voice_session", None)
+            if session is not None:
+                from app.services.pipecat_voice.voice_connection_recovery import release_conversation
+
+                release_conversation(
+                    resolved_org,
+                    reporter.conversation_id or conversation_id,
+                    getattr(session, "connection_token", None),
+                )
         if websocket.client_state == WebSocketState.CONNECTED:
             try:
                 await websocket.close()

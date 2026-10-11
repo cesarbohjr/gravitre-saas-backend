@@ -59,6 +59,14 @@ AUDIO_QUIET_S = 0.25
 # play: the answer usually follows a finished tool within about a second, and
 # then the line is dropped instead of being spoken ahead of it.
 RESULT_LINE_GRACE_S = 1.0
+# A progress line ("Let me check your ads report.") never plays earlier than
+# this long after the turn started. Without the floor the acknowledgement's
+# own length decided the order: a short "Okay, one moment." ran out of audio
+# before the answer was ready, so the tool line was released and the answer
+# queued behind it; a longer acknowledgement covered the gap and the line was
+# dropped. The floor is longer than every acknowledgement, so the order no
+# longer depends on which one was picked (acceptance gap OF-1, 2026-10-11).
+PROGRESS_FLOOR_S = 1.8
 
 
 class PlayoutClock:
@@ -161,8 +169,11 @@ class AnswerFirstSpeech:
         lead_s: float = RELEASE_LEAD_S,
         poll_s: float = POLL_S,
         clock: Callable[[], float] = lambda: time.monotonic(),
+        progress_floor_s: float = PROGRESS_FLOOR_S,
     ) -> None:
         self._speak = speak
+        self._started = clock()
+        self._progress_floor_s = max(0.0, progress_floor_s)
         self._playout = playout
         self._lead_s = lead_s
         self._poll_s = poll_s
@@ -203,7 +214,10 @@ class AnswerFirstSpeech:
             self.stats.dropped_for_answer += 1
             return False
         now = self._clock()
-        self._pending.append(_Line(text, kind, still_relevant, now, now + max(0.0, hold_s)))
+        not_before = now + max(0.0, hold_s)
+        if kind != "filler":
+            not_before = max(not_before, self._started + self._progress_floor_s)
+        self._pending.append(_Line(text, kind, still_relevant, now, not_before))
         self.stats.queued += 1
         self._wake.set()
         return True

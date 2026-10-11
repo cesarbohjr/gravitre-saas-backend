@@ -1,0 +1,2881 @@
+{
+  "meta": {
+    "label": "a7719cba product code",
+    "runs": 15,
+    "warmup": 1,
+    "git": "f947da80",
+    "app_tree": "a87a03439f64d079deda64e4686dc9fc5d7591a7",
+    "python": "3.13.16",
+    "platform": "Linux-6.18.44-fc-v114-x86_64-with-glibc2.39",
+    "cpu_count": 4,
+    "started_at": "2026-10-11T09:28:57Z",
+    "wall_s": 464.0
+  },
+  "conditions": {
+    "web_search_ms": 1000,
+    "gmail_read_ms": 150,
+    "surfaces": "text,voice",
+    "model": "scripted (tests/scenarios/conversation_harness.py FakeOpenAI)",
+    "clock": "real wall clock"
+  },
+  "turns": {
+    "text:clock": {
+      "surface": "text",
+      "turn": "clock",
+      "text": "What time is it?",
+      "expected": "Answered without a web search.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 1968.4,
+        "p95_ms": 2116.8,
+        "mean_ms": 1937.8,
+        "min_ms": 1541.3,
+        "max_ms": 2182.5,
+        "mean_web_searches": 0.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 2182.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 1939.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 1969.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 2003.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 2088.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 1924.0,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 2035.4,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 1899.4,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 2036.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 1968.4,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 2083.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 1817.2,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 1616.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 1959.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 1541.3,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    },
+    "text:arithmetic": {
+      "surface": "text",
+      "turn": "arithmetic",
+      "text": "What's 2 plus 2?",
+      "expected": "Answered without a web search.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 1856.9,
+        "p95_ms": 2223.7,
+        "mean_ms": 1928.1,
+        "min_ms": 1680.9,
+        "max_ms": 2487.5,
+        "mean_web_searches": 0.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 2487.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 2110.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 1846.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 1922.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 1913.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 1843.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 1798.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 1852.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 1680.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 1856.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 1940.3,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 2081.7,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 1963.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 1772.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 1850.0,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    },
+    "text:own_calendar": {
+      "surface": "text",
+      "turn": "own_calendar",
+      "text": "What's on my calendar today?",
+      "expected": "No web search for the user's own data.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 1977.7,
+        "p95_ms": 3923.1,
+        "mean_ms": 2325.5,
+        "min_ms": 1633.9,
+        "max_ms": 7115.1,
+        "mean_web_searches": 0.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 1873.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 1981.3,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 1776.7,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 2236.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 1947.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 1849.0,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 7115.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 2555.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 1723.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 2219.4,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 2173.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 1633.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 1825.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 1977.7,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 1993.3,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    },
+    "text:own_website": {
+      "surface": "text",
+      "turn": "own_website",
+      "text": "How did the website do last week?",
+      "expected": "No web search for the user's own data.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 1878.4,
+        "p95_ms": 2443.1,
+        "mean_ms": 1957.7,
+        "min_ms": 1563.4,
+        "max_ms": 2790.0,
+        "mean_web_searches": 0.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 2294.4,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 1629.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 2054.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 1892.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 2790.0,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 1563.4,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 1787.2,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 2057.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 1864.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 1865.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 1828.7,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 1817.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 2083.3,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 1878.4,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 1958.3,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    },
+    "text:definition": {
+      "surface": "text",
+      "turn": "definition",
+      "text": "Explain what a conversion is.",
+      "expected": "Answered without a web search.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 1951.2,
+        "p95_ms": 2336.3,
+        "mean_ms": 1994.7,
+        "min_ms": 1702.1,
+        "max_ms": 2693.4,
+        "mean_web_searches": 0.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 2131.7,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 2693.4,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 1824.2,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 1872.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 1887.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 1975.2,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 1951.2,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 1803.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 2183.3,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 2056.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 2030.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 2010.2,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 1702.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 1892.2,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 1906.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    },
+    "text:email_by_name": {
+      "surface": "text",
+      "turn": "email_by_name",
+      "text": "Send an email to Stephanie on Gmail",
+      "expected": "No web search; nothing is sent without the user's approval.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 480.4,
+        "p95_ms": 527.0,
+        "mean_ms": 484.1,
+        "min_ms": 453.2,
+        "max_ms": 538.8,
+        "mean_web_searches": 0.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 521.9,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 80,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 497.1,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 80,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 453.2,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 80,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 465.6,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 80,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 538.8,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 80,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 506.3,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 80,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 491.8,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 80,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 493.7,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 80,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 462.3,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 80,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 488.7,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 80,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 461.7,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 80,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 480.3,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 80,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 480.4,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 80,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 464.7,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 80,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 454.3,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 80,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    },
+    "text:thanks": {
+      "surface": "text",
+      "turn": "thanks",
+      "text": "Thanks!",
+      "expected": "Answered without a web search.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 26.1,
+        "p95_ms": 30.2,
+        "mean_ms": 26.3,
+        "min_ms": 23.0,
+        "max_ms": 30.4,
+        "mean_web_searches": 0.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 25.7,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 23.8,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 26.3,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 27.3,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 29.4,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 28.7,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 23.2,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 23.0,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 25.2,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 23.6,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 30.1,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 24.9,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 26.2,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 26.1,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 30.4,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    },
+    "text:news_control": {
+      "surface": "text",
+      "turn": "news_control",
+      "text": "What's the latest news about OpenAI?",
+      "expected": "Control: public news does use web search.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 3084.9,
+        "p95_ms": 4031.0,
+        "mean_ms": 3162.2,
+        "min_ms": 2738.3,
+        "max_ms": 4046.3,
+        "mean_web_searches": 1.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 4024.4,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 2939.2,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 3084.9,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 4046.3,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 2777.1,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 2893.3,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 3177.3,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 3227.7,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 2738.3,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 3049.9,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 3113.2,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 3090.5,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 3178.0,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 3025.8,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 3067.8,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 5,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    },
+    "voice:clock": {
+      "surface": "voice",
+      "turn": "clock",
+      "text": "What time is it?",
+      "expected": "Answered without a web search.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 2007.5,
+        "p95_ms": 2176.8,
+        "mean_ms": 1993.0,
+        "min_ms": 1769.6,
+        "max_ms": 2201.2,
+        "mean_web_searches": 0.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 2201.2,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 2085.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 2166.3,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 1905.3,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 2128.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 1769.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 2104.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 2126.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 1770.4,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 1777.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 2148.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 1826.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 2007.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 1868.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 2007.0,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    },
+    "voice:arithmetic": {
+      "surface": "voice",
+      "turn": "arithmetic",
+      "text": "What's 2 plus 2?",
+      "expected": "Answered without a web search.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 1904.2,
+        "p95_ms": 2181.6,
+        "mean_ms": 1918.9,
+        "min_ms": 1708.9,
+        "max_ms": 2257.6,
+        "mean_web_searches": 0.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 1920.3,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 1731.7,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 1746.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 2027.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 2149.0,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 1902.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 1708.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 1904.2,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 1802.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 2257.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 2005.2,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 1836.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 1954.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 1992.3,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 1844.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    },
+    "voice:own_calendar": {
+      "surface": "voice",
+      "turn": "own_calendar",
+      "text": "What's on my calendar today?",
+      "expected": "No web search for the user's own data.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 1959.8,
+        "p95_ms": 2417.9,
+        "mean_ms": 2011.6,
+        "min_ms": 1715.2,
+        "max_ms": 2992.9,
+        "mean_web_searches": 0.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 2012.0,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 1864.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 1798.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 1960.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 1906.7,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 2147.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 1972.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 1715.2,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 2171.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 1872.4,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 2040.4,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 1900.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 2992.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 1858.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 1959.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    },
+    "voice:own_website": {
+      "surface": "voice",
+      "turn": "own_website",
+      "text": "How did the website do last week?",
+      "expected": "No web search for the user's own data.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 1930.7,
+        "p95_ms": 2529.2,
+        "mean_ms": 2011.2,
+        "min_ms": 1732.5,
+        "max_ms": 3061.3,
+        "mean_web_searches": 0.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 1930.7,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 2105.2,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 1998.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 1867.4,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 1890.3,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 1834.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 2070.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 1754.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 1732.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 1957.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 1840.7,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 1939.0,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 1884.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 3061.3,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 2301.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    },
+    "voice:definition": {
+      "surface": "voice",
+      "turn": "definition",
+      "text": "Explain what a conversion is.",
+      "expected": "Answered without a web search.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 1776.6,
+        "p95_ms": 2956.3,
+        "mean_ms": 1990.8,
+        "min_ms": 1424.8,
+        "max_ms": 3844.2,
+        "mean_web_searches": 0.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 1776.6,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 1808.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 1711.4,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 1689.2,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 2575.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 1767.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 1424.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 1955.5,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 2032.8,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 3844.2,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 2194.1,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 1728.3,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 1684.9,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 2043.3,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 1626.2,
+          "web_searches": 0,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    },
+    "voice:email_by_name": {
+      "surface": "voice",
+      "turn": "email_by_name",
+      "text": "Send an email to Stephanie on Gmail",
+      "expected": "No web search; nothing is sent without the user's approval.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 504.4,
+        "p95_ms": 534.9,
+        "mean_ms": 509.1,
+        "min_ms": 481.8,
+        "max_ms": 540.1,
+        "mean_web_searches": 0.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 481.8,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 170,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 523.4,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 170,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 504.4,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 170,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 503.3,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 170,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 488.1,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 170,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 524.5,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 170,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 495.0,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 170,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 496.8,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 170,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 504.8,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 170,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 500.3,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 170,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 540.1,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 170,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 525.6,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 170,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 502.9,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 170,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 532.7,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 170,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 512.2,
+          "web_searches": 0,
+          "brain_calls": 2,
+          "connector_actions": [
+            "gmail.messages.list",
+            "gmail.messages.get"
+          ],
+          "reply_chars": 170,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    },
+    "voice:thanks": {
+      "surface": "voice",
+      "turn": "thanks",
+      "text": "Thanks!",
+      "expected": "Answered without a web search.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 8.8,
+        "p95_ms": 10.8,
+        "mean_ms": 8.7,
+        "min_ms": 6.7,
+        "max_ms": 10.9,
+        "mean_web_searches": 0.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 10.6,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 9.0,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 6.9,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 8.8,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 8.4,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 10.8,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 6.7,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 7.6,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 8.0,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 8.8,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 9.3,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 10.9,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 7.6,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 8.8,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 8.4,
+          "web_searches": 0,
+          "brain_calls": 0,
+          "connector_actions": [],
+          "reply_chars": 15,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    },
+    "voice:news_control": {
+      "surface": "voice",
+      "turn": "news_control",
+      "text": "What's the latest news about OpenAI?",
+      "expected": "Control: public news does use web search.",
+      "aggregate": {
+        "n": 15,
+        "p50_ms": 3109.4,
+        "p95_ms": 3227.8,
+        "mean_ms": 3066.6,
+        "min_ms": 2821.4,
+        "max_ms": 3307.5,
+        "mean_web_searches": 1.0,
+        "accuracy": {
+          "n": 15,
+          "pass": 15,
+          "rate": 1.0
+        },
+        "problems": {}
+      },
+      "samples": [
+        {
+          "ms": 2859.5,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 0
+        },
+        {
+          "ms": 3166.6,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 1
+        },
+        {
+          "ms": 3134.6,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 2
+        },
+        {
+          "ms": 3064.2,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 3
+        },
+        {
+          "ms": 3307.5,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 4
+        },
+        {
+          "ms": 3146.3,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 5
+        },
+        {
+          "ms": 3150.1,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 6
+        },
+        {
+          "ms": 3166.0,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 7
+        },
+        {
+          "ms": 2923.7,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 8
+        },
+        {
+          "ms": 2821.4,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 9
+        },
+        {
+          "ms": 3102.0,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 10
+        },
+        {
+          "ms": 3008.7,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 11
+        },
+        {
+          "ms": 3193.7,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 12
+        },
+        {
+          "ms": 3109.4,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 23,
+          "passed": true,
+          "problems": [],
+          "i": 13
+        },
+        {
+          "ms": 2845.7,
+          "web_searches": 1,
+          "brain_calls": 1,
+          "connector_actions": [],
+          "reply_chars": 30,
+          "passed": true,
+          "problems": [],
+          "i": 14
+        }
+      ]
+    }
+  }
+}

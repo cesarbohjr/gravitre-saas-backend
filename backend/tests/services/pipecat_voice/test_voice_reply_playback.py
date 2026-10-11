@@ -186,9 +186,11 @@ def test_played_ms_without_word_timings_spreads_characters_over_sent_audio():
 def test_spoken_word_that_differs_from_the_draft_never_over_claims():
     reply = ReplyPlayback(reply_id=1)
     reply.add_text("It costs $5 per seat.", ANSWER)
-    for word in ("It", "costs", "five", "dollars"):
+    # "five bucks" is not the spoken form the formatter produces ("5 dollars",
+    # see test_spoken_formatting), so it cannot align.
+    for word in ("It", "costs", "five", "bucks"):
         reply.note_spoken_word(word, 0.0)
-    # "five dollars" did not align: heard stays at "It costs".
+    # "five bucks" did not align: heard stays at "It costs".
     assert reply.draft[: reply.word_marks[-1][1]] == "It costs"
     reply.note_spoken_word("per", 0.0)
     assert reply.draft[: reply.word_marks[-1][1]] == "It costs $5 per"

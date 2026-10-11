@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 
 from typing import Any
 
@@ -325,6 +326,7 @@ def build_pipecat_voice_task(
         and getattr(settings, "voice_explain_aside_v1", False)
     )
     voice_session.aside_handler = llm.start_explain_aside
+    voice_session.resume_handler = llm.resume_paused_reply
     llm._turn_trace = turn_trace
     speculative.before_run = interrupt_reporter.settle_barge_in
 
@@ -513,6 +515,10 @@ def build_pipecat_voice_task(
             await websocket.send_json({"type": "session.ready", **session_meta})
         except Exception as exc:  # noqa: BLE001
             logger.warning("pipecat_session_ready_send_failed error=%s", exc)
+        # This connection now owns the conversation: an older socket on it (a
+        # reconnect) stops delivering output, and what its work did while the
+        # user was away is recovered here from the stored records.
+        _claim_and_recover()
         # Silent TTS warm-up — preconnect WS, no audible opener text.
         try:
             warm = await warm_elevenlabs_tts_connection(tts)
@@ -543,8 +549,44 @@ def build_pipecat_voice_task(
             )
             idle_refresh_tasks.append(asyncio.create_task(refresher.run()))
 
+    def _claim_and_recover() -> None:
+        from app.services.pipecat_voice.voice_connection_recovery import claim_conversation
+
+        loop = asyncio.get_running_loop()
+
+        def _superseded() -> None:
+            # Called from the newer connection's loop/thread: tell this client
+            # its session was replaced, on this connection's own loop.
+            async def _notify() -> None:
+                try:
+                    await websocket.send_json({"type": "session.superseded"})
+                except Exception:  # noqa: BLE001 - the socket is usually gone already
+                    logger.debug("pipecat_session_superseded_send_failed", exc_info=True)
+
+            with contextlib.suppress(RuntimeError):  # this connection's loop is closed
+                asyncio.run_coroutine_threadsafe(_notify(), loop)
+
+        cid = getattr(llm, "_conversation_id", None) or conversation_id
+        try:
+            previous = claim_conversation(
+                org_id, cid, voice_session, settings=settings, on_superseded=_superseded
+            )
+            llm.replaced_connection = bool(previous)
+        except Exception as exc:  # noqa: BLE001 - ownership is best effort, never blocks Talk
+            logger.warning("pipecat_voice_connection_claim_failed error=%s", exc)
+        recover = getattr(llm, "prepare_connection_recovery", None)
+        if callable(recover):
+            task = asyncio.create_task(recover())
+            recovery_tasks.append(task)
+            # The first turn waits (briefly) for this, so a pending approval
+            # and the recovery line are known before it is answered.
+            llm.recovery_task = task
+
+    recovery_tasks: list[asyncio.Task[Any]] = []
+
     @transport.event_handler("on_client_disconnected")
     async def _on_client_disconnected(_transport, _websocket):
+        voice_session.client_connected = False
         while idle_refresh_tasks:
             idle_refresh_tasks.pop().cancel()
         if playback_grounded:
@@ -556,4 +598,5 @@ def build_pipecat_voice_task(
 
     # The router releases this socket's stop marker when the socket closes.
     task.gravitre_interrupt_reporter = interrupt_reporter
+    task.gravitre_voice_session = voice_session
     return task, session_meta
