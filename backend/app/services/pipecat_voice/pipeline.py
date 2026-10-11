@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 
 from typing import Any
 
@@ -560,12 +561,10 @@ def build_pipecat_voice_task(
                 try:
                     await websocket.send_json({"type": "session.superseded"})
                 except Exception:  # noqa: BLE001 - the socket is usually gone already
-                    pass
+                    logger.debug("pipecat_session_superseded_send_failed", exc_info=True)
 
-            try:
+            with contextlib.suppress(RuntimeError):  # this connection's loop is closed
                 asyncio.run_coroutine_threadsafe(_notify(), loop)
-            except RuntimeError:
-                pass
 
         cid = getattr(llm, "_conversation_id", None) or conversation_id
         try:

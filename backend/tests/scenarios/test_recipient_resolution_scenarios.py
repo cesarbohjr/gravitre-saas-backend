@@ -72,7 +72,9 @@ async def test_one_stephanie_is_found_and_the_send_goes_to_her(surface: str) -> 
         await conv.say("Tell her the proposal is ready for review.", "Okay.")
         staged = await conv.say("The subject is Proposal.", "Okay.")
         assert (staged.pending_task or {}).get("status") == "awaiting_confirm", staged.text
-        assert "stephanie.khan@acme.example" in staged.text  # the user approves the address
+        spoken = "stephanie dot khan at acme dot example"
+        shown = spoken if surface == "voice" else "stephanie.khan@acme.example"
+        assert shown in staged.text  # the user approves the address
 
         sent = await conv.say("Yes, send it.", "Okay.")
         sends = [c for c in sent.connector_calls if c.action == "gmail.messages.send"]

@@ -199,8 +199,8 @@ def stop_owner(
             value = redis.get(key)
             if value is not None:
                 return value.decode("utf-8", "replace") if isinstance(value, bytes) else str(value)
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("chat stop redis get failed key=%s error=%s", key, str(exc)[:200])
     now = time.monotonic()
     with _lock:
         _prune_local(now)

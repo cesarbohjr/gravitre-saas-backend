@@ -59,6 +59,8 @@ async def test_email_conversation_end_to_end(surface: str) -> None:
             }
         )
         conv = h.conversation(surface)
+        # Voice speaks the address the way a person would say it.
+        shown = "stephanie at acme dot example" if surface == "voice" else RECIPIENT
 
         start = await conv.say("Can you send an email to Stephanie on Gmail?", _start_send)
         assert _status(start) == "awaiting_params"
@@ -91,7 +93,7 @@ async def test_email_conversation_end_to_end(surface: str) -> None:
 
         body = await conv.say("Tell her the proposal is ready for review.", "Okay.")
         assert _status(body) == "awaiting_confirm"
-        assert f"Here's the email to {RECIPIENT}" in body.text
+        assert f"Here's the email to {shown}" in body.text
         assert "The proposal is ready for review." in body.text
         assert "Should I send it?" in body.text
         assert "Tell her" not in body.text
@@ -102,7 +104,7 @@ async def test_email_conversation_end_to_end(surface: str) -> None:
 
         approve = await conv.say("Okay, go ahead.", "Okay.")
         assert len(_sends(approve)) == 1, "a natural approval did not send exactly once"
-        assert RECIPIENT in approve.text
+        assert shown in approve.text
         assert "Verifiedly" not in approve.text and "Suggest only" not in approve.text
         if surface == "voice":
             assert "View in" not in approve.text, "link labels were spoken"

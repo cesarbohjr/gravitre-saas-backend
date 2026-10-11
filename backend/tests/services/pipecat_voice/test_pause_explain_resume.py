@@ -15,7 +15,11 @@ from typing import Any
 
 import pytest
 
-from app.services import chat_turn_cancel_service, voice_barge_in_write, voice_pause_gate
+from app.services import (
+    chat_turn_cancel_service,
+    voice_barge_in_write,
+    voice_pause_gate,
+)
 from app.services.pipecat_voice.backchannel_classifier import (
     InterruptIntent,
     classify_interrupt_intent,
@@ -26,7 +30,11 @@ from app.services.pipecat_voice.backchannel_classifier import (
 from app.services.pipecat_voice.cognitive_llm import VOICE_EXPLAIN_INTERRUPTION_NOTE
 from app.services.pipecat_voice.voice_audio_origin import VoicePipelineSession
 from app.services.tool_types import ToolValidationError
-from tests.services.pipecat_voice.test_interrupt_intents import _final, _Harness, _strategy
+from tests.services.pipecat_voice.test_interrupt_intents import (
+    _final,
+    _Harness,
+    _strategy,
+)
 
 ORG = "00000000-0000-4000-8000-000000000001"
 CONV = "00000000-0000-4000-8000-000000000003"
@@ -228,7 +236,9 @@ async def test_with_the_flag_off_hold_on_is_an_ordinary_interruption() -> None:
 
 
 def test_reporter_resume_starts_from_the_sentence_it_stopped_in() -> None:
-    from app.services.pipecat_voice.interrupt_reporter import ElevenLabsInterruptReporter
+    from app.services.pipecat_voice.interrupt_reporter import (
+        ElevenLabsInterruptReporter,
+    )
 
     reporter = ElevenLabsInterruptReporter(voice_session=VoicePipelineSession())
     reporter._draft_client = "Traffic was up 12 percent. Most of it came from search. Paid was flat."
@@ -313,15 +323,17 @@ def test_did_not_catch_and_lead_in_stop(text: str, intent: InterruptIntent) -> N
 @pytest.mark.asyncio
 async def test_a_bare_stop_waits_only_briefly_for_more_words() -> None:
     """IT-5: interim "stop" used to hold the reply for the whole 1.8 s wordless window."""
-    from pipecat.frames.frames import ProposedUserStartedSpeakingFrame
+    from pipecat.frames.frames import (
+        BotStartedSpeakingFrame,
+        ProposedUserStartedSpeakingFrame,
+    )
+    from pipecat.utils.asyncio.task_manager import TaskManager
+    from pipecat.utils.base_object import BaseObject
 
     from app.services.pipecat_voice.backchannel_turn_strategy import (
         SPEECH_STOP_CONTINUATION_WAIT_S,
         BackchannelAwareUserTurnStartStrategy,
     )
-    from pipecat.utils.asyncio.task_manager import TaskManager
-    from pipecat.utils.base_object import BaseObject
-    from pipecat.frames.frames import BotStartedSpeakingFrame
     from tests.services.pipecat_voice.test_interrupt_intents import _interim, _Recorder
 
     strategy = BackchannelAwareUserTurnStartStrategy(

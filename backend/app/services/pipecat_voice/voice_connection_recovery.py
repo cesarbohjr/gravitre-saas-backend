@@ -26,9 +26,10 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from app.core.logging import get_logger
 
@@ -132,12 +133,12 @@ def _supersede(holder: _Holder) -> None:
     if session is not None:
         try:
             session.superseded = True
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception:
+            logger.debug("voice_connection_supersede_flag_failed", exc_info=True)
     if holder.on_superseded is not None:
         try:
             holder.on_superseded()
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.debug("voice_connection_superseded_callback_failed", exc_info=True)
 
 
@@ -165,8 +166,8 @@ def is_current_connection(
             if value is not None:
                 value = value.decode() if isinstance(value, bytes) else str(value)
                 return value == token
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception:
+            logger.debug("voice_connection_owner_read_failed", exc_info=True)
     return True
 
 
@@ -211,7 +212,7 @@ def cancel_superseded_work(org_id: str | None, conversation_id: str | None, reas
         if callable(cancel):
             try:
                 cancel(reason)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.debug("voice_superseded_cancel_failed", exc_info=True)
     return earliest
 
@@ -250,7 +251,7 @@ class RecoveredOutcome:
 
 def _parse_ts(value: Any) -> datetime | None:
     try:
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return datetime.fromisoformat(str(value))
     except (TypeError, ValueError):
         return None
 
@@ -298,7 +299,7 @@ def classify_recovery(
         return RecoveredOutcome(UNKNOWN, label, "", True)
     if status in _CLAIMED:
         claimed = _parse_ts(pending.get("claimed_at"))
-        clock = now or datetime.now(timezone.utc)
+        clock = now or datetime.now(UTC)
         if claimed is not None and (clock - claimed).total_seconds() < IN_PROGRESS_MAX_AGE_S:
             return RecoveredOutcome(IN_PROGRESS, label, "", True)
         return RecoveredOutcome(UNKNOWN, label, "", True)
@@ -336,5 +337,5 @@ def undelivered_marker(*, status: str, label: str, connection: str) -> dict[str,
         "status": status,
         "label": label,
         "connection": connection,
-        "at": datetime.now(timezone.utc).isoformat(),
+        "at": datetime.now(UTC).isoformat(),
     }

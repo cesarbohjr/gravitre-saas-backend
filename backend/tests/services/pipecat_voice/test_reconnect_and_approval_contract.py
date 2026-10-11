@@ -12,7 +12,7 @@ comes from the pending approval, not from how the last sentence ends.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -36,7 +36,10 @@ from app.services.pipecat_voice import voice_connection_recovery as recovery
 from app.services.pipecat_voice.voice_audio_origin import VoicePipelineSession
 from app.services.spoken_write_approval import classify_spoken_write_approval
 from app.services.turn_cancellation import TurnCancellation
-from tests.services.pipecat_voice.test_interrupt_intents import _FakeStateService, _Harness
+from tests.services.pipecat_voice.test_interrupt_intents import (
+    _FakeStateService,
+    _Harness,
+)
 
 ORG = "00000000-0000-4000-8000-000000000001"
 USER = "00000000-0000-4000-8000-000000000002"
@@ -124,7 +127,9 @@ def test_unscoped_clear_still_clears_text_chat_stop() -> None:
 
 
 def test_reporter_release_is_scoped_to_its_connection() -> None:
-    from app.services.pipecat_voice.interrupt_reporter import ElevenLabsInterruptReporter
+    from app.services.pipecat_voice.interrupt_reporter import (
+        ElevenLabsInterruptReporter,
+    )
 
     old = VoicePipelineSession()
     new = VoicePipelineSession()
@@ -212,7 +217,7 @@ def test_cancelled_before_disconnect_is_recovered() -> None:
 
 
 def test_worker_restart_mid_write_is_unknown_and_never_resent() -> None:
-    old = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+    old = (datetime.now(UTC) - timedelta(minutes=10)).isoformat()
     state = _email("executing", execution_claim_id="claim-1", claimed_at=old)
     outcome = recovery.classify_recovery(state)
     assert outcome.kind == recovery.UNKNOWN and outcome.should_announce
@@ -221,7 +226,7 @@ def test_worker_restart_mid_write_is_unknown_and_never_resent() -> None:
 
 
 def test_fresh_claim_is_in_progress() -> None:
-    fresh = datetime.now(timezone.utc).isoformat()
+    fresh = datetime.now(UTC).isoformat()
     outcome = recovery.classify_recovery(_email("executing", execution_claim_id="c", claimed_at=fresh))
     assert outcome.kind == recovery.IN_PROGRESS
 
@@ -313,7 +318,9 @@ def test_unbound_confirmation_keeps_existing_behavior() -> None:
 
 
 def test_claim_refuses_a_revised_version_and_sends_nothing() -> None:
-    from app.services.chat_connector_execution_service import ChatConnectorExecutionService
+    from app.services.chat_connector_execution_service import (
+        ChatConnectorExecutionService,
+    )
     from app.services.chat_connector_models import ConnectorActionPlan
 
     service = ChatConnectorExecutionService.__new__(ChatConnectorExecutionService)
@@ -352,7 +359,10 @@ def test_cas_rechecks_the_version_under_the_lock() -> None:
 
 def _staging_stream(h: _Harness, states: list[dict[str, Any] | None]):
     """Turn N reports ``states[N-1]`` (turn 1 stages the readback); every turn records the bound expectation."""
-    from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
+    from app.operators.stream_events import (
+        AssistantStreamComplete,
+        AssistantStreamEvent,
+    )
 
     seen: list[Any] = []
 
@@ -437,7 +447,9 @@ def test_cancel_then_a_later_yes_approves_nothing() -> None:
 
 
 def test_answer_expected_comes_from_the_pending_approval_not_punctuation() -> None:
-    from app.services.pipecat_voice.interrupt_reporter import ElevenLabsInterruptReporter
+    from app.services.pipecat_voice.interrupt_reporter import (
+        ElevenLabsInterruptReporter,
+    )
 
     session = VoicePipelineSession()
     reporter = ElevenLabsInterruptReporter(org_id=ORG, user_id=USER, conversation_id=CONV, voice_session=session)
@@ -454,7 +466,9 @@ def test_answer_expected_comes_from_the_pending_approval_not_punctuation() -> No
 
 
 def test_answer_expected_waits_until_the_readback_details_were_heard() -> None:
-    from app.services.pipecat_voice.interrupt_reporter import ElevenLabsInterruptReporter
+    from app.services.pipecat_voice.interrupt_reporter import (
+        ElevenLabsInterruptReporter,
+    )
 
     class _Ledger:
         ever_recorded = True
@@ -512,7 +526,7 @@ def test_cancel_on_the_replacement_stops_the_old_connections_write() -> None:
 def test_cancel_on_the_replacement_never_claims_nothing_was_sent_for_a_write_in_flight_elsewhere() -> None:
     h = _Harness(True, conversation_id=CONV)
     h.service.replaced_connection = True
-    fresh = datetime.now(timezone.utc).isoformat()
+    fresh = datetime.now(UTC).isoformat()
     in_flight = _email("executing", execution_claim_id="c", claimed_at=fresh)
 
     async def _script() -> None:
@@ -536,7 +550,9 @@ def test_cancel_on_the_replacement_never_claims_nothing_was_sent_for_a_write_in_
     "status", ["awaiting_plan_confirm", "awaiting_step_confirm", "awaiting_user_confirmation", "awaiting_approval"]
 )
 def test_cancel_withdraws_plan_and_step_approvals_too(status: str) -> None:
-    from app.services.pipecat_voice.cognitive_llm import withdraw_unclaimed_pending_write
+    from app.services.pipecat_voice.cognitive_llm import (
+        withdraw_unclaimed_pending_write,
+    )
 
     assert withdraw_unclaimed_pending_write(_email(status)) is not None
 
