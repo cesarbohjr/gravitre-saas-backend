@@ -28,6 +28,8 @@ _UNTRUSTED_MARKERS = (
     "ingest:",
 )
 _PROBE_MARKERS = ("probe", "smoke", "one_brain_workspace_memory_probe")
+# Outcome-learning writers (kernel LEARN, agent outcome learning, workflow runs).
+_OUTCOME_PREFIXES = ("learn_outcome", "outcome_learning")
 _USER_MARKERS = ("user_statement", "confirmed_turn", "user_direct", "standing decision")
 
 # Caps — untrusted content must never enter as high-confidence standing memory.
@@ -55,7 +57,7 @@ def classify_memory_source(raw: dict[str, Any], *, provenance: str = "") -> str:
         return SOURCE_UNTRUSTED_EXTERNAL
     if raw.get("user_direct") or any(m in prov for m in _USER_MARKERS):
         return SOURCE_USER_DIRECT
-    if prov.startswith("learn_outcome") or raw.get("outcome_event"):
+    if prov.startswith(_OUTCOME_PREFIXES) or raw.get("outcome_event"):
         return SOURCE_WORKFLOW_OUTCOME
     if raw.get("confirmed") or raw.get("promote_memories"):
         return SOURCE_USER_DIRECT

@@ -41,6 +41,10 @@ _WRITE_CATEGORIES = TYPED_CATEGORIES | frozenset(
     {"fact", "pattern", "rule", "working", "campaign_learning", "risk_signal", "business_rule"}
 )
 
+# Provenance for turn-promoted memories when the caller gives none. Contains no
+# user marker, so the contamination guard classifies it as model inference.
+DEFAULT_TURN_PROVENANCE = "model_extracted_turn"
+
 _HARDENING_COLUMNS = frozenset(
     {
         "memory_key",
@@ -138,27 +142,16 @@ def promote_turn_memories(
         return []
 
     written: list[dict[str, Any]] = []
-    base_prov = (provenance or "confirmed_turn").strip() or "confirmed_turn"
+    # Default provenance is model-extracted: memories promoted from a turn are the
+    # model's reading of it, not a user statement. Callers that know the user said
+    # it pass an explicit user provenance (e.g. "user_statement").
+    base_prov = (provenance or DEFAULT_TURN_PROVENANCE).strip() or DEFAULT_TURN_PROVENANCE
     if conversation_id:
         base_prov = f"{base_prov}:conversation:{conversation_id}"
 
+    # No agent given → workspace scope (agent_id NULL, nullable since
+    # 20260813170000). Never borrow an arbitrary agent as a "steward".
     resolved_agent_id = (str(agent_id).strip() or None) if agent_id else None
-    if not resolved_agent_id:
-        try:
-            rows = (
-                client.table("agents")
-                .select("id")
-                .eq("org_id", org_id)
-                .limit(1)
-                .execute()
-                .data
-                or []
-            )
-            if rows:
-                resolved_agent_id = str(rows[0].get("id") or "") or None
-                base_prov = f"{base_prov}:workspace_steward"
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("workspace_memory_steward_lookup_failed error=%s", exc)
 
     for raw in memories:
         if not isinstance(raw, dict):
@@ -201,13 +194,6 @@ def promote_turn_memories(
         }
         if memory_key:
             payload["memory_key"] = memory_key
-
-        if not resolved_agent_id:
-            logger.warning(
-                "workspace_memory_promote_skipped_no_steward org_id=%s",
-                org_id,
-            )
-            continue
 
         try:
             from app.rag.embedding import get_embedding
