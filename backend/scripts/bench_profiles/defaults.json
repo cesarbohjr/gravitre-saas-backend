@@ -1,0 +1,8 @@
+{
+  "name": "defaults",
+  "description": "Code defaults: no voice setting overridden.",
+  "status": "CODE DEFAULTS",
+  "source": "app/config.py at the benchmarked revision. Every VOICE_* variable in the calling shell is cleared before Settings load.",
+  "verify_with": "results.json meta.effective_flags lists what the revision resolved.",
+  "settings": {}
+}

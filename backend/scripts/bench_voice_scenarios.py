@@ -10,10 +10,17 @@ identical conditions.
 Run from ``backend/``::
 
     python scripts/bench_voice_scenarios.py --runs 20 --out /tmp/bench/baseline --label baseline
+    python scripts/bench_voice_scenarios.py --runs 20 --out /tmp/bench/prod --profile production_inferred
     python scripts/bench_voice_scenarios.py --runs 20 --out /tmp/bench/cand --label cand \\
-        --setting SOME_VOICE_FLAG=true
+        --profile defaults --setting SOME_VOICE_FLAG=true
 
-Writes ``results.json`` (per-run metrics + aggregates) and ``results.md``.
+``--profile`` loads a flag set from ``scripts/bench_profiles/<name>.json`` (or a
+path) and clears every other VOICE_* variable inherited from the shell, so a
+result depends only on the revision, the profile, the seed and N. ``--setting``
+overrides apply on top of the profile.
+
+Writes ``results.json`` (per-run metrics + aggregates, seeds, conditions,
+resolved flags) and ``results.md``.
 """
 from __future__ import annotations
 
@@ -21,6 +28,7 @@ import argparse
 import json
 import logging
 import os
+import platform
 import subprocess
 import sys
 import time
@@ -58,11 +66,70 @@ MODEL_NOTES = [
 ]
 
 
-def _git_rev() -> str | None:
+PROFILE_DIR = Path(__file__).resolve().parent / "bench_profiles"
+
+
+def _git(*args: str) -> str | None:
     try:
-        return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=BACKEND_ROOT, text=True).strip()
+        return subprocess.check_output(["git", *args], cwd=BACKEND_ROOT, text=True, stderr=subprocess.DEVNULL).strip()
     except Exception:  # noqa: BLE001
         return None
+
+
+def _git_rev() -> str | None:
+    return _git("rev-parse", "--short", "HEAD")
+
+
+def _git_meta() -> dict[str, object]:
+    """Revision, whether the tree had local edits, and the backend/app tree
+    hash (two runs with the same hash ran the same product code)."""
+    dirty = _git("status", "--porcelain", "--", "app")
+    return {
+        "git": _git_rev(),
+        "app_tree": _git("rev-parse", "HEAD:backend/app"),
+        "app_dirty": bool(dirty) if dirty is not None else None,
+    }
+
+
+def load_profile(name_or_path: str) -> dict[str, object]:
+    path = Path(name_or_path)
+    if not path.suffix:
+        path = PROFILE_DIR / f"{name_or_path}.json"
+    profile = json.loads(path.read_text())
+    if not isinstance(profile.get("settings"), dict):
+        raise TypeError(f"profile {path} has no 'settings' object")
+    profile.setdefault("name", path.stem)
+    profile["path"] = str(path.relative_to(BACKEND_ROOT)) if path.is_relative_to(BACKEND_ROOT) else str(path)
+    return profile
+
+
+def apply_profile(profile: dict[str, object] | None, overrides: dict[str, str]) -> tuple[dict[str, str], list[str]]:
+    """Settings for this run: the profile's, then ``overrides``. With a profile,
+    every other VOICE_* variable inherited from the shell is cleared so the
+    result does not depend on the caller's environment. Returns (settings,
+    cleared variable names)."""
+    merged: dict[str, str] = {}
+    cleared: list[str] = []
+    if profile is not None:
+        merged.update({str(k).upper(): str(v) for k, v in dict(profile["settings"]).items()})  # type: ignore[arg-type]
+    merged.update({k.upper(): v for k, v in overrides.items()})
+    if profile is not None:
+        for key in sorted(os.environ):
+            if key.upper().startswith("VOICE_") and key.upper() not in merged:
+                cleared.append(key)
+                os.environ.pop(key, None)
+    return merged, cleared
+
+
+def _effective(settings: object) -> tuple[dict[str, bool], dict[str, object]]:
+    try:
+        from app.services.pipecat_voice.voice_latency_tuning import (
+            effective_voice_flags,
+            effective_voice_settings,
+        )
+    except Exception:  # noqa: BLE001 - older revisions
+        return {}, {}
+    return effective_voice_flags(settings), effective_voice_settings(settings)
 
 
 def _quiet_logs() -> None:
@@ -90,6 +157,11 @@ def main(argv: list[str] | None = None) -> int:
         metavar="NAME=VALUE",
         help="Settings override applied as an environment variable before Settings load (repeatable)",
     )
+    parser.add_argument(
+        "--profile",
+        default="",
+        help="flag profile: a name in scripts/bench_profiles (production_inferred, defaults) or a JSON path",
+    )
     parser.add_argument("--verbose", action="store_true", help="keep application logs")
     args = parser.parse_args(argv)
 
@@ -99,27 +171,42 @@ def main(argv: list[str] | None = None) -> int:
             parser.error(f"--setting expects NAME=VALUE, got {item!r}")
         key, value = item.split("=", 1)
         overrides[key.strip()] = value.strip()
+    profile = load_profile(args.profile) if args.profile else None
+    applied, cleared = apply_profile(profile, overrides)
 
     if not args.verbose:
         _quiet_logs()
 
     from tests.e2e.voice_scenarios.harness import build_settings, run_scenario
-    from tests.e2e.voice_scenarios.metrics import aggregate, markdown_report, run_metrics
+    from tests.e2e.voice_scenarios.metrics import (
+        aggregate,
+        markdown_report,
+        run_metrics,
+    )
     from tests.e2e.voice_scenarios.scenarios import get_scenarios
 
     if not args.verbose:
         _quiet_logs()
-    settings = build_settings(overrides)
+    settings = build_settings(applied)
+    flags, tuned = _effective(settings)
     scenarios = get_scenarios([s for s in args.scenarios.split(",") if s.strip()] or None)
     started = time.time()
     results: dict[str, object] = {
         "meta": {
-            "label": args.label,
+            "label": args.label or (profile or {}).get("name", ""),
             "runs": args.runs,
             "seed": args.seed,
-            "git": _git_rev(),
-            "overrides": overrides,
+            "seed_rule": "run i of scenario S uses seed + i*7919 + crc32(S) % 100000",
+            **_git_meta(),
+            "profile": {k: v for k, v in (profile or {}).items() if k != "settings"} or None,
+            "overrides": applied,
+            "cleared_env": cleared,
+            "effective_flags": flags,
+            "effective_settings": tuned,
             "python": sys.version.split()[0],
+            "platform": platform.platform(),
+            "cpu_count": os.cpu_count(),
+            "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         },
         "model_notes": MODEL_NOTES,
         "scenarios": {},
@@ -137,13 +224,16 @@ def main(argv: list[str] | None = None) -> int:
             "description": scenario.description,
             "expected": scenario.expected,
             "notes": scenario.notes,
+            "pass_outcomes": list(getattr(scenario, "pass_outcomes", ()) or ()),
+            "graded": any(r.get("passed") is not None for r in per_run),
             "conditions": scenario.conditions().as_dict(),
             "aggregate": agg,
             "runs": per_run,
             "wall_s": round(time.time() - t0, 2),
         }
+        acc = agg.get("accuracy") or {}
         print(f"{scenario.id:4s} {scenario.title:45s} runs={args.runs} errors={agg['errors']} "
-              f"outcomes={agg['outcomes']} wall={time.time() - t0:.1f}s", flush=True)
+              f"pass={acc.get('pass')}/{acc.get('n')} outcomes={agg['outcomes']} wall={time.time() - t0:.1f}s", flush=True)
     results["meta"]["wall_s"] = round(time.time() - started, 1)  # type: ignore[index]
 
     out = Path(args.out)
