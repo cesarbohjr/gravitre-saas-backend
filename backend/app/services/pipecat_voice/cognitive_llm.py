@@ -2999,9 +2999,9 @@ class GravitreCognitiveLLMService(LLMService):
                 self._org_id,
                 scan.rejected_raw_tags[:5],
             )
-        from app.services.pipecat_voice.spoken_pronunciations import apply_spoken_aliases
+        from app.services.pipecat_voice.spoken_formatting import to_spoken_form
 
-        return apply_spoken_aliases(
+        return to_spoken_form(
             normalize_spoken_text(scan.clean_text),
             str(getattr(self._app_settings, "voice_spoken_aliases", "") or ""),
         )
