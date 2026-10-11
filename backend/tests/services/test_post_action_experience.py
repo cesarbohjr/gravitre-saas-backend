@@ -143,10 +143,10 @@ def test_enrich_completion_includes_card_and_rec():
         plan=plan,
         task_state={},
     )
-    assert "What this means" in turn["message"] or "What this means" in turn["message"].replace(
-        "_", ""
-    )
-    assert "What I'd look at next" in turn["message"]
+    means = turn["post_action_experience"]["whatThisMeans"]
+    assert means and means in turn["message"]
+    assert "If it helps, next I can" in turn["message"]
+    assert "Suggest only" not in turn["message"]
     assert turn["execution_result"]["structured"]["completionCard"]["vendorUrl"]
     assert turn["execution_result"]["recommendation"]["advisoryOnly"] is True
 

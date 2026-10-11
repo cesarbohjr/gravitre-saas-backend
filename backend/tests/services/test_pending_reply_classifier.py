@@ -146,7 +146,8 @@ def test_ambiguous_asks_not_guesses():
     state = _gmail_awaiting_params_state()
     snap = build_pending_snapshot(state)
     msg = format_ambiguous_clarify(snap)
-    assert "still needed" in msg.lower() or "not sure" in msg.lower()
+    assert "i still need a few details" in msg.lower()
+    assert msg.rstrip().endswith("?")
     assert "0 recent runs" not in msg.lower()
 
 

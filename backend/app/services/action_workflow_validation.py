@@ -218,6 +218,16 @@ def missing_details_question(intent_label: str, missing: list[str], args: dict[s
     )
     if title:
         doing = f"{doing} \u201c{title}\u201d"
-    labels = [str(item).strip() for item in missing if str(item).strip()]
+    labels: list[str] = []
+    for item in missing:
+        label = str(item).strip()
+        if label.lower() in {"body", "message", "text", "content"}:
+            label = "message"
+        if label and label not in labels:
+            labels.append(label)
+    if labels == ["message"]:
+        # "What should the email say?" beats "what body should I use?".
+        noun = words[1].lower() if len(words) == 2 else "message"
+        return f"What should the {noun} say?"
     lead = "I need one more detail" if len(labels) == 1 else "I need a few more details"
     return f"{lead} to {doing}: what {_join_labels(labels)} should I use?"

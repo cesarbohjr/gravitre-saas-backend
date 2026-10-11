@@ -223,13 +223,16 @@ def normalize_spoken_text(text: str) -> str:
         line = raw.strip()
         if not line:
             continue
+        # A line that is only links ("[View in Gmail](…)") is for the screen.
+        if _MARKDOWN_LINK.search(line) and not _MARKDOWN_LINK.sub("", line).strip(" .,;·|-"):
+            continue
         line = _MARKDOWN_LINK.sub(r"\1", line)
         line = _LEADING_FORMAT.sub("", line)
         line = strip_markdown_inline(line).strip()
         line = re.sub(r"\s{2,}", " ", line).strip()
         if not line:
             continue
-        if line[-1] not in ".!?":
+        if line[-1] not in ".!?:":
             line = f"{line}."
         lines.append(line)
     return " ".join(lines).strip()

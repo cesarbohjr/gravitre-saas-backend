@@ -1055,6 +1055,12 @@ def format_awaiting_params_meta_answer(
     return "\n".join(lines).strip()
 
 
+_EXPLICIT_NON_BODY_SLOT_RE = re.compile(
+    r"(?i)^\s*(?:(?:and|also|ok(?:ay)?|so)[,\s]+)?(?:the\s+)?"
+    r"(?:subject(?:\s+line)?|title|recipient|to|cc)\s*(?:is|=|:|should\s+be|will\s+be)\s*\S"
+)
+
+
 def _followup_fill_text(message: str) -> str | None:
     from app.services.chat_message_normalize import strip_assistant_scope_prefix
     from app.services.connector_semantic_registry import connector_mention_pattern
@@ -1066,6 +1072,9 @@ def _followup_fill_text(message: str) -> str | None:
     if EMAIL_RE.fullmatch(text.strip()):
         return None
     if _is_side_question_not_slot_answer(text):
+        return None
+    # "The subject is X." names its own field; ingest_message_slots fills it.
+    if _EXPLICIT_NON_BODY_SLOT_RE.match(text):
         return None
     cleaned = re.sub(
         r"^(?:sure|ok|okay|yes|yep|yeah|please)[,!.]?\s+",
@@ -1079,6 +1088,15 @@ def _followup_fill_text(message: str) -> str | None:
         cleaned,
         flags=re.I,
     ).strip(" \"'")
+    # "Tell her the proposal is ready" -> "The proposal is ready".
+    told = re.sub(
+        r"^(?:tell|let)\s+(?:her|him|them)\s+(?:know\s+)?(?:that\s+)?",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    ).strip()
+    if told and told != cleaned:
+        cleaned = told[:1].upper() + told[1:]
     if not cleaned or len(cleaned) < 2:
         return None
     # Avoid treating a new connector ask as a body.

@@ -4340,15 +4340,13 @@ class ChatConnectorExecutionService:
                 or nested_message.get("id")
                 or ""
             ).strip()
-            parts = ["Gmail message sent"]
+            # Plain language only: the message id stays in structured data.
+            _ = message_id
+            if to and subject:
+                return f'Sent to {to} with the subject "{subject}".'
             if to:
-                parts.append(f"to {to}")
-            if subject:
-                parts.append(f'subject "{subject}"')
-            line = " ".join(parts) + "."
-            if message_id:
-                line = f"{line} Message id: {message_id}."
-            return line
+                return f"Sent to {to}."
+            return "Gmail message sent."
         if plan.integration == "apollo" and plan.invoke_action == "apollo.lists.create":
             from app.services.connector_outcome_effects import (
                 already_existed_list_summary,

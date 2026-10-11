@@ -191,6 +191,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         self._playback_tracker = playback_tracker
         self._playback_grounded = bool(playback_grounded_history_enabled)
         self._reply: ReplyPlayback | None = None
+        # voice_explain_aside_v1: the live reply is an aside, not the task's answer.
+        self._reply_is_aside = False
+        self._aside_reply_ids: set[int] = set()
         # Called with (assistant_message_id, stored_text) after a barge-in
         # rewrote a stored assistant row, so cached copies can follow.
         self.on_assistant_rewritten: Any | None = None
@@ -288,6 +291,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         reply = tracker.reply(reply_id, create=False) if reply_id is not None else None
         if reply is None or not reply.segments:
             return None
+        if reply_id in self._aside_reply_ids:
+            # The last audio was an aside: it is not the task's answer to cut.
+            return {"reply_id": reply_id, "action": "aside_left_alone"}
         offset, meta = disconnect_heard_offset(reply)
         # Only the newest reply can still be generating; an older reply whose
         # audio was the last to play is complete.
@@ -942,6 +948,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             self._spoken_aligned = ""
             self._last_playback_offset_ms = None
             self._reply = None
+            self._reply_is_aside = False
             if self._spoken_ledger is not None:
                 self._spoken_ledger.reset()
             if self._voice_session is not None:
@@ -954,6 +961,11 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             msg = frame.message if isinstance(frame.message, dict) else {}
             if str(msg.get("type") or "") == "assistant_text":
                 delta = str(msg.get("delta") or "")
+                if msg.get("aside"):
+                    self._reply_is_aside = True
+                    aside_id = self._current_reply_id()
+                    if aside_id is not None:
+                        self._aside_reply_ids.add(aside_id)
                 self._draft_client += delta
                 self._note_assistant_text(delta, msg.get("kind"))
         elif isinstance(frame, TTSTextFrame):
@@ -1017,6 +1029,12 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             reply_id = getattr(self._voice_session, "reply_id", None)
             if isinstance(reply_id, int):
                 payload["reply_id"] = reply_id
+            # An aside is stored as its own row by the brain service. Its heard
+            # text must never become the running task's answer (or its question
+            # be stored a second time): the task still answers when it finishes.
+            aside = self._reply_is_aside
+            if aside:
+                payload["aside"] = True
             reply = self._reply
             if self._playback_tracker is not None and isinstance(reply_id, int):
                 try:
@@ -1086,6 +1104,8 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             )
             # Stop buffered output before any database/network reconciliation.
             await self.push_frame(frame, direction)
+            if aside:
+                heard_ctx = None
             if heard_ctx is not None:
                 # The next turn may start before the durable rewrite lands (it
                 # waits for the browser's report): give it the conservative
@@ -1101,7 +1121,9 @@ class ElevenLabsInterruptReporter(FrameProcessor):
                 reconcile_meta=reconcile_audit,
                 playback_offset_ms=self._last_playback_offset_ms,
                 reconciled_text=(
-                    str(payload.get("reconciled_text") or "") if self._reconcile_enabled else None
+                    str(payload.get("reconciled_text") or "")
+                    if self._reconcile_enabled and not aside
+                    else None
                 ),
                 heard=heard_ctx,
             )
@@ -1111,6 +1133,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             self._spoken_aligned = ""
             self._last_playback_offset_ms = None
             self._reply = None
+            self._reply_is_aside = False
             if self._spoken_ledger is not None:
                 self._spoken_ledger.reset()
 

@@ -493,6 +493,14 @@ class Connectors:
                     )
                 else:
                     data = _ga_report(1200, 1500, 4100)
+            elif "gmail" in low and "send" in low:
+                data = {"id": "msg-1", "threadId": "thread-1", "labelIds": ["SENT"]}
+            elif "gmail" in low and low.endswith(".get"):
+                data = {
+                    "id": params.get("id") or params.get("message_id") or "msg-1",
+                    "threadId": "thread-1",
+                    "labelIds": ["SENT"],
+                }
             elif "task" in low:
                 data = {"id": "task-1", "subject": params.get("subject") or params.get("title") or "Follow up"}
             else:

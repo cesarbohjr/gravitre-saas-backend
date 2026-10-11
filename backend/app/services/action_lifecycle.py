@@ -595,11 +595,12 @@ def composer_truth_headline(
     if not success:
         return f"I couldn't complete **{title}**. {detail}".strip()
     if not verified:
-        return (
-            f"**{title}** is on its way. I'm still checking whether it worked before I call it done."
-            + (f" {detail}" if detail else "")
-        ).strip()
-    return f"**{title}** is confirmed.\n\n{detail}".strip()
+        if detail:
+            return f"{detail} I'm still checking whether it worked before I call it done."
+        return f"**{title}** is on its way. I'm still checking whether it worked before I call it done."
+    if detail:
+        return f"Done, and I've confirmed it. {detail}"
+    return f"**{title}** is confirmed."
 
 
 _WRITE_STATUS_Q = re.compile(
@@ -625,6 +626,7 @@ _WRITE_IDENTITY_Q = re.compile(
     r")\b"
 )
 _RETRY_Q = re.compile(r"(?is)\b(try (?:it |that )?again|retry|resend|send it again|one more time)\b")
+_EXPLICIT_RESEND_Q = re.compile(r"(?is)\b(resend|send (?:it|that|the \w+) again)\b")
 
 
 def identity_literals_from_state(task_state: dict[str, Any] | None) -> list[str]:
@@ -638,6 +640,7 @@ def identity_literals_from_state(task_state: dict[str, Any] | None) -> list[str]
     literals: list[str] = []
     for value in (
         args.get("email"),
+        args.get("to"),
         args.get("firstname"),
         args.get("lastname"),
         args.get("name"),
@@ -655,13 +658,16 @@ def identity_literals_from_state(task_state: dict[str, Any] | None) -> list[str]
 def _not_yet_line(state: dict[str, Any]) -> str:
     """'Did you send it?' while a draft still needs details: say no, and what's next."""
     try:
-        from app.services.pending_reply_classifier import build_pending_snapshot
+        from app.services.pending_reply_classifier import (
+            build_pending_snapshot,
+            missing_details_line,
+        )
 
-        missing = [str(m).replace("_", " ") for m in build_pending_snapshot(state).pending_missing]
+        ask = missing_details_line(build_pending_snapshot(state))
     except Exception:  # noqa: BLE001
-        missing = []
-    if missing:
-        return f"Not yet. I still need the {' and '.join(missing)}."
+        ask = ""
+    if ask:
+        return f"Not yet. {ask}"
     return "Not yet. I still need a few details before I can do that."
 
 
@@ -683,7 +689,19 @@ def recent_write_status_turn(
     if not retry and not _WRITE_STATUS_Q.search(text) and not obs:
         return None
     stage = semantic_stage_from_state(state)
-    if retry and stage not in {"OUTCOME_UNCERTAIN", "AWAITING_RECONCILIATION", "EXECUTING"}:
+    # A bare "try again" after a finished write is not a request for a
+    # duplicate; "send it again" / "resend" still take the normal path.
+    done_retry = (
+        retry
+        and obs is not None
+        and stage == "COMPLETED"
+        and not _EXPLICIT_RESEND_Q.search(text)
+    )
+    if retry and not done_retry and stage not in {
+        "OUTCOME_UNCERTAIN",
+        "AWAITING_RECONCILIATION",
+        "EXECUTING",
+    }:
         # A retry continues the current task through the normal path, which
         # holds writes for approval. Only an uncertain earlier attempt is
         # answered here: resending it blind could send it twice.
@@ -695,6 +713,9 @@ def recent_write_status_turn(
         record = str(pending["params"].get("provider_record_id") or "").strip()
     if not record:
         record = next((item for item in literals if item.isdigit()), "")
+    pending_params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+    pending_args = pending_params.get("args") if isinstance(pending_params.get("args"), dict) else {}
+    recipient = str(pending_args.get("to") or "").strip()
 
     def _reply(text: str) -> dict[str, Any]:
         return {
@@ -706,6 +727,12 @@ def recent_write_status_turn(
             "execution_path": "recent_write_observation",
         }
 
+    if done_retry:
+        target = f" to {recipient}" if recipient else ""
+        return _reply(
+            f"That already went through{target}, so I won't send a duplicate. "
+            "If you want something new, tell me what to change."
+        )
     if stage in {"REJECTED", "CANCELLED"}:
         return _reply("That request was cancelled.")
     if stage == "FAILED":
@@ -736,6 +763,8 @@ def recent_write_status_turn(
             if record:
                 bits.append(f"The record ID is {record}.")
             return _reply(" ".join(bits))
+        if recipient:
+            return _reply(f"Yes, it went to {recipient}, and I've confirmed it.")
         return _reply("Yes, that's done, and I've confirmed it.")
     if stage in {"EXECUTED_UNVERIFIED", "VERIFIED"}:
         return _reply(
