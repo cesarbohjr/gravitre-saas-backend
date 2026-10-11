@@ -67,9 +67,9 @@ class _Holder:
     session: Any
     on_superseded: Callable[[], Any] | None
     claimed_at: float
-    #: The claim reached Redis. Only then is the shared key trusted to say a
-    #: newer connection (on another worker) took over.
-    shared: bool = False
+    #: Wall-clock claim time; the shared key carries it so a newer claim on
+    #: another worker can be told apart from a stale value.
+    claimed_wall: float = 0.0
 
 
 _lock = threading.Lock()
@@ -80,6 +80,20 @@ _superseded: dict[str, list[_Holder]] = {}
 
 def _key(org_id: str, conversation_id: str) -> str:
     return f"{org_id}:{conversation_id}"
+
+
+def _owner_value(token: str, claimed_wall: float) -> str:
+    return f"{token}@{int(claimed_wall * 1000)}"
+
+
+def _parse_owner(value: Any) -> tuple[str, float]:
+    """(token, claimed wall time) from the shared key; 0.0 when it carries none."""
+    text = value.decode() if isinstance(value, bytes) else str(value)
+    token, _, stamp = text.partition("@")
+    try:
+        return token, int(stamp) / 1000.0
+    except ValueError:
+        return token, 0.0
 
 
 def _redis(settings: Any | None) -> Any | None:
@@ -109,7 +123,8 @@ def claim_conversation(
     key = _key(oid, cid)
     with _lock:
         previous = _owners.get(key)
-        _owners[key] = _Holder(token, session, on_superseded, time.monotonic())
+        holder = _Holder(token, session, on_superseded, time.monotonic(), claimed_wall=time.time())
+        _owners[key] = holder
         if previous is not None and previous.token != token:
             _superseded.setdefault(key, []).append(previous)
             _superseded[key] = _superseded[key][-4:]
@@ -117,14 +132,10 @@ def claim_conversation(
     previous_token = previous.token if previous is not None else None
     if redis is not None:
         try:
-            old = redis.getset(_KEY_PREFIX + key, token)
-            redis.expire(_KEY_PREFIX + key, OWNER_TTL_SECONDS)
-            with _lock:
-                holder = _owners.get(key)
-                if holder is not None and holder.token == token:
-                    holder.shared = True
+            old = redis.getset(_KEY_PREFIX + key, _owner_value(token, holder.claimed_wall))
             if old is not None and previous_token is None:
-                previous_token = old.decode() if isinstance(old, bytes) else str(old)
+                previous_token = _parse_owner(old)[0]
+            redis.expire(_KEY_PREFIX + key, OWNER_TTL_SECONDS)
         except Exception as exc:  # noqa: BLE001
             logger.debug("voice_connection_claim_redis_failed error=%s", exc)
     if previous is not None and previous.token != token:
@@ -166,17 +177,20 @@ def is_current_connection(
         holder = _owners.get(key)
     if holder is not None and holder.token != token:
         return False
-    if holder is not None and not holder.shared:
-        # Our claim never reached the shared key, so whatever it holds is
-        # stale, not a newer owner: never silence the live connection on it.
-        return True
     redis = _redis(settings)
     if redis is not None:
         try:
             value = redis.get(_KEY_PREFIX + key)
             if value is not None:
-                value = value.decode() if isinstance(value, bytes) else str(value)
-                return value == token
+                owner, claimed_wall = _parse_owner(value)
+                if owner == token:
+                    return True
+                if holder is None:
+                    return False
+                # Another token: a newer owner only if it claimed after us.
+                # An older value is stale (our own claim never reached the
+                # key), and must never silence the live connection.
+                return claimed_wall <= holder.claimed_wall
         except Exception:
             logger.debug("voice_connection_owner_read_failed", exc_info=True)
     return True

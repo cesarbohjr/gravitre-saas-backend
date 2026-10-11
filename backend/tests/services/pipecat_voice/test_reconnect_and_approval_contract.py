@@ -12,6 +12,7 @@ comes from the pending approval, not from how the last sentence ends.
 from __future__ import annotations
 
 import asyncio
+import time
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
@@ -320,8 +321,23 @@ def test_a_claim_that_reached_the_shared_key_trusts_a_newer_owner_there(monkeypa
     session = VoicePipelineSession()
     recovery.claim_conversation(ORG, CONV, session)
     assert recovery.is_current_connection(ORG, CONV, session.connection_token)
-    store[f"voice:conn:{ORG}:{CONV}"] = "other-worker"
+    store[f"voice:conn:{ORG}:{CONV}"] = f"other-worker@{int((time.time() + 1) * 1000)}"
     assert not recovery.is_current_connection(ORG, CONV, session.connection_token)
+
+
+def test_a_newer_claim_elsewhere_wins_even_when_this_claim_never_reached_the_key(monkeypatch) -> None:
+    store: dict[str, str] = {f"voice:conn:{ORG}:{CONV}": "old-connection"}
+
+    def _getset(*_a: Any) -> None:
+        raise ConnectionError("redis down during the claim")
+
+    shared = SimpleNamespace(getset=_getset, expire=lambda *a: None, get=lambda k: store.get(k))
+    monkeypatch.setattr(recovery, "_redis", lambda _s=None: shared)
+    session = VoicePipelineSession()
+    recovery.claim_conversation(ORG, CONV, session)
+    assert recovery.is_current_connection(ORG, CONV, session.connection_token), "stale value ignored"
+    store[f"voice:conn:{ORG}:{CONV}"] = f"other-worker@{int((time.time() + 1) * 1000)}"
+    assert not recovery.is_current_connection(ORG, CONV, session.connection_token), "a later claim still wins"
 
 
 def test_turn_that_wrote_after_disconnect_leaves_an_undelivered_marker() -> None:
