@@ -1724,3 +1724,20 @@ def agent_delegation_smoke(
             else "FAIL — agent delegation smoke"
         ),
     }
+
+
+@router.get("/domain-events")
+async def domain_event_outbox_status(
+    settings: Settings = Depends(get_settings),
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    """Phase 2A outbox health: backlog, retries, dead letters, oldest pending age."""
+    from app.services.domain_events import domain_event_outbox_stats
+
+    client = get_supabase_client(settings)
+    try:
+        stats = await asyncio.to_thread(domain_event_outbox_stats, client)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("domain_event_outbox_stats_failed error=%s", exc)
+        return {"ok": False, "relay_enabled": bool(settings.domain_event_relay_enabled), "error": str(exc)}
+    return {"ok": True, "relay_enabled": bool(settings.domain_event_relay_enabled), "stats": stats}

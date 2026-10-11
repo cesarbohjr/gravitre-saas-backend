@@ -313,6 +313,10 @@ async def lifespan(app: FastAPI):
         start_standing_investigator_scheduler,
         stop_standing_investigator_scheduler,
     )
+    from app.schedulers.domain_event_relay_scheduler import (
+        start_domain_event_relay_scheduler,
+        stop_domain_event_relay_scheduler,
+    )
     from app.schedulers.ops_notifications_scheduler import (
         start_ops_notifications_scheduler,
         stop_ops_notifications_scheduler,
@@ -380,6 +384,8 @@ async def lifespan(app: FastAPI):
     # Standing investigators: asyncio tick (Temporal-friendly service entry also available).
     app.state.standing_investigator_task = start_standing_investigator_scheduler()
     app.state.ops_notifications_task = start_ops_notifications_scheduler()
+    # Phase 2A outbox relay; returns None unless DOMAIN_EVENT_RELAY_ENABLED=true.
+    app.state.domain_event_relay_task = start_domain_event_relay_scheduler()
     app.state.memory_expiration_task = start_memory_expiration_scheduler()
     app.state.cache_warming_task = start_cache_warming_scheduler()
 
@@ -453,6 +459,7 @@ async def lifespan(app: FastAPI):
             getattr(app.state, "standing_investigator_task", None)
         )
         await stop_ops_notifications_scheduler(getattr(app.state, "ops_notifications_task", None))
+        await stop_domain_event_relay_scheduler(getattr(app.state, "domain_event_relay_task", None))
         await stop_memory_scheduler(getattr(app.state, "memory_promotion_task", None))
         schema_check_task = getattr(app.state, "schema_check_task", None)
         if schema_check_task is not None and not schema_check_task.done():
