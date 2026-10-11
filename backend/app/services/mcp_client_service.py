@@ -26,10 +26,6 @@ from app.workflows.repository import get_supabase_client
 logger = get_logger(__name__)
 
 
-def _is_timeout(exc: BaseException) -> bool:
-    return isinstance(exc, (TimeoutError, asyncio.TimeoutError, httpx.TimeoutException))
-
-
 _WRITE_KEYWORDS = frozenset(
     {"create", "update", "delete", "send", "write", "modify", "post", "put", "patch"}
 )
@@ -550,6 +546,7 @@ class MCPClientService:
                 enforce_rate_limit(self._client(), org_id, "mcp", "mcp", str(tool["server_id"]))
             except RateLimitError:
                 return {"status": "rate_limited", "error": "MCP tool rate limit exceeded, try again shortly"}
+        claim_token: str | None = None
         if requires_write:
             if not approval_id:
                 pending = await self._create_pending_execution(
@@ -568,14 +565,21 @@ class MCPClientService:
                         "This write action requires approval. Check the Approvals queue to proceed."
                     ),
                 }
-            await self._verify_approval(approval_id, tool_id, org_id, input_data)
+            claim_token = await self._verify_approval(approval_id, tool_id, org_id, input_data)
 
-        server = await self._load_server(str(tool["server_id"]), org_id)
-        started = time.perf_counter()
-        server_returned = False
         try:
+            server = await self._load_server(str(tool["server_id"]), org_id)
+        except Exception:
+            # Nothing was sent to the MCP server, so the approval can be used again.
+            if claim_token:
+                await self._release_approval(approval_id, org_id, claim_token)
+            raise
+        started = time.perf_counter()
+        try:
+            # From here the request may reach the server. Any outcome, including an
+            # error after the remote write landed, keeps the approval consumed, so
+            # a retry needs a fresh approval rather than risking a second write.
             result = await self._call_mcp_server(server, str(tool["tool_name"]), input_data)
-            server_returned = True
             latency_ms = int((time.perf_counter() - started) * 1000)
             source_package_id = str(server.get("source_capability_package_id") or "").strip()
             execution_status = "completed"
@@ -628,11 +632,6 @@ class MCPClientService:
             return response
         except Exception as exc:  # noqa: BLE001
             latency_ms = int((time.perf_counter() - started) * 1000)
-            # Release the approval only when the server call itself failed for a
-            # known reason. After the server returned, or on a timeout (the write
-            # may have landed), the approval stays consumed so it cannot run twice.
-            if requires_write and approval_id and not server_returned and not _is_timeout(exc):
-                await self._release_approval(approval_id, org_id)
             await self._log_execution(
                 tool_id=tool_id,
                 org_id=org_id,
@@ -762,8 +761,11 @@ class MCPClientService:
         tool_id: str,
         org_id: str,
         input_data: dict[str, Any] | None = None,
-    ) -> None:
+    ) -> str:
         """Check the approval matches this tool and input, then claim it (single use).
+
+        Returns the claim token (the consumed_at value written), which a release
+        must present so it can only undo its own claim.
 
         The claim is a conditional update (status approved, consumed_at null), so a
         concurrent replay loses. Any failure to claim — including a database
@@ -791,10 +793,11 @@ class MCPClientService:
         approved_hash = str(context.get("input_sha256") or "")
         if not approved_hash or approved_hash != mcp_input_sha256(input_data):
             raise ValueError("Approval does not match MCP tool input")
+        claim_token = datetime.now(timezone.utc).isoformat()
         try:
             claimed = (
                 client.table("approvals")
-                .update({"consumed_at": datetime.now(timezone.utc).isoformat()})
+                .update({"consumed_at": claim_token})
                 .eq("id", approval_id)
                 .eq("org_id", org_id)
                 .eq("status", "approved")
@@ -815,9 +818,13 @@ class MCPClientService:
             raise ValueError("Approval could not be consumed") from exc
         if not claimed:
             raise ValueError("Approval has already been used")
+        return claim_token
 
-    async def _release_approval(self, approval_id: str, org_id: str) -> None:
-        """Un-claim an approval whose execution failed so the same input can retry."""
+    async def _release_approval(self, approval_id: str, org_id: str, claim_token: str) -> None:
+        """Un-claim an approval whose call never reached the server.
+
+        Conditional on our own claim token, so it cannot undo another caller's claim.
+        """
         try:
             (
                 self._client()
@@ -825,6 +832,7 @@ class MCPClientService:
                 .update({"consumed_at": None})
                 .eq("id", approval_id)
                 .eq("org_id", org_id)
+                .eq("consumed_at", claim_token)
                 .execute()
             )
         except Exception as exc:  # noqa: BLE001

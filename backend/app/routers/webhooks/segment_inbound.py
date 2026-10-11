@@ -10,6 +10,7 @@ from supabase import create_client
 from app.core.db import shared_service_client
 
 from app.config import Settings, get_settings
+from app.services.event_triggered_runs import raise_if_retryable
 from app.connectors.segment_webhooks import (
     flatten_inbound_payload,
     verify_segment_webhook_secret_header,
@@ -69,4 +70,5 @@ async def segment_inbound_webhook(
 
     events = flatten_inbound_payload(payload)
     results = await process_segment_event_batch(settings, connector_id, events)
+    raise_if_retryable(results)
     return {"received": len(events), "dispatched": len(results), "results": results}

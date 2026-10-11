@@ -34,21 +34,29 @@ class _Approvals:
 
         def _update(payload):
             chain = MagicMock()
+            filters: dict[str, object] = {}
+
+            def _eq(col, val):
+                filters[col] = val
+                return chain
+
+            def _is(col, val):
+                filters[col] = None if val == "null" else val
+                return chain
 
             def _execute():
                 if self.consume_error is not None:
                     raise self.consume_error
                 self.updates.append(dict(payload))
-                if payload.get("consumed_at") is None:
-                    self.row["consumed_at"] = None
-                    return SimpleNamespace(data=[dict(self.row)])
-                if self.row.get("status") != "approved" or self.row.get("consumed_at"):
+                if "status" in filters and self.row.get("status") != filters["status"]:
+                    return SimpleNamespace(data=[])
+                if "consumed_at" in filters and self.row.get("consumed_at") != filters["consumed_at"]:
                     return SimpleNamespace(data=[])
                 self.row["consumed_at"] = payload["consumed_at"]
                 return SimpleNamespace(data=[dict(self.row)])
 
-            chain.eq.return_value = chain
-            chain.is_.return_value = chain
+            chain.eq.side_effect = _eq
+            chain.is_.side_effect = _is
             chain.execute.side_effect = _execute
             return chain
 
@@ -177,32 +185,55 @@ async def test_missing_consumed_at_column_fails_closed(service) -> None:
     call.assert_not_awaited()
 
 
-@pytest.mark.asyncio
-async def test_failed_execution_releases_approval(service) -> None:
-    approvals = _Approvals(_approval({"name": "x"}))
-    with (
+async def _run_with(service, approvals, *, call=None, load_server=None, log=None):
+    patches = [
         patch.object(service, "_client", return_value=_client(approvals)),
-        patch.object(service, "_call_mcp_server", new=AsyncMock(side_effect=RuntimeError("boom"))),
+        patch.object(service, "_call_mcp_server", new=call or AsyncMock(return_value={"created": True})),
         patch.object(service, "_audit_execution", new=AsyncMock()),
-        patch.object(service, "_log_execution", new=AsyncMock()),
-    ):
-        result = await service.execute_tool("tool-write", "org-1", {"name": "x"}, approval_id="appr-1")
+        patch.object(service, "_log_execution", new=log or AsyncMock()),
+    ]
+    if load_server is not None:
+        patches.append(patch.object(service, "_load_server", new=load_server))
+    for p in patches:
+        p.start()
+    try:
+        return await service.execute_tool("tool-write", "org-1", {"name": "x"}, approval_id="appr-1")
+    finally:
+        for p in patches:
+            p.stop()
+
+
+@pytest.mark.asyncio
+async def test_server_error_keeps_approval_consumed(service) -> None:
+    """The remote write may have landed before the error, so no second run on this approval."""
+    approvals = _Approvals(_approval({"name": "x"}))
+    result = await _run_with(service, approvals, call=AsyncMock(side_effect=RuntimeError("boom")))
     assert result["status"] == "failed"
-    assert approvals.row["consumed_at"] is None
+    assert approvals.row["consumed_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_remote_success_then_transport_error_cannot_replay(service) -> None:
+    approvals = _Approvals(_approval({"name": "x"}))
+    remote_writes: list[dict] = []
+
+    async def write_then_drop(_server, _name, args):
+        remote_writes.append(args)
+        raise ConnectionResetError("connection dropped after the write")
+
+    first = await _run_with(service, approvals, call=AsyncMock(side_effect=write_then_drop))
+    assert first["status"] == "failed"
+    second, call = await _run(service, _client(approvals), {"name": "x"})
+    assert second["status"] == "rejected"
+    call.assert_not_awaited()
+    assert len(remote_writes) == 1
 
 
 @pytest.mark.asyncio
 async def test_approval_stays_consumed_when_logging_fails_after_server_returned(service) -> None:
     approvals = _Approvals(_approval({"name": "x"}))
-    with (
-        patch.object(service, "_client", return_value=_client(approvals)),
-        patch.object(service, "_call_mcp_server", new=AsyncMock(return_value={"created": True})),
-        patch.object(service, "_audit_execution", new=AsyncMock()),
-        patch.object(
-            service, "_log_execution", new=AsyncMock(side_effect=[RuntimeError("log insert failed"), None])
-        ),
-    ):
-        result = await service.execute_tool("tool-write", "org-1", {"name": "x"}, approval_id="appr-1")
+    log = AsyncMock(side_effect=[RuntimeError("log insert failed"), None])
+    result = await _run_with(service, approvals, log=log)
     assert result["status"] == "failed"
     assert approvals.row["consumed_at"] is not None
 
@@ -210,12 +241,33 @@ async def test_approval_stays_consumed_when_logging_fails_after_server_returned(
 @pytest.mark.asyncio
 async def test_approval_stays_consumed_on_timeout(service) -> None:
     approvals = _Approvals(_approval({"name": "x"}))
-    with (
-        patch.object(service, "_client", return_value=_client(approvals)),
-        patch.object(service, "_call_mcp_server", new=AsyncMock(side_effect=TimeoutError())),
-        patch.object(service, "_audit_execution", new=AsyncMock()),
-        patch.object(service, "_log_execution", new=AsyncMock()),
-    ):
-        result = await service.execute_tool("tool-write", "org-1", {"name": "x"}, approval_id="appr-1")
+    result = await _run_with(service, approvals, call=AsyncMock(side_effect=TimeoutError()))
     assert result["status"] == "failed"
     assert approvals.row["consumed_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_pre_dispatch_failure_releases_approval(service) -> None:
+    approvals = _Approvals(_approval({"name": "x"}))
+    call = AsyncMock()
+    with pytest.raises(ValueError):
+        await _run_with(
+            service, approvals, call=call, load_server=AsyncMock(side_effect=ValueError("MCP server not found"))
+        )
+    call.assert_not_awaited()
+    assert approvals.row["consumed_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_release_cannot_undo_another_callers_claim(service) -> None:
+    approvals = _Approvals(_approval({"name": "x"}))
+    with patch.object(service, "_client", return_value=_client(approvals)):
+        token = await service._verify_approval("appr-1", "tool-write", "org-1", {"name": "x"})
+        # A concurrent caller loses the conditional claim.
+        with pytest.raises(ValueError, match="already been used"):
+            await service._verify_approval("appr-1", "tool-write", "org-1", {"name": "x"})
+        # A stale release (another caller's token) leaves the live claim in place.
+        await service._release_approval("appr-1", "org-1", "2000-01-01T00:00:00+00:00")
+        assert approvals.row["consumed_at"] == token
+        await service._release_approval("appr-1", "org-1", token)
+    assert approvals.row["consumed_at"] is None

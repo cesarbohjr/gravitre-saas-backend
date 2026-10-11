@@ -35,11 +35,18 @@ def _is_missing_table_error(exc: Exception) -> bool:
     )
 
 
-def claim_webhook_event(client: Any, *, org_id: str, provider: str, event_id: str) -> bool:
-    """Record a provider event once; False means this event was already received.
+CLAIMED = "claimed"
+DUPLICATE = "duplicate"
+UNAVAILABLE = "unavailable"
 
-    Insert-on-conflict-do-nothing on (org_id, provider, event_id). When the receipts
-    table is not deployed, or the write fails, the event proceeds without dedupe.
+
+def claim_webhook_event(client: Any, *, org_id: str, provider: str, event_id: str) -> str:
+    """Record a provider event once.
+
+    Insert-on-conflict-do-nothing on (org_id, provider, event_id). Returns CLAIMED
+    for the first delivery, DUPLICATE for a retry, and UNAVAILABLE when the receipt
+    could not be written (table missing or the write failed). Callers fail closed
+    on UNAVAILABLE: no run starts and the provider is told to retry.
     """
     global _receipts_table_missing_logged
     try:
@@ -56,17 +63,25 @@ def claim_webhook_event(client: Any, *, org_id: str, provider: str, event_id: st
         if _is_missing_table_error(exc):
             if not _receipts_table_missing_logged:
                 _receipts_table_missing_logged = True
-                logger.warning("webhook_event_receipts_missing dedupe_disabled error=%s", exc)
-            return True
-        logger.warning(
-            "webhook_event_receipt_failed org_id=%s provider=%s event_id=%s error=%s",
-            org_id,
-            provider,
-            event_id,
-            exc,
-        )
-        return True
-    return bool(resp.data)
+                logger.error("webhook_event_receipts_missing triggers_refused error=%s", exc)
+        else:
+            logger.error(
+                "webhook_event_receipt_failed org_id=%s provider=%s event_id=%s error=%s",
+                org_id,
+                provider,
+                event_id,
+                exc,
+            )
+        return UNAVAILABLE
+    return CLAIMED if resp.data else DUPLICATE
+
+
+def raise_if_retryable(results: list[dict[str, Any]]) -> None:
+    """Answer 503 so the provider redelivers when an event could not be recorded."""
+    if any(r.get("retryable") for r in results):
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=503, detail="Event could not be recorded; retry later")
 
 
 def release_webhook_event(client: Any, *, org_id: str, provider: str, event_id: str) -> None:
@@ -111,16 +126,27 @@ async def start_event_triggered_run(
     second run of the same workflow (receipt key: ``<event id>:<workflow id>``).
     """
     receipt_id = f"{provider_event_id}:{workflow_id}" if provider_event_id else None
-    if receipt_id and not claim_webhook_event(
-        client, org_id=org_id, provider=trigger_type, event_id=receipt_id
-    ):
-        logger.info(
-            "%s_duplicate_event_skipped workflow_id=%s event_id=%s",
-            source,
-            workflow_id,
-            provider_event_id,
-        )
-        return {"workflow_id": workflow_id, "status": "skipped", "reason": "duplicate_event"}
+    if receipt_id:
+        claim = claim_webhook_event(client, org_id=org_id, provider=trigger_type, event_id=receipt_id)
+        if claim == DUPLICATE:
+            logger.info(
+                "%s_duplicate_event_skipped workflow_id=%s event_id=%s",
+                source,
+                workflow_id,
+                provider_event_id,
+            )
+            return {"workflow_id": workflow_id, "status": "skipped", "reason": "duplicate_event"}
+        if claim == UNAVAILABLE:
+            return {
+                "workflow_id": workflow_id,
+                "status": "failed",
+                "reason": "event_receipt_unavailable",
+                "retryable": True,
+            }
+    # Set just before the first write that can create a run row. Once set, the
+    # outcome is ambiguous (the row may exist), so the receipt is kept and a
+    # provider retry is skipped rather than risking a second run.
+    progress = {"run_write_attempted": False}
     try:
         result = await _start_event_triggered_run(
             settings,
@@ -134,14 +160,13 @@ async def start_event_triggered_run(
             source=source,
             execution_service=execution_service,
             environment_name=environment_name,
+            progress=progress,
         )
     except Exception:
-        if receipt_id:
+        if receipt_id and not progress["run_write_attempted"]:
             release_webhook_event(client, org_id=org_id, provider=trigger_type, event_id=receipt_id)
         raise
-    # No run was created (policy lookup failed or the start was refused), so a
-    # provider retry should be allowed to try again.
-    if receipt_id and result.get("status") in {"failed", "skipped"} and not result.get("run_id"):
+    if receipt_id and not progress["run_write_attempted"] and not result.get("run_id"):
         release_webhook_event(client, org_id=org_id, provider=trigger_type, event_id=receipt_id)
     return result
 
@@ -159,8 +184,11 @@ async def _start_event_triggered_run(
     source: str,
     execution_service: ExecutionService | None = None,
     environment_name: str = "production",
+    progress: dict[str, bool] | None = None,
 ) -> dict[str, Any]:
     from fastapi import HTTPException
+
+    progress = progress if progress is not None else {}
 
     # app.routers.workflows must load after app.operators (pre-existing import order).
     import app.operators  # noqa: F401
@@ -189,6 +217,7 @@ async def _start_event_triggered_run(
         return {"workflow_id": workflow_id, "status": "blocked", "reason": decision.message or "Policy denied"}
 
     if decision.required_approvals > 0:
+        progress["run_write_attempted"] = True
         try:
             pending = _open_pending_approval_run(
                 client=client,
@@ -210,6 +239,7 @@ async def _start_event_triggered_run(
         logger.info("%s_run_pending_approval workflow_id=%s run_id=%s", source, workflow_id, pending["run_id"])
         return {"workflow_id": workflow_id, "run_id": pending["run_id"], "status": pending["status"]}
 
+    progress["run_write_attempted"] = True
     created_run = create_execute_run(
         client=client,
         org_id=org_id,

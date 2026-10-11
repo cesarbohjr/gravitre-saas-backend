@@ -5,9 +5,17 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 
 import app.services.event_triggered_runs as etr
-from app.services.event_triggered_runs import claim_webhook_event, start_event_triggered_run
+from app.services.event_triggered_runs import (
+    CLAIMED,
+    DUPLICATE,
+    UNAVAILABLE,
+    claim_webhook_event,
+    raise_if_retryable,
+    start_event_triggered_run,
+)
 from app.services.hubspot_trigger_service import hubspot_event_id
 from app.services.pagerduty_trigger_service import pagerduty_event_id
 from app.services.salesforce_trigger_service import salesforce_event_id
@@ -131,30 +139,65 @@ async def test_no_event_id_means_no_dedupe() -> None:
 
 
 @pytest.mark.asyncio
-async def test_missing_receipts_table_proceeds_without_dedupe() -> None:
+async def test_missing_receipts_table_fails_closed_and_asks_for_retry() -> None:
     etr._receipts_table_missing_logged = False
     receipts = _Receipts(error=Exception("{'code': 'PGRST205', 'message': 'Could not find the table'}"))
-    first, _ = await _start(receipts.client(), event_id="evt-1")
-    second, _ = await _start(receipts.client(), event_id="evt-1")
-    assert first["status"] == second["status"] == "completed"
+    out, ex = await _start(receipts.client(), event_id="evt-1")
+    assert out["status"] == "failed" and out["retryable"] is True
+    ex.execute_workflow.assert_not_called()
     assert etr._receipts_table_missing_logged is True
 
 
 @pytest.mark.asyncio
-async def test_receipt_released_when_run_could_not_start() -> None:
+async def test_receipt_write_failure_fails_closed() -> None:
+    receipts = _Receipts(error=Exception("connection reset"))
+    out, ex = await _start(receipts.client(), event_id="evt-1")
+    assert out == {
+        "workflow_id": "wf-1",
+        "status": "failed",
+        "reason": "event_receipt_unavailable",
+        "retryable": True,
+    }
+    ex.execute_workflow.assert_not_called()
+
+
+def test_retryable_outcome_answers_503() -> None:
+    raise_if_retryable([{"status": "completed"}, {"status": "skipped"}])
+    with pytest.raises(HTTPException) as err:
+        raise_if_retryable([{"status": "completed"}, {"status": "failed", "retryable": True}])
+    assert err.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_receipt_kept_when_run_creation_outcome_is_ambiguous() -> None:
+    """create_execute_run raised: the row may exist, so a retry is skipped, not re-run."""
     receipts = _Receipts()
-    client = receipts.client()
     with pytest.raises(RuntimeError):
-        await _start(client, event_id="evt-1", create_side_effect=RuntimeError("db down"))
-    deletes = [c for c in client.table.call_args_list if c.args == ("webhook_event_receipts",)]
-    assert len(deletes) == 2  # claim, then release
+        await _start(receipts.client(), event_id="evt-1", create_side_effect=RuntimeError("timeout after insert"))
+    assert ("org-1", "hubspot", "evt-1:wf-1") in receipts.keys
+    retry, ex = await _start(receipts.client(), event_id="evt-1")
+    assert retry["reason"] == "duplicate_event"
+    ex.execute_workflow.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_concurrent_deliveries_start_one_run() -> None:
+    import asyncio
+
+    receipts = _Receipts()
+    results = await asyncio.gather(*[_start(receipts.client(), event_id="evt-7") for _ in range(5)])
+    statuses = sorted(out["status"] for out, _ in results)
+    assert statuses == ["completed", "skipped", "skipped", "skipped", "skipped"]
+    assert sum(ex.execute_workflow.await_count for _, ex in results) == 1
 
 
 def test_claim_reports_conflict() -> None:
     receipts = _Receipts()
-    assert claim_webhook_event(receipts.client(), org_id="o", provider="segment", event_id="m-1") is True
-    assert claim_webhook_event(receipts.client(), org_id="o", provider="segment", event_id="m-1") is False
-    assert claim_webhook_event(receipts.client(), org_id="o2", provider="segment", event_id="m-1") is True
+    assert claim_webhook_event(receipts.client(), org_id="o", provider="segment", event_id="m-1") == CLAIMED
+    assert claim_webhook_event(receipts.client(), org_id="o", provider="segment", event_id="m-1") == DUPLICATE
+    assert claim_webhook_event(receipts.client(), org_id="o2", provider="segment", event_id="m-1") == CLAIMED
+    failing = _Receipts(error=Exception("boom"))
+    assert claim_webhook_event(failing.client(), org_id="o", provider="segment", event_id="m-2") == UNAVAILABLE
 
 
 def test_provider_event_ids() -> None:

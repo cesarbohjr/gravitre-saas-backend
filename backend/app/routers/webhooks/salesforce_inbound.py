@@ -10,6 +10,7 @@ from supabase import create_client
 from app.core.db import shared_service_client
 
 from app.config import Settings, get_settings
+from app.services.event_triggered_runs import raise_if_retryable
 from app.connectors.salesforce_webhooks import verify_salesforce_webhook_signature
 from app.services.salesforce_trigger_service import (
     get_connector_webhook_secret,
@@ -71,4 +72,5 @@ async def salesforce_inbound_webhook(
         events = []
 
     results = await process_salesforce_event_batch(settings, connector_id, events)
+    raise_if_retryable(results)
     return {"received": len(events), "dispatched": len(results), "results": results}
