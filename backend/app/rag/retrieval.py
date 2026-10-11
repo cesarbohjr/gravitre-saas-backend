@@ -145,11 +145,16 @@ def fetch_bm25_corpus(
         # returns a QueryRequestBuilder, which has no `.limit()` -- calling them
         # the other way round raises AttributeError, and the Fabric's keyword arm
         # was dead for months on exactly that ordering.
+        #
+        # Only chunks of the active document version, matching the vector arm
+        # (`rag_search` requires `d.is_active IS TRUE`). Without the inner join,
+        # superseded versions re-entered answers through the keyword arm.
         builder = (
             client.table("rag_chunks")
-            .select("id,content,document_id,source_id")
+            .select("id,content,document_id,source_id,rag_documents!inner(is_active)")
             .eq("org_id", org_id)
             .eq("environment", environment_name)
+            .eq("rag_documents.is_active", True)
             .limit(capped)
         )
         if source_id:
@@ -197,6 +202,13 @@ def fetch_bm25_corpus(
                 environment_name,
                 capped,
             )
+
+    # Belt and braces: drop any row whose embedded document says it is inactive.
+    rows = [
+        row
+        for row in rows
+        if not isinstance(row.get("rag_documents"), dict) or row["rag_documents"].get("is_active") is True
+    ]
 
     if not rows:
         # Three different reasons to have nothing, kept apart. A keyword filter

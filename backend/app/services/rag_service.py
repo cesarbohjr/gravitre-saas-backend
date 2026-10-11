@@ -443,9 +443,12 @@ class RAGService:
         or_filters = ",".join(f"content.ilike.%{term}%" for term in terms)
         resp = (
             client.table("rag_chunks")
-            .select("id,content,document_id,chunk_index,created_at")
+            # Inner join so chunks of archived document versions are excluded, as
+            # rag_search does with d.is_active IS TRUE.
+            .select("id,content,document_id,chunk_index,created_at,rag_documents!inner(is_active)")
             .eq("org_id", org_id)
             .eq("environment", environment)
+            .eq("rag_documents.is_active", True)
             .or_(or_filters)
             .limit(top_k)
             .execute()

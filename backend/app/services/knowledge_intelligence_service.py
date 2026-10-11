@@ -274,8 +274,9 @@ async def run_glossary_extraction(
     try:
         chunks = (
             db.table("rag_chunks")
-            .select("content")
+            .select("content,rag_documents!inner(is_active)")
             .eq("org_id", org_id)
+            .eq("rag_documents.is_active", True)
             .limit(200)
             .execute()
             .data

@@ -9,6 +9,8 @@ from app.core.logging import get_logger
 from app.ml.anomaly import AnomalyDetector
 from app.ml.base import ModelMetrics, ModelType
 from app.ml.intelligence_training import (
+    CATALOG_MODEL_NAMES,
+    register_trained_artifact_detailed,
     train_v2_intent_classifier,
     train_v3_query_clusterer,
     train_v4_memory_promotion_scorer,
@@ -21,7 +23,6 @@ from app.ml.feature_extraction import (
     features_to_success_train,
 )
 from app.ml.forecasting import WorkflowForecaster, WorkflowSuccessPredictor
-from app.ml.registry import get_model_registry
 from app.services.company_intelligence_collectors import (
     aggregate_query_categories,
     collect_org_memory_digest,
@@ -30,7 +31,6 @@ from app.services.company_intelligence_collectors import (
 )
 from app.services.company_intelligence_synthesis import synthesize_company_intelligence
 from app.ml.learning_to_rank import (
-    RETRIEVAL_RANKER_MODEL_NAME,
     RetrievalRanker,
     count_training_examples,
 )
@@ -47,12 +47,19 @@ from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
 
+# Scheduled retraining writes to the SAME registry entries the live loaders and
+# per-org catalog status read (catalog-* names, single source of truth in
+# app.ml.intelligence_training.CATALOG_MODEL_NAMES). A retrained version only
+# replaces the deployed one when it passes the champion/challenger gate in
+# register_trained_artifact_detailed.
 COMPANY_MODEL_NAMES = {
-    "intent": "company-query-intent",
-    "anomaly": "company-workflow-anomaly",
-    "forecaster": "company-workflow-duration-forecast",
-    "success": "company-workflow-success",
-    "retrieval_ranker": RETRIEVAL_RANKER_MODEL_NAME,
+    "intent": CATALOG_MODEL_NAMES["intent_classifier"],
+    "anomaly": CATALOG_MODEL_NAMES["workflow_anomaly_detector"],
+    "forecaster": CATALOG_MODEL_NAMES["workflow_duration_forecaster"],
+    "success": CATALOG_MODEL_NAMES["workflow_success_predictor"],
+    "retrieval_ranker": CATALOG_MODEL_NAMES["retrieval_ranker"],
+    "query_clusterer": CATALOG_MODEL_NAMES["query_clusterer"],
+    "memory_promotion": CATALOG_MODEL_NAMES["memory_promotion_scorer"],
 }
 
 
@@ -152,7 +159,7 @@ class CompanyIntelligenceOrchestrator:
                         settings=self.settings,
                         client=client,
                         persist_clusters=False,
-                        registry_name="company-query-clusterer",
+                        registry_name=COMPANY_MODEL_NAMES["query_clusterer"],
                     )
                     cluster_model_id = cluster_result.get("model_id")
                 except Exception as exc:  # noqa: BLE001
@@ -168,7 +175,7 @@ class CompanyIntelligenceOrchestrator:
                     org_id,
                     settings=self.settings,
                     client=client,
-                    registry_name="company-memory-promotion",
+                    registry_name=COMPANY_MODEL_NAMES["memory_promotion"],
                 )
                 memory_promotion_model_id = memory_result.get("model_id")
             except Exception as exc:  # noqa: BLE001
@@ -447,36 +454,32 @@ class CompanyIntelligenceOrchestrator:
         base_model: str,
         artifact: bytes,
         metrics: ModelMetrics,
-    ) -> str:
-        registry = get_model_registry()
-        existing_models = await registry.list_models(org_id=org_id, model_type=model_type)
-        existing = next((m for m in existing_models if m.name == name), None)
-        if existing:
-            model_id = existing.id
-        else:
-            model = await registry.create_model(
-                org_id=org_id,
-                name=name,
-                model_type=model_type,
-                description=f"Company intelligence {name}",
-                base_model=base_model,
-                task_type=self.SNAPSHOT_TASK_TYPE,
+    ) -> str | None:
+        registration = await register_trained_artifact_detailed(
+            org_id,
+            name=name,
+            model_type=model_type,
+            base_model=base_model,
+            artifact=artifact,
+            metrics=metrics,
+            description=f"Company intelligence {name}",
+        )
+        if registration.get("model_id") is None:
+            logger.warning(
+                "company_intelligence_model_artifact_skipped org_id=%s name=%s reason=%s",
+                org_id,
+                name,
+                registration.get("reason"),
             )
-            model_id = model.id
-        try:
-            await registry.add_version(model_id=model_id, artifact_data=artifact, metrics=metrics)
-            await registry.deploy_version(model_id)
-        except ValueError as exc:
-            if "BLOB_READ_WRITE_TOKEN" in str(exc):
-                logger.warning(
-                    "company_intelligence_model_artifact_skipped org_id=%s name=%s error=%s",
-                    org_id,
-                    name,
-                    exc,
-                )
-                return None
-            raise
-        return model_id
+        elif not registration.get("deployed"):
+            logger.info(
+                "company_intelligence_challenger_kept_undeployed org_id=%s name=%s reason=%s evaluation=%s",
+                org_id,
+                name,
+                registration.get("reason"),
+                registration.get("evaluation"),
+            )
+        return registration.get("model_id")
 
     async def _start_run_log(self, org_id: str) -> str:
         client = self._client()

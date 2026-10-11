@@ -180,11 +180,18 @@ class AgentKnowledgeSyncService:
                 "external_url": assignment.get("externalSourceUrl") or assignment.get("external_source_url"),
                 "source_title": label,
                 "source_type": normalize_source_type(str(assignment.get("sourceType") or "google_drive_folder")),
-                "memory_summary": f"Reference to Google Drive folder '{label}'. Content is indexed as summaries and embeddings only.",
+                "memory_summary": (
+                    f"Reference to Google Drive folder '{label}'. The folder is linked as a reference only; "
+                    "its content has not been fetched or indexed."
+                ),
                 "provenance_chain": [{"step": "drive_folder_assignment", "folder_id": folder_id}],
             },
         )
-        return {"success": True, "message": "Google Drive folder reference synced.", "references": 1}
+        return {
+            "success": True,
+            "message": "Google Drive folder linked as a reference; its content is not indexed yet.",
+            "references": 1,
+        }
 
     async def _sync_via_org_connector(
         self,

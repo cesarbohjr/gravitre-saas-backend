@@ -70,6 +70,7 @@ async def test_manual_mcp_write_preserves_legacy_completed_behavior() -> None:
             "enabled": True,
         }
     )
+    service._client = MagicMock()  # rate-limit bucket allows the call
     service._verify_approval = AsyncMock()
     service._load_server = AsyncMock(
         return_value={

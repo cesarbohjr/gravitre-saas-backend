@@ -1,7 +1,9 @@
 """In-process memory promotion and expiration schedulers (v4).
 
-Promotion evaluation and outcome measurement migrate to Temporal workflows
-(MemoryPromotionWorkflow, OutcomeMeasurementWorkflow) when TEMPORAL_HOST is set.
+The promotion tick (evaluation + ``measure_outcomes_due``) runs in BOTH
+Temporal and non-Temporal mode: no Temporal schedule or starter drives
+MemoryPromotionWorkflow, so this loop is the only periodic driver of Play
+outcome measurement / objective replanning (see app/schedulers/startup_plan.py).
 Expiration checks stay here — missed ticks are low impact and idempotent.
 """
 from __future__ import annotations

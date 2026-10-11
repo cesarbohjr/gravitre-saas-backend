@@ -32,10 +32,10 @@ class CausalImpactAnalyzer(CatalogScaffoldModel):
         try:
             rows = (
                 client.table("agent_action_outcomes")
-                .select("after_value, measured_at")
+                .select("metric_value_after, measured_at")
                 .eq("org_id", org_id)
                 .eq("metric_name", metric_name)
-                .not_.is_("after_value", "null")
+                .not_.is_("metric_value_after", "null")
                 .order("measured_at")
                 .execute()
                 .data
@@ -43,7 +43,7 @@ class CausalImpactAnalyzer(CatalogScaffoldModel):
             )
         except Exception:  # noqa: BLE001
             return []
-        return [float(row.get("after_value") or 0) for row in rows]
+        return [float(row.get("metric_value_after") or 0) for row in rows]
 
     async def predict_structured(self, **kwargs: Any) -> dict[str, Any]:
         org_id = str(kwargs.get("org_id") or "")

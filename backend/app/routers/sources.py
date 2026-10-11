@@ -129,7 +129,9 @@ def _serialize_source_row(
         "environment": row.get("environment") or environment_name,
         "tablesCount": row.get("tables_count") or metadata.get("tablesCount") if isinstance(metadata, dict) else 0,
         "recordCount": record_count,
-        "lastSyncAt": row.get("last_sync_at") or row.get("updated_at") or row.get("created_at"),
+        # Only a sync that moved data counts; health checks are reported separately.
+        "lastSyncAt": row.get("last_sync_at"),
+        "lastCheckedAt": metadata.get("lastCheckedAt") if isinstance(metadata, dict) else None,
         "createdAt": row.get("created_at"),
         "description": metadata.get("description") if isinstance(metadata, dict) else None,
         "syncIntervalSeconds": metadata.get("syncIntervalSeconds") if isinstance(metadata, dict) else None,

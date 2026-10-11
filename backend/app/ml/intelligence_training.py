@@ -1,6 +1,7 @@
 """Org-scoped training for v2–v5 intelligence models and catalog persistence."""
 from __future__ import annotations
 
+import math
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -59,8 +60,211 @@ CATALOG_MODEL_NAMES = {
 }
 
 MIN_QUERY_ROWS = 50
+
+# Columns that migrations actually create on agent_action_outcomes
+# (supabase/migrations/20260708161000_outcome_dependency_optimization_v8_v10.sql).
+# Trainers may only select from this set; there is no outcome_payload,
+# outcome_success, metric_value, recorded_at or after_value column.
+AGENT_ACTION_OUTCOMES_COLUMNS = frozenset(
+    {
+        "id",
+        "org_id",
+        "agent_id",
+        "workflow_run_id",
+        "action_type",
+        "target_entity_type",
+        "target_entity_id",
+        "action_taken_at",
+        "metric_name",
+        "metric_value_before",
+        "metric_value_after",
+        "attribution_window_days",
+        "measured_at",
+        "confidence_note",
+        "created_at",
+    }
+)
+
+# Revenue metric names written into agent_action_outcomes (same set the digital
+# twin treats as revenue).
+REVENUE_METRIC_NAMES = ("deal_amount", "subscription_mrr")
+
+REASON_MISSING_TRAINING_COLUMNS = "missing_training_columns"
 MIN_CLUSTERING_ROWS = 40
 MIN_WORKFLOW_ROWS = 30
+
+
+# Champion/challenger gate: held-out metrics in priority order with direction
+# (True = higher is better). The first metric reported by BOTH the challenger
+# and the deployed champion decides; metrics are what each trainer already
+# stores in ``model_versions.metrics``.
+PRIMARY_METRIC_PRIORITY: tuple[tuple[str, bool], ...] = (
+    ("auc_roc", True),
+    ("f1_score", True),
+    ("accuracy", True),
+    ("mae", False),
+    ("mse", False),
+)
+
+REASON_ARTIFACT_STORAGE_UNAVAILABLE = "artifact_storage_unavailable"
+
+
+def _metrics_dict(metrics: ModelMetrics | dict[str, Any] | None) -> dict[str, Any]:
+    if metrics is None:
+        return {}
+    if isinstance(metrics, ModelMetrics):
+        return metrics.model_dump()
+    return dict(metrics)
+
+
+def _finite(value: Any) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def _held_out_primary(metrics: dict[str, Any]) -> tuple[str, bool, float] | None:
+    for name, higher_is_better in PRIMARY_METRIC_PRIORITY:
+        value = _finite(metrics.get(name))
+        if value is not None:
+            return name, higher_is_better, value
+    return None
+
+
+def champion_challenger_decision(
+    challenger: ModelMetrics | dict[str, Any] | None,
+    champion: ModelMetrics | dict[str, Any] | None,
+    *,
+    has_champion: bool,
+) -> tuple[bool, str, dict[str, Any]]:
+    """Decide whether a newly trained version may be deployed.
+
+    Returns ``(deploy, reason, evaluation)``. Nothing is promoted without a
+    held-out evaluation:
+
+    * no held-out metric (unsupervised detectors, clusterers, trainers that did
+      not evaluate) -> registered, never deployed automatically;
+    * first deployment -> deployed only with a held-out metric, and a
+      classifier's AUC must beat chance (> 0.5);
+    * with a champion -> deployed only when the challenger's held-out primary
+      metric is at least as good as the champion's on the same metric. When the
+      champion has no comparable metric the challenger is not deployed, so a
+      replacement is never made without a comparison.
+
+    A version that is not deployed leaves the current champion, or the
+    caller's existing non-ML fallback when there is none, in place.
+    """
+    challenger_metrics = _metrics_dict(challenger)
+    primary = _held_out_primary(challenger_metrics)
+    if primary is None:
+        return False, "not_deployed_no_held_out_metric", {}
+    if not has_champion:
+        name, higher_is_better, value = primary
+        evaluation = {"primary_metric": name, "higher_is_better": higher_is_better, "challenger": value}
+        if name == "auc_roc" and value <= 0.5:
+            return False, "not_deployed_first_version_not_better_than_chance", evaluation
+        return True, "first_deployment_with_held_out_metric", evaluation
+    champion_metrics = _metrics_dict(champion)
+    for name, higher_is_better in PRIMARY_METRIC_PRIORITY:
+        new_value = _finite(challenger_metrics.get(name))
+        old_value = _finite(champion_metrics.get(name))
+        if new_value is None or old_value is None:
+            continue
+        evaluation = {
+            "primary_metric": name,
+            "higher_is_better": higher_is_better,
+            "challenger": new_value,
+            "champion": old_value,
+        }
+        wins = new_value >= old_value if higher_is_better else new_value <= old_value
+        if wins:
+            return True, "challenger_matches_or_beats_champion", evaluation
+        return False, "challenger_worse_than_champion", evaluation
+    return False, "not_deployed_no_comparable_champion_metric", {}
+
+
+async def register_trained_artifact_detailed(
+    org_id: str,
+    *,
+    name: str,
+    model_type: ModelType,
+    base_model: str,
+    artifact: bytes,
+    metrics: ModelMetrics,
+    description: str | None = None,
+) -> dict[str, Any]:
+    """Register a new version and deploy it only if it passes the champion gate.
+
+    Returns ``{"model_id", "version", "deployed", "reason", "evaluation"}``.
+    ``model_id`` is None when the artifact could not be stored.
+    """
+    registry = get_model_registry()
+    existing_models = await registry.list_models(org_id=org_id, model_type=model_type)
+    existing = next((model for model in existing_models if model.name == name), None)
+    champion_version: int | None = None
+    if existing:
+        model_id = existing.id
+        champion_version = existing.deployed_version or None
+    else:
+        model = await registry.create_model(
+            org_id=org_id,
+            name=name,
+            model_type=model_type,
+            description=description or f"Catalog training artifact for {name}",
+            base_model=base_model,
+            task_type=INTELLIGENCE_TASK_TYPE,
+        )
+        model_id = model.id
+    try:
+        version = await registry.add_version(model_id=model_id, artifact_data=artifact, metrics=metrics)
+    except ValueError as exc:
+        if "BLOB_READ_WRITE_TOKEN" in str(exc):
+            logger.warning(
+                "catalog_training_artifact_skipped org_id=%s name=%s reason=%s error=%s",
+                org_id,
+                name,
+                REASON_ARTIFACT_STORAGE_UNAVAILABLE,
+                exc,
+            )
+            return {
+                "model_id": None,
+                "version": None,
+                "deployed": False,
+                "reason": REASON_ARTIFACT_STORAGE_UNAVAILABLE,
+                "evaluation": {},
+            }
+        raise
+
+    champion_metrics: dict[str, Any] | None = None
+    if champion_version is not None:
+        champion_metrics = await registry.get_version_metrics(model_id, int(champion_version))
+    deploy, reason, evaluation = champion_challenger_decision(
+        metrics,
+        champion_metrics,
+        has_champion=champion_version is not None,
+    )
+    new_version = getattr(version, "version", None)
+    if deploy:
+        await registry.deploy_version(model_id, new_version)
+    else:
+        logger.info(
+            "catalog_training_challenger_not_deployed org_id=%s name=%s champion_version=%s "
+            "challenger_version=%s evaluation=%s",
+            org_id,
+            name,
+            champion_version,
+            new_version,
+            evaluation,
+        )
+    return {
+        "model_id": model_id,
+        "version": new_version,
+        "deployed": deploy,
+        "reason": reason,
+        "evaluation": evaluation,
+    }
 
 
 async def register_trained_artifact(
@@ -73,35 +277,33 @@ async def register_trained_artifact(
     metrics: ModelMetrics,
     description: str | None = None,
 ) -> str | None:
-    registry = get_model_registry()
-    existing_models = await registry.list_models(org_id=org_id, model_type=model_type)
-    existing = next((model for model in existing_models if model.name == name), None)
-    if existing:
-        model_id = existing.id
-    else:
-        model = await registry.create_model(
-            org_id=org_id,
-            name=name,
-            model_type=model_type,
-            description=description or f"Catalog training artifact for {name}",
-            base_model=base_model,
-            task_type=INTELLIGENCE_TASK_TYPE,
-        )
-        model_id = model.id
-    try:
-        await registry.add_version(model_id=model_id, artifact_data=artifact, metrics=metrics)
-        await registry.deploy_version(model_id)
-    except ValueError as exc:
-        if "BLOB_READ_WRITE_TOKEN" in str(exc):
-            logger.warning(
-                "catalog_training_artifact_skipped org_id=%s name=%s error=%s",
-                org_id,
-                name,
-                exc,
-            )
-            return None
-        raise
-    return model_id
+    """Backward-compatible wrapper returning only the model id (None if not stored)."""
+    registration = await register_trained_artifact_detailed(
+        org_id,
+        name=name,
+        model_type=model_type,
+        base_model=base_model,
+        artifact=artifact,
+        metrics=metrics,
+        description=description,
+    )
+    return registration["model_id"]
+
+
+def registration_summary(registration: dict[str, Any]) -> dict[str, Any]:
+    """Fields every trainer returns about storage + champion/challenger outcome."""
+    model_id = registration.get("model_id")
+    summary: dict[str, Any] = {
+        "trained": model_id is not None,
+        "model_id": model_id,
+        "deployed": bool(registration.get("deployed")),
+        "deployment_reason": registration.get("reason"),
+    }
+    if registration.get("evaluation"):
+        summary["evaluation"] = registration["evaluation"]
+    if model_id is None:
+        summary["reason"] = registration.get("reason") or REASON_ARTIFACT_STORAGE_UNAVAILABLE
+    return summary
 
 
 async def train_v2_intent_classifier(
@@ -125,7 +327,7 @@ async def train_v2_intent_classifier(
         }
     classifier = IntentClassifier()
     metrics = await classifier.train_from_text(texts, labels)
-    model_id = await register_trained_artifact(
+    registration = await register_trained_artifact_detailed(
         org_id,
         name=registry_name or CATALOG_MODEL_NAMES["intent_classifier"],
         model_type=ModelType.CLASSIFIER,
@@ -134,8 +336,7 @@ async def train_v2_intent_classifier(
         metrics=metrics,
     )
     return {
-        "trained": model_id is not None,
-        "model_id": model_id,
+        **registration_summary(registration),
         "query_rows": len(texts),
         "metrics": {
             "training_samples": metrics.training_samples,
@@ -184,7 +385,7 @@ async def train_v3_query_clusterer(
 
     clusterer = QueryClusterer(min_cluster_size=3, min_samples=2)
     metrics = await clusterer.train(embeddings=embeddings, normalized_queries=texts)
-    model_id = await register_trained_artifact(
+    registration = await register_trained_artifact_detailed(
         org_id,
         name=registry_name or CATALOG_MODEL_NAMES["query_clusterer"],
         model_type=ModelType.EMBEDDING,
@@ -200,8 +401,7 @@ async def train_v3_query_clusterer(
         glossary_rows = await run_glossary_extraction(active, org_id, queries, client=db)
 
     return {
-        "trained": model_id is not None,
-        "model_id": model_id,
+        **registration_summary(registration),
         "distinct_queries": distinct_count,
         "cluster_count": len(clusterer.cluster_members()),
         "persisted_clusters": len(cluster_rows),
@@ -240,7 +440,7 @@ async def train_v4_memory_promotion_scorer(
             "required": scorer.MIN_TRAINING_EXAMPLES,
         }
     metrics = await scorer.train(candidates=resolved)
-    model_id = await register_trained_artifact(
+    registration = await register_trained_artifact_detailed(
         org_id,
         name=registry_name or CATALOG_MODEL_NAMES["memory_promotion_scorer"],
         model_type=ModelType.CLASSIFIER,
@@ -249,8 +449,7 @@ async def train_v4_memory_promotion_scorer(
         metrics=metrics,
     )
     return {
-        "trained": model_id is not None,
-        "model_id": model_id,
+        **registration_summary(registration),
         "resolved_candidates": len(resolved),
         "metrics": metrics.custom_metrics,
     }
@@ -276,7 +475,7 @@ async def train_v5_retrieval_ranker(
     examples = await collect_training_examples(org_id, db)
     ranker = RetrievalRanker()
     metrics = await ranker.train(examples)
-    model_id = await register_trained_artifact(
+    registration = await register_trained_artifact_detailed(
         org_id,
         name=registry_name or CATALOG_MODEL_NAMES["retrieval_ranker"],
         model_type=ModelType.CLASSIFIER,
@@ -285,8 +484,7 @@ async def train_v5_retrieval_ranker(
         metrics=metrics,
     )
     return {
-        "trained": model_id is not None,
-        "model_id": model_id,
+        **registration_summary(registration),
         "training_examples": len(examples),
         "learned_reliability_weight": ranker.get_learned_weight(),
         "metrics": metrics.custom_metrics,
@@ -334,7 +532,7 @@ async def train_workflow_anomaly_detector(
         }
     detector = AnomalyDetector(contamination=active.ml_anomaly_contamination)
     metrics = await detector.train(features_to_anomaly_input(workflow_features))
-    model_id = await register_trained_artifact(
+    registration = await register_trained_artifact_detailed(
         org_id,
         name=CATALOG_MODEL_NAMES["workflow_anomaly_detector"],
         model_type=ModelType.ANOMALY_DETECTOR,
@@ -342,7 +540,7 @@ async def train_workflow_anomaly_detector(
         artifact=detector.save(),
         metrics=metrics,
     )
-    return {"trained": model_id is not None, "model_id": model_id, "workflow_rows": len(workflow_features)}
+    return {**registration_summary(registration), "workflow_rows": len(workflow_features)}
 
 
 async def train_workflow_duration_forecaster(
@@ -368,7 +566,7 @@ async def train_workflow_duration_forecaster(
         forecast_horizon=active.ml_forecast_horizon,
     )
     metrics = await forecaster.train(x_rows, y_values)
-    model_id = await register_trained_artifact(
+    registration = await register_trained_artifact_detailed(
         org_id,
         name=CATALOG_MODEL_NAMES["workflow_duration_forecaster"],
         model_type=ModelType.FORECASTER,
@@ -376,7 +574,7 @@ async def train_workflow_duration_forecaster(
         artifact=forecaster.save(),
         metrics=metrics,
     )
-    return {"trained": model_id is not None, "model_id": model_id, "workflow_rows": len(x_rows)}
+    return {**registration_summary(registration), "workflow_rows": len(x_rows)}
 
 
 async def train_workflow_success_predictor(
@@ -398,7 +596,7 @@ async def train_workflow_success_predictor(
         }
     predictor = WorkflowSuccessPredictor()
     metrics = await predictor.train(x_rows, y_values)
-    model_id = await register_trained_artifact(
+    registration = await register_trained_artifact_detailed(
         org_id,
         name=CATALOG_MODEL_NAMES["workflow_success_predictor"],
         model_type=ModelType.CLASSIFIER,
@@ -406,7 +604,7 @@ async def train_workflow_success_predictor(
         artifact=predictor.save(),
         metrics=metrics,
     )
-    return {"trained": model_id is not None, "model_id": model_id, "workflow_rows": len(x_rows)}
+    return {**registration_summary(registration), "workflow_rows": len(x_rows)}
 
 
 async def train_revenue_forecaster(
@@ -420,17 +618,24 @@ async def train_revenue_forecaster(
     active = settings or get_settings()
     db = client or get_supabase_client(active)
     since = (datetime.now(timezone.utc) - timedelta(days=120)).isoformat()
+    # Measured revenue outcomes only: metric_value_after is the observed value
+    # once the attribution window elapsed, measured_at is when it was observed.
     rows = (
         db.table("agent_action_outcomes")
-        .select("metric_value, recorded_at")
+        .select("metric_value_after, measured_at")
         .eq("org_id", org_id)
-        .gte("recorded_at", since)
-        .order("recorded_at")
+        .in_("metric_name", list(REVENUE_METRIC_NAMES))
+        .gte("measured_at", since)
+        .order("measured_at")
         .execute()
         .data
         or []
     )
-    series = [{"value": float(row.get("metric_value") or 0)} for row in rows if row.get("metric_value") is not None]
+    series = [
+        {"value": float(row["metric_value_after"])}
+        for row in rows
+        if row.get("metric_value_after") is not None
+    ]
     forecaster = RevenueForecaster()
     if len(series) < forecaster.MIN_HISTORY_POINTS:
         return {
@@ -440,7 +645,7 @@ async def train_revenue_forecaster(
             "required": forecaster.MIN_HISTORY_POINTS,
         }
     metrics = await forecaster.train([], time_series=series)
-    model_id = await register_trained_artifact(
+    registration = await register_trained_artifact_detailed(
         org_id,
         name=CATALOG_MODEL_NAMES["revenue_forecaster"],
         model_type=ModelType.REGRESSOR,
@@ -448,7 +653,7 @@ async def train_revenue_forecaster(
         artifact=forecaster.save(),
         metrics=metrics,
     )
-    return {"trained": model_id is not None, "model_id": model_id, "data_points": len(series)}
+    return {**registration_summary(registration), "data_points": len(series)}
 
 
 async def train_churn_risk_scorer(
@@ -477,7 +682,7 @@ async def train_churn_risk_scorer(
             "note": "Need labeled churn_customer_signal rows via churn_feature_ingest.",
         }
     metrics = await scorer.train(features, labels)
-    model_id = await register_trained_artifact(
+    registration = await register_trained_artifact_detailed(
         org_id,
         name=CATALOG_MODEL_NAMES["churn_risk_scorer"],
         model_type=ModelType.CLASSIFIER,
@@ -485,7 +690,7 @@ async def train_churn_risk_scorer(
         artifact=scorer.save(),
         metrics=metrics,
     )
-    return {"trained": model_id is not None, "model_id": model_id, "training_examples": len(features)}
+    return {**registration_summary(registration), "training_examples": len(features)}
 
 
 async def train_cf_matrix_factorizer(
@@ -514,7 +719,7 @@ async def train_cf_matrix_factorizer(
     interactions = load_scored_interactions(db, org_id)
     factorizer = CfMatrixFactorizer()
     metrics = await factorizer.train(interactions=interactions)
-    model_id = await register_trained_artifact(
+    registration = await register_trained_artifact_detailed(
         org_id,
         name=CATALOG_MODEL_NAMES["cf_matrix_factorizer"],
         model_type=ModelType.EMBEDDING,
@@ -524,8 +729,7 @@ async def train_cf_matrix_factorizer(
         description="CF TruncatedSVD matrix factorization for heuristic soft-rank",
     )
     return {
-        "trained": model_id is not None,
-        "model_id": model_id,
+        **registration_summary(registration),
         "training_examples": len(interactions),
         "gate": gate,
         "method": "truncated_svd",
@@ -539,63 +743,30 @@ async def train_cf_matrix_factorizer(
     }
 
 
-def _payload_features(row: dict[str, Any], keys: tuple[str, ...]) -> dict[str, float]:
-    payload = row.get("outcome_payload") or {}
-    if not isinstance(payload, dict):
-        payload = {}
-    return {key: float(payload.get(key) or row.get(key) or 0.0) for key in keys}
-
-
 async def train_sla_breach_predictor(
     org_id: str,
     *,
     settings: Settings | None = None,
     client: Any | None = None,
 ) -> dict[str, Any]:
-    from app.ml.predictive_ops_models import SLA_FEATURE_KEYS, SlaBreachPredictor
+    """Not trainable from the current schema.
 
-    active = settings or get_settings()
-    db = client or get_supabase_client(active)
-    rows = (
-        db.table("agent_action_outcomes")
-        .select("outcome_payload, outcome_success, after_value")
-        .eq("org_id", org_id)
-        .eq("metric_name", "ticket_volume")
-        .execute()
-        .data
-        or []
-    )
-    features: list[dict[str, float]] = []
-    labels: list[int] = []
-    for row in rows:
-        feature_row = _payload_features(row, SLA_FEATURE_KEYS)
-        if not any(feature_row.values()) and row.get("after_value") is not None:
-            feature_row["open_tickets"] = float(row.get("after_value") or 0)
-        if not any(feature_row.values()):
-            continue
-        payload = row.get("outcome_payload") or {}
-        breached = payload.get("sla_breached") if isinstance(payload, dict) else None
-        label = bool(breached) if breached is not None else not bool(row.get("outcome_success", True))
-        features.append(feature_row)
-        labels.append(1 if label else 0)
-    predictor = SlaBreachPredictor()
-    if len(features) < predictor.MIN_TRAINING_EXAMPLES:
-        return {
-            "trained": False,
-            "reason": "insufficient_data",
-            "training_examples": len(features),
-            "required": predictor.MIN_TRAINING_EXAMPLES,
-        }
-    metrics = await predictor.train(features, labels)
-    model_id = await register_trained_artifact(
-        org_id,
-        name=CATALOG_MODEL_NAMES["sla_breach_predictor"],
-        model_type=ModelType.CLASSIFIER,
-        base_model="sla_breach_predictor",
-        artifact=predictor.save(),
-        metrics=metrics,
-    )
-    return {"trained": model_id is not None, "model_id": model_id, "training_examples": len(features)}
+    The predictor needs per-ticket SLA features and a breached/not-breached
+    label. agent_action_outcomes stores only metric_value_before/after per
+    action (no payload, no success flag), so there is no honest label source.
+    Return a clear reason instead of querying columns that do not exist.
+    """
+    _ = settings, client
+    from app.ml.predictive_ops_models import SLA_FEATURE_KEYS
+
+    return {
+        "trained": False,
+        "reason": REASON_MISSING_TRAINING_COLUMNS,
+        "table": "agent_action_outcomes",
+        "missing": ["sla feature payload", "sla_breached label"],
+        "feature_keys": list(SLA_FEATURE_KEYS),
+        "org_id": org_id,
+    }
 
 
 async def train_deal_loss_scorer(
@@ -604,47 +775,22 @@ async def train_deal_loss_scorer(
     settings: Settings | None = None,
     client: Any | None = None,
 ) -> dict[str, Any]:
-    from app.ml.predictive_ops_models import DEAL_FEATURE_KEYS, DealLossScorer
+    """Not trainable from the current schema.
 
-    active = settings or get_settings()
-    db = client or get_supabase_client(active)
-    rows = (
-        db.table("agent_action_outcomes")
-        .select("outcome_payload, outcome_success")
-        .eq("org_id", org_id)
-        .eq("target_entity_type", "deal")
-        .not_.is_("measured_at", "null")
-        .execute()
-        .data
-        or []
-    )
-    features: list[dict[str, float]] = []
-    labels: list[int] = []
-    for row in rows:
-        feature_row = _payload_features(row, DEAL_FEATURE_KEYS)
-        if not any(feature_row.values()):
-            continue
-        lost = not bool(row.get("outcome_success"))
-        features.append(feature_row)
-        labels.append(1 if lost else 0)
-    scorer = DealLossScorer()
-    if len(features) < scorer.MIN_TRAINING_EXAMPLES:
-        return {
-            "trained": False,
-            "reason": "insufficient_data",
-            "training_examples": len(features),
-            "required": scorer.MIN_TRAINING_EXAMPLES,
-        }
-    metrics = await scorer.train(features, labels)
-    model_id = await register_trained_artifact(
-        org_id,
-        name=CATALOG_MODEL_NAMES["deal_loss_scorer"],
-        model_type=ModelType.CLASSIFIER,
-        base_model="deal_loss_scorer",
-        artifact=scorer.save(),
-        metrics=metrics,
-    )
-    return {"trained": model_id is not None, "model_id": model_id, "training_examples": len(features)}
+    Needs per-deal features and a won/lost label; agent_action_outcomes has
+    neither (no outcome_payload / outcome_success). Return a clear reason.
+    """
+    _ = settings, client
+    from app.ml.predictive_ops_models import DEAL_FEATURE_KEYS
+
+    return {
+        "trained": False,
+        "reason": REASON_MISSING_TRAINING_COLUMNS,
+        "table": "agent_action_outcomes",
+        "missing": ["deal feature payload", "won/lost label"],
+        "feature_keys": list(DEAL_FEATURE_KEYS),
+        "org_id": org_id,
+    }
 
 
 async def train_capacity_forecaster(
@@ -659,18 +805,19 @@ async def train_capacity_forecaster(
     db = client or get_supabase_client(active)
     rows = (
         db.table("agent_action_outcomes")
-        .select("after_value, measured_at")
+        .select("metric_value_after, measured_at")
         .eq("org_id", org_id)
         .eq("metric_name", "ticket_volume")
+        .not_.is_("measured_at", "null")
         .order("measured_at")
         .execute()
         .data
         or []
     )
     series = [
-        {"value": float(row.get("after_value") or 0)}
+        {"value": float(row["metric_value_after"])}
         for row in rows
-        if row.get("after_value") is not None
+        if row.get("metric_value_after") is not None
     ]
     forecaster = CapacityForecaster()
     if len(series) < forecaster.MIN_TRAINING_EXAMPLES:
@@ -681,7 +828,7 @@ async def train_capacity_forecaster(
             "required": forecaster.MIN_TRAINING_EXAMPLES,
         }
     metrics = await forecaster.train([], time_series=series)
-    model_id = await register_trained_artifact(
+    registration = await register_trained_artifact_detailed(
         org_id,
         name=CATALOG_MODEL_NAMES["capacity_forecaster"],
         model_type=ModelType.REGRESSOR,
@@ -689,10 +836,7 @@ async def train_capacity_forecaster(
         artifact=forecaster.save(),
         metrics=metrics,
     )
-    return {"trained": model_id is not None, "model_id": model_id, "training_examples": len(series)}
-
-
-    return {"trained": model_id is not None, "model_id": model_id, "training_examples": len(series)}
+    return {**registration_summary(registration), "training_examples": len(series)}
 
 
 async def sync_retrieval_ranker_examples(
@@ -769,7 +913,7 @@ async def train_causal_impact_analyzer(
             "method": structured.get("method"),
         },
     )
-    model_id = await register_trained_artifact(
+    registration = await register_trained_artifact_detailed(
         org_id,
         name="catalog-causal-impact",
         model_type=ModelType.CAUSAL_MODEL,
@@ -778,7 +922,7 @@ async def train_causal_impact_analyzer(
         metrics=metrics,
         description="Org-scoped pre/post causal impact analyzer",
     )
-    return {"trained": model_id is not None, "model_id": model_id, **structured}
+    return {**registration_summary(registration), **structured}
 
 
 TRAINING_DISPATCH: dict[str, Any] = {

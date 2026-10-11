@@ -313,6 +313,10 @@ async def lifespan(app: FastAPI):
         start_standing_investigator_scheduler,
         stop_standing_investigator_scheduler,
     )
+    from app.schedulers.domain_event_relay_scheduler import (
+        start_domain_event_relay_scheduler,
+        stop_domain_event_relay_scheduler,
+    )
     from app.schedulers.ops_notifications_scheduler import (
         start_ops_notifications_scheduler,
         stop_ops_notifications_scheduler,
@@ -346,13 +350,15 @@ async def lifespan(app: FastAPI):
     app.state.connector_health_task = start_connector_health_scheduler()
     app.state.workflow_failure_prediction_task = start_workflow_failure_prediction_scheduler()
     app.state.capability_marketplace_sync_task = start_capability_marketplace_sync_scheduler()
+    from app.schedulers.startup_plan import learning_scheduler_plan
+
+    learning_plan = learning_scheduler_plan(use_temporal=use_temporal)
     if use_temporal:
         logger.info(
-            "Temporal enabled — company intelligence, memory promotion/outcomes, "
-            "and marketplace installs use durable workflows (asyncio fallback disabled)"
+            "Temporal enabled — company intelligence and marketplace installs use "
+            "durable workflows; memory promotion + outcome measurement stay on the "
+            "in-process tick (no Temporal starter drives them)"
         )
-        app.state.company_intelligence_task = None
-        app.state.memory_promotion_task = None
         from app.temporal.worker import start_temporal_worker
 
         app.state.temporal_worker_task = asyncio.create_task(start_temporal_worker())
@@ -362,12 +368,24 @@ async def lifespan(app: FastAPI):
             "Company intelligence, marketplace installs, and outcome measurement "
             "will use asyncio fallback (no retry on restart)."
         )
-        app.state.company_intelligence_task = start_company_intelligence_scheduler()
-        app.state.memory_promotion_task = start_memory_promotion_scheduler()
         app.state.temporal_worker_task = None
+    app.state.company_intelligence_task = (
+        start_company_intelligence_scheduler() if learning_plan["company_intelligence"] else None
+    )
+    # Sole periodic driver of Play measurement / objective replanning
+    # (measure_outcomes_due) in BOTH modes — see app/schedulers/startup_plan.py.
+    app.state.memory_promotion_task = (
+        start_memory_promotion_scheduler() if learning_plan["memory_promotion"] else None
+    )
+    # N-13: best-effort column existence check; background, never blocks or fails startup.
+    from app.core.schema_check import start_startup_schema_check
+
+    app.state.schema_check_task = start_startup_schema_check()
     # Standing investigators: asyncio tick (Temporal-friendly service entry also available).
     app.state.standing_investigator_task = start_standing_investigator_scheduler()
     app.state.ops_notifications_task = start_ops_notifications_scheduler()
+    # Phase 2A outbox relay; returns None unless DOMAIN_EVENT_RELAY_ENABLED=true.
+    app.state.domain_event_relay_task = start_domain_event_relay_scheduler()
     app.state.memory_expiration_task = start_memory_expiration_scheduler()
     app.state.cache_warming_task = start_cache_warming_scheduler()
 
@@ -441,7 +459,11 @@ async def lifespan(app: FastAPI):
             getattr(app.state, "standing_investigator_task", None)
         )
         await stop_ops_notifications_scheduler(getattr(app.state, "ops_notifications_task", None))
+        await stop_domain_event_relay_scheduler(getattr(app.state, "domain_event_relay_task", None))
         await stop_memory_scheduler(getattr(app.state, "memory_promotion_task", None))
+        schema_check_task = getattr(app.state, "schema_check_task", None)
+        if schema_check_task is not None and not schema_check_task.done():
+            schema_check_task.cancel()
         temporal_task = getattr(app.state, "temporal_worker_task", None)
         if temporal_task is not None:
             temporal_task.cancel()
