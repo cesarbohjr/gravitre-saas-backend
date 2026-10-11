@@ -297,3 +297,17 @@ def test_parse_recipient_change(message: str, expected: tuple[str, str] | None) 
     from app.services.pending_write_revision import parse_recipient_change
 
     assert parse_recipient_change(message) == expected
+
+
+@pytest.mark.parametrize("status", ["executed", "verifying", "completed"])
+def test_a_sent_email_counts_while_its_check_is_still_running(status: str) -> None:
+    from app.services.pending_write_revision import sent_email_write
+
+    pending = {
+        "type": "connector_action",
+        "status": status,
+        "params": {"invoke_action": "gmail.messages.send", "args": {"to": STEPHANIE, "subject": SUBJECT}},
+        "result": {"success": True},
+    }
+    assert sent_email_write({"pending_task": pending}) is pending
+    assert sent_email_write({"pending_task": {**pending, "status": "failed"}}) is None

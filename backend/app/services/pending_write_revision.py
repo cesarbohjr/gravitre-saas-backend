@@ -247,8 +247,9 @@ def execution_plan_with_revised_args(
     return {**raw, "steps": steps}
 
 
-# A sent email that "send it to X instead" can still mean.
-_SENT_STATUSES = frozenset({"executed", "completed"})
+# A sent email that "send it to X instead" can still mean ("verifying": sent,
+# its source-of-record check still running).
+_SENT_STATUSES = frozenset({"executed", "verifying", "completed"})
 # A recipient change waiting on the user ("which Mike?"): the name asked
 # about and, after a send, where the first email went.
 RECIPIENT_CHANGE_KEY = "recipient_change"
