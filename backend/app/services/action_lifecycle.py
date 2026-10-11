@@ -615,7 +615,7 @@ _WRITE_IDENTITY_Q = re.compile(
     r"(?is)\b("
     r"which contact|what(?:'s| is) the email|what email|"
     r"provider (?:record|id)|hubspot id|record id|"
-    r"the email|contact id"
+    r"contact id"
     r")\b"
 )
 
@@ -655,6 +655,10 @@ def recent_write_status_turn(
     state = task_state if isinstance(task_state, dict) else {}
     pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
     obs = _latest_observation(state)
+    # An identity question about an unfinished draft belongs to its current
+    # task handler. Only an actual prior observation can anchor this shortcut.
+    if not _WRITE_STATUS_Q.search(message or "") and not obs:
+        return None
     stage = semantic_stage_from_state(state)
     literals = identity_literals_from_state(state)
     email = next((item for item in literals if "@" in item), "")
@@ -675,30 +679,33 @@ def recent_write_status_turn(
         }
 
     if stage in {"REJECTED", "CANCELLED"}:
-        return _reply("That was cancelled, so nothing was created.")
+        return _reply("That request was cancelled.")
     if stage == "FAILED":
-        return _reply("That didn't finish, so I'm not counting it as created.")
+        return _reply("I couldn't finish that request.")
     if stage == "OUTCOME_UNCERTAIN":
         return _reply(
-            "I tried that, but I can't tell yet whether it worked, so I'm not counting it as created."
+            "I can't confirm whether that went through yet. We need to check before trying again."
         )
     if stage == "AWAITING_APPROVAL":
         target = f" for {email}" if email else ""
-        return _reply(f"Not yet. That contact is still waiting for your approval{target}.")
+        return _reply(f"Not yet. I still need your approval{target}.")
+    if stage == "EXECUTING":
+        return _reply("It's still in progress. I don't have a confirmed result yet.")
     if not obs and stage not in {"COMPLETED", "EXECUTED_UNVERIFIED", "VERIFIED"}:
-        return _reply("I don't have a matching prior write in this conversation.")
+        if pending:
+            return _reply("Not yet. I still need a few details before I can do that.")
+        return _reply("I can't confirm that it went through from what I have here.")
     if stage == "COMPLETED":
         if _WRITE_IDENTITY_Q.search(message or ""):
-            bits = ["Yes — that contact was created and verified."]
+            bits = ["Yes, that's done, and I've confirmed it."]
             if email:
                 bits.append(f"The email is {email}.")
             if record:
-                bits.append(f"The provider record is {record}.")
+                bits.append(f"The record ID is {record}.")
             return _reply(" ".join(bits))
-        return _reply("Yes — that contact was created and verified.")
+        return _reply("Yes, that's done, and I've confirmed it.")
     if stage in {"EXECUTED_UNVERIFIED", "VERIFIED"}:
         return _reply(
-            "The provider accepted the write, but independent verification is still pending. "
-            "I have not marked it complete."
+            "The app accepted the request, but I haven't confirmed the result yet."
         )
-    return _reply("I don't have a matching prior write in this conversation.")
+    return _reply("I can't confirm that it went through from what I have here.")
