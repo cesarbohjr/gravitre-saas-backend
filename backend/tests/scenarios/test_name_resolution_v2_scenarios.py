@@ -341,6 +341,15 @@ async def test_a_permission_failure_drops_cached_candidates_and_asks_for_the_add
 # --- "Send Stephanie the budget spreadsheet" ----------------------------------
 
 
+def _two_budget_files(surface: str) -> str:
+    # Voice speaks dates in full.
+    newer, older = ("October 3rd, 2026", "September 12th, 2026") if surface == "voice" else ("Oct 3, 2026", "Sep 12, 2026")
+    return (
+        f'I found two files that match "budget spreadsheet": Budget 2026 (in Finance, modified {newer}) '
+        f"and Budget 2026 (in Drafts, modified {older}). Which one?"
+    )
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_send_stephanie_the_budget_spreadsheet_end_to_end(surface: str) -> None:
@@ -353,8 +362,7 @@ async def test_send_stephanie_the_budget_spreadsheet_end_to_end(surface: str) ->
         first = await conv.say("Send Stephanie the budget spreadsheet", _guessing_model)
         assert first.text == (
             "I found Stephanie Khan in your Gmail correspondence. "
-            'I found two files that match "budget spreadsheet": Budget 2026 (in Finance, modified Oct 3, 2026) '
-            "and Budget 2026 (in Drafts, modified Sep 12, 2026). Which one?"
+            + _two_budget_files(surface)
         )
         assert _args(first)["to"] == "stephanie.khan@acme.example"
         assert "file_id" not in _args(first), "an ambiguous file was chosen silently"
@@ -374,7 +382,8 @@ async def test_send_stephanie_the_budget_spreadsheet_end_to_end(surface: str) ->
         await conv.say("Here are the numbers for next year.", "Okay.")
         staged = await conv.say("The subject is Budget.", "Okay.")
         assert (staged.pending_task or {}).get("status") == "awaiting_confirm", staged.text
-        assert "stephanie.khan@acme.example" in staged.text
+        spoken = "stephanie dot khan at acme dot example"
+        assert (spoken if surface == "voice" else "stephanie.khan@acme.example") in staged.text
         assert "Budget 2026 on Google Drive, added as a link (attachments aren't supported yet)" in staged.text
         assert _args(staged)["file_id"] == "f-budget-finance"
 
@@ -403,8 +412,7 @@ async def test_two_ambiguities_get_one_question_each(surface: str) -> None:
         second = await conv.say("Khan", "Okay.")
         assert second.text == (
             "Got it, Stephanie Khan. "
-            'I found two files that match "budget spreadsheet": Budget 2026 (in Finance, modified Oct 3, 2026) '
-            "and Budget 2026 (in Drafts, modified Sep 12, 2026). Which one?"
+            + _two_budget_files(surface)
         )
         assert _args(second)["to"] == "stephanie.khan@acme.example"
 
