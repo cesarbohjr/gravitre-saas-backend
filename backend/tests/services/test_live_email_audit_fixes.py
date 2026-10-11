@@ -333,3 +333,17 @@ def test_an_action_that_mentions_online_still_never_searches(utterance: str) -> 
 
 def test_look_it_up_online_still_searches() -> None:
     assert _thin_search("Can you look up their pricing online?")
+
+
+@pytest.mark.parametrize(
+    "utterance",
+    ["Did you make dinner?", "Did you book a flight for your trip?", "Did you send your mom a card?", "Did you cancel on them?"],
+)
+def test_everyday_did_you_questions_are_not_write_status_questions(utterance: str) -> None:
+    assert recent_write_status_turn(utterance, _email_draft_state()) is None
+
+
+@pytest.mark.parametrize("utterance", ["Did you send it?", "Did you send the email?", "Did you book the meeting?", "Did you do that?"])
+def test_did_you_with_the_task_as_object_is_still_a_status_question(utterance: str) -> None:
+    turn = recent_write_status_turn(utterance, _email_draft_state())
+    assert turn is not None and turn["provider_write"] is False
