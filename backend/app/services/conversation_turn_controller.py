@@ -472,7 +472,7 @@ async def run_connector_turn(
         }
 
     if intent == "ambiguous" and has_pending_family(interpretation.task_state):
-        clarify = format_ambiguous_clarify(snap)
+        clarify = format_ambiguous_clarify(snap, message=interpretation.message)
         message_out = clarify
         try:
             from app.services.conversational_reply_service import (

@@ -157,7 +157,7 @@ async def resolve_unified_live_pending_reply(
         )
 
     if intent == "ambiguous":
-        sober = format_ambiguous_clarify(snap)
+        sober = format_ambiguous_clarify(snap, message=message)
         aside = await compose_pending_social_aside(
             message,
             task_state=task_state,

@@ -18,6 +18,14 @@ class TestNarrateToolStarted:
     def test_connector_status_skips_progress_speech(self) -> None:
         assert skip_spoken_tool_progress("getConnectorStatus") is True
         assert skip_spoken_tool_progress("getPipelineHealth") is False
+
+    def test_internal_lookups_are_not_narrated(self) -> None:
+        """Gravitre's own preparation ("Let me check your knowledge base.") is
+        not the user's business work and is never spoken."""
+        for name in ("searchKnowledgeBase", "recallMemory", "webSearch", "internet_research"):
+            assert skip_spoken_tool_progress(name) is True, name
+        for name in ("searchCrmRecords", "listOpportunities", "getCalendarEvents"):
+            assert skip_spoken_tool_progress(name) is False, name
     def test_known_friendly_tool_name_maps_to_hand_tuned_phrase(self) -> None:
         assert narrate_tool_started("getPipelineHealth") == "Let me check your pipeline."
 
@@ -61,10 +69,16 @@ class TestNarrateToolCompleted:
         assert narrate_tool_completed("anyTool", [1, 2, 3]) is None
 
     def test_list_result_key_produces_a_real_count(self) -> None:
-        assert narrate_tool_completed("listOpportunities", {"results": [1, 2, 3]}) == "I found 3 of them."
+        assert narrate_tool_completed("listOpportunities", {"results": [1, 2, 3]}) == "I found 3 opportunities."
+        assert narrate_tool_completed("searchCrmRecords", {"contacts": [1]}) == "I found one contact."
 
     def test_count_key_produces_a_real_count(self) -> None:
-        assert narrate_tool_completed("x", {"totalResults": 7}) == "I found 7 of them."
+        assert narrate_tool_completed("listDeals", {"totalResults": 7}) == "I found 7 deals."
+
+    def test_a_count_that_names_nothing_is_not_spoken(self) -> None:
+        """Live email test 2026-10-11: "I found 5 of them." told the user nothing."""
+        assert narrate_tool_completed("x", {"totalResults": 7}) is None
+        assert narrate_tool_completed("searchKnowledgeBase", {"results": [1, 2, 3, 4, 5]}) is None
 
     def test_zero_results_is_silence_not_a_fake_finding(self) -> None:
         assert narrate_tool_completed("x", {"results": []}) is None

@@ -665,6 +665,7 @@ async def build_unified_turn_knowledge_context(
         research_scope,
         settings=settings,
         internal_thin=internal_thin,
+        query=query,
     ):
         tried.append(SOURCE_INTERNET)
         try:

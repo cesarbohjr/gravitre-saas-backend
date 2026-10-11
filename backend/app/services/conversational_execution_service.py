@@ -458,7 +458,7 @@ class ConversationalExecutionService:
                     "pending_reply_intent": intent,
                 }
             if intent == "ambiguous":
-                clarify = format_ambiguous_clarify(snap)
+                clarify = format_ambiguous_clarify(snap, message=message)
                 message_out = clarify
                 try:
                     from app.services.conversational_reply_service import (

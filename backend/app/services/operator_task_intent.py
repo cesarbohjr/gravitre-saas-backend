@@ -186,13 +186,27 @@ def should_force_live_connector_pipeline(message: str) -> bool:
     return looks_like_operator_task(message)
 
 
-def spoken_should_stream_live_deltas(*, spoken_mode: bool, message: str) -> bool:
-    """Chitchat can stream LIVE tokens; operator tasks wait for the typed final payload."""
+def spoken_should_stream_live_deltas(
+    *,
+    spoken_mode: bool,
+    message: str,
+    task_state: dict[str, Any] | None = None,
+) -> bool:
+    """Chitchat can stream LIVE tokens; operator tasks wait for the typed final payload.
+
+    A turn inside a task in progress (an email draft waiting for details, an
+    approval, a running plan) waits too. LIVE may hand such a turn to the
+    pending-task path after it has started talking, and that path then gives
+    its own answer: the user heard the same clarification twice (live email
+    test, 2026-10-11). Waiting keeps one answer per reply.
+    """
     if not spoken_mode:
         return False
     if should_force_live_connector_pipeline(message):
         return False
-    return True
+    from app.services.conversation_tier import has_pending_task_state
+
+    return not has_pending_task_state(task_state)
 
 
 def resolve_voice_turn_routing(

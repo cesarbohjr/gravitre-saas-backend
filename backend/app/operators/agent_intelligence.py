@@ -4277,7 +4277,11 @@ class AgentIntelligence:
             on_text_delta = None
             from app.services.operator_task_intent import spoken_should_stream_live_deltas
 
-            if spoken_should_stream_live_deltas(spoken_mode=bool(spoken_mode), message=task_text):
+            if spoken_should_stream_live_deltas(
+                spoken_mode=bool(spoken_mode),
+                message=task_text,
+                task_state=task_state if isinstance(task_state, dict) else None,
+            ):
                 delta_queue = asyncio.Queue()
 
                 async def _on_text_delta(piece: str) -> None:

@@ -255,7 +255,14 @@ async def compose_pending_social_aside(
     keep the classifier's abandon/hold or clarify copy unchanged.
     """
     from app.services.conversational_turn_gate import heuristic_turn_shape
+    from app.services.pending_reply_classifier import (
+        build_pending_snapshot,
+        pending_repair_kind,
+    )
 
+    # "Sorry." / "No." get the short repair line from format_ambiguous_clarify.
+    if pending_repair_kind(message, build_pending_snapshot(task_state)):
+        return None
     social = heuristic_turn_shape(message)
     if not social or social.shape != "conversational":
         return None

@@ -74,7 +74,7 @@ def _run(events: list[Any], *, delay_s: float = 0.0, ack_s: float = 0.05, guard:
 def test_ack_is_filler_tool_narration_is_progress_and_text_is_answer() -> None:
     events = [
         AssistantStreamEvent(
-            sse_type="tool-input-available", payload={"toolCallId": "c1", "toolName": "search_knowledge"}
+            sse_type="tool-input-available", payload={"toolCallId": "c1", "toolName": "searchCrmRecords"}
         ),
         AssistantStreamEvent(sse_type="text-delta", payload={"delta": "Renewal is in March. "}),
         AssistantStreamEvent(sse_type="tool-output-available", payload={"toolCallId": "c1", "output": {}}),

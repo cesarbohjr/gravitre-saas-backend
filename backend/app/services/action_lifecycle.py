@@ -604,20 +604,27 @@ def composer_truth_headline(
 
 _WRITE_STATUS_Q = re.compile(
     r"(?is)\b("
-    r"did (?:that|it|the contact|you)|"
-    r"already (?:get )?(?:created|done|sent|posted)|"
-    r"was (?:that|it) created|"
-    r"did you create|"
-    r"is (?:that|it) (?:done|created)"
+    r"did (?:that|it|this|the)(?: \w+)?(?: already| actually)? (?:go through|work|get (?:created|sent|added|saved))|"
+    r"did (?:that(?: contact| email| message| request| task)?|it|the contact|the email) "
+    r"(?:already )?(?:get )?(?:created|done|sent|posted|finished|completed|work|finish|complete|go through)|"
+    r"did you (?:already |actually )?(?:do (?:that|it)|"
+    r"(?:send|create|update|delete|save|post|add|log|make|execute|cancel|publish|schedule|"
+    r"book|forward|share|finish|complete|run) (?:it|that|(?:the|that|my|our) "
+    r"(?:email|message|request|task|workflow|job|update|contact|record|report|invite|meeting|deal|note)))|"
+    r"(?:it|that|they|was it) already (?:get )?(?:created|done|sent|posted)|"
+    r"was (?:that|it) (?:created|sent|done|added|saved)|"
+    r"is (?:that|it) (?:done|created|sent)"
     r")\b"
 )
+# Asks which record or address a finished write used. A bare "the email" is
+# not one: "try again, the email now?" is about the draft in progress.
 _WRITE_IDENTITY_Q = re.compile(
     r"(?is)\b("
-    r"which contact|what(?:'s| is) the email|what email|"
-    r"provider (?:record|id)|hubspot id|record id|"
-    r"the email|contact id"
+    r"which contact|what(?:'s| is| was) the email(?: address)?|what email(?: address)?|"
+    r"provider (?:record|id)|hubspot id|record id|contact id"
     r")\b"
 )
+_RETRY_Q = re.compile(r"(?is)\b(try (?:it |that )?again|retry|resend|send it again|one more time)\b")
 
 
 def identity_literals_from_state(task_state: dict[str, Any] | None) -> list[str]:
@@ -645,17 +652,42 @@ def identity_literals_from_state(task_state: dict[str, Any] | None) -> list[str]
     return literals
 
 
+def _not_yet_line(state: dict[str, Any]) -> str:
+    """'Did you send it?' while a draft still needs details: say no, and what's next."""
+    try:
+        from app.services.pending_reply_classifier import build_pending_snapshot
+
+        missing = [str(m).replace("_", " ") for m in build_pending_snapshot(state).pending_missing]
+    except Exception:  # noqa: BLE001
+        missing = []
+    if missing:
+        return f"Not yet. I still need the {' and '.join(missing)}."
+    return "Not yet. I still need a few details before I can do that."
+
+
 def recent_write_status_turn(
     message: str,
     task_state: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     """Answer natural follow-ups from Observation — never a second provider WRITE."""
-    if not _WRITE_STATUS_Q.search(message or "") and not _WRITE_IDENTITY_Q.search(message or ""):
+    text = message or ""
+    retry = bool(_RETRY_Q.search(text))
+    if not retry and not _WRITE_STATUS_Q.search(text) and not _WRITE_IDENTITY_Q.search(text):
         return None
     state = task_state if isinstance(task_state, dict) else {}
     pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
     obs = _latest_observation(state)
+    # An identity question about an unfinished draft belongs to its current
+    # task handler. Only an actual prior observation can anchor this shortcut.
+    # A retry still goes on: an uncertain attempt may have left no observation.
+    if not retry and not _WRITE_STATUS_Q.search(text) and not obs:
+        return None
     stage = semantic_stage_from_state(state)
+    if retry and stage not in {"OUTCOME_UNCERTAIN", "AWAITING_RECONCILIATION", "EXECUTING"}:
+        # A retry continues the current task through the normal path, which
+        # holds writes for approval. Only an uncertain earlier attempt is
+        # answered here: resending it blind could send it twice.
+        return None
     literals = identity_literals_from_state(state)
     email = next((item for item in literals if "@" in item), "")
     record = ""
@@ -675,30 +707,38 @@ def recent_write_status_turn(
         }
 
     if stage in {"REJECTED", "CANCELLED"}:
-        return _reply("That was cancelled, so nothing was created.")
+        return _reply("That request was cancelled.")
     if stage == "FAILED":
-        return _reply("That didn't finish, so I'm not counting it as created.")
-    if stage == "OUTCOME_UNCERTAIN":
+        return _reply("I couldn't finish that request.")
+    if retry and stage != "EXECUTING":
         return _reply(
-            "I tried that, but I can't tell yet whether it worked, so I'm not counting it as created."
+            "I already tried that once and can't tell yet whether it went through, "
+            "so I won't send it again until I've confirmed it didn't."
+        )
+    if stage in {"OUTCOME_UNCERTAIN", "AWAITING_RECONCILIATION"}:
+        return _reply(
+            "I can't confirm whether that went through yet. We need to check before trying again."
         )
     if stage == "AWAITING_APPROVAL":
         target = f" for {email}" if email else ""
-        return _reply(f"Not yet. That contact is still waiting for your approval{target}.")
+        return _reply(f"Not yet. I still need your approval{target}.")
+    if stage == "EXECUTING":
+        return _reply("It's still in progress. I don't have a confirmed result yet.")
     if not obs and stage not in {"COMPLETED", "EXECUTED_UNVERIFIED", "VERIFIED"}:
-        return _reply("I don't have a matching prior write in this conversation.")
+        if pending:
+            return _reply(_not_yet_line(state))
+        return _reply("I can't confirm that it went through from what I have here.")
     if stage == "COMPLETED":
         if _WRITE_IDENTITY_Q.search(message or ""):
-            bits = ["Yes — that contact was created and verified."]
+            bits = ["Yes, that's done, and I've confirmed it."]
             if email:
                 bits.append(f"The email is {email}.")
             if record:
-                bits.append(f"The provider record is {record}.")
+                bits.append(f"The record ID is {record}.")
             return _reply(" ".join(bits))
-        return _reply("Yes — that contact was created and verified.")
+        return _reply("Yes, that's done, and I've confirmed it.")
     if stage in {"EXECUTED_UNVERIFIED", "VERIFIED"}:
         return _reply(
-            "The provider accepted the write, but independent verification is still pending. "
-            "I have not marked it complete."
+            "The app accepted the request, but I haven't confirmed the result yet."
         )
-    return _reply("I don't have a matching prior write in this conversation.")
+    return _reply("I can't confirm that it went through from what I have here.")

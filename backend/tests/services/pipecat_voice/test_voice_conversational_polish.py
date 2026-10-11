@@ -283,7 +283,7 @@ class TestRegister5bDoesNotContradictRuntimeNarration:
 
     def test_directive_does_not_ban_the_phrase_the_runtime_speaks(self):
         section = spoken_prompt_v2_section().lower()
-        runtime_phrase = narrate_tool_started("searchKnowledgeBase").lower()
+        runtime_phrase = narrate_tool_started("getPipelineHealth").lower()
         assert "let me check" in runtime_phrase, "runtime phrasing changed; revisit 5b"
         assert 'no "let me check"' not in section
 

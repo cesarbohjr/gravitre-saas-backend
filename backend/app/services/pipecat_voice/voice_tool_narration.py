@@ -163,15 +163,37 @@ def _gerund_phrase(tool_name: str) -> str:
     return "that"
 
 
+# Gravitre's own lookups (knowledge base, memory, web search). They are how
+# the answer is prepared, not business work the user asked for, so "Let me
+# check your knowledge base. I found 5 of them." is noise; heard in the live
+# email test 2026-10-11 while the user was dictating an email.
+_INTERNAL_LOOKUP_KEYS = (
+    "knowledgebase",
+    "searchknowledge",
+    "memory",
+    "memories",
+    "websearch",
+    "searchweb",
+    "internetresearch",
+    "webresearch",
+    "retrievecontext",
+    "documentsearch",
+    "searchdocuments",
+)
+
+
 def skip_spoken_tool_progress(tool_name: str) -> bool:
-    """Connector-status tools must not replace the spoken answer with check-narration."""
+    """Tools whose progress is never spoken: connector status (the answer says
+    it) and internal lookups (preparation, not the user's business work)."""
     key = re.sub(r"[^a-z]", "", (tool_name or "").lower())
-    return key in {
+    if key in {
         "getconnectorstatus",
         "assistantgetconnectorstatus",
         "listconnectors",
         "assistantlistconnectors",
-    } or "connectorstatus" in key
+    } or "connectorstatus" in key:
+        return True
+    return any(part in key for part in _INTERNAL_LOOKUP_KEYS)
 
 
 def narrate_tool_started(tool_name: str) -> str:
@@ -247,19 +269,44 @@ def narrate_tool_completed(tool_name: str, output: Any) -> str | None:
     for key in _LIST_RESULT_KEYS:
         rows = output.get(key)
         if isinstance(rows, list):
-            n = len(rows)
-            return _found_line(n)
+            return _found_line(len(rows), _result_noun(key, tool_name))
     for key in _COUNT_KEYS:
         val = output.get(key)
         if isinstance(val, int):
-            return _found_line(val)
+            return _found_line(val, _result_noun(key, tool_name))
     return None
 
 
-def _found_line(n: int) -> str | None:
-    if not n:
+# Result keys that already name what was found.
+_NAMED_RESULT_KEYS = frozenset({"contacts", "companies", "deals", "opportunities"})
+
+
+def _result_noun(key: str, tool_name: str) -> str | None:
+    """The plural noun a count is about, or None when nothing names it.
+
+    "I found 5 of them." with no noun told the user nothing; a count is only
+    worth saying when it says what was found ("I found 3 opportunities.").
+    """
+    if key in _NAMED_RESULT_KEYS:
+        return key
+    words = _humanize_tool_name(tool_name).split()
+    if words and words[0] == "your":
+        words = words[1:]
+    if len(words) == 1 and words[0].endswith("s") and len(words[0]) > 3:
+        return words[0]
+    return None
+
+
+def _singular(noun: str) -> str:
+    if noun.endswith("ies"):
+        return noun[:-3] + "y"
+    return noun.removesuffix("s")
+
+
+def _found_line(n: int, noun: str | None) -> str | None:
+    if not n or not noun:
         return None
-    return "I found one." if n == 1 else f"I found {n} of them."
+    return f"I found one {_singular(noun)}." if n == 1 else f"I found {n} {noun}."
 
 
 def will_execute_staged_connector_write(task_state: dict[str, Any] | None, message: str) -> bool:

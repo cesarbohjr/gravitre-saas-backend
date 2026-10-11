@@ -157,11 +157,11 @@ class SlowToolNotices:
 DEFAULT_DEEP_ACK_SECONDS = 0.6
 
 DEEP_ACKNOWLEDGEMENTS: tuple[str, ...] = (
-    "Sure, let me look.",
-    "Okay, give me a sec.",
-    "Yeah, one sec.",
-    "Sure, let me see.",
-    "Okay, let me look.",
+    "I'm with you.",
+    "Give me a moment.",
+    "Okay, one moment.",
+    "Let me think that through.",
+    "I'll help with that.",
 )
 
 
@@ -183,10 +183,14 @@ def deep_ack_seconds(settings: Any) -> float:
     return max(0.0, float(raw))
 
 
-def pick_deep_acknowledgement(previous: str | None = None) -> str:
+def pick_deep_acknowledgement(previous: str | None = None, *, message: str = "") -> str:
     """A short acknowledgement, never the same one twice in a row."""
     import random
 
+    from app.services.conversation_tier import is_social_repair
+
+    if is_social_repair(message):
+        return ""
     choices = [line for line in DEEP_ACKNOWLEDGEMENTS if line != previous] or list(DEEP_ACKNOWLEDGEMENTS)
     return random.choice(choices)
 

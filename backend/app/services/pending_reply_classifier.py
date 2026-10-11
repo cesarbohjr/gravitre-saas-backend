@@ -301,6 +301,56 @@ def is_clear_pending_cancel_intent(message: str) -> bool:
     return False
 
 
+_BARE_NO_RE = re.compile(r"(?i)^\s*(?:no|nope|nah)(?:[\s,]+(?:no|nope))*\s*[.!]*\s*$")
+_GATHERING_STATUSES = frozenset({"awaiting_params", "collecting"})
+
+
+def pending_repair_kind(message: str, snap: PendingSnapshot) -> str | None:
+    """"apology" or "no" when the reply repairs the conversation, not the task.
+
+    "Sorry." is never a cancel or a field value. A bare "No." while we are
+    still gathering details could mean "drop it" or "that's wrong", so the
+    draft is kept and we ask which (live email test, 2026-10-11). Once the
+    action waits for approval, "no" answers "should I go ahead?" and still
+    cancels.
+    """
+    text = (message or "").strip()
+    if not text:
+        return None
+    from app.services.conversation_tier import is_social_repair
+
+    if is_social_repair(text):
+        return "apology"
+    if _BARE_NO_RE.match(text) and snap.status in _GATHERING_STATUSES:
+        return "no"
+    return None
+
+
+def _pending_thing(snap: PendingSnapshot) -> str:
+    key = f"{snap.invoke_action} {snap.action_label} {snap.integration}".lower()
+    to = str(snap.action_args.get("to") or "").strip()
+    if "email" in key or "gmail" in key or "outlook" in key or "mail." in key:
+        return f"the email to {to}" if to and "@" not in to else "the email"
+    if "slack" in key or "message" in key:
+        return "the message"
+    return ""
+
+
+def format_pending_repair(snap: PendingSnapshot, kind: str) -> str:
+    thing = _pending_thing(snap)
+    if kind == "no":
+        return f"Okay. Should I drop {thing or 'it'}, or change something?"
+    if snap.pending_missing:
+        needed = " and ".join(str(m).replace("_", " ") for m in snap.pending_missing)
+        return f"No problem. I've still got {thing or 'your request'}. I just need the {needed}."
+    if snap.status in {"awaiting_confirm", "awaiting_admin_approval"}:
+        return (
+            f"No problem. {(thing or 'It').capitalize()} is ready. "
+            "Say yes to go ahead, or tell me what to change."
+        )
+    return f"No problem. I've still got {thing or 'your request'}."
+
+
 def classify_pending_reply_fast(
     message: str,
     snap: PendingSnapshot,
@@ -322,6 +372,9 @@ def classify_pending_reply_fast(
         return "hold_commit"
 
     # Active hold/abandon prompt — map confirm-ish to abandon/proceed via reject/confirm.
+    if not snap.hold_prompt_active and pending_repair_kind(text, snap):
+        return "ambiguous"
+
     if snap.hold_prompt_active:
         lower = text.lower()
         if is_clear_pending_cancel_intent(text) or re.search(
@@ -606,7 +659,10 @@ def format_unrelated_hold_prompt(snap: PendingSnapshot, *, new_request: str) -> 
     )
 
 
-def format_ambiguous_clarify(snap: PendingSnapshot) -> str:
+def format_ambiguous_clarify(snap: PendingSnapshot, *, message: str = "") -> str:
+    repair = pending_repair_kind(message, snap)
+    if repair:
+        return format_pending_repair(snap, repair)
     if snap.pending_missing:
         pretty = ", ".join(snap.pending_missing)
         label = snap.action_label or "this action"
