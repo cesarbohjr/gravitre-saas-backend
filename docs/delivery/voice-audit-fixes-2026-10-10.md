@@ -125,3 +125,28 @@ The full voice audit (`/mnt/project-files/audits/chatgpt-voice-full-prompt-audit
 3. **F6: the size count missed slotted objects and wide text.** Strings count their real in-memory size, objects are walked through `__slots__` as well as `__dict__`, and an unknown opaque container counts as over budget. Because real sizes are larger than character counts, the retained budget is now 2 MB (a normal answer measures about 22 KB).
 
 Not in this pass: separate task and reply lifetimes (step 2, also finding 6 above), real-device validation (step 3), dependency-scoped preparation reuse (step 4) and held audio (step 5).
+
+## Full audit, step 2 (F3): explain while the task keeps running
+
+Behind `VOICE_EXPLAIN_ASIDE_V1`, which needs `VOICE_INTERRUPT_INTENTS_V1`. Both default to off.
+
+Before: asking "what does that mean?" while a task ran either waited behind the task (during silent thinking) or cancelled it (while it was speaking).
+
+After: the question is answered as a short aside, and the task keeps running.
+- The turn strategy and the transcript relay both use `VoicePipelineSession.explain_aside_applies`, so the browser and the server agree the words are an aside and not a new turn. If the final words turn out to be something else ("what does that mean, actually cancel it"), they become an ordinary turn after all.
+- The aside's reply runs alongside the task's reply:
+  - The task's reply is silenced and closed.
+  - The aside speaks under its own reply id.
+  - The task's reply then reopens, still silent, under a new id.
+  - The task's result is spoken once after the aside, or only shown if the user moved on or had asked for silence. The turn never closes its reply in the middle of an aside.
+- The aside runs the same brain in fast mode, with the task's facts so far: the request, finished tool results, tools still running, and the answer text so far. It runs inside a discarded speculative scope, so it cannot write anything. Its question and answer are stored as their own exchange.
+- Cancelling the task ("cancel it", a correction) also cancels its aside, so no stale result is spoken. A real barge-in cuts the aside off. A newer aside replaces an older one. A failed aside says "I couldn't answer that just now" and the task still delivers. An aside is cut off after 20 seconds.
+- The web client shows the aside as its own exchange. The running reply keeps its place and finishes after it.
+
+Tests: `tests/services/pipecat_voice/test_explain_aside.py` (19 tests). Each fence was removed in turn and a test failed every time. Web: `voice-playback-progress.test.ts`.
+
+Not covered: the aside is not tested on real devices or with live models yet (audit step 3).
+
+Step 1 follow-up: saves erased keys they did not know. On main too, every task_state save rebuilt the column from the known keys only, so a later save erased `conversation_memory` (and any other key outside `DEFAULT_TASK_STATE`). It showed up as a rare failure in `test_adopted_speculative_turn_persists_the_same_state_as_a_confirmed_turn`, which failed 1 in 60 runs under load on main and 6 in 60 after step 1 moved saves off the loop. Saves now keep unknown keys (`_normalize_state(keep_unknown=True)` in the read-merge-write). Reads are unchanged. The test now ignores only where the fire-and-forget memory save lands in the write order, and still compares the full end state. Under the same load it fails 0 in 60. Regression: `test_a_save_never_erases_keys_it_does_not_know`.
+
+Step 1 note: task_state saves are serialized per conversation within one server process. Across several server processes the database update is still last-write-wins. The cancellation fence still applies, but it is not a database-side conditional update.

@@ -367,3 +367,85 @@ def test_an_opaque_object_counts_as_over_budget() -> None:
 
     assert _retained_size({"x": array.array("b", b"x" * 10)}, 512_000) > 512_000
     assert _retained_size(_Opaque(), 512_000) <= 512_000, "an empty slotted object is still visible"
+
+
+# --- a save keeps keys outside the known task_state shape ---------------------------
+
+
+@pytest.mark.asyncio
+async def test_a_save_never_erases_keys_it_does_not_know(mock_settings):
+    """conversation_memory is not a DEFAULT_TASK_STATE key. The update replaces
+    the whole column, so before this a later save erased it from the row."""
+    from tests.services.fake_supabase_db import FakeSupabaseDB
+
+    db = FakeSupabaseDB()
+    db.tables["conversations"] = [{"id": "c1", "org_id": "o1", "task_state": {}}]
+    svc = ConversationStateService(mock_settings)
+    memory = {"failed_actions": [{"action": "ads_report", "connector": "google_ads"}]}
+    await svc.update_task_state("c1", "o1", {"conversation_memory": memory}, client=db)
+    await svc.update_task_state("c1", "o1", {"clarified_params": {"goal": "check ads"}}, client=db)
+    stored = db.tables["conversations"][0]["task_state"]
+    assert stored["conversation_memory"] == memory
+    assert stored["clarified_params"]["goal"] == "check ads"
+
+
+# --- every task_state writer shares the per-conversation lock -----------------------
+
+
+@pytest.mark.asyncio
+async def test_an_approval_claim_and_a_save_never_wipe_each_other() -> None:
+    """The claim used to read and write on the loop, outside the save's lock.
+
+    With the save now on the I/O pool, a claim landing between the save's
+    read and write was wiped by it (or wiped it)."""
+    db = _SlowDB()
+    db.tables["conversations"] = [
+        {
+            "id": CONV,
+            "org_id": ORG,
+            "user_id": USER,
+            "task_state": {"pending_task": {"status": "awaiting_approval", "action": "send_email"}},
+        }
+    ]
+    service = ConversationStateService(SETTINGS)
+    save = asyncio.create_task(
+        service.update_task_state(CONV, ORG, {"clarified_params": {"goal": "send the deck"}}, client=db)
+    )
+    await asyncio.sleep(0.05)  # the save has read and is about to write
+    claimed = await service.compare_and_set_pending_status(
+        CONV,
+        ORG,
+        expected_status="awaiting_approval",
+        updates={"pending_task": {"status": "executing", "action": "send_email"}},
+        client=db,
+    )
+    await save
+    stored = db.tables["conversations"][0]["task_state"]
+    assert claimed is True
+    assert stored["pending_task"]["status"] == "executing", "the claim survived the save"
+    assert stored["clarified_params"]["goal"] == "send the deck", "the save survived the claim"
+
+
+@pytest.mark.asyncio
+async def test_a_channel_override_keeps_what_was_saved_since_the_turn_read() -> None:
+    """The override used to save the snapshot the turn read at its start."""
+    from app.services.unified_turn_pending_live import resolve_unified_live_channel_override_reply
+
+    db = FakeSupabaseDB()
+    db.tables["conversations"] = [{"id": CONV, "org_id": ORG, "user_id": USER, "task_state": {}}]
+    snapshot: dict[str, Any] = {}
+    # Saved after the turn read its snapshot.
+    await ConversationStateService(SETTINGS).update_task_state(
+        CONV, ORG, {"pending_task": {"status": "awaiting_approval"}}, client=db
+    )
+    with patch(
+        "app.services.gravitre_voice.detect_channel_override_integration", return_value="gmail"
+    ), patch("app.services.operator_task_intent.looks_like_operator_task", return_value=False):
+        result = await resolve_unified_live_channel_override_reply(
+            message="no use gmail", task_state=snapshot, org_id=ORG, client=db, conversation_id=CONV
+        )
+    assert result is not None
+    stored = db.tables["conversations"][0]["task_state"]
+    assert stored["clarified_params"]["channel_override"] == "gmail"
+    assert stored["preferred_connector"] == "gmail"
+    assert stored["pending_task"]["status"] == "awaiting_approval", "the later save is kept"

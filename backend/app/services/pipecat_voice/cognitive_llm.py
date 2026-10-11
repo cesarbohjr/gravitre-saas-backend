@@ -16,6 +16,7 @@ from pipecat.frames.frames import (
     AggregatedTextFrame,
     ErrorFrame,
     Frame,
+    InterruptionFrame,
     LLMContextFrame,
     LLMFullResponseEndFrame,
     LLMFullResponseStartFrame,
@@ -109,6 +110,20 @@ VOICE_EXPLAIN_INTERRUPTION_NOTE = (
     "briefly from the conversation so far. Do not start, change or cancel any task, and do not "
     "repeat the whole reply."
 )
+# voice_explain_aside_v1: "what does that mean?" while a task still runs.
+VOICE_EXPLAIN_ASIDE_NOTE = (
+    "The user asked this while a task you are doing for them is still running. Answer the "
+    "question briefly from the conversation and the task facts below. If the answer depends on "
+    "results that are not in yet, say so plainly and say you are still working on it. Do not "
+    "start, change or cancel any task, and do not give the task's full answer."
+)
+# Said when the aside itself fails; the task goes on either way.
+VOICE_EXPLAIN_ASIDE_FAILED = "I couldn't answer that just now. I'm still working on your request."
+# An aside that has not finished by then is cut off (the task's reply waits for it).
+EXPLAIN_ASIDE_MAX_S = 20.0
+# Bounds on the running task's facts handed to the aside.
+_ASIDE_FACT_CHARS = 800
+_ASIDE_ANSWER_CHARS = 2000
 # How long a "cancel it" waits for a write already at the provider to report back.
 TASK_CANCEL_SETTLE_WAIT_S = 1.5
 # voice_incomplete_turn_hold_v1: hard ceiling on the hold, whatever the setting.
@@ -450,6 +465,13 @@ class GravitreCognitiveLLMService(LLMService):
         self._playout_clock: Any | None = None
         self._answer_first: AnswerFirstSpeech | None = None
         self._answer_first_task: asyncio.Task[Any] | None = None
+        # voice_explain_aside_v1: a confirmed turn is running (its work is the
+        # task an aside explains), the aside answering now, and what the
+        # running task has done so far (the aside's facts).
+        self._turn_active = False
+        self._aside_task: asyncio.Task[Any] | None = None
+        self._aside_work: TurnCancellation | None = None
+        self._task_progress: dict[str, Any] = {}
 
     async def _apply_tier_voice(self, tier: str | None) -> None:
         """Livelier delivery for light turns, steadier for deep (stability only).
@@ -645,6 +667,9 @@ class GravitreCognitiveLLMService(LLMService):
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
+        if isinstance(frame, InterruptionFrame):
+            # A real barge-in cuts an aside off too.
+            self._cancel_aside("barge_in")
         if isinstance(frame, LLMContextFrame) and getattr(frame, "speculation", False):
             # Pipecat's provisional context for a turn that has not ended. This
             # service runs its own speculative path (speculative_prefetch.py);
@@ -671,6 +696,10 @@ class GravitreCognitiveLLMService(LLMService):
             self._turn_work = turn_work
             if session is not None:
                 session.bind_turn_work(turn_work)
+            self._task_progress = {"request": "", "running": {}, "done": [], "answer": ""}
+            self._turn_active = True
+            if session is not None:
+                session.work_active = True
             try:
                 await self.start_processing_metrics()
                 self._turn_brain_marks = []
@@ -727,6 +756,13 @@ class GravitreCognitiveLLMService(LLMService):
                 self._release_adopted_run()
                 await self._stop_answer_first()
                 await self.stop_processing_metrics()
+                if session is not None:
+                    # No new aside starts for a turn that is ending.
+                    session.work_active = False
+                # An aside still speaking finishes first: this turn's response
+                # is closed after it, never in the middle of it.
+                await self._await_aside()
+                self._turn_active = False
                 await self.push_frame(LLMFullResponseEndFrame())
                 self._finish_turn_trace()
             return
@@ -824,6 +860,7 @@ class GravitreCognitiveLLMService(LLMService):
             )
         self._active_user_text = user_text
         self._answer_started = False
+        self._task_progress["request"] = user_text
         if self._interrupt_reporter is not None:
             self._interrupt_reporter.begin_turn(user_text)
         if await asyncio.to_thread(
@@ -1231,6 +1268,7 @@ class GravitreCognitiveLLMService(LLMService):
                 if call_id and tool_name:
                     tool_names_by_call_id[call_id] = tool_name
                     tool_call_started_at[call_id] = time.perf_counter()
+                    self._task_progress.setdefault("running", {})[call_id] = tool_name
                 if tool_name and tool_name not in narrated_tool_starts:
                     narrated_tool_starts.add(tool_name)
                     if not skip_spoken_tool_progress(tool_name):
@@ -1251,6 +1289,7 @@ class GravitreCognitiveLLMService(LLMService):
                         int((time.perf_counter() - turn_start) * 1000),
                     )
                 narration = narrate_tool_completed(tool_name, payload.get("output"))
+                self._note_tool_result(call_id, tool_name, narration, payload.get("output"))
                 if narration and not skip_spoken_tool_progress(tool_name):
                     await self._flush_client_text(client_text_filter)
                     if self._answer_first is not None:
@@ -1276,6 +1315,9 @@ class GravitreCognitiveLLMService(LLMService):
             delta = str(payload.get("delta") or payload.get("textDelta") or "")
             if not delta:
                 continue
+            answer_so_far = str(self._task_progress.get("answer") or "")
+            if len(answer_so_far) < _ASIDE_ANSWER_CHARS:
+                self._task_progress["answer"] = (answer_so_far + delta)[:_ASIDE_ANSWER_CHARS]
             client_delta = client_text_filter.feed(delta)
             if client_delta:
                 await self.push_frame(
@@ -1829,6 +1871,296 @@ class GravitreCognitiveLLMService(LLMService):
                 return False
             await asyncio.sleep(min(_INCOMPLETE_HOLD_POLL_S, remaining))
 
+    # -- voice_explain_aside_v1 ------------------------------------------------
+    def _explain_aside_enabled(self) -> bool:
+        return self._interrupt_intents_enabled() and bool(
+            getattr(self._app_settings, "voice_explain_aside_v1", False)
+        )
+
+    def start_explain_aside(self, question: str) -> bool:
+        """Answer ``question`` as an aside while this turn's work keeps running.
+
+        Called by the turn strategy (through the voice session) instead of
+        letting the words become a turn of their own. A newer aside replaces
+        an older one. False: not started, the words take the ordinary path.
+        """
+        question = (question or "").strip()
+        if not question or not self._explain_aside_enabled():
+            return False
+        previous = self._aside_task if self._aside_task is not None and not self._aside_task.done() else None
+        self._cancel_aside("replaced")
+        if self._speculative_coordinator is not None:
+            # A run speculated on these words is for a turn that never comes.
+            with contextlib.suppress(Exception):
+                self._speculative_coordinator.cancel()
+        aside_work = TurnCancellation()
+        main_work = self._turn_work if self._turn_active else None
+        if main_work is not None:
+            # Cancelling the task ("cancel it", a correction) ends its aside.
+            main_work.link(aside_work)
+        self._aside_work = aside_work
+        self._aside_task = asyncio.ensure_future(self._run_explain_aside(question, aside_work, after=previous))
+        logger.info("pipecat_voice_explain_aside_started org_id=%s task_running=%s", self._org_id, main_work is not None)
+        return True
+
+    def _cancel_aside(self, reason: str) -> None:
+        task, work = self._aside_task, self._aside_work
+        if task is None or task.done():
+            return
+        if work is not None:
+            work.cancel(reason)
+        task.cancel()
+
+    async def _await_aside(self) -> None:
+        """Wait for the aside speaking now, if any (never raises for the aside's own end)."""
+        task = self._aside_task
+        if task is None or task.done() or task is asyncio.current_task():
+            return
+        await asyncio.wait({task})
+
+    def _note_tool_result(self, call_id: str, tool_name: str, narration: str | None, output: Any) -> None:
+        """Record a finished tool call as a fact the aside may explain from."""
+        progress = self._task_progress
+        progress.setdefault("running", {}).pop(call_id, None)
+        detail = ""
+        if output is not None:
+            try:
+                import json
+
+                detail = output if isinstance(output, str) else json.dumps(output, default=str)
+            except Exception:  # noqa: BLE001
+                detail = str(output)
+        done = progress.setdefault("done", [])
+        if len(done) < 12:
+            line = narration or f"{tool_name or 'A step'} finished."
+            if detail:
+                line = f"{line} Result: {detail[:_ASIDE_FACT_CHARS]}"
+            done.append(line)
+
+    def _task_facts_note(self) -> str:
+        progress = self._task_progress or {}
+        lines = [VOICE_EXPLAIN_ASIDE_NOTE, "", "Task facts:"]
+        request = str(progress.get("request") or "").strip()
+        lines.append(f"- The user's request: {request or 'unknown'}")
+        done = [str(d) for d in progress.get("done") or []]
+        lines.append("- Finished so far: " + ("; ".join(done) if done else "nothing yet"))
+        running = sorted({str(n) for n in (progress.get("running") or {}).values() if n})
+        lines.append("- Still running: " + (", ".join(running) if running else "the final answer"))
+        answer = str(progress.get("answer") or "").strip()
+        if answer:
+            lines.append(f"- Answer text so far (not all of it was heard): {answer}")
+        return "\n".join(lines)
+
+    async def _run_explain_aside(
+        self, question: str, aside_work: TurnCancellation, *, after: asyncio.Task[Any] | None = None
+    ) -> None:
+        """Speak the aside under its own reply, between two parts of the task's reply.
+
+        The task's reply is silenced and closed, the aside opens a reply of its
+        own, and when the aside ends the task's reply reopens, still silent,
+        under a new id: the task's result is then spoken once (or only shown
+        if the user moved on) by ``_resume_speech_for_result``. The aside runs
+        under a discarded speculative scope, so it cannot write anything.
+        """
+        if after is not None and not after.done():
+            # The aside this one replaces closes its reply first.
+            await asyncio.wait({after})
+        session = self._voice_session()
+        main_open = self._turn_active
+        answer = ""
+        complete: AssistantStreamComplete | None = None
+        failed = False
+        main_was_muted = False
+        main_muted_at: int | None = None
+        if session is not None and main_open and self._reply_id is not None:
+            main_was_muted = session.reply_muted(self._reply_id)
+            main_muted_at = session.muted_at_turn_starts.get(int(self._reply_id))
+            session.mute_reply(self._reply_id)
+        try:
+            if main_open:
+                await self.push_frame(LLMFullResponseEndFrame())
+            start = LLMFullResponseStartFrame()
+            if session is not None:
+                setattr(start, "gravitre_reply_id", session.begin_reply())
+            await self.push_frame(start)
+            try:
+                answer, complete = await asyncio.wait_for(
+                    self._stream_explain_aside(question, aside_work), timeout=EXPLAIN_ASIDE_MAX_S
+                )
+            except asyncio.TimeoutError:
+                logger.warning("pipecat_voice_explain_aside_timeout org_id=%s", self._org_id)
+                aside_work.cancel("aside_timeout")
+                failed = True
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - the task goes on whatever the aside does
+                logger.warning("pipecat_voice_explain_aside_failed org_id=%s error=%s", self._org_id, exc)
+                failed = True
+            if failed or not (answer or aside_work.cancelled):
+                answer = VOICE_EXPLAIN_ASIDE_FAILED
+                await self._speak_aside_text(answer)
+        finally:
+            await self.push_frame(LLMFullResponseEndFrame())
+            if self._turn_active:
+                # The task's reply goes on under a new id, still silent. Its
+                # result is spoken once the user has heard the aside, unless
+                # they move on (or had already asked for silence).
+                reopen = LLMFullResponseStartFrame()
+                if session is not None:
+                    rid = session.begin_reply()
+                    session.mute_reply(rid)
+                    if main_was_muted and main_muted_at is not None:
+                        session.muted_at_turn_starts[rid] = main_muted_at
+                    self._reply_id = rid
+                    setattr(reopen, "gravitre_reply_id", rid)
+                self._tts_text_pending = False
+                await self.push_frame(reopen)
+            cancelled = aside_work.cancelled and not failed
+            # Always sent, cut off or not, so the browser closes the aside.
+            await self.push_frame(
+                OutputTransportMessageUrgentFrame(
+                    message={
+                        "type": "assistant_turn.complete",
+                        "aside": True,
+                        "cancelled": cancelled,
+                        "turn_id": str(getattr(complete, "message_id", None) or ""),
+                        "conversation_id": self._conversation_id,
+                        "user_text": question,
+                        "text": answer,
+                    }
+                )
+            )
+            logger.info(
+                "pipecat_voice_explain_aside_done org_id=%s chars=%s cancelled=%s failed=%s",
+                self._org_id,
+                len(answer),
+                cancelled,
+                failed,
+            )
+        if answer and not cancelled and complete is not None and not failed:
+            await asyncio.to_thread(
+                self._persist_completed_voice_turn,
+                user_text=question,
+                assistant_text=answer,
+                complete_event=complete,
+            )
+
+    async def _speak_aside_text(self, text: str) -> None:
+        await self.push_frame(
+            OutputTransportMessageUrgentFrame(
+                message={"type": "assistant_text", "delta": text + " ", "kind": ANSWER, "aside": True}
+            )
+        )
+        spoken = self._sanitize_for_tts(text)
+        if spoken:
+            self._note_bot_speech(spoken)
+            await self._push_llm_text(spoken + " ")
+
+    async def _stream_explain_aside(
+        self, question: str, aside_work: TurnCancellation
+    ) -> tuple[str, AssistantStreamComplete | None]:
+        """Run the shared brain on ``question`` (fast mode, no writes) and speak it as it streams."""
+        from app.operators.agent_intelligence import get_agent_intelligence
+        from app.services.conversation_tier import tier_to_execution_mode
+        from app.services.shared_turn_preparation import TurnGuardrailBlocked, guard_spoken_turn
+        from app.services.speculative_execution import SpeculativeScope, speculative_scope
+
+        history = self._durable_rows()
+        request = str(self._task_progress.get("request") or "").strip()
+        if request:
+            history.append({"role": "user", "content": request})
+        heard = str(self._task_progress.get("answer") or "").strip()
+        if heard:
+            history.append({"role": "assistant", "content": heard})
+        turn_inputs = dict(await self.shared_turn_inputs(question))
+        base = str(turn_inputs.get("assistant_base_prompt") or "")
+        note = self._task_facts_note()
+        turn_inputs["assistant_base_prompt"] = f"{base}\n\n{note}" if base else note
+        mode = tier_to_execution_mode("light")
+        await guard_spoken_turn(
+            self._app_settings,
+            org_id=self._org_id,
+            user_text=question,
+            system_prompt=str(turn_inputs.get("assistant_base_prompt") or ""),
+            history=history,
+            mode=mode,
+        )
+        intelligence = get_agent_intelligence()
+        scope = SpeculativeScope()
+        answer = ""
+        buffer = ""
+        complete: AssistantStreamComplete | None = None
+        chunk_tuning = resolve_voice_tts_chunk_tuning(self._app_settings)
+        client_filter = SpokenMarkdownStreamFilter()
+        try:
+            with speculative_scope(scope), bound_turn_cancellation(aside_work):
+                events = with_silence_ticks(
+                    intelligence.execute_task_streaming(
+                        settings=self._app_settings,
+                        org_id=self._org_id,
+                        user_id=self._user_id,
+                        query=question,
+                        agent_id=str((self._agent or {}).get("id") or "") or None,
+                        conversation_history=history or None,
+                        history_summary=self._durable_summary,
+                        conversation_id=self._conversation_id,
+                        spoken_mode=True,
+                        mode=mode,
+                        **turn_inputs,
+                    ),
+                    interval_s=0,
+                    cancelled=aside_work.waiter(),
+                )
+                async for event in events:
+                    if event is TURN_CANCELLED or aside_work.cancelled or scope.blocked:
+                        break
+                    if isinstance(event, AssistantStreamComplete):
+                        complete = event
+                        continue
+                    if not isinstance(event, AssistantStreamEvent) or event.sse_type != "text-delta":
+                        continue
+                    payload = event.payload if isinstance(event.payload, dict) else {}
+                    delta = str(payload.get("delta") or payload.get("textDelta") or "")
+                    if not delta:
+                        continue
+                    answer += delta
+                    client_delta = client_filter.feed(delta)
+                    if client_delta:
+                        await self.push_frame(
+                            OutputTransportMessageUrgentFrame(
+                                message={"type": "assistant_text", "delta": client_delta, "kind": ANSWER, "aside": True}
+                            )
+                        )
+                    buffer += delta
+                    chunks, buffer = split_speakable_chunks(
+                        buffer, min_chars=chunk_tuning.min_chars, aggressive=chunk_tuning.v2_enabled
+                    )
+                    for chunk in chunks:
+                        spoken = self._sanitize_for_tts(chunk)
+                        if spoken:
+                            self._note_bot_speech(spoken)
+                            await self._push_llm_text(spoken + " ")
+        except TurnGuardrailBlocked as blocked:
+            await self._speak_aside_text(blocked.spoken)
+            return blocked.spoken, None
+        finally:
+            # Nothing the aside did is kept: it explains, it never acts.
+            scope.discard()
+        if aside_work.cancelled:
+            return answer.strip(), None
+        pending = client_filter.flush()
+        if pending:
+            await self.push_frame(
+                OutputTransportMessageUrgentFrame(
+                    message={"type": "assistant_text", "delta": pending, "kind": ANSWER, "aside": True}
+                )
+            )
+        tail = self._sanitize_for_tts(buffer)
+        if tail:
+            self._note_bot_speech(tail)
+            await self._push_llm_text(tail + " ")
+        return answer.strip(), complete
+
     def _release_adopted_run(self) -> None:
         """Stop the adopted speculative run's producer when its turn ends.
 
@@ -1883,6 +2215,9 @@ class GravitreCognitiveLLMService(LLMService):
         already shows. Either way it is delivered once and persisted with the
         turn.
         """
+        # An aside speaking now finishes first; the result is never spoken
+        # over it (and is decided against the reply the aside reopened).
+        await self._await_aside()
         if self._result_delivery is not None:
             return self._result_delivery == "spoken"
         session = self._voice_session()

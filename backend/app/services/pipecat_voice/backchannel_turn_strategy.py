@@ -197,6 +197,14 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         # voice_interrupt_intents_v1: the held utterance asked to silence
         # speech only ("stop talking, keep working").
         self._held_speech_stop = False
+        # voice_explain_aside_v1: the held utterance asks to explain while the
+        # work runs; its final words start the aside (or, if they turn out to
+        # be something else, an ordinary turn).
+        self._held_aside = False
+        # The held aside began while the brain was thinking (nothing playing).
+        self._held_aside_thinking = False
+        # The pending classification is being resolved by a final transcript.
+        self._resolved_on_final = False
         # Latest interim text of the pending utterance (finals go to _buffer_text).
         self._interim_text = ""
         # voice_session.filler_finals_dropped when the pending start opened.
@@ -278,6 +286,7 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             self._held_turn = False
             self._held_text = ""
             self._held_speech_stop = False
+            self._held_aside = False
             # The brain mid-turn with nothing playing is protected too: Pipecat
             # would otherwise cancel the in-flight request on any sound.
             thinking = not self._bot_speaking and self._assistant_thinking()
@@ -292,6 +301,9 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             # while the held utterance is still only filler / small talk, so
             # "you there?" never becomes a queued turn of its own.
             self._held_text = f"{self._held_text} {frame.text}".strip()
+            if self._held_aside:
+                await self._finish_held_aside(str(frame.text or "").strip() or self._held_text)
+                return ProcessFrameResult.CONTINUE
             if self._held_speech_stop:
                 # A silenced reply's work keeps running only while the words
                 # still ask for silence alone. "...and cancel it" (or any real
@@ -320,6 +332,12 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
                 )
             )
             if still_hold:
+                await self.trigger_reset_aggregation()
+            elif self._held_thinking and await self._try_start_aside(self._held_text):
+                # "What does that mean?" while the work runs: answered as an
+                # aside, the work goes on, and the words never queue a turn.
+                self._held_turn = False
+                self._held_thinking = False
                 await self.trigger_reset_aggregation()
             else:
                 self._held_turn = False
@@ -358,7 +376,11 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             # Resolve as soon as we have a CONFIDENT read - a real
             # classification (not the "no text yet" empty-string fallback).
             if self._buffer_text:
-                await self._resolve(classification, resolved_by_timeout=False)
+                self._resolved_on_final = True
+                try:
+                    await self._resolve(classification, resolved_by_timeout=False)
+                finally:
+                    self._resolved_on_final = False
             return ProcessFrameResult.CONTINUE
 
         if isinstance(frame, InterimTranscriptionFrame) and self._pending:
@@ -433,9 +455,57 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         except Exception:  # noqa: BLE001
             return False
 
-    async def _silence_reply(self) -> bool:
+    def _aside_applies(self, text: str) -> bool:
+        probe = getattr(self._voice_session, "explain_aside_applies", None)
+        try:
+            return bool(self._intents_enabled() and callable(probe) and probe(text))
+        except Exception:  # noqa: BLE001 - an ordinary turn instead
+            return False
+
+    async def _try_start_aside(self, text: str) -> bool:
+        """Start the explain aside for ``text`` when it applies. False: nothing started."""
+        if not text or not self._aside_applies(text):
+            return False
+        start = getattr(self._voice_session, "start_explain_aside", None)
+        started = bool(callable(start) and start(text))
+        if started:
+            logger.info("voice_turn_taking_explain_aside text=%r", text[:80])
+        return started
+
+    async def _finish_held_aside(self, final_text: str) -> None:
+        """The held aside's final words arrived: start the aside, or let them be a turn."""
+        thinking = self._held_aside_thinking
+        self._held_turn = False
+        self._held_aside = False
+        self._held_aside_thinking = False
+        if await self._try_start_aside(final_text):
+            await self.trigger_reset_aggregation()
+            return
+        # Something else after all ("what does that mean, actually cancel
+        # it"): the words stay in the aggregation and become the next turn.
+        logger.info("voice_turn_taking_explain_aside_escalated text=%r", final_text[:80])
+        if thinking:
+            # As for any held-while-thinking utterance: no interruption
+            # broadcast (it would flush the queued turn), but a stop or
+            # correction cancels the running work now.
+            intent = classify_interrupt_intent(final_text)
+            if intent in _CANCELS_RUNNING_WORK:
+                cancel_work = getattr(self._voice_session, "cancel_turn_work", None)
+                if callable(cancel_work):
+                    cancel_work(f"held_{intent.value}")
+            note = getattr(self._voice_session, "note_held_speech_escalated", None)
+            if callable(note):
+                note()
+            return
+        # The reply was silenced for the aside: now it is a real interruption.
+        await self.broadcast_frame(InterruptionFrame)
+
+    async def _silence_reply(self, *, notice: bool = True) -> bool:
         """Ask the interrupt reporter to silence the current reply. False: nothing silenced."""
         handler = getattr(self._voice_session, "speech_stop_handler", None)
+        if not notice:
+            # An aside follows at once: no "I'll stop talking" note.
+            handler = getattr(self._voice_session, "speech_aside_handler", None) or handler
         if not callable(handler):
             return False
         try:
@@ -600,6 +670,37 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             self._held_turn = True
             self._held_text = self._buffer_text
             self._held_thinking = False
+            return
+        if self._buffer_text and self._aside_applies(self._buffer_text):
+            # voice_explain_aside_v1: "what does that mean?" while the work
+            # runs. Silence what is playing (the work keeps going) and open the
+            # user turn without an interruption. On a final transcript the
+            # aside starts now; on interim words it starts on the final.
+            logger.info(
+                "voice_turn_taking_explain_aside_hold text=%r decision_latency_ms=%.1f on_final=%s",
+                self._buffer_text[:80],
+                decision_latency_ms,
+                self._resolved_on_final,
+            )
+            if self._bot_speaking:
+                await self._silence_reply(notice=False)
+            await self.trigger_user_turn_started(
+                enable_interruptions=False, enable_user_speaking_frames=False
+            )
+            if self._resolved_on_final:
+                if await self._try_start_aside(self._buffer_text):
+                    await self.trigger_reset_aggregation()
+                    return
+                logger.info("voice_turn_taking_explain_aside_escalated text=%r", self._buffer_text[:80])
+                if self._bot_speaking or not self._pending_thinking:
+                    await self.broadcast_frame(InterruptionFrame)
+                return
+            await self.trigger_reset_aggregation()
+            self._held_turn = True
+            self._held_text = self._buffer_text
+            self._held_thinking = False
+            self._held_aside = True
+            self._held_aside_thinking = not self._bot_speaking
             return
         backchannel = is_backchannel(classification)
         if (

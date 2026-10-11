@@ -8,6 +8,7 @@ full_draft plus optional client playback_offset_ms.
 from __future__ import annotations
 
 import asyncio
+import functools
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -199,6 +200,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         if voice_session is not None:
             voice_session.answer_expected = self.answer_expected
             voice_session.speech_stop_handler = self.silence_current_reply
+            voice_session.speech_aside_handler = functools.partial(self.silence_current_reply, notice=False)
             voice_session.speech_duck_handler = self.send_speech_duck
 
     @property
@@ -781,7 +783,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             FrameDirection.DOWNSTREAM,
         )
 
-    async def silence_current_reply(self) -> bool:
+    async def silence_current_reply(self, *, notice: bool = True) -> bool:
         """Silence this reply ("stop talking") and keep the work behind it running.
 
         Nothing goes upstream, so the brain's turn (and any authorized tool
@@ -827,7 +829,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             FrameDirection.DOWNSTREAM,
         )
         notice_sent = getattr(session, "muted_notice_sent", None)
-        if work_continues and isinstance(notice_sent, set) and reply_id not in notice_sent:
+        if notice and work_continues and isinstance(notice_sent, set) and reply_id not in notice_sent:
             notice_sent.add(reply_id)
             await self.push_frame(
                 OutputTransportMessageUrgentFrame(

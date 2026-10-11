@@ -93,6 +93,9 @@ class VoicePipelineSession:
     # Set by the interrupt reporter: silence the current reply without
     # cancelling its work. Zero-arg coroutine function.
     speech_stop_handler: Any = None
+    # The same, without the "I'll stop talking" note: an explain aside is
+    # about to answer instead.
+    speech_aside_handler: Any = None
     # Set by the interrupt reporter (voice_overlap_duck_v1): tell the client to
     # duck (True) or restore (False) the current reply's audio while an
     # overlapping user turn is classified. Coroutine function (ducked: bool).
@@ -114,6 +117,13 @@ class VoicePipelineSession:
     # Muted reply -> user_turn_starts when it was muted: a later start means
     # the user moved on, so the reply's result is shown instead of spoken.
     muted_at_turn_starts: dict[int, int] = field(default_factory=dict)
+    # voice_explain_aside_v1 (with voice_interrupt_intents_v1).
+    explain_aside_enabled: bool = False
+    # Set by the cognitive LLM service: True while a confirmed turn runs.
+    work_active: bool = False
+    # Set by the cognitive LLM service: start an explain aside for this text.
+    # One-arg callable returning True when the aside was started.
+    aside_handler: Any = None
 
     def note_filler_dropped(self) -> None:
         self.filler_finals_dropped += 1
@@ -142,6 +152,33 @@ class VoicePipelineSession:
         if token is None:
             return False
         return bool(token.cancel(reason))
+
+    def explain_aside_applies(self, text: str) -> bool:
+        """True when ``text`` asks to explain while a turn's work is running.
+
+        The turn strategy and the transcript relay both decide with this, so
+        the browser and the server agree that the words are an aside, not a
+        new turn.
+        """
+        if not self.explain_aside_enabled or not callable(self.aside_handler):
+            return False
+        if not self.work_active:
+            return False
+        from app.services.pipecat_voice.backchannel_classifier import (
+            InterruptIntent,
+            classify_interrupt_intent,
+        )
+
+        return classify_interrupt_intent(text or "") is InterruptIntent.EXPLAIN
+
+    def start_explain_aside(self, text: str) -> bool:
+        handler = self.aside_handler
+        if not callable(handler):
+            return False
+        try:
+            return bool(handler(text))
+        except Exception:  # noqa: BLE001 - fall back to an ordinary turn
+            return False
 
     def user_started_since_mute(self, reply_id: int) -> bool:
         """True when a user turn started after ``reply_id`` was silenced."""

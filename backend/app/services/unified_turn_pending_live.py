@@ -200,11 +200,6 @@ async def resolve_unified_live_channel_override_reply(
     if looks_like_operator_task(message or ""):
         return None
 
-    state = dict(task_state or {})
-    clarified = safe_normalize_stored_dict(state, key='clarified_params')
-    clarified["channel_override"] = override
-    state["clarified_params"] = clarified
-    state["preferred_connector"] = override
     # Persist only to this conversation. Filtering by org_id alone previously
     # overwrote every org conversation's task_state (451 rows @ 2026-07-25T05:12:32Z),
     # including live-battery fixture args (demo@example.com).
@@ -218,9 +213,23 @@ async def resolve_unified_live_channel_override_reply(
             if client and org_id and conv_id:
                 from datetime import datetime, timezone
 
-                client.table("conversations").update(
-                    {"task_state": state, "updated_at": datetime.now(timezone.utc).isoformat()}
-                ).eq("id", conv_id).eq("org_id", org_id).execute()
+                from app.services.conversation_state_service import get_conversation_state_service
+
+                def _apply(fresh: dict[str, Any]) -> None:
+                    # On the state as stored now, not the snapshot this turn
+                    # read earlier: a save made since is kept.
+                    fresh_clarified = safe_normalize_stored_dict(fresh, key="clarified_params")
+                    fresh_clarified["channel_override"] = override
+                    fresh["clarified_params"] = fresh_clarified
+                    fresh["preferred_connector"] = override
+
+                get_conversation_state_service().apply_task_state_change_sync(
+                    conv_id,
+                    str(org_id),
+                    _apply,
+                    client=client,
+                    extra_columns={"updated_at": datetime.now(timezone.utc).isoformat()},
+                )
         except Exception:
             pass
 
