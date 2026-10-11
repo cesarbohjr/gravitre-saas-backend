@@ -457,17 +457,17 @@ def search_crm_objects(
     since_ms: int | None = None,
     limit: int = 100,
 ) -> list[dict[str, Any]]:
-    """Search CRM objects (e.g. notes, emails) optionally filtered by last modified."""
+    """Search CRM objects (e.g. notes, emails) changed since ``since_ms``, oldest change first.
+
+    Results are sorted ASCENDING by ``hs_lastmodifieddate`` and the ``paging.next.after``
+    token is followed until ``limit`` records are collected, so a caller can advance an
+    incremental cursor to the last record it processed and resume from there next run.
+    """
     if not object_type:
         raise HubSpotAPIError("object_type is required")
-    lim = min(max(int(limit), 1), 100)
-    body: dict[str, Any] = {
-        "properties": properties,
-        "limit": lim,
-        "sorts": [{"propertyName": "hs_lastmodifieddate", "direction": "DESCENDING"}],
-    }
+    filter_groups: list[dict[str, Any]] | None = None
     if since_ms is not None:
-        body["filterGroups"] = [
+        filter_groups = [
             {
                 "filters": [
                     {
@@ -478,13 +478,16 @@ def search_crm_objects(
                 ]
             }
         ]
-    data = _request(
-        "POST",
-        f"/crm/v3/objects/{object_type}/search",
+    payload = search_crm_objects_all(
         access_token,
-        json_body=body,
+        object_type,
+        filter_groups=filter_groups,
+        properties=properties,
+        sorts=[{"propertyName": "hs_lastmodifieddate", "direction": "ASCENDING"}],
+        max_records=max(int(limit), 1),
+        page_size=100,
     )
-    return [dict(r) for r in (data.get("results") or []) if isinstance(r, dict)]
+    return [dict(r) for r in (payload.get("results") or []) if isinstance(r, dict)]
 
 
 def list_notes_since(
