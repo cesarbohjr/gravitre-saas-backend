@@ -141,6 +141,24 @@ def test_an_expired_pause_refuses_the_held_write() -> None:
     assert not voice_pause_gate.is_paused(ORG, CONV)
 
 
+def test_a_write_reaching_its_commit_after_the_pause_expired_is_refused() -> None:
+    voice_pause_gate.pause(ORG, CONV, max_s=0.1)
+    time.sleep(0.2)
+    assert not voice_pause_gate.is_paused(ORG, CONV), "speech is no longer paused"
+    results: list[Any] = []
+    _write_in_thread(results).join(2)
+    assert results[0][0] == "refused", "an expired pause never turns into a go-ahead"
+
+
+def test_go_on_after_the_pause_expired_lets_the_next_write_through() -> None:
+    voice_pause_gate.pause(ORG, CONV, max_s=0.1)
+    time.sleep(0.2)
+    voice_pause_gate.resume(ORG, CONV)
+    results: list[Any] = []
+    _write_in_thread(results).join(2)
+    assert results[0][0] == "started"
+
+
 def test_a_stop_armed_during_the_pause_refuses_the_write_even_after_resume() -> None:
     voice_pause_gate.pause(ORG, CONV)
     results: list[Any] = []

@@ -156,6 +156,8 @@ def incomplete_turn_hold_seconds(settings: Any) -> float:
 
 
 #: _approval_expectation_for_yes read the staged approval back instead of approving.
+#: How long the first turn after connect waits for connection recovery.
+RECOVERY_WAIT_S = 1.5
 _REREAD_APPROVAL = object()
 
 # voice_confirmation_hold_v1: once the user resumed, how long the go-ahead may
@@ -507,6 +509,8 @@ class GravitreCognitiveLLMService(LLMService):
         # What a previous connection's work did while the user was away
         # (voice_connection_recovery), said once at the start of the next turn.
         self._recovery_line: str | None = None
+        #: Set by the pipeline on connect: prepare_connection_recovery() running.
+        self.recovery_task: asyncio.Task[Any] | None = None
         # This connection replaced an earlier one on the conversation (set by
         # the pipeline when it claims ownership).
         self.replaced_connection = False
@@ -1351,6 +1355,9 @@ class GravitreCognitiveLLMService(LLMService):
                 self._org_id,
                 self._conversation_id,
             )
+            return
+        await self._await_connection_recovery()
+        if await self._lost_ownership():
             return
         # What an earlier connection's work did while the user was away, said
         # once before this answer (voice_connection_recovery).
@@ -2806,6 +2813,55 @@ class GravitreCognitiveLLMService(LLMService):
             self._result_delivery,
         )
         return self._result_delivery == "spoken"
+
+    async def _await_connection_recovery(self) -> None:
+        """The first turn after connect waits for recovery (pending approval, recovery line)."""
+        task, self.recovery_task = self.recovery_task, None
+        if task is None or task.done():
+            return
+        try:
+            await asyncio.wait_for(asyncio.shield(task), RECOVERY_WAIT_S)
+        except TimeoutError:
+            # Too slow: answer without it rather than hold the user.
+            logger.info("pipecat_voice_recovery_wait_timeout conversation_id=%s", self._conversation_id)
+        except Exception:  # noqa: BLE001 - recovery is best effort
+            logger.debug("pipecat_voice_recovery_wait_failed", exc_info=True)
+
+    async def _lost_ownership(self) -> bool:
+        """A newer connection on another worker owns this conversation: stop answering here.
+
+        Same-process supersede sets the session flag directly; across workers
+        only the Redis owner key shows it, so it is read once per turn.
+        """
+        session = self._voice_session()
+        if session is None:
+            return False
+        if getattr(session, "superseded", False):
+            return True
+        token = str(getattr(session, "connection_token", "") or "")
+        if not token or not self._conversation_id:
+            return False
+        from app.services.pipecat_voice.voice_connection_recovery import is_current_connection
+
+        try:
+            current = await asyncio.to_thread(
+                is_current_connection,
+                self._org_id,
+                self._conversation_id,
+                token,
+                settings=self._app_settings,
+            )
+        except Exception:  # noqa: BLE001 - ownership is best effort, never blocks a turn
+            return False
+        if current:
+            return False
+        session.superseded = True
+        logger.info(
+            "pipecat_voice_turn_skipped_superseded org_id=%s conversation_id=%s",
+            self._org_id,
+            self._conversation_id,
+        )
+        return True
 
     def _superseded(self) -> bool:
         """A newer connection owns this conversation: nothing more is delivered here."""

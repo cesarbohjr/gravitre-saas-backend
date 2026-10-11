@@ -237,7 +237,7 @@ def _wait_if_paused(ctx: Any, action: str) -> None:
     from app.services import voice_pause_gate
 
     key = _conversation_key(ctx)
-    if key is None or not voice_pause_gate.is_paused(*key):
+    if key is None or not voice_pause_gate.holds_writes(*key):
         return
     import asyncio
 

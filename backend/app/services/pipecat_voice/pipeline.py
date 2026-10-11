@@ -576,7 +576,11 @@ def build_pipecat_voice_task(
             logger.warning("pipecat_voice_connection_claim_failed error=%s", exc)
         recover = getattr(llm, "prepare_connection_recovery", None)
         if callable(recover):
-            recovery_tasks.append(asyncio.create_task(recover()))
+            task = asyncio.create_task(recover())
+            recovery_tasks.append(task)
+            # The first turn waits (briefly) for this, so a pending approval
+            # and the recovery line are known before it is answered.
+            llm.recovery_task = task
 
     recovery_tasks: list[asyncio.Task[Any]] = []
 

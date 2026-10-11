@@ -261,6 +261,43 @@ def test_new_connection_says_the_recovered_result_before_its_next_answer() -> No
     assert "Do not repeat it" in str(h.calls[-1].get("assistant_base_prompt") or "")
 
 
+def test_first_turn_waits_for_recovery_that_is_still_loading() -> None:
+    h = _Harness(True, conversation_id=CONV)
+    state = _FakeStateService(
+        {"pending_task": {"status": "executed", "result": {"title": "Send email to Stephanie"}}, **_marker()}
+    )
+
+    async def _slow_load(*_a: Any, **_k: Any) -> dict[str, Any]:
+        await asyncio.sleep(0.2)
+        return dict(state.state)
+
+    async def _script() -> None:
+        with patch(
+            "app.services.pipecat_voice.speculative_generation.load_revision_task_state", new=_slow_load
+        ):
+            h.service.recovery_task = asyncio.create_task(h.service.prepare_connection_recovery())
+            await h.turn("did it go out?")
+
+    with patch("app.services.conversation_state_service.get_conversation_state_service", return_value=state):
+        h.run(_script)
+    assert h.spoken_client_text().startswith("Before we got cut off, \"Send email to Stephanie\" went through.")
+
+
+def test_a_turn_on_a_connection_replaced_on_another_worker_is_not_answered(monkeypatch) -> None:
+    h = _Harness(True, conversation_id=CONV)
+    owner_key = f"voice:conn:{ORG}:{CONV}"
+    monkeypatch.setattr(recovery, "_redis", lambda _s=None: SimpleNamespace(get=lambda k: "other-worker" if k == owner_key else None))
+    h.service._org_id = ORG
+
+    async def _script() -> None:
+        await h.turn("what's on my calendar?")
+
+    h.run(_script)
+    assert h.session.superseded, "ownership moved, read from the shared key"
+    assert h.calls == [], "the replaced connection does not answer"
+    assert h.service._push_llm_text.await_count == 0
+
+
 def test_turn_that_wrote_after_disconnect_leaves_an_undelivered_marker() -> None:
     h = _Harness(True, conversation_id=CONV)
     state = _FakeStateService({"pending_task": {"status": "executed", "label": "Send email"}})

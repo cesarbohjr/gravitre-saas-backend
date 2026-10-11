@@ -30,6 +30,10 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 PAUSE_MAX_S = 30.0
+#: An expired pause keeps refusing writes until the next turn ends or resumes
+#: it; this bounds how long that marker outlives a conversation that never
+#: comes back.
+EXPIRED_HOLD_S = 10 * 60.0
 _POLL_S = 0.1
 
 RESUMED = "resumed"
@@ -106,21 +110,46 @@ def end_pause(org_id: str | None, conversation_id: str | None, how: str = CANCEL
     return _end(org_id, conversation_id, how)
 
 
+def _expire_locked(key: tuple[str, str], current: _Pause, now: float) -> bool:
+    """Mark ``current`` expired when its time is up. Caller holds ``_lock``.
+
+    An expired pause is kept (not removed) so a write that reaches its
+    commit point afterwards is still refused: only "go on" approves holding
+    work. ``resume``/``end_pause`` remove it; so does ``EXPIRED_HOLD_S``.
+    """
+    if current.ended_by is None and current.expires > now:
+        return False
+    if current.ended_by is None:
+        current.ended_by = EXPIRED
+        current.released.set()
+    if current.expires + EXPIRED_HOLD_S <= now:
+        _pauses.pop(key, None)
+    return True
+
+
 def is_paused(org_id: str | None, conversation_id: str | None) -> bool:
+    """Speech is paused now (false once the pause expired)."""
     key = _key(org_id, conversation_id)
     if key is None:
         return False
-    now = time.monotonic()
     with _lock:
         current = _pauses.get(key)
         if current is None:
             return False
-        if current.expires <= now:
-            _pauses.pop(key, None)
-            current.ended_by = EXPIRED
-            current.released.set()
+        return not _expire_locked(key, current, time.monotonic())
+
+
+def holds_writes(org_id: str | None, conversation_id: str | None) -> bool:
+    """A write must stop at this conversation's pause: it is active, or it expired without a go-ahead."""
+    key = _key(org_id, conversation_id)
+    if key is None:
+        return False
+    with _lock:
+        current = _pauses.get(key)
+        if current is None:
             return False
-        return True
+        _expire_locked(key, current, time.monotonic())
+        return key in _pauses
 
 
 def wait_while_paused(
@@ -138,17 +167,17 @@ def wait_while_paused(
         return NOT_PAUSED
     with _lock:
         current = _pauses.get(key)
-    if current is None:
-        return NOT_PAUSED
+        if current is None:
+            return NOT_PAUSED
+        if _expire_locked(key, current, time.monotonic()):
+            return EXPIRED
     logger.info("voice_pause_write_waiting conversation_id=%s", key[1])
     while True:
         remaining = current.expires - time.monotonic()
         if remaining <= 0:
             with _lock:
-                if _pauses.get(key) is current:
-                    _pauses.pop(key, None)
-            current.ended_by = current.ended_by or EXPIRED
-            return EXPIRED
+                _expire_locked(key, current, time.monotonic())
+            return current.ended_by or EXPIRED
         if current.released.wait(min(_POLL_S, remaining)):
             return RESUMED if current.ended_by == RESUMED else (current.ended_by or CANCELLED)
         if cancelled is not None and cancelled():
