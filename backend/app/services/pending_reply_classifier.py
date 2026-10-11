@@ -353,9 +353,50 @@ def pending_repair_kind(message: str, snap: PendingSnapshot) -> str | None:
         return "no"
     if gathering and _names_pending_provider(text, snap):
         return "provider"
-    if gathering and snap.pending_missing and _RETRY_RE.search(text) and len(text) <= 80:
+    if gathering and snap.pending_missing and _is_bare_retry(text):
         return "retry"
     return None
+
+
+# Words that may sit around a bare retry ("Try again... the email now?").
+_RETRY_FILLER = frozenset(
+    {
+        "please",
+        "can",
+        "could",
+        "you",
+        "just",
+        "the",
+        "it",
+        "that",
+        "this",
+        "email",
+        "message",
+        "draft",
+        "now",
+        "again",
+        "ok",
+        "okay",
+        "so",
+        "let's",
+        "lets",
+        "go",
+        "ahead",
+    }
+)
+
+
+def _is_bare_retry(text: str) -> bool:
+    """'Try again' as the whole ask, not inside a subject or message.
+
+    "Tell her we'll try again next week" is content for the draft, so it
+    must reach slot filling instead of being answered as a retry.
+    """
+    if not _RETRY_RE.search(text):
+        return False
+    rest = _RETRY_RE.sub(" ", text.lower())
+    words = [w for w in re.findall(r"[a-z']+", rest) if w not in _RETRY_FILLER]
+    return not words
 
 
 def _pending_thing(snap: PendingSnapshot) -> str:

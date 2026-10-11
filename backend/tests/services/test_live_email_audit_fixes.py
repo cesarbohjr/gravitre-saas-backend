@@ -349,3 +349,13 @@ def test_everyday_did_you_questions_are_not_write_status_questions(utterance: st
 def test_did_you_with_the_task_as_object_is_still_a_status_question(utterance: str) -> None:
     turn = recent_write_status_turn(utterance, _email_draft_state())
     assert turn is not None and turn["provider_write"] is False
+
+
+def test_retry_words_inside_the_message_still_fill_the_draft() -> None:
+    from app.services.pending_reply_classifier import pending_repair_kind
+
+    snap = _draft_snapshot(missing=["body"])
+    assert pending_repair_kind("Try again... the email now?", snap) == "retry"
+    assert pending_repair_kind("Can you try that again?", snap) == "retry"
+    assert pending_repair_kind("Tell her we'll try again next week.", snap) is None
+    assert pending_repair_kind("The subject is Retry plan", snap) is None
