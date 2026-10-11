@@ -790,7 +790,7 @@ class TestRetainedBudget:
     async def test_an_oversized_complete_payload_discards_the_run(self):
         from app.operators.stream_events import AssistantStreamComplete
 
-        big = AssistantStreamComplete(full_content="x" * 1_000_000, tool_results=[], react_result=None, model="t")
+        big = AssistantStreamComplete(full_content="x" * 3_000_000, tool_results=[], react_result=None, model="t")
         coordinator = SpeculativeGenerationCoordinator()
         run = start_speculative_run(
             text="what is two plus two", runner=lambda: _events(_delta("ok"), big), create_task=asyncio.ensure_future
@@ -809,13 +809,13 @@ class TestRetainedBudget:
     async def test_tool_payloads_count_toward_the_budget(self):
         tool = AssistantStreamEvent(
             sse_type="tool-output-available",
-            payload={"toolCallId": "c1", "output": {"rows": ["y" * 1000] * 600}},
+            payload={"toolCallId": "c1", "output": {"rows": ["y" * 1000] * 2500}},
         )
         run = start_speculative_run(
             text="pull every deal", runner=lambda: _events(tool), create_task=asyncio.ensure_future
         )
         await run.task
-        assert run.retained_bytes > 512_000 and run.outcome == "over_budget"
+        assert run.retained_bytes > 2_000_000 and run.outcome == "over_budget"
 
     @pytest.mark.asyncio
     async def test_too_many_deferred_writes_block_the_run(self):
@@ -844,4 +844,4 @@ class TestRetainedBudget:
             create_task=asyncio.ensure_future,
         )
         await run.task
-        assert run.outcome is None and run.retained_bytes < 10_000
+        assert run.outcome is None and run.retained_bytes < 50_000

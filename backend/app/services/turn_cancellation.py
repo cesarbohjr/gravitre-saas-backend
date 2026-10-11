@@ -109,6 +109,21 @@ def current_turn_cancelled() -> bool:
     return token is not None and token.cancelled
 
 
+def superseded_write(label: str) -> bool:
+    """True (and logged) when a mutable request-state write must be dropped.
+
+    For writes that record what the user wants (task state, objectives,
+    channel overrides, promoted memory): once the turn they came from is
+    cancelled, they are obsolete and must not land, even from a late replay.
+    Audit rows and records of effects that really happened never call this.
+    """
+    token = _CURRENT.get()
+    if token is None or not token.cancelled:
+        return False
+    logger.info("superseded_write_dropped label=%s reason=%s", label, token.reason)
+    return True
+
+
 @contextmanager
 def bound_turn_cancellation(token: TurnCancellation | None) -> Iterator[TurnCancellation | None]:
     reset = _CURRENT.set(token)

@@ -65,6 +65,7 @@ import {
   assistantTextKind,
   createPlaybackProgressTracker,
   encodePlaybackProgress,
+  isAsideMessage,
   speechInterruptionKind,
   transcriptDisposition,
   type PlaybackProgressReason,
@@ -338,6 +339,14 @@ export function useVoiceDuplexSession(options: Options) {
   // The current reply was silenced by a "stop talking" (speech_stop) while its
   // text keeps streaming: no HTTP TTS fallback may speak it again.
   const speechMutedRef = useRef(false)
+  // An explain aside answering now, while the running reply's work goes on.
+  const asideRef = useRef<{ userText: string; text: string } | null>(null)
+  const appendAsideText = (delta: string) => {
+    const aside = asideRef.current ?? { userText: "", text: "" }
+    aside.text += delta
+    asideRef.current = aside
+    optsRef.current.onAssistantDelta?.(aside.text)
+  }
   // Server notices already shown, by kind and reply id (each is one-time).
   const noticesShownRef = useRef(new Set<string>())
   const isInterruptedReplyAudio = (replyId: unknown): boolean => {
@@ -1411,6 +1420,7 @@ export function useVoiceDuplexSession(options: Options) {
       assistantTextRef.current = ""
       assistantAnswerTextRef.current = ""
       speechMutedRef.current = false
+      asideRef.current = null
       noticesShownRef.current = new Set()
       lastUserFinalRef.current = ""
       // Reply ids restart with every server session.
@@ -1487,6 +1497,12 @@ export function useVoiceDuplexSession(options: Options) {
           const text = String(msg.text || "").trim()
           if (!text) return
           const disposition = transcriptDisposition(msg)
+          if (disposition === "aside") {
+            // Answered as its own short exchange; the running reply keeps its
+            // place on screen and finishes after it.
+            asideRef.current = { userText: text, text: "" }
+            return
+          }
           if (disposition === "backchannel") {
             // The server dropped it ("yeah" over the reply, an echo, "you
             // there?" while thinking): not a new user turn. Keep the reply on
@@ -1497,6 +1513,7 @@ export function useVoiceDuplexSession(options: Options) {
           setProvisionalTranscript(text)
           if (disposition === "final") {
             dropAudioUntilRef.current = 0
+            asideRef.current = null
             lastUserFinalRef.current = text
             browserAudioPlaybackStartedRef.current = false
             audioFallbackTriggeredRef.current = false
@@ -1522,6 +1539,7 @@ export function useVoiceDuplexSession(options: Options) {
         if (kind === "assistant_text") {
           const delta = String(msg.delta || "")
           if (!delta) return
+          if (isAsideMessage(msg)) return appendAsideText(delta)
           const firstAssistantText = assistantTextRef.current.length === 0
           assistantTextRef.current += delta
           if (assistantTextKind(msg) === "answer") assistantAnswerTextRef.current += delta
@@ -1531,7 +1549,36 @@ export function useVoiceDuplexSession(options: Options) {
           if (firstAssistantText && audibleAudioFramesRef.current === 0) {
             armAudioReplyWatchdog()
           }
-          optsRef.current.onAssistantDelta?.(assistantTextRef.current)
+          // While an aside is answering, the live preview shows the aside.
+          if (!asideRef.current) optsRef.current.onAssistantDelta?.(assistantTextRef.current)
+          return
+        }
+        if (kind === "assistant_turn.complete" && isAsideMessage(msg)) {
+          const aside = asideRef.current
+          asideRef.current = null
+          const asideUser = (aside?.userText || String(msg.user_text || "")).trim()
+          const asideText = (aside?.text || String(msg.text || "")).trim()
+          if (asideUser && asideText) {
+            const asideConversationId =
+              typeof msg.conversation_id === "string" && msg.conversation_id.trim()
+                ? msg.conversation_id.trim()
+                : optsRef.current.conversationId || null
+            optsRef.current.onTurnComplete?.({
+              userText: asideUser,
+              assistantText: asideText,
+              assistantAnswerText: asideText,
+              conversationId: asideConversationId,
+              turnId: String(msg.turn_id || "").trim() || null,
+              cancelled: msg.cancelled === true,
+              events: [],
+              latency: {
+                browser_audio_playback_started: browserAudioPlaybackStartedRef.current,
+                duplex_transport_owned: true,
+              },
+            })
+          }
+          // Back to the running reply, which finishes after the aside.
+          if (assistantTextRef.current) optsRef.current.onAssistantDelta?.(assistantTextRef.current)
           return
         }
         if (kind === "assistant_turn.complete") {

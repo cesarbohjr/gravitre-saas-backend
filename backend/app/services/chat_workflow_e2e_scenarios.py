@@ -293,7 +293,7 @@ def _step_expectation_matches(action: str, expectation: WorkflowStepExpectation)
 def _memory_state_patches(orchestration: ChatOrchestrationService):
     store: dict[str, dict[str, Any]] = {}
 
-    async def get_task_state(conversation_id: str, org_id: str, *, client: Any | None = None):
+    async def get_task_state(conversation_id: str, org_id: str, *, client: Any | None = None, **_kwargs: Any):
         return deepcopy(store.get(conversation_id) or _default_memory_state())
 
     async def update_task_state(

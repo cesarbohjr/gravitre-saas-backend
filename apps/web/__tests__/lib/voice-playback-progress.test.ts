@@ -7,6 +7,7 @@ import {
   assistantTextKind,
   createPlaybackProgressTracker,
   encodePlaybackProgress,
+  isAsideMessage,
   transcriptDisposition,
 } from "@/lib/voice-playback-progress"
 import {
@@ -118,6 +119,14 @@ describe("transcript disposition and assistant text kind", () => {
     expect(transcriptDisposition({ final: true, backchannel: true })).toBe("backchannel")
     expect(transcriptDisposition({ final: true })).toBe("final")
     expect(transcriptDisposition({ final: false, backchannel: true })).toBe("interim")
+    expect(transcriptDisposition({ final: true, backchannel: true, turn_taking: "explain_aside" })).toBe("aside")
+    expect(transcriptDisposition({ final: true, turn_taking: "explain_aside" })).toBe("final")
+  })
+
+  it("tells aside messages apart", () => {
+    expect(isAsideMessage({ type: "assistant_text", aside: true })).toBe(true)
+    expect(isAsideMessage({ type: "assistant_text" })).toBe(false)
+    expect(isAsideMessage({ aside: "true" })).toBe(false)
   })
 
   it("treats unlabelled text as answer", () => {

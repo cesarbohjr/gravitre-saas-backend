@@ -63,6 +63,11 @@ def classify_non_turn_final(text: str, session: Any | None) -> str | None:
     if session is None or not text:
         return None
     try:
+        applies = getattr(session, "explain_aside_applies", None)
+        if callable(applies) and applies(text):
+            # Answered as an aside while the running work goes on
+            # (voice_explain_aside_v1): not a new turn for the browser either.
+            return "explain_aside"
         bot_speaking = bool(getattr(session, "bot_speaking", False))
         generating = bool(getattr(session, "assistant_generating", False))
         if bot_speaking:

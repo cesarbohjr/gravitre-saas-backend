@@ -139,7 +139,7 @@ export function encodePlaybackProgress(report: PlaybackProgressReport): string {
   return JSON.stringify(report)
 }
 
-export type TranscriptDisposition = "final" | "backchannel" | "interim"
+export type TranscriptDisposition = "final" | "backchannel" | "aside" | "interim"
 
 /**
  * How the hook treats a `transcript` message. A final the server marked as a
@@ -149,7 +149,15 @@ export type TranscriptDisposition = "final" | "backchannel" | "interim"
  */
 export function transcriptDisposition(msg: Record<string, unknown>): TranscriptDisposition {
   if (!msg.final) return "interim"
-  return msg.backchannel === true ? "backchannel" : "final"
+  if (msg.backchannel !== true) return "final"
+  // "What does that mean?" while work runs: answered as an aside, and the
+  // running reply stays on screen (voice_explain_aside_v1).
+  return msg.turn_taking === "explain_aside" ? "aside" : "backchannel"
+}
+
+/** An assistant_text or assistant_turn.complete message that belongs to an explain aside. */
+export function isAsideMessage(msg: Record<string, unknown>): boolean {
+  return msg.aside === true
 }
 
 export type SpokenSegmentKind = "filler" | "progress" | "answer"

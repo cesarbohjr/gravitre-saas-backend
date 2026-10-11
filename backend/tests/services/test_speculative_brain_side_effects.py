@@ -227,4 +227,23 @@ async def test_adopted_speculative_turn_persists_the_same_state_as_a_confirmed_t
     assert sorted((w[0], w[1]) for w in db.writes) == sorted((w[0], w[1]) for w in baseline_db.writes)
     convo = [w[2] for w in db.writes if w[1] == "conversations"]
     base_convo = [w[2] for w in baseline_db.writes if w[1] == "conversations"]
-    assert [_stable(x) for x in convo] == [_stable(x) for x in base_convo]
+    assert _turn_state_sequence(convo) == _turn_state_sequence(base_convo)
+
+
+def _turn_state_sequence(payloads: list[Any]) -> list[Any]:
+    """The turn's own task_state saves, in order.
+
+    conversation_memory is recorded by a fire-and-forget task
+    (execution_outcome), so its save may land before or after the turn's
+    next one. The end state is compared in full above; here it is left out
+    and the repeat it leaves behind is collapsed.
+    """
+    out: list[Any] = []
+    for payload in payloads:
+        stable = _stable(payload)
+        state = stable.get("task_state") if isinstance(stable, dict) else None
+        if isinstance(state, dict):
+            stable = {**stable, "task_state": {k: v for k, v in state.items() if k != "conversation_memory"}}
+        if not out or out[-1] != stable:
+            out.append(stable)
+    return out

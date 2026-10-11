@@ -1,6 +1,7 @@
 """Crash-boundary coverage for one logical action (no second orchestrator)."""
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
@@ -444,7 +445,8 @@ async def test_cas_second_claim_fails() -> None:
 
     db = _Rpc()
     svc._client = lambda client=None: db
-    svc.get_task_state = AsyncMock(return_value=state)
+    # The claim reads state under the save lock, off the event loop.
+    svc._read_task_state_sync = lambda *_a, **_k: deepcopy(state)
     first = await svc.compare_and_set_pending_status(
         "c1",
         "o1",

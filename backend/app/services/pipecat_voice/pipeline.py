@@ -313,6 +313,14 @@ def build_pipecat_voice_task(
     # Share active durable turn identity so mid-generation interruption can
     # persist/update the exact current turn rather than targeting a prior row.
     llm._interrupt_reporter = interrupt_reporter
+    # voice_explain_aside_v1: "what does that mean?" while work runs is
+    # answered as an aside by the brain service; the turn strategy and the
+    # transcript relay ask the session whether it applies.
+    voice_session.explain_aside_enabled = bool(
+        getattr(settings, "voice_interrupt_intents_v1", False)
+        and getattr(settings, "voice_explain_aside_v1", False)
+    )
+    voice_session.aside_handler = llm.start_explain_aside
     llm._turn_trace = turn_trace
     speculative.before_run = interrupt_reporter.settle_barge_in
 

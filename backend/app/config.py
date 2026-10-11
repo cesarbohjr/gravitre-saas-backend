@@ -836,6 +836,19 @@ class Settings(BaseSettings):
             "voice_interrupt_intents_v1",
         ),
     )
+    # Needs voice_interrupt_intents_v1. "What does that mean?" while a task is
+    # running is answered as a short aside while the task keeps going: the
+    # task's reply is silenced, the aside is spoken under its own reply, and
+    # the task's result is spoken once afterwards (or only shown if the user
+    # moved on). The aside cannot start, change or cancel work. Off: the
+    # explanation waits for the task or cancels it, as before.
+    voice_explain_aside_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_EXPLAIN_ASIDE_V1",
+            "voice_explain_aside_v1",
+        ),
+    )
     # While a user turn that overlaps the bot's speech is being classified
     # (backchannel / echo / real interruption), the client is told to duck the
     # reply's audio (speech.duck) instead of playing it at full level, and to
