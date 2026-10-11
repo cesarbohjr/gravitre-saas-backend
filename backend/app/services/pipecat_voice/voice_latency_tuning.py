@@ -151,5 +151,47 @@ def effective_voice_flags(settings: Any) -> dict[str, bool]:
     return {
         name: bool(getattr(settings, name, False))
         for name, field in sorted(fields.items())
-        if name.startswith("voice_") and getattr(field, "annotation", None) is bool
+        if name.startswith("voice_")
+        and getattr(field, "annotation", None) is bool
+        and name not in RETIRED_VOICE_FLAGS
     }
+
+
+# Still accepted from the environment but no longer read by any code path.
+RETIRED_VOICE_FLAGS = frozenset({"voice_request_revisions_v1"})
+
+# The non-boolean settings that shape a voice session, reported next to the
+# flags. Names only from this list, so a key, token or URL is never included.
+_REPORTED_SETTINGS = (
+    "voice_deep_ack_seconds",
+    "voice_pipecat_stt",
+    "voice_pipecat_stt_fallback",
+    "voice_pipecat_flux_eager_eot",
+    "voice_pipecat_flux_eot",
+    "voice_flux_turn_mode",
+    "voice_incomplete_turn_hold_ms",
+    "voice_preroll_ms",
+    "voice_tts_chunk_min_chars",
+    "voice_speculative_timeout_s",
+    "elevenlabs_tts_model",
+    "elevenlabs_default_voice",
+    "unified_turn_live_enabled",
+    "internet_research_enabled",
+)
+
+
+def effective_voice_settings(settings: Any) -> dict[str, Any]:
+    """The tuning values and shared switches this process resolved.
+
+    The flag report leaves out numbers and non-voice switches (the
+    acknowledgement delay, Flux end-of-turn thresholds, the TTS model, whether
+    the live chat path and web research are on), which decide as much of how
+    a session behaves as the flags do.
+    """
+    out: dict[str, Any] = {}
+    for name in _REPORTED_SETTINGS:
+        if not hasattr(settings, name):
+            continue
+        value = getattr(settings, name)
+        out[name] = value if isinstance(value, (bool, int, float, str)) or value is None else str(value)
+    return out

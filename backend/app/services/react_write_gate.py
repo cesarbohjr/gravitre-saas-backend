@@ -883,6 +883,25 @@ async def materialize_react_write_approval_turn(
     # STA-305 — ReAct plans must carry the same inference metadata as governed chat.
     plan = enrich_plan_inference_metadata(plan, message=message or "")
     plan = apply_pack_common_defaults(plan, message=message or "")
+    from app.services.recipient_resolution import (
+        apply_resolution_to_stage,
+        ground_email_recipient,
+    )
+
+    # The model may fill an address the user never gave; the recipient comes
+    # from what the user typed or from their own mailbox, never a guess.
+    plan, recipient_lookup = await ground_email_recipient(
+        plan,
+        message or "",
+        task_state,
+        org_id=org_id,
+        client=client,
+        settings=settings,
+        connected_integrations=[plan.integration] if plan.integration else None,
+        user_id=str((task_state or {}).get("actor_id") or "") or None,
+        conversation_id=conversation_id,
+    )
+    looked_up = recipient_lookup is not None and recipient_lookup.status != "unavailable"
     if is_f1_write_action(plan.invoke_action):
         proof = compile_write_for_context(
             ctx=ToolContext(
@@ -900,8 +919,9 @@ async def materialize_react_write_approval_turn(
         )
         if not proof.ok:
             state = get_conversation_state_service(settings)
-            staged_missing = missing_params_stage_patch(
-                plan, message or "", task_state=task_state or {}
+            staged_missing = apply_resolution_to_stage(
+                missing_params_stage_patch(plan, message or "", task_state=task_state or {}),
+                recipient_lookup,
             )
             if staged_missing:
                 clarification, stage_patch = staged_missing
@@ -915,7 +935,11 @@ async def materialize_react_write_approval_turn(
                 return {
                     "stop_pipeline": True,
                     "dialogue_mode": clarification.dialogue_mode or "clarify",
-                    "message": proof.user_message() or clarification.message,
+                    "message": (
+                        clarification.message
+                        if looked_up
+                        else proof.user_message() or clarification.message
+                    ),
                     "task_state": refreshed,
                     "pending_task": refreshed.get("pending_task"),
                     "workflow_status": clarification.status,
@@ -947,8 +971,9 @@ async def materialize_react_write_approval_turn(
 
     state = get_conversation_state_service(settings)
     # Dual-path SoT with classical chat / unified-turn: clarify before confirm.
-    staged_missing = missing_params_stage_patch(
-        plan, message or "", task_state=task_state or {}
+    staged_missing = apply_resolution_to_stage(
+        missing_params_stage_patch(plan, message or "", task_state=task_state or {}),
+        recipient_lookup,
     )
     if staged_missing:
         clarification, stage_patch = staged_missing

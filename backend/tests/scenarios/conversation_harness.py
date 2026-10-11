@@ -470,6 +470,27 @@ class Connectors:
 
     def __init__(self) -> None:
         self.calls: list[ConnectorCall] = []
+        # Gmail messages the fake mailbox holds: {"id", "labelIds", "headers": {"From": ...}}.
+        self.mailbox: list[dict[str, Any]] = []
+
+    def _gmail_message(self, row: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "id": row["id"],
+            "threadId": row.get("threadId") or f"thread-{row['id']}",
+            "labelIds": list(row.get("labelIds") or ["INBOX"]),
+            "payload": {"headers": [{"name": k, "value": v} for k, v in (row.get("headers") or {}).items()]},
+        }
+
+    def _gmail_search(self, query: str) -> list[dict[str, Any]]:
+        import re as _re
+
+        names = {m.strip('"').lower() for m in _re.findall(r'(?:from|to|cc):("[^"]+"|\S+)', query or "")}
+        hits = []
+        for row in self.mailbox:
+            blob = " ".join(str(v) for v in (row.get("headers") or {}).values()).lower()
+            if not names or any(all(part in blob for part in n.split()) for n in names):
+                hits.append({"id": row["id"], "threadId": row.get("threadId") or f"thread-{row['id']}"})
+        return hits
 
     def executor_for(self, action: str) -> Callable[[Any, dict[str, Any]], Any]:
         from app.services.tool_types import NormalizedResult
@@ -495,6 +516,13 @@ class Connectors:
                     data = _ga_report(1200, 1500, 4100)
             elif "gmail" in low and "send" in low:
                 data = {"id": "msg-1", "threadId": "thread-1", "labelIds": ["SENT"]}
+            elif "gmail" in low and low.endswith(".list") and "messages" in low:
+                data = {"messages": self._gmail_search(str(params.get("q") or params.get("query") or ""))}
+            elif "gmail" in low and low.endswith(".get") and any(
+                r["id"] == (params.get("message_id") or params.get("id")) for r in self.mailbox
+            ):
+                row = next(r for r in self.mailbox if r["id"] == (params.get("message_id") or params.get("id")))
+                data = {"message": self._gmail_message(row)}
             elif "gmail" in low and low.endswith(".get"):
                 data = {
                     "id": params.get("id") or params.get("message_id") or "msg-1",

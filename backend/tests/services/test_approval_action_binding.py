@@ -158,6 +158,7 @@ async def test_execute_plan_uses_bound_invoke_action():
     service._state = MagicMock()
     service._state.get_task_state = AsyncMock(return_value={})
     service._state.update_task_state = AsyncMock(return_value={})
+    service._state.update_task_state_from = AsyncMock()
 
     approved = ChatConnectorExecutionService.plan_to_dict(_sample_plan())
     plan = plan_from_approved_params(approved, registry=get_tool_registry())
@@ -330,6 +331,7 @@ async def test_execute_confirmed_task_refuses_tampered_staged_action(
         }
     )
     service._state.update_task_state = AsyncMock(return_value={})
+    service._state.update_task_state_from = AsyncMock()
 
     with patch.object(registry, "execute_invoke_action", AsyncMock()) as invoke:
         result = await service.execute_confirmed_task(

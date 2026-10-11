@@ -4483,7 +4483,13 @@ def _exec_gmail_messages_get(ctx: ToolContext, params: dict[str, Any]) -> Normal
     if not message_id:
         raise ToolValidationError("gmail.messages.get requires message_id")
     try:
-        data = get_message(token, str(message_id))
+        headers = params.get("metadata_headers") or params.get("metadataHeaders")
+        data = get_message(
+            token,
+            str(message_id),
+            format=str(params.get("format") or "full"),
+            metadata_headers=[str(h) for h in headers] if isinstance(headers, list) else None,
+        )
     except GmailAPIError as exc:
         raise _vendor_api_error(exc, "gmail") from exc
     return NormalizedResult(success=True, action="gmail.messages.get", connector_id=cid, data={"message": data})

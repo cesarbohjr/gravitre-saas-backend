@@ -155,6 +155,37 @@ async def test_answer_expected_after_the_question_was_heard() -> None:
     assert session.expects_answer() is True
 
 
+@pytest.mark.asyncio
+async def test_answer_expected_over_the_email_approval_prompt() -> None:
+    """The approval prompt ends "Say yes, or tell me what to change." with no
+    "?"; a "yes" over it is an answer, not a backchannel to talk over."""
+    session = VoicePipelineSession()
+    reporter, _ = await _reporter(voice_session=session)
+    draft = "Here's the email to Stephanie. Subject, weekly update. Should I send it? Say yes, or tell me what to change."
+
+    class _Ledger:
+        ever_recorded = True
+        heard = ""
+
+        def snapshot(self) -> str:
+            return self.heard
+
+        def reset(self) -> None:
+            pass
+
+    ledger = _Ledger()
+    reporter._spoken_ledger = ledger
+    await reporter.process_frame(LLMFullResponseStartFrame(), FrameDirection.DOWNSTREAM)
+    await reporter.process_frame(
+        OutputTransportMessageUrgentFrame(message={"type": "assistant_text", "delta": draft}),
+        FrameDirection.DOWNSTREAM,
+    )
+    ledger.heard = "Here's the email to Stephanie."
+    assert session.expects_answer() is False
+    ledger.heard = draft[: draft.index("Should I send it?") + 5]
+    assert session.expects_answer() is True
+
+
 async def _events(*items: Any):
     for item in items:
         yield item

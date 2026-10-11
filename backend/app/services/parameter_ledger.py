@@ -73,6 +73,49 @@ _SUBJECT_ONLY_RE = re.compile(
 )
 
 
+# "... saying the proposal is ready" / "telling her that ..." / "to say ...":
+# the message body in a one-shot request.
+_BODY_CUE_RE = re.compile(
+    r"\b(?:saying|that\s+says|which\s+says|to\s+say|and\s+say|"
+    r"(?:telling|tell)\s+(?:her|him|them)|"
+    r"(?:letting|let)\s+(?:her|him|them)\s+know)"
+    r"\s+(?:that\s+)?(.+)$",
+    re.IGNORECASE,
+)
+# "with the subject Quick update" / "subject: Quick update" (unquoted), ending
+# at punctuation, "and", or a body cue.
+_SUBJECT_CUE_RE = re.compile(
+    r"\b(?:with\s+)?(?:the\s+|a\s+)?subject(?:\s+line)?\s*(?:of\s+|:\s*)?"
+    r"(?!is\b|=)([^,.;:!?]+?)"
+    r"(?=\s*(?:[,.;!?]|$|\band\b|\bsaying\b|\bthat\s+says\b|\btelling\b|\btell\b|"
+    r"\bletting\b|\blet\b|\bto\s+say\b))",
+    re.IGNORECASE,
+)
+
+
+def _ingest_one_shot_email_slots(
+    text: str, result: ParameterLedger, *, turn_index: int | None
+) -> None:
+    """Subject and message given inline in one request, without "subject is"."""
+    body_match = _BODY_CUE_RE.search(text)
+    subject_match = _SUBJECT_CUE_RE.search(text)
+    if subject_match and not result.get("subject"):
+        subject = sanitize_email_slot_value("subject", subject_match.group(1))
+        if subject and not email_slot_looks_corrupted("subject", subject):
+            result.upsert("subject", subject[:300], source="user_message", turn_index=turn_index)
+    if body_match and not result.get("body"):
+        raw = body_match.group(1)
+        # "saying it's ready, with the subject X": the subject is not the body.
+        if subject_match and subject_match.start() > body_match.start(1):
+            raw = raw[: subject_match.start() - body_match.start(1)]
+        body = sanitize_email_slot_value("body", raw.strip(" ,;"))
+        if body and not email_slot_looks_corrupted("body", body):
+            body = body[0].upper() + body[1:]
+            if body[-1] not in ".!?":
+                body += "."
+            result.upsert("body", body, source="user_message", turn_index=turn_index)
+
+
 def sanitize_email_slot_value(key: str, value: str) -> str:
     """Strip instruction-framing words that leaked into subject/body slots."""
     v = (value or "").strip(" .\"'")
@@ -461,6 +504,9 @@ def ingest_message_slots(
                     turn_index=turn_index,
                 )
 
+    if re.search(r"\b(?:e-?mail|gmail|outlook)\b", text_for_freeform, re.IGNORECASE):
+        _ingest_one_shot_email_slots(text_for_freeform, result, turn_index=turn_index)
+
     # "title is X" / "name is X" unquoted forms (Pipedrive/ClickUp/Notion/GitHub).
     title_only = re.search(
         r"\b(?:title|name)\s*(?:is|=|:)\s*(.+?)(?:\s+priority\b|$)",
@@ -814,8 +860,36 @@ def resume_awaiting_params(
     # Follow-up body: fill first missing free-text required field from the message.
     schema = get_workflow_schema(invoke_action)
     followup = _followup_fill_text(message)
+    if followup and not _arg_present_for_keys(args, ("to", "email")):
+        from app.services.recipient_resolution import pick_candidate, stored_candidates
+
+        # "Khan" after "two Stephanies... which one?" picks the recipient; it
+        # is not the subject.
+        if pick_candidate(message, stored_candidates(task_state)) is not None:
+            followup = None
+    if followup and schema and _SOCIAL_ACK_RE.match(followup):
+        # "Thanks!" answers "What should the email say?" only when the message
+        # is the one thing left; asked for a recipient, subject and message,
+        # it is a pleasantry, not the subject.
+        missing = [
+            f for f in schema.required_fields if not _arg_present_for_keys(args, f.arg_keys)
+        ]
+        only_body_left = len(missing) == 1 and any(
+            k in {"body", "message", "text"} for k in missing[0].arg_keys
+        )
+        if not only_body_left:
+            followup = None
     if followup and schema:
-        for field_spec in schema.required_fields:
+        fields = list(schema.required_fields)
+        if len(followup.split()) > 6 or re.match(
+            r"(?i)^\s*(?:tell|let|say|ask)\b", strip_assistant_scope_prefix(message or "")
+        ):
+            # A sentence, or "Tell her...", is the message, not a subject line,
+            # even when both are still missing.
+            fields.sort(
+                key=lambda f: 0 if any(k in {"body", "message", "text"} for k in f.arg_keys) else 1
+            )
+        for field_spec in fields:
             if _arg_present_for_keys(args, field_spec.arg_keys):
                 continue
             primary = field_spec.arg_keys[0]
@@ -1058,6 +1132,16 @@ def format_awaiting_params_meta_answer(
 _EXPLICIT_NON_BODY_SLOT_RE = re.compile(
     r"(?i)^\s*(?:(?:and|also|ok(?:ay)?|so)[,\s]+)?(?:the\s+)?"
     r"(?:subject(?:\s+line)?|title|recipient|to|cc)\s*(?:is|=|:|should\s+be|will\s+be)\s*\S"
+)
+
+
+# A reply that is only a pleasantry or acknowledgement.
+_SOCIAL_ACK_RE = re.compile(
+    r"^\s*(?:thanks?(?:\s+(?:you|so\s+much|a\s+lot))?|thank\s+you(?:\s+so\s+much)?|ty|"
+    r"cool|great|nice|awesome|perfect|got\s+it|sounds\s+good|ok(?:ay)?|alright|"
+    r"all\s+right|hmm+|um+|uh+)"
+    r"(?:[\s,!.]+(?:thanks?|thank\s+you))?[\s!.]*$",
+    re.IGNORECASE,
 )
 
 

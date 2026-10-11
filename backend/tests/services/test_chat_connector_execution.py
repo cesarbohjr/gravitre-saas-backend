@@ -17,6 +17,7 @@ def connector_service():
     service = ChatConnectorExecutionService()
     service._state = MagicMock()
     service._state.update_task_state = AsyncMock()
+    service._state.update_task_state_from = AsyncMock()
     service._state.get_task_state = AsyncMock(
         return_value={
             "clarified_params": {},

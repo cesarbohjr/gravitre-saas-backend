@@ -95,6 +95,33 @@ async def resolve_unified_live_pending_reply(
         return None
 
     active = settings or get_settings()
+    from app.services.pending_write_revision import apply_staged_write_revision
+
+    # "Make the subject X" while a write waits for a yes changes the staged
+    # write and asks again; it is not a hold, a new request or a yes.
+    revised = await apply_staged_write_revision(
+        message,
+        task_state,
+        org_id=org_id,
+        conversation_id=conversation_id,
+        client=client,
+        settings=settings,
+    )
+    if revised is not None:
+        text, refreshed = revised
+        return UnifiedTurnShadowResult(
+            outcome_kind="clarifying_question",
+            user_message=text,
+            live_served=True,
+            model="pending_write_revision",
+            tool_stats={
+                "task_state": refreshed,
+                "pending_task": refreshed.get("pending_task"),
+                "provider_invoked": False,
+                "workflow_status": "awaiting approval",
+            },
+        )
+
     snap = build_pending_snapshot(task_state)
     intent: PendingReplyIntent = await classify_pending_reply(
         message,

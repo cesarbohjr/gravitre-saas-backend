@@ -67,9 +67,19 @@ def conversation_stop_blocks_invoke(ctx: Any, action: str) -> bool:
     )
 
 
+def _turn_cancelled_blocks_invoke(action: str) -> bool:
+    from app.services.turn_cancellation import current_turn_cancelled
+
+    return current_turn_cancelled() and action_is_mutating_write(action)
+
+
 def raise_if_barge_in_blocks_invoke(ctx: Any, action: str) -> None:
-    """Last-line invoke_tool defense: uncommitted WRITE after barge-in/stop."""
-    if not conversation_stop_blocks_invoke(ctx, action):
+    """Last-line invoke_tool defense: uncommitted WRITE after barge-in/stop.
+
+    Also blocks a WRITE whose own turn was cancelled: a write that runs on
+    after its turn is cancelled (so its outcome is recorded) must not start.
+    """
+    if not conversation_stop_blocks_invoke(ctx, action) and not _turn_cancelled_blocks_invoke(action):
         return
     _note(ctx, action, STATUS_BLOCKED)
     from app.services.react_write_gate import WRITE_COMMIT_INTERRUPTED

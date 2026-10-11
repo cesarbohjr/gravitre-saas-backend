@@ -24,16 +24,11 @@ async def test_send_email_disconnected_does_not_send() -> None:
 
 
 @pytest.mark.asyncio
-async def test_send_email_compiles_slots_without_invoke() -> None:
-    proof = MagicMock(
-        ok=False,
-        error_class="GENUINE_USER_CLARIFICATION_REQUIRED",
-        user_message=lambda: "need slots",
-    )
-    with patch(
-        "app.services.governed_write_compile.preflight_write_action",
-        return_value=proof,
-    ) as mock_pf:
+async def test_a_connected_send_goes_to_the_shared_draft_path() -> None:
+    """A connected send is staged by the shared draft path (pending task,
+    parameter ledger, one approval prompt), so its details survive the next
+    turn. This compile step no longer answers it."""
+    with patch("app.services.governed_write_compile.preflight_write_action") as mock_pf:
         turn = await try_governed_write_compile_turn(
             message="Send an email.",
             org_id="org-1",
@@ -42,8 +37,5 @@ async def test_send_email_compiles_slots_without_invoke() -> None:
             connected_integrations=["gmail"],
             task_state={},
         )
-    assert turn is not None
-    assert turn["workflow_status"] == "needs clarification"
-    assert "approve" in str(turn["message"]).lower()
-    mock_pf.assert_called_once()
-    assert "invoke_tool" not in str(mock_pf.call_args)
+    assert turn is None
+    mock_pf.assert_not_called()

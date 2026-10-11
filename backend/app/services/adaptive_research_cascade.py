@@ -201,6 +201,63 @@ _ACTION_VERB_RE = re.compile(
 )
 
 
+# Questions a public search cannot answer better than the conversation, the
+# clock or the user's own apps (each one searched before 2026-10-11).
+_ARITHMETIC_RE = re.compile(
+    r"(?i)^\s*(?:what(?:'s|\s+is)|how\s+much\s+is|calculate|compute)?\s*"
+    r"[\d.,]+\s*(?:\+|-|\*|x|/|plus|minus|times|divided\s+by|multiplied\s+by)\s*[\d.,]+\s*\??\s*$"
+)
+_CONVERSATION_MEMORY_RE = re.compile(
+    r"(?i)\b(?:what\s+(?:did|have)\s+(?:i|we)\s+(?:just\s+)?(?:ask|say|said|talk|discuss)|"
+    r"what\s+were\s+we\s+(?:talking|doing)|(?:summari[sz]e|recap)\s+(?:what\s+we|our\s+(?:chat|conversation)|this\s+conversation)|"
+    r"what\s+did\s+you\s+(?:just\s+)?say|say\s+that\s+again|repeat\s+that)\b"
+)
+_CLOCK_RE = re.compile(
+    r"(?i)^\s*(?:what(?:'s|\s+is)\s+(?:the\s+)?(?:time|date|day)(?:\s+(?:is\s+it|today|now|right\s+now))?|"
+    r"what\s+time\s+is\s+it|what\s+day\s+is\s+(?:it|today))\b[\s\w]{0,20}\??\s*$"
+)
+# "my calendar", "our website", "my email": the answer lives in the user's apps.
+_OWN_DATA_RE = re.compile(
+    r"(?i)\b(?:my|our)\s+(?:own\s+)?(?:calendar|schedule|meetings?|inbox|e-?mails?|gmail|outlook|website|site|"
+    r"traffic|analytics|ads?|campaigns?|crm|pipeline|deals?|leads?|contacts?|customers?|clients?|tickets?|"
+    r"invoices?|revenue|sales|numbers|metrics|dashboard|team|tasks?|projects?|files?|docs?|documents?|"
+    r"workflows?|agents?|account|accounts|data|reports?|slack|hubspot|salesforce|stripe|shopify)\b"
+    r"|\bhow\s+(?:did|is|was)\s+(?:the|my|our)\s+(?:website|site|traffic|campaign)\b"
+)
+# Recency cues mean the model's own knowledge may be out of date.
+_RECENCY_RE = re.compile(
+    r"(?i)\b(?:latest|newest|recent(?:ly)?|current(?:ly)?|today'?s|this\s+(?:week|month|year)|"
+    r"right\s+now|news|price|prices|stock|weather|score|released?|announced?|20\d\d)\b"
+)
+# "Explain what a conversion is": a definition the model already knows.
+_DEFINITION_RE = re.compile(
+    r"(?i)^\s*(?:can\s+you\s+)?(?:explain|define|what(?:'s|\s+is|\s+are|\s+does))\s+"
+    r"(?:what\s+)?(?:an?\s+|the\s+)?[a-z][a-z\s-]{0,40}?(?:\s+(?:is|are|means?|mean))?\s*[?.!]?\s*$"
+)
+
+
+def answerable_without_web(query: str | None) -> bool:
+    """True for questions a public web search only slows down.
+
+    Arithmetic, the clock, what was said earlier in this conversation, plain
+    definitions, and questions about the user's own apps and data ("how did
+    my campaigns do this week?"). Otherwise a recency cue ("latest", "news",
+    "2026") still searches.
+    """
+    text = str(query or "").strip()
+    if not text:
+        return False
+    if _ARITHMETIC_RE.match(text) or _CLOCK_RE.match(text) or _CONVERSATION_MEMORY_RE.search(text):
+        return True
+    if _OWN_DATA_RE.search(text):
+        return True
+    if _RECENCY_RE.search(text):
+        return False
+    # A lower-case definition ask; a capitalised name ("What is Acme?") may
+    # be a company the user wants looked up.
+    return bool(_DEFINITION_RE.match(text)) and not re.search(r"\s[A-Z]", text.strip()[1:])
+
+
 def auto_internet_research_blocked(query: str | None) -> bool:
     """True when thin internal context must not, on its own, start a web search.
 
@@ -225,6 +282,8 @@ def auto_internet_research_blocked(query: str | None) -> bool:
     )
 
     if _REPAIR_RE.match(text) or _is_social_utterance(text):
+        return True
+    if answerable_without_web(text):
         return True
     if _ACTION_VERB_RE.search(text) and (
         _has_request_clause(text) or _IMPERATIVE_OP_RE.match(text) or _EMBEDDED_OP_RE.search(text)

@@ -204,30 +204,43 @@ def _join_labels(labels: list[str]) -> str:
 def missing_details_question(intent_label: str, missing: list[str], args: dict[str, Any]) -> str:
     """One natural question for the details a write still needs.
 
-    Asks only for what is missing (not every required field), names the
-    record when it has a name, and ends in a single question.
+    Asks only for what is missing (not every required field) and reads like
+    a person: "Who should the email go to, and what should it say?" rather
+    than "what to, subject and message should I use?".
     """
     words = (intent_label or "").strip().split(" ", 1)
-    if len(words) == 2:
-        doing = f"{words[0].lower()} the {words[1]}"
-    else:
-        doing = (intent_label or "do that").strip().lower() or "do that"
+    # "Asana task", "email": the vendor keeps its capital, the noun does not.
+    noun_words = words[1].split() if len(words) == 2 else ["message"]
+    noun = " ".join([*noun_words[:-1], noun_words[-1].lower()])
     title = next(
-        (str(args.get(key)).strip() for key in ("name", "title", "subject") if str(args.get(key) or "").strip()),
+        (str(args.get(key)).strip() for key in ("name", "title") if str(args.get(key) or "").strip()),
         "",
     )
-    if title:
-        doing = f"{doing} \u201c{title}\u201d"
+    thing = f"{noun} \u201c{title}\u201d" if title else noun
     labels: list[str] = []
     for item in missing:
         label = str(item).strip()
-        if label.lower() in {"body", "message", "text", "content"}:
+        lowered = label.lower()
+        if lowered in {"body", "message", "text", "content"}:
             label = "message"
+        elif lowered in {"to", "recipient", "recipients", "email address"}:
+            label = "recipient"
         if label and label not in labels:
             labels.append(label)
-    if labels == ["message"]:
-        # "What should the email say?" beats "what body should I use?".
-        noun = words[1].lower() if len(words) == 2 else "message"
-        return f"What should the {noun} say?"
-    lead = "I need one more detail" if len(labels) == 1 else "I need a few more details"
-    return f"{lead} to {doing}: what {_join_labels(labels)} should I use?"
+    who = "recipient" in labels
+    rest = [label for label in labels if label != "recipient"]
+    if rest == ["message"]:
+        what = "say"
+    elif rest:
+        what = f"the {_join_labels(rest)} be"
+    else:
+        what = ""
+    if who and what:
+        if what == "say":
+            return f"Who should the {thing} go to, and what should it say?"
+        return f"Who should the {thing} go to, and what should {what}?"
+    if who:
+        return f"Who should the {thing} go to?"
+    if what == "say":
+        return f"What should the {thing} say?"
+    return f"What should {what} for the {thing}?"

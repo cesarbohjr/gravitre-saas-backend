@@ -61,7 +61,7 @@ def test_missing_parameters_returns_clarification_not_failure():
     assert "due date" in check.missing
     assert "task title" in check.missing
     assert check.known.get("Assignee") == "Sarah"
-    assert "few more details" in check.message.lower()
+    assert check.message == "What should the task title, project and due date be for the Asana task?"
 
 
 def test_write_action_approval_message_format():

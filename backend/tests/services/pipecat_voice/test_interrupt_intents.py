@@ -595,3 +595,53 @@ def test_next_ordinary_turn_after_a_cancel_releases_the_stop() -> None:
     h.run(_script)
     assert [c["query"] for c in h.calls][-1] == "what's on my calendar today"
     assert chat_turn_cancel_service.is_stop_requested(ORG, CONV) is False
+
+
+class _FakeStateService:
+    def __init__(self, state: dict[str, Any]) -> None:
+        self.state = state
+
+    async def update_task_state_from(self, conversation_id: str, org_id: str, build: Any, **_: Any) -> None:
+        patch_ = build(dict(self.state))
+        if patch_:
+            self.state.update(patch_)
+
+
+def _staged_email(status: str, **extra: Any) -> dict[str, Any]:
+    return {
+        "pending_task": {
+            "type": "connector_action",
+            "status": status,
+            "params": {"invoke_action": "gmail.messages.send", "args": {"to": "sarah@acme.example"}},
+            **extra,
+        },
+        "current_plan": {"steps": []},
+    }
+
+
+@pytest.mark.parametrize("status", ["awaiting_confirm", "awaiting_params"])
+def test_cancel_it_over_the_approval_prompt_withdraws_the_draft(status: str) -> None:
+    """"Cancel it" said over "Should I send it?" used to say "Okay, cancelled"
+    while the draft stayed approvable, so a later "yes" could still send it."""
+    h = _Harness(True, conversation_id=CONV)
+    state = _FakeStateService(_staged_email(status))
+
+    async def _script() -> None:
+        await h.barge_in_during("email Sarah the deck")
+        await h.turn("email Sarah the deck", "cancel it")
+
+    with patch(
+        "app.services.conversation_state_service.get_conversation_state_service", return_value=state
+    ):
+        h.run(_script)
+    assert state.state["pending_task"] is None and state.state["current_plan"] is None
+    report = h.spoken_client_text()
+    assert "Nothing had been sent" in report and "dropped the email" in report
+
+
+def test_cancel_it_leaves_a_write_already_claimed_for_execution() -> None:
+    from app.services.pipecat_voice.cognitive_llm import withdraw_unclaimed_pending_write
+
+    assert withdraw_unclaimed_pending_write(_staged_email("awaiting_confirm", execution_claim_id="c1")) is None
+    assert withdraw_unclaimed_pending_write(_staged_email("executing")) is None
+    assert withdraw_unclaimed_pending_write({}) is None

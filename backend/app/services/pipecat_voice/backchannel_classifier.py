@@ -399,3 +399,50 @@ def is_bare_confirmation(text: str) -> bool:
     if not normalized or len(normalized.split()) > 8:
         return False
     return bool(_BARE_CONFIRMATION_RE.match(normalized))
+
+
+# An approval prompt ends in an invitation, not a question mark: "Should I
+# send it? Say yes, or tell me what to change." A reply that ends this way
+# expects an answer exactly as one ending in "?" does.
+_REPLY_INVITATION_RE = re.compile(
+    r"(?i)\b(?:say|reply|answer)\s+\W*yes\W*?(?:\s+to\b[^.?!]*|\s*,?\s*or\b[^.?!]*)*[.!]?\s*$"
+)
+_SENTENCE_BREAK_RE = re.compile(r"[.!?](?=\s)")
+
+
+def question_tail_start(text: str) -> int | None:
+    """Where the closing question of a reply starts, or None if it asks nothing.
+
+    The reply asks something when it ends in "?" or in a reply invitation
+    ("Say yes, or tell me what to change."). For an invitation right after a
+    question, the question's start is returned, so "yes" heard over either
+    sentence is an answer.
+    """
+    stripped = (text or "").rstrip().rstrip("\"')]*").rstrip()
+    if not stripped:
+        return None
+
+    def sentence_start(end: int) -> int:
+        breaks = [m.end() for m in _SENTENCE_BREAK_RE.finditer(stripped, 0, end)]
+        start = breaks[-1] if breaks else 0
+        while start < len(stripped) and stripped[start].isspace():
+            start += 1
+        return start
+
+    if stripped.endswith("?"):
+        return sentence_start(len(stripped) - 1)
+    invite = _REPLY_INVITATION_RE.search(stripped)
+    if invite is None:
+        return None
+    start = sentence_start(invite.start())
+    if start > invite.start():
+        return None
+    before = stripped[:start].rstrip()
+    if before.endswith("?"):
+        return sentence_start(len(before) - 1)
+    return start
+
+
+def ends_with_question(text: str) -> bool:
+    """True when a reply ends by asking the listener something."""
+    return question_tail_start(text) is not None

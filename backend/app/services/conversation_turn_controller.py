@@ -398,6 +398,16 @@ async def run_connector_turn(
             snap=snap,
         )
 
+    revised_turn = await _revise_staged_write(
+        interpretation,
+        org_id=org_id,
+        conversation_id=conversation_id,
+        client=client,
+        settings=settings,
+    )
+    if revised_turn is not None:
+        return revised_turn
+
     if intent == "hold_commit":
         from app.services.spoken_write_approval import format_spoken_hold_commit
 
@@ -709,6 +719,41 @@ async def run_connector_turn(
         if interpretation.pending_reply_intent:
             turn = {**turn, "pending_reply_intent": interpretation.pending_reply_intent}
     return turn
+
+
+async def _revise_staged_write(
+    interpretation: TurnInterpretation,
+    *,
+    org_id: str,
+    conversation_id: str,
+    client: Any,
+    settings: Settings | None,
+) -> dict[str, Any] | None:
+    """"Make the subject X" while a write waits for a yes: change it, ask again."""
+    from app.services.pending_write_revision import apply_staged_write_revision
+
+    revised = await apply_staged_write_revision(
+        interpretation.message,
+        interpretation.task_state,
+        org_id=org_id,
+        conversation_id=conversation_id,
+        client=client,
+        settings=settings,
+    )
+    if revised is None:
+        return None
+    message, refreshed = revised
+    return {
+        "stop_pipeline": True,
+        "dialogue_mode": "clarifying",
+        "message": message,
+        "voice_section": interpretation.voice_section or voice_system_prompt_section(),
+        "task_state": refreshed,
+        "pending_task": refreshed.get("pending_task"),
+        "pending_reply_intent": "modify",
+        "provider_invoked": False,
+        "workflow_status": "awaiting approval",
+    }
 
 
 def bind_canvas_step_args(

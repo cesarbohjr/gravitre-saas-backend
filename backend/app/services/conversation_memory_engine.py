@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -77,10 +78,12 @@ class ConversationMemoryEngine:
         *,
         client: Any | None = None,
     ) -> None:
-        memory = await self.get_memory(org_id, "", conversation_id, client=client)
-        prefs = safe_normalize_stored_dict(memory, key="preferences")
-        prefs[key] = value
-        await self._persist_memory(conversation_id, org_id, {"preferences": prefs}, client=client)
+        def change(memory: dict[str, Any]) -> None:
+            prefs = safe_normalize_stored_dict(memory, key="preferences")
+            prefs[key] = value
+            memory["preferences"] = prefs
+
+        await self._change_memory(conversation_id, org_id, change, client=client)
 
     async def record_rejection(
         self,
@@ -91,18 +94,14 @@ class ConversationMemoryEngine:
         reason: str | None = None,
         client: Any | None = None,
     ) -> None:
-        memory = await self.get_memory(org_id, "", conversation_id, client=client)
-        rejected = list(memory.get("rejected_recommendations") or [])
-        entry = {"text": recommendation[:500], "reason": reason}
-        fingerprint = self._fingerprint(recommendation)
-        if not any(self._fingerprint(row.get("text", "")) == fingerprint for row in rejected):
-            rejected.append(entry)
-        await self._persist_memory(
-            conversation_id,
-            org_id,
-            {"rejected_recommendations": rejected[-_MAX_ITEMS:]},
-            client=client,
-        )
+        def change(memory: dict[str, Any]) -> None:
+            rejected = list(memory.get("rejected_recommendations") or [])
+            fingerprint = self._fingerprint(recommendation)
+            if not any(self._fingerprint(row.get("text", "")) == fingerprint for row in rejected):
+                rejected.append({"text": recommendation[:500], "reason": reason})
+            memory["rejected_recommendations"] = rejected[-_MAX_ITEMS:]
+
+        await self._change_memory(conversation_id, org_id, change, client=client)
         await self._state.update_task_state(
             conversation_id,
             org_id,
@@ -120,17 +119,18 @@ class ConversationMemoryEngine:
         connector: str | None = None,
         client: Any | None = None,
     ) -> None:
-        memory = await self.get_memory(org_id, "", conversation_id, client=client)
-        bucket_key = "successful_actions" if success else "failed_actions"
-        bucket = list(memory.get(bucket_key) or [])
-        bucket.append({"action": action[:300], "connector": connector})
-        updates: dict[str, Any] = {bucket_key: bucket[-_MAX_ITEMS:]}
-        if success and connector:
-            preferred = list(memory.get("preferred_connectors") or [])
-            if connector not in preferred:
-                preferred.append(connector)
-            updates["preferred_connectors"] = preferred[-_MAX_ITEMS:]
-        await self._persist_memory(conversation_id, org_id, updates, client=client)
+        def change(memory: dict[str, Any]) -> None:
+            bucket_key = "successful_actions" if success else "failed_actions"
+            bucket = list(memory.get(bucket_key) or [])
+            bucket.append({"action": action[:300], "connector": connector})
+            memory[bucket_key] = bucket[-_MAX_ITEMS:]
+            if success and connector:
+                preferred = list(memory.get("preferred_connectors") or [])
+                if connector not in preferred:
+                    preferred.append(connector)
+                memory["preferred_connectors"] = preferred[-_MAX_ITEMS:]
+
+        await self._change_memory(conversation_id, org_id, change, client=client)
 
     def build_prompt_section(self, relevant: dict[str, Any]) -> str:
         lines: list[str] = []
@@ -165,24 +165,32 @@ class ConversationMemoryEngine:
             return ""
         return "<conversation_memory>\n" + "\n".join(lines) + "\n</conversation_memory>"
 
-    async def _persist_memory(
+    async def _change_memory(
         self,
         conversation_id: str,
         org_id: str,
-        updates: dict[str, Any],
+        change: Callable[[dict[str, Any]], None],
         *,
         client: Any | None = None,
     ) -> None:
+        """Edit the stored memory in one locked read-change-write.
+
+        The change runs on the memory read under the conversation lock, so a
+        failed read never saves defaults over real memory, and two writers in
+        the same moment both keep their entries.
+        """
         if not conversation_id or not org_id:
             return
-        current = await self.get_memory(org_id, "", conversation_id, client=client)
-        merged = {**current, **updates}
-        await self._state.update_task_state(
-            conversation_id,
-            org_id,
-            {_MEMORY_KEY: merged},
-            client=client,
-        )
+
+        def build_patch(state: dict[str, Any]) -> dict[str, Any]:
+            raw = state.get(_MEMORY_KEY)
+            memory = _empty_memory()
+            if isinstance(raw, dict):
+                memory.update(raw)
+            change(memory)
+            return {_MEMORY_KEY: memory}
+
+        await self._state.update_task_state_from(conversation_id, org_id, build_patch, client=client)
 
     @staticmethod
     def _fingerprint(text: str) -> str:

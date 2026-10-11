@@ -156,12 +156,16 @@ class SlowToolNotices:
 
 DEFAULT_DEEP_ACK_SECONDS = 0.6
 
+# Plain, like a person reaching for the answer. "I'm with you." reads as
+# scripted, and "I'll help with that." promises an outcome before the turn
+# knows it has one. No "Let me check.": a tool line ("Let me check your
+# CRM.") often follows and would repeat it. Not much shorter than these
+# either: with answer-first on, held tool lines are released when this line
+# runs out, so a shorter one puts more talk ahead of the answer.
 DEEP_ACKNOWLEDGEMENTS: tuple[str, ...] = (
-    "I'm with you.",
     "Give me a moment.",
     "Okay, one moment.",
-    "Let me think that through.",
-    "I'll help with that.",
+    "Let me think about that.",
 )
 
 

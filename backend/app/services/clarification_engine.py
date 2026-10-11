@@ -12,6 +12,56 @@ from app.services.conversation_state_service import get_conversation_state_servi
 logger = get_logger(__name__)
 
 
+_WRITE_THING = {"gmail.messages.send": "email", "slack.post_message": "Slack message"}
+_FIELD_WORD = {
+    "body": "message",
+    "message": "message",
+    "text": "message",
+    "content": "message",
+    "to": "recipient",
+    "email": "recipient",
+    "recipient": "recipient",
+}
+
+
+def _natural_write_question(
+    invoke_action: str,
+    missing: list[str],
+    args: dict[str, Any],
+    proposed: dict[str, str],
+) -> str:
+    """One plain question for a write's missing details, or a quick check.
+
+    "What should the email say?" rather than "To send gmail message, I need
+    to know body (I already have to=..., email=...)".
+    """
+    del args
+    thing = _WRITE_THING.get(invoke_action, "message")
+    words: list[str] = []
+    for item in missing:
+        word = _FIELD_WORD.get(str(item).strip().lower(), str(item).strip().lower().replace("_", " "))
+        if word and word not in words:
+            words.append(word)
+    if words == ["message"]:
+        ask = f"What should the {thing} say?"
+    elif words == ["recipient"]:
+        ask = f"Who should the {thing} go to?"
+    elif words:
+        joined = words[0] if len(words) == 1 else ", ".join(words[:-1]) + " and " + words[-1]
+        ask = f"What should the {joined} be?"
+    else:
+        ask = ""
+    check = ""
+    if proposed.get("recipient"):
+        check = f"Just to check, should it go to {proposed['recipient']}?"
+    elif proposed:
+        key, value = next(iter(proposed.items()))
+        check = f"Just to check, should the {key.replace('_', ' ')} be {value}?"
+    if check and ask:
+        return f"{check} And {ask[0].lower()}{ask[1:]}"
+    return check or ask or f"What else should the {thing} have?"
+
+
 class ClarificationEngine:
     """
     Generates focused clarifying questions when TaskClassifier detects ambiguity.
@@ -177,7 +227,7 @@ class ClarificationEngine:
             task_state=task_state,
         )
         if rule_result:
-            question = await self.generate_clarification_question(
+            question = str(rule_result.get("question") or "").strip() or await self.generate_clarification_question(
                 rule_result["trigger_type"],
                 classification,
                 context,
@@ -624,6 +674,7 @@ class ClarificationEngine:
 
         # Medium-confidence bound values still need propose/confirm (not silent use).
         propose_parts: list[str] = []
+        proposed: dict[str, str] = {}
         for key, value in list(args.items()):
             if not isinstance(value, str) or not value.strip():
                 continue
@@ -631,6 +682,7 @@ class ClarificationEngine:
                 continue
             label = "recipient" if key in {"to", "email"} else key.replace("_", " ")
             propose_parts.append(f"{label} {value}")
+            proposed.setdefault("recipient" if key in {"to", "email"} else key, value)
 
         plan = ConnectorActionPlan(
             tool_name=plan_hint.tool_name,
@@ -644,6 +696,7 @@ class ClarificationEngine:
         if propose_parts and not missing:
             proposal = "; ".join(propose_parts)
             return {
+                "question": _natural_write_question(plan_hint.invoke_action, [], args, proposed),
                 "trigger_type": "missing_required_param",
                 "reason": f"Proposing ledger match for confirmation: {proposal}",
                 "template_vars": {
@@ -663,6 +716,7 @@ class ClarificationEngine:
             proposal = "; ".join(propose_parts)
             ask = ", ".join(missing)
             return {
+                "question": _natural_write_question(plan_hint.invoke_action, missing, args, proposed),
                 "trigger_type": "missing_required_param",
                 "reason": f"Partial ledger match; still need {ask}.",
                 "template_vars": {
@@ -688,6 +742,9 @@ class ClarificationEngine:
         if known_bits:
             ask = f"{ask} (I already have {', '.join(known_bits)})"
         return {
+            # One plain question for what is missing; never the internal slot
+            # names ("to=..., email=...") the reason line keeps for logs.
+            "question": _natural_write_question(plan_hint.invoke_action, missing, args, {}),
             "trigger_type": "missing_required_param",
             "reason": f"{plan_hint.label} missing {ask} (live ledger consulted).",
             "template_vars": {

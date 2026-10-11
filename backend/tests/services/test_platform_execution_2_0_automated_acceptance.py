@@ -149,21 +149,15 @@ def test_h_expanded_continuity_phrases() -> None:
 
 
 @pytest.mark.asyncio
-async def test_f_draft_email_compiles_without_send() -> None:
+async def test_f_draft_email_saves_nothing_and_says_so() -> None:
+    """Gmail drafts are not a governed write yet: the turn says nothing was
+    saved, never runs a preflight, and never turns the draft into a send."""
+    from app.connectors.action_catalog.f1_write_slice import is_f1_write_action
     from app.services.governed_write_compile import try_governed_write_compile_turn
 
-    spec = get_action_spec("gmail.drafts.create")
-    assert spec is not None
-    proof = MagicMock(
-        ok=True,
-        error_class=None,
-        safe_parameter_summary=lambda: {"to": "ops@alpha.test.gravitre.app"},
-        user_message=lambda: "",
-    )
-    with patch(
-        "app.services.governed_write_compile.preflight_write_action",
-        return_value=proof,
-    ) as mock_pf:
+    assert get_action_spec("gmail.drafts.create") is not None
+    assert is_f1_write_action("gmail.drafts.create") is False
+    with patch("app.services.governed_write_compile.preflight_write_action") as mock_pf:
         turn = await try_governed_write_compile_turn(
             message="Draft an email.",
             org_id=E2E_ORG_ID,
@@ -173,14 +167,10 @@ async def test_f_draft_email_compiles_without_send() -> None:
             task_state={},
         )
     assert turn is not None
-    assert turn["selected_action"] == "gmail.drafts.create"
-    assert turn["workflow_status"] == "waiting_for_approval"
-    assert "sent" in turn["message"].lower()
-    pending = turn["task_state"]["pending_action"]
-    assert pending["action"] == "gmail.drafts.create"
-    assert pending["write_allowed"] is False
-    mock_pf.assert_called_once()
-    assert mock_pf.call_args.kwargs["context"]["action_key"] == "gmail.drafts.create"
+    assert turn["stop_pipeline"] is True
+    assert "nothing was saved" in turn["message"].lower()
+    assert "pending_action" not in turn["task_state"]
+    mock_pf.assert_not_called()
 
 
 @pytest.mark.asyncio

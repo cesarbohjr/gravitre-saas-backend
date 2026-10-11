@@ -743,6 +743,20 @@ async def build_unified_turn_knowledge_context(
         loop_meta["assessments"].append(verdict.to_dict())
         loop_meta["stances"].append(verdict.stance)
 
+        # Weak evidence for "what time is it?" or "what's on my calendar?" is
+        # not a reason to search the public web; the first-round gate already
+        # says so, and escalation must not undo it.
+        from app.services.adaptive_research_cascade import (
+            auto_internet_research_blocked,
+            resolve_active_stages,
+        )
+
+        web_off_limits: set[str] = set()
+        if auto_internet_research_blocked(query) and "internet_research" not in resolve_active_stages(
+            research_scope, settings=settings
+        ):
+            web_off_limits.add(SOURCE_INTERNET)
+
         while not verdict.sufficient and loop_meta["additional_rounds_used"] < max_rounds:
             # A broken assessor withholds sufficiency rather than granting it, but
             # more evidence cannot fix an assessor that is not running. Escalating
@@ -752,7 +766,10 @@ async def build_unified_turn_knowledge_context(
                 loop_meta["stopped_because"] = "assessor_unavailable"
                 break
 
-            next_source = next((s for s in ESCALATION_ORDER if s not in tried), None)
+            next_source = next(
+                (s for s in ESCALATION_ORDER if s not in tried and s not in web_off_limits),
+                None,
+            )
             if next_source is None:
                 loop_meta["stopped_because"] = "no_untried_source"
                 break
