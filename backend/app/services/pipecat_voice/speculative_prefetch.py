@@ -3,7 +3,7 @@
 Two distinct mechanisms, both cancel-and-restart on partial-transcript change:
 
   1) READ-only cache warming (original, always active on any growing interim
-     partial): warm dialogue settings + sentiment, tool-retrieval query
+     partial): warm dialogue settings, tool-retrieval query
      embedding cache, READ knowledge retrieval (never for write-shaped text),
      tool-document embedding cache. Never bypasses CognitiveTurnKernel, never
      executes tools or consequential writes.
@@ -363,21 +363,21 @@ class SpeculativePrefetchProcessor(FrameProcessor):
             # cancels the previous prefetch. Worker threads cannot be cancelled,
             # so wait briefly first: only a partial that holds still is warmed.
             await asyncio.sleep(PREFETCH_DEBOUNCE_S)
-            from app.services.sentiment_friction_service import get_sentiment_friction_service
             from app.services.unified_turn_tool_retrieval import (
                 is_task_shaped_for_retrieval,
                 warm_tool_document_embeddings,
             )
             from app.workflows.repository import get_supabase_client
 
-            # Runs on every interim transcript. Both calls are blocking (a
-            # Supabase read and a classifier), and on the event loop they stall
-            # the real-time audio pacing of every session on this worker.
+            # Runs on every interim transcript. The settings read blocks (a
+            # Supabase read), and on the event loop it would stall the
+            # real-time audio pacing of every session on this worker.
+            # (No sentiment "warm": SentimentFrictionService has no cache, so
+            # running it here only burned CPU and discarded the result.)
             client = get_supabase_client(self._app_settings)
             await asyncio.to_thread(
                 _load_dialogue_settings_blocking, self._org_id, self._app_settings, client
             )
-            await asyncio.to_thread(get_sentiment_friction_service().analyze, text, None)
 
             use_emb, shape, query = is_task_shaped_for_retrieval(text)
             write_shaped = _looks_write_shaped(text)

@@ -89,7 +89,12 @@ def setup_prometheus(app: FastAPI) -> None:
         _HTTP_LATENCY.labels(request.method, path).observe(duration)
         return response
 
-    @app.get("/metrics", include_in_schema=False)
+    from fastapi import Depends
+
+    # Same header check as the internal ops routes: scrapers send X-Internal-Secret.
+    from app.routers.ops_internal import require_internal_secret
+
+    @app.get("/metrics", include_in_schema=False, dependencies=[Depends(require_internal_secret)])
     def prometheus_metrics() -> Response:
         from fastapi.responses import Response as FastAPIResponse
 

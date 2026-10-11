@@ -442,14 +442,22 @@ def embedding_status_route(
     voyage_key = bool((getattr(settings, "voyage_api_key", "") or "").strip())
     compatible = corpus_dim == VOYAGE_EMBEDDING_DIMENSION
 
+    _, org_id = _admin
     voyage_pending: int | None = None
     voyage_total: int | None = None
     try:
         client = shared_service_client(settings, create_client)
-        total_resp = client.table("rag_embeddings").select("chunk_id", count="exact").limit(1).execute()
+        total_resp = (
+            client.table("rag_embeddings")
+            .select("chunk_id", count="exact")
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+        )
         pending_resp = (
             client.table("rag_embeddings")
             .select("chunk_id", count="exact")
+            .eq("org_id", org_id)
             .is_("embedding_voyage", "null")
             .limit(1)
             .execute()

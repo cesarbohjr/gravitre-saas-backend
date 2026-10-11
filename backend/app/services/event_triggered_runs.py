@@ -24,6 +24,71 @@ from app.workflows.schema import compute_run_hash
 
 logger = get_logger(__name__)
 
+WEBHOOK_EVENT_RECEIPTS_TABLE = "webhook_event_receipts"
+_receipts_table_missing_logged = False
+
+
+def _is_missing_table_error(exc: Exception) -> bool:
+    text = str(exc)
+    return "42P01" in text or "PGRST205" in text or (
+        WEBHOOK_EVENT_RECEIPTS_TABLE in text and "does not exist" in text.lower()
+    )
+
+
+def claim_webhook_event(client: Any, *, org_id: str, provider: str, event_id: str) -> bool:
+    """Record a provider event once; False means this event was already received.
+
+    Insert-on-conflict-do-nothing on (org_id, provider, event_id). When the receipts
+    table is not deployed, or the write fails, the event proceeds without dedupe.
+    """
+    global _receipts_table_missing_logged
+    try:
+        resp = (
+            client.table(WEBHOOK_EVENT_RECEIPTS_TABLE)
+            .upsert(
+                {"org_id": org_id, "provider": provider, "event_id": event_id},
+                on_conflict="org_id,provider,event_id",
+                ignore_duplicates=True,
+            )
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        if _is_missing_table_error(exc):
+            if not _receipts_table_missing_logged:
+                _receipts_table_missing_logged = True
+                logger.warning("webhook_event_receipts_missing dedupe_disabled error=%s", exc)
+            return True
+        logger.warning(
+            "webhook_event_receipt_failed org_id=%s provider=%s event_id=%s error=%s",
+            org_id,
+            provider,
+            event_id,
+            exc,
+        )
+        return True
+    return bool(resp.data)
+
+
+def release_webhook_event(client: Any, *, org_id: str, provider: str, event_id: str) -> None:
+    """Forget a receipt so a provider retry can start the run that failed to start."""
+    try:
+        (
+            client.table(WEBHOOK_EVENT_RECEIPTS_TABLE)
+            .delete()
+            .eq("org_id", org_id)
+            .eq("provider", provider)
+            .eq("event_id", event_id)
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "webhook_event_receipt_release_failed org_id=%s provider=%s event_id=%s error=%s",
+            org_id,
+            provider,
+            event_id,
+            exc,
+        )
+
 
 async def start_event_triggered_run(
     settings: Settings,
@@ -38,8 +103,63 @@ async def start_event_triggered_run(
     source: str,
     execution_service: ExecutionService | None = None,
     environment_name: str = "production",
+    provider_event_id: str | None = None,
 ) -> dict[str, Any]:
-    """Return ``{workflow_id, run_id?, status, error?, reason?}`` for one triggered run."""
+    """Return ``{workflow_id, run_id?, status, error?, reason?}`` for one triggered run.
+
+    With ``provider_event_id`` a provider retry of the same event does not start a
+    second run of the same workflow (receipt key: ``<event id>:<workflow id>``).
+    """
+    receipt_id = f"{provider_event_id}:{workflow_id}" if provider_event_id else None
+    if receipt_id and not claim_webhook_event(
+        client, org_id=org_id, provider=trigger_type, event_id=receipt_id
+    ):
+        logger.info(
+            "%s_duplicate_event_skipped workflow_id=%s event_id=%s",
+            source,
+            workflow_id,
+            provider_event_id,
+        )
+        return {"workflow_id": workflow_id, "status": "skipped", "reason": "duplicate_event"}
+    try:
+        result = await _start_event_triggered_run(
+            settings,
+            client,
+            org_id=org_id,
+            workflow_id=workflow_id,
+            definition=definition,
+            parameters=parameters,
+            actor_id=actor_id,
+            trigger_type=trigger_type,
+            source=source,
+            execution_service=execution_service,
+            environment_name=environment_name,
+        )
+    except Exception:
+        if receipt_id:
+            release_webhook_event(client, org_id=org_id, provider=trigger_type, event_id=receipt_id)
+        raise
+    # No run was created (policy lookup failed or the start was refused), so a
+    # provider retry should be allowed to try again.
+    if receipt_id and result.get("status") in {"failed", "skipped"} and not result.get("run_id"):
+        release_webhook_event(client, org_id=org_id, provider=trigger_type, event_id=receipt_id)
+    return result
+
+
+async def _start_event_triggered_run(
+    settings: Settings,
+    client: Any,
+    *,
+    org_id: str,
+    workflow_id: str,
+    definition: dict[str, Any],
+    parameters: dict[str, Any],
+    actor_id: str,
+    trigger_type: str,
+    source: str,
+    execution_service: ExecutionService | None = None,
+    environment_name: str = "production",
+) -> dict[str, Any]:
     from fastapi import HTTPException
 
     # app.routers.workflows must load after app.operators (pre-existing import order).

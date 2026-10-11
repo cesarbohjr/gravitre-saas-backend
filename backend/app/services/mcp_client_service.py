@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from app.core.async_bridge import spawn_background
+import hashlib
 import json
 import re
 import time
@@ -23,11 +24,28 @@ from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
 
+
+def _is_timeout(exc: BaseException) -> bool:
+    return isinstance(exc, (TimeoutError, asyncio.TimeoutError, httpx.TimeoutException))
+
+
 _WRITE_KEYWORDS = frozenset(
     {"create", "update", "delete", "send", "write", "modify", "post", "put", "patch"}
 )
 
 _ENCRYPTED_AUTH_KEYS = frozenset({"api_key", "token", "bearer_token", "access_token", "secret"})
+
+
+def mcp_input_sha256(input_data: dict[str, Any] | None) -> str:
+    """Stable hash of canonical JSON args; binds an approval to the exact input."""
+    canonical = json.dumps(
+        input_data or {},
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        default=str,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def classify_mcp_tool_capability(tool_name: str, tool_description: str | None = None) -> str:
@@ -543,12 +561,14 @@ class MCPClientService:
                         "This write action requires approval. Check the Approvals queue to proceed."
                     ),
                 }
-            await self._verify_approval(approval_id, tool_id, org_id)
+            await self._verify_approval(approval_id, tool_id, org_id, input_data)
 
         server = await self._load_server(str(tool["server_id"]), org_id)
         started = time.perf_counter()
+        server_returned = False
         try:
             result = await self._call_mcp_server(server, str(tool["tool_name"]), input_data)
+            server_returned = True
             latency_ms = int((time.perf_counter() - started) * 1000)
             source_package_id = str(server.get("source_capability_package_id") or "").strip()
             execution_status = "completed"
@@ -601,6 +621,11 @@ class MCPClientService:
             return response
         except Exception as exc:  # noqa: BLE001
             latency_ms = int((time.perf_counter() - started) * 1000)
+            # Release the approval only when the server call itself failed for a
+            # known reason. After the server returned, or on a timeout (the write
+            # may have landed), the approval stays consumed so it cannot run twice.
+            if requires_write and approval_id and not server_returned and not _is_timeout(exc):
+                await self._release_approval(approval_id, org_id)
             await self._log_execution(
                 tool_id=tool_id,
                 org_id=org_id,
@@ -724,7 +749,19 @@ class MCPClientService:
             raise ValueError("MCP tool not found for org")
         return dict(rows[0])
 
-    async def _verify_approval(self, approval_id: str, tool_id: str, org_id: str) -> None:
+    async def _verify_approval(
+        self,
+        approval_id: str,
+        tool_id: str,
+        org_id: str,
+        input_data: dict[str, Any] | None = None,
+    ) -> None:
+        """Check the approval matches this tool and input, then claim it (single use).
+
+        The claim is a conditional update (status approved, consumed_at null), so a
+        concurrent replay loses. Any failure to claim — including a database
+        without approvals.consumed_at — fails closed.
+        """
         client = self._client()
         rows = (
             client.table("approvals")
@@ -744,6 +781,52 @@ class MCPClientService:
         context = row.get("context") if isinstance(row.get("context"), dict) else {}
         if str(context.get("mcp_tool_id") or "") != str(tool_id):
             raise ValueError("Approval does not match MCP tool")
+        approved_hash = str(context.get("input_sha256") or "")
+        if not approved_hash or approved_hash != mcp_input_sha256(input_data):
+            raise ValueError("Approval does not match MCP tool input")
+        try:
+            claimed = (
+                client.table("approvals")
+                .update({"consumed_at": datetime.now(timezone.utc).isoformat()})
+                .eq("id", approval_id)
+                .eq("org_id", org_id)
+                .eq("status", "approved")
+                .is_("consumed_at", "null")
+                .execute()
+                .data
+                or []
+            )
+        except Exception as exc:  # noqa: BLE001
+            text = str(exc)
+            if "42703" in text or "PGRST204" in text or "consumed_at" in text:
+                logger.error(
+                    "mcp_approval_consume_unavailable org=%s approval=%s error=%s",
+                    org_id,
+                    approval_id,
+                    exc,
+                )
+            raise ValueError("Approval could not be consumed") from exc
+        if not claimed:
+            raise ValueError("Approval has already been used")
+
+    async def _release_approval(self, approval_id: str, org_id: str) -> None:
+        """Un-claim an approval whose execution failed so the same input can retry."""
+        try:
+            (
+                self._client()
+                .table("approvals")
+                .update({"consumed_at": None})
+                .eq("id", approval_id)
+                .eq("org_id", org_id)
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "mcp_approval_release_failed org=%s approval=%s error=%s",
+                org_id,
+                approval_id,
+                exc,
+            )
 
     async def _create_pending_execution(
         self,
@@ -784,6 +867,7 @@ class MCPClientService:
                 "mcp_tool_id": tool_id,
                 "mcp_execution_id": execution_id,
                 "tool_name": tool.get("tool_name"),
+                "input_sha256": mcp_input_sha256(input_data),
             },
             parameters=input_data,
         )

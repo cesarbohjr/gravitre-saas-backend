@@ -88,6 +88,9 @@ async def update_dialogue_settings(
     return {key: saved.get(key, DEFAULT_DIALOGUE_SETTINGS[key]) for key in DEFAULT_DIALOGUE_SETTINGS}
 
 
+LOW_QUALITY_THRESHOLD = 0.5
+
+
 @router.get("/conversation-health")
 async def get_conversation_health(
     org_id: Annotated[str, Depends(get_org_context)],
@@ -118,18 +121,24 @@ async def get_conversation_health(
     has_quality = bool(qualities)
     avg_confidence = (sum(qualities) / len(qualities)) if has_quality else None
 
+    # Honest metrics only. Frustration, escalation and consensus-trigger rates
+    # used to be arithmetic over response_quality / the "help" category share
+    # ((1 - quality) * 0.5, 0.4 - quality, clarify * 0.3) presented as if they
+    # were measured. Nothing records those signals, so they are not reported;
+    # low_quality_rate_7d is the measured share of rated responses below
+    # LOW_QUALITY_THRESHOLD.
+    low_quality_rate = (
+        sum(1 for q in qualities if q < LOW_QUALITY_THRESHOLD) / len(qualities) if has_quality else None
+    )
     return {
-        "avg_frustration_score_7d": (
-            round(max(0.0, 1.0 - avg_confidence) * 0.5, 3) if avg_confidence is not None else None
-        ),
+        "low_quality_rate_7d": round(low_quality_rate, 3) if low_quality_rate is not None else None,
+        "low_quality_threshold": LOW_QUALITY_THRESHOLD,
         "avg_clarification_rate_7d": round(clarify_rate, 3),
+        "clarification_rate_source": "query_category == 'help' share",
         "avg_confidence_7d": round(avg_confidence, 3) if avg_confidence is not None else None,
         "confidence_is_estimate": False,
         "confidence_source": "response_quality" if has_quality else "insufficient_data",
-        "escalation_rate_7d": (
-            round(max(0.0, 0.4 - avg_confidence), 3) if avg_confidence is not None else None
-        ),
-        "consensus_trigger_rate_7d": round(min(0.25, clarify_rate * 0.3), 3),
+        "not_measured": ["frustration", "escalation_rate", "consensus_trigger_rate"],
         "sample_size": len(rows),
         "quality_sample_size": len(qualities),
     }

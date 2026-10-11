@@ -8,6 +8,7 @@ The blend is not more authoritative than either input alone.
 """
 from __future__ import annotations
 
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from typing import Any
 
@@ -21,6 +22,21 @@ from app.services.query_normalization import normalize_query
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
+
+# Set while ``rebuild_org_entity_relationships`` runs: the instant the rebuild started.
+# Edges whose ``last_observed_at`` predates it belong to the previous rebuild, so their
+# evidence is restated (not added to), and any not re-observed are removed at the end.
+_REBUILD_STARTED_AT: ContextVar[datetime | None] = ContextVar("_rebuild_started_at", default=None)
+
+
+def _parse_iso(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
 
 
 def _heuristic_edge_confidence(value: float) -> float:
@@ -127,7 +143,7 @@ def _upsert_relationship(
     now = _now_iso()
     existing = (
         client.table("org_entity_relationships")
-        .select("id, evidence_count")
+        .select("id, evidence_count, last_observed_at")
         .eq("org_id", org_id)
         .eq("source_entity_type", source_entity_type)
         .eq("source_entity_id", source_entity_id)
@@ -142,6 +158,13 @@ def _upsert_relationship(
     if existing:
         row = existing[0]
         new_count = int(row.get("evidence_count") or 0) + evidence_count
+        rebuild_started = _REBUILD_STARTED_AT.get()
+        if rebuild_started is not None:
+            observed = _parse_iso(row.get("last_observed_at"))
+            if observed is None or observed < rebuild_started:
+                # First sighting in this rebuild: restate evidence instead of
+                # accumulating on top of the previous rebuild's count.
+                new_count = evidence_count
         client.table("org_entity_relationships").update(
             {
                 "evidence_count": new_count,
@@ -424,11 +447,23 @@ async def rebuild_org_entity_relationships(
     """Rebuild all v6 relationships from existing v3/v4/v8 signal tables."""
     active_settings = settings or get_settings()
     db = client or get_supabase_client(active_settings)
-    db.table("org_entity_relationships").delete().eq("org_id", org_id).execute()
-    glossary_count = await build_relationships_from_glossary(org_id, settings=active_settings, client=db)
-    memory_count = await build_relationships_from_agent_memories(org_id, settings=active_settings, client=db)
-    cluster_count = await build_relationships_from_query_clusters(org_id, settings=active_settings, client=db)
-    crm_count = await build_relationships_from_crm_data(org_id, settings=active_settings, client=db)
+    # Upsert first, prune after. The old order (delete everything, then insert) had no
+    # transaction, so a failure part-way left the org's graph empty. Now every edge
+    # observed in this rebuild gets last_observed_at >= started_at, and only edges
+    # that were not re-observed are deleted, and only once every builder succeeded.
+    # A failed rebuild leaves the previous edges plus any new ones in place.
+    started_at = datetime.now(timezone.utc)
+    token = _REBUILD_STARTED_AT.set(started_at)
+    try:
+        glossary_count = await build_relationships_from_glossary(org_id, settings=active_settings, client=db)
+        memory_count = await build_relationships_from_agent_memories(org_id, settings=active_settings, client=db)
+        cluster_count = await build_relationships_from_query_clusters(org_id, settings=active_settings, client=db)
+        crm_count = await build_relationships_from_crm_data(org_id, settings=active_settings, client=db)
+    finally:
+        _REBUILD_STARTED_AT.reset(token)
+    db.table("org_entity_relationships").delete().eq("org_id", org_id).lt(
+        "last_observed_at", started_at.isoformat()
+    ).execute()
     summary = {
         "glossary_department": glossary_count,
         "agent_glossary": memory_count,
