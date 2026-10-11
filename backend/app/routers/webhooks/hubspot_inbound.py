@@ -8,6 +8,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
 from app.config import Settings, get_settings
+from app.services.event_triggered_runs import raise_if_retryable
 from app.connectors.hubspot_webhooks import verify_hubspot_signature_v3, webhook_client_secret
 from app.services.hubspot_trigger_service import process_hubspot_event_batch
 
@@ -60,4 +61,5 @@ async def hubspot_inbound_webhook(
         events = []
 
     results = await process_hubspot_event_batch(settings, events)
+    raise_if_retryable(results)
     return {"received": len(events), "dispatched": len(results), "results": results}

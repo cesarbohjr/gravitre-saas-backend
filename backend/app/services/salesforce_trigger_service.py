@@ -138,6 +138,12 @@ def _enrich_normalized_record(
         logger.warning("salesforce_trigger_enrich_failed type=%s error=%s", event_type, exc)
 
 
+def salesforce_event_id(event: dict[str, Any]) -> str | None:
+    """Our Salesforce payload has no required event id; dedupe only when the sender supplies one."""
+    value = event.get("eventId") or event.get("event_id") or event.get("EventUuid")
+    return str(value) if value not in (None, "") else None
+
+
 async def start_workflow_from_salesforce(
     settings: Settings,
     *,
@@ -146,6 +152,7 @@ async def start_workflow_from_salesforce(
     parameters: dict[str, Any],
     connector_id: str,
     execution_service: ExecutionService | None = None,
+    provider_event_id: str | None = None,
 ) -> dict[str, Any]:
     client = get_supabase_client(settings)
     workflow = _load_active_workflow(client, org_id, workflow_id)
@@ -167,6 +174,7 @@ async def start_workflow_from_salesforce(
         trigger_type="salesforce",
         source="salesforce_trigger",
         execution_service=execution_service,
+        provider_event_id=provider_event_id,
     )
     return {**outcome, "connector_id": connector_id}
 
@@ -250,6 +258,7 @@ async def process_salesforce_event_batch(
         elif token_err:
             normalized["salesforce_token_error"] = token_err
 
+        provider_event_id = salesforce_event_id(event)
         for trigger in matching:
             workflow_id = str(trigger["workflow_id"])
             parameters = {**normalized, "trigger": dict(trigger)}
@@ -260,6 +269,7 @@ async def process_salesforce_event_batch(
                 parameters=parameters,
                 connector_id=connector_id,
                 execution_service=execution_service,
+                provider_event_id=provider_event_id,
             )
             outcomes.append(result)
 
