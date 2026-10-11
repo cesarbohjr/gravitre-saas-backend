@@ -546,6 +546,28 @@ class Settings(BaseSettings):
     connector_provider_revoke_on_disconnect: bool = False
     # Remove indexed documents a full-sweep sync no longer finds upstream (Notion).
     source_deletion_propagation_enabled: bool = False
+    # Phase 2C governance. Retention prune of indexed documents per the org's
+    # sourceDataGovernance.retentionDays (daily), and retrieval-side exclusion of
+    # excerpts that match prompt-injection patterns.
+    knowledge_retention_prune_enabled: bool = False
+    knowledge_retention_interval_seconds: int = 86400
+    retrieved_content_guard_enabled: bool = False
+    # Phase 2D in-process indexing pilot: only these orgs (comma-separated UUIDs), only
+    # when each also opts in to customer context. Needs migration 20261012020000.
+    rag_worker_pilot_enabled: bool = False
+    rag_worker_pilot_org_ids: str = ""
+    rag_worker_pilot_interval_seconds: int = 30
+    rag_worker_pilot_max_jobs_per_tick: int = 5
+    # Skip re-embedding when a document's text matches its active version.
+    rag_ingest_checksum_skip_enabled: bool = False
+    # Phase 2E: file provider records (HubSpot companies first) into the entity store,
+    # for orgs that opted in to customer context. Ambiguous joins become proposals.
+    entity_writer_enabled: bool = False
+    # Phase 3 customer observations (extractor obs-v1) and their read/correct API.
+    # Turn on only after scripts/eval_observations.py passes its gate.
+    entity_observations_enabled: bool = False
+    # Phase 4: account cards (observations, trends, behaviour) in the chat and voice context.
+    entity_context_cards_enabled: bool = False
     # Shared secret for /api/watchers/agent/signal HMAC or X-Watcher-Secret header.
     watcher_agent_webhook_secret: str | None = None
     # Memory promotion evaluation (v4). 0 disables; default 8 hours.

@@ -514,9 +514,45 @@ def list_emails_since(
     return search_crm_objects(
         access_token,
         "emails",
-        properties=["hs_email_subject", "hs_email_text", "hs_timestamp", "hs_lastmodifieddate"],
+        properties=[
+            "hs_email_subject",
+            "hs_email_text",
+            "hs_timestamp",
+            "hs_lastmodifieddate",
+            "hs_email_direction",
+            "hs_email_from_email",
+        ],
         since_ms=since_ms,
         limit=limit,
+    )
+
+
+def email_company_associations(access_token: str, email_ids: list[str]) -> dict[str, list[str]]:
+    """Map email ids to associated company ids (associations v4 batch read)."""
+    ids = [str(i) for i in email_ids if str(i)][:100]
+    if not ids:
+        return {}
+    data = _request(
+        "POST",
+        "/crm/v4/associations/emails/companies/batch/read",
+        access_token,
+        json_body={"inputs": [{"id": i} for i in ids]},
+    )
+    out: dict[str, list[str]] = {}
+    for row in (data or {}).get("results") or []:
+        src = str((row.get("from") or {}).get("id") or "")
+        out[src] = [str(t.get("toObjectId")) for t in row.get("to") or [] if t.get("toObjectId") is not None]
+    return out
+
+
+def get_email(access_token: str, email_id: str) -> dict[str, Any]:
+    return _request(
+        "GET",
+        f"/crm/v3/objects/emails/{email_id}",
+        access_token,
+        params={
+            "properties": "hs_email_subject,hs_email_text,hs_timestamp,hs_email_direction,hs_email_from_email",
+        },
     )
 
 

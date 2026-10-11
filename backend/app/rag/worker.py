@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import time
 import uuid
@@ -66,6 +67,49 @@ def _heartbeat_job(client: Client, job_id: str, worker_id: str) -> None:
         logger.warning("rag_ingest_heartbeat_failed job_id=%s worker_id=%s", job_id, worker_id)
 
 
+def content_checksum(title: str | None, chunks: list[str]) -> str:
+    h = hashlib.sha256()
+    h.update((title or "").encode("utf-8"))
+    for chunk in chunks:
+        h.update(b"\x1e")
+        h.update(chunk.encode("utf-8"))
+    return h.hexdigest()
+
+
+def _unchanged_active_document(
+    settings: Settings,
+    client: Client,
+    org_id: str,
+    source_id: str,
+    external_id: str | None,
+    content_sha256: str,
+) -> str | None:
+    """Id of the active version with identical content, when checksum skip is on."""
+    if not external_id or getattr(settings, "rag_ingest_checksum_skip_enabled", False) is not True:
+        return None
+    try:
+        res = (
+            client.table("rag_documents")
+            .select("id, metadata")
+            .eq("org_id", org_id)
+            .eq("source_id", source_id)
+            .eq("external_id", external_id)
+            .eq("is_active", True)
+            .limit(1)
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("rag_ingest_checksum_lookup_failed org_id=%s error=%s", org_id, exc)
+        return None
+    rows = res.data or []
+    if not rows:
+        return None
+    meta = rows[0].get("metadata") if isinstance(rows[0].get("metadata"), dict) else {}
+    if meta.get("content_sha256") == content_sha256:
+        return str(rows[0]["id"])
+    return None
+
+
 def process_job(settings: Settings, client: Client, job: dict) -> None:
     org_id = str(job["org_id"])
     job_id = str(job["id"])
@@ -105,13 +149,36 @@ def process_job(settings: Settings, client: Client, job: dict) -> None:
             validate_chunks(chunks)
 
         _heartbeat_job(client, job_id, worker_id)
+        content_sha256 = content_checksum(title, chunks)
+        unchanged = _unchanged_active_document(
+            settings, client, org_id, source_id, external_id, content_sha256
+        )
+        if unchanged:
+            # Same text as the active version: nothing to re-chunk or re-embed.
+            finalize_ingest_job(
+                client,
+                job_id=job_id,
+                status="completed",
+                document_id=unchanged,
+                chunk_count=0,
+                model=settings.embedding_model,
+                dimension=settings.openai_embedding_dimension,
+                clear_payload=True,
+            )
+            logger.info(
+                "rag_ingest_unchanged_skipped org_id=%s job_id=%s document_id=%s",
+                org_id,
+                job_id,
+                unchanged,
+            )
+            return
         doc = upsert_document(
             client,
             org_id=org_id,
             source_id=source_id,
             external_id=external_id,
             title=title,
-            metadata=metadata,
+            metadata={**(metadata if isinstance(metadata, dict) else {}), "content_sha256": content_sha256},
             is_active=False,
             environment_name=environment,
         )

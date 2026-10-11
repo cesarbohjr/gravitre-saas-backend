@@ -244,6 +244,7 @@ async def compile_unified_reasoning_context(
     agent: dict[str, Any] | None = None,
     surface: str | None = None,
     workspace_focus: dict[str, Any] | None = None,
+    spoken_mode: bool = False,
 ) -> CompiledTurnContext:
     """Assemble unified-LIVE reasoning context through one canonical contract (E4).
 
@@ -460,6 +461,28 @@ async def compile_unified_reasoning_context(
         reason = "registry:rag_off" if not rag_enabled else "missing_client_or_org"
         knowledge_meta = {"skipped": reason}
         _record("knowledge_fabric", "EXCLUDE", reason)
+
+    from app.services.entity_context_card import (
+        build_entity_context_block,
+        cards_enabled,
+    )
+
+    if cards_enabled(active) and not remind_me and client is not None and org_id:
+        card_block, card_meta = await asyncio.to_thread(
+            build_entity_context_block,
+            client,
+            org_id,
+            message or "",
+            spoken=bool(spoken_mode),
+            settings=active,
+        )
+        if card_block:
+            _add_part("account_context", card_block)
+            _record("account_context", "INCLUDE", f"accounts:{len(card_meta.get('accounts') or [])}")
+        else:
+            _record("account_context", "EXCLUDE", str(card_meta.get("skipped") or "empty"))
+    else:
+        _record("account_context", "EXCLUDE", "disabled_or_remind_me")
 
     if cognitive_context is not None and not remind_me:
         try:
