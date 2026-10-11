@@ -189,3 +189,33 @@ async def test_failed_execution_releases_approval(service) -> None:
         result = await service.execute_tool("tool-write", "org-1", {"name": "x"}, approval_id="appr-1")
     assert result["status"] == "failed"
     assert approvals.row["consumed_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_approval_stays_consumed_when_logging_fails_after_server_returned(service) -> None:
+    approvals = _Approvals(_approval({"name": "x"}))
+    with (
+        patch.object(service, "_client", return_value=_client(approvals)),
+        patch.object(service, "_call_mcp_server", new=AsyncMock(return_value={"created": True})),
+        patch.object(service, "_audit_execution", new=AsyncMock()),
+        patch.object(
+            service, "_log_execution", new=AsyncMock(side_effect=[RuntimeError("log insert failed"), None])
+        ),
+    ):
+        result = await service.execute_tool("tool-write", "org-1", {"name": "x"}, approval_id="appr-1")
+    assert result["status"] == "failed"
+    assert approvals.row["consumed_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_approval_stays_consumed_on_timeout(service) -> None:
+    approvals = _Approvals(_approval({"name": "x"}))
+    with (
+        patch.object(service, "_client", return_value=_client(approvals)),
+        patch.object(service, "_call_mcp_server", new=AsyncMock(side_effect=TimeoutError())),
+        patch.object(service, "_audit_execution", new=AsyncMock()),
+        patch.object(service, "_log_execution", new=AsyncMock()),
+    ):
+        result = await service.execute_tool("tool-write", "org-1", {"name": "x"}, approval_id="appr-1")
+    assert result["status"] == "failed"
+    assert approvals.row["consumed_at"] is not None

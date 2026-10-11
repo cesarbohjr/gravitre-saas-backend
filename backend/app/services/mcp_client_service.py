@@ -24,6 +24,11 @@ from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
 
+
+def _is_timeout(exc: BaseException) -> bool:
+    return isinstance(exc, (TimeoutError, asyncio.TimeoutError, httpx.TimeoutException))
+
+
 _WRITE_KEYWORDS = frozenset(
     {"create", "update", "delete", "send", "write", "modify", "post", "put", "patch"}
 )
@@ -560,8 +565,10 @@ class MCPClientService:
 
         server = await self._load_server(str(tool["server_id"]), org_id)
         started = time.perf_counter()
+        server_returned = False
         try:
             result = await self._call_mcp_server(server, str(tool["tool_name"]), input_data)
+            server_returned = True
             latency_ms = int((time.perf_counter() - started) * 1000)
             source_package_id = str(server.get("source_capability_package_id") or "").strip()
             execution_status = "completed"
@@ -614,7 +621,10 @@ class MCPClientService:
             return response
         except Exception as exc:  # noqa: BLE001
             latency_ms = int((time.perf_counter() - started) * 1000)
-            if requires_write and approval_id:
+            # Release the approval only when the server call itself failed for a
+            # known reason. After the server returned, or on a timeout (the write
+            # may have landed), the approval stays consumed so it cannot run twice.
+            if requires_write and approval_id and not server_returned and not _is_timeout(exc):
                 await self._release_approval(approval_id, org_id)
             await self._log_execution(
                 tool_id=tool_id,
