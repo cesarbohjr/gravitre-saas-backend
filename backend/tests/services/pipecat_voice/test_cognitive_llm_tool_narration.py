@@ -21,7 +21,7 @@ from app.operators.stream_events import AssistantStreamComplete, AssistantStream
 from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
 
 
-def _drive(events: list[Any]) -> tuple[list[str], list[str]]:
+def _drive(events: list[Any], **settings: Any) -> tuple[list[str], list[str]]:
     """Run one turn against a scripted event sequence; return (display, tts)."""
 
     async def _fake_stream(**_kwargs: Any):
@@ -42,7 +42,7 @@ def _drive(events: list[Any]) -> tuple[list[str], list[str]]:
         # These tests are about tool narration only; the deep-turn
         # acknowledgement (its own tests) is switched off so a slow test
         # machine cannot add an acknowledgement to the spoken output.
-        app_settings=SimpleNamespace(voice_deep_ack_seconds=0),
+        app_settings=SimpleNamespace(voice_deep_ack_seconds=0, **settings),
         org_id="00000000-0000-4000-8000-000000000001",
         user_id="00000000-0000-4000-8000-000000000002",
     )
@@ -286,3 +286,27 @@ class TestWriteOutcomeIsSaidOnce:
         ]
         _, tts = _drive(events)
         assert "I couldn't finish that step — Salesforce rejected: stage is locked. " in tts
+
+    def test_with_answer_first_the_result_line_waits_as_long(self) -> None:
+        """voice_answer_first_v1 (on in production) held the line only 1.0 s."""
+        from app.services.pipecat_voice import cognitive_llm
+        from app.services.pipecat_voice.voice_answer_first import AnswerFirstSpeech
+
+        holds: list[tuple[str, float | None]] = []
+        real_enqueue = AnswerFirstSpeech.enqueue
+
+        def _record(self: Any, text: str, kind: str, still_relevant: Any = None, **kw: Any) -> None:
+            holds.append((text, kw.get("hold_s")))
+            real_enqueue(self, text, kind, still_relevant, **kw)
+
+        events = [
+            _tool_start("c1", "moveDealStage"),
+            _tool_output("c1", {"success": True, "stage": "Negotiation"}),
+            _tool_start("c2", "getDeal"),
+            _tool_output("c2", {"success": True, "count": 3}),
+            AssistantStreamEvent(sse_type="text-delta", payload={"delta": "I moved Acme to Negotiation."}),
+        ]
+        with patch.object(AnswerFirstSpeech, "enqueue", _record):
+            _drive(events, voice_answer_first_v1=True)
+        result_holds = [hold for _, hold in holds if hold is not None]
+        assert cognitive_llm.WRITE_RESULT_LINE_HOLD_S in result_holds

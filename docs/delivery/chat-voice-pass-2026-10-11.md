@@ -35,11 +35,19 @@ Production values were not observable from this session (Railway, production Sup
 | 10 | Medium | "Thanks!" after a missing-details question became the email subject, and the question was repeated. | Fixed. Social replies never fill a field unless the message body is the only thing missing; the missing-details question reads like a person and is asked once. |
 | 11 | Low-medium | A write's "Done, that went through" and the answer both reported the same outcome in voice. | Fixed. The result line waits 2.5 s for the answer and is spoken only if no answer comes. |
 | 12 | Low-medium | In voice, a clarifying question could be followed by a generic fallback line. | Fixed. When the streamed text is the question, it is the answer. |
-| 13 | Low | The session flag report left out every number (acknowledgement delay, Flux thresholds, TTS model) and shared switches, and listed a retired flag. | Fixed. `session.ready` and the start log now carry `effective_settings` (names from a fixed allow-list, never keys or URLs). |
-| 14 | Low | Cross-process lost updates (the lock is per process), text-only answer dedupe, no request-level idempotency on turn persistence. | Not changed. Documented in `correctness-findings.md`. |
-| 15 | Low | "Who won the World Cup in 2022?" is classified as social and never searches. | Not changed (pre-existing classifier behaviour, outside this pass's write and voice paths). |
+| 13 | High | A spoken "yes" over the email approval prompt was treated as a backchannel, and "yes... wait" got no hold, because the prompt ends "Say yes, or tell me what to change." rather than "?". | Fixed. A reply ending in a reply invitation counts as a question for both the backchannel check and the confirmation hold. |
+| 14 | High | "Cancel it" said over a reply answered "Okay, cancelled" but left the staged email awaiting approval, so a later "yes" could still send it. | Fixed. The cancel also withdraws an unclaimed staged write and says so ("I've dropped the email too, so nothing will be sent."). A write already claimed for execution finishes and is reported as before. |
+| 15 | Medium | With answer-first on (production), a write's result line waited only 1.0 s for the answer, so the outcome could be said twice. | Fixed. It waits 2.5 s, as without the flag. |
+| 16 | Medium | The voice bench showed a new short acknowledgement ("Let me check.") released a held tool line ("Let me check google analytics report.") ahead of the answer, adding about 1 s in some runs. | Fixed before merge: acknowledgements no longer include "Let me check." or lines much shorter than before. |
+| 17 | Low | The session flag report left out every number (acknowledgement delay, Flux thresholds, TTS model) and shared switches, and listed a retired flag. | Fixed. `session.ready` and the start log now carry `effective_settings` (names from a fixed allow-list, never keys or URLs). |
+| 18 | Low | Cross-process lost updates (the lock is per process), text-only answer dedupe, no request-level idempotency on turn persistence. | Not changed. Documented in `correctness-findings.md`. |
+| 19 | Low | "Who won the World Cup in 2022?" is classified as social and never searches. | Not changed (pre-existing classifier behaviour, outside this pass's write and voice paths). |
 
-Interruption, timing, reconnect, playback and voice-quality findings are in `interruptions-timing-reconnect.md`. Code changes from that audit are limited to what is listed above; the rest are ranked proposals.
+Interruption, timing, reconnect, playback and voice-quality findings are in `interruptions-timing-reconnect.md`. Its findings 1, 2 and 8 are fixed here (rows 13 to 15). Still open, ranked, as proposals:
+- High: "why?", "hold on" or "wait, why?" while a task runs cancels the task, and the request is lost once anything was spoken. Needs a wider explain-aside phrase set and a carry rule for filler-only speech.
+- Medium-high (inferred): a dropped socket does not stop its pipeline, so a result finishing after a reconnect is spoken into the dead socket. Needs the reconnect to cancel the old session's turn and hand its result to the new one.
+- Medium: a bare "stop" keeps the reply playing ducked for up to 1.8 s; the acknowledgement clock starts after pre-answer work; Flux end-of-turn timeout is left at 5 s; an explain aside mutes later progress lines; no deterministic number, date, URL or email clean-up before Flash.
+- Untested flag pairs: intents with ducking, explain aside with answer-first or with playback-grounded history, ducking with playback-grounded history.
 
 ## 3. Request revisions
 
@@ -69,6 +77,9 @@ New scenario and unit tests (chat and voice surfaces where a surface applies):
 - `tests/scenarios/test_email_request_edges_scenarios.py`: honest draft answer, "thanks" is not a subject, one question.
 - `tests/services/test_state_write_correctness.py`: findings 1a, 1b and 3a.
 - `tests/services/pipecat_voice/test_explain_aside.py`: the settings report has the tuning values and no secrets.
+- `tests/services/pipecat_voice/test_confirmation_hold.py` and `test_voice_live_test_regressions.py`: "yes" over the approval prompt is an answer and is held.
+- `tests/services/pipecat_voice/test_interrupt_intents.py`: "cancel it" withdraws an unclaimed draft and leaves a claimed write alone.
+- `tests/services/pipecat_voice/test_cognitive_llm_tool_narration.py`: a write's outcome is said once, with and without answer-first.
 
 FULL_SUITE_RESULT
 

@@ -1390,8 +1390,15 @@ class GravitreCognitiveLLMService(LLMService):
                         )
                     elif self._answer_first is not None:
                         # A result line waits briefly: the answer usually
-                        # follows, and then the line is not needed.
-                        self._answer_first.enqueue(narration, PROGRESS, hold_s=RESULT_LINE_GRACE_S)
+                        # follows, and then the line is not needed. A write's
+                        # outcome waits as long as it does without the flag,
+                        # since the answer reports that outcome itself.
+                        hold_s = (
+                            WRITE_RESULT_LINE_HOLD_S
+                            if _reports_write_outcome(tool_name, payload.get("output"))
+                            else RESULT_LINE_GRACE_S
+                        )
+                        self._answer_first.enqueue(narration, PROGRESS, hold_s=hold_s)
                     else:
                         await self._speak_narration(narration)
                 continue
