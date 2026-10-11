@@ -325,7 +325,7 @@ class _OwnerRedis:
         return current
 
     def claim_elsewhere(self, org: str, conv: str, token: str) -> None:
-        seq = self.incr(f"voice:conn-seq:{org}:{conv}")
+        seq = self.incr("voice:conn-seq")
         self.eval("", 1, f"voice:conn:{org}:{conv}", f"{token}@{seq}", seq, 0)
 
 

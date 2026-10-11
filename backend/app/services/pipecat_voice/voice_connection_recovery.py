@@ -37,7 +37,7 @@ logger = get_logger(__name__)
 
 OWNER_TTL_SECONDS = 6 * 60 * 60
 _KEY_PREFIX = "voice:conn:"
-_SEQ_PREFIX = "voice:conn-seq:"
+_SEQ_KEY = "voice:conn-seq"
 
 #: task_state key a connection leaves when a write outcome was not delivered.
 UNDELIVERED_KEY = "voice_undelivered_outcome"
@@ -141,8 +141,9 @@ def claim_conversation(
     previous_token = previous.token if previous is not None else None
     if redis is not None:
         try:
-            seq = int(redis.incr(_SEQ_PREFIX + key))
-            redis.expire(_SEQ_PREFIX + key, OWNER_TTL_SECONDS)
+            # One global counter that never expires: a sequence never restarts,
+            # so a later claim always carries a higher number than any live one.
+            seq = int(redis.incr(_SEQ_KEY))
             old = redis.eval(
                 _CLAIM_IF_NEWER, 1, _KEY_PREFIX + key, f"{token}@{seq}", seq, OWNER_TTL_SECONDS
             )
