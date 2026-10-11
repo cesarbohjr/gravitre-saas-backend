@@ -81,11 +81,28 @@ New scenario and unit tests (chat and voice surfaces where a surface applies):
 - `tests/services/pipecat_voice/test_interrupt_intents.py`: "cancel it" withdraws an unclaimed draft and leaves a claimed write alone.
 - `tests/services/pipecat_voice/test_cognitive_llm_tool_narration.py`: a write's outcome is said once, with and without answer-first.
 
-FULL_SUITE_RESULT
+Full backend suite on the first committed candidate (`2975593e`): 9175 passed, 4 failed, 3 skipped. One failure (the real tiktoken counter) also fails on the baseline in this sandbox, because it cannot download the encoding. The other three were tests that asserted the old behaviour (the old missing-details copy, a connected send compiled outside the shared draft path, a Gmail draft compiled as a write); they were updated to the new behaviour. After the later voice commits, the voice, voice-scenario and conversation-scenario suites were re-run: 1445 passed.
 
 ## 6. Measurements
 
-MEASUREMENTS
+Two benches, both offline and synthetic. They compare code versions under the same conditions and do not predict live latency. Raw numbers are in `/mnt/project-files/audits/voice-pass-2026-10-11/measurements.md`.
+
+**Chat turns** (scenario harness, scripted model, real turn path; simulated web search 1000 ms, Gmail read 150 ms; n = 15 per row; P50 / P95 ms, then web searches per turn):
+
+| Turn | Text, baseline | Text, candidate | Voice, baseline | Voice, candidate |
+|---|---|---|---|---|
+| "What time is it?" | 3190 / 3893, 1 | 2049 / 2376, 0 | 3071 / 3310, 1 | 1948 / 2238, 0 |
+| "What's 2 plus 2?" | 3057 / 3265, 1 | 1971 / 2551, 0 | 2989 / 3260, 1 | 1877 / 2056, 0 |
+| "What's on my calendar today?" | 3129 / 3274, 1 | 1958 / 2206, 0 | 3097 / 3284, 1 | 1899 / 2058, 0 |
+| "How did the website do last week?" | 3103 / 3367, 1 | 1888 / 2294, 0 | 3063 / 3769, 1 | 1884 / 2251, 0 |
+| "Explain what a conversion is." | 3079 / 3198, 1 | 1964 / 2365, 0 | 3030 / 3474, 1 | 1891 / 2172, 0 |
+| "Send an email to Stephanie on Gmail" | 157 / 211, 0 | 483 / 537, 0 | 183 / 219, 0 | 529 / 559, 0 |
+| "Thanks!" | 25 / 33, 0 | 27 / 32, 0 | 8 / 11, 0 | 10 / 14, 0 |
+| News question (control) | 3065 / 3244, 1 | 3082 / 3604, 1 | 2988 / 3250, 1 | 3002 / 3142, 1 |
+
+The five questions are about 1.1 s faster at P50 because they no longer search the web. The email turn is about 330 ms slower because it now looks Stephanie up in Gmail (one search plus parallel header reads at the simulated 150 ms each); at baseline it took the model's invented address. The news control still searches.
+
+**Voice pipeline** (`backend/scripts/bench_voice_scenarios.py`, production pipeline on a virtual clock, 15 scenarios, n = 20 each, seed 1000, all production voice flags on): every scenario's outcome is identical to the baseline (no premature replies or actions, the same interrupt, cancel, approval and reconnect outcomes). First audio P50 is unchanged in every scenario. Answer-heard P50 moves between -1.1 s and +0.1 s per scenario (mostly within a few tens of ms), and P95 between -0.2 s and +0.1 s. A first candidate run showed answers about 1 s later in some runs, caused by the new "Let me check." acknowledgement; that was fixed before merge (row 16).
 
 ## 7. Configuration
 
@@ -109,6 +126,6 @@ Revert the merge commit. No data migration, no schema change, and the one new co
 
 ## 10. Rollout
 
-1. Merge on Cesar's go. Vercel and Railway deploy from main.
+1. Merged on Cesar's go (review skipped at his request). Vercel and Railway deploy from main.
 2. Read one voice session's effective flags and settings line.
 3. Live checks, chat then voice: "Send an email to <a test contact's first name>", change the subject before approving, approve, and confirm one email with the new subject; "What's 2 plus 2?" and "What time is it?" answer without "searching the web"; Stop mid-email in chat reports truthfully.
