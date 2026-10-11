@@ -17,7 +17,7 @@ DEFAULT_LOOKBACK_HOURS = 24
 # Per-object-type cap for one run. Records are fetched oldest change first, so when the
 # cap is hit the per-type cursor stops at the last processed record and the next run
 # continues from there (nothing beyond the cap is skipped).
-MAX_OBJECTS_PER_SYNC = 500
+MAX_OBJECTS_PER_SYNC = 100  # same per-run volume as before Phase 1
 CURSORS_CONFIG_KEY = "hubspot_sync_cursors"
 
 

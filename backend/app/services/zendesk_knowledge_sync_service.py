@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_LOOKBACK_HOURS = 24
 # Per-run cap. Tickets are fetched oldest update first, so when the cap is hit the cursor
 # stops at the last processed ticket and the next run continues from there.
-MAX_TICKETS_PER_SYNC = 500
+MAX_TICKETS_PER_SYNC = 100  # same per-run volume as before Phase 1
 SEARCH_PAGE_SIZE = 100
 CURSOR_CONFIG_KEY = "zendesk_sync_cursor"
 
