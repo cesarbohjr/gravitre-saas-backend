@@ -178,6 +178,30 @@ def test_existing_successful_write_matches_observation_invoke_action() -> None:
     assert replay["structured"]["provider_record_id"] == "279246127081"
 
 
+def test_a_new_write_that_follows_an_earlier_one_is_not_its_replay() -> None:
+    """The same email offered to a new recipient after the first went out."""
+    sent = {
+        "connector_session": {
+            "stepOutputs": {
+                "connector_gmail.messages.send": {
+                    "invokeAction": "gmail.messages.send",
+                    "success": True,
+                    "structured": {"id": "msg-1"},
+                }
+            }
+        },
+        "execution_observations": [
+            {"success": True, "capability_id": "gmail.messages.send", "resource": "msg-1", "structured": {}}
+        ],
+    }
+    resend = {"type": "connector_action", "status": "awaiting_confirm", "follows_write": "msg-1"}
+    assert existing_successful_write({**sent, "pending_task": resend}, invoke_action="gmail.messages.send") is None
+    # Any other success of that action is still a replay.
+    other = {**resend, "follows_write": "msg-0"}
+    assert existing_successful_write({**sent, "pending_task": other}, invoke_action="gmail.messages.send")
+    assert existing_successful_write(sent, invoke_action="gmail.messages.send")
+
+
 def test_g_worker_restart_lease_recovery() -> None:
     pending = {
         "status": "executing",

@@ -71,6 +71,9 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     # The file such an email carries ("the budget spreadsheet"): what was
     # searched, the files offered, the one chosen and checked.
     "file_resolution": {},
+    # "Send it to Mike instead" waiting on which Mike or his address: the
+    # name asked about and, after a send, where the first email went.
+    "recipient_change": {},
     # Phase A — structured reference resolution (not prose history).
     "previous_option_set": [],
     "previous_result": None,
