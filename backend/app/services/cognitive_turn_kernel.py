@@ -1392,8 +1392,8 @@ def _memory_prompt_section(pack: dict[str, Any]) -> str:
 
     Items that carry a non-user-direct ``source_class`` (set by
     ``attach_recall_honesty`` / the contamination guard) get a short trust label so
-    the model can tell an inference from a user fact. Unlabelled stores are left
-    as-is rather than guessed at.
+    the model can tell an inference from a user fact. Unlabelled stores and rows
+    whose class was only defaulted on recall are left as-is rather than guessed at.
     """
     trust_labels = {
         "model_inference": "inferred, unconfirmed",
@@ -1404,7 +1404,7 @@ def _memory_prompt_section(pack: dict[str, Any]) -> str:
 
     def _trust_label(item: dict[str, Any]) -> str:
         source_class = str(item.get("source_class") or "").strip().lower()
-        if not source_class or source_class == "user_direct":
+        if not source_class or source_class == "user_direct" or item.get("source_class_defaulted"):
             return ""
         caution = str(item.get("memory_caution") or item.get("memoryCaution") or "").strip()
         if caution:

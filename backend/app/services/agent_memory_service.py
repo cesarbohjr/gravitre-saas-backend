@@ -13,6 +13,7 @@ from app.rag.embedding import get_embedding
 from app.rag.retrieval import search_chunks
 from app.services.memory_contamination_guard import (
     SOURCE_MODEL_INFERENCE,
+    SOURCE_USER_DIRECT,
     SOURCE_WORKFLOW_OUTCOME,
     classify_memory_source,
     validate_memory_write,
@@ -148,6 +149,7 @@ def _serialize_row(row: dict[str, Any]) -> dict[str, Any]:
         "provenance": row.get("provenance"),
         "source": row.get("provenance"),
         "confidence": float(row.get("confidence") or 100),
+        "sourceClass": row.get("source_class"),
         "usageCount": int(row.get("usage_count") or 0),
         "editable": bool(row.get("editable", True)),
         "createdAt": created_at,
@@ -291,6 +293,14 @@ def update_agent_memory(
     confidence: float | None = None,
     editable: bool | None = None,
 ) -> dict[str, Any]:
+    """Edit a memory through the contamination guard.
+
+    Rewriting the content through the CRUD API makes it a user-direct memory (a
+    signed-in person typed it), as on create. Any other edit keeps the memory's
+    existing source class; the class comes from the stored row and its stored
+    provenance, so changing provenance or confidence cannot raise its trust.
+    Confidence is always capped for the resulting class.
+    """
     existing = get_agent_memory(client, org_id, agent_id, memory_id)
     if not existing.get("editable"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Memory is protected and cannot be edited")
@@ -299,8 +309,6 @@ def update_agent_memory(
         patch["category"] = _normalize_category(category)
     if provenance is not None:
         patch["provenance"] = provenance.strip() or None
-    if confidence is not None:
-        patch["confidence"] = max(0, min(100, float(confidence)))
     if editable is not None:
         patch["editable"] = bool(editable)
     if content is not None:
@@ -309,6 +317,17 @@ def update_agent_memory(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="content cannot be empty")
         patch["content"] = text
         patch["embedding"] = get_embedding(text, settings, org_id=org_id)
+    if content is not None or confidence is not None:
+        candidate: dict[str, Any] = {
+            "confidence": max(0, min(100, float(confidence if confidence is not None else existing.get("confidence") or 80))),
+        }
+        if content is not None:
+            candidate["source_class"] = SOURCE_USER_DIRECT
+        elif existing.get("sourceClass"):
+            candidate["source_class"] = existing["sourceClass"]
+        guarded = validate_memory_write(candidate, provenance=str(existing.get("provenance") or ""))
+        patch["confidence"] = float(guarded["confidence"])
+        patch["source_class"] = guarded["source_class"]
     r = (
         client.table("agent_memories")
         .update(patch)

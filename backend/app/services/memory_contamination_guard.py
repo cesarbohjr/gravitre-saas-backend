@@ -121,6 +121,9 @@ def attach_recall_honesty(row: dict[str, Any]) -> dict[str, Any]:
     source = _confidence_source_for_class(source_class)
     labeled = annotate_confidence(out, value=conf, is_estimate=is_estimate, source=source)
     labeled["source_class"] = source_class
+    # Rows written before source_class existed carry no class; the default above
+    # keeps confidence honest, but the prompt must not call them inferences.
+    labeled["source_class_defaulted"] = not out.get("source_class")
     if source_class == SOURCE_UNTRUSTED_EXTERNAL:
         labeled["memory_caution"] = (
             "Recalled from untrusted external source — verify before acting."

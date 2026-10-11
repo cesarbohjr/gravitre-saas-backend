@@ -310,3 +310,73 @@ def test_increment_memory_usage_filters_by_org():
     assert eq_calls.count(("org_id", "org-1")) == 2
     assert eq_calls.count(("id", "m1")) == 2
     table.update.assert_called_once()
+
+
+# --- 6. edits go through the guard and cannot raise trust ---------------------------
+
+
+def _row(org_id: str, agent_id: str, **extra) -> dict:
+    return {
+        "id": "m-1",
+        "org_id": org_id,
+        "agent_id": agent_id,
+        "content": "Prefers Tuesday demos",
+        "category": "preference",
+        "confidence": 70,
+        "editable": True,
+        **extra,
+    }
+
+
+def _update(tables, org_id, agent_id, **kwargs):
+    from app.services.agent_memory_service import update_agent_memory
+
+    update_agent_memory(MagicMock(), _client(tables), org_id, agent_id, "m-1", **kwargs)
+    return tables["agent_memories"].update.call_args.args[0]
+
+
+@patch("app.services.agent_memory_service.get_embedding", return_value=[0.1])
+def test_edit_cannot_raise_inferred_memory_confidence_above_cap(_embed):
+    org_id, agent_id = str(uuid.uuid4()), str(uuid.uuid4())
+    tables = _agent_tables(org_id, agent_id)
+    tables["agent_memories"] = _chain([_row(org_id, agent_id, source_class=SOURCE_MODEL_INFERENCE)])
+    patch_body = _update(tables, org_id, agent_id, confidence=100, provenance="user_statement")
+    assert patch_body["source_class"] == SOURCE_MODEL_INFERENCE
+    assert patch_body["confidence"] == 75.0
+
+
+@patch("app.services.agent_memory_service.get_embedding", return_value=[0.1])
+def test_edit_of_legacy_memory_ignores_new_provenance_for_trust(_embed):
+    org_id, agent_id = str(uuid.uuid4()), str(uuid.uuid4())
+    tables = _agent_tables(org_id, agent_id)
+    tables["agent_memories"] = _chain([_row(org_id, agent_id, source_class=None, provenance="kernel")])
+    patch_body = _update(tables, org_id, agent_id, confidence=99, provenance="user_statement")
+    assert patch_body["source_class"] == SOURCE_MODEL_INFERENCE
+    assert patch_body["confidence"] == 75.0
+
+
+@patch("app.services.agent_memory_service.get_embedding", return_value=[0.1])
+def test_person_rewriting_content_makes_it_user_direct(_embed):
+    org_id, agent_id = str(uuid.uuid4()), str(uuid.uuid4())
+    tables = _agent_tables(org_id, agent_id)
+    tables["agent_memories"] = _chain([_row(org_id, agent_id, source_class=SOURCE_MODEL_INFERENCE)])
+    patch_body = _update(tables, org_id, agent_id, content="Prefers Thursday demos", confidence=100)
+    assert patch_body["source_class"] == SOURCE_USER_DIRECT
+    assert patch_body["confidence"] == 95.0
+
+
+@patch("app.services.agent_memory_service.get_embedding", return_value=[0.1])
+def test_category_only_edit_leaves_trust_untouched(_embed):
+    org_id, agent_id = str(uuid.uuid4()), str(uuid.uuid4())
+    tables = _agent_tables(org_id, agent_id)
+    tables["agent_memories"] = _chain([_row(org_id, agent_id, source_class=SOURCE_MODEL_INFERENCE)])
+    patch_body = _update(tables, org_id, agent_id, category="fact")
+    assert "confidence" not in patch_body and "source_class" not in patch_body
+
+
+def test_legacy_memory_without_source_class_gets_no_trust_label():
+    item = attach_recall_honesty({"content": "Legacy note", "source_class": None})
+    assert item["source_class_defaulted"] is True
+    section = _section(item)
+    assert "- Legacy note\n" in section
+    assert "inferred" not in section.lower()
