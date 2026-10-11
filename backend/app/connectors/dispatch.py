@@ -10,4 +10,6 @@ def connector_capacity(connector_type: str) -> tuple[float, float]:
         return 2.0, 0.2
     if connector_type == "webhook":
         return 5.0, 2.0
+    if connector_type == "mcp":
+        return 10.0, 2.0
     return 1.0, 1.0

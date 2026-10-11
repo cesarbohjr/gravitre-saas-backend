@@ -49,7 +49,24 @@ class _Receipts:
                 chain.execute.side_effect = execute
                 return chain
 
+            def delete():
+                filters: dict[str, str] = {}
+                chain = MagicMock()
+
+                def eq(col, val):
+                    filters[col] = val
+                    return chain
+
+                def execute():
+                    self.keys.discard((filters.get("org_id"), filters.get("provider"), filters.get("event_id")))
+                    return SimpleNamespace(data=[])
+
+                chain.eq.side_effect = eq
+                chain.execute.side_effect = execute
+                return chain
+
             mock.upsert.side_effect = upsert
+            mock.delete.side_effect = delete
             return mock
 
         client.table.side_effect = table
@@ -148,3 +165,28 @@ def test_provider_event_ids() -> None:
     assert pagerduty_event_id({"id": "msg-1", "event": "incident.trigger"}) == "msg-1"
     assert salesforce_event_id({"eventId": "sf-1", "event": "lead.created"}) == "sf-1"
     assert salesforce_event_id({"event": "lead.created", "recordId": "00Q"}) is None
+
+
+@pytest.mark.asyncio
+async def test_receipt_released_when_policy_lookup_fails() -> None:
+    from app.workflows.policy import PolicyResolutionError
+
+    receipts = _Receipts()
+    with (
+        patch("app.workflows.policy.resolve_policy", side_effect=PolicyResolutionError("down")),
+        patch("app.billing.service.get_plan_for_org", return_value={}),
+    ):
+        out = await start_event_triggered_run(
+            SETTINGS,
+            receipts.client(),
+            org_id="org-1",
+            workflow_id="wf-1",
+            definition=READ_ONLY,
+            parameters={"event": "x"},
+            actor_id="user-1",
+            trigger_type="hubspot",
+            source="hubspot_trigger",
+            provider_event_id="evt-9",
+        )
+    assert out["status"] == "failed"
+    assert ("org-1", "hubspot", "evt-9:wf-1") not in receipts.keys

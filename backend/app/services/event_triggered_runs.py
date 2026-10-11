@@ -122,7 +122,7 @@ async def start_event_triggered_run(
         )
         return {"workflow_id": workflow_id, "status": "skipped", "reason": "duplicate_event"}
     try:
-        return await _start_event_triggered_run(
+        result = await _start_event_triggered_run(
             settings,
             client,
             org_id=org_id,
@@ -139,6 +139,11 @@ async def start_event_triggered_run(
         if receipt_id:
             release_webhook_event(client, org_id=org_id, provider=trigger_type, event_id=receipt_id)
         raise
+    # No run was created (policy lookup failed or the start was refused), so a
+    # provider retry should be allowed to try again.
+    if receipt_id and result.get("status") in {"failed", "skipped"} and not result.get("run_id"):
+        release_webhook_event(client, org_id=org_id, provider=trigger_type, event_id=receipt_id)
+    return result
 
 
 async def _start_event_triggered_run(
