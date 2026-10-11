@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta
 from typing import Any
 
 
@@ -13,12 +14,20 @@ def build_conversation_turn_message_rows(
     tool_results: list[dict[str, Any]],
     created_at: str,
     assistant_message_id: str | None = None,
+    user_row_stored: bool = False,
+    earlier_user_text: str | None = None,
 ) -> tuple[list[dict[str, Any]], str]:
     """Build user+assistant rows for conversation_messages insert.
 
     Both rows must carry explicit ids. PostgREST batch inserts unify columns: if
     only the assistant row has id, the user row is sent as id=null and overrides
     DEFAULT gen_random_uuid() → NOT NULL violation (silent history loss).
+
+    ``user_row_stored``: the user message is already stored, only the assistant
+    row is built. ``earlier_user_text``: a user message said before this turn
+    (a running task's request, asked before the voice aside this turn answers)
+    and not stored yet; its row comes first, a microsecond earlier, so history
+    read by ``created_at`` keeps the order the words were said.
     """
     user_message_id = str(uuid.uuid4())
     assistant_id = (assistant_message_id or "").strip() or str(uuid.uuid4())
@@ -62,4 +71,19 @@ def build_conversation_turn_message_rows(
             "created_at": created_at,
         },
     ]
+    if user_row_stored:
+        rows = rows[1:]
+    earlier = (earlier_user_text or "").strip()
+    if earlier:
+        earlier_at = (datetime.fromisoformat(created_at) - timedelta(microseconds=1)).isoformat()
+        rows.insert(
+            0,
+            {
+                "id": str(uuid.uuid4()),
+                "conversation_id": conversation_id,
+                "role": "user",
+                "content": earlier,
+                "created_at": earlier_at,
+            },
+        )
     return rows, assistant_id

@@ -178,6 +178,30 @@ def test_existing_successful_write_matches_observation_invoke_action() -> None:
     assert replay["structured"]["provider_record_id"] == "279246127081"
 
 
+def test_a_new_write_that_follows_an_earlier_one_is_not_its_replay() -> None:
+    """The same email offered to a new recipient after the first went out."""
+    sent = {
+        "connector_session": {
+            "stepOutputs": {
+                "connector_gmail.messages.send": {
+                    "invokeAction": "gmail.messages.send",
+                    "success": True,
+                    "structured": {"id": "msg-1"},
+                }
+            }
+        },
+        "execution_observations": [
+            {"success": True, "capability_id": "gmail.messages.send", "resource": "msg-1", "structured": {}}
+        ],
+    }
+    resend = {"type": "connector_action", "status": "awaiting_confirm", "follows_write": "msg-1"}
+    assert existing_successful_write({**sent, "pending_task": resend}, invoke_action="gmail.messages.send") is None
+    # Any other success of that action is still a replay.
+    other = {**resend, "follows_write": "msg-0"}
+    assert existing_successful_write({**sent, "pending_task": other}, invoke_action="gmail.messages.send")
+    assert existing_successful_write(sent, invoke_action="gmail.messages.send")
+
+
 def test_g_worker_restart_lease_recovery() -> None:
     pending = {
         "status": "executing",
@@ -504,3 +528,32 @@ async def test_duplicate_confirm_skips_second_invoke() -> None:
     assert result is not None
     assert result.structured.get("replayed") is True
     svc._registry.execute_invoke_action.assert_not_called()
+
+
+def test_a_resend_after_a_send_with_no_provider_id_is_not_its_replay() -> None:
+    """Microsoft 365 sendMail returns no id; the resend names the earlier send by recipient."""
+    from app.services.action_lifecycle import existing_successful_write
+    from app.services.pending_write_revision import _sent_record_id
+
+    first = {"params": {"invoke_action": "microsoft365.mail.send", "args": {"to": "Steph@Acme.example"}},
+             "result": {"success": True, "entity_id": "connector-1", "structured": {"accepted_async": True}}}
+    earlier = _sent_record_id(first)
+    assert earlier == "to:steph@acme.example"
+    sent = {
+        "connector_session": {
+            "stepOutputs": {
+                "connector_microsoft365.mail.send": {
+                    "invokeAction": "microsoft365.mail.send",
+                    "success": True,
+                    "structured": {"accepted_async": True, "to_recipients": ["steph@acme.example"]},
+                }
+            }
+        },
+    }
+    resend = {"type": "connector_action", "status": "awaiting_confirm", "follows_write": earlier}
+    assert existing_successful_write({**sent, "pending_task": resend}, invoke_action="microsoft365.mail.send") is None
+    # The resend's own success (to the new recipient) is still a replay.
+    done = {"connector_session": {"stepOutputs": {"x": {
+        "invokeAction": "microsoft365.mail.send", "success": True,
+        "structured": {"to_recipients": ["mike@acme.example"]}}}}}
+    assert existing_successful_write({**done, "pending_task": resend}, invoke_action="microsoft365.mail.send")

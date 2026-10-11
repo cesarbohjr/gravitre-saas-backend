@@ -168,6 +168,39 @@ async def test_interrupt_before_completion_commits_keeps_one_heard_turn(db: Fake
 
 
 @pytest.mark.asyncio
+async def test_request_stored_ahead_of_an_aside_is_not_stored_again_at_the_barge_in(db: FakeSupabase) -> None:
+    """voice_explain_aside_v1: the aside stored the running task's request first; a cut adds only the reply."""
+    conv = db.seed_conversation(org_id=ORG, user_id=USER)
+    request = "Walk me through the rollout plan"
+    _persist_conversation_turn(
+        SETTINGS,
+        org_id=ORG,
+        user_id=USER,
+        conversation_id=conv,
+        user_text="why is it taking so long",
+        assistant_text="It is reading every region's plan.",
+        tool_results=[],
+        earlier_user_text=request,
+    )
+    reporter, _ = await _reporter(conversation_id=conv)
+    reporter.begin_turn(request)
+    reporter.mark_user_row_stored()
+
+    await _speak_then_interrupt(reporter, heard=HEARD, full=FULL)
+    await reporter.settle_barge_in()
+    await reporter.flush_bookkeeping()
+
+    rows = db.rows("conversation_messages")
+    assert [(row["role"], row["content"]) for row in rows] == [
+        ("user", request),
+        ("user", "why is it taking so long"),
+        ("assistant", "It is reading every region's plan."),
+        ("assistant", HEARD),
+    ]
+    assert [row["created_at"] for row in rows] == sorted(row["created_at"] for row in rows)
+
+
+@pytest.mark.asyncio
 async def test_completion_landing_between_update_and_insert_still_ends_heard(db: FakeSupabase) -> None:
     """Probe B: the completion commits after the reporter's update missed but before its insert."""
     conv = db.seed_conversation(org_id=ORG, user_id=USER)

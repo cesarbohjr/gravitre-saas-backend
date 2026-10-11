@@ -153,6 +153,20 @@ def existing_successful_write(
 ) -> dict[str, Any] | None:
     """Replay-safe: connector_session step output already recorded a success."""
     state = task_state if isinstance(task_state, dict) else {}
+    pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+    # A new write staged after an earlier one (the same email to a new
+    # recipient) names that earlier write; its success is not this one's.
+    earlier = str(pending.get("follows_write") or "").strip()
+
+    def _is_earlier(row: dict[str, Any]) -> bool:
+        structured = row.get("structured") if isinstance(row.get("structured"), dict) else {}
+        if earlier.startswith("to:"):
+            # A send with no provider id (Microsoft 365) is named by its recipient.
+            sent = structured.get("to_recipients") or structured.get("to") or []
+            sent = [sent] if isinstance(sent, str) else sent if isinstance(sent, list) else []
+            return earlier[3:] in {str(x).strip().lower() for x in sent}
+        return bool(earlier) and str(provider_record_id(structured) or row.get("resource") or "") == earlier
+
     session = state.get("connector_session") if isinstance(state.get("connector_session"), dict) else {}
     outputs = session.get("stepOutputs") or session.get("step_outputs") or {}
     if isinstance(outputs, dict):
@@ -160,10 +174,10 @@ def existing_successful_write(
             if not isinstance(row, dict):
                 continue
             action = str(row.get("invokeAction") or row.get("invoke_action") or "")
-            if action == invoke_action and row.get("success") is True:
+            if action == invoke_action and row.get("success") is True and not _is_earlier(row):
                 return row
     obs = _latest_observation(state)
-    if obs and obs.get("success"):
+    if obs and obs.get("success") and not _is_earlier(obs):
         structured = obs.get("structured") if isinstance(obs.get("structured"), dict) else {}
         keys = {
             str(obs.get("action_key") or ""),
@@ -172,7 +186,6 @@ def existing_successful_write(
         }
         if invoke_action in keys:
             return obs
-    pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
     if str(pending.get("status") or "") in _DONE and isinstance(pending.get("result"), dict):
         return pending["result"]
     return None

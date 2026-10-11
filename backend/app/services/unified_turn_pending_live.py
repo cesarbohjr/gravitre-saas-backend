@@ -89,16 +89,13 @@ async def resolve_unified_live_pending_reply(
     settings: Settings | None = None,
 ) -> "UnifiedTurnShadowResult | None":
     """Return a deterministic LIVE result when Module B owns this pending turn."""
+    from app.services.pending_write_revision import apply_staged_write_revision
     from app.services.unified_turn_reasoning_service import UnifiedTurnShadowResult
 
-    if not has_pending_family(task_state):
-        return None
-
-    active = settings or get_settings()
-    from app.services.pending_write_revision import apply_staged_write_revision
-
     # "Make the subject X" while a write waits for a yes changes the staged
-    # write and asks again; it is not a hold, a new request or a yes.
+    # write and asks again; it is not a hold, a new request or a yes. "Send
+    # it to Mike instead" after the email went out is answered here too,
+    # though nothing is pending any more.
     revised = await apply_staged_write_revision(
         message,
         task_state,
@@ -106,6 +103,7 @@ async def resolve_unified_live_pending_reply(
         conversation_id=conversation_id,
         client=client,
         settings=settings,
+        user_id=user_id,
     )
     if revised is not None:
         text, refreshed = revised
@@ -122,6 +120,10 @@ async def resolve_unified_live_pending_reply(
             },
         )
 
+    if not has_pending_family(task_state):
+        return None
+
+    active = settings or get_settings()
     snap = build_pending_snapshot(task_state)
     intent: PendingReplyIntent = await classify_pending_reply(
         message,
@@ -240,7 +242,9 @@ async def resolve_unified_live_channel_override_reply(
             if client and org_id and conv_id:
                 from datetime import datetime, timezone
 
-                from app.services.conversation_state_service import get_conversation_state_service
+                from app.services.conversation_state_service import (
+                    get_conversation_state_service,
+                )
 
                 def _apply(fresh: dict[str, Any]) -> None:
                     # On the state as stored now, not the snapshot this turn
@@ -286,7 +290,10 @@ async def resolve_unified_live_meta_capability_reply(
     settings: Settings | None = None,
 ) -> "UnifiedTurnShadowResult | None":
     """Meta capability questions use the same expression path as classical Module D."""
-    from app.services.conversational_reply_service import generate_conversational_reply, re_search_meta
+    from app.services.conversational_reply_service import (
+        generate_conversational_reply,
+        re_search_meta,
+    )
     from app.services.conversational_turn_gate import ConversationalGateDecision
     from app.services.pending_reply_classifier import has_pending_family
     from app.services.unified_turn_reasoning_service import UnifiedTurnShadowResult

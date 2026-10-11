@@ -404,6 +404,7 @@ async def run_connector_turn(
         conversation_id=conversation_id,
         client=client,
         settings=settings,
+        user_id=user_id,
     )
     if revised_turn is not None:
         return revised_turn
@@ -728,6 +729,7 @@ async def _revise_staged_write(
     conversation_id: str,
     client: Any,
     settings: Settings | None,
+    user_id: str | None = None,
 ) -> dict[str, Any] | None:
     """"Make the subject X" while a write waits for a yes: change it, ask again."""
     from app.services.pending_write_revision import apply_staged_write_revision
@@ -739,6 +741,7 @@ async def _revise_staged_write(
         conversation_id=conversation_id,
         client=client,
         settings=settings,
+        user_id=user_id,
     )
     if revised is None:
         return None

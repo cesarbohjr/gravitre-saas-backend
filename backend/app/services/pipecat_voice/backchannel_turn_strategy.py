@@ -91,6 +91,10 @@ MAX_WORDLESS_WAIT_WHILE_SPEAKING_S = 1.8
 # After interim "stop" / "no", how long to wait for a next word that would make
 # it "stop talking" / "no need to read it" before deciding on the words heard.
 SPEECH_STOP_CONTINUATION_WAIT_S = 0.5
+# voice_interrupt_intents_v1: a wordless start that ran out the wait above while
+# a turn's work runs silences the reply but keeps the work; the decision waits
+# this long for the final words, then falls back to an ordinary interruption.
+WORDLESS_HOLD_MAX_S = 4.0
 
 # While the brain is still working and nothing is playing, these never cancel
 # the request in flight: hesitations, acknowledgements, presence checks and
@@ -210,6 +214,11 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         self._held_aside = False
         # The held aside began while the brain was thinking (nothing playing).
         self._held_aside_thinking = False
+        # voice_interrupt_intents_v1: the held start had no words when its wait
+        # ran out while work ran; the reply is silenced, the work goes on, and
+        # the final words decide (bounded by WORDLESS_HOLD_MAX_S).
+        self._held_wordless = False
+        self._wordless_hold_task = None
         # The pending classification is being resolved by a final transcript.
         self._resolved_on_final = False
         # Latest interim text of the pending utterance (finals go to _buffer_text).
@@ -226,6 +235,7 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
 
     async def cleanup(self):
         await self._cancel_grace_task()
+        await self._cancel_wordless_hold()
         await super().cleanup()
 
     async def handle_user_turn_started(self):
@@ -296,6 +306,8 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             self._held_speech_stop = False
             self._held_pause = False
             self._held_aside = False
+            self._held_wordless = False
+            await self._cancel_wordless_hold()
             # The brain mid-turn with nothing playing is protected too: Pipecat
             # would otherwise cancel the in-flight request on any sound.
             thinking = not self._bot_speaking and self._assistant_thinking()
@@ -310,6 +322,9 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             # while the held utterance is still only filler / small talk, so
             # "you there?" never becomes a queued turn of its own.
             self._held_text = f"{self._held_text} {frame.text}".strip()
+            if self._held_wordless:
+                await self._finish_wordless_hold()
+                return ProcessFrameResult.CONTINUE
             if self._held_aside:
                 await self._finish_held_aside(str(frame.text or "").strip() or self._held_text)
                 return ProcessFrameResult.CONTINUE
@@ -512,6 +527,93 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
                 note()
             return
         # The reply was silenced for the aside: now it is a real interruption.
+        await self.broadcast_frame(InterruptionFrame)
+
+    async def _hold_wordless_start(self, decision_latency_ms: float) -> bool:
+        """A wordless start ran out its wait while a turn's work runs: silence, don't cancel.
+
+        Flux sends the words only at EndOfTurn, so "why is it taking so long"
+        had no text when the wait ran out and was taken for an interruption,
+        which cancelled the running task. The reply is silenced now, as fast
+        as that interruption stopped it, and the work keeps running until the
+        final words decide (``_finish_wordless_hold``). False: nothing held.
+        """
+        if not self._intents_enabled() or not getattr(self._voice_session, "work_active", False):
+            return False
+        if not await self._silence_reply(notice=False):
+            return False
+        logger.info(
+            "voice_turn_taking_wordless_hold decision_latency_ms=%.1f bot_speaking=%s",
+            decision_latency_ms,
+            self._bot_speaking,
+        )
+        await self.trigger_user_turn_started(
+            enable_interruptions=False, enable_user_speaking_frames=False
+        )
+        self._held_turn = True
+        self._held_text = ""
+        self._held_thinking = False
+        self._held_wordless = True
+        await self._cancel_wordless_hold()
+        self._wordless_hold_task = self.create_task(
+            self._wordless_hold_timeout(), f"{self}::wordless_hold"
+        )
+        return True
+
+    async def _wordless_hold_timeout(self) -> None:
+        try:
+            await asyncio.sleep(WORDLESS_HOLD_MAX_S)
+        except asyncio.CancelledError:
+            return
+        self._wordless_hold_task = None
+        if not self._held_wordless:
+            return
+        # No words ever came: what a wordless start always was, an interruption.
+        self._held_wordless = False
+        self._held_turn = False
+        logger.info("voice_turn_taking_wordless_hold_expired")
+        await self.broadcast_frame(InterruptionFrame)
+
+    async def _cancel_wordless_hold(self) -> None:
+        task, self._wordless_hold_task = self._wordless_hold_task, None
+        if task is not None and task is not asyncio.current_task():
+            await self.cancel_task(task)
+
+    async def _finish_wordless_hold(self) -> None:
+        """The wordless start's final words arrived: decide what they are."""
+        self._held_wordless = False
+        await self._cancel_wordless_hold()
+        text = self._held_text
+        if await self._try_start_aside(text):
+            # "Why is it taking so long?": answered as an aside, the work goes on.
+            self._held_turn = False
+            await self.trigger_reset_aggregation()
+            return
+        intent = classify_interrupt_intent(text)
+        if intent is InterruptIntent.SPEECH_STOP:
+            # "Stop talking": already silent, and the work goes on.
+            self._held_speech_stop = True
+            await self.trigger_reset_aggregation()
+            return
+        if (
+            intent is InterruptIntent.BACKCHANNEL
+            or is_backchannel(classify_user_utterance(text))
+            or self._is_bot_echo(text)
+        ):
+            # "Mm-hmm": nothing was asked. The work goes on and its result is
+            # spoken when it is ready; the words never become a turn.
+            await self.trigger_reset_aggregation()
+            return
+        # A stop, cancel, correction or new request: today's interruption,
+        # decided on the words. The words stay in the aggregation as the turn.
+        self._held_turn = False
+        if intent in _CANCELS_RUNNING_WORK:
+            cancel_work = getattr(self._voice_session, "cancel_turn_work", None)
+            if callable(cancel_work):
+                cancel_work(f"held_{intent.value}")
+        logger.info(
+            "voice_turn_taking_wordless_hold_escalated text=%r intent=%s", text[:80], intent.value
+        )
         await self.broadcast_frame(InterruptionFrame)
 
     async def _pause_reply(self) -> bool:
@@ -894,6 +996,12 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             self._held_text = self._buffer_text
             self._held_thinking = False
         else:
+            if (
+                resolved_by_timeout
+                and not self._buffer_text
+                and await self._hold_wordless_start(decision_latency_ms)
+            ):
+                return
             await self.trigger_user_turn_started(
                 enable_interruptions=self._enable_interruptions,
                 enable_user_speaking_frames=True,
