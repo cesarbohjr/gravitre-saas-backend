@@ -38,7 +38,7 @@ def _scheduler(clock: _Clock, playout: PlayoutClock) -> tuple[AnswerFirstSpeech,
     async def _speak(text: str, kind: str) -> None:
         spoken.append((kind, text))
 
-    return AnswerFirstSpeech(speak=_speak, playout=playout, clock=clock), spoken
+    return AnswerFirstSpeech(speak=_speak, playout=playout, clock=clock, progress_floor_s=0.0), spoken
 
 
 def test_playout_clock_tracks_queued_audio_and_resets_on_flush() -> None:
@@ -283,3 +283,58 @@ def test_flag_on_a_turn_with_no_answer_text_still_says_its_result_line() -> None
 
 def test_answer_first_flag_defaults_off() -> None:
     assert Settings.model_fields["voice_answer_first_v1"].default is False
+
+
+@pytest.mark.parametrize("ack_audio_s", [0.7, 0.9, 1.2, 1.6])
+def test_acknowledgement_length_no_longer_decides_the_order(ack_audio_s: float) -> None:
+    """OF-1: a short acknowledgement used to let "Let me check..." play ahead of the answer."""
+    from app.services.pipecat_voice.voice_answer_first import PROGRESS_FLOOR_S
+
+    async def _go() -> list[tuple[str, str]]:
+        clock = _Clock()
+        playout = PlayoutClock(clock=clock)
+        spoken: list[tuple[str, str]] = []
+
+        async def _speak(text: str, kind: str) -> None:
+            spoken.append((kind, text))
+            if kind == "filler":
+                playout.note_audio(ack_audio_s)
+
+        sched = AnswerFirstSpeech(speak=_speak, playout=playout, clock=clock)
+        sched.enqueue("Okay, one moment.", "filler")
+        await sched.release_due()
+        clock.t += 0.2
+        sched.enqueue("Let me check your ads report.", "progress")
+        # The ack's audio arrives and runs down; the answer is ready at 1.7 s.
+        while clock.t < 100.0 + 1.7:
+            clock.t += 0.05
+            await sched.release_due()
+        sched.mark_answer_ready()
+        return spoken
+
+    spoken = asyncio.run(_go())
+    assert [k for k, _ in spoken] == ["filler"], spoken
+    assert PROGRESS_FLOOR_S > 1.6
+
+
+def test_a_slow_turn_still_hears_its_progress_line_after_the_floor() -> None:
+    from app.services.pipecat_voice.voice_answer_first import PROGRESS_FLOOR_S
+
+    async def _go() -> list[tuple[str, str]]:
+        clock = _Clock()
+        playout = PlayoutClock(clock=clock)
+        spoken: list[tuple[str, str]] = []
+
+        async def _speak(text: str, kind: str) -> None:
+            spoken.append((kind, text))
+
+        sched = AnswerFirstSpeech(speak=_speak, playout=playout, clock=clock)
+        sched.enqueue("Let me check your ads report.", "progress")
+        clock.t += PROGRESS_FLOOR_S - 0.1
+        await sched.release_due()
+        assert spoken == []
+        clock.t += 0.2
+        await sched.release_due()
+        return spoken
+
+    assert asyncio.run(_go()) == [("progress", "Let me check your ads report.")]

@@ -325,6 +325,7 @@ def build_pipecat_voice_task(
         and getattr(settings, "voice_explain_aside_v1", False)
     )
     voice_session.aside_handler = llm.start_explain_aside
+    voice_session.resume_handler = llm.resume_paused_reply
     llm._turn_trace = turn_trace
     speculative.before_run = interrupt_reporter.settle_barge_in
 

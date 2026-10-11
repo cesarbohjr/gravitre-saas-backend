@@ -17,6 +17,10 @@ from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
+# Imported before any test patches get_agent_intelligence: a module that binds
+# it at import time and is first imported inside the patch window would keep
+# the fake for the rest of the session (it broke later scenario tests, TH-1).
+import app.routers.assistant  # noqa: F401
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
 

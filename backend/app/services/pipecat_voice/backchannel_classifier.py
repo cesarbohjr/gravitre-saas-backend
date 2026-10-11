@@ -212,6 +212,10 @@ class InterruptIntent(str, Enum):
     SPEECH_STOP = "speech_stop"
     TASK_CANCEL = "task_cancel"
     STOP = "stop"
+    # "Hold on" / "wait" / "one sec": a temporary pause. Speech stops, the work
+    # and the request are kept, and an unsent write waits for "go on" (or is
+    # refused once the pause expires). See voice_pause_gate.
+    PAUSE = "pause"
     NEW_REQUEST = "new_request"
 
 
@@ -262,9 +266,45 @@ _EXPLAIN_RE = re.compile(
     r"what(?:'s|\s+is)\s+(?:that|this)(?:\s+(?:number|figure|metric|one))?|"
     r"where\s+(?:does|did)\s+(?:that|this|the)\s*(?:\w+\s+)?(?:number|figure|data|stat)?\s*come\s+from|"
     r"how\s+did\s+you\s+(?:get|calculate|work\s+out|come\s+up\s+with)\s+(?:that|this|it|the\s+\w+)|"
-    r"why\s+(?:is|was|did)\s+(?:that|this|it)(?:\s+\w+){0,4}"
+    r"why\s+(?:is|was|did)\s+(?:that|this|it)(?:\s+\w+){0,4}|"
+    # Bare "why?" / "how come?" / "wait, why?" ask about what is happening
+    # now; the explanation is grounded in the active task.
+    r"why(?:\s+(?:not|so|that|is\s+that|that\s+one))?|why'?s\s+that|"
+    r"how\s+come|how\s+so|what\s+for|for\s+what|"
+    r"why\s+(?:are|were|would|do|did)\s+you(?:\s+\w+){0,6}|"
+    r"why\s+(?:that|this|him|her|them|those|these)(?:\s+\w+){0,3}"
     rf"){_TRAIL}$"
 )
+
+# A temporary pause: nothing is cancelled or changed.
+_PAUSE_RE = re.compile(
+    r"^(?:(?:ok(?:ay)?|oh|um+|uh+|sorry|hey|so)\s+)*(?:"
+    r"(?:wait|hold\s+on|hang\s+on|hold\s+up|pause|one\s+(?:sec(?:ond)?|moment|minute)|"
+    r"(?:just\s+)?(?:a\s+)?(?:sec(?:ond)?|moment|minute)|give\s+me\s+(?:a\s+)?(?:sec(?:ond)?|moment|minute)|"
+    r"wait\s+(?:a\s+)?(?:sec(?:ond)?|moment|minute)|just\s+(?:wait|hold\s+on|hang\s+on))"
+    r"(?:\s+(?:a\s+)?(?:sec(?:ond)?|moment|minute|please|for\s+a\s+(?:sec(?:ond)?|moment|minute)))*"
+    r"(?:\s+(?:wait|hold\s+on|hang\s+on))?"
+    r")$"
+)
+
+# Resume after a pause: continue exactly where it stopped. Never an approval.
+_RESUME_RE = re.compile(
+    r"^(?:(?:ok(?:ay)?|sorry|alright|all\s+right|right|so|yeah|yes)\s+)*(?:"
+    r"(?:you\s+can\s+)?(?:go\s+on|continue|carry\s+on|keep\s+going|go\s+ahead)|"
+    r"(?:i'?m|i\s+am)\s+back|(?:please\s+)?(?:continue|go\s+on)|where\s+were\s+we|"
+    r"(?:ok(?:ay)?\s+)?(?:sorry\s+)?(?:about\s+that|never\s+mind\s+(?:go\s+on|continue))"
+    r")(?:\s+(?:please|then|now|thanks|thank\s+you))*$"
+)
+
+
+def is_pause_request(text: str) -> bool:
+    """"Hold on", "wait", "one sec": a temporary pause, not a stop."""
+    return bool(_PAUSE_RE.match(_normalize(text)))
+
+
+def is_resume_request(text: str) -> bool:
+    """"Go on", "continue", "I'm back": resume a paused reply. Never approves anything."""
+    return bool(_RESUME_RE.match(_normalize(text)))
 
 # Revise the active request instead of starting a new one.
 _CORRECTION_RE = re.compile(
@@ -308,6 +348,10 @@ def could_become_speech_stop(text: str) -> bool:
     )
 
 
+_BARE_STOP_RE = re.compile(rf"^{_LEAD_IN}stop(?:\s+stop)*{_TRAIL}$")
+_DID_NOT_CATCH = frozenset({"huh", "what", "sorry", "pardon", "come again", "say again", "what was that"})
+
+
 def classify_interrupt_intent(text: str) -> InterruptIntent:
     """Intent of speech that overlapped the reply (or the work before it).
 
@@ -326,6 +370,12 @@ def classify_interrupt_intent(text: str) -> InterruptIntent:
         return InterruptIntent.TASK_CANCEL
     if _SPEECH_STOP_RE.match(normalized) or _KEEP_WORKING_ONLY_RE.match(normalized):
         return InterruptIntent.SPEECH_STOP
+    if _BARE_STOP_RE.match(normalized):
+        # "okay stop", "stop please": a stop, whatever the lead-in (IT-1.6).
+        return InterruptIntent.STOP
+    if (text or "").strip().endswith("?") and normalized in _DID_NOT_CATCH:
+        # "huh?" / "what?" / "sorry?" asks to hear it again, not "go on" (IT-1.6).
+        return InterruptIntent.EXPLAIN
     base = classify_user_utterance(text)
     if base is BackchannelClassification.BACKCHANNEL:
         return InterruptIntent.BACKCHANNEL
@@ -336,6 +386,8 @@ def classify_interrupt_intent(text: str) -> InterruptIntent:
         return InterruptIntent.BACKCHANNEL
     if _EXPLAIN_RE.match(normalized):
         return InterruptIntent.EXPLAIN
+    if _PAUSE_RE.match(normalized):
+        return InterruptIntent.PAUSE
     if base is BackchannelClassification.STOP_COMMAND and len(words) <= 3:
         return InterruptIntent.STOP
     if len(words) <= _CORRECTION_MAX_WORDS and _CORRECTION_RE.match(normalized):

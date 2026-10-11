@@ -527,3 +527,33 @@ def test_cancel_on_the_replacement_never_claims_nothing_was_sent_for_a_write_in_
         h.run(_script)
     report = h.spoken_client_text()
     assert "can't confirm" in report and "Nothing had been sent" not in report
+
+
+# --- cancel coverage (OC-2, OC-3) ------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "status", ["awaiting_plan_confirm", "awaiting_step_confirm", "awaiting_user_confirmation", "awaiting_approval"]
+)
+def test_cancel_withdraws_plan_and_step_approvals_too(status: str) -> None:
+    from app.services.pipecat_voice.cognitive_llm import withdraw_unclaimed_pending_write
+
+    assert withdraw_unclaimed_pending_write(_email(status)) is not None
+
+
+def test_a_failed_withdraw_is_said_not_swallowed() -> None:
+    h = _Harness(True, conversation_id=CONV)
+
+    class _Broken:
+        async def update_task_state_from(self, *_a: Any, **_k: Any) -> None:
+            raise RuntimeError("db down")
+
+    async def _script() -> None:
+        await h.barge_in_during("email Stephanie the budget")
+        await h.turn("email Stephanie the budget", "cancel it")
+
+    with patch("app.services.conversation_state_service.get_conversation_state_service", return_value=_Broken()):
+        h.run(_script)
+    report = h.spoken_client_text()
+    assert "couldn't clear what was waiting for your approval" in report
+    assert h.session.approval_read_back_id is None, "a later yes re-reads before approving"

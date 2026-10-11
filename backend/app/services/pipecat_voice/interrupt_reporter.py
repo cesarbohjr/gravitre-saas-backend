@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import re
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -205,6 +206,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             voice_session.speech_stop_handler = self.silence_current_reply
             voice_session.speech_aside_handler = functools.partial(self.silence_current_reply, notice=False)
             voice_session.speech_duck_handler = self.send_speech_duck
+            voice_session.pause_handler = self.pause_current_reply
 
     @property
     def assistant_turn_live(self) -> bool:
@@ -836,6 +838,47 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("pipecat_stop_marker_release_failed error=%s", str(exc))
+
+    async def pause_current_reply(self) -> bool:
+        """"Hold on": silence the reply, keep its work, hold its unsent writes (voice_pause_gate).
+
+        Records how much of the reply was heard so "go on" resumes from the
+        sentence it stopped in. Returns False when there is nothing to pause.
+        """
+        session = self._voice_session
+        if session is None:
+            return False
+        live = self.assistant_turn_live or bool(getattr(session, "assistant_generating", False))
+        if not live:
+            return False
+        reply_id = getattr(session, "reply_id", None)
+        heard = ""
+        if self._spoken_ledger is not None and self._spoken_ledger.ever_recorded:
+            heard = self._spoken_ledger.snapshot()
+        await self.silence_current_reply(notice=False)
+        session.paused_reply = {"reply_id": reply_id, "heard_chars": len(heard)}
+        from app.services import voice_pause_gate
+
+        voice_pause_gate.pause(self._org_id, self._conversation_id, reply_id=reply_id)
+        await self.push_frame(
+            OutputTransportMessageUrgentFrame(message={"type": "speech.paused", "reply_id": reply_id}),
+            FrameDirection.DOWNSTREAM,
+        )
+        logger.info("pipecat_speech_paused reply_id=%s heard_chars=%s", reply_id, len(heard))
+        return True
+
+    def paused_remainder(self, paused: dict[str, Any] | None) -> str:
+        """What the paused reply had not said yet, from the start of the sentence it stopped in."""
+        draft = (self._draft_client or self._draft_llm or "").strip()
+        if not draft or not isinstance(paused, dict):
+            return draft
+        heard = max(0, min(len(draft), int(paused.get("heard_chars") or 0)))
+        if heard >= len(draft):
+            return ""
+        start = 0
+        for match in re.finditer(r"[.!?]\s+", draft[:heard]):
+            start = match.end()
+        return draft[start:].strip()
 
     async def send_speech_duck(self, ducked: bool) -> None:
         """Tell the client to duck (or restore) the current reply's audio.

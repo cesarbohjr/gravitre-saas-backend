@@ -223,7 +223,49 @@ def begin_write_effect(ctx: Any, action: str) -> dict[str, Any] | None:
     if _conversation_key(ctx) is None or not action_is_mutating_write(action):
         return None
     raise_if_barge_in_blocks_invoke(ctx, action)
+    _wait_if_paused(ctx, action)
     return _note(ctx, action, STATUS_STARTED)
+
+
+def _wait_if_paused(ctx: Any, action: str) -> None:
+    """The user said "hold on": the write waits here until "go on" (voice_pause_gate).
+
+    Refused (and recorded as stopped) when the pause is cancelled or expires.
+    Never blocks the event loop: a write reaching this point on the loop
+    thread while paused is refused rather than waited for.
+    """
+    from app.services import voice_pause_gate
+
+    key = _conversation_key(ctx)
+    if key is None or not voice_pause_gate.is_paused(*key):
+        return
+    import asyncio
+
+    try:
+        asyncio.get_running_loop()
+        on_loop = True
+    except RuntimeError:
+        on_loop = False
+    outcome = (
+        voice_pause_gate.CANCELLED
+        if on_loop
+        else voice_pause_gate.wait_while_paused(
+            *key, cancelled=lambda: _turn_cancelled_blocks_invoke(action)
+            or conversation_stop_blocks_invoke(ctx, action)
+        )
+    )
+    if outcome in (voice_pause_gate.RESUMED, voice_pause_gate.NOT_PAUSED):
+        # Resumed: the stop may have been armed meanwhile ("go on... no, cancel it").
+        raise_if_barge_in_blocks_invoke(ctx, action)
+        return
+    _note(ctx, action, STATUS_BLOCKED)
+    from app.services.react_write_gate import WRITE_COMMIT_INTERRUPTED
+    from app.services.tool_types import ToolValidationError
+
+    raise ToolValidationError(
+        "Paused before sending, and the pause ended without a go-ahead. The write was not executed.",
+        code=WRITE_COMMIT_INTERRUPTED,
+    )
 
 
 def finish_write_effect(handle: dict[str, Any] | None, status: str) -> None:

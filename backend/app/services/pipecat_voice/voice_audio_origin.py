@@ -85,6 +85,11 @@ class VoicePipelineSession:
     pending_approval: Any = None
     approval_read_back_id: str | None = None
     approval_readback_reply_id: int | None = None
+    # voice_pause_gate: "hold on" paused this reply ({"reply_id", "heard_chars"}),
+    # and the reporter / brain handlers that pause and resume it.
+    paused_reply: Any = None
+    pause_handler: Any = None
+    resume_handler: Any = None
     tts_warming: bool = False
     # Zero-arg callable set by the interrupt reporter: True once the bot has
     # spoken a question that is still waiting for the user's answer. A short

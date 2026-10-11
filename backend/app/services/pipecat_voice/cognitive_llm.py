@@ -35,6 +35,7 @@ from app.services.pipecat_voice.backchannel_classifier import (
     InterruptIntent,
     classify_interrupt_intent,
     is_bare_confirmation,
+    is_resume_request,
     is_syntactically_incomplete,
 )
 from app.services.pipecat_voice.llm_context_utils import messages_from_context as _messages_from_context
@@ -106,9 +107,11 @@ VOICE_NO_VOLUNTEERED_DATA_NOTE = (
 
 # voice_interrupt_intents_v1: the user cut in to ask what something just said means.
 VOICE_EXPLAIN_INTERRUPTION_NOTE = (
-    "The user interrupted your last reply to ask what part of it means. Explain that part "
-    "briefly from the conversation so far. Do not start, change or cancel any task, and do not "
-    "repeat the whole reply."
+    "The user interrupted your last reply to ask what part of it means, or why (\"why?\", "
+    "\"how come?\"). Explain that part, or the reason for what you said or are doing, briefly "
+    "from the conversation so far and the active task below. Do not start, change or cancel any "
+    "task, and do not repeat the whole reply. If a request is paused, end by asking in a few "
+    "words whether to carry on with it."
 )
 # voice_explain_aside_v1: "what does that mean?" while a task still runs.
 VOICE_EXPLAIN_ASIDE_NOTE = (
@@ -343,6 +346,21 @@ def describe_cancelled_work(
 _PENDING_WRITE_THING = {"messages.send": "the email", "chat.post_message": "the message"}
 
 
+# Everything a later "yes" could still approve: a staged write, one still
+# collecting details, and a multi-step plan or its next step (OC-2).
+_WITHDRAWABLE_STATUSES = frozenset(
+    {
+        "awaiting_confirm",
+        "awaiting_params",
+        "awaiting_plan_confirm",
+        "awaiting_step_confirm",
+        "awaiting_user_confirmation",
+        "awaiting_approval",
+        "awaiting_admin_approval",
+    }
+)
+
+
 def withdraw_unclaimed_pending_write(state: dict[str, Any]) -> dict[str, Any] | None:
     """The patch that drops a staged write still waiting on the user, or None.
 
@@ -354,7 +372,7 @@ def withdraw_unclaimed_pending_write(state: dict[str, Any]) -> dict[str, Any] | 
     pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else None
     if not pending or pending.get("execution_claim_id"):
         return None
-    if str(pending.get("status") or "") not in {"awaiting_confirm", "awaiting_params"}:
+    if str(pending.get("status") or "") not in _WITHDRAWABLE_STATUSES:
         return None
     return {
         "current_plan": None,
@@ -364,6 +382,9 @@ def withdraw_unclaimed_pending_write(state: dict[str, Any]) -> dict[str, Any] | 
         "completed_steps": [],
         "recipient_candidates": [],
     }
+
+
+_WITHDRAW_FAILED = "_withdraw_failed"
 
 
 def _withdrawn_write_line(pending: dict[str, Any]) -> str:
@@ -782,10 +803,12 @@ class GravitreCognitiveLLMService(LLMService):
                 # Barge-in cancelled this turn. If none of the answer was spoken
                 # yet, keep the request for the next turn ("Email Sarah the
                 # deck" ... "and cc Mike").
-                # Only when nothing at all was said: once Gravitre has started
-                # talking (even "let me check"), repeating the request would
-                # restart the answer from the top. A request that was itself
-                # carried is never carried again, so it cannot loop.
+                # An acknowledgement or progress line ("Sure, one moment.") is
+                # not an answer: the request it acknowledged is still owed, so
+                # it is carried too. Once answer words were spoken it is not
+                # (repeating it would restart the answer from the top); a stop
+                # or cancel on the next turn drops it. A request that was
+                # itself carried is never carried again, so it cannot loop.
                 # Never when the turn already reached a provider with a write:
                 # re-running the request would send it again. That write
                 # finishes and records its outcome on its own.
@@ -793,7 +816,7 @@ class GravitreCognitiveLLMService(LLMService):
                 if (
                     self._active_user_text
                     and not self._answer_started
-                    and not self._turn_spoke
+                    and not self._answer_spoken
                     and not self._turn_was_carried
                     and not wrote
                 ):
@@ -1019,6 +1042,57 @@ class GravitreCognitiveLLMService(LLMService):
             session.approval_readback_reply_id = self._reply_id
         return True
 
+    async def resume_paused_reply(self) -> bool:
+        """"Go on" after "hold on": release held writes and say what was not heard yet.
+
+        The paused reply's unheard part (from the sentence it stopped in) is
+        spoken as a reply of its own; while the turn's work is still running,
+        what it says next is spoken under that reply too. Never approves
+        anything. False when nothing was paused.
+        """
+        from app.services import voice_pause_gate
+
+        session = self._voice_session()
+        paused = getattr(session, "paused_reply", None)
+        if session is None or paused is None:
+            return False
+        session.paused_reply = None
+        voice_pause_gate.resume(self._org_id, self._conversation_id)
+        reporter = self._interrupt_reporter
+        remainder = reporter.paused_remainder(paused) if reporter is not None else ""
+        logger.info(
+            "pipecat_voice_pause_resumed org_id=%s turn_active=%s remainder_chars=%d",
+            self._org_id,
+            self._turn_active,
+            len(remainder),
+        )
+        if self._turn_active:
+            # This turn's later words belong to the resumed reply, not the muted one.
+            self._result_delivery = "spoken"
+        await self.push_frame(LLMFullResponseEndFrame())
+        start = LLMFullResponseStartFrame()
+        self._reply_id = session.begin_reply()
+        setattr(start, "gravitre_reply_id", self._reply_id)
+        await self.push_frame(start)
+        self._tts_text_pending = False
+        if remainder:
+            await self._push_spoken_text(remainder)
+        if not self._turn_active:
+            await self.push_frame(LLMFullResponseEndFrame())
+        return True
+
+    def _end_pause_for(self, intent: InterruptIntent | None) -> None:
+        """A turn other than an explanation ends a pause; its held writes are refused."""
+        from app.services import voice_pause_gate
+
+        session = self._voice_session()
+        if session is None or getattr(session, "paused_reply", None) is None:
+            return
+        if intent is InterruptIntent.EXPLAIN:
+            return
+        session.paused_reply = None
+        voice_pause_gate.end_pause(self._org_id, self._conversation_id)
+
     async def prepare_connection_recovery(self) -> None:
         """On connect: what did earlier work on this conversation do while the user was away?
 
@@ -1185,6 +1259,13 @@ class GravitreCognitiveLLMService(LLMService):
             logger.info("pipecat_voice_echo_turn_skipped org_id=%s", self._org_id)
             return
         intent = self._interrupt_intent(user_text)
+        session_paused = getattr(self._voice_session(), "paused_reply", None) is not None
+        if session_paused and is_resume_request(user_text):
+            # "Go on" reached the brain as a turn (the pause outlived its turn).
+            await self.resume_paused_reply()
+            return
+        if session_paused:
+            self._end_pause_for(intent or classify_interrupt_intent(user_text))
         if intent is None and self.replaced_connection and self._interrupt_intents_enabled():
             intent = await self._replacement_cancel_intent(user_text)
         if intent is InterruptIntent.SPEECH_STOP:
@@ -1232,9 +1313,14 @@ class GravitreCognitiveLLMService(LLMService):
         user_text = reconstitute_spoken_identity_fields(user_text)
         carried, self._carry_user_text = self._carry_user_text, None
         revisable, self._revisable_user_text = self._revisable_user_text, None
+        if carried and (intent or classify_interrupt_intent(user_text)) is InterruptIntent.STOP:
+            # "Stop" after the request was cut off: the user dropped it.
+            logger.info("pipecat_voice_carried_request_dropped_on_stop org_id=%s", self._org_id)
+            carried = None
         if intent is InterruptIntent.EXPLAIN:
-            # "Wait, what does that mean?" is answered on its own; the request
-            # it paused stays exactly as it was, still carried.
+            # "Wait, why?" is answered on its own, from the active task; the
+            # request it paused stays exactly as it was, still carried, and
+            # "go on" / "yes" on the next turn continues it.
             self._carry_user_text = carried
             carried = None
         elif intent is InterruptIntent.CORRECTION and not carried and revisable:
@@ -1315,9 +1401,8 @@ class GravitreCognitiveLLMService(LLMService):
             voice_mode = tier_to_execution_mode("light")
             turn_inputs = dict(turn_inputs)
             base = str(turn_inputs.get("assistant_base_prompt") or "")
-            turn_inputs["assistant_base_prompt"] = (
-                f"{base}\n\n{VOICE_EXPLAIN_INTERRUPTION_NOTE}" if base else VOICE_EXPLAIN_INTERRUPTION_NOTE
-            )
+            note = f"{VOICE_EXPLAIN_INTERRUPTION_NOTE}\n\n{self._active_task_context()}"
+            turn_inputs["assistant_base_prompt"] = f"{base}\n\n{note}" if base else note
         if trace is not None:
             # Fallback only: the brain's own routing.conversationTier wins.
             trace.set_turn_meta(tier=voice_tier.tier)
@@ -2390,6 +2475,21 @@ class GravitreCognitiveLLMService(LLMService):
                 line = f"{line} Result: {detail[:_ASIDE_FACT_CHARS]}"
             done.append(line)
 
+    def _active_task_context(self) -> str:
+        """The task a bare "why?" is about: the paused request, the staged approval, the progress."""
+        lines = ["Active task:"]
+        paused = str(self._carry_user_text or "").strip()
+        lines.append(f"- Paused request (not done yet): {paused or 'none'}")
+        approval = getattr(self._voice_session(), "pending_approval", None)
+        if approval is not None:
+            what = approval.label or approval.invoke_action or "an action"
+            lines.append(f"- Waiting on the user's approval: {what}")
+        progress = self._task_progress or {}
+        done = [str(d) for d in progress.get("done") or []]
+        if done:
+            lines.append("- Finished in the last turn: " + "; ".join(done))
+        return "\n".join(lines)
+
     def _task_facts_note(self) -> str:
         progress = self._task_progress or {}
         lines = [VOICE_EXPLAIN_ASIDE_NOTE, "", "Task facts:"]
@@ -2791,9 +2891,16 @@ class GravitreCognitiveLLMService(LLMService):
             [(e["action"], e["status"]) for e in effects],
         )
         withdrawn = await self._withdraw_pending_write()
-        if withdrawn is not None:
+        if withdrawn is not None and withdrawn.get(_WITHDRAW_FAILED):
+            report = (
+                f"{report} I couldn't clear what was waiting for your approval, so it may still be there. "
+                "Nothing will be sent unless you approve it again."
+            )
+        elif withdrawn is not None:
             report = f"{report} {_withdrawn_write_line(withdrawn)}"
-            # Nothing is staged any more: a later "yes" approves nothing.
+        if withdrawn is not None:
+            # Nothing staged is read back any more: a later "yes" approves
+            # nothing, or (if the withdraw failed) re-reads it first.
             self._note_pending_approval({"pending_task": None}, read_back=False)
         await self._speak_narration(report)
         complete = AssistantStreamComplete(
@@ -2836,15 +2943,23 @@ class GravitreCognitiveLLMService(LLMService):
                 dropped.update(state.get("pending_task") or {})
             return patch
 
-        try:
-            await get_conversation_state_service().update_task_state_from(
-                self._conversation_id, self._org_id, build
-            )
-        except Exception as exc:  # noqa: BLE001
+        last_exc: Exception | None = None
+        for _attempt in range(2):
+            try:
+                await get_conversation_state_service().update_task_state_from(
+                    self._conversation_id, self._org_id, build
+                )
+                last_exc = None
+                break
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                dropped.clear()
+        if last_exc is not None:
             logger.warning(
-                "pipecat_voice_task_cancel_pending_withdraw_failed org_id=%s error=%s", self._org_id, exc
+                "pipecat_voice_task_cancel_pending_withdraw_failed org_id=%s error=%s", self._org_id, last_exc
             )
-            return None
+            # Never "cancelled" while the draft may still be approvable (OC-3).
+            return {_WITHDRAW_FAILED: True}
         if dropped:
             logger.info("pipecat_voice_task_cancel_withdrew_pending org_id=%s", self._org_id)
         return dropped or None

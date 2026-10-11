@@ -355,8 +355,10 @@ def _context_frame(*texts: str):
     return LLMContextFrame(context=LLMContext(messages=[{"role": "user", "content": t} for t in texts]))
 
 
-def test_request_is_not_repeated_once_gravitre_started_talking() -> None:
-    """Live report: voice kept restarting the traffic answer from the beginning."""
+def test_acknowledged_request_is_carried_into_the_next_turn_not_lost() -> None:
+    """An acknowledgement ("Let me check...") is not an answer: the request is
+    merged into the next turn instead of being silently dropped (acceptance gap
+    2026-10-11). It is never re-run on its own, so the answer does not restart."""
     import asyncio
 
     from pipecat.processors.frame_processor import FrameDirection
@@ -372,11 +374,12 @@ def test_request_is_not_repeated_once_gravitre_started_talking() -> None:
             await task
         except asyncio.CancelledError:
             pass
-        # "Let me check..." was already spoken, so the request is not re-run.
-        assert service._carry_user_text is None
+        assert service._carry_user_text == first
         await service.process_frame(_context_frame(first, "show me last month"), FrameDirection.DOWNSTREAM)
 
     queries = _run_turns(service, _script)
+    # A self-contained new request replaces the carried one (which stays in
+    # the history the brain sees); it is not answered from the top again.
     assert queries == [first, "show me last month"]
 
 
