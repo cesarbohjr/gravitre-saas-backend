@@ -125,23 +125,47 @@ def _finite(value: Any) -> float | None:
     return number if math.isfinite(number) else None
 
 
+def _held_out_primary(metrics: dict[str, Any]) -> tuple[str, bool, float] | None:
+    for name, higher_is_better in PRIMARY_METRIC_PRIORITY:
+        value = _finite(metrics.get(name))
+        if value is not None:
+            return name, higher_is_better, value
+    return None
+
+
 def champion_challenger_decision(
     challenger: ModelMetrics | dict[str, Any] | None,
     champion: ModelMetrics | dict[str, Any] | None,
     *,
     has_champion: bool,
 ) -> tuple[bool, str, dict[str, Any]]:
-    """Decide whether a newly trained version may replace the deployed one.
+    """Decide whether a newly trained version may be deployed.
 
-    Returns ``(deploy, reason, evaluation)``. A challenger is deployed when no
-    version is deployed yet, or when its held-out primary metric is at least as
-    good as the champion's recorded value. Models with no comparable held-out
-    metric (unsupervised detectors, clusterers) keep the previous behaviour and
-    deploy, with the reason recorded so callers can see no gate applied.
+    Returns ``(deploy, reason, evaluation)``. Nothing is promoted without a
+    held-out evaluation:
+
+    * no held-out metric (unsupervised detectors, clusterers, trainers that did
+      not evaluate) -> registered, never deployed automatically;
+    * first deployment -> deployed only with a held-out metric, and a
+      classifier's AUC must beat chance (> 0.5);
+    * with a champion -> deployed only when the challenger's held-out primary
+      metric is at least as good as the champion's on the same metric. When the
+      champion has no comparable metric the challenger is not deployed, so a
+      replacement is never made without a comparison.
+
+    A version that is not deployed leaves the current champion, or the
+    caller's existing non-ML fallback when there is none, in place.
     """
-    if not has_champion:
-        return True, "first_deployment", {}
     challenger_metrics = _metrics_dict(challenger)
+    primary = _held_out_primary(challenger_metrics)
+    if primary is None:
+        return False, "not_deployed_no_held_out_metric", {}
+    if not has_champion:
+        name, higher_is_better, value = primary
+        evaluation = {"primary_metric": name, "higher_is_better": higher_is_better, "challenger": value}
+        if name == "auc_roc" and value <= 0.5:
+            return False, "not_deployed_first_version_not_better_than_chance", evaluation
+        return True, "first_deployment_with_held_out_metric", evaluation
     champion_metrics = _metrics_dict(champion)
     for name, higher_is_better in PRIMARY_METRIC_PRIORITY:
         new_value = _finite(challenger_metrics.get(name))
@@ -158,7 +182,7 @@ def champion_challenger_decision(
         if wins:
             return True, "challenger_matches_or_beats_champion", evaluation
         return False, "challenger_worse_than_champion", evaluation
-    return True, "no_comparable_held_out_metric", {}
+    return False, "not_deployed_no_comparable_champion_metric", {}
 
 
 async def register_trained_artifact_detailed(

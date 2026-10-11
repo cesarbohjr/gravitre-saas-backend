@@ -81,12 +81,19 @@ def _columns_used(entry: dict[str, Any]) -> set[str]:
 # ---------------------------------------------------------------------------
 # Fix 3: champion / challenger gate
 # ---------------------------------------------------------------------------
-def test_gate_first_deployment_deploys():
-    deploy, reason, _ = it.champion_challenger_decision(
-        ModelMetrics(accuracy=0.1), None, has_champion=False
-    )
+def test_gate_first_deployment_needs_held_out_metric():
+    deploy, reason, ev = it.champion_challenger_decision(ModelMetrics(accuracy=0.8), None, has_champion=False)
+    assert (deploy, reason) == (True, "first_deployment_with_held_out_metric")
+    assert ev["primary_metric"] == "accuracy"
+    deploy, reason, _ = it.champion_challenger_decision(ModelMetrics(), None, has_champion=False)
+    assert (deploy, reason) == (False, "not_deployed_no_held_out_metric")
+
+
+def test_gate_first_classifier_must_beat_chance():
+    deploy, reason, _ = it.champion_challenger_decision(ModelMetrics(auc_roc=0.5), None, has_champion=False)
+    assert (deploy, reason) == (False, "not_deployed_first_version_not_better_than_chance")
+    deploy, _, _ = it.champion_challenger_decision(ModelMetrics(auc_roc=0.62), None, has_champion=False)
     assert deploy is True
-    assert reason == "first_deployment"
 
 
 def test_gate_higher_is_better_metric():
@@ -111,12 +118,33 @@ def test_gate_lower_is_better_metric():
     assert deploy is True
 
 
-def test_gate_without_comparable_metric_deploys_and_says_so():
+def test_gate_never_auto_deploys_unvalidated_models():
+    # Unsupervised output (no held-out metric): registered, never promoted.
     deploy, reason, _ = it.champion_challenger_decision(
         ModelMetrics(custom_metrics={"silhouette": 0.4}), {"custom_metrics": {}}, has_champion=True
     )
-    assert deploy is True
-    assert reason == "no_comparable_held_out_metric"
+    assert (deploy, reason) == (False, "not_deployed_no_held_out_metric")
+    # Champion has no comparable metric: no replacement without a comparison.
+    deploy, reason, _ = it.champion_challenger_decision(ModelMetrics(f1_score=0.9), {"mae": 3.0}, has_champion=True)
+    assert (deploy, reason) == (False, "not_deployed_no_comparable_champion_metric")
+
+
+@pytest.mark.asyncio
+async def test_unvalidated_first_model_is_registered_but_not_deployed():
+    registry = _fake_registry()
+    with patch.object(it, "get_model_registry", return_value=registry):
+        result = await it.register_trained_artifact_detailed(
+            "org-1",
+            name="catalog-anomaly",
+            model_type=ModelType.CLASSIFIER,
+            base_model="anomaly_detector",
+            artifact=b"x",
+            metrics=ModelMetrics(),
+        )
+    registry.add_version.assert_awaited_once()
+    registry.deploy_version.assert_not_awaited()
+    assert result["deployed"] is False
+    assert result["reason"] == "not_deployed_no_held_out_metric"
 
 
 def _fake_registry(*, existing: Any = None, champion_metrics: dict | None = None) -> MagicMock:
@@ -351,3 +379,45 @@ async def test_churn_advisory_scores_only_unresolved_customers():
     assert ids == ["open-2"]
     for card in payload["recommendations"]:
         assert card["executable"] is False
+
+
+@pytest.mark.asyncio
+async def test_completed_fine_tune_is_not_auto_deployed(monkeypatch):
+    """Phase 1: a fine-tuned LLM job used to deploy itself with no held-out evaluation."""
+    from types import SimpleNamespace
+
+    from app.workers.training_worker import TrainingWorker
+
+    worker = TrainingWorker()
+    fake_client = MagicMock()
+    monkeypatch.setattr("app.workers.training_worker.get_supabase_client", lambda settings: fake_client)
+    rows = {
+        "training_jobs": [{"id": "job1", "dataset_id": "ds1", "model_base": "gpt-4o-mini", "org_id": "org1", "created_by": "u1"}],
+        "training_datasets": [{"id": "ds1", "name": "dataset-1"}],
+        "training_records": [{"input": "hi", "expected_output": "hello"}],
+    }
+
+    def table_select(name):
+        q = MagicMock()
+        q.eq.return_value = q
+        q.execute.return_value = SimpleNamespace(data=rows.get(name, []))
+        return q
+
+    fake_client.table.side_effect = lambda name: SimpleNamespace(
+        select=lambda *_a, **_k: table_select(name),
+        update=lambda *_a, **_k: SimpleNamespace(eq=lambda *_a, **_k: SimpleNamespace(execute=lambda: SimpleNamespace(data=[{}]))),
+    )
+    monkeypatch.setattr(
+        worker, "_train_fine_tuned", AsyncMock(return_value=(None, b"ft-artifact"))
+    )
+    registry = MagicMock()
+    registry.list_models = AsyncMock(return_value=[])
+    registry.create_model = AsyncMock(return_value=SimpleNamespace(id="model1"))
+    registry.add_version = AsyncMock(return_value=SimpleNamespace(version=1))
+    registry.deploy_version = AsyncMock(return_value=True)
+    monkeypatch.setattr("app.workers.training_worker.get_model_registry", lambda: registry)
+
+    await worker.process_job("job1")
+
+    registry.add_version.assert_awaited_once()
+    registry.deploy_version.assert_not_awaited()
