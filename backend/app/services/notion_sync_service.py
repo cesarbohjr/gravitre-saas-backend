@@ -222,6 +222,7 @@ def run_notion_sync(
     job_ids: list[str] = []
     pages_synced = 0
     errors: list[str] = []
+    seen_external_ids: set[str] = set()
 
     for target in targets:
         target_id = str(target.get("id") or "")
@@ -252,8 +253,23 @@ def run_notion_sync(
                 )
                 job_ids.append(job_id)
                 pages_synced += 1
+                seen_external_ids.add(f"notion:page:{page_id}")
             except NotionAPIError as exc:
                 errors.append(f"page {page_id}: {exc}")
+
+    documents_removed = 0
+    if not errors:
+        # Only a complete sweep may remove documents: a page we failed to read still exists.
+        from app.services.source_lifecycle import reconcile_source_documents
+
+        documents_removed = reconcile_source_documents(
+            client,
+            settings,
+            org_id=org_id,
+            source_id=source_id,
+            external_id_prefix="notion:page:",
+            seen_external_ids=seen_external_ids,
+        )
 
     config = safe_normalize_stored_dict(connector, key="config")
     config["notion_last_synced_at"] = _now_iso()
@@ -272,6 +288,7 @@ def run_notion_sync(
         "source_id": source_id,
         "pages_synced": pages_synced,
         "jobs_queued": len(job_ids),
+        "documents_removed": documents_removed,
         "job_ids": job_ids[:20],
         "errors": errors,
         "last_synced_at": config["notion_last_synced_at"],
