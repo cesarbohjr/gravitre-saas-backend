@@ -4003,6 +4003,7 @@ def _exec_microsoft365_mail_messages_list(ctx: ToolContext, params: dict[str, An
             user_id=user_id,
             top=int(params.get("top") or params.get("limit") or 25),
             filter_query=params.get("filter") or params.get("filter_query"),
+            search=str(params.get("search") or "") or None,
         )
     except Microsoft365APIError as exc:
         raise _vendor_api_error(exc, "microsoft365") from exc
@@ -4469,6 +4470,9 @@ def _exec_gmail_messages_list(ctx: ToolContext, params: dict[str, Any]) -> Norma
             token,
             query=params.get("query") or params.get("q"),
             max_results=int(params.get("max_results") or params.get("maxResults") or 25),
+            page_token=str(params.get("page_token") or params.get("pageToken") or "") or None,
+            label_ids=[str(v) for v in (params.get("label_ids") or params.get("labelIds") or []) if str(v)]
+            or None,
         )
     except GmailAPIError as exc:
         raise _vendor_api_error(exc, "gmail") from exc
@@ -4504,6 +4508,10 @@ def _exec_gmail_messages_send(ctx: ToolContext, params: dict[str, Any]) -> Norma
     body = params.get("body") or params.get("text")
     if not to or not subject or not body:
         raise ToolValidationError("gmail.messages.send requires to, subject, body")
+    from app.services.object_resolution import body_with_file_link
+
+    # This send has no attachment support: an approved file goes in as a link.
+    body = body_with_file_link(str(body), params)
     try:
         data = send_message(token, to=str(to), subject=str(subject), body=str(body))
     except GmailAPIError as exc:

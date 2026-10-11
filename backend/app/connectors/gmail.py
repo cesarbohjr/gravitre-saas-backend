@@ -42,10 +42,22 @@ def list_messages(
     user_id: str = "me",
     query: str | None = None,
     max_results: int = 25,
+    page_token: str | None = None,
+    label_ids: list[str] | None = None,
 ) -> dict[str, Any]:
+    """One page of message ids matching ``query``.
+
+    The response carries ``nextPageToken`` while more matches remain. Drafts
+    are messages with the DRAFT label and appear here only when they match
+    the query; this client has no ``drafts.list``.
+    """
     params: dict[str, Any] = {"maxResults": max_results}
     if query:
         params["q"] = query
+    if page_token:
+        params["pageToken"] = page_token
+    if label_ids:
+        params["labelIds"] = list(label_ids)
     return _request(access_token, "GET", f"/users/{user_id}/messages", params=params)
 
 

@@ -2868,6 +2868,26 @@ async def apply_unified_turn_live(
                 ),
             )
             plan = scrub_gmail_write_plan(plan)
+            from app.services.recipient_resolution import (
+                apply_resolution_to_stage,
+                approval_notice,
+                ground_email_recipient,
+            )
+
+            # Same contract as the connector turn: the recipient (and any file)
+            # comes from what the user typed or their own accounts, before the
+            # model's arguments are sealed into the ledger.
+            plan, recipient_lookup = await ground_email_recipient(
+                plan,
+                message or "",
+                task_state,
+                org_id=org_id,
+                client=client,
+                settings=active,
+                connected_integrations=list(result.connected_integrations or connected_integrations or []),
+                user_id=user_id,
+                conversation_id=conversation_id,
+            )
             state = get_conversation_state_service(active)
             from app.services.parameter_ledger import (
                 get_ledger,
@@ -2881,11 +2901,14 @@ async def apply_unified_turn_live(
             )
             task_state = {**(task_state or {}), **ledger_patch(sealed_ledger)}
             # Dual-path SoT with classical chat: never ask for yes until required args exist.
-            staged_missing = missing_params_stage_patch(
-                plan,
-                message or "",
-                task_state=task_state or {},
-                seal_source="unified_turn_live",
+            staged_missing = apply_resolution_to_stage(
+                missing_params_stage_patch(
+                    plan,
+                    message or "",
+                    task_state=task_state or {},
+                    seal_source="unified_turn_live",
+                ),
+                recipient_lookup,
             )
             if staged_missing:
                 clarification, stage_patch = staged_missing
@@ -2973,7 +2996,9 @@ async def apply_unified_turn_live(
                 client=client,
             )
             refreshed = await state.get_task_state(conversation_id, org_id, client=client)
-            confirm_message = format_write_approval_message(plan)
+            confirm_message = format_write_approval_message(
+                plan, grace_prefix=approval_notice(recipient_lookup)
+            )
             if result.user_message:
                 from app.services.user_facing_copy_guard import dedupe_repeated_paragraphs
 

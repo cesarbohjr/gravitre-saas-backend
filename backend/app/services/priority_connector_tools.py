@@ -190,7 +190,10 @@ def _exec_m365_mail_send(ctx: ToolContext, params: dict[str, Any]) -> Normalized
     if isinstance(to_recipients, str):
         to_recipients = [to_recipients]
     subject = str(params.get("subject") or "")
-    body = str(params.get("body") or "")
+    from app.services.object_resolution import body_with_file_link
+
+    # sendMail here carries no attachments: an approved file goes in as a link.
+    body = body_with_file_link(str(params.get("body") or ""), params)
     recipients = [str(x) for x in (to_recipients or [])]
     try:
         data = send_mail(

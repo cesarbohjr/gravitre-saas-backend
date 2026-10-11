@@ -68,6 +68,9 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     # People found by name for the email still collecting its details
     # ("two Stephanies... which one?"); see recipient_resolution.
     "recipient_candidates": [],
+    # The file such an email carries ("the budget spreadsheet"): what was
+    # searched, the files offered, the one chosen and checked.
+    "file_resolution": {},
     # Phase A — structured reference resolution (not prose history).
     "previous_option_set": [],
     "previous_result": None,

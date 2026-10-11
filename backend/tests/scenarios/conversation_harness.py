@@ -47,6 +47,8 @@ STATEFUL_TABLES = {
     "approval_requests",
     "approvals",
     "organization_members",
+    # Connected accounts, when a test adds rows (account selection).
+    "connectors",
 }
 
 
@@ -472,6 +474,16 @@ class Connectors:
         self.calls: list[ConnectorCall] = []
         # Gmail messages the fake mailbox holds: {"id", "labelIds", "headers": {"From": ...}}.
         self.mailbox: list[dict[str, Any]] = []
+        # Outlook messages, in Graph shape: {"from": {"emailAddress": {...}}, "toRecipients": [...]}.
+        self.outlook: list[dict[str, Any]] = []
+        self.outlook_me = "me@outlook.example"
+        # Files on Drive / OneDrive: {"id", "name", "mimeType", "modifiedTime", "path",
+        # "webViewLink", "source": "google_drive" | "microsoft365", "denied": bool}.
+        self.files: list[dict[str, Any]] = []
+        # action -> error code: that read fails as the vendor would.
+        self.fail: dict[str, str] = {}
+        # Simulated latency for every read, in seconds (measurements only).
+        self.read_latency_s = 0.0
 
     def _gmail_message(self, row: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -482,15 +494,69 @@ class Connectors:
         }
 
     def _gmail_search(self, query: str) -> list[dict[str, Any]]:
+        """Gmail's ``q`` for the forms the lookup uses: from:/to:/cc: on a name
+        (header match only, like Gmail) and ``-category:x`` exclusions."""
         import re as _re
 
-        names = {m.strip('"').lower() for m in _re.findall(r'(?:from|to|cc):("[^"]+"|\S+)', query or "")}
+        wanted = [
+            (op.lower(), m.strip('"').lower())
+            for op, m in _re.findall(r'\b(from|to|cc):("[^"]+"|[^\s()"]+)', query or "")
+        ]
+        excluded = {f"CATEGORY_{c.upper()}" for c in _re.findall(r"-category:(\w+)", query or "")}
         hits = []
         for row in self.mailbox:
-            blob = " ".join(str(v) for v in (row.get("headers") or {}).values()).lower()
-            if not names or any(all(part in blob for part in n.split()) for n in names):
+            if excluded & set(row.get("labelIds") or []):
+                continue
+            headers = {k.lower(): str(v).lower() for k, v in (row.get("headers") or {}).items()}
+            if not wanted or any(all(part in headers.get(op, "") for part in n.split()) for op, n in wanted):
                 hits.append({"id": row["id"], "threadId": row.get("threadId") or f"thread-{row['id']}"})
         return hits
+
+    def _gmail_page(self, params: dict[str, Any]) -> dict[str, Any]:
+        hits = self._gmail_search(str(params.get("q") or params.get("query") or ""))
+        size = int(params.get("max_results") or params.get("maxResults") or 25)
+        start = int(str(params.get("page_token") or params.get("pageToken") or "0") or 0)
+        page: dict[str, Any] = {"messages": hits[start : start + size], "resultSizeEstimate": len(hits)}
+        if start + size < len(hits):
+            page["nextPageToken"] = str(start + size)
+        return page
+
+    def _file_hit(self, row: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "vendor": row.get("source") or "google_drive",
+            "file_id": row["id"],
+            "name": row["name"],
+            "mime_type": row.get("mimeType"),
+            "modified_at": row.get("modifiedTime"),
+            "web_link": row.get("webViewLink") or f"https://files.example/{row['id']}",
+            "path": row.get("path") or row["name"],
+            "size": None,
+        }
+
+    def _file_search(self, source: str, query: str) -> list[dict[str, Any]]:
+        q = (query or "").lower()
+        return [
+            self._file_hit(row)
+            for row in self.files
+            if (row.get("source") or "google_drive") == source
+            and (q in row["name"].lower() or q in str(row.get("content") or "").lower())
+        ]
+
+    def _outlook_search(self, search: str) -> list[dict[str, Any]]:
+        import re as _re
+
+        m = _re.search(r"participants:(.+)", search or "")
+        words = (m.group(1) if m else search or "").strip('" ').lower().split()
+
+        def _blob(msg: dict[str, Any]) -> str:
+            people = [msg.get("from") or {}] + list(msg.get("toRecipients") or []) + list(msg.get("ccRecipients") or [])
+            return " ".join(
+                f"{(p.get('emailAddress') or {}).get('name', '')} {(p.get('emailAddress') or {}).get('address', '')}"
+                for p in people
+                if isinstance(p, dict)
+            ).lower()
+
+        return [msg for msg in self.outlook if all(w in _blob(msg) for w in words)]
 
     def executor_for(self, action: str) -> Callable[[Any, dict[str, Any]], Any]:
         from app.services.tool_types import NormalizedResult
@@ -498,6 +564,14 @@ class Connectors:
         def _run(_ctx: Any, params: dict[str, Any]) -> NormalizedResult:
             self.calls.append(ConnectorCall(action=action, params=copy.deepcopy(dict(params or {}))))
             low = action.lower()
+            if self.read_latency_s and "send" not in low:
+                import time as _time
+
+                _time.sleep(self.read_latency_s)
+            if action in self.fail:
+                return NormalizedResult(
+                    success=False, action=action, error_code=self.fail[action], error_message=self.fail[action]
+                )
             if "searchconsole" in low or "search_console" in low:
                 data = {"rows": [{"keys": ["/pricing"], "clicks": 320, "impressions": 9100}]}
             elif "analytics" in low:
@@ -517,7 +591,22 @@ class Connectors:
             elif "gmail" in low and "send" in low:
                 data = {"id": "msg-1", "threadId": "thread-1", "labelIds": ["SENT"]}
             elif "gmail" in low and low.endswith(".list") and "messages" in low:
-                data = {"messages": self._gmail_search(str(params.get("q") or params.get("query") or ""))}
+                data = self._gmail_page(params)
+            elif low.endswith("search_files"):
+                source = "microsoft365" if "microsoft" in low else "google_drive"
+                hits = self._file_search(source, str(params.get("query") or ""))
+                data = {"files": hits[: int(params.get("page_size") or 25)], "total": len(hits)}
+            elif low.endswith("get_file_metadata"):
+                row = next((f for f in self.files if f["id"] == params.get("file_id")), None)
+                if row is None or row.get("denied"):
+                    return NormalizedResult(
+                        success=False, action=action, error_code="auth_expired", error_message="no access"
+                    )
+                data = {"file": self._file_hit(row)}
+            elif low == "microsoft365.mail.messages.list":
+                data = {"value": self._outlook_search(str(params.get("search") or ""))[: int(params.get("top") or 25)]}
+            elif low == "microsoft365.users.get":
+                data = {"user": {"mail": self.outlook_me}}
             elif "gmail" in low and low.endswith(".get") and any(
                 r["id"] == (params.get("message_id") or params.get("id")) for r in self.mailbox
             ):

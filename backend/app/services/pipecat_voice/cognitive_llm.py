@@ -383,6 +383,7 @@ def withdraw_unclaimed_pending_write(state: dict[str, Any]) -> dict[str, Any] | 
         "pending_steps": [],
         "completed_steps": [],
         "recipient_candidates": [],
+        "file_resolution": {},
     }
 
 

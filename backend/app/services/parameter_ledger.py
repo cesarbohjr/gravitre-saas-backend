@@ -860,12 +860,13 @@ def resume_awaiting_params(
     # Follow-up body: fill first missing free-text required field from the message.
     schema = get_workflow_schema(invoke_action)
     followup = _followup_fill_text(message)
-    if followup and not _arg_present_for_keys(args, ("to", "email")):
-        from app.services.recipient_resolution import pick_candidate, stored_candidates
+    if followup:
+        from app.services.recipient_resolution import reply_answers_open_choice
 
-        # "Khan" after "two Stephanies... which one?" picks the recipient; it
-        # is not the subject.
-        if pick_candidate(message, stored_candidates(task_state)) is not None:
+        # "Khan" after "two Stephanies... which one?" picks the recipient, and
+        # "the Finance one" after "two budget files... which one?" picks the
+        # file; neither is the subject.
+        if reply_answers_open_choice(message, task_state):
             followup = None
     if followup and schema and _SOCIAL_ACK_RE.match(followup):
         # "Thanks!" answers "What should the email say?" only when the message
