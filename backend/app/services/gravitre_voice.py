@@ -845,6 +845,37 @@ def format_outcome_digest(
     return "\n".join(lines).strip() + "\n"
 
 
+def _format_email_send_approval(details: dict[str, Any]) -> str:
+    """'Here's the email … Should I send it?' instead of a generic action card."""
+    picked: dict[str, str] = {}
+    rest: list[tuple[str, str]] = []
+    for key, value in details.items():
+        name = str(key).strip().lower()
+        text = str(value or "").strip()
+        if not text:
+            continue
+        if name in {"to", "recipient"}:
+            picked["to"] = text
+        elif name == "subject":
+            picked["subject"] = text
+        elif name in {"body", "message", "text"}:
+            if text[-1] not in ".!?…\"'":
+                text = f"{text}."
+            picked["body"] = text
+        else:
+            rest.append((str(key), text))
+    to = picked.get("to")
+    lines = [f"Here's the email to {to}:" if to else "Here's the email:", ""]
+    if picked.get("subject"):
+        lines.append(f"- Subject: {picked['subject']}")
+    if picked.get("body"):
+        lines.append(f"- Message: {picked['body']}")
+    for key, value in rest:
+        lines.append(f"- {key}: {value}")
+    lines.extend(["", "Should I send it? Say **yes**, or tell me what to change."])
+    return "\n".join(lines)
+
+
 def _format_write_approval(**ctx: Any) -> str:
     vendor = str(ctx.get("vendor") or "the connected app").strip()
     label = str(ctx.get("label") or "this action").strip()
@@ -873,6 +904,9 @@ def _format_write_approval(**ctx: Any) -> str:
             ]
         )
         return "\n".join(lines)
+
+    if invoke_action.endswith("messages.send") and invoke_action.split(".")[0] in {"gmail", "outlook"}:
+        return _format_email_send_approval(details)
 
     lines = [f"I'll run this in {vendor}: **{label}**."]
     if details:

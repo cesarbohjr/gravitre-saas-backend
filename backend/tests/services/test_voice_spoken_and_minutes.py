@@ -80,7 +80,11 @@ def test_normalize_spoken_text_removes_visual_markdown():
         "[Open run](https://example.com/run/123)\n"
     )
     spoken = normalize_spoken_text(source)
-    assert spoken == "Update. First point. second point. Reply yes to continue. Open run."
+    # A line holding only a link is for the screen; an inline link keeps its words.
+    assert spoken == "Update. First point. second point. Reply yes to continue."
+    assert normalize_spoken_text("See [the run](https://example.com/run/1) for details") == (
+        "See the run for details."
+    )
 
 
 def test_reconstitute_spoken_email_digit_words():

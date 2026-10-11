@@ -56,7 +56,14 @@ _NATURAL_CONFIRM_RE = re.compile(
     r"^\s*(?:yes|yeah|yep|y|ok|okay|sure)[,.\s]+"
     r"(?:please\s+)?(?:create|do|send|approve|run|execute)(?:\s+it)?(?:\s+now)?"
     r"(?:\s+the\s+\w+)?"
-    r"\s*[.!]?\s*$",
+    r"\s*[.!]?\s*$"
+    # "Okay, go ahead." / "Sounds good, send it." / "Yes please." / "Yeah, go for it."
+    r"|^\s*(?:(?:yes|yeah|yep|ok|okay|sure|alright|all right|great|perfect|"
+    r"sounds good|looks good|that'?s (?:good|great|fine|perfect))[,.!\s]+)?"
+    r"(?:go ahead|go for it|send it|ship it|do it|please do|"
+    r"that works|looks good|sounds good)(?:\s+(?:and\s+)?send it)?(?:\s+now)?"
+    r"(?:,?\s+(?:please|thanks|thank you))?\s*[.!]?\s*$"
+    r"|^\s*(?:yes|yeah|yep|ok|okay|sure)[,\s]+please\s*[.!]?\s*$",
     re.I,
 )
 _AMBIGUOUS_RE = re.compile(

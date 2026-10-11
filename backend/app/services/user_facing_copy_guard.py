@@ -114,10 +114,17 @@ def scrub_raw_catalog_keys(text: str) -> str:
     return RAW_CATALOG_ACTION_KEY.sub(_repl, raw)
 
 
+def collapse_spaces_keep_lines(text: str) -> str:
+    """Collapse runs of spaces left by a removal; paragraph and list breaks survive."""
+    cleaned = re.sub(r"[ \t]{2,}", " ", text or "")
+    cleaned = re.sub(r"[ \t]+\n", "\n", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+    return cleaned.strip()
+
+
 def scrub_internal_tool_references(text: str) -> str:
     """Remove internal assistant tool identifiers from user-visible copy."""
-    cleaned = _INTERNAL_TOOL_NAME.sub("", text or "")
-    return re.sub(r"\s{2,}", " ", cleaned).strip()
+    return collapse_spaces_keep_lines(_INTERNAL_TOOL_NAME.sub("", text or ""))
 
 
 def dedupe_repeated_paragraphs(text: str) -> str:

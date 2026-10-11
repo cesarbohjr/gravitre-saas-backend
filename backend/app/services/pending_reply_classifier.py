@@ -305,14 +305,41 @@ _BARE_NO_RE = re.compile(r"(?i)^\s*(?:no|nope|nah)(?:[\s,]+(?:no|nope))*\s*[.!]*
 _GATHERING_STATUSES = frozenset({"awaiting_params", "collecting"})
 
 
-def pending_repair_kind(message: str, snap: PendingSnapshot) -> str | None:
-    """"apology" or "no" when the reply repairs the conversation, not the task.
+_RETRY_RE = re.compile(r"(?i)\b(?:try (?:\w+ing )?(?:it |that |this )?again|retry|resend|send it again|one more time)\b")
+_PROVIDER_PREFIX_RE = re.compile(
+    r"(?i)^\s*(?:(?:use|using|via|on|with|through|in|from)\s+|(?:send it|do it)\s+(?:from|with|through|on|in)\s+)?"
+)
+_INTEGRATION_NAMES: dict[str, tuple[str, ...]] = {
+    "gmail": ("gmail", "google mail"),
+    "outlook": ("outlook", "microsoft outlook"),
+    "slack": ("slack",),
+    "hubspot": ("hubspot",),
+}
 
-    "Sorry." is never a cancel or a field value. A bare "No." while we are
-    still gathering details could mean "drop it" or "that's wrong", so the
-    draft is kept and we ask which (live email test, 2026-10-11). Once the
-    action waits for approval, "no" answers "should I go ahead?" and still
-    cancels.
+
+def _names_pending_provider(text: str, snap: PendingSnapshot) -> bool:
+    """'Gmail.' while the Gmail draft is open: the provider, not a field value."""
+    if not snap.integration:
+        return False
+    bare = _PROVIDER_PREFIX_RE.sub("", text.strip().rstrip(".!? ")).strip().lower()
+    names = _INTEGRATION_NAMES.get(snap.integration, (snap.integration.replace("_", " "),))
+    return bare in names
+
+
+def pending_repair_kind(message: str, snap: PendingSnapshot) -> str | None:
+    """How a reply repairs the conversation, not the task, or None.
+
+    - "apology": "Sorry." is never a cancel or a field value.
+    - "no": a bare "No." while we are still gathering details could mean
+      "drop it" or "that's wrong", so the draft is kept and we ask which.
+      Once the action waits for approval, "no" answers "should I go ahead?"
+      and still cancels.
+    - "provider": "Gmail." while the Gmail draft is open repeats the
+      provider; it is not the subject.
+    - "retry": "try again" while details are still missing cannot run
+      anything yet; say what is still needed.
+
+    All four come from the live email test (2026-10-11).
     """
     text = (message or "").strip()
     if not text:
@@ -321,9 +348,77 @@ def pending_repair_kind(message: str, snap: PendingSnapshot) -> str | None:
 
     if is_social_repair(text):
         return "apology"
-    if _BARE_NO_RE.match(text) and snap.status in _GATHERING_STATUSES:
+    gathering = snap.status in _GATHERING_STATUSES
+    if _BARE_NO_RE.match(text) and gathering:
         return "no"
+    if gathering and _names_pending_provider(text, snap):
+        return "provider"
+    if gathering and snap.pending_missing and _is_bare_retry(text):
+        return "retry"
     return None
+
+
+# Words that may sit around a bare retry ("Try again... the email now?").
+_RETRY_FILLER = frozenset(
+    {
+        "please",
+        "can",
+        "could",
+        "you",
+        "just",
+        "the",
+        "it",
+        "that",
+        "this",
+        "email",
+        "message",
+        "draft",
+        "now",
+        "again",
+        "ok",
+        "okay",
+        "so",
+        "let's",
+        "lets",
+        "go",
+        "ahead",
+        "try",
+        "trying",
+        "send",
+        "sending",
+        "do",
+        "doing",
+        "would",
+        "will",
+        "maybe",
+        "one",
+        "more",
+        "time",
+        "there",
+        "hey",
+        "yes",
+        "yeah",
+        "well",
+        "um",
+        "uh",
+        "alright",
+        "sure",
+        "can't",
+    }
+)
+
+
+def _is_bare_retry(text: str) -> bool:
+    """'Try again' as the whole ask, not inside a subject or message.
+
+    "Tell her we'll try again next week" is content for the draft, so it
+    must reach slot filling instead of being answered as a retry.
+    """
+    if not _RETRY_RE.search(text):
+        return False
+    rest = _RETRY_RE.sub(" ", text.lower())
+    words = [w for w in re.findall(r"[a-z']+", rest) if w not in _RETRY_FILLER]
+    return not words
 
 
 def _pending_thing(snap: PendingSnapshot) -> str:
@@ -336,13 +431,44 @@ def _pending_thing(snap: PendingSnapshot) -> str:
     return ""
 
 
+_MESSAGE_FIELDS = frozenset({"body", "message", "text", "content"})
+
+
+def _field_words(missing: list[str]) -> list[str]:
+    out: list[str] = []
+    for item in missing:
+        word = str(item).replace("_", " ").strip().lower()
+        word = "message" if word in _MESSAGE_FIELDS else word
+        word = "recipient" if word in {"to", "recipient email", "to email"} else word
+        if word and word not in out:
+            out.append(word)
+    return out
+
+
+def missing_details_line(snap: PendingSnapshot) -> str:
+    """One short question for what the draft still needs ("What should it say?")."""
+    words = _field_words(snap.pending_missing)
+    if not words:
+        return ""
+    if words == ["message"]:
+        return "What should it say?"
+    return f"What should the {' and '.join(words)} be?"
+
+
 def format_pending_repair(snap: PendingSnapshot, kind: str) -> str:
     thing = _pending_thing(snap)
+    ask = missing_details_line(snap)
     if kind == "no":
         return f"Okay. Should I drop {thing or 'it'}, or change something?"
-    if snap.pending_missing:
-        needed = " and ".join(str(m).replace("_", " ") for m in snap.pending_missing)
-        return f"No problem. I've still got {thing or 'your request'}. I just need the {needed}."
+    if kind == "provider":
+        provider = _INTEGRATION_NAMES.get(snap.integration, (snap.integration,))[0]
+        provider = "Gmail" if provider == "gmail" else provider.title()
+        return f"Got it, {provider}. {ask}".strip() if ask else f"Got it, {provider}."
+    if kind == "retry":
+        verb = "send" if thing else "do"
+        return f"I can't {verb} it yet. {ask}".strip()
+    if ask:
+        return f"No problem. I've still got {thing or 'your request'}. {ask}"
     if snap.status in {"awaiting_confirm", "awaiting_admin_approval"}:
         return (
             f"No problem. {(thing or 'It').capitalize()} is ready. "
@@ -370,6 +496,13 @@ def classify_pending_reply_fast(
     )
     if spoken.decision == "hold_commit":
         return "hold_commit"
+    # "Okay, go ahead." / "Yes, send it." approve as surely as a bare "yes".
+    if (
+        spoken.decision == "confirm"
+        and not snap.hold_prompt_active
+        and not (snap.status == "awaiting_params" and snap.pending_missing)
+    ):
+        return "confirm"
 
     # Active hold/abandon prompt — map confirm-ish to abandon/proceed via reject/confirm.
     if not snap.hold_prompt_active and pending_repair_kind(text, snap):
@@ -664,13 +797,8 @@ def format_ambiguous_clarify(snap: PendingSnapshot, *, message: str = "") -> str
     if repair:
         return format_pending_repair(snap, repair)
     if snap.pending_missing:
-        pretty = ", ".join(snap.pending_missing)
-        label = snap.action_label or "this action"
-        return (
-            f"I'm not sure how to apply that to **{label}**. "
-            f"Still needed: **{pretty}**. "
-            "Reply with those values, ask what format I need, or say **cancel**."
-        )
+        thing = _pending_thing(snap) or f"the {_friendly_pending_label(snap, 'request').lower()}"
+        return f"I still need a few details for {thing}. {missing_details_line(snap)}"
     if snap.status in {"awaiting_confirm", "awaiting_admin_approval"}:
         label = _friendly_pending_label(snap, "this action")
         proof = _pending_action_proof_line(snap)

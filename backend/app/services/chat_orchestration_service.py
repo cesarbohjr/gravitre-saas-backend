@@ -2046,19 +2046,16 @@ class ChatOrchestrationService:
         headline = _orchestration_headline(terminal, successes, len(step_results), outcome)
         turn["message"] = (
             f"{headline}\n\n{summary_body}"
-            + (f"\n\n_What this means:_ {means}" if means else "")
+            + (f"\n\n{means}" if means else "")
             + (f"\n\n[View run details]({primary_url})" if primary_url else "")
         )
         if run_ok:
             rec = (turn.get("execution_result") or {}).get("recommendation") or (
                 (turn.get("post_action_experience") or {}).get("recommendation")
             )
-            if isinstance(rec, dict) and rec.get("suggestedUtterance"):
-                turn["message"] += (
-                    f"\n\n**What I'd look at next:** {rec.get('title')} — {rec.get('reason')}\n"
-                    f"_Suggest only — reply_ **{rec['suggestedUtterance']}** "
-                    f"_to proceed (nothing runs until you approve)._"
-                )
+            from app.services.post_action_experience_service import next_step_line
+
+            turn["message"] += next_step_line(rec if isinstance(rec, dict) else None)
         else:
             bridge = (turn.get("execution_result") or {}).get("failure_bridge") or (
                 (turn.get("post_action_experience") or {}).get("failureBridge")

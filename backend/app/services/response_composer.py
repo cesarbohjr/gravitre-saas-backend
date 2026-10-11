@@ -32,7 +32,10 @@ from app.services.first_token_honesty import (
 )
 from app.services.module_d_unified_voice_spec import MODULE_D_UNIFIED_SYSTEM_SPEC
 from app.services.response_envelope import coerce_user_envelope, envelope_kind
-from app.services.user_facing_copy_guard import finalize_user_facing_message
+from app.services.user_facing_copy_guard import (
+    collapse_spaces_keep_lines,
+    finalize_user_facing_message,
+)
 from app.workflows.audit import submit_audit_off_loop, write_audit_event
 
 logger = get_logger(__name__)
@@ -193,7 +196,7 @@ def align_composed_text_to_lifecycle(
     verified = bool(env.get("execution_verified") is True or data.get("execution_verified") is True)
     success = env.get("success") is not False
     cleaned = _LIFECYCLE_LEAK.sub("", text or "")
-    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+    cleaned = collapse_spaces_keep_lines(cleaned)
     fallback = (draft or "").strip()
     if fallback and looks_like_raw_backend(fallback):
         fallback = ""
@@ -774,7 +777,7 @@ def _postprocess_composed_text(
     code = str(env.get("error_code") or "").strip()
     if code and len(code) >= 4:
         text = re.sub(rf"\b{re.escape(code)}\b", "", text)
-        text = re.sub(r"\s{2,}", " ", text).strip()
+        text = collapse_spaces_keep_lines(text)
     if looks_like_raw_backend(text) or not text:
         if resolved_kind in {"progress", "plan_hold"} and draft and not looks_like_raw_backend(
             draft

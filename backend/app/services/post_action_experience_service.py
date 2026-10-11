@@ -56,7 +56,7 @@ _WRITE_NEXT_STEPS: dict[str, dict[str, str]] = {
     },
     "hubspot.contacts.create": {
         "title": "Create a follow-up task in HubSpot",
-        "reason": "New contact is Verified in HubSpot; a task keeps ownership clear.",
+        "reason": "The new contact is in HubSpot; a task keeps ownership clear.",
         "suggested_utterance": "Create a HubSpot task to follow up with this contact",
     },
     "slack.chat.postMessage": {
@@ -148,8 +148,14 @@ def what_this_means(
     if plan and plan.kind == "read":
         return "Use these results as the input for a write (tasks, messages, or list updates)."
 
+    if action == "gmail.messages.send" or integration == "gmail":
+        return "A copy is in your Gmail Sent folder."
+
     vendor = (integration or "the vendor").title()
-    return f"Verified in {vendor} — open the record to confirm, or tell me the next step."
+    verification = structured.get("verification") if isinstance(structured.get("verification"), dict) else {}
+    if verification.get("verified") or structured.get("verification_status") == "verified":
+        return f"Confirmed in {vendor}. Open the record, or tell me the next step."
+    return f"You can open it in {vendor} to check, or tell me the next step."
 
 
 def build_post_action_recommendation(
@@ -167,10 +173,11 @@ def build_post_action_recommendation(
         template = {
             "title": f"Decide the next {integration} step",
             "reason": (
-                f"{result.title or 'Action'} completed Verifiedly. "
+                f"{result.title or 'Action'} completed. "
                 "I'd look at related records or a follow-up write next — say what you want."
             ),
             "suggested_utterance": "What should I do next with this?",
+            "generic": "1",
         }
     if template is None:
         return None
@@ -181,6 +188,7 @@ def build_post_action_recommendation(
         "title": template["title"],
         "reason": template["reason"],
         "suggestedUtterance": template["suggested_utterance"],
+        "generic": bool(template.get("generic")),
         "evidence": {
             "invokeAction": action or None,
             "integration": plan.integration if plan else result.integration,
@@ -663,6 +671,16 @@ def _link_label(integration: str | None, *, result_url: str | None = None) -> st
     return f"View in {normalized[:1].upper()}{normalized[1:]}"
 
 
+def next_step_line(recommendation: dict[str, Any] | None) -> str:
+    """One plain suggest-only sentence for a specific next step, else ""."""
+    if not isinstance(recommendation, dict) or recommendation.get("generic"):
+        return ""
+    title = str(recommendation.get("title") or "").strip().rstrip(".")
+    if not title:
+        return ""
+    return f"\n\nIf it helps, next I can {title[:1].lower()}{title[1:]}. Just say so."
+
+
 def enrich_execution_turn(
     *,
     message: str,
@@ -783,14 +801,9 @@ def enrich_execution_turn(
                 if step.get("evidenceUrl"):
                     step_lines.append(f"  Evidence: {step['evidenceUrl']}")
             step_block = "\n".join(step_lines)
-        rec_block = ""
-        if recommendation:
-            rec_block = (
-                f"\n\n**What I'd look at next:** {recommendation['title']} — "
-                f"{recommendation['reason']}\n"
-                f"_Suggest only — reply_ **{recommendation['suggestedUtterance']}** "
-                f"_to proceed (nothing runs until you approve)._"
-            )
+        # Suggest only: nothing runs until the user asks. A generic
+        # "decide the next step" card adds nothing to the spoken/visible answer.
+        rec_block = next_step_line(recommendation)
         from app.services.action_lifecycle import composer_truth_headline
 
         structured = execution.structured if isinstance(execution.structured, dict) else {}
@@ -810,7 +823,7 @@ def enrich_execution_turn(
         )
         text = (
             f"{headline}\n\n"
-            f"_What this means:_ {means}"
+            f"{means}"
             f"{step_block}"
             f"{link_line}"
             f"{rec_block}"

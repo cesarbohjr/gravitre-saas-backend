@@ -397,3 +397,56 @@ async def test_drop_with_the_flag_off_leaves_the_stored_reply_alone(db: FakeSupa
     await _finish(env["reporter"])
     stored = [row["content"] for row in db.rows("conversation_messages", role="assistant")]
     assert stored == [ANSWER_TEXT]
+
+
+ASIDE_TEXT = "Conversions are the sign-ups that came from your ads."
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("grounded", [False, True])
+async def test_a_barge_in_during_an_aside_never_stores_the_aside_as_the_task_answer(
+    db: FakeSupabase, grounded: bool
+) -> None:
+    """voice_explain_aside_v1: the aside is its own reply and its own history row.
+
+    Cutting it off must not write the aside's words under the running task's
+    question (or give them to the task's row in memory): the task still
+    answers, and stores its own row, when it finishes.
+    """
+    conv = db.seed_conversation(org_id=ORG, user_id=USER)
+    env = await _setup(conv, grounded=grounded)
+    reporter = env["reporter"]
+    rewrites: list[tuple[str, str]] = []
+    reporter.on_assistant_rewritten = lambda mid, text: rewrites.append((mid, text))
+    reporter.begin_turn("Pull last month's ads report")
+    # The task's reply: narration only, then it closes for the aside.
+    await reporter.process_frame(LLMFullResponseStartFrame(), FrameDirection.DOWNSTREAM)
+    await reporter.process_frame(
+        OutputTransportMessageUrgentFrame(
+            message={"type": "assistant_text", "delta": PROGRESS_TEXT, "kind": PROGRESS}
+        ),
+        FrameDirection.DOWNSTREAM,
+    )
+    await reporter.process_frame(LLMFullResponseEndFrame(), FrameDirection.DOWNSTREAM)
+    # The aside opens its own reply and is cut off mid-sentence.
+    env["session"].begin_reply()
+    await reporter.process_frame(LLMFullResponseStartFrame(), FrameDirection.DOWNSTREAM)
+    await reporter.process_frame(
+        OutputTransportMessageUrgentFrame(
+            message={"type": "assistant_text", "delta": ASIDE_TEXT, "kind": ANSWER, "aside": True}
+        ),
+        FrameDirection.DOWNSTREAM,
+    )
+    for word in ASIDE_TEXT.split()[:4]:
+        await env["tap"].process_frame(TTSTextFrame(text=word, aggregated_by="word"), FrameDirection.DOWNSTREAM)
+        await env["tap"].process_frame(
+            TTSAudioRawFrame(b"\x00\x00" * int(RATE * 0.2), RATE, 1), FrameDirection.DOWNSTREAM
+        )
+    await reporter.process_frame(InterruptionFrame(), FrameDirection.DOWNSTREAM)
+    await _finish(reporter)
+
+    payload = _interrupted_payload(env["pushed"])
+    assert payload.get("aside") is True
+    assert db.rows("conversation_messages", role="assistant") == []
+    assert db.rows("conversation_messages", role="user") == []
+    assert rewrites == []

@@ -151,7 +151,7 @@ def test_a_status_question_with_nothing_written_is_not_a_dead_end() -> None:
     state["pending_task"]["params"]["missing"] = ["subject", "body"]
     turn = recent_write_status_turn("Did you send the email?", state)
     assert turn is not None and turn["provider_write"] is False
-    assert turn["message"] == "Not yet. I still need the subject and body."
+    assert turn["message"] == "Not yet. What should the subject and message be?"
 
 
 def test_a_retry_after_an_uncertain_send_never_resends_blind() -> None:
@@ -309,9 +309,11 @@ def test_the_repair_reply_is_one_short_question_about_the_email() -> None:
         "Okay. Should I drop the email to Stephanie, or change something?"
     )
     assert format_ambiguous_clarify(snap, message="Sorry.") == (
-        "No problem. I've still got the email to Stephanie. I just need the subject and body."
+        "No problem. I've still got the email to Stephanie. What should the subject and message be?"
     )
-    assert "Still needed" in format_ambiguous_clarify(snap, message="hmm whatever")
+    assert format_ambiguous_clarify(snap, message="hmm whatever") == (
+        "I still need a few details for the email to Stephanie. What should the subject and message be?"
+    )
 
 
 def test_a_status_question_during_reconciliation_never_lets_the_write_run_again() -> None:
@@ -347,3 +349,16 @@ def test_everyday_did_you_questions_are_not_write_status_questions(utterance: st
 def test_did_you_with_the_task_as_object_is_still_a_status_question(utterance: str) -> None:
     turn = recent_write_status_turn(utterance, _email_draft_state())
     assert turn is not None and turn["provider_write"] is False
+
+
+def test_retry_words_inside_the_message_still_fill_the_draft() -> None:
+    from app.services.pending_reply_classifier import pending_repair_kind
+
+    snap = _draft_snapshot(missing=["body"])
+    assert pending_repair_kind("Try again... the email now?", snap) == "retry"
+    assert pending_repair_kind("Can you try that again?", snap) == "retry"
+    assert pending_repair_kind("Try one more time.", snap) == "retry"
+    assert pending_repair_kind("Can you try sending it again?", snap) == "retry"
+    assert pending_repair_kind("Yeah, retry it now please", snap) == "retry"
+    assert pending_repair_kind("Tell her we'll try again next week.", snap) is None
+    assert pending_repair_kind("The subject is Retry plan", snap) is None

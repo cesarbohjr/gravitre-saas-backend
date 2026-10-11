@@ -115,8 +115,10 @@ def strip_and_validate_delivery_tags(text: str) -> DeliveryTagScanResult:
 
     working = _ANY_BRACKET_TAG_RE.sub(_replace_unknown_tag, working)
 
-    # Collapse any double-space left behind by removed tags.
-    working = re.sub(r"\s{2,}", " ", working).strip()
+    # Collapse any double-space left behind by removed tags. Line breaks stay:
+    # normalize_spoken_text needs them to drop list markers and link lines.
+    working = re.sub(r"[ \t]{2,}", " ", working)
+    working = re.sub(r"[ \t]+\n", "\n", working).strip()
 
     if rejected:
         logger.warning(
