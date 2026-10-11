@@ -114,6 +114,13 @@ def _load_active_workflow(client: Any, org_id: str, workflow_id: str) -> dict[st
     return workflow
 
 
+def pagerduty_event_id(event: dict[str, Any]) -> str | None:
+    """V3 webhooks carry ``event.id``; V2 ``messages[]`` items carry their own ``id``."""
+    wrapped = event.get("event")
+    value = wrapped.get("id") if isinstance(wrapped, dict) else event.get("id")
+    return str(value) if value not in (None, "") else None
+
+
 async def start_workflow_from_pagerduty(
     settings: Settings,
     *,
@@ -122,6 +129,7 @@ async def start_workflow_from_pagerduty(
     parameters: dict[str, Any],
     connector_id: str,
     execution_service: ExecutionService | None = None,
+    provider_event_id: str | None = None,
 ) -> dict[str, Any]:
     client = get_supabase_client(settings)
     workflow = _load_active_workflow(client, org_id, workflow_id)
@@ -143,6 +151,7 @@ async def start_workflow_from_pagerduty(
         trigger_type="pagerduty",
         source="pagerduty_trigger",
         execution_service=execution_service,
+        provider_event_id=provider_event_id,
     )
     return {**outcome, "connector_id": connector_id}
 
@@ -195,6 +204,7 @@ async def process_pagerduty_event_batch(
             continue
 
         normalized = normalize_pagerduty_event(event)
+        provider_event_id = pagerduty_event_id(event)
         for trigger in matching:
             if not trigger.get("id"):
                 trigger = {**trigger, "id": str(uuid.uuid4())}
@@ -211,6 +221,7 @@ async def process_pagerduty_event_batch(
                 parameters=parameters,
                 connector_id=connector_id,
                 execution_service=execution_service,
+                provider_event_id=provider_event_id,
             )
             outcomes.append(result)
 

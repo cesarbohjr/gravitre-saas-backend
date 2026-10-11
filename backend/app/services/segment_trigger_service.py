@@ -110,6 +110,12 @@ def _load_active_workflow(client: Any, org_id: str, workflow_id: str) -> dict[st
     return workflow
 
 
+def segment_event_id(event: dict[str, Any]) -> str | None:
+    """Segment's ``messageId`` is stable across delivery retries."""
+    value = event.get("messageId") or event.get("message_id")
+    return str(value) if value not in (None, "") else None
+
+
 async def start_workflow_from_segment(
     settings: Settings,
     *,
@@ -118,6 +124,7 @@ async def start_workflow_from_segment(
     parameters: dict[str, Any],
     connector_id: str,
     execution_service: ExecutionService | None = None,
+    provider_event_id: str | None = None,
 ) -> dict[str, Any]:
     client = get_supabase_client(settings)
     workflow = _load_active_workflow(client, org_id, workflow_id)
@@ -139,6 +146,7 @@ async def start_workflow_from_segment(
         trigger_type="segment",
         source="segment_trigger",
         execution_service=execution_service,
+        provider_event_id=provider_event_id,
     )
     return {**outcome, "connector_id": connector_id}
 
@@ -187,6 +195,7 @@ async def process_segment_event_batch(
             continue
 
         normalized = normalize_segment_event(event)
+        provider_event_id = segment_event_id(event)
         for trigger in matching:
             if not trigger.get("id"):
                 trigger = {**trigger, "id": str(uuid.uuid4())}
@@ -205,6 +214,7 @@ async def process_segment_event_batch(
                 parameters=parameters,
                 connector_id=connector_id,
                 execution_service=execution_service,
+                provider_event_id=provider_event_id,
             )
             outcomes.append(result)
 
