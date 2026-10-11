@@ -24,6 +24,8 @@ SCHEMA_DEPENDENCIES: dict[str, tuple[str, ...]] = {
     "goals": ("category",),
     "agent_memories": ("is_current",),
     "org_metric_definitions": ("definition",),
+    # Phase 2A outbox (migration 20261011220000); logs until the migration is applied.
+    "domain_event_outbox": ("event_type", "status", "lease_owner", "delivered_handlers"),
 }
 
 DISABLE_ENV = "GRAVITRE_STARTUP_SCHEMA_CHECK"

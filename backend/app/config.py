@@ -532,6 +532,13 @@ class Settings(BaseSettings):
     standing_investigator_interval_seconds: int = 28800
     # Past-due approval escalation + Monday weekly summary (0 disables).
     ops_notifications_interval_seconds: int = 900
+    # Phase 2A durable domain events: in-process relay for domain_event_outbox.
+    # Off by default; events written by the outbox triggers wait as 'pending' until on.
+    domain_event_relay_enabled: bool = False
+    domain_event_relay_interval_seconds: int = 15
+    domain_event_relay_batch_size: int = 50
+    domain_event_relay_lease_seconds: int = 120
+    domain_event_retention_days: int = 14
     # Shared secret for /api/watchers/agent/signal HMAC or X-Watcher-Secret header.
     watcher_agent_webhook_secret: str | None = None
     # Memory promotion evaluation (v4). 0 disables; default 8 hours.
