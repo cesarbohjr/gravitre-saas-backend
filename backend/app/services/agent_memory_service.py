@@ -11,6 +11,13 @@ from app.config import Settings
 from app.rag.department import resolve_department_id_for_agent
 from app.rag.embedding import get_embedding
 from app.rag.retrieval import search_chunks
+from app.services.memory_contamination_guard import (
+    SOURCE_MODEL_INFERENCE,
+    SOURCE_USER_DIRECT,
+    SOURCE_WORKFLOW_OUTCOME,
+    classify_memory_source,
+    validate_memory_write,
+)
 
 VALID_CATEGORIES = frozenset(
     {
@@ -142,6 +149,7 @@ def _serialize_row(row: dict[str, Any]) -> dict[str, Any]:
         "provenance": row.get("provenance"),
         "source": row.get("provenance"),
         "confidence": float(row.get("confidence") or 100),
+        "sourceClass": row.get("source_class"),
         "usageCount": int(row.get("usage_count") or 0),
         "editable": bool(row.get("editable", True)),
         "createdAt": created_at,
@@ -216,21 +224,42 @@ def create_agent_memory(
     confidence: float = 100,
     editable: bool = True,
     share_with_department: bool = True,
+    source_class: str | None = None,
 ) -> dict[str, Any]:
-    """Create agent- or workspace-scoped memory. ``agent_id`` may be None (org-wide)."""
+    """Create agent- or workspace-scoped memory. ``agent_id`` may be None (org-wide).
+
+    Every create goes through the contamination guard (``validate_memory_write``):
+    the source class is ``source_class`` when given, else derived from
+    ``provenance``; a write with a human ``user_id`` and no other provenance signal
+    (the per-agent CRUD API) is user-direct. Confidence is capped per class.
+    """
     if agent_id:
         ensure_agent_in_org(client, org_id, agent_id)
     text = (content or "").strip()
     if not text:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="content is required")
+    normalized_category = _normalize_category(category)
+    prov = (provenance or "").strip() or None
+    candidate: dict[str, Any] = {
+        "content": text,
+        "category": normalized_category,
+        "confidence": max(0, min(100, float(confidence))),
+    }
+    if source_class:
+        candidate["source_class"] = source_class
+    elif user_id and classify_memory_source(candidate, provenance=prov or "") == SOURCE_MODEL_INFERENCE:
+        # A signed-in person typing a memory through the CRUD API.
+        candidate["user_direct"] = True
+    guarded = validate_memory_write(candidate, provenance=prov or "")
     embedding = get_embedding(text, settings, org_id=org_id)
     payload: dict[str, Any] = {
         "org_id": org_id,
         "agent_id": agent_id or None,
         "content": text,
-        "category": _normalize_category(category),
-        "provenance": (provenance or "").strip() or None,
-        "confidence": max(0, min(100, float(confidence))),
+        "category": normalized_category,
+        "provenance": prov,
+        "confidence": float(guarded["confidence"]),
+        "source_class": guarded["source_class"],
         "editable": bool(editable),
         "embedding": embedding,
         "created_by": user_id,
@@ -239,7 +268,13 @@ def create_agent_memory(
         dept_id, _ = resolve_department_id_for_agent(client, org_id, agent_id)
         if dept_id:
             payload["department_id"] = dept_id
-    r = client.table("agent_memories").insert(payload).execute()
+    try:
+        r = client.table("agent_memories").insert(payload).execute()
+    except Exception:  # noqa: BLE001
+        # source_class column arrives with 20260903120000; keep creating on a
+        # database that has not applied it yet.
+        legacy = {k: v for k, v in payload.items() if k != "source_class"}
+        r = client.table("agent_memories").insert(legacy).execute()
     if not r.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create memory")
     return _serialize_row(r.data[0])
@@ -258,6 +293,14 @@ def update_agent_memory(
     confidence: float | None = None,
     editable: bool | None = None,
 ) -> dict[str, Any]:
+    """Edit a memory through the contamination guard.
+
+    Rewriting the content through the CRUD API makes it a user-direct memory (a
+    signed-in person typed it), as on create. Any other edit keeps the memory's
+    existing source class; the class comes from the stored row and its stored
+    provenance, so changing provenance or confidence cannot raise its trust.
+    Confidence is always capped for the resulting class.
+    """
     existing = get_agent_memory(client, org_id, agent_id, memory_id)
     if not existing.get("editable"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Memory is protected and cannot be edited")
@@ -266,8 +309,6 @@ def update_agent_memory(
         patch["category"] = _normalize_category(category)
     if provenance is not None:
         patch["provenance"] = provenance.strip() or None
-    if confidence is not None:
-        patch["confidence"] = max(0, min(100, float(confidence)))
     if editable is not None:
         patch["editable"] = bool(editable)
     if content is not None:
@@ -276,6 +317,17 @@ def update_agent_memory(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="content cannot be empty")
         patch["content"] = text
         patch["embedding"] = get_embedding(text, settings, org_id=org_id)
+    if content is not None or confidence is not None:
+        candidate: dict[str, Any] = {
+            "confidence": max(0, min(100, float(confidence if confidence is not None else existing.get("confidence") or 80))),
+        }
+        if content is not None:
+            candidate["source_class"] = SOURCE_USER_DIRECT
+        elif existing.get("sourceClass"):
+            candidate["source_class"] = existing["sourceClass"]
+        guarded = validate_memory_write(candidate, provenance=str(existing.get("provenance") or ""))
+        patch["confidence"] = float(guarded["confidence"])
+        patch["source_class"] = guarded["source_class"]
     r = (
         client.table("agent_memories")
         .update(patch)
@@ -324,7 +376,7 @@ def search_agent_memories(
     rows = list(r.data or [])
     memory_ids = [str(row["memory_id"]) for row in rows if row.get("memory_id")]
     if memory_ids:
-        increment_memory_usage(client, memory_ids)
+        increment_memory_usage(client, memory_ids, org_id=org_id)
     return [
         {
             "id": str(row["memory_id"]),
@@ -402,7 +454,7 @@ def search_department_memories(
         ]
     memory_ids = [str(row["memory_id"]) for row in rows if row.get("memory_id")]
     if memory_ids:
-        increment_memory_usage(client, memory_ids)
+        increment_memory_usage(client, memory_ids, org_id=org_id)
     return [
         {
             "id": str(row["memory_id"]),
@@ -423,15 +475,22 @@ def search_department_memories(
     ]
 
 
-def increment_memory_usage(client: Any, memory_ids: list[str]) -> None:
+def increment_memory_usage(client: Any, memory_ids: list[str], *, org_id: str) -> None:
     for memory_id in memory_ids:
-        r = client.table("agent_memories").select("usage_count").eq("id", memory_id).limit(1).execute()
+        r = (
+            client.table("agent_memories")
+            .select("usage_count")
+            .eq("id", memory_id)
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+        )
         if not r.data:
             continue
         count = int(r.data[0].get("usage_count") or 0) + 1
         client.table("agent_memories").update(
             {"usage_count": count, "last_retrieved_at": datetime.now(timezone.utc).isoformat()}
-        ).eq("id", memory_id).execute()
+        ).eq("id", memory_id).eq("org_id", org_id).execute()
 
 
 def _memory_retrieval_enabled(agent: dict[str, Any], parameters: dict[str, Any] | None) -> bool:
@@ -543,6 +602,7 @@ async def remember_user_preference(
         category="preference",
         provenance=source,
         confidence=confidence * 100,
+        source_class=SOURCE_WORKFLOW_OUTCOME,
     )
 
 
@@ -565,6 +625,7 @@ async def remember_workflow_outcome(
         category="pattern",
         provenance="outcome_learning",
         confidence=70,
+        source_class=SOURCE_WORKFLOW_OUTCOME,
     )
 
 
@@ -588,6 +649,7 @@ async def remember_approval_pattern(
         category="pattern",
         provenance="outcome_learning",
         confidence=min(95, 50 + evidence_count * 5),
+        source_class=SOURCE_WORKFLOW_OUTCOME,
     )
 
 
@@ -607,9 +669,11 @@ async def remember_prediction_outcome(
         agent_id,
         user_id=None,
         content=f"Model {model_name} accuracy={prediction_accuracy:.2f} on {task_type}",
-        category="fact",
+        # A measured outcome, not a standing fact.
+        category="outcome",
         provenance="outcome_learning",
         confidence=prediction_accuracy * 100,
+        source_class=SOURCE_WORKFLOW_OUTCOME,
     )
 
 
