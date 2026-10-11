@@ -182,6 +182,59 @@ def resolve_active_stages(
     return base
 
 
+# The user asked for outside research in so many words.
+_EXPLICIT_WEB_RESEARCH_RE = re.compile(
+    r"(?i)\b(research|deep\s+dive|search\s+(?:the\s+web|the\s+internet|online|google)|google\s+(?:it|that|this)|"
+    r"online|on\s+the\s+(?:web|internet)|latest\s+news|in\s+the\s+news|competitive\s+analysis|"
+    r"market\s+analysis|industry\s+(?:trends?|benchmarks?)|sources?\s+for)\b"
+)
+# Apologies and repair phrases are dialogue, not questions about the world.
+_REPAIR_RE = re.compile(
+    r"(?i)^\s*(?:sorry|so\s+sorry|my\s+bad|my\s+apologies|apologies|oops|never\s*mind|nevermind|"
+    r"no\s+worries|that'?s\s+(?:ok(?:ay)?|fine|alright)|forget\s+(?:it|that))\b[\s\w,.!']{0,40}$"
+)
+# Verbs that ask Gravitre to act in the user's own apps (send, draft, book...).
+_ACTION_VERB_RE = re.compile(
+    r"(?i)\b(send|e-?mail|draft|write|reply|forward|create|add|update|delete|remove|schedule|reschedule|"
+    r"book|invite|assign|log|post|publish|cancel|move|mark|text|message|ping|call|remind|enroll|"
+    r"approve|launch|pause|archive|try\s+(?:it\s+|that\s+)?again|retry|resend)\b"
+)
+
+
+def auto_internet_research_blocked(query: str | None) -> bool:
+    """True when thin internal context must not, on its own, start a web search.
+
+    Thin internal retrieval is a reason to research a question about the world.
+    It is not one for an action in the user's own apps ("email Stephanie"), a
+    short slot answer ("Gmail."), a retry, an apology ("Sorry") or small talk:
+    those stay with the current task, and sending their words to a public
+    search engine only adds seconds and leaks private requests. Deep reasoning
+    is unaffected; this only decides the extra public-search stage. An explicit
+    research ask ("research Stephanie's company online") still searches.
+    """
+    text = str(query or "").strip()
+    if not text:
+        return False
+    if _EXPLICIT_WEB_RESEARCH_RE.search(text):
+        return False
+    from app.services.conversation_tier import (
+        _EMBEDDED_OP_RE,
+        _IMPERATIVE_OP_RE,
+        _has_request_clause,
+        _is_social_utterance,
+    )
+
+    if _REPAIR_RE.match(text) or _is_social_utterance(text):
+        return True
+    if _ACTION_VERB_RE.search(text) and (
+        _has_request_clause(text) or _IMPERATIVE_OP_RE.match(text) or _EMBEDDED_OP_RE.search(text)
+        or re.search(r"(?i)\b(try\s+(?:it\s+|that\s+)?again|retry|resend)\b", text)
+    ):
+        return True
+    # "Gmail.", "No.", "Stephanie at Acme": an answer to our question.
+    return len(re.findall(r"[\w'@.-]+", text)) <= 3 and "?" not in text
+
+
 def should_run_internet_research(
     research_scope: str | None,
     *,
@@ -193,6 +246,8 @@ def should_run_internet_research(
 
     Connected GA4 / website-traffic operator asks must never detour to live web
     search (confirmed incident: unrelated third-party "Gravite" cited as a source).
+    Thin internal context alone does not search the web for actions, slot
+    answers, retries, apologies or small talk (auto_internet_research_blocked).
     """
     if query:
         from app.services.analytics_traffic_overview_service import (
@@ -203,9 +258,9 @@ def should_run_internet_research(
             return False
     if not _internet_research_allowed(settings):
         return False
-    if internal_thin:
+    if "internet_research" in resolve_active_stages(research_scope, settings=settings):
         return True
-    return "internet_research" in resolve_active_stages(research_scope, settings=settings)
+    return internal_thin and not auto_internet_research_blocked(query)
 
 
 def resolve_active_stages_with_auto_internet(

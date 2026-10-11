@@ -242,7 +242,7 @@ def _run_turn(events: list[Any], *, answer_first: bool) -> tuple[list[dict], dic
 
 
 TOOL_THEN_ANSWER = [
-    AssistantStreamEvent(sse_type="tool-input-available", payload={"toolCallId": "c1", "toolName": "search_knowledge"}),
+    AssistantStreamEvent(sse_type="tool-input-available", payload={"toolCallId": "c1", "toolName": "searchCrmRecords"}),
     AssistantStreamEvent(sse_type="tool-output-available", payload={"toolCallId": "c1", "output": {}}),
     AssistantStreamEvent(sse_type="text-delta", payload={"delta": "Renewal is in March. "}),
     AssistantStreamEvent(sse_type="text-delta", payload={"delta": "Want me to draft it?"}),
@@ -268,7 +268,7 @@ def test_flag_off_speaks_every_line_as_before() -> None:
 
 def test_flag_on_a_turn_with_no_answer_text_still_says_its_result_line() -> None:
     events = [
-        AssistantStreamEvent(sse_type="tool-input-available", payload={"toolCallId": "c1", "toolName": "search_knowledge"}),
+        AssistantStreamEvent(sse_type="tool-input-available", payload={"toolCallId": "c1", "toolName": "searchCrmRecords"}),
         AssistantStreamEvent(sse_type="tool-output-available", payload={"toolCallId": "c1", "output": {"error": "x"}}),
     ]
     off, _ = _run_turn(events, answer_first=False)

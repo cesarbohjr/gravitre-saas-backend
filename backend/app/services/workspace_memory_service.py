@@ -198,6 +198,12 @@ def promote_turn_memories(
         except Exception as exc:  # noqa: BLE001
             logger.debug("workspace_memory_embed_skipped error=%s", exc)
 
+        if superseded_write("memory.promote_turn_memories"):
+            # Checked again right before each write: the lookup and embedding
+            # above take long enough for the turn to be cancelled meanwhile.
+            # (Not between a temporal upsert's insert and its supersede update,
+            # which must land together.)
+            break
         try:
             if category in TEMPORAL_CATEGORIES and memory_key:
                 row = upsert_temporal_memory(

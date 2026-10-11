@@ -127,7 +127,7 @@ class TestTtsWordBoundaryRegression:
         carry the separating space, the aggregator cannot invent one.
         """
         events = [
-            _tool_start("c1", "searchKnowledgeBase"),
+            _tool_start("c1", "listOpportunities"),
             _tool_output("c1", {"results": [1, 2, 3], "totalResults": 3}),
             AssistantStreamEvent(
                 sse_type="text-delta",
@@ -151,7 +151,7 @@ class TestTtsWordBoundaryRegression:
         that boundary directly, independent of any final-answer text.
         """
         events = [
-            _tool_start("c1", "searchKnowledgeBase"),
+            _tool_start("c1", "listOpportunities"),
             _tool_output("c1", {"results": [1, 2, 3], "totalResults": 3}),
         ]
         tts_chunks = _drive(events)
@@ -169,7 +169,7 @@ class TestTtsWordBoundaryRegression:
         separator once Pipecat's aggregator concatenates them.
         """
         events = [
-            _tool_start("c1", "searchKnowledgeBase"),
+            _tool_start("c1", "listOpportunities"),
             _tool_output("c1", {"results": [1, 2, 3], "totalResults": 3}),
         ]
         tts_chunks = _drive(events)

@@ -315,11 +315,29 @@ class ConversationStateService:
         original_updates = updates
         try:
             with _task_state_lock(conversation_id, org_id):
-                try:
-                    current = self._read_task_state_sync(conversation_id, org_id, client)
-                except Exception as exc:  # noqa: BLE001 - same fallback get_task_state uses
-                    logger.debug("get_task_state fallback conversation_id=%s error=%s", conversation_id, exc)
-                    current = deepcopy(DEFAULT_TASK_STATE)
+                # The write replaces the whole column, so it must merge into the
+                # stored state. A failed read is unknown state, not an empty one:
+                # retry once, then drop this patch rather than erase the pending
+                # task and memory with defaults.
+                current = None
+                for attempt in (1, 2):
+                    try:
+                        current = self._read_task_state_sync(conversation_id, org_id, client)
+                        break
+                    except Exception as exc:  # noqa: BLE001
+                        logger.warning(
+                            "persist_task_state_read_failed conversation_id=%s attempt=%s error=%s",
+                            conversation_id,
+                            attempt,
+                            exc,
+                        )
+                if current is None:
+                    logger.warning(
+                        "persist_task_state_skipped_unknown_state conversation_id=%s keys=%s",
+                        conversation_id,
+                        sorted(original_updates)[:12],
+                    )
+                    return
                 from app.services.execution_plan_adapters import enrich_task_state_patch
 
                 updates = enrich_task_state_patch(updates, current_state=current)

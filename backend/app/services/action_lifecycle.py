@@ -604,20 +604,22 @@ def composer_truth_headline(
 
 _WRITE_STATUS_Q = re.compile(
     r"(?is)\b("
-    r"did (?:that|it|the contact|you)|"
-    r"already (?:get )?(?:created|done|sent|posted)|"
-    r"was (?:that|it) created|"
-    r"did you create|"
-    r"is (?:that|it) (?:done|created)"
+    r"did (?:that|it|this|the)(?: \w+)?(?: already| actually)? (?:go through|work|get (?:created|sent|added|saved))|"
+    r"did you (?:already |actually )?(?:create|send|post|add|save|log|make) (?:it|that|the contact|the record|the email|the message)|"
+    r"(?:it|that|they|was it) already (?:get )?(?:created|done|sent|posted)|"
+    r"was (?:that|it) (?:created|sent|done|added|saved)|"
+    r"is (?:that|it) (?:done|created|sent)"
     r")\b"
 )
+# Asks which record or address a finished write used. A bare "the email" is
+# not one: "try again, the email now?" is about the draft in progress.
 _WRITE_IDENTITY_Q = re.compile(
     r"(?is)\b("
-    r"which contact|what(?:'s| is) the email|what email|"
-    r"provider (?:record|id)|hubspot id|record id|"
-    r"the email|contact id"
+    r"which contact|what(?:'s| is| was) the email(?: address)?|what email(?: address)?|"
+    r"provider (?:record|id)|hubspot id|record id|contact id"
     r")\b"
 )
+_RETRY_Q = re.compile(r"(?is)\b(try (?:it |that )?again|retry|resend|send it again|one more time)\b")
 
 
 def identity_literals_from_state(task_state: dict[str, Any] | None) -> list[str]:
@@ -650,12 +652,19 @@ def recent_write_status_turn(
     task_state: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     """Answer natural follow-ups from Observation — never a second provider WRITE."""
-    if not _WRITE_STATUS_Q.search(message or "") and not _WRITE_IDENTITY_Q.search(message or ""):
+    text = message or ""
+    retry = bool(_RETRY_Q.search(text))
+    if not retry and not _WRITE_STATUS_Q.search(text) and not _WRITE_IDENTITY_Q.search(text):
         return None
     state = task_state if isinstance(task_state, dict) else {}
     pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
     obs = _latest_observation(state)
     stage = semantic_stage_from_state(state)
+    if retry and stage not in {"OUTCOME_UNCERTAIN", "AWAITING_RECONCILIATION"}:
+        # A retry continues the current task through the normal path, which
+        # holds writes for approval. Only an uncertain earlier attempt is
+        # answered here: resending it blind could send it twice.
+        return None
     literals = identity_literals_from_state(state)
     email = next((item for item in literals if "@" in item), "")
     record = ""
@@ -678,6 +687,11 @@ def recent_write_status_turn(
         return _reply("That was cancelled, so nothing was created.")
     if stage == "FAILED":
         return _reply("That didn't finish, so I'm not counting it as created.")
+    if retry:
+        return _reply(
+            "I already tried that once and can't tell yet whether it went through, "
+            "so I won't send it again until I've confirmed it didn't."
+        )
     if stage == "OUTCOME_UNCERTAIN":
         return _reply(
             "I tried that, but I can't tell yet whether it worked, so I'm not counting it as created."
@@ -686,7 +700,9 @@ def recent_write_status_turn(
         target = f" for {email}" if email else ""
         return _reply(f"Not yet. That contact is still waiting for your approval{target}.")
     if not obs and stage not in {"COMPLETED", "EXECUTED_UNVERIFIED", "VERIFIED"}:
-        return _reply("I don't have a matching prior write in this conversation.")
+        # Nothing was written yet (a draft, a question in progress): this is
+        # not a status question about a finished write, so let the turn run.
+        return None
     if stage == "COMPLETED":
         if _WRITE_IDENTITY_Q.search(message or ""):
             bits = ["Yes — that contact was created and verified."]
@@ -701,4 +717,4 @@ def recent_write_status_turn(
             "The provider accepted the write, but independent verification is still pending. "
             "I have not marked it complete."
         )
-    return _reply("I don't have a matching prior write in this conversation.")
+    return None

@@ -182,13 +182,13 @@ class TestToolCompletedNarration:
         never raise — real output data can still be narrated with an empty
         tool-name label rather than blowing up the turn.
         """
-        events = [_tool_output("unknown-call", {"results": [1]})]
+        events = [_tool_output("unknown-call", {"contacts": [1]})]
         display, tts = _drive(events)  # must not raise
         # Word-boundary regression fix (2026-09-06): every independently-
         # pushed spoken segment now carries a trailing space so consecutive
         # TTS frames are never glued together with no separator (see
         # `_push_spoken_text`) — assert the exact fixed value, not a substring.
-        assert tts == ["I found one. "]
+        assert tts == ["I found one contact. "]
 
 
 class TestPhase3HonestWriteStateSpeechEndToEnd:
@@ -235,7 +235,7 @@ class TestNarrationDoesNotCorruptTheFinalAnswer:
     def test_narration_and_final_text_delta_both_reach_tts_in_order(self) -> None:
         events = [
             _tool_start("c1", "getPipelineHealth"),
-            _tool_output("c1", {"results": [1, 2, 3]}),
+            _tool_output("c1", {"deals": [1, 2, 3]}),
             AssistantStreamEvent(sse_type="text-delta", payload={"delta": "You have three open deals."}),
         ]
         _, tts = _drive(events)

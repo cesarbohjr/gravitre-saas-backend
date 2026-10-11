@@ -1141,7 +1141,7 @@ class ChatConnectorExecutionService:
                 "pending_reply_intent": "unrelated",
             }
         if intent == "ambiguous" and is_awaiting_params(task_state):
-            clarify = format_ambiguous_clarify(snap)
+            clarify = format_ambiguous_clarify(snap, message=message)
             message_out = clarify
             try:
                 from app.services.conversational_reply_service import (
