@@ -314,6 +314,40 @@ def test_a_failed_aside_says_so_and_the_task_still_delivers() -> None:
     assert [p["user_text"] for p in h.persisted] == [REQUEST]
 
 
+def test_a_refused_aside_says_the_guardrail_line_and_the_task_still_delivers() -> None:
+    from app.services import shared_turn_preparation
+    from app.services.shared_turn_preparation import SPOKEN_GUARDRAIL_MESSAGES, TurnGuardrailBlocked
+
+    h = _AsideHarness()
+
+    async def _during() -> None:
+        h.session.note_user_turn_start()
+        assert h.service.start_explain_aside(QUESTION)
+        # A refused aside never reaches the brain; let it finish, then the task.
+        aside = h.service._aside_task
+        assert aside is not None
+        await asyncio.wait({aside})
+        h.lookup_release.set()
+
+    h.during_lookup = _during
+
+    async def _guard(*_a: Any, user_text: str = "", **_k: Any) -> None:
+        if user_text == QUESTION:
+            raise TurnGuardrailBlocked("blocked")
+
+    async def _script() -> None:
+        shared_turn_preparation.guard_spoken_turn.side_effect = _guard
+        await h.turn(REQUEST)
+
+    h.run(_script)
+    spoken = " ".join(h.spoken())
+    refusal = SPOKEN_GUARDRAIL_MESSAGES.get("blocked", SPOKEN_GUARDRAIL_MESSAGES["invalid"])
+    assert refusal in spoken
+    assert "I couldn't answer that just now" not in spoken
+    assert spoken.count(RESULT) == 1
+    assert h.lookup_runs == 1
+
+
 def test_a_barge_in_cuts_the_aside_off() -> None:
     h = _AsideHarness()
     h.aside_release.clear()

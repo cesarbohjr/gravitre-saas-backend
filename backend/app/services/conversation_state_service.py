@@ -501,7 +501,16 @@ class ConversationStateService:
         """
         if not conversation_id or not org_id:
             return False
+        from app.services.turn_cancellation import current_turn_cancelled
+
         with _task_state_lock(conversation_id, org_id):
+            if current_turn_cancelled():
+                # Same fence as the save: under the lock, right before the write.
+                logger.info(
+                    "apply_task_state_change_dropped_for_cancelled_turn conversation_id=%s",
+                    conversation_id,
+                )
+                return False
             state = self._read_task_state_sync(conversation_id, org_id, client)
             change(state)
             self._client(client).table("conversations").update(

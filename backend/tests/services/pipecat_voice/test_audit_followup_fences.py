@@ -449,3 +449,31 @@ async def test_a_channel_override_keeps_what_was_saved_since_the_turn_read() -> 
     assert stored["clarified_params"]["channel_override"] == "gmail"
     assert stored["preferred_connector"] == "gmail"
     assert stored["pending_task"]["status"] == "awaiting_approval", "the later save is kept"
+
+
+def test_a_channel_override_cancelled_while_waiting_for_the_lock_is_not_saved() -> None:
+    """The caller checks the fence first; a cancel can land while it waits for the lock."""
+    import threading
+
+    from app.services.conversation_state_service import _task_state_lock
+
+    db = _seeded_db()
+    service = ConversationStateService(SETTINGS)
+    turn = TurnCancellation()
+    saved: list[bool] = []
+
+    def _override() -> None:
+        def _apply(fresh: dict[str, Any]) -> None:
+            fresh["preferred_connector"] = "gmail"
+
+        with bound_turn_cancellation(turn):
+            saved.append(service.apply_task_state_change_sync(CONV, ORG, _apply, client=db))
+
+    with _task_state_lock(CONV, ORG):
+        writer = threading.Thread(target=_override)
+        writer.start()
+        time.sleep(0.05)  # the override is past its own fence, waiting for the lock
+        turn.cancel("barge_in")
+    writer.join(5)
+    assert saved == [False]
+    assert "preferred_connector" not in (db.tables["conversations"][0].get("task_state") or {})

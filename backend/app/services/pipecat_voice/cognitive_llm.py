@@ -2077,14 +2077,19 @@ class GravitreCognitiveLLMService(LLMService):
         note = self._task_facts_note()
         turn_inputs["assistant_base_prompt"] = f"{base}\n\n{note}" if base else note
         mode = tier_to_execution_mode("light")
-        await guard_spoken_turn(
-            self._app_settings,
-            org_id=self._org_id,
-            user_text=question,
-            system_prompt=str(turn_inputs.get("assistant_base_prompt") or ""),
-            history=history,
-            mode=mode,
-        )
+        try:
+            await guard_spoken_turn(
+                self._app_settings,
+                org_id=self._org_id,
+                user_text=question,
+                system_prompt=str(turn_inputs.get("assistant_base_prompt") or ""),
+                history=history,
+                mode=mode,
+            )
+        except TurnGuardrailBlocked as blocked:
+            # A refused aside says the guardrail's line, not the generic failure.
+            await self._speak_aside_text(blocked.spoken)
+            return blocked.spoken, None
         intelligence = get_agent_intelligence()
         scope = SpeculativeScope()
         answer = ""
