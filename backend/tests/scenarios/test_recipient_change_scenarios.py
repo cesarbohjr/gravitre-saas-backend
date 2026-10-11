@@ -311,3 +311,13 @@ def test_a_sent_email_counts_while_its_check_is_still_running(status: str) -> No
     }
     assert sent_email_write({"pending_task": pending}) is pending
     assert sent_email_write({"pending_task": {**pending, "status": "failed"}}) is None
+
+
+def test_a_microsoft_365_email_is_an_email_for_recipient_changes() -> None:
+    from app.services.pending_write_revision import open_recipient_change, sent_email_write
+    pending = {"type": "connector_action", "status": "executed",
+        "params": {"invoke_action": "microsoft365.mail.send", "args": {"to": STEPHANIE, "subject": SUBJECT}},
+        "result": {"success": True}}
+    assert sent_email_write({"pending_task": pending}) is pending
+    waiting = {**pending, "status": "awaiting_params"}
+    assert open_recipient_change({"pending_task": waiting, "recipient_change": {"name": "Mike"}}) is waiting

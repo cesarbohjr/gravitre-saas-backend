@@ -104,7 +104,7 @@ def _body_value(raw: str) -> str:
 
 def _is_email_send(invoke_action: str) -> bool:
     action = (invoke_action or "").lower()
-    return action.split(".", 1)[0] in {"gmail", "outlook", "microsoft_outlook"} and "send" in action
+    return action.split(".", 1)[0] in {"gmail", "outlook", "microsoft_outlook", "microsoft365"} and "send" in action
 
 
 def parse_field_edits(message: str, *, invoke_action: str) -> dict[str, str]:
@@ -302,7 +302,12 @@ def _sent_record_id(sent: dict[str, Any]) -> str:
     params = safe_normalize_stored_dict(sent, key="params")
     result = safe_normalize_stored_dict(sent, key="result")
     structured = safe_normalize_stored_dict(result, key="structured")
-    return str(params.get("provider_record_id") or structured.get("provider_record_id") or result.get("entity_id") or "")
+    record = str(params.get("provider_record_id") or structured.get("provider_record_id") or result.get("entity_id") or "")
+    if record:
+        return record
+    # Microsoft 365 sendMail returns no message id: name the send by its recipient.
+    sent_to = str(safe_normalize_stored_dict(params, key="args").get("to") or "").strip().lower()
+    return f"to:{sent_to}" if sent_to else ""
 
 
 def _restaged(base: dict[str, Any], args: dict[str, Any], *, status: str, follows_write: str = "") -> dict[str, Any]:

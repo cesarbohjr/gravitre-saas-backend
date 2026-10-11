@@ -160,6 +160,11 @@ def existing_successful_write(
 
     def _is_earlier(row: dict[str, Any]) -> bool:
         structured = row.get("structured") if isinstance(row.get("structured"), dict) else {}
+        if earlier.startswith("to:"):
+            # A send with no provider id (Microsoft 365) is named by its recipient.
+            sent = structured.get("to_recipients") or structured.get("to") or []
+            sent = [sent] if isinstance(sent, str) else sent if isinstance(sent, list) else []
+            return earlier[3:] in {str(x).strip().lower() for x in sent}
         return bool(earlier) and str(provider_record_id(structured) or row.get("resource") or "") == earlier
 
     session = state.get("connector_session") if isinstance(state.get("connector_session"), dict) else {}
