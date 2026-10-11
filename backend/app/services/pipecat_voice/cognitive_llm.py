@@ -564,6 +564,9 @@ class GravitreCognitiveLLMService(LLMService):
         self._aside_task: asyncio.Task[Any] | None = None
         self._aside_work: TurnCancellation | None = None
         self._task_progress: dict[str, Any] = {}
+        # The running task's request was stored ahead of an aside's rows, so
+        # history reads in the order it was said; the task adds only its reply.
+        self._turn_request_stored = False
 
     async def _apply_tier_voice(self, tier: str | None) -> None:
         """Livelier delivery for light turns, steadier for deep (stability only).
@@ -789,6 +792,7 @@ class GravitreCognitiveLLMService(LLMService):
             if session is not None:
                 session.bind_turn_work(turn_work)
             self._task_progress = {"request": "", "running": {}, "done": [], "answer": ""}
+            self._turn_request_stored = False
             self._turn_active = True
             if session is not None:
                 session.work_active = True
@@ -1959,6 +1963,9 @@ class GravitreCognitiveLLMService(LLMService):
             durable_assistant_text = str(getattr(complete_event, "full_content", None) or "").strip()
             if durable_assistant_text:
                 preassigned_assistant_id = str(getattr(complete_event, "message_id", None) or "") or None
+                # An aside still speaking is heard before this result: its rows
+                # (and this request's, ahead of them) are stored first.
+                await self._await_aside()
                 if self._interrupt_reporter is not None:
                     # The previous barge-in's rewrite lands before this turn's
                     # rows, so stored rows stay in order.
@@ -1972,6 +1979,7 @@ class GravitreCognitiveLLMService(LLMService):
                     user_text=user_text,
                     assistant_text=durable_assistant_text,
                     complete_event=complete_event,
+                    user_row_stored=self._turn_request_stored,
                 )
                 if persisted_id:
                     self._conversation_id = persisted_id
@@ -2146,6 +2154,8 @@ class GravitreCognitiveLLMService(LLMService):
         user_text: str,
         assistant_text: str,
         complete_event: AssistantStreamComplete,
+        user_row_stored: bool = False,
+        earlier_user_text: str | None = None,
     ) -> tuple[str | None, str | None]:
         """Persist a completed voice turn through the same durable store as text."""
         if not assistant_text.strip():
@@ -2161,6 +2171,8 @@ class GravitreCognitiveLLMService(LLMService):
                 user_text=user_text,
                 assistant_text=assistant_text,
                 complete=complete_event,
+                user_row_stored=user_row_stored,
+                earlier_user_text=earlier_user_text,
             )
             return persisted_id, assistant_id
         except Exception as exc:  # noqa: BLE001
@@ -2523,6 +2535,8 @@ class GravitreCognitiveLLMService(LLMService):
         if the user moved on) by ``_resume_speech_for_result``. The aside runs
         under a discarded speculative scope, so it cannot write anything.
         """
+        # The running task this aside explains (its request is stored ahead of the aside).
+        task_work = self._turn_work if self._turn_active else None
         if after is not None and not after.done():
             # The aside this one replaces closes its reply first.
             await asyncio.wait({after})
@@ -2599,12 +2613,34 @@ class GravitreCognitiveLLMService(LLMService):
                 failed,
             )
         if answer and not cancelled and complete is not None and not failed:
-            await asyncio.to_thread(
+            # The task was asked before the aside but stores its rows when it
+            # ends: its request goes in first, here, and the task then adds only
+            # its reply. Marked before the write so no other writer of this
+            # turn adds it again meanwhile.
+            earlier = ""
+            if (
+                task_work is not None
+                and self._turn_active
+                and self._turn_work is task_work
+                and not self._turn_request_stored
+            ):
+                earlier = str(self._task_progress.get("request") or "").strip()
+            if earlier:
+                self._mark_turn_request_stored(True)
+            persisted_id, _ = await asyncio.to_thread(
                 self._persist_completed_voice_turn,
                 user_text=question,
                 assistant_text=answer,
                 complete_event=complete,
+                earlier_user_text=earlier or None,
             )
+            if earlier and not persisted_id and self._turn_work is task_work:
+                self._mark_turn_request_stored(False)
+
+    def _mark_turn_request_stored(self, stored: bool) -> None:
+        self._turn_request_stored = stored
+        if self._interrupt_reporter is not None:
+            self._interrupt_reporter.mark_user_row_stored(stored)
 
     async def _speak_aside_text(self, text: str) -> None:
         await self.push_frame(

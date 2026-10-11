@@ -55,6 +55,8 @@ class _InterruptedTurn:
     conversation_id: str | None
     user_text: str
     assistant_message_id: str | None
+    # The user row is already stored (ahead of a voice aside): add only the reply.
+    user_row_stored: bool = False
 
 
 @dataclass(frozen=True)
@@ -168,6 +170,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
         self._voice_session = voice_session
         self._active_user_text = ""
         self._active_assistant_message_id: str | None = None
+        self._active_user_row_stored = False
         # Barge-in side effects (stop marker, audit rows, durable reconcile) run
         # after the InterruptionFrame is pushed. The next turn waits on this
         # task before it clears the stop marker this socket armed.
@@ -284,6 +287,11 @@ class ElevenLabsInterruptReporter(FrameProcessor):
     def begin_turn(self, user_text: str) -> None:
         self._active_user_text = str(user_text or "").strip()
         self._active_assistant_message_id = None
+        self._active_user_row_stored = False
+
+    def mark_user_row_stored(self, stored: bool = True) -> None:
+        """The active turn's request was stored ahead of an aside's rows."""
+        self._active_user_row_stored = stored
 
     def mark_turn_persisted(self, *, conversation_id: str | None, assistant_message_id: str | None) -> None:
         if conversation_id:
@@ -361,6 +369,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             conversation_id=self._conversation_id,
             user_text=self._active_user_text,
             assistant_message_id=self._active_assistant_message_id,
+            user_row_stored=self._active_user_row_stored,
         )
 
     async def _persist_interrupted_assistant_text(
@@ -454,6 +463,7 @@ class ElevenLabsInterruptReporter(FrameProcessor):
             assistant_text=heard,
             tool_results=[],
             assistant_message_id=message_id or None,
+            user_row_stored=turn.user_row_stored,
         )
         if persisted_id:
             return persisted_id, assistant_id

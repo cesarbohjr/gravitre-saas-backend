@@ -420,8 +420,13 @@ def _persist_conversation_turn(
     assistant_text: str,
     tool_results: list[dict[str, Any]],
     assistant_message_id: str | None = None,
+    user_row_stored: bool = False,
+    earlier_user_text: str | None = None,
 ) -> tuple[str | None, str | None]:
-    """Append user/assistant messages to an owned conversation (best-effort)."""
+    """Append user/assistant messages to an owned conversation (best-effort).
+
+    ``user_row_stored`` / ``earlier_user_text``: see build_conversation_turn_message_rows.
+    """
     from app.services.conversation_write_guard import (
         ConversationWriteBlockedError,
         assert_conversation_create_allowed,
@@ -486,13 +491,15 @@ def _persist_conversation_turn(
             tool_results=tool_results,
             created_at=now,
             assistant_message_id=assistant_message_id,
+            user_row_stored=user_row_stored,
+            earlier_user_text=earlier_user_text,
         )
         client.table("conversation_messages").insert(rows).execute()
 
         client.table("conversations").update(
             {
                 "preview": assistant_text[:200] or user_text[:200],
-                "message_count": current_count + 2,
+                "message_count": current_count + len(rows),
                 "updated_at": now,
             }
         ).eq("id", conv_id).eq("org_id", org_id).eq("user_id", user_id).execute()

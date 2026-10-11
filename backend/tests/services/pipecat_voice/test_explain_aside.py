@@ -56,6 +56,8 @@ class _AsideHarness(_Harness):
         self.during_lookup: Any = None
         self.after_lookup: Any = None
         self.result_text = RESULT
+        # False: the result comes only as the turn's full content (no text delta).
+        self.result_streamed = True
 
         async def _yielding_push(*_a: Any, **_k: Any) -> None:
             # A real pipeline push can suspend; interleavings must stay well-formed.
@@ -97,7 +99,7 @@ class _AsideHarness(_Harness):
         )
         if self.after_lookup is not None:
             await self.after_lookup()
-        if self.result_text:
+        if self.result_text and self.result_streamed:
             yield AssistantStreamEvent(sse_type="text-delta", payload={"delta": self.result_text})
         yield AssistantStreamComplete(full_content=self.result_text, tool_results=[], react_result=None, model="t")
 
@@ -165,8 +167,91 @@ def test_the_task_keeps_running_and_its_result_is_spoken_once_after_the_aside() 
     assert not h.session.reply_muted(2), "the aside itself is heard"
     done = [m for m in h.messages("assistant_turn.complete") if m.get("aside")]
     assert done and done[0]["user_text"] == QUESTION and done[0]["cancelled"] is False
-    assert [p["user_text"] for p in h.persisted] == [QUESTION, REQUEST]
+    assert _stored_rows(h) == [("user", REQUEST), ("user", QUESTION), ("assistant", ASIDE), ("assistant", RESULT)]
     assert h.persisted[-1]["assistant_text"] == RESULT
+
+
+def _stored_rows(h: _AsideHarness) -> list[tuple[str, str]]:
+    """The conversation_messages rows the persisted turns insert, in insert order."""
+    from app.services.conversation_message_rows import (
+        build_conversation_turn_message_rows,
+    )
+
+    out: list[tuple[str, str]] = []
+    for p in h.persisted:
+        rows, _ = build_conversation_turn_message_rows(
+            conversation_id="conv",
+            user_text=p["user_text"],
+            assistant_text=p["assistant_text"],
+            tool_results=[],
+            created_at="2026-10-11T10:00:00+00:00",
+            user_row_stored=bool(p.get("user_row_stored")),
+            earlier_user_text=p.get("earlier_user_text"),
+        )
+        out.extend((r["role"], r["content"]) for r in rows)
+    return out
+
+
+def test_history_keeps_the_order_said_request_aside_then_result() -> None:
+    """Bench S14: the aside's rows were stored before the task's request ("why?" first).
+
+    The request is stored ahead of the aside (it was said first), the aside
+    next, and the task adds only its reply: one row each, in the order heard.
+    """
+    h = _AsideHarness()
+    _ask_aside_then_finish(h)
+    h.run(lambda: h.turn(REQUEST))
+
+    aside_turn, task_turn = h.persisted
+    assert aside_turn["user_text"] == QUESTION and aside_turn["earlier_user_text"] == REQUEST
+    assert task_turn["user_text"] == REQUEST and task_turn["user_row_stored"] is True
+    rows = _stored_rows(h)
+    assert rows == [("user", REQUEST), ("user", QUESTION), ("assistant", ASIDE), ("assistant", RESULT)]
+    assert [r for r in rows if r == ("user", REQUEST)] == [("user", REQUEST)], "the request is stored once"
+
+
+def test_a_task_that_finishes_during_the_aside_stores_its_reply_after_the_aside() -> None:
+    h = _AsideHarness()
+    h.aside_release.clear()
+    # Nothing left to speak: the turn's store does not pass through the result's speech.
+    h.result_streamed = False
+
+    async def _during() -> None:
+        h.session.note_user_turn_start()
+        assert h.service.start_explain_aside(QUESTION)
+        await h.aside_started.wait()
+        h.lookup_release.set()
+
+    h.during_lookup = _during
+
+    async def _script() -> None:
+        turn = asyncio.create_task(h.turn(REQUEST))
+        await h.aside_started.wait()
+        for _ in range(20):
+            await asyncio.sleep(0)
+        assert h.persisted == [], "the finished task waits for the aside it was interrupted by"
+        h.aside_release.set()
+        await turn
+
+    h.run(_script)
+    assert _stored_rows(h) == [("user", REQUEST), ("user", QUESTION), ("assistant", ASIDE), ("assistant", RESULT)]
+
+
+def test_an_aside_after_the_task_was_stored_adds_no_request_row() -> None:
+    h = _AsideHarness()
+    h.lookup_release.set()
+
+    async def _script() -> None:
+        await h.turn(REQUEST)
+        # The task's rows are stored; an aside now has no running task's request to store.
+        assert h.service.start_explain_aside(QUESTION)
+        await h.service._await_aside()
+
+    h.run(_script)
+    assert [p["user_text"] for p in h.persisted] == [REQUEST, QUESTION]
+    assert all(not p.get("earlier_user_text") for p in h.persisted)
+    assert all(not p.get("user_row_stored") for p in h.persisted)
+    assert [r for r in _stored_rows(h) if r == ("user", REQUEST)] == [("user", REQUEST)]
 
 
 def test_the_aside_explains_from_the_running_task_and_cannot_act() -> None:

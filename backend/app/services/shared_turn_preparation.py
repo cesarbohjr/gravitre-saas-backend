@@ -250,6 +250,8 @@ def persist_completed_turn(
     user_text: str,
     assistant_text: str,
     complete: Any,
+    user_row_stored: bool = False,
+    earlier_user_text: str | None = None,
 ) -> tuple[str | None, str | None]:
     """Save a finished turn to the same durable conversation store text chat uses.
 
@@ -257,6 +259,8 @@ def persist_completed_turn(
     there is none yet) and records the completed turn in memory. Returns
     ``(conversation_id, assistant_message_id)``; ``(None, None)`` when nothing
     was saved. Blocking: call it from a worker thread in async code.
+    ``user_row_stored`` / ``earlier_user_text``: see
+    ``build_conversation_turn_message_rows`` (voice explain aside ordering).
     """
     if not assistant_text.strip():
         return None, None
@@ -272,6 +276,8 @@ def persist_completed_turn(
         assistant_text=assistant_text,
         tool_results=tool_results,
         assistant_message_id=str(getattr(complete, "message_id", None) or "") or None,
+        user_row_stored=user_row_stored,
+        earlier_user_text=earlier_user_text,
     )
     if persisted_id:
         _remember_completed_turn(
