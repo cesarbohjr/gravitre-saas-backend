@@ -256,13 +256,10 @@ def run_metrics(result: Any) -> dict[str, Any]:
     m["heard_unpersisted_words"] = heard_unpersisted
     m["history_matches_heard"] = unheard_persisted == 0 and heard_unpersisted == 0
     # Answer words heard that the transcript never displayed (the client
-    # shows assistant_text deltas): speech the user cannot read back.
+    # shows every assistant_text delta, narration included): speech the user
+    # cannot read back.
     displayed = norm_words(
-        "".join(
-            str(msg.get("delta") or "")
-            for _t, msg in msgs
-            if msg.get("type") == "assistant_text" and (msg.get("kind") or "answer") == "answer"
-        )
+        "".join(str(msg.get("delta") or "") for _t, msg in msgs if msg.get("type") == "assistant_text")
     )
     m["spoken_not_displayed_words"] = len(heard_answer) - _matched(heard_answer, displayed)
 
