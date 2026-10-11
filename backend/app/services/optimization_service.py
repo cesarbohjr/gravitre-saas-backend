@@ -158,6 +158,16 @@ class OptimizationService:
         return recs
 
     def _persist_recommendations(self, org_id: str, workflow_id: str, recs: list[Recommendation]) -> None:
+        """Insert into the optimization_recommendations shape that actually exists.
+
+        Two migrations CREATE this table with IF NOT EXISTS; the first
+        (20260426000200_workflow_optimization.sql) wins, so the live columns are
+        issue / evidence / suggested_change jsonb / estimated_impact jsonb /
+        confidence / risk_level / status ('open'|'applied'|'dismissed') /
+        affected_nodes. recommendation_type / title / risk (from the second
+        CREATE in 20260429013000) do not exist. Type and title travel inside
+        the suggested_change JSON; the web route reads exactly these columns.
+        """
         if not recs:
             return
         client = get_supabase_client(self.settings)
@@ -165,20 +175,29 @@ class OptimizationService:
             {
                 "org_id": org_id,
                 "workflow_id": workflow_id,
-                "recommendation_type": rec.type.value,
-                "title": rec.title,
                 "issue": rec.issue,
-                "suggested_change": rec.suggested_change,
-                "estimated_impact": rec.estimated_impact,
+                "suggested_change": {
+                    "type": rec.type.value,
+                    "title": rec.title,
+                    "change": rec.suggested_change,
+                },
+                "estimated_impact": {"summary": rec.estimated_impact},
                 "confidence": rec.confidence,
-                "risk": rec.risk,
+                "risk_level": rec.risk,
+                "status": "open",
             }
             for rec in recs
         ]
         try:
             client.table("optimization_recommendations").insert(rows).execute()
         except Exception as exc:  # noqa: BLE001
-            logger.warning("optimization recommendations insert failed: %s", str(exc))
+            logger.warning(
+                "optimization_recommendations_insert_failed org_id=%s workflow_id=%s rows=%s error=%s",
+                org_id,
+                workflow_id,
+                len(rows),
+                exc,
+            )
 
 
 _optimization_service_singleton: OptimizationService | None = None

@@ -79,7 +79,7 @@ class BusinessDigitalTwinEngine:
         if domain == "revenue":
             rows = (
                 client.table("agent_action_outcomes")
-                .select("metric_value, metric_name")
+                .select("metric_value_after, metric_name")
                 .eq("org_id", org_id)
                 .gte("measured_at", since)
                 .in_("metric_name", ["deal_amount", "subscription_mrr"])
@@ -88,11 +88,11 @@ class BusinessDigitalTwinEngine:
                 .data
                 or []
             )
-            return [float(r.get("metric_value") or 0) for r in rows if r.get("metric_value") is not None]
+            return [float(r.get("metric_value_after") or 0) for r in rows if r.get("metric_value_after") is not None]
         if domain == "support_capacity":
             rows = (
                 client.table("agent_action_outcomes")
-                .select("metric_value")
+                .select("metric_value_after")
                 .eq("org_id", org_id)
                 .eq("metric_name", "ticket_volume")
                 .gte("measured_at", since)
@@ -101,7 +101,7 @@ class BusinessDigitalTwinEngine:
                 .data
                 or []
             )
-            return [float(r.get("metric_value") or 0) for r in rows if r.get("metric_value") is not None]
+            return [float(r.get("metric_value_after") or 0) for r in rows if r.get("metric_value_after") is not None]
         rows = (
             client.table("workflow_runs")
             .select("duration_ms, status")

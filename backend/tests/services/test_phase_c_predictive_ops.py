@@ -57,9 +57,33 @@ async def test_predictive_ops_trained_model_calls_predict_structured():
             "app.ml.model_catalog.load_org_trained_catalog_model",
             AsyncMock(return_value=mock_instance),
         ):
-            result = await engine._predict_model("org-1", "churn_risk_scorer")
+            result = await engine._predict_model("org-1", "revenue_forecaster")
     assert result["status"] == "ok"
     assert result["risk_score"] == 0.72
+
+
+@pytest.mark.asyncio
+async def test_predictive_ops_per_entity_model_without_features_is_skipped():
+    """Domain path has no customer features: never score a zero vector."""
+    engine = PredictiveOperationsEngine()
+    mock_instance = AsyncMock()
+    mock_instance._model = object()  # trained artifact present
+    mock_instance.predict_structured = AsyncMock(
+        return_value={"status": "ok", "risk_score": 0.72, "advisory_only": True}
+    )
+    with patch(
+        "app.services.predictive_operations_engine.get_org_model_status",
+        AsyncMock(return_value={"catalog_status": ModelStatus.TRAINED.value}),
+    ):
+        with patch(
+            "app.ml.model_catalog.load_org_trained_catalog_model",
+            AsyncMock(return_value=mock_instance),
+        ):
+            result = await engine._predict_model("org-1", "churn_risk_scorer")
+    assert result["status"] == "not_available"
+    assert result["reason"] == "no_features"
+    assert "risk_score" not in result
+    mock_instance.predict_structured.assert_not_awaited()
 
 
 @pytest.mark.asyncio

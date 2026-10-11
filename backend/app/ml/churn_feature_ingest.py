@@ -166,6 +166,44 @@ def list_churn_training_rows(client: Any, org_id: str) -> list[dict[str, Any]]:
     return usable
 
 
+def list_unlabeled_churn_signal_rows(client: Any, org_id: str) -> list[dict[str, Any]]:
+    """Customer signal rows whose churn outcome is NOT yet known.
+
+    Unresolved = ``measured_at`` is null and the payload carries no ``churned``
+    label. These are the only rows it is honest to score: labelled rows are the
+    training set and their outcome is already known.
+    """
+    rows = (
+        client.table("agent_action_outcomes")
+        .select("id, target_entity_id, confidence_note, metric_value_after, measured_at")
+        .eq("org_id", org_id)
+        .eq("metric_name", CHURN_METRIC_NAME)
+        .eq("target_entity_type", CHURN_ENTITY_TYPE)
+        .is_("measured_at", "null")
+        .execute()
+        .data
+        or []
+    )
+    unlabeled: list[dict[str, Any]] = []
+    for row in rows:
+        if row.get("measured_at") or row.get("metric_value_after") is not None:
+            continue
+        payload = _parse_note_payload(row.get("confidence_note"))
+        if "churned" in payload:
+            continue
+        features = extract_churn_features(payload)
+        if not features_usable(features):
+            continue
+        unlabeled.append(
+            {
+                "id": row.get("id"),
+                "customer_id": row.get("target_entity_id"),
+                "features": features,
+            }
+        )
+    return unlabeled
+
+
 def count_labeled_churn_examples(client: Any, org_id: str) -> int:
     return len(list_churn_training_rows(client, org_id))
 
