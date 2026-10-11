@@ -42,6 +42,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from app.core.logging import get_logger
+from app.services.pipecat_voice.spoken_formatting import spoken_alignment_tokens
 
 logger = get_logger(__name__)
 
@@ -245,7 +246,9 @@ class ReplyPlayback:
 
     def _draft_tokens(self) -> list[tuple[str, int]]:
         if self._tokens_for_len != len(self.draft):
-            self._tokens = [(m.group(0).casefold(), m.end()) for m in _WORD_RE.finditer(self.draft)]
+            # In spoken form: the TTS says "1,250 dollars and 50 cents" for the
+            # draft's "$1,250.50" (spoken_formatting); offsets stay in the draft.
+            self._tokens = spoken_alignment_tokens(self.draft)
             self._tokens_for_len = len(self.draft)
         return self._tokens
 
@@ -262,8 +265,9 @@ class ReplyPlayback:
             if found is not None:
                 self._cursor = found + 1
                 self._last_char_end = tokens[found][1]
-            # A word whose spoken form differs from the draft ("$5" -> "five
-            # dollars") keeps the last aligned position: never over-claim.
+            # A word whose spoken form differs from the draft in a way the
+            # spoken formatting does not produce (an alias, a TTS-side reading)
+            # keeps the last aligned position: never over-claim.
             self.spoken_words += 1
             if not self._gen_words:
                 self.word_marks.append((self.sent_audio_ms, self._last_char_end))

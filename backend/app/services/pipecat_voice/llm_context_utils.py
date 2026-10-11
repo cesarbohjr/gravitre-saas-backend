@@ -59,10 +59,18 @@ def _norm(text: str) -> str:
     return " ".join(re.sub(r"[^\w\s]", " ", (text or "").casefold()).split())
 
 
+def _norm_spoken(text: str) -> str:
+    from app.services.pipecat_voice.spoken_formatting import to_spoken_form
+
+    return _norm(to_spoken_form(text or ""))
+
+
 def _same_message(a: dict[str, Any], b: dict[str, Any]) -> bool:
     if str(a.get("role") or "") != str(b.get("role") or ""):
         return False
-    left, right = _norm(str(a.get("content") or "")), _norm(str(b.get("content") or ""))
+    # Compared as spoken: the socket's assistant text is what the TTS said
+    # ("1,250 dollars"), the stored row what was displayed ("$1,250").
+    left, right = _norm_spoken(str(a.get("content") or "")), _norm_spoken(str(b.get("content") or ""))
     if not left or not right:
         return False
     if left == right:

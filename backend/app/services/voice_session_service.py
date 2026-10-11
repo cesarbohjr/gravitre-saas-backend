@@ -18,6 +18,7 @@ from typing import Any
 from app.config import Settings
 from app.core.logging import get_logger
 from app.core.safe_dict import safe_normalize_stored_dict
+from app.services.pipecat_voice.spoken_formatting import split_sentence_chunks
 from app.services.tier1_voice_service import VoiceProviderError, synthesize_speech_stream
 from app.services.voice_agent_profile import normalize_voice_profile, resolve_session_voice
 from app.services.voice_turn_taking import (
@@ -33,7 +34,6 @@ from app.services.voice_turn_taking import (
 
 logger = get_logger(__name__)
 
-_SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 _MARKDOWN_LINK = re.compile(r"\[([^\]]+)\]\([^)]+\)")
 _LEADING_FORMAT = re.compile(r"^\s*(?:#{1,6}\s+|[-*]\s+|\d+\.\s+)")
 
@@ -166,14 +166,11 @@ def split_speakable_chunks(
     cannot hold audio forever. aggressive only lowers that emergency ceiling;
     it no longer turns ordinary partial phrases into standalone utterances.
     """
-    parts = _SENTENCE_END.split(buffer)
-    if len(parts) > 1:
-        ready = [p.strip() for p in parts[:-1] if p.strip()]
-        return ready, parts[-1]
-
-    stripped = buffer.rstrip()
-    if stripped and stripped[-1] in ".!?" and len(stripped) >= 2:
-        return [stripped], ""
+    # Sentence ends, skipping periods that do not end one ("e.g.", "Dr.",
+    # "U.S.", initials, decimals, times, versions, domains and addresses).
+    sentences = split_sentence_chunks(buffer)
+    if sentences is not None:
+        return sentences
 
     hard_ceiling = max(120 if aggressive else 180, max(1, min_chars) * 8)
     if len(buffer) < hard_ceiling:

@@ -18,6 +18,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from app.services.pipecat_voice.spoken_formatting import spoken_alignment_tokens
+
 _WORD_RE = re.compile(r"[\w'’-]+")
 
 # Question shapes that legitimately need more than a one-liner even when the
@@ -195,7 +197,9 @@ def _leading_matched_words(draft: str, spoken: str) -> tuple[int, int, int]:
     strings can differ in whitespace, capitalisation, or punctuation and still
     align. ``cut`` is an index into ``draft`` just past the n-th matched word.
     """
-    draft_tokens = [(m.group(0).casefold(), m.end()) for m in _WORD_RE.finditer(draft)]
+    # The draft in spoken form ("$1,250.50" -> "1,250 dollars and 50 cents"),
+    # offsets in the draft: a rewrite counts only once all of it was spoken.
+    draft_tokens = spoken_alignment_tokens(draft)
     spoken_tokens = [m.group(0).casefold() for m in _WORD_RE.finditer(spoken)]
 
     matched = 0
