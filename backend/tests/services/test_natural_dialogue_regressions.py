@@ -43,9 +43,27 @@ def test_email_revisions_reach_existing_task_handler(message):
         assert recent_write_status_turn(message, state) is None
 
 
-@pytest.mark.parametrize("message", ["What's the email subject?", "Which contact should I use?"])
+@pytest.mark.parametrize(
+    "message", ["What's the email subject?", "Which contact should I use?"]
+)
 def test_identity_question_without_prior_result_stays_with_current_draft(message):
     assert recent_write_status_turn(message, _draft()) is None
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Did you understand me?",
+        "Did that make sense?",
+        "Did you have a good day?",
+        "Did you remember my name?",
+        "Did you finish your coffee?",
+        "Did you run a 5k?",
+    ],
+)
+def test_conversational_questions_are_not_intercepted_as_action_status(message):
+    for state in ({}, _draft()):
+        assert recent_write_status_turn(message, state) is None
 
 
 @pytest.mark.parametrize(

@@ -19,7 +19,9 @@ Implemented behavior:
   it now" does not use this shortcut; the actual request retains existing gates.
 - "The email" is no longer evidence of a post-action status/identity question.
   The reproduced retry falls through to the existing task handler. An identity
-  question without a prior observation also stays with that handler.
+  question without a prior observation also stays with that handler. Ordinary
+  questions such as "Did you understand me?" or "Did that make sense?" are no
+  longer interpreted as action status merely because they start with "did you".
 - Status responses use ordinary language and preserve the difference between
   missing details, approval, execution, uncertainty, acceptance, and verification.
   An email is no longer described as a created contact. Unknown outcomes do not
@@ -51,13 +53,19 @@ Initial combined validation: 381 tests passed across dialogue, lifecycle,
 research/tier routing, interrupt intents, segment labeling, silence guard, and
 tool narration. After the final identity-query change, 102 targeted tests passed,
 including natural-dialogue regressions and the Phase A, traffic, and action
-execution business benchmarks. The new natural-dialogue module contains 40 tests.
+execution business benchmarks. The new natural-dialogue module contains 46 tests.
+
+Broader validation: 1,518 voice/shared tests passed with one replay-deadline
+test explicitly deselected after it also failed on unchanged main. That test
+was then isolated from irrelevant remote budget/moderation I/O; its unchanged
+ordering/deadline assertions passed, as did all 64 tests in its replay module.
+Final action-status/dialogue/tier/gateway validation: 227 tests passed.
 
 Cognitive regression suite (including pending-reply, council, kernel, and
 evidence pytest): passed. Confidence-honesty and smoke-isolation lints: passed.
 Changed-source fatal Python lint and patch whitespace checks: passed.
 
-Full voice/shared suite and CI status are recorded in the PR after completion.
+GitHub CI is pending for the final revision; this is a draft PR.
 No live email was sent; no microphone/browser/mobile audio benchmark was run.
 No end-to-end latency or acoustic-naturalness improvement is claimed.
 

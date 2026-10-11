@@ -604,10 +604,14 @@ def composer_truth_headline(
 
 _WRITE_STATUS_Q = re.compile(
     r"(?is)\b("
-    r"did (?:that|it|the contact|you)|"
+    r"did (?:that(?: contact| email| message| request| task)?|it|the contact|the email) "
+    r"(?:already )?(?:get )?(?:created|done|sent|posted|finished|completed|work|finish|complete|go through)|"
+    r"did you (?:already |actually )?(?:send|create|update|delete|save|post|"
+    r"execute|cancel|publish|schedule|book|forward|share|do (?:that|it)|"
+    r"(?:finish|complete|run) (?:(?:the|that|my|our) )?"
+    r"(?:it|that|email|message|request|task|workflow|job|update|contact|report))|"
     r"already (?:get )?(?:created|done|sent|posted)|"
     r"was (?:that|it) created|"
-    r"did you create|"
     r"is (?:that|it) (?:done|created)"
     r")\b"
 )
