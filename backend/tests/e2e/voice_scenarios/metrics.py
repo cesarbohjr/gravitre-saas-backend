@@ -18,7 +18,10 @@ import math
 from collections import Counter
 from typing import Any
 
-from app.services.pipecat_voice.voice_reply_playback import NOTHING_HEARD_MARKER, TRUNCATION_MARKER
+from app.services.pipecat_voice.voice_reply_playback import (
+    NOTHING_HEARD_MARKER,
+    TRUNCATION_MARKER,
+)
 from tests.e2e.voice_scenarios.fakes import BrowserPlaybackModel, norm_words
 
 
@@ -77,6 +80,25 @@ def _heard_words(run: Any, chunks: list[dict[str, Any]], labels: set[str]) -> li
         frac = 1.0 if total <= 0 else min(1.0, played_s[seg_id] / total + 1e-6)
         words.extend(seg_words[: int(math.floor(frac * len(seg_words) + 1e-6))])
     return words
+
+
+def _duplicate_lines(run: Any, chunks: list[dict[str, Any]]) -> int:
+    """Segments (two words or more) played whose words repeat an earlier played segment's."""
+    seen: set[tuple[str, ...]] = set()
+    dupes = 0
+    order: dict[int, float] = {}
+    for c in chunks:
+        if c["played_end"] > c["start"]:
+            order[c["seg"]] = min(order.get(c["seg"], c["start"]), c["start"])
+    for seg_id in sorted(order, key=lambda s: order[s]):
+        seg = run.rec.segments.get(seg_id)
+        key = tuple(norm_words(seg.text)) if seg is not None else ()
+        if len(key) < 2:
+            continue
+        if key in seen:
+            dupes += 1
+        seen.add(key)
+    return dupes
 
 
 def _matched(a: list[str], b: list[str]) -> int:
@@ -149,6 +171,22 @@ def run_metrics(result: Any) -> dict[str, Any]:
         )
         completes = [t for t, msg in msgs if msg.get("type") == "assistant_turn.complete" and t >= end]
         m["completion_ms"] = _ms((max(completes) - end) if completes else None)
+        # Filler / progress talk heard before the first answer audio (all of
+        # it when no answer was heard): the wait the user sat through.
+        answer_starts = [c["start"] for c in mine if c["label"] == "answer"]
+        first_answer = min(answer_starts) if answer_starts else None
+        m["filler_before_answer_ms"] = _ms(
+            sum(
+                min(c["played_end"], first_answer if first_answer is not None else c["played_end"]) - c["start"]
+                for c in mine
+                if c["label"] in ("filler", "progress") and (first_answer is None or c["start"] < first_answer)
+            )
+        )
+        # Voice-quality proxies for the measured response, answer kept apart
+        # from filler: words heard of each, and lines heard more than once.
+        m["answer_words_heard"] = len(_heard_words(run, mine, {"answer"}))
+        m["filler_words_heard"] = len(_heard_words(run, mine, {"filler", "progress"}))
+        m["duplicate_lines"] = _duplicate_lines(run, mine)
 
     barge = run.marks.get("barge_start")
     if barge is not None:
@@ -169,6 +207,12 @@ def run_metrics(result: Any) -> dict[str, Any]:
             m["late_frames_received"] = 0
             m["late_frames_played"] = 0
     _duck_metrics(run, played, m)
+    # Barge-in to "no longer heard at full level": the duck when there was
+    # one, otherwise the full stop.
+    if "barge_to_ducked_ms" in m and barge is not None:
+        m["barge_to_quiet_ms"] = m["barge_to_ducked_ms"]
+    elif "interrupt_to_silence_ms" in m:
+        m["barge_to_quiet_ms"] = m["interrupt_to_silence_ms"]
     # Frames stamped with a newer reply id than the reply they belong to: the
     # browser's reply-id drop cannot catch these.
     m["misstamped_frames"] = sum(
@@ -211,6 +255,16 @@ def run_metrics(result: Any) -> dict[str, Any]:
     m["persisted_unheard_words"] = unheard_persisted
     m["heard_unpersisted_words"] = heard_unpersisted
     m["history_matches_heard"] = unheard_persisted == 0 and heard_unpersisted == 0
+    # Answer words heard that the transcript never displayed (the client
+    # shows assistant_text deltas): speech the user cannot read back.
+    displayed = norm_words(
+        "".join(
+            str(msg.get("delta") or "")
+            for _t, msg in msgs
+            if msg.get("type") == "assistant_text" and (msg.get("kind") or "answer") == "answer"
+        )
+    )
+    m["spoken_not_displayed_words"] = len(heard_answer) - _matched(heard_answer, displayed)
 
     runs = run.rec.spec_runs
     adopted = [r for r in runs if r.get("adopted")]
@@ -246,6 +300,17 @@ def run_metrics(result: Any) -> dict[str, Any]:
         m["outcome"] = f"outcome_error:{exc.__class__.__name__}"
     if result.error:
         m["outcome"] = "run_error"
+    # Accuracy: did the run meet the scenario's expected outcome (None: ungraded).
+    grade = getattr(scenario, "passed", None)
+    if not callable(grade):
+        m["passed"] = None
+    elif result.error:
+        m["passed"] = False
+    else:
+        try:
+            m["passed"] = grade(run, m)
+        except Exception:  # noqa: BLE001 - a grading bug counts as a failure
+            m["passed"] = False
     m["virtual_s"] = round(run.now, 3)
     m["stuck_thread_jumps"] = run.clock.stuck_thread_jumps
     if run.notes:
@@ -260,9 +325,11 @@ TIMING_KEYS = (
     "first_answer_sent_ms",
     "talk_ms",
     "non_answer_talk_ms",
+    "filler_before_answer_ms",
     "completion_ms",
     "interrupt_to_last_sent_ms",
     "interrupt_to_silence_ms",
+    "barge_to_quiet_ms",
     "premature_audio_ms",
 )
 COUNT_KEYS = (
@@ -284,6 +351,10 @@ COUNT_KEYS = (
     "brain_s_after_interrupt",
     "brain_calls_completed_after_interrupt",
     "interrupt_events",
+    "answer_words_heard",
+    "filler_words_heard",
+    "duplicate_lines",
+    "spoken_not_displayed_words",
 )
 BOOL_KEYS = ("premature_response", "history_matches_heard", "interrupted_event")
 # voice_overlap_duck_v1: aggregated only when some run has them.
@@ -321,6 +392,12 @@ def aggregate(per_run: list[dict[str, Any]]) -> dict[str, Any]:
         vals = [bool(r[key]) for r in per_run if key in r]
         if vals:
             out[key] = {"n": len(vals), "true": sum(vals), "rate": round(sum(vals) / len(vals), 3)}
+    graded = [bool(r["passed"]) for r in per_run if r.get("passed") is not None]
+    out["accuracy"] = {
+        "n": len(graded),
+        "pass": sum(graded),
+        "rate": round(sum(graded) / len(graded), 3) if graded else None,
+    }
     out["outcomes"] = dict(Counter(str(r.get("outcome")) for r in per_run))
     return out
 
@@ -343,6 +420,96 @@ def _rate(stat: dict[str, Any]) -> str:
     return f"{stat['true']}/{stat['n']}"
 
 
+def _mean(stat: dict[str, Any]) -> str:
+    if not stat or not stat.get("n") or stat.get("mean") is None:
+        return "–"
+    return f"{stat['mean']:.1f}"
+
+
+def _total(stat: dict[str, Any]) -> str:
+    if not stat or not stat.get("n"):
+        return "–"
+    return f"{stat['total']:g}"
+
+
+def _accuracy(stat: dict[str, Any] | None) -> str:
+    if not stat or not stat.get("n"):
+        return "–"
+    return f"{stat['pass']}/{stat['n']}"
+
+
+def _profile_lines(meta: dict[str, Any]) -> list[str]:
+    profile = meta.get("profile") or {}
+    if not profile and not meta.get("effective_flags"):
+        return []
+    lines = ["## Conditions", ""]
+    if profile:
+        lines.append(f"- Profile: **{profile.get('name')}** ({profile.get('status') or 'no status'}). {profile.get('source') or ''}".rstrip())
+        if profile.get("verify_with"):
+            lines.append(f"- Verify with: {profile['verify_with']}")
+    cleared = meta.get("cleared_env") or []
+    if cleared:
+        lines.append(f"- VOICE_* variables cleared from the calling shell: {', '.join(cleared)}")
+    flags = meta.get("effective_flags") or {}
+    if flags:
+        on = sorted(k for k, v in flags.items() if v)
+        lines.append(f"- Voice flags on as resolved by Settings ({len(on)}): {', '.join(on) or 'none'}")
+    settings = meta.get("effective_settings") or {}
+    if settings:
+        lines.append("- Voice settings: " + ", ".join(f"{k}={v}" for k, v in settings.items()))
+    if meta.get("app_tree"):
+        lines.append(f"- backend/app tree: {meta['app_tree']} (identical tree hash = identical product code)")
+    lines.append(
+        f"- Runs per scenario: {meta.get('runs')}; seed base {meta.get('seed')}; "
+        "per-run seeds are listed in results.json; per-scenario delay conditions are listed at the end."
+    )
+    return lines + [""]
+
+
+def _headline_lines(results: dict[str, Any]) -> list[str]:
+    scenarios = results["scenarios"]
+    graded = [sc["aggregate"].get("accuracy") or {} for sc in scenarios.values()]
+    n = sum(g.get("n", 0) for g in graded)
+    ok = sum(g.get("pass", 0) for g in graded)
+    lines = [
+        "## Headline",
+        "",
+        f"Accuracy over all graded runs: **{ok}/{n}**"
+        + (f" ({ok / n:.0%})" if n else "")
+        + ". A run passes when its outcome meets the scenario's expected outcome (see Scenario conditions).",
+        "",
+        (
+            "First useful audible response = first ANSWER audio played (never filler or progress narration). "
+            "Barge-in → quiet = speech onset of the barge-in until the old reply is ducked or, without a duck, "
+            "stopped; barge-in → silence = until it stops. Quality columns are means per run (duplicate lines and "
+            "words spoken but not displayed are totals); answer words and filler words are counted separately."
+        ),
+        "",
+        "| Scenario | accuracy | first useful audible (answer) | first audio (any) | filler heard before answer | barge-in → quiet (duck or stop) | barge-in → silence | completion | answer words heard | filler words heard | duplicate lines | spoken, not displayed (words) |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for sid, sc in scenarios.items():
+        a = sc["aggregate"]
+        lines.append(
+            f"| {sid} {sc['title']} | {_accuracy(a.get('accuracy'))} | {_cell(a.get('first_answer_played_ms', {}))} | "
+            f"{_cell(a.get('first_any_played_ms', {}))} | {_cell(a.get('filler_before_answer_ms', {}))} | "
+            f"{_cell(a.get('barge_to_quiet_ms', {}))} | {_cell(a.get('interrupt_to_silence_ms', {}))} | "
+            f"{_cell(a.get('completion_ms', {}))} | {_mean(a.get('answer_words_heard', {}))} | "
+            f"{_mean(a.get('filler_words_heard', {}))} | {_total(a.get('duplicate_lines', {}))} | "
+            f"{_total(a.get('spoken_not_displayed_words', {}))} |"
+        )
+    failing = {
+        sid: sc["aggregate"]["outcomes"]
+        for sid, sc in scenarios.items()
+        if (sc["aggregate"].get("accuracy") or {}).get("n") and sc["aggregate"]["accuracy"]["pass"] < sc["aggregate"]["accuracy"]["n"]
+    }
+    if failing:
+        lines += ["", "Scenarios with failing runs (outcome: count):", ""]
+        for sid, outcomes in failing.items():
+            lines.append(f"- **{sid}**: " + ", ".join(f"{k} {v}" for k, v in sorted(outcomes.items(), key=lambda kv: -kv[1])))
+    return lines + [""]
+
+
 def markdown_report(results: dict[str, Any]) -> str:
     meta = results["meta"]
     lines = [
@@ -355,6 +522,10 @@ def markdown_report(results: dict[str, Any]) -> str:
         "\"played\" is the modelled browser speaker; \"sent\" is arrival at the client socket. "
         "First-audio and completion are measured from the user's acoustic end of speech of the measured request.",
         "",
+    ]
+    lines += _profile_lines(meta)
+    lines += _headline_lines(results)
+    lines += [
         "## Latency",
         "",
         "| Scenario | first audio (any) | first filler/progress | first answer (played) | first answer (sent) | talk time (filler/progress part) | task completion |",
@@ -412,7 +583,12 @@ def markdown_report(results: dict[str, Any]) -> str:
     lines += ["", "## Scenario conditions", ""]
     for sid, sc in results["scenarios"].items():
         cond = ", ".join(f"{k}={v}" for k, v in sc["conditions"].items())
-        lines.append(f"- **{sid} {sc['title']}**: {sc['description']} Expected: {sc['expected']} Conditions: {cond}. {sc.get('notes') or ''}".rstrip())
+        passes = sc.get("pass_outcomes")
+        graded = f" Passes when the outcome is: {', '.join(passes)}." if passes else (" Graded by the scenario's own rule." if sc.get("graded") else "")
+        lines.append(
+            f"- **{sid} {sc['title']}**: {sc['description']} Expected: {sc['expected']}{graded} "
+            f"Conditions: {cond}. {sc.get('notes') or ''}".rstrip()
+        )
     lines += ["", "## What the harness models, and what it does not", ""]
     lines += [f"- {line}" for line in results.get("model_notes", [])]
     return "\n".join(lines) + "\n"

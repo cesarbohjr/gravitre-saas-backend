@@ -1,0 +1,43 @@
+{
+  "name": "production_inferred",
+  "description": "Voice flag combination believed to run in production.",
+  "status": "INFERRED, NOT VERIFIED",
+  "source": "Inferred from Railway variable names on 2026-10-11 (owner's screenshots). Five flags were seen set to true; the others were seen present with unreadable values and are assumed true here. VOICE_DEEP_ACK_SECONDS was not set (code default 0.6). VOICE_TTS_IDLE_REFRESH_V1 was not seen (code default false).",
+  "verify_with": "Read the pipecat_voice_effective_flags log line of a live session (or session.ready effective_flags) and update this file to match; then drop the INFERRED status.",
+  "seen_true": [
+    "VOICE_ANSWER_FIRST_V1",
+    "VOICE_INTERRUPT_INTENTS_V1",
+    "VOICE_OVERLAP_DUCK_V1",
+    "VOICE_PLAYBACK_GROUNDED_HISTORY_V1",
+    "VOICE_INCOMPLETE_TURN_HOLD_V1"
+  ],
+  "assumed_true": [
+    "VOICE_EXPLAIN_ASIDE_V1",
+    "VOICE_SPECULATIVE_V2",
+    "VOICE_TTS_CHUNK_V2",
+    "VOICE_RESPONSE_LENGTH_ADAPT_V1",
+    "VOICE_CONTEXT_OVERLAP_V1",
+    "VOICE_SPECULATIVE_PREFIX_ADOPT",
+    "VOICE_SPOKEN_PROMPT_V2",
+    "VOICE_PLAYED_AUDIO_RECONCILE_V1",
+    "VOICE_MIC_SILENT_TAP_V2",
+    "VOICE_KEYTERMS_V1"
+  ],
+  "settings": {
+    "VOICE_ANSWER_FIRST_V1": "true",
+    "VOICE_INTERRUPT_INTENTS_V1": "true",
+    "VOICE_OVERLAP_DUCK_V1": "true",
+    "VOICE_PLAYBACK_GROUNDED_HISTORY_V1": "true",
+    "VOICE_INCOMPLETE_TURN_HOLD_V1": "true",
+    "VOICE_EXPLAIN_ASIDE_V1": "true",
+    "VOICE_SPECULATIVE_V2": "true",
+    "VOICE_TTS_CHUNK_V2": "true",
+    "VOICE_RESPONSE_LENGTH_ADAPT_V1": "true",
+    "VOICE_CONTEXT_OVERLAP_V1": "true",
+    "VOICE_SPECULATIVE_PREFIX_ADOPT": "true",
+    "VOICE_SPOKEN_PROMPT_V2": "true",
+    "VOICE_PLAYED_AUDIO_RECONCILE_V1": "true",
+    "VOICE_MIC_SILENT_TAP_V2": "true",
+    "VOICE_KEYTERMS_V1": "true"
+  }
+}

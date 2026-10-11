@@ -11,6 +11,7 @@ actually happened.
 """
 from __future__ import annotations
 
+import fnmatch
 import re
 from typing import Any
 
@@ -71,6 +72,9 @@ class Scenario:
     seed_history: list[tuple[str, str]] = []
     write_allowed_after: str | None = None
     no_write_expected = False
+    # Outcomes (fnmatch patterns) that meet ``expected``: the bench's accuracy
+    # column. Empty means the scenario does not grade itself.
+    pass_outcomes: tuple[str, ...] = ()
 
     def conditions(self) -> Conditions:
         return Conditions()
@@ -83,6 +87,13 @@ class Scenario:
 
     def outcome(self, run: Run, m: dict[str, Any]) -> str:
         return "ok"
+
+    def passed(self, run: Run, m: dict[str, Any]) -> bool | None:
+        """Whether this run met ``expected`` (None: not graded)."""
+        if not self.pass_outcomes:
+            return None
+        outcome = str(m.get("outcome") or "")
+        return any(fnmatch.fnmatchcase(outcome, pattern) for pattern in self.pass_outcomes)
 
     # Shared brain behaviour -------------------------------------------------
 
@@ -141,6 +152,14 @@ class S1LongPause(Scenario):
             return "clarified_then_answered"
         return "answered" if answered else "no_answer"
 
+    def passed(self, run: Run, m: dict[str, Any]) -> bool | None:
+        # Graded on what was heard: a clarification the brain produced but
+        # nobody heard (a discarded speculative run) is not a failure.
+        heard = _spoken_texts(run)
+        clarify_heard = any("what would you like" in t for t in heard)
+        answer_heard = sum(1 for t in heard if t.startswith("last month the site"))
+        return not m.get("premature_response") and not clarify_heard and answer_heard == 1
+
 
 class S1bLongPauseCommitted(S1LongPause):
     id = "S1b"
@@ -164,6 +183,7 @@ class S2Backchannel(Scenario):
     backchannel = "Mm-hmm."
     description = "User asks for traffic; 1.5 s into the spoken answer says \"Mm-hmm.\" (0.4 s)."
     expected = "Bot keeps speaking; no new turn; history = full answer."
+    pass_outcomes = ("kept_speaking",)
 
     def planner(self, query: str, history: list[dict[str, Any]], run: Run) -> list[Any]:
         if _has(query, "traffic"):
@@ -198,6 +218,7 @@ class S3CorrectionBeforeSpeech(Scenario):
     title = "correction before speech starts"
     description = "User: \"show me traffic for last week, no, last month\" with a 0.35 s hesitation after \"week\"."
     expected = "One answer about last month; nothing about last week is spoken."
+    pass_outcomes = ("answered_last_month",)
 
     def planner(self, query: str, history: list[dict[str, Any]], run: Run) -> list[Any]:
         return self.traffic_plan(query, run, period=_period(query) or "month")
@@ -230,6 +251,7 @@ class S4CorrectionAfterSpeech(Scenario):
     title = "correction after speech starts (barge-in)"
     description = "User asks for last week's traffic; 1.2 s into the answer barges in: \"use last quarter instead\"."
     expected = "Old answer stops quickly; new answer about last quarter; history holds only what was heard."
+    pass_outcomes = ("corrected",)
 
     def planner(self, query: str, history: list[dict[str, Any]], run: Run) -> list[Any]:
         if _has(query, "quarter"):
@@ -263,6 +285,7 @@ class S5RepeatedInterruptions(Scenario):
     title = "repeated interruptions then resumed request"
     description = "Pipeline summary request; user cuts in with \"wait\" 1 s into the answer, then \"actually hold on\" while the bot answers that, then \"okay go on, give me the pipeline summary\"."
     expected = "Each cut-in silences the bot; the final request gets the summary once."
+    pass_outcomes = ("resumed_answered+*",)
 
     def planner(self, query: str, history: list[dict[str, Any]], run: Run) -> list[Any]:
         if _has(query, "pipeline", "summary"):
@@ -301,6 +324,7 @@ class S6LateAudio(S4CorrectionAfterSpeech):
     title = "late TTS audio after cancellation"
     description = "As S4, but the TTS provider keeps emitting the cancelled context's audio for 300 ms after close."
     expected = "No frame of the cancelled reply is played after the interruption."
+    pass_outcomes = ("late_audio_contained",)
 
     def conditions(self) -> Conditions:
         return Conditions(late_audio_s=0.3)
@@ -315,6 +339,7 @@ class S7SlowTool(Scenario):
     title = "slow tool (4 s)"
     description = "\"pull the pipeline report for this quarter\": one CRM tool call taking 4 s."
     expected = "Progress narration covers the wait; answer after the tool."
+    pass_outcomes = ("answered*",)
 
     def planner(self, query: str, history: list[dict[str, Any]], run: Run) -> list[Any]:
         return [
@@ -337,6 +362,7 @@ class S7bFailedTool(Scenario):
     title = "failed tool"
     description = "\"what was our website traffic last month\": the analytics tool fails after 1.5 s."
     expected = "Failure narrated honestly; no invented numbers."
+    pass_outcomes = ("failure_narrated", "failure_in_answer_only")
 
     def planner(self, query: str, history: list[dict[str, Any]], run: Run) -> list[Any]:
         return [
@@ -359,6 +385,7 @@ class S8ApprovalWait(Scenario):
     title = "approval \"yes... wait\""
     description = "Bot drafts an email and asks to send; user says \"yes\", pauses ~0.5 s, says \"wait\". Flux may commit \"yes\" on the pause."
     expected = "No email is sent (the final intent is \"wait\")."
+    pass_outcomes = ("no_send_attempted", "send_blocked_by_gate")
     no_write_expected = True
 
     def planner(self, query: str, history: list[dict[str, Any]], run: Run) -> list[Any]:
@@ -398,6 +425,7 @@ class S9DeepReasoning(Scenario):
     title = "complex reasoning turn (deep tier)"
     description = "Multi-part analysis request; brain thinks 2.5 s, runs two tools (1.5 s, 1.0 s), thinks 1.5 s, then answers."
     expected = "Early acknowledgement and progress narration; answer when ready."
+    pass_outcomes = ("*answer*",)
 
     def planner(self, query: str, history: list[dict[str, Any]], run: Run) -> list[Any]:
         return [
@@ -462,6 +490,7 @@ class S10StopTalkingKeepWorking(_RunningTask):
     utterance = "stop talking, keep working"
     description = "During a 6 s CRM task, while progress narration plays, the user says \"stop talking, keep working\"."
     expected = "Ideal: narration stops, the task keeps running and its result is delivered. (No dedicated path in current code.)"
+    pass_outcomes = ("task_completed+report_spoken*",)
 
     def outcome(self, run: Run, m: dict[str, Any]) -> str:
         answered = any(_has(c.query, "keep") for c in run.rec.brain_calls)
@@ -485,6 +514,7 @@ class S11CancelIt(_RunningTask):
         "4 s into a 5 s tool call). 0.5 s into the progress narration the user says \"cancel it\"."
     )
     expected = "The task stops and the write is not committed. (Cancellation rides on barge-in + stop marker.)"
+    pass_outcomes = ("task_cancelled", "task_cancelled+write_blocked*", "task_cancelled+answered_as_turn")
 
     def planner(self, query: str, history: list[dict[str, Any]], run: Run) -> list[Any]:
         if _has(query, "go ahead", "move") and not _has(query, "cancel"):
@@ -511,6 +541,7 @@ class S12Reconnect(Scenario):
     title = "reconnect mid-reply (socket drop)"
     description = "1.5 s into the spoken traffic answer the socket drops; 1 s later a new socket opens on the same conversation and the user asks what was said last."
     expected = "Durable history (and the brain's view of it after reconnect) holds only what was heard."
+    pass_outcomes = ("brain_saw_partial_reply*",)
 
     def planner(self, query: str, history: list[dict[str, Any]], run: Run) -> list[Any]:
         if _has(query, "traffic") and not _has(query, "cut"):
@@ -542,6 +573,308 @@ class S12Reconnect(Scenario):
         return "brain_saw_no_reply"
 
 
+# ---------------------------------------------------------------------------
+# Flag interactions (production flag combination: interrupt intents, explain
+# aside, answer-first, playback-grounded history, overlap ducking). Each runs
+# under any profile; ``pass_outcomes`` encode the product's intended
+# behaviour, so a profile without the flag shows what the flag buys.
+
+PIPELINE_RESULT = "The quarter's pipeline is one point eight million, with forty two open deals."
+WHY_ASIDE_ANSWER = (
+    "It's pulling every open deal for the quarter from the CRM, and that report is slow. "
+    "It should be done in a few seconds."
+)
+VISITS_EXPLANATION = "Visits counts every session on the site, so that is the total number of sessions, not people."
+
+
+def _played_segments(run: Run) -> list[tuple[float, Any]]:
+    """(first played time, segment) for every segment that was at least partly played, in play order."""
+    first: dict[int, float] = {}
+    for sock in run.sockets:
+        for c in sock.browser.chunks:
+            if c["played_end"] > c["start"]:
+                first[c["seg"]] = min(first.get(c["seg"], c["start"]), c["start"])
+    return [(t, run.rec.segments[s]) for s, t in sorted(first.items(), key=lambda kv: kv[1]) if s in run.rec.segments]
+
+
+def _first_duck_after(run: Run, mark: str) -> dict[str, Any] | None:
+    t = run.marks.get(mark)
+    if t is None:
+        return None
+    ducks = sorted((d for s in run.sockets for d in s.browser.ducks if d["start"] >= t), key=lambda d: d["start"])
+    return ducks[0] if ducks else None
+
+
+def _assistant_history(call: Any) -> list[str]:
+    return [str(h.get("content") or "").lower() for h in call.history if h.get("role") == "assistant"]
+
+
+class S13ExplainDuringTask(Scenario):
+    id = "S13"
+    title = "\"why?\" during a running task (answer-first)"
+    question = "why?"
+    tool_s = 6.0
+    description = (
+        "\"pull the pipeline report for this quarter\" runs a 6 s CRM tool; 0.5 s into the first narration line "
+        "(or 2.5 s after the request if nothing narrates) the user asks a bare \"why?\". Interacts with "
+        "voice_interrupt_intents_v1 + voice_explain_aside_v1 + voice_answer_first_v1."
+    )
+    expected = (
+        "The question is answered while the task keeps running; the task's result is then spoken exactly once, "
+        "and no narration line plays after the result starts."
+    )
+    pass_outcomes = ("explained+result_spoken_once",)
+
+    def planner(self, query: str, history: list[dict[str, Any]], run: Run) -> list[Any]:
+        if _has(query, "why"):
+            return [Think(run.jit(0.6)), Say(WHY_ASIDE_ANSWER, token_s=run.cond.token_s)]
+        if _has(query, "pipeline", "report"):
+            return [
+                Think(run.jit(run.cond.brain_first_token_s)),
+                Tool("crm_pipeline_report", run.jit(self.tool_s)),
+                Say(PIPELINE_RESULT, token_s=run.cond.token_s),
+            ]
+        if _has(query, "how many"):
+            return self.short_ack_plan(run, "Forty two open deals.")
+        return self.short_ack_plan(run)
+
+    async def script(self, run: Run) -> None:
+        await run.say("pull the pipeline report for this quarter", mark_start="task_start", mark_end="task_end")
+        if await run.wait_for(lambda: run.audio_playing(), timeout=2.5):
+            await run.sleep(0.5)
+        else:
+            run.notes["nothing_playing_at_question"] = True
+        await run.say(self.question, role="barge_in", mark_start="barge_start", mark_end="request_end")
+
+    def outcome(self, run: Run, m: dict[str, Any]) -> str:
+        played = _played_segments(run)
+        explained = any("pulling every open deal" in seg.text.lower() for _t, seg in played)
+        result_times = [t for t, seg in played if "forty two open deals" in seg.text.lower()]
+        task_calls = [c for c in _answering_calls(run) if _has(c.query, "pipeline", "report") and not _has(c.query, "why")]
+        parts = ["explained" if explained else "not_explained"]
+        if not any(c.completed for c in task_calls):
+            parts.append("task_cancelled")
+        elif not result_times:
+            parts.append("result_not_spoken")
+        elif len(result_times) == 1:
+            parts.append("result_spoken_once")
+        else:
+            parts.append(f"result_spoken_x{len(result_times)}")
+        if result_times and any(seg.label in ("filler", "progress") and t > result_times[0] for t, seg in played):
+            parts.append("narration_after_result")
+        return "+".join(parts)
+
+
+class S13bExplainDuringTaskPhrased(S13ExplainDuringTask):
+    id = "S13b"
+    title = "\"why is it taking so long\" during a running task"
+    question = "why is it taking so long"
+    description = "As S13, with a question the interrupt-intent classifier reads as an explanation request."
+
+
+class S14ExplainAsideHistory(S13ExplainDuringTask):
+    id = "S14"
+    title = "explain aside + playback-grounded history"
+    question = "why is it taking so long"
+    description = (
+        "As S13b; after everything is quiet the user asks \"okay, and how many open deals was that\". Checks what "
+        "history stores (voice_playback_grounded_history_v1): the follow-up's brain history and the durable rows."
+    )
+    expected = (
+        "History holds the aside and the task's result, both as heard and in the order heard; nothing unheard "
+        "is stored; the follow-up sees both."
+    )
+    pass_outcomes = ("history_ok",)
+
+    async def script(self, run: Run) -> None:
+        await super().script(run)
+        await run.settle(quiet_s=1.0, max_s=20.0)
+        await run.say("okay, and how many open deals was that")
+
+    def outcome(self, run: Run, m: dict[str, Any]) -> str:
+        follow = [c for c in _answering_calls(run) if _has(c.query, "how many")]
+        if not follow:
+            return "no_followup_turn"
+        prior = _assistant_history(follow[-1])
+        aside_idx = [i for i, t in enumerate(prior) if "pulling every open deal" in t]
+        result_idx = [i for i, t in enumerate(prior) if "forty two open deals" in t]
+        problems = []
+        if not aside_idx:
+            problems.append("aside_missing")
+        if not result_idx:
+            problems.append("result_missing")
+        elif len(result_idx) > 1:
+            problems.append("result_stored_twice")
+        if aside_idx and result_idx and aside_idx[0] > result_idx[0]:
+            problems.append("order_differs_from_heard")
+        users = [str(h.get("content") or "").lower() for h in follow[-1].history if h.get("role") == "user"]
+        request_at = [i for i, t in enumerate(users) if "pipeline report" in t]
+        question_at = [i for i, t in enumerate(users) if "why" in t]
+        if request_at and question_at and request_at[0] > question_at[0]:
+            # The task was asked first; history should say so.
+            problems.append("request_stored_after_aside")
+        if m.get("persisted_unheard_words"):
+            problems.append("unheard_stored")
+        if m.get("heard_unpersisted_words"):
+            problems.append("heard_not_stored")
+        run.notes["followup_assistant_history"] = [t[:160] for t in prior]
+        return "+".join(problems) or "history_ok"
+
+
+class S15ExplainCutAnswer(Scenario):
+    id = "S15"
+    title = "explain request cuts the answer (grounded history)"
+    description = (
+        "1.5 s into the spoken traffic answer the user asks \"wait, what does that mean\" (no task running: the "
+        "explanation interrupts the answer). Interacts with voice_interrupt_intents_v1 + "
+        "voice_playback_grounded_history_v1."
+    )
+    expected = (
+        "The answer stops; the explanation is spoken; the explanation's brain history and the stored answer hold "
+        "only what was heard."
+    )
+    pass_outcomes = ("explained+brain_saw_heard_only*+history_eq_heard",)
+
+    def planner(self, query: str, history: list[dict[str, Any]], run: Run) -> list[Any]:
+        if _has(query, "mean"):
+            return [Think(run.jit(0.6)), Say(VISITS_EXPLANATION, token_s=run.cond.token_s)]
+        if _has(query, "traffic"):
+            return self.traffic_plan(query, run)
+        return self.short_ack_plan(run)
+
+    async def script(self, run: Run) -> None:
+        await run.say("what was our website traffic last month", mark_start="task_start", mark_end="task_end")
+        await run.wait_for(lambda: run.audio_playing("answer"), timeout=15)
+        await run.sleep(1.5)
+        await run.say("wait, what does that mean", role="barge_in", mark_start="barge_start", mark_end="request_end")
+
+    def outcome(self, run: Run, m: dict[str, Any]) -> str:
+        if not m.get("interrupted_event"):
+            return "not_interrupted"
+        played = _played_segments(run)
+        parts = ["explained" if any("every session" in seg.text.lower() for _t, seg in played) else "not_explained"]
+        calls = [c for c in _answering_calls(run) if _has(c.query, "mean")]
+        if calls:
+            prior = " ".join(_assistant_history(calls[-1]))
+            if "referrals dipped" in prior:
+                parts.append("brain_saw_unheard")
+            elif "last month the site" in prior:
+                parts.append("brain_saw_heard_only" + ("_marked" if "[interrupted:" in prior else ""))
+            else:
+                parts.append("brain_saw_no_answer")
+        else:
+            parts.append("no_explain_call")
+        parts.append("history_eq_heard" if m.get("history_matches_heard") else "history_ne_heard")
+        return "+".join(parts)
+
+
+class S16BareStop(Scenario):
+    id = "S16"
+    title = "bare \"stop\" over the answer (ducking)"
+    description = (
+        "1.5 s into the spoken traffic answer the user says \"stop\". Interacts with voice_interrupt_intents_v1 "
+        "(a bare stop is a full stop) + voice_overlap_duck_v1 (duck while the words are classified)."
+    )
+    expected = "The answer is cut and stays cut: never restored to full level, not restarted; at most a short acknowledgement."
+    pass_outcomes = ("stopped", "stopped+ducked", "stopped+ack_spoken", "stopped+ducked+ack_spoken")
+
+    def planner(self, query: str, history: list[dict[str, Any]], run: Run) -> list[Any]:
+        if _has(query, "traffic"):
+            return self.traffic_plan(query, run)
+        return self.short_ack_plan(run, "Okay.")
+
+    async def script(self, run: Run) -> None:
+        await run.say("what was our website traffic last month", mark_start="task_start", mark_end="task_end")
+        await run.wait_for(lambda: run.audio_playing("answer"), timeout=15)
+        await run.sleep(1.5)
+        await run.say("stop", role="barge_in", mark_start="barge_start", mark_end="request_end")
+
+    def outcome(self, run: Run, m: dict[str, Any]) -> str:
+        if not m.get("interrupted_event"):
+            return "not_stopped"
+        t = run.marks["barge_start"]
+        old = run.mark_replies.get("barge_start", 0)
+        parts = ["stopped"]
+        duck = _first_duck_after(run, "barge_start")
+        if duck is not None:
+            parts.append("ducked")
+            if duck["end_reason"] == "unduck":
+                parts.append("restored_before_cut")
+        after = [seg for st, seg in _played_segments(run) if st > t and seg.reply_truth > old]
+        if any("last month the site" in seg.text.lower() for seg in after):
+            parts.append("answer_restarted")
+        elif sum(len(norm_words(seg.text)) for seg in after if seg.label == "answer") > 3:
+            parts.append("new_reply_spoken")
+        elif after:
+            parts.append("ack_spoken")
+        return "+".join(parts)
+
+
+class S17BackchannelDucked(S2Backchannel):
+    id = "S17"
+    title = "backchannel \"Right, okay.\" (ducking)"
+    backchannel = "Right, okay."
+    description = (
+        "As S2 with a two-word backchannel. Interacts with voice_interrupt_intents_v1 (BACKCHANNEL keeps the reply) "
+        "+ voice_overlap_duck_v1 (duck while classifying, then unduck)."
+    )
+    expected = "Bot keeps speaking; if it ducked, the reply is restored (unduck); no new turn."
+    pass_outcomes = ("kept_speaking", "kept_speaking+duck_restored")
+
+    def outcome(self, run: Run, m: dict[str, Any]) -> str:
+        base = super().outcome(run, m)
+        duck = _first_duck_after(run, "backchannel_start")
+        if duck is None:
+            return base
+        return base + ("+duck_restored" if duck["end_reason"] == "unduck" else f"+duck_ended_{duck['end_reason']}")
+
+
+class S18CorrectionDucked(Scenario):
+    id = "S18"
+    title = "correction while ducked (\"no, I meant last month\")"
+    description = (
+        "User asks for last week's traffic; 1.2 s into the answer says \"no, I meant last month\". Interacts with "
+        "voice_interrupt_intents_v1 (CORRECTION revises the request) + voice_overlap_duck_v1."
+    )
+    expected = "The old answer is cut (never restored to full level); the new answer is about last month; nothing about last week after the cut."
+    pass_outcomes = ("corrected",)
+
+    def planner(self, query: str, history: list[dict[str, Any]], run: Run) -> list[Any]:
+        period = _period(query)
+        if period == "week":
+            return [
+                Think(run.jit(run.cond.brain_first_token_s)),
+                Say(
+                    "Last week the site had two thousand nine hundred visits. Most came from organic search, "
+                    "with a small bump on Tuesday from the product launch email.",
+                    token_s=run.cond.token_s,
+                ),
+            ]
+        if period:
+            return self.traffic_plan(query, run, period=period)
+        return self.short_ack_plan(run)
+
+    async def script(self, run: Run) -> None:
+        await run.say("what was our website traffic last week")
+        await run.wait_for(lambda: run.audio_playing("answer"), timeout=15)
+        await run.sleep(1.2)
+        await run.say("no, I meant last month", role="barge_in", mark_start="barge_start", mark_end="request_end")
+
+    def outcome(self, run: Run, m: dict[str, Any]) -> str:
+        if not m.get("interrupted_event"):
+            return "not_interrupted"
+        t = run.marks["barge_start"]
+        old = run.mark_replies.get("barge_start", 0)
+        after = [seg for st, seg in _played_segments(run) if st > t and seg.reply_truth > old]
+        parts = ["corrected" if any("last month the site" in seg.text.lower() for seg in after) else "no_new_answer"]
+        if any("last week" in seg.text.lower() for seg in after):
+            parts.append("spoke_last_week_after_cut")
+        duck = _first_duck_after(run, "barge_start")
+        if duck is not None and duck["end_reason"] == "unduck":
+            parts.append("restored_before_cut")
+        return "+".join(parts)
+
+
 ALL_SCENARIOS: list[Scenario] = [
     S1LongPause(),
     S1bLongPauseCommitted(),
@@ -558,6 +891,13 @@ ALL_SCENARIOS: list[Scenario] = [
     S10StopTalkingKeepWorking(),
     S11CancelIt(),
     S12Reconnect(),
+    S13ExplainDuringTask(),
+    S13bExplainDuringTaskPhrased(),
+    S14ExplainAsideHistory(),
+    S15ExplainCutAnswer(),
+    S16BareStop(),
+    S17BackchannelDucked(),
+    S18CorrectionDucked(),
 ]
 
 
