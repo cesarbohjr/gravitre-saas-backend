@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -31,11 +32,16 @@ class HybridMemoryService:
         top_k: int,
         client: Any,
     ) -> list[dict[str, Any]]:
+        # Recall only live rows: superseded temporal facts (is_current=false) and
+        # expired rows must not reach the prompt.
+        now_iso = datetime.now(timezone.utc).isoformat()
         q = (
             client.table("agent_memories")
-            .select("id, content, category, confidence, usage_count")
+            .select("id, content, category, confidence, usage_count, source_class")
             .eq("org_id", org_id)
             .eq("is_active", True)
+            .eq("is_current", True)
+            .or_(f"expires_at.is.null,expires_at.gt.{now_iso}")
             .limit(top_k)
         )
         if agent_id:

@@ -82,26 +82,26 @@ def test_typed_categories_cover_cognitive_taxonomy():
 
 
 def test_promote_turn_memories_writes_org_scoped_rows():
-    """Workspace-scoped rows are pinned to an org steward agent, not left NULL.
+    """With no agent given, workspace rows are written with ``agent_id`` NULL.
 
-    This asserted ``agent_id is None``, which described an earlier design. The
-    service now resolves a steward because ``agent_memories.agent_id`` is still
-    NOT NULL in production, and skips the write outright when no steward exists.
-    The old mock also returned the same rows for every table, so the steward
-    lookup handed back the memory row's own id -- hence ``assert 'm1' is None``.
+    The service used to pin them to whichever agent ``.limit(1)`` returned (a
+    "workspace steward"), on the belief that ``agent_memories.agent_id`` was still
+    NOT NULL in production. 20260813170000 dropped that constraint and the
+    2026-08-14 push confirmed it live (docs/delivery/option-d-four-migration-
+    rename-2026-08-14.md), so the borrowed agent only misattributed the memory.
     """
     memories_table = _chainable(
         [
             {
                 "id": "m1",
                 "org_id": "org-1",
-                "agent_id": "agent-steward",
+                "agent_id": None,
                 "category": "decision",
                 "content": "Use HubSpot",
             }
         ]
     )
-    agents_table = _chainable([{"id": "agent-steward"}])
+    agents_table = _chainable([{"id": "agent-arbitrary"}])
     client = MagicMock()
     client.table.side_effect = lambda name, *a, **k: (
         agents_table if name == "agents" else memories_table
@@ -118,7 +118,7 @@ def test_promote_turn_memories_writes_org_scoped_rows():
                     {
                         "id": "m1",
                         "org_id": "org-1",
-                        "agent_id": "agent-steward",
+                        "agent_id": None,
                         "category": "decision",
                         "content": "Use HubSpot",
                     }
@@ -137,15 +137,16 @@ def test_promote_turn_memories_writes_org_scoped_rows():
     embed.assert_called_once()
     insert_payload = memories_table.insert.call_args[0][0]
     assert insert_payload["org_id"] == "org-1"
-    assert insert_payload["agent_id"] == "agent-steward"
+    assert insert_payload["agent_id"] is None
     assert insert_payload["category"] == "decision"
     assert insert_payload["embedding"] == [0.1, 0.2]
     assert "conversation:convo-a" in insert_payload["provenance"]
-    assert "workspace_steward" in insert_payload["provenance"]
+    assert "workspace_steward" not in insert_payload["provenance"]
+    agents_table.select.assert_not_called()
 
 
-def test_promote_turn_memories_skips_when_no_steward_exists():
-    """No steward means an honest skip, not a NULL-agent insert that would fail."""
+def test_promote_turn_memories_writes_when_org_has_no_agents():
+    """An org with no agents still gets workspace memory (agent_id NULL)."""
     memories_table = _chainable([])
     agents_table = _chainable([])
     client = MagicMock()
@@ -153,16 +154,17 @@ def test_promote_turn_memories_skips_when_no_steward_exists():
         agents_table if name == "agents" else memories_table
     )
 
-    written = promote_turn_memories(
-        client,
-        org_id="org-1",
-        memories=[{"content": "Use HubSpot", "category": "decision"}],
-        agent_id=None,
-        conversation_id="convo-a",
-    )
+    with patch("app.rag.embedding.get_embedding", return_value=None):
+        promote_turn_memories(
+            client,
+            org_id="org-1",
+            memories=[{"content": "Use HubSpot", "category": "decision"}],
+            agent_id=None,
+            conversation_id="convo-a",
+        )
 
-    assert written == []
-    memories_table.insert.assert_not_called()
+    memories_table.insert.assert_called_once()
+    assert memories_table.insert.call_args[0][0]["agent_id"] is None
 
 
 def test_recall_workspace_filters_foreign_org():

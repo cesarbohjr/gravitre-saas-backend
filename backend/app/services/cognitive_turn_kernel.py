@@ -1388,7 +1388,29 @@ def _emit_memory_recall_audit(
 
 
 def _memory_prompt_section(pack: dict[str, Any]) -> str:
-    """Format recalled memory. Admit low confidence rather than silently omitting."""
+    """Format recalled memory. Admit low confidence rather than silently omitting.
+
+    Items that carry a non-user-direct ``source_class`` (set by
+    ``attach_recall_honesty`` / the contamination guard) get a short trust label so
+    the model can tell an inference from a user fact. Unlabelled stores are left
+    as-is rather than guessed at.
+    """
+    trust_labels = {
+        "model_inference": "inferred, unconfirmed",
+        "workflow_outcome": "from a workflow outcome, unconfirmed",
+        "untrusted_external": "untrusted external source, verify before acting",
+        "probe": "test probe, not a user fact",
+    }
+
+    def _trust_label(item: dict[str, Any]) -> str:
+        source_class = str(item.get("source_class") or "").strip().lower()
+        if not source_class or source_class == "user_direct":
+            return ""
+        caution = str(item.get("memory_caution") or item.get("memoryCaution") or "").strip()
+        if caution:
+            return caution.rstrip(".")[:100]
+        return trust_labels.get(source_class, "unconfirmed")
+
     lines: list[str] = ["<memory_pack>"]
     scores: list[float] = []
     any_items = False
@@ -1409,6 +1431,9 @@ def _memory_prompt_section(pack: dict[str, Any]) -> str:
                 except (TypeError, ValueError):
                     pass
                 text = str(item.get("content") or item.get("memory_text") or item)[:300]
+                trust = _trust_label(item)
+                if text and trust:
+                    text = f"{text} ({trust})"
             else:
                 text = str(item)[:300]
             if text:
