@@ -357,5 +357,8 @@ def test_retry_words_inside_the_message_still_fill_the_draft() -> None:
     snap = _draft_snapshot(missing=["body"])
     assert pending_repair_kind("Try again... the email now?", snap) == "retry"
     assert pending_repair_kind("Can you try that again?", snap) == "retry"
+    assert pending_repair_kind("Try one more time.", snap) == "retry"
+    assert pending_repair_kind("Can you try sending it again?", snap) == "retry"
+    assert pending_repair_kind("Yeah, retry it now please", snap) == "retry"
     assert pending_repair_kind("Tell her we'll try again next week.", snap) is None
     assert pending_repair_kind("The subject is Retry plan", snap) is None

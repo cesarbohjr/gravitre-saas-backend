@@ -305,7 +305,7 @@ _BARE_NO_RE = re.compile(r"(?i)^\s*(?:no|nope|nah)(?:[\s,]+(?:no|nope))*\s*[.!]*
 _GATHERING_STATUSES = frozenset({"awaiting_params", "collecting"})
 
 
-_RETRY_RE = re.compile(r"(?i)\b(?:try (?:it |that )?again|retry|resend|send it again|one more time)\b")
+_RETRY_RE = re.compile(r"(?i)\b(?:try (?:\w+ing )?(?:it |that |this )?again|retry|resend|send it again|one more time)\b")
 _PROVIDER_PREFIX_RE = re.compile(
     r"(?i)^\s*(?:(?:use|using|via|on|with|through|in|from)\s+|(?:send it|do it)\s+(?:from|with|through|on|in)\s+)?"
 )
@@ -382,6 +382,28 @@ _RETRY_FILLER = frozenset(
         "lets",
         "go",
         "ahead",
+        "try",
+        "trying",
+        "send",
+        "sending",
+        "do",
+        "doing",
+        "would",
+        "will",
+        "maybe",
+        "one",
+        "more",
+        "time",
+        "there",
+        "hey",
+        "yes",
+        "yeah",
+        "well",
+        "um",
+        "uh",
+        "alright",
+        "sure",
+        "can't",
     }
 )
 
