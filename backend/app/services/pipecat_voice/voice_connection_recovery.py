@@ -67,6 +67,9 @@ class _Holder:
     session: Any
     on_superseded: Callable[[], Any] | None
     claimed_at: float
+    #: The claim reached Redis. Only then is the shared key trusted to say a
+    #: newer connection (on another worker) took over.
+    shared: bool = False
 
 
 _lock = threading.Lock()
@@ -116,6 +119,10 @@ def claim_conversation(
         try:
             old = redis.getset(_KEY_PREFIX + key, token)
             redis.expire(_KEY_PREFIX + key, OWNER_TTL_SECONDS)
+            with _lock:
+                holder = _owners.get(key)
+                if holder is not None and holder.token == token:
+                    holder.shared = True
             if old is not None and previous_token is None:
                 previous_token = old.decode() if isinstance(old, bytes) else str(old)
         except Exception as exc:  # noqa: BLE001
@@ -159,6 +166,10 @@ def is_current_connection(
         holder = _owners.get(key)
     if holder is not None and holder.token != token:
         return False
+    if holder is not None and not holder.shared:
+        # Our claim never reached the shared key, so whatever it holds is
+        # stale, not a newer owner: never silence the live connection on it.
+        return True
     redis = _redis(settings)
     if redis is not None:
         try:

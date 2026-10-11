@@ -298,6 +298,32 @@ def test_a_turn_on_a_connection_replaced_on_another_worker_is_not_answered(monke
     assert h.service._push_llm_text.await_count == 0
 
 
+def test_a_stale_shared_key_never_silences_a_connection_whose_claim_did_not_reach_it(monkeypatch) -> None:
+    def _getset(*_a: Any) -> None:
+        raise ConnectionError("redis down during the claim")
+
+    stale = SimpleNamespace(getset=_getset, expire=lambda *a: None, get=lambda _k: "old-connection")
+    monkeypatch.setattr(recovery, "_redis", lambda _s=None: stale)
+    session = VoicePipelineSession()
+    recovery.claim_conversation(ORG, CONV, session)
+    assert recovery.is_current_connection(ORG, CONV, session.connection_token)
+
+
+def test_a_claim_that_reached_the_shared_key_trusts_a_newer_owner_there(monkeypatch) -> None:
+    store: dict[str, str] = {}
+    shared = SimpleNamespace(
+        getset=lambda k, v: store.update({k: v}),
+        expire=lambda *a: None,
+        get=lambda k: store.get(k),
+    )
+    monkeypatch.setattr(recovery, "_redis", lambda _s=None: shared)
+    session = VoicePipelineSession()
+    recovery.claim_conversation(ORG, CONV, session)
+    assert recovery.is_current_connection(ORG, CONV, session.connection_token)
+    store[f"voice:conn:{ORG}:{CONV}"] = "other-worker"
+    assert not recovery.is_current_connection(ORG, CONV, session.connection_token)
+
+
 def test_turn_that_wrote_after_disconnect_leaves_an_undelivered_marker() -> None:
     h = _Harness(True, conversation_id=CONV)
     state = _FakeStateService({"pending_task": {"status": "executed", "label": "Send email"}})
