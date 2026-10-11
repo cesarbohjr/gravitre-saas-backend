@@ -477,3 +477,24 @@ def test_a_channel_override_cancelled_while_waiting_for_the_lock_is_not_saved() 
     writer.join(5)
     assert saved == [False]
     assert "preferred_connector" not in (db.tables["conversations"][0].get("task_state") or {})
+
+
+def test_a_channel_override_cancelled_during_its_read_is_not_saved() -> None:
+    db = _seeded_db()
+    service = ConversationStateService(SETTINGS)
+    turn = TurnCancellation()
+    read = service._read_task_state_sync
+
+    def _read_then_cancel(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        state = read(*args, **kwargs)
+        turn.cancel("barge_in")  # lands while the read is in flight
+        return state
+
+    service._read_task_state_sync = _read_then_cancel  # type: ignore[method-assign]
+
+    def _apply(fresh: dict[str, Any]) -> None:
+        fresh["preferred_connector"] = "gmail"
+
+    with bound_turn_cancellation(turn):
+        assert service.apply_task_state_change_sync(CONV, ORG, _apply, client=db) is False
+    assert "preferred_connector" not in (db.tables["conversations"][0].get("task_state") or {})

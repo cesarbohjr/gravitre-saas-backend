@@ -504,6 +504,8 @@ class ConversationStateService:
         from app.services.turn_cancellation import current_turn_cancelled
 
         with _task_state_lock(conversation_id, org_id):
+            state = self._read_task_state_sync(conversation_id, org_id, client)
+            change(state)
             if current_turn_cancelled():
                 # Same fence as the save: under the lock, right before the write.
                 logger.info(
@@ -511,8 +513,6 @@ class ConversationStateService:
                     conversation_id,
                 )
                 return False
-            state = self._read_task_state_sync(conversation_id, org_id, client)
-            change(state)
             self._client(client).table("conversations").update(
                 {"task_state": state, **(extra_columns or {})}
             ).eq("id", conversation_id).eq("org_id", org_id).execute()
