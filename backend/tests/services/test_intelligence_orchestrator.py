@@ -164,8 +164,14 @@ async def test_conversation_memory_records_rejection():
     engine._state = MagicMock()
     engine._state.get_task_state = AsyncMock(return_value={})
     engine._state.update_task_state = AsyncMock()
+    engine._state.update_task_state_from = AsyncMock()
     await engine.record_rejection("conv-1", "org-1", "Build a workflow for stale deals")
     engine._state.update_task_state.assert_awaited()
+    build = engine._state.update_task_state_from.await_args.args[2]
+    patch = build({"conversation_memory": {"preferences": {"tone": "brief"}}})
+    memory = patch["conversation_memory"]
+    assert memory["preferences"] == {"tone": "brief"}
+    assert memory["rejected_recommendations"][0]["text"] == "Build a workflow for stale deals"
 
 
 def test_execution_confidence_blends_context_and_rag():

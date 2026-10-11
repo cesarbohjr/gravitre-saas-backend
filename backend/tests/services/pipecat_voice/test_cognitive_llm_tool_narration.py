@@ -260,3 +260,29 @@ class TestNarrationDoesNotCorruptTheFinalAnswer:
         assert tts.index(next(c for c in tts if "let me check" in c.lower())) < tts.index(
             next(c for c in tts if "three open deals" in c.lower())
         )
+
+
+class TestWriteOutcomeIsSaidOnce:
+    """Engineering pass 2026-10-11, finding 4a: a write's result line and the
+    answer both stated the outcome ("Done, that went through." then "I sent
+    the email to ...")."""
+
+    def test_the_answer_reports_the_write_and_the_result_line_is_not_said(self) -> None:
+        events = [
+            _tool_start("c1", "moveDealStage"),
+            _tool_output("c1", {"success": True, "stage": "Negotiation", "verification": {"verified": True, "method": "entity_get", "read_action": "crm.deals.get"}}),
+            AssistantStreamEvent(sse_type="text-delta", payload={"delta": "I moved Acme to Negotiation."}),
+        ]
+        _, tts = _drive(events)
+        joined = " ".join(tts)
+        assert "I moved Acme to Negotiation." in joined
+        assert "Done" not in joined
+
+    def test_a_failed_write_is_still_reported_at_once(self) -> None:
+        events = [
+            _tool_start("c1", "updateDealStage"),
+            _tool_output("c1", {"success": False, "error": "Salesforce rejected: stage is locked"}),
+            AssistantStreamEvent(sse_type="text-delta", payload={"delta": "The stage is locked."}),
+        ]
+        _, tts = _drive(events)
+        assert "I couldn't finish that step — Salesforce rejected: stage is locked. " in tts

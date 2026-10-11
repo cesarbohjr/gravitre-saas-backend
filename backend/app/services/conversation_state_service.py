@@ -4,6 +4,7 @@ from __future__ import annotations
 import threading
 from copy import deepcopy
 from datetime import datetime, timezone
+from collections.abc import Callable
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -28,6 +29,16 @@ _TASK_STATE_LOCKS = [threading.Lock() for _ in range(64)]
 
 def _task_state_lock(conversation_id: str, org_id: str) -> threading.Lock:
     return _TASK_STATE_LOCKS[hash((conversation_id, org_id)) % len(_TASK_STATE_LOCKS)]
+
+
+# A patch, or a function that builds one from the state read under the lock.
+TaskStatePatch = dict[str, Any] | Callable[[dict[str, Any]], dict[str, Any] | None]
+
+
+def _patch_keys(updates: TaskStatePatch) -> list[str]:
+    if callable(updates):
+        return [getattr(updates, "__name__", "patch_builder")]
+    return sorted(updates)[:12]
 
 DEFAULT_TASK_STATE: dict[str, Any] = {
     "clarified_params": {},
@@ -54,6 +65,9 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     "voice_expression_last": {},
     # Structured continuation for a READ offer. Not a write pending_task.
     "offered_action": None,
+    # People found by name for the email still collecting its details
+    # ("two Stephanies... which one?"); see recipient_resolution.
+    "recipient_candidates": [],
     # Phase A — structured reference resolution (not prose history).
     "previous_option_set": [],
     "previous_result": None,
@@ -267,9 +281,10 @@ class ConversationStateService:
         self,
         conversation_id: str,
         org_id: str,
-        updates: dict[str, Any],
+        updates: TaskStatePatch,
         *,
         client: Any | None = None,
+        effect_record: bool = False,
     ) -> None:
         if not conversation_id or not org_id:
             return
@@ -278,7 +293,9 @@ class ConversationStateService:
         # database never stalls the voice event loop. A per-conversation lock
         # keeps concurrent writers in this process from losing each other's
         # updates, as running it on the loop with no await used to.
-        await run_io(self._persist_state_sync, conversation_id, org_id, updates, client)
+        await run_io(
+            self._persist_state_sync, conversation_id, org_id, updates, client, effect_record
+        )
 
     def _read_task_state_sync(self, conversation_id: str, org_id: str, client: Any | None) -> dict[str, Any]:
         from app.services.speculative_execution import current_scope
@@ -309,8 +326,9 @@ class ConversationStateService:
         self,
         conversation_id: str,
         org_id: str,
-        updates: dict[str, Any],
+        updates: TaskStatePatch,
         client: Any | None,
+        effect_record: bool = False,
     ) -> None:
         original_updates = updates
         try:
@@ -335,9 +353,16 @@ class ConversationStateService:
                     logger.warning(
                         "persist_task_state_skipped_unknown_state conversation_id=%s keys=%s",
                         conversation_id,
-                        sorted(original_updates)[:12],
+                        _patch_keys(original_updates),
                     )
                     return
+                if callable(updates):
+                    # A patch built from the state read under this lock, so it
+                    # never rebuilds whole keys from a snapshot read earlier
+                    # (stale) or from defaults (a failed read).
+                    updates = updates(deepcopy(current))
+                    if not updates:
+                        return
                 from app.services.execution_plan_adapters import enrich_task_state_patch
 
                 updates = enrich_task_state_patch(updates, current_state=current)
@@ -348,16 +373,19 @@ class ConversationStateService:
                 if scope is None:
                     from app.services.turn_cancellation import current_turn_cancelled
 
-                    if current_turn_cancelled():
+                    if not effect_record and current_turn_cancelled():
                         # Fence: the turn this write belongs to was cancelled
                         # (stopped, cut off, superseded). Its state must not
                         # overwrite what the user did next, even when a
                         # background replay lands late. Checked under the lock,
-                        # right before the write.
+                        # right before the write. The record of an external
+                        # effect that really happened is exempt: cancelling the
+                        # turn does not undo the send, and losing its record is
+                        # what lets a retry send it twice.
                         logger.info(
                             "persist_task_state_dropped_for_cancelled_turn conversation_id=%s keys=%s",
                             conversation_id,
-                            sorted(original_updates)[:12],
+                            _patch_keys(original_updates),
                         )
                         return
                     self._client(client).table("conversations").update(
@@ -375,7 +403,9 @@ class ConversationStateService:
                     patch = dict(original_updates)
 
                 def replay() -> Any:
-                    return self._persist_state(conversation_id, org_id, patch, client=client)
+                    return self._persist_state(
+                        conversation_id, org_id, patch, client=client, effect_record=effect_record
+                    )
 
                 if scope.defer_queued("conversation.task_state", replay):
                     return
@@ -396,8 +426,36 @@ class ConversationStateService:
         updates: dict[str, Any],
         *,
         client: Any | None = None,
+        effect_record: bool = False,
     ) -> None:
-        await self._persist_state(conversation_id, org_id, updates, client=client)
+        await self._persist_state(
+            conversation_id, org_id, updates, client=client, effect_record=effect_record
+        )
+
+    async def update_task_state_from(
+        self,
+        conversation_id: str,
+        org_id: str,
+        build_patch: Callable[[dict[str, Any]], dict[str, Any] | None],
+        *,
+        client: Any | None = None,
+        effect_record: bool = False,
+    ) -> None:
+        """Save a patch built from the stored state, under the conversation lock.
+
+        ``build_patch(state)`` gets a fresh copy of the stored state and returns
+        the patch (or None to skip). Use it instead of read-then-update when the
+        patch rebuilds whole keys from what was stored: a read made earlier can
+        be stale, and a failed read returns defaults. Unknown state skips the
+        save rather than build the patch from defaults.
+
+        ``effect_record`` marks the record of an external effect that already
+        happened (a send that went out): it is kept even when the turn was
+        cancelled. It never bypasses the lock or the unknown-state rule.
+        """
+        await self._persist_state(
+            conversation_id, org_id, build_patch, client=client, effect_record=effect_record
+        )
 
     async def compare_and_set_pending_status(
         self,

@@ -107,6 +107,12 @@ def connector_plan_from_execution_step(step: ExecutionStep) -> ConnectorActionPl
     meta = dict(step.meta or {})
     invoke = str(step.action_key or meta.get("invoke_action") or "").strip()
     integration = str(step.connector_id or meta.get("integration") or "").strip()
+    if not integration and "." in invoke:
+        # A step planned by the reasoning loop may carry only the catalog
+        # action; its vendor is the action's prefix (gmail.messages.send ->
+        # gmail). Without it the executability check looked for a vendor
+        # called "connector" and refused an approved send.
+        integration = invoke.split(".", 1)[0]
     if not invoke and not integration:
         return None
     args = meta.get("args") if isinstance(meta.get("args"), dict) else {}
@@ -210,6 +216,16 @@ def resolve_executable_connector_plan(
             if structured_plan is not None:
                 return structured_plan
             return derived
+        if (
+            derived is not None
+            and not derived.args
+            and frozen is not None
+            and frozen.invoke_action == derived.invoke_action
+        ):
+            # The step names the action but carries no payload (a step the
+            # reasoning loop planned); the frozen approved write is the same
+            # action with the details the user saw and approved.
+            return frozen
         if derived is not None and (derived.invoke_action or derived.integration):
             pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else None
             return ignore_stale_pending_overrides(derived, pending)

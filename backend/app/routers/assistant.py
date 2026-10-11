@@ -381,6 +381,35 @@ def _is_missing_table_error(error: Exception | None) -> bool:
     )
 
 
+def _stopped_turn_copy(org_id: str, conversation_id: str | None, *, since: float) -> str:
+    """What a stopped text turn can truthfully say about its writes.
+
+    Stopping never undoes a write that already reached the provider, so the
+    copy comes from the recorded write effects, as it does for voice.
+    """
+    from app.services.voice_barge_in_write import (
+        STATUS_BLOCKED,
+        STATUS_COMPLETED,
+        STATUS_STARTED,
+        STATUS_UNCERTAIN,
+        write_effects_since,
+    )
+
+    effects = write_effects_since(org_id, conversation_id, since)
+    if not any(e["status"] in (STATUS_STARTED, STATUS_COMPLETED, STATUS_UNCERTAIN) for e in effects):
+        return (
+            "You stopped me before I finished that. "
+            "I didn't complete anything from that turn, so we can pick it back up from where we left off."
+        )
+    from app.services.pipecat_voice.cognitive_llm import describe_cancelled_work
+
+    return describe_cancelled_work(
+        completed=[e["action"] for e in effects if e["status"] == STATUS_COMPLETED],
+        unconfirmed=[e["action"] for e in effects if e["status"] in (STATUS_STARTED, STATUS_UNCERTAIN)],
+        blocked=[e["action"] for e in effects if e["status"] == STATUS_BLOCKED],
+    )
+
+
 def _persist_conversation_turn(
     settings: Settings,
     *,
@@ -789,9 +818,22 @@ def _build_stream(
         last_pending_task: dict[str, Any] | None = None
         last_task_state: dict[str, Any] | None = None
         model_query = resume_instruction(interrupt, user_text)
+        # This turn's work token, as voice turns have: once Stop cancels it, a
+        # late task-state save or memory promotion from this turn is dropped,
+        # and a write not yet sent never starts (one already sent finishes and
+        # records its outcome).
+        from app.services.turn_cancellation import (
+            TurnCancellation,
+            bind_turn_cancellation_unscoped,
+        )
+
+        turn_work = TurnCancellation()
+        turn_work_reset = bind_turn_cancellation_unscoped(turn_work)
+        turn_started_mono = time.monotonic()
         try:
             if await stream_should_stop(http_request, org_id, conversation_id, settings=settings):
                 cancelled = True
+                turn_work.cancel("text_stop")
             else:
                 perf.start("planning")
                 async for event in intelligence.execute_task_streaming(
@@ -822,6 +864,7 @@ def _build_stream(
                         http_request, org_id, conversation_id, settings=settings
                     ):
                         cancelled = True
+                        turn_work.cancel("text_stop")
                         break
                     if isinstance(event, AssistantStreamComplete):
                         complete = event
@@ -869,16 +912,14 @@ def _build_stream(
             # A turn that returned before its model call leaves its read memo set.
             end_turn_memo()
             clear_stop(org_id, conversation_id, settings=settings)
+            turn_work_reset()
 
         if cancelled:
             assistant_text = "".join(streamed_text_parts).strip()
             if not assistant_text:
                 from app.services.response_composer import compose_reply_events
 
-                interrupted_copy = (
-                    "You stopped me before I finished that. "
-                    "I didn't complete anything from that turn, so we can pick it back up from where we left off."
-                )
+                interrupted_copy = _stopped_turn_copy(org_id, conversation_id, since=turn_started_mono)
                 packed = await compose_reply_events(
                     {"success": False, "data": {"text": interrupted_copy}, "cancelled": True},
                     kind="stopped",

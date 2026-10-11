@@ -6111,11 +6111,23 @@ class AgentIntelligence:
                     fallback_turn.get("pending_task")
                     or (task_state if isinstance(task_state, dict) else {}).get("pending_task")
                 )
-                packed = await _composed_reply(response_text, kind="canned")
-                response_text = packed.text
-                text_id = packed.text_id
-                for ev in packed.events:
-                    yield ev
+                spoken_question = "".join(full_content_parts).strip()
+                if (
+                    spoken_mode
+                    and text_id is not None
+                    and spoken_question.endswith("?")
+                    and dialogue_mode in {"clarify", "clarifying"}
+                ):
+                    # The model already asked for the details out loud; the
+                    # draft is staged, but a second question would be heard
+                    # as Gravitre repeating itself.
+                    response_text = spoken_question
+                else:
+                    packed = await _composed_reply(response_text, kind="canned")
+                    response_text = packed.text
+                    text_id = packed.text_id
+                    for ev in packed.events:
+                        yield ev
                 yield sse_intelligence_metadata(
                     message_id=message_id,
                     confidence={"score": classification_confidence, "needs_clarification": False},

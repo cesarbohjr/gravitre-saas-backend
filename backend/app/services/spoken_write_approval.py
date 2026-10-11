@@ -330,6 +330,11 @@ def classify_spoken_write_approval(
         return _result("stale", invoke_allowed=False, reason=reason, matched=True)
     if status in _IN_FLIGHT:
         return _result("stale", invoke_allowed=False, reason="already_claimed", matched=True)
+    if status == "awaiting_params":
+        # Still collecting details: a "yes" here approves nothing and is not
+        # stale either. The draft's own repair path answers it (what is still
+        # missing), so it is not this classifier's to refuse.
+        return _result("none", invoke_allowed=False, reason="pending_collecting_details", matched=False)
     if status and status not in _AWAITING:
         return _result("stale", invoke_allowed=False, reason=f"pending_{status}", matched=True)
 

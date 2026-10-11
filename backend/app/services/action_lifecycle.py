@@ -7,6 +7,7 @@ the Observation independently from the HTTP provider call.
 """
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -280,12 +281,72 @@ def write_plan_for_action(
     return built
 
 
+def _draft_identity(pending: dict[str, Any]) -> tuple[str, str, str]:
+    """What the user asked for in a draft: its action and details.
+
+    Plan projections and bookkeeping fields are re-derived on save, so they
+    are left out: they change without the user changing anything.
+    """
+    params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+    invoke = str(params.get("invoke_action") or pending.get("invoke_action") or "").strip()
+    args = params.get("args") if isinstance(params.get("args"), dict) else {}
+    filled = {k: v for k, v in args.items() if v not in (None, "", [], {}) and not str(k).startswith("_")}
+    return (
+        str(pending.get("status") or "").strip().lower(),
+        invoke,
+        json.dumps(filled, sort_keys=True, default=str),
+    )
+
+
+def pending_superseded_by_newer_task(
+    task_state: dict[str, Any] | None,
+    connector_plan: ConnectorActionPlan,
+    *,
+    pending_at_start: dict[str, Any] | None = None,
+) -> bool:
+    """True when the stored pending task is newer work than this write.
+
+    A write's outcome lands after the provider call returns. If the user
+    started or corrected a draft in the meantime, that draft is what they are
+    working on now: the outcome is recorded, but it must not overwrite the
+    draft with "executed" for the older write.
+
+    ``pending_at_start`` is the pending task as it stood when the write began.
+    A draft that still matches it is this write's own task. Without it, only a
+    draft for a different action counts as newer.
+    """
+    state = task_state if isinstance(task_state, dict) else {}
+    pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+    if not pending:
+        return False
+    status = str(pending.get("status") or "").strip().lower()
+    if not status.startswith("awaiting") or status == "awaiting_reconciliation":
+        return False
+    if pending.get("execution_claim_id"):
+        return False
+    if isinstance(pending_at_start, dict):
+        return _draft_identity(pending) != _draft_identity(pending_at_start)
+    params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+    invoke = str(params.get("invoke_action") or pending.get("invoke_action") or "").strip()
+    return bool(invoke) and invoke != connector_plan.invoke_action
+
+
+def _outcome_only_patch(state: dict[str, Any], obs: Any) -> dict[str, Any]:
+    prior_obs = [
+        row
+        for row in (state.get("execution_observations") or [])
+        if isinstance(row, dict) and str(row.get("step_id") or "") != obs.step_id
+    ]
+    return {"execution_observations": prior_obs + [obs.as_dict()]}
+
+
 def persist_uncertain_outcome_patch(
     *,
     task_state: dict[str, Any] | None,
     connector_plan: ConnectorActionPlan,
     summary: str,
     error: str | None = None,
+    pending_at_start: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     state = task_state if isinstance(task_state, dict) else {}
     existing = ExecutionPlan.from_dict(state.get("execution_plan"))
@@ -312,6 +373,8 @@ def persist_uncertain_outcome_patch(
         error=error,
     )
     obs.structured["verification_status"] = "uncertain"
+    if pending_superseded_by_newer_task(state, connector_plan, pending_at_start=pending_at_start):
+        return _outcome_only_patch(state, obs)
     return {
         **execution_plan_patch(exec_plan),
         **observations_patch([obs]),
@@ -353,6 +416,7 @@ def persist_write_outcome_patch(
     pending_task: dict[str, Any] | None,
     verification: dict[str, Any] | None = None,
     error: str | None = None,
+    pending_at_start: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     state = task_state if isinstance(task_state, dict) else {}
     existing = ExecutionPlan.from_dict(state.get("execution_plan"))
@@ -366,6 +430,8 @@ def persist_write_outcome_patch(
         verification=verification,
         error=error,
     )
+    if pending_superseded_by_newer_task(state, connector_plan, pending_at_start=pending_at_start):
+        return _outcome_only_patch(state, obs)
     exec_plan = apply_observations_to_plan(exec_plan, [obs])
     if success and verification and verification.get("verified"):
         exec_plan.terminal_status = "completed"

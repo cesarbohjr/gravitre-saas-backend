@@ -156,12 +156,14 @@ class SlowToolNotices:
 
 DEFAULT_DEEP_ACK_SECONDS = 0.6
 
+# Short and plain, like a person reaching for the answer. "I'm with you."
+# and "Let me think that through." read as scripted, and "I'll help with
+# that." promises an outcome before the turn knows it has one.
 DEEP_ACKNOWLEDGEMENTS: tuple[str, ...] = (
-    "I'm with you.",
+    "One moment.",
     "Give me a moment.",
     "Okay, one moment.",
-    "Let me think that through.",
-    "I'll help with that.",
+    "Let me check.",
 )
 
 

@@ -1,6 +1,7 @@
 """Governed connector execution from universal chat — NL → catalog → risk → invoke_tool."""
 from __future__ import annotations
 
+import asyncio
 import re
 import time
 from dataclasses import dataclass, field, replace
@@ -46,6 +47,19 @@ from app.services.connector_session_state import (
 from app.core.safe_dict import safe_normalize_stored_dict
 
 logger = get_logger(__name__)
+
+# Writes whose turn was cancelled mid-call: kept referenced until they finish
+# recording their outcome.
+_DETACHED_WRITES: set[asyncio.Future[Any]] = set()
+
+
+def _finish_detached_write(task: asyncio.Future[Any]) -> None:
+    _DETACHED_WRITES.discard(task)
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc is not None:
+        logger.warning("detached_write_failed error=%s", exc)
 
 # Prior-attempt states that must be settled against the source of record before
 # a write may run again.
@@ -1460,9 +1474,25 @@ class ChatConnectorExecutionService:
 
         plan = apply_pack_common_defaults(plan, message=message or "")
         plan = scrub_gmail_write_plan(plan)
+        from app.services.recipient_resolution import (
+            apply_resolution_to_stage,
+            ground_email_recipient,
+        )
 
-        staged_missing = missing_params_stage_patch(
-            plan, message, task_state=task_state
+        plan, recipient_lookup = await ground_email_recipient(
+            plan,
+            message,
+            task_state,
+            org_id=org_id,
+            client=client,
+            settings=self.settings,
+            connected_integrations=connected_integrations,
+            user_id=user_id,
+            conversation_id=conversation_id,
+        )
+        staged_missing = apply_resolution_to_stage(
+            missing_params_stage_patch(plan, message, task_state=task_state),
+            recipient_lookup,
         )
         if staged_missing:
             # Module B — stage awaiting_params on the shared ledger so the next
@@ -1703,6 +1733,7 @@ class ChatConnectorExecutionService:
                 conversation_id=conversation_id,
                 task_state=task_state,
                 plan=plan,
+                execution=execution,
             )
             refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
             return self._turn_from_execution(execution, refreshed, plan)
@@ -1961,7 +1992,27 @@ class ChatConnectorExecutionService:
                 exc,
             )
 
-    async def execute_plan(
+    async def execute_plan(self, **kwargs: Any) -> ExecutionResult:
+        """Execute a connector plan; a WRITE finishes even if its turn is cancelled.
+
+        A barge-in or stop cancels the turn that awaits this. Before the
+        provider call, the cancelled turn stops the write (see
+        ``begin_write_effect``). Once the call is under way it cannot be called
+        back, so the write runs to the end and records its outcome: losing that
+        record is what let a retry send the same thing twice.
+        """
+        plan = kwargs.get("plan")
+        if getattr(plan, "kind", None) != "write":
+            return await self._execute_plan(**kwargs)
+        task = asyncio.ensure_future(self._execute_plan(**kwargs))
+        try:
+            return await asyncio.shield(task)
+        except asyncio.CancelledError:
+            _DETACHED_WRITES.add(task)
+            task.add_done_callback(_finish_detached_write)
+            raise
+
+    async def _execute_plan(
         self,
         *,
         org_id: str,
@@ -1995,6 +2046,7 @@ class ChatConnectorExecutionService:
             format_approval_mismatch_message,
         )
 
+        pending_at_start: dict[str, Any] | None = None
         try:
             assert_plan_matches_binding(
                 plan,
@@ -2072,12 +2124,17 @@ class ChatConnectorExecutionService:
                     or raw_args.pop("_user_message", "")
                     or ""
                 )
+                from app.services.approval_action_binding import binding_from_params
+
                 proof = compile_write_for_context(
                     ctx=ctx,
                     invoke_action=plan.invoke_action,
                     args=raw_args,
                     user_message=user_message,
                     connected_integrations=[plan.integration] if plan.integration else None,
+                    # An approved write sends what the user approved; the
+                    # request's original wording must not refill its fields.
+                    args_approved=binding_from_params(approved_params or {}) is not None,
                 )
                 if not proof.ok:
                     failed = ExecutionResult(
@@ -2107,6 +2164,11 @@ class ChatConnectorExecutionService:
             prior_for_claim = await self._state.get_task_state(
                 conversation_id, org_id, client=client
             )
+            # The pending task as this write found it: a different draft by the
+            # time the outcome lands is newer work the outcome must not overwrite.
+            pending_at_start = (
+                safe_normalize_stored_dict(prior_for_claim, key="pending_task") or None
+            )
             replayed = await self._replay_existing_write_result(
                 prior_for_claim,
                 plan=plan,
@@ -2119,6 +2181,23 @@ class ChatConnectorExecutionService:
             )
             if replayed is not None:
                 return replayed
+            if plan.kind == "write":
+                from app.services.turn_cancellation import current_turn_cancelled
+
+                if current_turn_cancelled():
+                    # Cancelled before anything was claimed or sent.
+                    return ExecutionResult(
+                        success=False,
+                        entity_type="connector",
+                        entity_id="",
+                        connector_management_url="/connectors",
+                        result_url=(f"/ai?c={conversation_id}" if conversation_id else "/ai"),
+                        title=plan.label,
+                        body="Stopped before sending. Nothing was sent.",
+                        integration=plan.integration,
+                        task_label=plan.label,
+                        error_code="WRITE_COMMIT_INTERRUPTED",
+                    )
             if plan.kind == "write" and own_terminal_outcome:
                 claim_gate = await self._claim_write_before_invoke(
                     conversation_id,
@@ -2196,19 +2275,19 @@ class ChatConnectorExecutionService:
             if uncertain and own_terminal_outcome:
                 from app.services.action_lifecycle import persist_uncertain_outcome_patch
 
-                prior = await self._state.get_task_state(
-                    conversation_id, org_id, client=client
-                )
-                await self._state.update_task_state(
+                uncertain_error = str(exc)
+                await self._state.update_task_state_from(
                     conversation_id,
                     org_id,
-                    persist_uncertain_outcome_patch(
-                        task_state=prior,
+                    lambda state: persist_uncertain_outcome_patch(
+                        task_state=state,
                         connector_plan=plan,
                         summary="Provider result is uncertain; reconcile before retrying.",
-                        error=str(exc),
+                        error=uncertain_error,
+                        pending_at_start=pending_at_start,
                     ),
                     client=client,
+                    effect_record=True,
                 )
             if own_terminal_outcome:
                 self._finalize_connector_outcome(
@@ -2270,17 +2349,19 @@ class ChatConnectorExecutionService:
             if own_terminal_outcome:
                 from app.services.action_lifecycle import persist_uncertain_outcome_patch
 
-                prior = await self._state.get_task_state(conversation_id, org_id, client=client)
-                await self._state.update_task_state(
+                uncertain_error = str(observation.get("error") or "outcome_uncertain")
+                await self._state.update_task_state_from(
                     conversation_id,
                     org_id,
-                    persist_uncertain_outcome_patch(
-                        task_state=prior,
+                    lambda state: persist_uncertain_outcome_patch(
+                        task_state=state,
                         connector_plan=plan,
                         summary="Provider result is uncertain; reconcile before retrying.",
-                        error=str(observation.get("error") or "outcome_uncertain"),
+                        error=uncertain_error,
+                        pending_at_start=pending_at_start,
                     ),
                     client=client,
+                    effect_record=True,
                 )
                 self._finalize_connector_outcome(
                     client,
@@ -2354,6 +2435,7 @@ class ChatConnectorExecutionService:
                     session_updates={},
                     client=client,
                     ctx=ctx,
+                    pending_at_start=pending_at_start,
                 )
             return failed
 
@@ -2463,22 +2545,41 @@ class ChatConnectorExecutionService:
                 connector_id=connector_id,
             )
 
-        prior_state = await self._state.get_task_state(conversation_id, org_id, client=client)
+        try:
+            prior_state: dict[str, Any] | None = await self._state.get_task_state(
+                conversation_id, org_id, client=client, strict=True
+            )
+        except Exception as exc:  # noqa: BLE001
+            # Unknown state: skip the session and file-ledger updates rather than
+            # rebuild them from defaults (the outcome record itself is built
+            # from the state read under the save lock).
+            logger.warning(
+                "post_execution_state_read_failed conversation_id=%s error=%s", conversation_id, exc
+            )
+            prior_state = None
         file_ledger_patch: dict[str, Any] = {}
-        if "search_files" in str(plan.invoke_action) and isinstance(result_data.get("files"), list):
+        if (
+            prior_state is not None
+            and "search_files" in str(plan.invoke_action)
+            and isinstance(result_data.get("files"), list)
+        ):
             from app.services.parameter_ledger import ingest_connected_file_hits
 
             merged = ingest_connected_file_hits(prior_state, result_data["files"])
             if isinstance(merged.get("parameter_ledger"), dict):
                 file_ledger_patch["parameter_ledger"] = merged["parameter_ledger"]
-        session_updates = self._session_updates_after_execution(
-            prior_state,
-            plan,
-            result,
-            result_data,
-            client=client,
-            org_id=org_id,
-            conversation_id=conversation_id,
+        session_updates = (
+            self._session_updates_after_execution(
+                prior_state,
+                plan,
+                result,
+                result_data,
+                client=client,
+                org_id=org_id,
+                conversation_id=conversation_id,
+            )
+            if prior_state is not None
+            else {}
         )
         if own_terminal_outcome:
             await self._persist_canonical_write_outcome(
@@ -2493,6 +2594,7 @@ class ChatConnectorExecutionService:
                 session_updates=session_updates,
                 client=client,
                 ctx=ctx,
+                pending_at_start=pending_at_start,
             )
             await self._record_outcomes(
                 org_id, user_id, plan, result, observation, classification
@@ -2568,19 +2670,24 @@ class ChatConnectorExecutionService:
         if own_terminal_outcome:
             prior = task_state if isinstance(task_state, dict) else {}
             if not prior.get("execution_observations"):
-                await self._state.update_task_state(
-                    conversation_id,
-                    org_id,
-                    persist_write_outcome_patch(
-                        task_state=prior,
+
+                def build_replay_patch(state: dict[str, Any]) -> dict[str, Any] | None:
+                    if state.get("execution_observations"):
+                        return None
+                    return persist_write_outcome_patch(
+                        task_state=state,
                         connector_plan=plan,
                         success=True,
                         summary=result.body,
                         structured=result.structured or {},
-                        pending_task=prior.get("pending_task") if isinstance(prior.get("pending_task"), dict) else None,
+                        pending_task=(
+                            state.get("pending_task") if isinstance(state.get("pending_task"), dict) else None
+                        ),
                         verification={"verified": bool(record_id), "detail": "replay_from_session"},
-                    ),
-                    client=client,
+                    )
+
+                await self._state.update_task_state_from(
+                    conversation_id, org_id, build_replay_patch, client=client, effect_record=True
                 )
         return result
 
@@ -2761,19 +2868,21 @@ class ChatConnectorExecutionService:
             body = (
                 f"I checked {system}: \"{plan.label}\" already went through, so I did not run it again."
             )
-            await self._state.update_task_state(
+            await self._state.update_task_state_from(
                 conversation_id,
                 org_id,
-                persist_write_outcome_patch(
-                    task_state=state,
+                lambda fresh: persist_write_outcome_patch(
+                    task_state=fresh,
                     connector_plan=plan,
                     success=True,
                     summary=body,
                     structured=structured,
                     pending_task={**pending, "status": "executed"},
                     verification=evidence,
+                    pending_at_start=pending,
                 ),
                 client=client,
+                effect_record=True,
             )
             return (
                 ExecutionResult(
@@ -2836,10 +2945,10 @@ class ChatConnectorExecutionService:
         session_updates: dict[str, Any],
         client: Any,
         ctx: ToolContext,
+        pending_at_start: dict[str, Any] | None = None,
     ) -> None:
         from app.services.action_lifecycle import persist_write_outcome_patch
 
-        prior = await self._state.get_task_state(conversation_id, org_id, client=client)
         verification: dict[str, Any] | None = None
         if result.success and plan.kind == "write":
             try:
@@ -2891,25 +3000,37 @@ class ChatConnectorExecutionService:
             result.structured["verification_status"] = (
                 "verified" if verification.get("verified") else "unverified"
             )
-        outcome_patch = persist_write_outcome_patch(
-            task_state=prior,
-            connector_plan=plan,
-            success=bool(result.success),
-            summary=result.body or plan.label,
-            structured={**dict(structured or {}), **dict(result.structured or {})},
-            pending_task={
-                "type": "connector_action",
-                "status": "executed" if result.success else "failed",
-                "result": result.__dict__,
-            },
-            verification=verification,
-            error=None if result.success else (result.body or result.error_code),
-        )
         record_id = provider_id or (verification or {}).get("entity_id")
-        await self._state.update_task_state(
-            conversation_id,
-            org_id,
-            {
+        merged_structured = {**dict(structured or {}), **dict(result.structured or {})}
+
+        def build_outcome_patch(state: dict[str, Any]) -> dict[str, Any]:
+            # Built from the state read under the conversation lock: a snapshot
+            # read before the provider call and verification could be stale (a
+            # newer draft) or defaults (a failed read).
+            outcome_patch = persist_write_outcome_patch(
+                task_state=state,
+                connector_plan=plan,
+                success=bool(result.success),
+                summary=result.body or plan.label,
+                structured=merged_structured,
+                pending_task={
+                    "type": "connector_action",
+                    "status": "executed" if result.success else "failed",
+                    "result": result.__dict__,
+                },
+                verification=verification,
+                error=None if result.success else (result.body or result.error_code),
+                pending_at_start=pending_at_start,
+            )
+            if "pending_task" not in outcome_patch:
+                # A newer draft owns the conversation: keep only the record.
+                logger.info(
+                    "write_outcome_recorded_without_overwriting_newer_task conversation_id=%s action=%s",
+                    conversation_id,
+                    plan.invoke_action,
+                )
+                return outcome_patch
+            return {
                 **outcome_patch,
                 "completed_steps": [
                     {
@@ -2943,8 +3064,14 @@ class ChatConnectorExecutionService:
                 },
                 **file_ledger_patch,
                 **session_updates,
-            },
+            }
+
+        await self._state.update_task_state_from(
+            conversation_id,
+            org_id,
+            build_outcome_patch,
             client=client,
+            effect_record=plan.kind == "write",
         )
 
     def _finalize_connector_outcome(
@@ -3491,8 +3618,23 @@ class ChatConnectorExecutionService:
         conversation_id: str | None,
         task_state: dict[str, Any] | None,
         plan: ConnectorActionPlan | None,
+        execution: ExecutionResult | None = None,
     ) -> None:
-        """Persist typed memories after a confirmed connector turn (best-effort)."""
+        """Persist typed memories after a confirmed connector turn (best-effort).
+
+        Only for an action that went through: a failed, blocked or uncertain
+        write must not teach the workspace "Confirmed action: ..." or the
+        recipient it was aimed at.
+        """
+        if execution is not None and (
+            not execution.success or execution.error_code == "OUTCOME_UNCERTAIN"
+        ):
+            logger.info(
+                "confirmed_workspace_memory_skipped_unsuccessful org_id=%s error_code=%s",
+                org_id,
+                execution.error_code,
+            )
+            return
         from app.services.speculative_execution import defer_if_speculative
 
         if defer_if_speculative(
@@ -3503,6 +3645,7 @@ class ChatConnectorExecutionService:
             conversation_id=conversation_id,
             task_state=task_state,
             plan=plan,
+            execution=execution,
         ):
             return
         from app.services.turn_cancellation import superseded_write

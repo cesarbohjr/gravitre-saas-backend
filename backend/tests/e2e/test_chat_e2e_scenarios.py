@@ -37,11 +37,18 @@ def e2e_context():
             current["clarified_params"] = patch_payload["clarified_params"]
         return current
 
+    async def update_task_state_from(conversation_id, org_id, build, **_k):
+        current = await get_task_state(conversation_id, org_id)
+        patch_payload = build(dict(current))
+        if patch_payload:
+            await update_task_state(conversation_id, org_id, patch_payload)
+
     from app.services.chat_connector_execution_service import get_chat_connector_execution_service
 
     service = get_chat_connector_execution_service(settings)
     service._state.get_task_state = AsyncMock(side_effect=get_task_state)
     service._state.update_task_state = AsyncMock(side_effect=update_task_state)
+    service._state.update_task_state_from = AsyncMock(side_effect=update_task_state_from)
 
     return {
         "settings": settings,

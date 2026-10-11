@@ -288,6 +288,19 @@ def _join_labels(actions: list[str]) -> str:
     return ", ".join(labels[:-1]) + " and " + labels[-1]
 
 
+# How long a write's result line waits for the answer that reports it.
+WRITE_RESULT_LINE_HOLD_S = 2.5
+
+
+def _reports_write_outcome(tool_name: str, output: Any) -> bool:
+    """A successful write: the answer that follows states its outcome."""
+    from app.services.pipecat_voice.voice_tool_narration import is_write_shaped_tool_name
+
+    return bool(tool_name) and is_write_shaped_tool_name(tool_name) and isinstance(output, dict) and (
+        output.get("success") is True
+    )
+
+
 def describe_cancelled_work(
     *, completed: list[str], unconfirmed: list[str], blocked: list[str]
 ) -> str:
@@ -720,11 +733,16 @@ class GravitreCognitiveLLMService(LLMService):
                 # talking (even "let me check"), repeating the request would
                 # restart the answer from the top. A request that was itself
                 # carried is never carried again, so it cannot loop.
+                # Never when the turn already reached a provider with a write:
+                # re-running the request would send it again. That write
+                # finishes and records its outcome on its own.
+                wrote = self._turn_reached_a_write()
                 if (
                     self._active_user_text
                     and not self._answer_started
                     and not self._turn_spoke
                     and not self._turn_was_carried
+                    and not wrote
                 ):
                     self._carry_user_text = self._active_user_text
                     logger.info("pipecat_voice_unanswered_turn_carried org_id=%s", self._org_id)
@@ -732,8 +750,14 @@ class GravitreCognitiveLLMService(LLMService):
                 # acknowledgement was spoken: the revised request is answered
                 # instead of the original, so nothing restarts from the top.
                 self._revisable_user_text = (
-                    self._active_user_text if self._active_user_text and not self._answer_started else None
+                    self._active_user_text
+                    if self._active_user_text and not self._answer_started and not wrote
+                    else None
                 )
+                if wrote:
+                    logger.info(
+                        "pipecat_voice_cancelled_turn_not_carried_after_write org_id=%s", self._org_id
+                    )
                 raise
             except Exception as exc:  # noqa: BLE001
                 # str(exc) stays in the log, which is where a stack-shaped string
@@ -767,6 +791,27 @@ class GravitreCognitiveLLMService(LLMService):
                 self._finish_turn_trace()
             return
         await self.push_frame(frame, direction)
+
+    def _turn_reached_a_write(self) -> bool:
+        """True when this turn's WRITE reached the provider (started, done or uncertain).
+
+        A write that was blocked before sending, or failed, changed nothing.
+        """
+        from app.services.voice_barge_in_write import (
+            STATUS_COMPLETED,
+            STATUS_STARTED,
+            STATUS_UNCERTAIN,
+            write_effects_since,
+        )
+
+        since = self._turn_started_mono
+        if since is None:
+            return False
+        try:
+            effects = write_effects_since(self._org_id, self._conversation_id, since)
+        except Exception:  # noqa: BLE001
+            return True
+        return any(e.get("status") in (STATUS_STARTED, STATUS_COMPLETED, STATUS_UNCERTAIN) for e in effects)
 
     async def _run_gravitre_turn(self, context: Any) -> None:
         from app.operators.agent_intelligence import get_agent_intelligence
@@ -984,6 +1029,10 @@ class GravitreCognitiveLLMService(LLMService):
         # Evidence for TTS chunking: answer sentences released while a tool
         # call of this turn was still running (none are held for tools today).
         answer_chunks_while_tool_pending = 0
+        # A write's "Done, that went through." waits for the answer, which
+        # reports the same outcome; it is said only if no answer comes.
+        held_write_result: asyncio.Task[None] | None = None
+        held_write_text = ""
         first_delta_at: float | None = None
         first_speakable_chunk_at: float | None = None
         tts_requested_at: float | None = None
@@ -1293,7 +1342,14 @@ class GravitreCognitiveLLMService(LLMService):
                 self._note_tool_result(call_id, tool_name, narration, payload.get("output"))
                 if narration and not skip_spoken_tool_progress(tool_name):
                     await self._flush_client_text(client_text_filter)
-                    if self._answer_first is not None:
+                    if self._answer_first is None and _reports_write_outcome(tool_name, payload.get("output")):
+                        if held_write_result is not None:
+                            held_write_result.cancel()
+                        held_write_text = narration
+                        held_write_result = asyncio.ensure_future(
+                            self._speak_unless_answered(narration, WRITE_RESULT_LINE_HOLD_S)
+                        )
+                    elif self._answer_first is not None:
                         # A result line waits briefly: the answer usually
                         # follows, and then the line is not needed.
                         self._answer_first.enqueue(narration, PROGRESS, hold_s=RESULT_LINE_GRACE_S)
@@ -1336,6 +1392,10 @@ class GravitreCognitiveLLMService(LLMService):
                 spoken = self._sanitize_for_tts(chunk)
                 if spoken:
                     self._answer_started = True
+                    if held_write_result is not None:
+                        # The answer reports the outcome itself.
+                        held_write_result.cancel()
+                        held_write_result = None
                     if first_speakable_chunk_at is None:
                         first_speakable_chunk_at = time.perf_counter()
                         if trace is not None:
@@ -1355,6 +1415,12 @@ class GravitreCognitiveLLMService(LLMService):
         if guard_task is not None and await _guard_refused():
             await self.stop_ttfb_metrics()
             return
+        if held_write_result is not None and not held_write_result.done():
+            held_write_result.cancel()
+            if not turn_stopped and not self._answer_started and not self._sanitize_for_tts(text_buffer):
+                # The turn ends with no answer text: the result line is the answer.
+                await self._speak_narration(held_write_text)
+        held_write_result = None
         if turn_stopped:
             # A stopped turn says nothing more: no buffered tail, no held lines.
             text_buffer = ""
@@ -1676,6 +1742,12 @@ class GravitreCognitiveLLMService(LLMService):
             self._answer_first.enqueue(text, PROGRESS, still_relevant)
             return
         await self._speak_narration(text)
+
+    async def _speak_unless_answered(self, text: str, hold_s: float) -> None:
+        """Say a held result line once ``hold_s`` passes with no answer text."""
+        await asyncio.sleep(hold_s)
+        if not self._answer_started:
+            await self._speak_narration(text)
 
     async def _speak_narration(self, text: str, kind: str = PROGRESS) -> None:
         """Speak a filler / progress / refusal line, or hold it (voice_answer_first_v1).

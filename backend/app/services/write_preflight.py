@@ -93,7 +93,10 @@ def preflight_write_action(
         ctx.get("task_state") if isinstance(ctx.get("task_state"), dict) else {},
         user_message,
     )
-    proposed = _prefer_ledger_over_model(proposed, task_state)
+    if not ctx.get("args_approved"):
+        # Building a draft: the user's words beat the model's guesses. Once the
+        # user approved the args, they are what gets sent.
+        proposed = _prefer_ledger_over_model(proposed, task_state)
     connector_row = ctx.get("connector_row") if isinstance(ctx.get("connector_row"), dict) else None
     action_key = str(ctx.get("action_key") or "")
     plan_id = str(ctx.get("plan_id") or "").strip() or None
@@ -322,6 +325,7 @@ def compile_write_for_context(
     user_message: str = "",
     connected_integrations: list[str] | None = None,
     task_state: dict[str, Any] | None = None,
+    args_approved: bool = False,
 ) -> PreflightResult:
     return preflight_write_action(
         context={
@@ -334,6 +338,7 @@ def compile_write_for_context(
             "environment_name": ctx.environment_name,
             "connected_integrations": list(connected_integrations or []),
             "task_state": dict(task_state or {}),
+            "args_approved": args_approved,
             "turn_id": getattr(ctx, "turn_id", None) or getattr(ctx, "conversation_id", None),
             "plan_id": getattr(ctx, "plan_id", None),
             "step_id": getattr(ctx, "step_id", None),

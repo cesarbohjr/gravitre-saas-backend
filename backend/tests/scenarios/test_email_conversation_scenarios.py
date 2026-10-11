@@ -49,11 +49,21 @@ async def test_email_conversation_end_to_end(surface: str) -> None:
 
     with ScenarioHarness() as h, patch("app.services.web_research.search_web", _fake_search):
         h.connected.append("gmail")
+        # Stephanie is someone the user has corresponded with; the recipient
+        # comes from the mailbox, never from the model's guess.
+        h.connectors.mailbox.append(
+            {
+                "id": "m-stephanie",
+                "labelIds": ["INBOX"],
+                "headers": {"From": f"Stephanie Lee <{RECIPIENT}>", "To": "Me <me@gravitre.example>"},
+            }
+        )
         conv = h.conversation(surface)
 
         start = await conv.say("Can you send an email to Stephanie on Gmail?", _start_send)
         assert _status(start) == "awaiting_params"
         assert not _sends(start)
+        assert start.text.startswith("I found Stephanie Lee in your Gmail correspondence."), start.text
 
         provider = await conv.say("Gmail.", _start_send)
         assert provider.text.startswith("Got it, Gmail."), provider.text

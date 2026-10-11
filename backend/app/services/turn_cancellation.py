@@ -25,7 +25,7 @@ import contextlib
 import contextvars
 import itertools
 import threading
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any
 
@@ -122,6 +122,22 @@ def superseded_write(label: str) -> bool:
         return False
     logger.info("superseded_write_dropped label=%s reason=%s", label, token.reason)
     return True
+
+
+def bind_turn_cancellation_unscoped(token: TurnCancellation | None) -> Callable[[], None]:
+    """Bind ``token`` for code that cannot hold a ``with`` across its work.
+
+    For a streaming response generator: it yields between steps, and may be
+    closed from another task, where resetting the binding raises. Returns a
+    function that undoes the binding when it can (and is otherwise a no-op).
+    """
+    reset = _CURRENT.set(token)
+
+    def undo() -> None:
+        with contextlib.suppress(ValueError):
+            _CURRENT.reset(reset)
+
+    return undo
 
 
 @contextmanager

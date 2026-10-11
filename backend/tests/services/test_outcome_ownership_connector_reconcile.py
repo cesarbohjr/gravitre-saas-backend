@@ -22,6 +22,11 @@ class _State:
     async def update_task_state(self, _cid, _org, patch_: dict[str, Any], **_k) -> None:
         self.state.update(patch_)
 
+    async def update_task_state_from(self, _cid, _org, build, **_k) -> None:
+        patch_ = build(dict(self.state))
+        if patch_:
+            self.state.update(patch_)
+
 
 def _service(state: _State) -> ChatConnectorExecutionService:
     svc = ChatConnectorExecutionService.__new__(ChatConnectorExecutionService)

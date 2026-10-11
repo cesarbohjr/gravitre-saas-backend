@@ -71,6 +71,11 @@ def promote_confirmed_ledger_slots(
         slot = ledger.slots.get(slot_key)
         if slot is None or (slot.confidence or "high").lower() != "high":
             continue
+        from app.services.turn_cancellation import superseded_write
+
+        # Checked before every row: a turn cancelled mid-loop stops here.
+        if superseded_write("memory.ledger_slot"):
+            break
         # entity_id is the canonical value itself for email/channel aliases.
         ok = upsert_resolution(
             client,

@@ -74,6 +74,27 @@ def _insert_memory_row(client: Any, payload: dict[str, Any]) -> dict[str, Any] |
             return None
 
 
+def _retract_if_superseded(client: Any, org_id: str, row: dict[str, Any]) -> bool:
+    """Deactivate a row whose turn was cancelled while the insert was in flight.
+
+    The last check runs before the insert; a cancel landing during the round
+    trip would otherwise leave a durable memory from a cancelled turn.
+    """
+    from app.services.turn_cancellation import superseded_write
+
+    if not superseded_write("memory.promote_turn_memories.commit"):
+        return False
+    row_id = row.get("id")
+    if row_id:
+        try:
+            client.table("agent_memories").update({"is_active": False}).eq("id", row_id).eq(
+                "org_id", org_id
+            ).execute()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("workspace_memory_retract_failed id=%s error=%s", row_id, exc)
+    return True
+
+
 def promote_turn_memories(
     client: Any,
     *,
@@ -215,6 +236,8 @@ def promote_turn_memories(
                     written.append(row)
             else:
                 inserted = _insert_memory_row(client, payload)
+                if inserted and _retract_if_superseded(client, org_id, inserted):
+                    break
                 if inserted:
                     written.append(inserted)
         except Exception as exc:  # noqa: BLE001

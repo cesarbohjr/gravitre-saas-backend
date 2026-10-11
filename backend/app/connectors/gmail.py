@@ -49,12 +49,23 @@ def list_messages(
     return _request(access_token, "GET", f"/users/{user_id}/messages", params=params)
 
 
-def get_message(access_token: str, message_id: str, *, user_id: str = "me") -> dict[str, Any]:
+def get_message(
+    access_token: str,
+    message_id: str,
+    *,
+    user_id: str = "me",
+    format: str = "full",
+    metadata_headers: list[str] | None = None,
+) -> dict[str, Any]:
+    """One message. ``format="metadata"`` returns headers only, no body."""
+    params: dict[str, Any] = {"format": format if format in {"full", "metadata", "minimal"} else "full"}
+    if params["format"] == "metadata" and metadata_headers:
+        params["metadataHeaders"] = list(metadata_headers)
     return _request(
         access_token,
         "GET",
         f"/users/{user_id}/messages/{message_id}",
-        params={"format": "full"},
+        params=params,
     )
 
 
