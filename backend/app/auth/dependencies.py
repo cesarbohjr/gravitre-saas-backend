@@ -450,14 +450,86 @@ async def get_environment_context(
     return normalize_environment_name(x_environment)
 
 
+def _user_can_use_department(client: Client, org_id: str, user_id: str, department: str) -> bool:
+    """Org owners/admins, the department's admin, or its members may scope to it."""
+    role_rows = (
+        client.table("organization_members")
+        .select("role")
+        .eq("org_id", org_id)
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not role_rows or not is_org_member_role(role_rows[0].get("role")):
+        return False
+    if is_org_admin_role(role_rows[0].get("role")):
+        return True
+    needle = department.strip().lower()
+    departments = [
+        row
+        for row in (
+            client.table("departments")
+            .select("id, name, department_admin_id")
+            .eq("org_id", org_id)
+            .execute()
+            .data
+            or []
+        )
+        if str(row.get("name") or "").strip().lower() == needle
+    ]
+    if not departments:
+        return False
+    if any(str(row.get("department_admin_id") or "") == user_id for row in departments):
+        return True
+    member_rows = (
+        client.table("department_members")
+        .select("department_id")
+        .eq("user_id", user_id)
+        .in_("department_id", [str(row["id"]) for row in departments])
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    return bool(member_rows)
+
+
 async def get_department_context(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
     x_department: Annotated[str | None, Header()] = None,
 ) -> str | None:
-    """Optional department scope for cowork desk / Lite filtering."""
+    """Optional department scope for cowork desk / Lite filtering.
+
+    The header is a request, not a grant: it is honoured only for a caller who
+    belongs to that department in the active org (member, department admin, or
+    org owner/admin). Otherwise it is ignored (None), so callers fall back to the
+    user's own department instead of failing the page.
+    """
     raw = (x_department or "").strip()
     if not raw or raw.lower() in {"all", "any", "*"}:
         return None
-    return raw[:120]
+    department = raw[:120]
+    user_id = str(current_user.get("user_id") or "")
+    if not org_id or not user_id:
+        return None
+    client = _get_cached_service_client(settings)
+    try:
+        allowed = await asyncio.to_thread(_user_can_use_department, client, org_id, user_id, department)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "department_context_check_failed user_id=%s org_id=%s error=%s", user_id, org_id, exc
+        )
+        allowed = False
+    if not allowed:
+        logger.info(
+            "department_header_ignored user_id=%s org_id=%s department=%s", user_id, org_id, department
+        )
+        return None
+    return department
 
 
 def set_request_auth_context(user_id: str | None, org_id: str | None) -> None:

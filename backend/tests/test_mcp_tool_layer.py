@@ -10,6 +10,7 @@ import pytest
 from app.services.mcp_client_service import (
     MCPClientService,
     classify_mcp_tool_capability,
+    mcp_input_sha256,
     mcp_openai_tool_name,
     refresh_package_mcp_runtime_registration,
 )
@@ -116,7 +117,13 @@ async def test_write_tool_executes_with_valid_approval_id(mcp_service):
         "enabled": True,
     }
     server = {"id": "srv-1", "server_url": "echo test", "transport": "stdio", "enabled": True, "auth_config": {}}
-    approval = [{"id": "appr-1", "status": "approved", "context": {"mcp_tool_id": "tool-write"}}]
+    approval = [
+        {
+            "id": "appr-1",
+            "status": "approved",
+            "context": {"mcp_tool_id": "tool-write", "input_sha256": mcp_input_sha256({"name": "x"})},
+        }
+    ]
     client = _mock_supabase(tools=[write_tool], servers=[server], approvals=approval)
     with patch.object(mcp_service, "_client", return_value=client):
         with patch.object(mcp_service, "_call_mcp_server", new=AsyncMock(return_value={"created": True})):

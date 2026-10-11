@@ -1088,6 +1088,31 @@ class ToolRegistry:
                 break
         if not tool_id:
             return {"success": False, "tool": tool_name, "error": "MCP tool not registered for org"}
+        # Same agent permission gate and tool.invoke.* audit trail as invoke_tool.
+        from app.services import tool_service
+        from app.services.tool_types import ToolPermissionDeniedError
+
+        action = f"mcp.{tool_name}"
+        try:
+            await asyncio.to_thread(tool_service.assert_agent_tool_permission, ctx, action, None, "mcp")
+        except ToolPermissionDeniedError as exc:
+            await asyncio.to_thread(
+                tool_service._write_tool_audit,
+                ctx,
+                action,
+                None,
+                "tool.invoke.failed",
+                {"error_code": exc.code, "error": str(exc)[:200], "mcp_tool_id": tool_id},
+            )
+            return {"success": False, "tool": tool_name, "error_code": exc.code, "error": str(exc)}
+        await asyncio.to_thread(
+            tool_service._write_tool_audit,
+            ctx,
+            action,
+            None,
+            "tool.invoke.requested",
+            {"mcp_tool_id": tool_id},
+        )
         approval_id = str(args.pop("approval_id", "") or args.pop("approvalId", "") or "") or None
         payload = await service.execute_tool(
             tool_id,
@@ -1096,6 +1121,24 @@ class ToolRegistry:
             agent_id=ctx.agent_id,
             workflow_run_id=ctx.run_id,
             approval_id=approval_id,
+        )
+        status = str(payload.get("status") or "")
+        audit_extra: dict[str, Any] = {"mcp_tool_id": tool_id, "mcp_status": status}
+        if payload.get("latency_ms") is not None:
+            audit_extra["latency_ms"] = payload.get("latency_ms")
+        if status != "completed":
+            audit_extra["error_code"] = (
+                "write_approval_required" if status == "pending_approval" else status or "failed"
+            )
+            if payload.get("error"):
+                audit_extra["error"] = str(payload.get("error"))[:200]
+        await asyncio.to_thread(
+            tool_service._write_tool_audit,
+            ctx,
+            action,
+            None,
+            "tool.invoke.completed" if status == "completed" else "tool.invoke.failed",
+            audit_extra,
         )
         if payload.get("status") == "pending_approval":
             return {

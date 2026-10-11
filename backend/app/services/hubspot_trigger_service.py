@@ -232,19 +232,44 @@ def _resolve_triggered_by(client: Any, org_id: str) -> str:
     return org_id
 
 
+def hubspot_event_id(event: dict[str, Any]) -> str | None:
+    """HubSpot resends a failed delivery with the same ``eventId``."""
+    value = event.get("eventId")
+    return str(value) if value not in (None, "") else None
+
+
 def find_hubspot_connector_by_portal(client: Any, portal_id: int | str) -> dict[str, Any] | None:
+    """Resolve the one live connector for a HubSpot portal.
+
+    Deleted or disconnected connectors never route events. When the same portal
+    is connected in more than one org the event is ambiguous and is not fired.
+    """
+    from app.connectors.constants import is_connector_usable
+
     hub_key = str(portal_id)
     result = (
         client.table("connectors")
-        .select("id,org_id,type,status,config,environment")
+        .select("id,org_id,type,status,config,environment,deleted_at")
         .eq("type", "hubspot")
         .execute()
     )
+    matches: list[dict[str, Any]] = []
     for row in result.data or []:
+        if row.get("deleted_at") or not is_connector_usable(row.get("status")):
+            continue
         config = row.get("config") or {}
         if str(config.get("hub_id")) == hub_key:
-            return dict(row)
-    return None
+            matches.append(dict(row))
+    org_ids = {str(row.get("org_id")) for row in matches}
+    if len(org_ids) > 1:
+        logger.warning(
+            "hubspot_trigger_portal_ambiguous portalId=%s org_count=%s connector_ids=%s",
+            hub_key,
+            len(org_ids),
+            sorted(str(row.get("id")) for row in matches),
+        )
+        return None
+    return matches[0] if matches else None
 
 
 def get_hubspot_triggers(connector: dict[str, Any]) -> list[dict[str, Any]]:
@@ -326,6 +351,7 @@ async def start_workflow_from_hubspot(
     parameters: dict[str, Any],
     connector_id: str,
     execution_service: ExecutionService | None = None,
+    provider_event_id: str | None = None,
 ) -> dict[str, Any]:
     client = get_supabase_client(settings)
     workflow = _load_active_workflow(client, org_id, workflow_id)
@@ -347,6 +373,7 @@ async def start_workflow_from_hubspot(
         trigger_type="hubspot",
         source="hubspot_trigger",
         execution_service=execution_service,
+        provider_event_id=provider_event_id,
     )
     return {**outcome, "connector_id": connector_id}
 
@@ -451,6 +478,7 @@ async def process_hubspot_event_batch(
         elif token_err:
             normalized["hubspot_token_error"] = token_err
 
+        provider_event_id = hubspot_event_id(event)
         for trigger in matching:
             workflow_id = str(trigger["workflow_id"])
             parameters = {**normalized, "trigger": dict(trigger)}
@@ -461,6 +489,7 @@ async def process_hubspot_event_batch(
                 parameters=parameters,
                 connector_id=connector_id,
                 execution_service=execution_service,
+                provider_event_id=provider_event_id,
             )
             outcomes.append(result)
 

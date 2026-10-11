@@ -96,6 +96,7 @@ async def test_process_hubspot_event_batch_starts_workflow():
         "id": "conn-1",
         "org_id": "org-1",
         "type": "hubspot",
+        "status": "connected",
         "config": {
             "hub_id": 123,
             "hubspot_triggers": [
