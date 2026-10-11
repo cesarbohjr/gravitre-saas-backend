@@ -37,6 +37,7 @@ logger = get_logger(__name__)
 
 OWNER_TTL_SECONDS = 6 * 60 * 60
 _KEY_PREFIX = "voice:conn:"
+_SEQ_PREFIX = "voice:conn-seq:"
 
 #: task_state key a connection leaves when a write outcome was not delivered.
 UNDELIVERED_KEY = "voice_undelivered_outcome"
@@ -67,9 +68,9 @@ class _Holder:
     session: Any
     on_superseded: Callable[[], Any] | None
     claimed_at: float
-    #: Wall-clock claim time; the shared key carries it so a newer claim on
-    #: another worker can be told apart from a stale value.
-    claimed_wall: float = 0.0
+    #: Claim sequence from Redis (INCR, so unique and ordered across
+    #: workers); None when the claim never reached Redis.
+    seq: int | None = None
 
 
 _lock = threading.Lock()
@@ -82,18 +83,26 @@ def _key(org_id: str, conversation_id: str) -> str:
     return f"{org_id}:{conversation_id}"
 
 
-def _owner_value(token: str, claimed_wall: float) -> str:
-    return f"{token}@{int(claimed_wall * 1000)}"
+# Set the owner only if no later claim got there first; returns the previous value.
+_CLAIM_IF_NEWER = """
+local cur = redis.call('GET', KEYS[1])
+if cur then
+  local s = tonumber(string.match(cur, '@(%d+)$')) or 0
+  if s > tonumber(ARGV[2]) then return cur end
+end
+redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[3])
+return cur
+"""
 
 
-def _parse_owner(value: Any) -> tuple[str, float]:
-    """(token, claimed wall time) from the shared key; 0.0 when it carries none."""
+def _parse_owner(value: Any) -> tuple[str, int]:
+    """(token, claim sequence) from the shared key; 0 when it carries none."""
     text = value.decode() if isinstance(value, bytes) else str(value)
     token, _, stamp = text.partition("@")
     try:
-        return token, int(stamp) / 1000.0
+        return token, int(stamp)
     except ValueError:
-        return token, 0.0
+        return token, 0
 
 
 def _redis(settings: Any | None) -> Any | None:
@@ -123,7 +132,7 @@ def claim_conversation(
     key = _key(oid, cid)
     with _lock:
         previous = _owners.get(key)
-        holder = _Holder(token, session, on_superseded, time.monotonic(), claimed_wall=time.time())
+        holder = _Holder(token, session, on_superseded, time.monotonic())
         _owners[key] = holder
         if previous is not None and previous.token != token:
             _superseded.setdefault(key, []).append(previous)
@@ -132,10 +141,14 @@ def claim_conversation(
     previous_token = previous.token if previous is not None else None
     if redis is not None:
         try:
-            old = redis.getset(_KEY_PREFIX + key, _owner_value(token, holder.claimed_wall))
+            seq = int(redis.incr(_SEQ_PREFIX + key))
+            redis.expire(_SEQ_PREFIX + key, OWNER_TTL_SECONDS)
+            old = redis.eval(
+                _CLAIM_IF_NEWER, 1, _KEY_PREFIX + key, f"{token}@{seq}", seq, OWNER_TTL_SECONDS
+            )
+            holder.seq = seq
             if old is not None and previous_token is None:
                 previous_token = _parse_owner(old)[0]
-            redis.expire(_KEY_PREFIX + key, OWNER_TTL_SECONDS)
         except Exception as exc:  # noqa: BLE001
             logger.debug("voice_connection_claim_redis_failed error=%s", exc)
     if previous is not None and previous.token != token:
@@ -182,15 +195,18 @@ def is_current_connection(
         try:
             value = redis.get(_KEY_PREFIX + key)
             if value is not None:
-                owner, claimed_wall = _parse_owner(value)
+                owner, seq = _parse_owner(value)
                 if owner == token:
                     return True
                 if holder is None:
                     return False
-                # Another token: a newer owner only if it claimed after us.
-                # An older value is stale (our own claim never reached the
-                # key), and must never silence the live connection.
-                return claimed_wall <= holder.claimed_wall
+                if holder.seq is None:
+                    # Our claim never reached Redis: its value says nothing
+                    # about us. Ownership is in-process only until reconnect.
+                    return True
+                # Claims only ever replace a lower sequence, so another token
+                # there with a higher one is a newer connection.
+                return seq <= holder.seq
         except Exception:
             logger.debug("voice_connection_owner_read_failed", exc_info=True)
     return True
