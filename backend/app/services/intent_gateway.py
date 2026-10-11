@@ -47,14 +47,17 @@ _RESPONSE_CACHE_TTL = 300.0
 _RESPONSE_CACHE: dict[str, tuple[float, str, list[str]]] = {}
 
 _GREETING_BANK = {
-    "greeting": "Hey — I'm here. What do you want to get done?",
-    "thanks": "Glad that helped. What should we do next?",
-    "banter": "I'm with you. What do you need?",
-    "how_are_you": "Doing well, thanks for asking! What can I help you with?",
+    "greeting": "Hey! What's on your mind?",
+    "thanks": "You're welcome.",
+    "banter": "Ha, fair enough.",
+    "how_are_you": "Doing well, thanks. How's your day going?",
     "decline": "No problem.",
 }
 
-_HOW_ARE_YOU_RE = re.compile(r"(?i)\b(how'?s\s+it\s+going|how\s+are\s+you|how\s+are\s+things|how'?s\s+your\s+day)\b")
+_HOW_ARE_YOU_RE = re.compile(
+    r"(?i)^\s*(?:(?:hey|hi|hello)[,.!\s]+)?(?:how'?s\s+it\s+going|"
+    r"how\s+are\s+you|how\s+are\s+things|how(?:'s|\s+is)\s+your\s+day)[?!.\s]*$"
+)
 
 
 def _last_assistant_asked(history: list[dict[str, Any]] | None) -> bool:
@@ -245,11 +248,30 @@ def _propose_correction_recall(ctx: GatewayContext) -> CandidateVerdict | None:
 
 
 def _propose_phrase_bank(ctx: GatewayContext) -> CandidateVerdict | None:
+    from app.services.conversation_tier import is_social_repair
     from app.services.conversational_turn_gate import heuristic_turn_shape
     from app.services.pending_reply_classifier import has_pending_family
 
     from app.services.offered_action_continuation import is_confirm_utterance, is_decline_utterance
 
+    # A pure apology acknowledges the person without revising, cancelling,
+    # consuming approval, or executing the task they were discussing.
+    if is_social_repair(ctx.message):
+        answer = "No problem."
+        if has_pending_family(ctx.task_state):
+            # Say where the task stands so the person can pick it back up.
+            from app.services.pending_reply_classifier import (
+                build_pending_snapshot,
+                format_pending_repair,
+            )
+
+            answer = format_pending_repair(build_pending_snapshot(ctx.task_state), "apology")
+        return CandidateVerdict(
+            candidate_id="phrase_bank",
+            confidence=_PHRASE_BANK_CONFIDENCE,
+            answer=answer,
+            extras={"category": "social_repair", "provider_invoked": False},
+        )
     if has_pending_family(ctx.task_state):
         return None
     decision = heuristic_turn_shape(ctx.message)
@@ -266,12 +288,18 @@ def _propose_phrase_bank(ctx: GatewayContext) -> CandidateVerdict | None:
     elif is_decline_utterance(ctx.message):
         category = "decline"
     elif category == "small_talk":
-        category = "greeting"
+        # Open-ended social dialogue belongs to the existing reasoning path;
+        # a greeting cannot answer a story, opinion, or personal follow-up.
+        return None
     if category == "meta_capability":
         reply = "I can operate the tools connected in this workspace. Tell me the specific job."
     else:
         reply = _GREETING_BANK.get(category)
     if not reply:
+        return None
+    from app.services.offered_action_continuation import last_assistant_text
+
+    if last_assistant_text(ctx.conversation_history).strip() == reply:
         return None
     if len((ctx.message or "").strip()) > 120:
         return None

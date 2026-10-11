@@ -100,8 +100,9 @@ async def test_hello_there_and_capability_one_liner_shortcut_at_threshold() -> N
             org_id="org",
         )
     )
-    assert class_a.action == "shortcut"
-    assert class_a.candidate_id == "phrase_bank"
+    # A greeting with instructions is handled by the existing kernel, rather
+    # than being replaced with the same opener as every other social turn.
+    assert class_a.action == "fallthrough"
     assert hello.confidence is not None and hello.confidence >= INTENT_GATEWAY_THRESHOLD
     assert capability.action == "shortcut"
     assert capability.candidate_id in {"phrase_bank", "meta_capability"}

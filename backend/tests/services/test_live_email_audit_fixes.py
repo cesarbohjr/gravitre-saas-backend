@@ -147,7 +147,11 @@ def test_a_retry_on_a_draft_continues_the_task(utterance: str) -> None:
 
 
 def test_a_status_question_with_nothing_written_is_not_a_dead_end() -> None:
-    assert recent_write_status_turn("Did you send the email?", _email_draft_state()) is None
+    state = _email_draft_state()
+    state["pending_task"]["params"]["missing"] = ["subject", "body"]
+    turn = recent_write_status_turn("Did you send the email?", state)
+    assert turn is not None and turn["provider_write"] is False
+    assert turn["message"] == "Not yet. I still need the subject and body."
 
 
 def test_a_retry_after_an_uncertain_send_never_resends_blind() -> None:
@@ -305,6 +309,27 @@ def test_the_repair_reply_is_one_short_question_about_the_email() -> None:
         "Okay. Should I drop the email to Stephanie, or change something?"
     )
     assert format_ambiguous_clarify(snap, message="Sorry.") == (
-        "No worries. I've still got the email to Stephanie. I just need the subject and body."
+        "No problem. I've still got the email to Stephanie. I just need the subject and body."
     )
     assert "Still needed" in format_ambiguous_clarify(snap, message="hmm whatever")
+
+
+def test_a_status_question_during_reconciliation_never_lets_the_write_run_again() -> None:
+    state = _email_draft_state()
+    state["pending_task"]["status"] = "awaiting_reconciliation"
+    turn = recent_write_status_turn("Did it go through?", state)
+    assert turn is not None and turn["stop_pipeline"] is True
+    assert turn["provider_write"] is False
+
+
+@pytest.mark.parametrize(
+    "utterance",
+    ["Send Stephanie the online order form.", "Email the team that the store is back online."],
+)
+def test_an_action_that_mentions_online_still_never_searches(utterance: str) -> None:
+    assert auto_internet_research_blocked(utterance)
+    assert not _thin_search(utterance)
+
+
+def test_look_it_up_online_still_searches() -> None:
+    assert _thin_search("Can you look up their pricing online?")

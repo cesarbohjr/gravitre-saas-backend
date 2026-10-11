@@ -185,7 +185,7 @@ def resolve_active_stages(
 # The user asked for outside research in so many words.
 _EXPLICIT_WEB_RESEARCH_RE = re.compile(
     r"(?i)\b(research|deep\s+dive|search\s+(?:the\s+web|the\s+internet|online|google)|google\s+(?:it|that|this)|"
-    r"online|on\s+the\s+(?:web|internet)|latest\s+news|in\s+the\s+news|competitive\s+analysis|"
+    r"(?:look|find|check)\b[^.?!]{0,40}\bonline|on\s+the\s+(?:web|internet)|latest\s+news|in\s+the\s+news|competitive\s+analysis|"
     r"market\s+analysis|industry\s+(?:trends?|benchmarks?)|sources?\s+for)\b"
 )
 # Apologies and repair phrases are dialogue, not questions about the world.
@@ -250,6 +250,10 @@ def should_run_internet_research(
     answers, retries, apologies or small talk (auto_internet_research_blocked).
     """
     if query:
+        from app.services.conversation_tier import is_social_repair
+
+        if is_social_repair(query):
+            return False
         from app.services.analytics_traffic_overview_service import (
             is_analytics_traffic_overview_intent,
         )

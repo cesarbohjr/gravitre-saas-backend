@@ -760,7 +760,13 @@ class TestAdoptedReplayOffTheFirstWord:
         service, deltas = _service(SimpleNamespace(), coordinator)
         with confirmed_turn_sees_matching_versions(), patch(
             "app.operators.agent_intelligence.get_agent_intelligence"
-        ) as intel:
+        ) as intel, patch(
+            # This measures replay ordering, not remote budget/moderation I/O.
+            # A fake database DNS timeout otherwise consumes the two-second
+            # assertion window on unchanged main as well as the candidate.
+            "app.services.shared_turn_preparation.guard_spoken_turn",
+            new=AsyncMock(return_value=None),
+        ):
             intel.return_value.execute_task_streaming = AsyncMock(side_effect=AssertionError("must adopt"))
             turn = asyncio.create_task(service._run_gravitre_turn(_Ctx()))
             for _ in range(200):

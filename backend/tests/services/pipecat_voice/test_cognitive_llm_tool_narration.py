@@ -93,6 +93,18 @@ def _tool_output(call_id: str, output: dict[str, Any]) -> AssistantStreamEvent:
     )
 
 
+def test_internal_knowledge_lookup_does_not_speak_bookkeeping_before_the_answer() -> None:
+    display, tts = _drive([
+        _tool_start("kb1", "searchKnowledgeBase"),
+        _tool_output("kb1", {"results": [{"content": "irrelevant"}] * 5}),
+        AssistantStreamEvent(sse_type="text-delta", payload={"delta": "What should the email say?"}),
+    ])
+    assert "What should the email say?" in "".join(tts)
+    for output in (display, tts):
+        assert "knowledge base" not in "".join(output).lower()
+        assert "I found 5" not in "".join(output)
+
+
 class TestToolStartedNarration:
     def test_real_tool_call_start_is_narrated_before_the_answer(self) -> None:
         """MUTATION PROOF: removing this narration means total silence

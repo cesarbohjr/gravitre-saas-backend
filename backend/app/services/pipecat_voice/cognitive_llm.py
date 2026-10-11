@@ -1200,10 +1200,11 @@ class GravitreCognitiveLLMService(LLMService):
                     and not self._turn_spoke
                     and not (self._answer_first is not None and self._answer_first.has_pending())
                 ):
-                    ack = pick_deep_acknowledgement(self._last_ack)
-                    self._last_ack = ack
-                    logger.info("pipecat_voice_deep_ack org_id=%s", self._org_id)
-                    await self._speak_narration(ack, kind=FILLER)
+                    ack = pick_deep_acknowledgement(self._last_ack, message=user_text)
+                    if ack:
+                        self._last_ack = ack
+                        logger.info("pipecat_voice_deep_ack org_id=%s", self._org_id)
+                        await self._speak_narration(ack, kind=FILLER)
                 continue
             if event is SILENCE_TICK:
                 due = slow_tool_notices.due(

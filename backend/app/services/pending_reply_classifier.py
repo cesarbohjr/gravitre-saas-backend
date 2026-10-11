@@ -302,10 +302,6 @@ def is_clear_pending_cancel_intent(message: str) -> bool:
 
 
 _BARE_NO_RE = re.compile(r"(?i)^\s*(?:no|nope|nah)(?:[\s,]+(?:no|nope))*\s*[.!]*\s*$")
-_APOLOGY_RE = re.compile(
-    r"(?i)^\s*(?:oh[\s,]+)?(?:sorry|so\s+sorry|my\s+bad|apologies|my\s+apologies|oops)"
-    r"(?:[\s,]+(?:about\s+that|for\s+that|my\s+bad))?\s*[.!]*\s*$"
-)
 _GATHERING_STATUSES = frozenset({"awaiting_params", "collecting"})
 
 
@@ -321,7 +317,9 @@ def pending_repair_kind(message: str, snap: PendingSnapshot) -> str | None:
     text = (message or "").strip()
     if not text:
         return None
-    if _APOLOGY_RE.match(text):
+    from app.services.conversation_tier import is_social_repair
+
+    if is_social_repair(text):
         return "apology"
     if _BARE_NO_RE.match(text) and snap.status in _GATHERING_STATUSES:
         return "no"
@@ -344,13 +342,13 @@ def format_pending_repair(snap: PendingSnapshot, kind: str) -> str:
         return f"Okay. Should I drop {thing or 'it'}, or change something?"
     if snap.pending_missing:
         needed = " and ".join(str(m).replace("_", " ") for m in snap.pending_missing)
-        return f"No worries. I've still got {thing or 'your request'}. I just need the {needed}."
+        return f"No problem. I've still got {thing or 'your request'}. I just need the {needed}."
     if snap.status in {"awaiting_confirm", "awaiting_admin_approval"}:
         return (
-            f"No worries. {(thing or 'It').capitalize()} is ready. "
+            f"No problem. {(thing or 'It').capitalize()} is ready. "
             "Say yes to go ahead, or tell me what to change."
         )
-    return f"No worries. I've still got {thing or 'your request'}. What would you like to do next?"
+    return f"No problem. I've still got {thing or 'your request'}."
 
 
 def classify_pending_reply_fast(
