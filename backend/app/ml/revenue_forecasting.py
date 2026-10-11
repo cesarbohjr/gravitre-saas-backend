@@ -1,8 +1,12 @@
-"""Revenue metric forecasting from connector-backed time series."""
+"""Revenue metric baseline forecasting from connector-backed time series.
+
+Honest scope: this is a trailing-mean baseline, not Holt-Winters / exponential
+smoothing (statsmodels is not a dependency). The forecast is the mean of the
+most recent window, repeated over the horizon, with a ±1.96·std band.
+"""
 from __future__ import annotations
 
 import pickle
-from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import numpy as np
@@ -24,9 +28,13 @@ class RevenueForecaster(BaseMLModel):
     Forecasts revenue metrics (deal_amount, subscription_mrr, invoice_balance)
     from historical connector data.
 
-    Uses statsmodels ExponentialSmoothing when available; simple moving-average
-    fallback otherwise. Requires MIN_HISTORY_POINTS data points.
+    Method: trailing-mean baseline (mean of the last ``MIN_HISTORY_POINTS``
+    values, flat over the horizon). No trend or seasonality is modelled.
+    Held-out metrics evaluate this same baseline on the most recent points.
+    Requires MIN_HISTORY_POINTS data points.
     """
+
+    METHOD = "mean_baseline"
 
     model_type = ModelType.REGRESSOR
     catalog_status = ModelStatus.TRAINED
@@ -60,30 +68,29 @@ class RevenueForecaster(BaseMLModel):
         self._series = values
         self._metric_name = metric_name
         self._fitted = True
-        try:
-            from statsmodels.tsa.holtwinters import ExponentialSmoothing
-
-            self._model = ExponentialSmoothing(
-                np.array(values),
-                trend="add",
-                seasonal=None,
-                initialization_method="estimated",
-            ).fit(optimized=True)
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("revenue_forecaster_statsmodels_unavailable error=%s", exc)
-            self._model = None
+        self._model = None
         holdout = max(3, len(values) // 5)
         train_vals = values[:-holdout]
         test_vals = values[-holdout:]
-        baseline = sum(train_vals) / len(train_vals)
+        # Evaluate exactly what predict_structured serves: the trailing mean.
+        baseline = self._trailing_mean(train_vals)
         mae = mean_absolute_error(test_vals, [baseline] * len(test_vals))
         return ModelMetrics(
             mae=mae,
             mse=mean_squared_error(test_vals, [baseline] * len(test_vals)),
             training_samples=len(train_vals),
             validation_samples=len(test_vals),
-            custom_metrics={"metric_name": metric_name, "algorithm": "exponential_smoothing_or_baseline"},
+            custom_metrics={
+                "metric_name": metric_name,
+                "algorithm": self.METHOD,
+                "evaluation": "trailing_mean_baseline_on_most_recent_holdout",
+            },
         )
+
+    @classmethod
+    def _trailing_mean(cls, values: list[float]) -> float:
+        window = values[-cls.MIN_HISTORY_POINTS :] if values else [0.0]
+        return sum(window) / len(window)
 
     async def predict(
         self,
@@ -109,12 +116,7 @@ class RevenueForecaster(BaseMLModel):
                 "advisory_only": True,
             }
         steps = max(1, horizon_days // 7)
-        if self._model is not None:
-            forecast = self._model.forecast(steps)
-            predicted = [float(v) for v in forecast]
-        else:
-            avg = sum(self._series[-self.MIN_HISTORY_POINTS :]) / self.MIN_HISTORY_POINTS
-            predicted = [avg] * steps
+        predicted = [self._trailing_mean(self._series)] * steps
         std = float(np.std(self._series[-self.MIN_HISTORY_POINTS :])) or abs(predicted[0]) * 0.1
         lower = [max(0.0, p - 1.96 * std) for p in predicted]
         upper = [p + 1.96 * std for p in predicted]
@@ -126,6 +128,7 @@ class RevenueForecaster(BaseMLModel):
             "confidence_interval_lower": lower,
             "confidence_interval_upper": upper,
             "data_points_used": len(self._series),
+            "method": self.METHOD,
             "confidence_note": CONFIDENCE_NOTE,
             "advisory_only": True,
         }
@@ -145,4 +148,5 @@ class RevenueForecaster(BaseMLModel):
         self._series = loaded["series"]
         self._metric_name = loaded["metric_name"]
         self._fitted = loaded["fitted"]
-        self._model = loaded.get("model")
+        # Older artifacts may carry a fitted-model slot; the baseline ignores it.
+        self._model = None

@@ -7,6 +7,7 @@ from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.ml.churn_feature_ingest import (
     list_churn_training_rows,
+    list_unlabeled_churn_signal_rows,
     training_gate_status,
 )
 from app.ml.churn_scoring import ChurnRiskScorer
@@ -57,11 +58,40 @@ async def build_churn_advisory_cards(
     client: Any | None = None,
     limit: int = 25,
 ) -> dict[str, Any]:
-    """Score stored customer feature rows; return suggest-only cards."""
+    """Score customers whose churn outcome is still unknown; suggest-only cards.
+
+    Labelled rows (known churned/retained) are the training set and are never
+    scored — that would be in-sample prediction of an already-known outcome.
+    Only unresolved customer signal rows, for customers with no label, are
+    scored. With none available the advisory is empty and says why.
+    """
     active = settings or get_settings()
     db = client or get_supabase_client(active)
     gate = training_gate_status(db, org_id)
-    rows = list_churn_training_rows(db, org_id)
+    labeled_ids = {
+        str(row.get("customer_id"))
+        for row in list_churn_training_rows(db, org_id)
+        if row.get("customer_id") is not None
+    }
+    rows = [
+        row
+        for row in list_unlabeled_churn_signal_rows(db, org_id)
+        if str(row.get("customer_id")) not in labeled_ids
+    ]
+    if not rows:
+        return {
+            "recommendations": [],
+            "gate": gate,
+            "trained": False,
+            "reason": "no_unlabeled_customer_signals",
+            "advisory_only": True,
+            "auto_contact": False,
+            "forbidden_actions": list(_FORBIDDEN_ACTIONS),
+            "note": (
+                "No customers with unresolved churn signals to score. Labelled "
+                "customers are training data and are not re-scored."
+            ),
+        }
 
     # Prefer org-trained artifact; fall back to in-memory untrained structured response.
     scorer = ChurnRiskScorer()
@@ -88,7 +118,8 @@ async def build_churn_advisory_cards(
                     "kind": "churn_risk_pending",
                     "title": f"Account {row.get('customer_id')}: awaiting trained model",
                     "reason": (
-                        f"Labeled signal stored ({gate['current']}/{gate['required']}). "
+                        f"Unresolved signal stored; labelled examples "
+                        f"{gate['current']}/{gate['required']}. "
                         "Train churn_risk_scorer once the gate is ready."
                     ),
                     "evidence": {

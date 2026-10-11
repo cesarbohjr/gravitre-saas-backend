@@ -64,6 +64,16 @@ class PredictiveOperationsEngine:
 
     RISK_THRESHOLD = 0.65
 
+    # Models that score ONE entity from its feature row (customer / ticket /
+    # deal). The domain-pack path has no entity features to give them, and
+    # calling predict_structured() without features scores an all-zero vector,
+    # which is not a prediction about anything. Those models are skipped here
+    # with reason ``no_features``; per-entity scoring lives in their own
+    # surfaces (e.g. churn_advisory_service).
+    PER_ENTITY_FEATURE_MODELS = frozenset(
+        {"churn_risk_scorer", "sla_breach_predictor", "deal_loss_scorer"}
+    )
+
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
 
@@ -94,6 +104,21 @@ class PredictiveOperationsEngine:
         from app.ml.model_catalog import load_org_trained_catalog_model
 
         instance = await load_org_trained_catalog_model(org_id, model_name, settings=self.settings)
+        if model_name in self.PER_ENTITY_FEATURE_MODELS:
+            if getattr(instance, "_model", None) is None:
+                raise ModelNotTrainedError(model_name)
+            return {
+                "status": "not_available",
+                "model": model_name,
+                "reason": "no_features",
+                "detail": (
+                    "This model scores individual records from their features; "
+                    "no record features are available on the domain summary path, "
+                    "so no prediction is made."
+                ),
+                "advisory_only": True,
+                "scope_note": SCOPE_NOTE,
+            }
         try:
             try:
                 structured = await instance.predict_structured(org_id=org_id, settings=self.settings)

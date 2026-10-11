@@ -168,6 +168,23 @@ class ModelRegistry:
         logger.info("model_deployed model_id=%s version=%s", model_id, deploy_version)
         return True
 
+    async def get_version_metrics(self, model_id: str, version: int) -> dict[str, Any] | None:
+        """Return the stored ``model_versions.metrics`` for one version, or None."""
+        client = self._get_client()
+        result = await run_io(
+            client.table("model_versions")
+            .select("metrics")
+            .eq("model_id", model_id)
+            .eq("version", version)
+            .limit(1)
+            .execute
+        )
+        rows = result.data or []
+        if not rows:
+            return None
+        metrics = rows[0].get("metrics")
+        return metrics if isinstance(metrics, dict) else None
+
     async def get_model(self, model_id: str) -> TrainedModel | None:
         client = self._get_client()
         result = client.table("trained_models").select("*").eq("id", model_id).execute()

@@ -2308,7 +2308,10 @@ class MesonService:
                 MesonInsight(
                     id="model-live",
                     title="Live in production",
-                    summary=f"{name} v{deployed_version} is serving inference — monitor drift via Org Learning.",
+                    summary=(
+                        f"{name} v{deployed_version} is serving inference. Drift monitoring is not "
+                        "available yet — re-run evaluation on fresh data to check quality."
+                    ),
                     category="ml",
                 )
             )
@@ -2338,7 +2341,10 @@ class MesonService:
                 MesonInsight(
                     id="model-on-track",
                     title="Model lifecycle on track",
-                    summary=f"{name} is in {status.replace('_', ' ')} — Meson will flag drift as usage grows.",
+                    summary=(
+                        f"{name} is in {status.replace('_', ' ')}. Drift monitoring is not "
+                        "available yet; review evaluation metrics after each retrain."
+                    ),
                     category="ml",
                 )
             )
