@@ -12,7 +12,7 @@ hard bounds so it cannot crowd out chat and voice:
 * unchanged documents are skipped by content checksum (see ``process_job``).
 
 Off unless RAG_WORKER_PILOT_ENABLED is true and the org list is non-empty.
-Needs migration 20261012024300 (``claim_rag_ingest_job_for_orgs``).
+Needs migration 20261012020000 (``claim_rag_ingest_job_for_orgs``).
 """
 from __future__ import annotations
 
