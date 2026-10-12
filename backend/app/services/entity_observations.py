@@ -65,6 +65,12 @@ CUSTOMER_FACING_SOURCES = frozenset(
     {"hubspot", "zendesk", "intercom", "freshdesk", "salesforce", "helpscout", "front", "gmail", "microsoft365"}
 )
 EMAIL_SOURCES = frozenset({"gmail", "microsoft365"})
+# Shared consumer mail domains: a colleague on gmail.com makes only their own
+# address internal, never every gmail.com customer.
+FREE_MAIL_DOMAINS = frozenset(
+    {"gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "msn.com", "yahoo.com",
+     "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "zoho.com"}
+)
 
 SYSTEM_PROMPT = f"""You label one customer message for a B2B account team. Extractor {EXTRACTOR_VERSION}.
 Return JSON only, matching the schema. For each dimension that applies, give the label,
@@ -116,16 +122,22 @@ def observations_enabled(settings: Any) -> bool:
     return getattr(settings, "entity_observations_enabled", False) is True
 
 
-def is_customer_facing(message: CustomerMessage, org_domains: set[str]) -> tuple[bool, str]:
+def is_customer_facing(
+    message: CustomerMessage, org_domains: set[str], org_emails: frozenset[str] | set[str] = frozenset()
+) -> tuple[bool, str]:
     system = message.source_system.strip().lower()
     if system not in CUSTOMER_FACING_SOURCES:
         return False, "internal_or_unsupported_source"
     author = message.author_email.strip().lower()
     domain = author.rsplit("@", 1)[-1] if "@" in author else ""
+    if author and author in {e.strip().lower() for e in org_emails}:
+        return False, "author_is_internal"
     if domain and domain in {d.strip().lower() for d in org_domains}:
         return False, "author_is_internal"
-    if system in EMAIL_SOURCES and not domain:
-        # Mailboxes hold colleagues' mail too: no known external author, no observation.
+    is_email = system in EMAIL_SOURCES or message.source_record_type.strip().lower() == "email"
+    if is_email and not domain:
+        # Mailboxes and CRM-logged email hold colleagues' mail too: no known
+        # external author, no observation.
         return False, "email_author_unknown"
     return True, ""
 
@@ -244,14 +256,18 @@ async def observe_customer_message(
     entity_row_id: str,
     message: CustomerMessage,
     org_domains: set[str],
+    org_emails: frozenset[str] | set[str] = frozenset(),
     router: Any | None = None,
 ) -> dict[str, Any]:
     """Gate, extract and store. Returns what happened, never raises."""
+    from app.core.ingestion_kill_switch import ingestion_disabled
     from app.services.source_governance import customer_context_allowed_for_org
 
     if not observations_enabled(settings):
         return {"skipped": "disabled"}
-    ok, reason = is_customer_facing(message, org_domains)
+    if ingestion_disabled(settings):
+        return {"skipped": "ingestion_disabled"}
+    ok, reason = is_customer_facing(message, org_domains, org_emails)
     if not ok:
         return {"skipped": reason}
     if not customer_context_allowed_for_org(client, org_id, message.source_system):

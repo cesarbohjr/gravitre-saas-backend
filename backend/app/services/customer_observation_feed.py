@@ -66,13 +66,45 @@ def _entity_row_for(client: Any, org_id: str, system: str, resource_type: str, r
     return entity_ids.pop() if len(entity_ids) == 1 else None
 
 
+MAX_MEMBER_LOOKUP = 5000
+
+
+def org_internal_identities(client: Any, org_id: str, host: str) -> tuple[set[str], set[str]]:
+    """Domains and addresses that mean "a colleague wrote this", never a customer.
+
+    The org's website host plus every member's address; a member's domain counts
+    too unless it is shared consumer mail. Raises on lookup failure so the relay
+    retries instead of observing a colleague as a customer.
+    """
+    from app.services.entity_observations import FREE_MAIL_DOMAINS
+
+    members = (
+        client.table("organization_members").select("user_id").eq("org_id", org_id).limit(MAX_MEMBER_LOOKUP).execute()
+    )
+    user_ids = sorted({str(r["user_id"]) for r in members.data or [] if r.get("user_id")})
+    emails: set[str] = set()
+    for i in range(0, len(user_ids), 200):
+        rows = client.table("users").select("email").in_("auth_user_id", user_ids[i : i + 200]).execute()
+        emails.update(str(r["email"]).strip().lower() for r in rows.data or [] if r.get("email"))
+    domains = {host} if host else set()
+    domains.update(
+        d for d in (e.rsplit("@", 1)[-1] for e in emails if "@" in e) if d and d not in FREE_MAIL_DOMAINS
+    )
+    return domains, emails
+
+
 def handle_customer_message(client: Any, event: dict[str, Any], settings: Settings | None = None) -> dict[str, Any]:
     from app.services.entity_observations import CustomerMessage, observe_customer_message, observations_enabled
 
     settings = settings or get_settings()
+    from app.core.ingestion_kill_switch import ingestion_disabled
+
     if not observations_enabled(settings):
         return {"skipped": "disabled"}
-    payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+    if ingestion_disabled(settings):
+        # Same outcome as the feature being off: the event is handled, nothing is read or written.
+        return {"skipped": "ingestion_disabled"}
+    payload =event.get("payload") if isinstance(event.get("payload"), dict) else {}
     org_id = str(event.get("org_id") or "")
     if payload.get("system") != "hubspot" or payload.get("record_type") != "email":
         return {"skipped": "unsupported_source"}
@@ -96,6 +128,7 @@ def handle_customer_message(client: Any, event: dict[str, Any], settings: Settin
     from app.services.org_business_identity import load_org_business_identity
 
     host = str(load_org_business_identity(client, org_id).get("host") or "")
+    org_domains, org_emails = org_internal_identities(client, org_id, host)
     message = CustomerMessage(
         text=f"Subject: {props.get('hs_email_subject') or ''}\n\n{props.get('hs_email_text') or ''}".strip(),
         source_system="hubspot",
@@ -113,7 +146,8 @@ def handle_customer_message(client: Any, event: dict[str, Any], settings: Settin
             org_id=org_id,
             entity_row_id=entity_row_id,
             message=message,
-            org_domains={host} if host else set(),
+            org_domains=org_domains,
+            org_emails=org_emails,
         )
     )
     if result.get("skipped") == "error":

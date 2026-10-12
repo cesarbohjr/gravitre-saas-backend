@@ -43,6 +43,10 @@ class RunPlayRequest(BaseModel):
     # objective, and capability steps try the plan's chosen provider first.
     objective_id: str | None = Field(default=None, alias="objectiveId", max_length=64)
     capability_vendors: dict[str, str] = Field(default_factory=dict, alias="capabilityVendors")
+    # Set when the run serves a work object (e.g. an accepted proposal) and/or one
+    # business entity. Both are checked against the org; needs work_loop_links_enabled.
+    work_object_id: str | None = Field(default=None, alias="workObjectId", max_length=64)
+    business_entity_id: str | None = Field(default=None, alias="businessEntityId", max_length=64)
 
     model_config = {"populate_by_name": True}
 
@@ -479,6 +483,20 @@ async def run_play(
     )
     if not installation:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Play setup not found")
+    from app.services.work_loop_links import WorkLoopLinkError, resolve_run_links
+
+    try:
+        work_object, business_entity_id = resolve_run_links(
+            client,
+            settings,
+            org_id=org_id,
+            work_object_id=body.work_object_id,
+            business_entity_id=body.business_entity_id,
+        )
+    except WorkLoopLinkError as exc:
+        code = status.HTTP_422_UNPROCESSABLE_ENTITY if "not enabled" in str(exc) else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
+    work_object_id = str(work_object["id"]) if work_object else None
     mode = str(installation.get("operating_mode") or "OBSERVE")
     if mode not in {"ACT WITH APPROVAL", "ACT WITHIN POLICY"}:
         raise HTTPException(
@@ -541,7 +559,11 @@ async def run_play(
         "workflow_run_ids": [],
         "created_by": user.get("user_id"),
         "started_at": datetime.now(timezone.utc).isoformat(),
-        "metadata": {"execution_authority": "canonical_workflow_runtime"},
+        "metadata": {
+            "execution_authority": "canonical_workflow_runtime",
+            **({"work_object_id": work_object_id} if work_object_id else {}),
+            **({"business_entity_id": business_entity_id} if business_entity_id else {}),
+        },
     }).execute()
 
     workflow_runs: list[dict[str, Any]] = []
@@ -563,6 +585,8 @@ async def run_play(
                             "execution_authority": "canonical_workflow_runtime",
                             "objective_id": body.objective_id,
                             "capability_vendors": dict(body.capability_vendors or {}),
+                            **({"work_object_id": work_object_id} if work_object_id else {}),
+                            **({"business_entity_id": business_entity_id} if business_entity_id else {}),
                         }
                     },
                 ),
@@ -592,6 +616,22 @@ async def run_play(
         }).eq("id", play_run_id).eq("org_id", org_id).execute()
         raise
 
+    work_object_linked = False
+    if work_object is not None:
+        from app.services.work_loop_links import link_play_run
+
+        work_object_linked = link_play_run(
+            client,
+            settings,
+            org_id=org_id,
+            work_object=work_object,
+            play_run_id=play_run_id,
+            play_key=play.key,
+            workflow_runs=workflow_runs,
+            actor_id=user.get("user_id"),
+            goal_id=body.objective_id or installation.get("goal_id"),
+        )
+
     write_audit_event(
         client,
         org_id=org_id,
@@ -605,15 +645,23 @@ async def run_play(
             "operating_mode": mode,
             "workflow_run_ids": run_ids,
             "execution_authority": "canonical_workflow_runtime",
+            **({"work_object_id": work_object_id} if work_object_id else {}),
+            **({"business_entity_id": business_entity_id} if business_entity_id else {}),
         },
     )
-    return {
+    response: dict[str, Any] = {
         "playRunId": play_run_id,
         "status": aggregate_status,
         "operatingMode": mode,
         "workflowRuns": workflow_runs,
         "executionAuthority": "canonical_workflow_runtime",
     }
+    if work_object_id:
+        response["workObjectId"] = work_object_id
+        response["workObjectLinked"] = work_object_linked
+    if business_entity_id:
+        response["businessEntityId"] = business_entity_id
+    return response
 
 
 @router.get("/{play_key}/workflow-bindings")

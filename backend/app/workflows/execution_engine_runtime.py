@@ -345,6 +345,11 @@ def _finalize_run(
         if honesty_reason:
             finalize_meta["list_populate_honesty_reason"] = honesty_reason
             finalize_meta["outcome_honesty_reason"] = honesty_reason
+        from app.services.work_loop_links import play_run_work_object_id
+
+        play_work_object_id = play_run_work_object_id(ctx.settings, params)
+        if play_work_object_id:
+            finalize_meta["work_object_id"] = play_work_object_id
         finalized = finalize_execution_outcome(
             ctx.client,
             org_id=ctx.org_id,

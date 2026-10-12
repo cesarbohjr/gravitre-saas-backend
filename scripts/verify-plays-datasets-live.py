@@ -8,6 +8,7 @@ materialize datasets.
 Required:
   PLATFORM_LIVE_BEARER_TOKEN
   PLATFORM_LIVE_ORG_ID
+  (CI mints both for the smoke org with scripts/mint_smoke_org_session.py)
 
 Optional:
   BACKEND_URL                defaults to production Railway backend
@@ -139,6 +140,9 @@ def main() -> int:
     report = {
         "at": datetime.now(timezone.utc).isoformat(),
         "backend_url": BASE,
+        "gate": "plays_datasets_read_only_acceptance",
+        "execution_acceptance": "not_evaluated",
+        "auth_mode": os.environ.get("PLATFORM_LIVE_AUTH_MODE", "owner_session"),
         "org_id": org_id,
         "environment": environment,
         "git_sha": health.get("git_sha") if isinstance(health, dict) else None,
@@ -158,7 +162,7 @@ def main() -> int:
     OUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(
         json.dumps(
-            {k: report[k] for k in ("git_sha", "mutation", "failures", "pass", "claim")},
+            {k: report[k] for k in ("gate", "auth_mode", "git_sha", "mutation", "failures", "pass", "claim")},
             indent=2,
         )
     )

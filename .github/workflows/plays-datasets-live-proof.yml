@@ -17,41 +17,41 @@ permissions:
 
 jobs:
   live-read-proof:
+    # Read-only on the smoke org; does not establish Plays execution acceptance.
     name: Authenticated GET-only proof
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: production
     env:
-      PLATFORM_LIVE_BEARER_TOKEN: ${{ secrets.PLATFORM_LIVE_BEARER_TOKEN }}
-      PLATFORM_LIVE_ORG_ID: ${{ secrets.PLATFORM_LIVE_ORG_ID }}
       PLATFORM_LIVE_ENVIRONMENT: production
       DATASET_LIVE_QUERY: ${{ inputs.dataset_query }}
       BACKEND_URL: ${{ inputs.backend_url }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Verify authorized session is configured
-        shell: bash
-        run: |
-          if [ -z "$PLATFORM_LIVE_BEARER_TOKEN" ]; then
-            echo "::error::PLATFORM_LIVE_BEARER_TOKEN secret is not configured."
-            exit 2
-          fi
-          if [ -z "$PLATFORM_LIVE_ORG_ID" ]; then
-            echo "::error::PLATFORM_LIVE_ORG_ID secret is not configured."
-            exit 2
-          fi
-
-      - name: Install proof dependency
-        run: python -m pip install --disable-pip-version-check "httpx>=0.27,<1"
-
+        with: { python-version: "3.12" }
+      - name: Install proof dependencies
+        run: python -m pip install --disable-pip-version-check "httpx>=0.27,<1" "PyJWT>=2.8,<3" python-dotenv supabase
+      # Short-lived session for the isolated smoke-org service account, minted the
+      # same way as the AI hardening smoke and Voice SLO probe. Valid for 10 minutes,
+      # masked in the log, never stored. The org and actor come from the conversation
+      # write guard; nothing is provisioned and the operator org is refused.
+      - name: Mint short-lived smoke-org session
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python scripts/mint_smoke_org_session.py --github-env
       - name: Run non-destructive live proof
         run: python scripts/verify-plays-datasets-live.py
-
+      - name: Clear session and check evidence for token leaks
+        if: always()
+        shell: bash
+        run: |
+          if [ -n "${PLATFORM_LIVE_BEARER_TOKEN:-}" ] && [ -f docs/delivery/plays-datasets-live-proof.json ] && grep -qF "$PLATFORM_LIVE_BEARER_TOKEN" docs/delivery/plays-datasets-live-proof.json; then
+            echo "::error::evidence file contains the session token"; rm -f docs/delivery/plays-datasets-live-proof.json; exit 1
+          fi
+          echo "PLATFORM_LIVE_BEARER_TOKEN=" >> "$GITHUB_ENV"
       - name: Upload live proof
         if: always()
         uses: actions/upload-artifact@v4

@@ -30,6 +30,14 @@ SAFETY_PINS: dict[str, str] = {
     "RAG_WORKER_PILOT_ENABLED": "false",
 }
 
+# Owner-approved production values that differ from the safety pin. A present
+# variable at its approved value is reported, not a problem. Absent ones are
+# still pinned to the code default, so ``apply`` never turns anything on.
+APPROVED_VALUES: dict[str, str] = {
+    # Read-path filter only (no writes or deletes); owner decision 2026-10-12.
+    "RETRIEVED_CONTENT_GUARD_ENABLED": "true",
+}
+
 # Left absent: each defaults to off in config.py, and absent is the safe value.
 DEFAULT_OFF: tuple[str, ...] = (
     "RAG_INGEST_CHECKSUM_SKIP_ENABLED",
@@ -38,12 +46,16 @@ DEFAULT_OFF: tuple[str, ...] = (
     "ENTITY_CONTEXT_CARDS_ENABLED",
     "ENTITY_BEHAVIOR_SIGNALS_ENABLED",
     "ACCOUNT_HEALTH_ENABLED",
+    "CHURN_ENTITY_FEATURES_ENABLED",
     "ACCOUNT_PLAY_PROPOSALS_ENABLED",
     "GOAL_LINKS_ENABLED",
     "WORK_OBJECT_PROPOSALS_ENABLED",
+    "WORK_LOOP_LINKS_ENABLED",
     "PLAY_SIGNAL_EVALUATION_ENABLED",
     "RECOMMENDATION_FEED_ENABLED",
+    "ACCOUNT_FEED_UNIFIED_V1",
     "ML_PREDICTION_OUTCOMES_ENABLED",
+    "OUTCOME_LEARNING_HANDLER_ENABLED",
     "ML_TIME_SPLIT_ENABLED",
 )
 
@@ -60,6 +72,21 @@ REQUIRED_SECRETS: tuple[str, ...] = (
     "SUPABASE_SERVICE_ROLE_KEY",
 )
 OPTIONAL_REPORTED: tuple[str, ...] = ("TEMPORAL_HOST", "MEMORY_SOURCE_LINEAGE_ENABLED")
+
+# Emergency stop for customer-data ingestion (default off). Reported with its
+# value, never pinned: true is a deliberate stop, not a misconfiguration, but it
+# pauses every knowledge sync, so it must be visible.
+KILL_SWITCH = "DISABLE_INGESTION"
+
+# Context delivery settings (pre-3.0 Plus): reported with their values, never
+# pinned and never a problem. Absent means the code default applies.
+CONTEXT_REPORTED: dict[str, str] = {
+    "UNIFIED_TURN_LIVE_ENABLED": "false",
+    "UNIFIED_TURN_SHADOW_ENABLED": "false",
+    "CROSS_SOURCE_CONTEXT_ENGINE_ENABLED": "false (shadow only)",
+    "CROSS_SOURCE_CONTEXT_ENGINE_SHADOW_ENABLED": "true",
+    "CROSS_SOURCE_CONTEXT_TOKEN_BUDGET": "12000",
+}
 
 _TRUE = {"1", "true", "yes", "on", "t", "y"}
 _FALSE = {"0", "false", "no", "off", "f", "n"}
@@ -88,6 +115,9 @@ def audit(env: dict[str, str]) -> tuple[list[str], list[str], list[str]]:
         parsed = _bool(env[key])
         if parsed is None:
             problems.append(f"{key}={env[key]!r} is not a boolean; startup would fail")
+        elif key in APPROVED_VALUES and parsed == (APPROVED_VALUES[key] == "true"):
+            lines.append(f"{key}={env[key]!r} (owner-approved)")
+            continue
         elif parsed != (safe == "true"):
             problems.append(f"{key}={env[key]!r} differs from safety value {safe}; owner decision")
         lines.append(f"{key}={env[key]!r}")
@@ -109,6 +139,23 @@ def audit(env: dict[str, str]) -> tuple[list[str], list[str], list[str]]:
         elif parsed:
             problems.append(f"{key} is on; 3.0 Plus features stay off until acceptance")
         lines.append(f"{key}={env[key]!r}")
+
+    kill = env.get(KILL_SWITCH)
+    if kill is None:
+        lines.append(f"{KILL_SWITCH}: absent (ingestion runs)")
+    else:
+        parsed = _bool(kill)
+        if parsed is None:
+            problems.append(f"{KILL_SWITCH}={kill!r} is not a boolean; startup would fail")
+        state = "ON: all ingestion and knowledge syncs are stopped" if parsed else "off (ingestion runs)"
+        lines.append(f"{KILL_SWITCH}={kill!r} {state}")
+
+    for key, default in CONTEXT_REPORTED.items():
+        value = env.get(key, env.get(key.lower()))
+        if value is None:
+            lines.append(f"{key}: absent (code default {default})")
+        else:
+            lines.append(f"{key}={value!r}")
 
     # Informational only: sealed variables are not returned with their values,
     # and a running service already proves the required ones are present.

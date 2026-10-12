@@ -440,6 +440,11 @@ def execute_workflow_steps(
         conversation_id = str(params.get("conversation_id") or "").strip()
         if conversation_id:
             meta["conversation_id"] = conversation_id
+        from app.services.work_loop_links import play_run_work_object_id
+
+        play_work_object_id = play_run_work_object_id(settings, params)
+        if play_work_object_id:
+            meta["work_object_id"] = play_work_object_id
         if params.get("integration"):
             meta["integration"] = params.get("integration")
         from app.services.connector_output_refs import (
