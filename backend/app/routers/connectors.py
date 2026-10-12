@@ -945,6 +945,7 @@ async def sync_connector_route_alias(
     """Manual sync — runs knowledge sync for Notion; legacy status for other connectors."""
     import asyncio
 
+    from app.core.ingestion_kill_switch import INGESTION_DISABLED_DETAIL, IngestionDisabledError
     from app.services.knowledge_sync_service import SOURCE_REGISTRY, trigger_connector_knowledge_sync
 
     _user, org_id = _admin
@@ -978,6 +979,10 @@ async def sync_connector_route_alias(
             )
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        except IngestionDisabledError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=INGESTION_DISABLED_DETAIL
+            ) from exc
         except Exception as exc:  # noqa: BLE001
             # Surface PostgREST/schema errors (e.g. missing rag_sources.created_by) instead of opaque 500.
             raise HTTPException(
