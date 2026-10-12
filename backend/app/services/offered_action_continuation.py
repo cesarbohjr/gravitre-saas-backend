@@ -111,6 +111,11 @@ _STARTS_AFFIRM_RE = re.compile(r"(?i)^\s*(?:yes|yeah|yep|sure|ok(?:ay)?|alright|
 
 def _is_new_request(message: str) -> bool:
     """A self-contained new ask ("Draft a follow-up email to Stephanie")."""
+    text = (message or "").strip()
+    if text.endswith("?") and not _STARTS_AFFIRM_RE.match(text) and user_requested_read(text):
+        # "What changed in my workspace since yesterday?" asks its own
+        # question; it is not a reply accepting an earlier offer to check.
+        return True
     try:
         from app.services.conversation_tier import _content_tier
 
