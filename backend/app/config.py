@@ -583,6 +583,12 @@ class Settings(BaseSettings):
     ml_prediction_labeling_interval_seconds: int = 86400
     # Phase 6: churn training holds out the most recent outcomes instead of a random fifth.
     ml_time_split_enabled: bool = False
+    # Phase 7: per-dimension account health (/api/entities/health), no composite score.
+    account_health_enabled: bool = False
+    # Phase 7: daily rule-based behaviour signals (compute_entity_behavior_signals) for orgs
+    # with recent customer observations. Needs migration 20261012040000.
+    entity_behavior_signals_enabled: bool = False
+    entity_behavior_signals_interval_seconds: int = 86400
     # Shared secret for /api/watchers/agent/signal HMAC or X-Watcher-Secret header.
     watcher_agent_webhook_secret: str | None = None
     # Memory promotion evaluation (v4). 0 disables; default 8 hours.

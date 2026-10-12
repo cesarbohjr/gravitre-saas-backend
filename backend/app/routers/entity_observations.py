@@ -51,6 +51,23 @@ def _entity_row(client: Any, org_id: str, entity_id: str) -> dict[str, Any]:
     return res.data[0]
 
 
+@router.get("/health")
+def list_account_health_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: int = 20,
+) -> dict:
+    """Phase 7: accounts with recent evidence, most at-risk dimensions first."""
+    from app.services.account_health import health_enabled, list_account_health
+
+    if not health_enabled(settings):
+        raise HTTPException(status_code=404, detail="Not found")
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    return list_account_health(shared_service_client(settings, create_client), org_id, limit=limit)
+
+
 @router.get("/{entity_id}/observations")
 def list_entity_observations(
     entity_id: str,
@@ -132,3 +149,22 @@ def correct_entity_observation(
         metadata={"entity_id": entity_id, "previous": out.get("previous"), "correction": out.get("correction")},
     )
     return out
+
+
+@router.get("/{entity_id}/health")
+def get_account_health(
+    entity_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Phase 7: per-dimension account health with definitions and evidence (no composite)."""
+    from app.services.account_health import health_enabled, load_account_health
+
+    if not health_enabled(settings):
+        raise HTTPException(status_code=404, detail="Not found")
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    client = shared_service_client(settings, create_client)
+    entity = _entity_row(client, org_id, entity_id)
+    return load_account_health(client, org_id, entity)
