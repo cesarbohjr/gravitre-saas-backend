@@ -176,6 +176,7 @@ def workflow_primitives() -> list[dict[str, Any]]:
 
 
 def event_taxonomy() -> dict[str, list[str]]:
+    from app.plays.signal_evidence import WORKFLOW_RUN_SIGNALS
     from app.services.execution_outcome import TERMINAL_STATUSES
     from app.services.intelligence_outcome_path import (
         ACTION_EVENTS,
@@ -198,6 +199,9 @@ def event_taxonomy() -> dict[str, list[str]]:
         "business_impact_events": sorted(BUSINESS_IMPACT_EVENTS),
         "notification_events": sorted(CANONICAL_EVENT_TYPES),
         "run_terminal_statuses": sorted(TERMINAL_STATUSES),
+        # Signals read from workflow_runs.status (plays.signal_evidence): workflow_completed,
+        # workflow_failed. Plays may require either; both are known names.
+        "workflow_run_signals": sorted(set(WORKFLOW_RUN_SIGNALS.values())),
     }
 
 
