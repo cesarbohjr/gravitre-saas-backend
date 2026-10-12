@@ -202,3 +202,28 @@ async def test_compiler_includes_card_when_on_and_records_exclusion_when_off():
     off = await _compile(base, c, "How is Acme Corp doing?")
     assert "account_context" not in dict(off.context_parts())
     assert any(d.source == "account_context" and d.action == "EXCLUDE" for d in off.inclusion_decisions)
+
+
+@pytest.mark.asyncio
+async def test_slow_card_read_is_dropped_not_waited_on():
+    import time
+
+    from app.config import get_settings
+
+    on = get_settings().model_copy(update={"entity_context_cards_enabled": True})
+    c = _Client({"org_business_entities": [_ent("a", "Acme Corp")], "entity_observations": _obs(6)})
+
+    def slow(*_a, **_k):
+        time.sleep(0.3)
+        return "late card", {"accounts": ["a"]}
+
+    with (
+        patch("app.services.context_compiler.ACCOUNT_CARD_TIMEOUT_S", 0.05),
+        patch("app.services.entity_context_card.build_entity_context_block", slow),
+    ):
+        compiled = await _compile(on, c, "How is Acme Corp doing?")
+    assert "account_context" not in dict(compiled.context_parts())
+    assert any(
+        d.source == "account_context" and d.action == "EXCLUDE" and "timeout" in str(d.reason)
+        for d in compiled.inclusion_decisions
+    )
