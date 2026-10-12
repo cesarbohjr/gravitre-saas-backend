@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Target } from "lucide-react"
 import { GoalProgressSummary, MilestoneTrack } from "@/components/goals/goal-progress"
+import { GoalLinkedProgress } from "@/components/goals/goal-linked-progress"
 import { fetcher } from "@/lib/fetcher"
 
 interface GoalProgressPayload {
@@ -54,6 +55,7 @@ export default function GoalDetailPage() {
               <h2 id="goal-milestones-heading" className="font-sans text-xl font-medium">Plan milestones</h2>
               {milestones == null ? <p className="mt-4 text-sm text-muted-foreground">Milestones not reported.</p> : milestones.length === 0 ? <div className="mt-4"><Illustration name="moment-focus-time" width={140} className="mb-3" /><p className="text-sm text-muted-foreground">No milestones have been added to this goal.</p></div> : <MilestoneTrack milestones={milestones} />}
             </section>
+            <GoalLinkedProgress goalId={data.goal.id} />
           </> : !error && !isLoading ? <p className="text-sm text-muted-foreground">Goal details not reported.</p> : null}
         </div>
       </div>

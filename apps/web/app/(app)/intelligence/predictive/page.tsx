@@ -10,6 +10,8 @@ import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { IntelligenceShell } from "@/components/intelligence/shell"
 import { PredictionsStage } from "@/components/intelligence/pages/predictions-stage"
+import { AccountHealthPanel } from "@/components/accounts/account-health-panel"
+import { RecommendationFeedPanel } from "@/components/accounts/recommendation-feed-panel"
 import type { FailureAlertWithEvidence } from "@/components/intelligence/forecasts/forecast-model"
 import { workflowsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -135,6 +137,11 @@ export default function PredictiveOpsPage() {
             onScanWorkflows={() => void scanWorkflows()}
             scanning={scanning}
           />
+          {/* Gravitre 3.0 Plus: both render nothing until their backend flags are on. */}
+          <div className="mt-8 space-y-8">
+            <RecommendationFeedPanel />
+            <AccountHealthPanel />
+          </div>
         </IntelligenceShell>
       </div>
     </AppShell>

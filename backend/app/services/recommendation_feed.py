@@ -159,7 +159,7 @@ def items_from_proposals(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     "actionability": 0.9,
                     "novelty": 0.7,
                 },
-                href=f"/work/{r.get('id')}",
+                href="/activity?tab=objects",
                 actions=["accept", "dismiss"],
                 extra={"workObjectId": r.get("id"), "goalId": r.get("goal_id"), "businessEntityId": r.get("business_entity_id")},
             )
