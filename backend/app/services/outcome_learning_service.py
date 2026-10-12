@@ -134,15 +134,36 @@ class OutcomeLearningService:
     def _fire_and_forget(self, coro: Any) -> None:
         spawn_background(coro)
 
-    async def _insert_event(self, payload: dict[str, Any]) -> None:
+    async def _insert_event(
+        self, payload: dict[str, Any], *, client: Any | None = None, strict: bool = False
+    ) -> None:
+        """Insert one ledger row, then mirror it.
+
+        Best-effort by default. With ``strict`` a failed insert raises, so a
+        caller that retries (the domain-event relay) can tell a lost write from
+        a recorded one; mirroring after a successful insert never raises.
+        """
         try:
-            self._client().table(self.TABLE).insert(payload).execute()
+            (client or self._client()).table(self.TABLE).insert(payload).execute()
+        except Exception as exc:
+            if strict:
+                raise
+            logger.debug("outcome_learning_insert_skipped error=%s", exc)
+            return
+        try:
             self._mirror_clickhouse(payload)
             from app.services.learning_signal_aggregator import get_learning_signal_aggregator
 
             await get_learning_signal_aggregator(self.settings).ingest_outcome_event(payload)
         except Exception as exc:  # noqa: BLE001
-            logger.debug("outcome_learning_insert_skipped error=%s", exc)
+            logger.debug("outcome_learning_mirror_skipped error=%s", exc)
+
+    async def _write_event(self, payload: dict[str, Any], *, client: Any | None, strict: bool) -> None:
+        # Default calls keep the original one-argument _insert_event call.
+        if client is None and not strict:
+            await self._insert_event(payload)
+        else:
+            await self._insert_event(payload, client=client, strict=strict)
 
     def _mirror_clickhouse(self, row: dict[str, Any]) -> None:
         try:
@@ -179,9 +200,13 @@ class OutcomeLearningService:
         strategy_key: str | None = None,
         domain_context: dict[str, Any] | None = None,
         retrieval_effectiveness: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
+        outcome_id: str | None = None,
+        client: Any | None = None,
+        strict: bool = False,
     ) -> None:
         self._validate_event(outcome_event)
-        metadata: dict[str, Any] = {}
+        metadata = dict(metadata or {})
         if strategy_key:
             metadata["strategy_key"] = strategy_key
         if domain_context:
@@ -195,7 +220,7 @@ class OutcomeLearningService:
         if retrieval_effectiveness:
             metadata["retrieval_effectiveness"] = retrieval_effectiveness
         payload = {
-            "id": str(uuid4()),
+            "id": outcome_id or str(uuid4()),
             "org_id": org_id,
             "outcome_event": outcome_event,
             "entity_type": "recommendation",
@@ -212,7 +237,7 @@ class OutcomeLearningService:
             "metadata": metadata,
             "created_at": self._now_iso(),
         }
-        await self._insert_event(payload)
+        await self._write_event(payload, client=client, strict=strict)
 
     def record_recommendation_outcome_async(self, **kwargs: Any) -> None:
         self._fire_and_forget(self.record_recommendation_outcome(**kwargs))
@@ -265,6 +290,11 @@ class OutcomeLearningService:
         actual_value: float | None,
         outcome_event: str,
         measurement_available: bool = True,
+        *,
+        metadata: dict[str, Any] | None = None,
+        outcome_id: str | None = None,
+        client: Any | None = None,
+        strict: bool = False,
     ) -> dict[str, Any]:
         self._validate_event(outcome_event)
         if not measurement_available:
@@ -283,7 +313,7 @@ class OutcomeLearningService:
             }
         accuracy = 1.0 - min(1.0, abs(float(predicted_value) - float(actual_value)) / max(abs(float(actual_value)), 1.0))
         payload = {
-            "id": str(uuid4()),
+            "id": outcome_id or str(uuid4()),
             "org_id": org_id,
             "outcome_event": outcome_event,
             "entity_type": "prediction",
@@ -294,10 +324,10 @@ class OutcomeLearningService:
             "after_value": actual_value,
             "measured_at": self._now_iso(),
             "measurement_status": "recorded",
-            "metadata": {"accuracy": round(accuracy, 4)},
+            "metadata": {**dict(metadata or {}), "accuracy": round(accuracy, 4)},
             "created_at": self._now_iso(),
         }
-        await self._insert_event(payload)
+        await self._write_event(payload, client=client, strict=strict)
         return {"measurement_status": "recorded", "accuracy": round(accuracy, 4)}
 
     async def record_workflow_outcome(
