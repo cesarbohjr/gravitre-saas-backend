@@ -30,6 +30,14 @@ SAFETY_PINS: dict[str, str] = {
     "RAG_WORKER_PILOT_ENABLED": "false",
 }
 
+# Owner-approved production values that differ from the safety pin. A present
+# variable at its approved value is reported, not a problem. Absent ones are
+# still pinned to the code default, so ``apply`` never turns anything on.
+APPROVED_VALUES: dict[str, str] = {
+    # Read-path filter only (no writes or deletes); owner decision 2026-10-12.
+    "RETRIEVED_CONTENT_GUARD_ENABLED": "true",
+}
+
 # Left absent: each defaults to off in config.py, and absent is the safe value.
 DEFAULT_OFF: tuple[str, ...] = (
     "RAG_INGEST_CHECKSUM_SKIP_ENABLED",
@@ -88,6 +96,9 @@ def audit(env: dict[str, str]) -> tuple[list[str], list[str], list[str]]:
         parsed = _bool(env[key])
         if parsed is None:
             problems.append(f"{key}={env[key]!r} is not a boolean; startup would fail")
+        elif key in APPROVED_VALUES and parsed == (APPROVED_VALUES[key] == "true"):
+            lines.append(f"{key}={env[key]!r} (owner-approved)")
+            continue
         elif parsed != (safe == "true"):
             problems.append(f"{key}={env[key]!r} differs from safety value {safe}; owner decision")
         lines.append(f"{key}={env[key]!r}")
