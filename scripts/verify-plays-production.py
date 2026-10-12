@@ -1,21 +1,14 @@
 #!/usr/bin/env python3
-"""Authenticated non-destructive production acceptance for the complete Plays layer.
-
-Credentials, in order:
-  PLATFORM_LIVE_BEARER_TOKEN + PLATFORM_LIVE_ORG_ID  an owner-run session (manual runs)
-  PLAYS_ACCEPTANCE_AUTH=smoke-org                    a token minted in-process for the
-      isolated smoke-org service account, valid for 10 minutes and never stored.
-      Needs SUPABASE_URL and SUPABASE_JWT_SECRET; reads and writes nothing in Supabase.
-"""
+"""Authenticated non-destructive production acceptance for the complete Plays layer."""
 from __future__ import annotations
-import json, os, sys, time
+import json, os
 from datetime import datetime, timezone
 from pathlib import Path
 import httpx
 
 ROOT=Path(__file__).resolve().parent.parent
-SMOKE_TOKEN_TTL_SECONDS=600
 OUT=ROOT/"docs"/"delivery"/"plays-production-acceptance.json"
+GATE="plays_read_only_acceptance"
 BASE=os.environ.get("BACKEND_URL","https://gravitre-saas-backend-production.up.railway.app").rstrip("/")
 
 def req(name):
@@ -29,29 +22,8 @@ def get(c,path):
     except Exception: payload={"raw":r.text[:500]}
     return {"path":path,"status_code":r.status_code,"payload":payload}
 
-def smoke_org_session(now=None):
-    """Return (token, org_id) for the isolated smoke org, expiring in SMOKE_TOKEN_TTL_SECONDS."""
-    import jwt
-    sys.path.insert(0,str(ROOT/"scripts"))
-    from isolated_conversation_org import resolve_isolated_conversation_actor
-    org_id,user_id,email=resolve_isolated_conversation_actor(dict(os.environ),None,provision=False)
-    url=req("SUPABASE_URL").rstrip("/")
-    iat=int(time.time() if now is None else now)
-    token=jwt.encode({"sub":user_id,"email":email,"aud":"authenticated","iss":f"{url}/auth/v1","iat":iat,"exp":iat+SMOKE_TOKEN_TTL_SECONDS,"role":"authenticated"},req("SUPABASE_JWT_SECRET"),algorithm="HS256")
-    return token,org_id
-
-def session():
-    """Return (token, org_id, auth_mode); fails unless one credential source is configured."""
-    if str(os.environ.get("PLATFORM_LIVE_BEARER_TOKEN") or "").strip():
-        return req("PLATFORM_LIVE_BEARER_TOKEN"),req("PLATFORM_LIVE_ORG_ID"),"owner_session"
-    if os.environ.get("PLAYS_ACCEPTANCE_AUTH","").strip()=="smoke-org":
-        token,org_id=smoke_org_session()
-        return token,org_id,"smoke_org_short_lived"
-    raise SystemExit("missing credentials: set PLATFORM_LIVE_BEARER_TOKEN and PLATFORM_LIVE_ORG_ID, or PLAYS_ACCEPTANCE_AUTH=smoke-org")
-
 def main():
-    token,org_id,auth_mode=session()
-    headers={"Authorization":f"Bearer {token}","X-Org-Id":org_id,"X-Environment":os.environ.get("PLATFORM_LIVE_ENVIRONMENT","production")}
+    headers={"Authorization":f"Bearer {req('PLATFORM_LIVE_BEARER_TOKEN')}","X-Org-Id":req("PLATFORM_LIVE_ORG_ID"),"X-Environment":os.environ.get("PLATFORM_LIVE_ENVIRONMENT","production")}
     paths=["/health","/api/plays","/api/plays/impact"]
     for key in ("customer-rescue","revenue-recovery","marketing-performance"):
         paths += [f"/api/plays/{key}/readiness",f"/api/plays/{key}/installation",f"/api/plays/{key}/outcomes"]
@@ -74,8 +46,8 @@ def main():
         if readiness.get("act_within_policy_ready") is True:
             failures.append(f"{key}:act_within_policy_not_fail_closed")
     health=by.get("/health",{})
-    report={"at":datetime.now(timezone.utc).isoformat(),"backend_url":BASE,"auth_mode":auth_mode,"org_id":org_id,"git_sha":health.get("git_sha"),"mutation":False,"probes":probes,"failures":failures,"pass":not failures,"claim":"PASS — Plays production read-path, tenant context, governance posture and outcome truth contract are healthy" if not failures else "FAIL — Plays production acceptance failed"}
+    report={"at":datetime.now(timezone.utc).isoformat(),"backend_url":BASE,"gate":GATE,"execution_acceptance":"not_evaluated","auth_mode":os.environ.get("PLATFORM_LIVE_AUTH_MODE","owner_session"),"org_id":req("PLATFORM_LIVE_ORG_ID"),"git_sha":health.get("git_sha"),"mutation":False,"probes":probes,"failures":failures,"pass":not failures,"claim":"PASS — Plays production read-path, tenant context, governance posture and outcome truth contract are healthy (read-only; Plays execution not evaluated)" if not failures else "FAIL — Plays production acceptance failed"}
     OUT.parent.mkdir(parents=True,exist_ok=True); OUT.write_text(json.dumps(report,indent=2),encoding="utf-8")
-    print(json.dumps({k:report[k] for k in ("git_sha","auth_mode","mutation","failures","pass","claim")},indent=2))
+    print(json.dumps({k:report[k] for k in ("gate","auth_mode","git_sha","mutation","failures","pass","claim")},indent=2))
     return 0 if report["pass"] else 1
 if __name__=="__main__": raise SystemExit(main())
