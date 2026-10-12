@@ -10,35 +10,20 @@ dead-lettering. Skips when no PostgreSQL server binaries are installed.
 from __future__ import annotations
 
 import concurrent.futures
-import glob
 import json
-import os
-import shutil
 import subprocess
-import tempfile
-from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-MIGRATION = REPO_ROOT / "supabase" / "migrations" / "20261011220000_domain_event_outbox.sql"
+from tests.db.pg_harness import MIGRATIONS, PG_BIN, Pg, pg_cluster, requires_pg
+
+MIGRATION = MIGRATIONS / "20261011220000_domain_event_outbox.sql"
 
 ORG = "11111111-1111-4111-8111-111111111111"
 USER = "22222222-2222-4222-8222-222222222222"
 
 
-def _pg_bin() -> Path | None:
-    env = os.environ.get("GRAVITRE_PG_BIN")
-    candidates = [env] if env else []
-    candidates += sorted(glob.glob("/usr/lib/postgresql/*/bin"), reverse=True)
-    for c in candidates:
-        if c and (Path(c) / "initdb").exists() and (Path(c) / "pg_ctl").exists():
-            return Path(c)
-    return None
-
-
-PG_BIN = _pg_bin()
-pytestmark = pytest.mark.skipif(PG_BIN is None, reason="PostgreSQL server binaries not installed")
+pytestmark = requires_pg
 
 
 BOOTSTRAP_SQL = f"""
@@ -77,76 +62,10 @@ INSERT INTO auth.users VALUES ('{USER}');
 """
 
 
-class _Pg:
-    def __init__(self, root: Path, run_as: list[str]) -> None:
-        self.root = root
-        self.data = root / "data"
-        self.sock = root / "sock"
-        self.run_as = run_as
-        self.port = "54329"
-
-    def _cmd(self, binary: str, *args: str) -> list[str]:
-        return [*self.run_as, str(PG_BIN / binary), *args]
-
-    def start(self) -> None:
-        self.sock.mkdir()
-        if self.run_as:
-            shutil.chown(self.sock, "postgres", "postgres")
-        subprocess.run(
-            self._cmd("initdb", "-D", str(self.data), "-A", "trust", "-U", "postgres", "--no-sync"),
-            check=True,
-            capture_output=True,
-        )
-        opts = f"-k {self.sock} -p {self.port} -c listen_addresses='' -c fsync=off"
-        subprocess.run(
-            self._cmd("pg_ctl", "-D", str(self.data), "-o", opts, "-w", "-l", str(self.root / "log"), "start"),
-            check=True,
-            capture_output=True,
-        )
-
-    def stop(self) -> None:
-        subprocess.run(
-            self._cmd("pg_ctl", "-D", str(self.data), "-m", "immediate", "stop"),
-            capture_output=True,
-            check=False,
-        )
-
-    def psql(self, sql: str, *, check: bool = True) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            [
-                str(PG_BIN / "psql"),
-                "-h", str(self.sock), "-p", self.port, "-U", "postgres", "-d", "postgres",
-                "-X", "-q", "-At", "-v", "ON_ERROR_STOP=1",
-            ],
-            input=sql,
-            text=True,
-            capture_output=True,
-            check=check,
-        )
-
-    def value(self, sql: str) -> str:
-        return self.psql(sql).stdout.strip()
-
-
 @pytest.fixture(scope="module")
 def pg():
-    root = Path(tempfile.mkdtemp(prefix="gravitre-pg-"))
-    run_as: list[str] = []
-    if os.geteuid() == 0:
-        if shutil.which("runuser") is None:
-            pytest.skip("running as root without runuser")
-        shutil.chown(root, "postgres", "postgres")
-        os.chmod(root, 0o777)
-        run_as = ["runuser", "-u", "postgres", "--"]
-    server = _Pg(root, run_as)
-    server.start()
-    try:
-        server.psql(BOOTSTRAP_SQL)
-        server.psql(MIGRATION.read_text())
+    with pg_cluster(BOOTSTRAP_SQL, MIGRATION.read_text()) as server:
         yield server
-    finally:
-        server.stop()
-        shutil.rmtree(root, ignore_errors=True)
 
 
 @pytest.fixture(autouse=True)
@@ -412,7 +331,7 @@ def test_lease_state_constraint_rejects_inconsistent_rows(pg):
 class _PsqlRpcClient:
     """Minimal supabase-py stand-in: ``rpc(name, params).execute()`` over psql."""
 
-    def __init__(self, pg: _Pg) -> None:
+    def __init__(self, pg: Pg) -> None:
         self._pg = pg
 
     @staticmethod

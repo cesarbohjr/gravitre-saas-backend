@@ -1444,6 +1444,17 @@ async def _delete_connector_impl(
     )
     if not updated.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
+    # Ask the provider to revoke the grant while we still hold the token (off by default).
+    from app.services.source_lifecycle import revoke_on_disconnect
+
+    revoke = revoke_on_disconnect(
+        client,
+        settings,
+        org_id=org_id,
+        connector_id=str(connector_id),
+        vendor=str(row.get("vendor") or row.get("type") or ""),
+        config=config,
+    )
     # Soft-delete must drop OAuth tokens; otherwise "Add connector" resurrects the row
     # and auth health still reports connected even if HubSpot authorize fails.
     try:
@@ -1459,7 +1470,7 @@ async def _delete_connector_impl(
         action="connector.deleted",
         resource_type="connector",
         resource_id=str(connector_id),
-        metadata={"environment": row.get("environment")},
+        metadata={"environment": row.get("environment"), "provider_revoke": revoke.as_dict()},
     )
     return {"success": True}
 

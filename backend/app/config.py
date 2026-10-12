@@ -539,6 +539,13 @@ class Settings(BaseSettings):
     domain_event_relay_batch_size: int = 50
     domain_event_relay_lease_seconds: int = 120
     domain_event_retention_days: int = 14
+    # Phase 2B source lifecycle. The purge handler runs when the relay is on; it only
+    # plans (writes a dry-run receipt) until SOURCE_PURGE_DRY_RUN=false.
+    source_purge_dry_run: bool = True
+    # Call the provider's revoke endpoint (Google, HubSpot, Slack, Salesforce) on disconnect.
+    connector_provider_revoke_on_disconnect: bool = False
+    # Remove indexed documents a full-sweep sync no longer finds upstream (Notion).
+    source_deletion_propagation_enabled: bool = False
     # Shared secret for /api/watchers/agent/signal HMAC or X-Watcher-Secret header.
     watcher_agent_webhook_secret: str | None = None
     # Memory promotion evaluation (v4). 0 disables; default 8 hours.
