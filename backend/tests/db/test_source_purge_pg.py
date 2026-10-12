@@ -16,6 +16,7 @@ pytestmark = requires_pg
 
 OUTBOX = MIGRATIONS / "20261011220000_domain_event_outbox.sql"
 PURGE = MIGRATIONS / "20261012010000_source_lifecycle_purge.sql"
+PROPOSALS = MIGRATIONS / "20261012030000_entity_merge_proposals.sql"
 
 ORG = "11111111-1111-4111-8111-111111111111"
 OTHER_ORG = "33333333-3333-4333-8333-333333333333"
@@ -35,6 +36,8 @@ CREATE ROLE service_role NOLOGIN BYPASSRLS;
 CREATE SCHEMA auth;
 CREATE TABLE auth.users (id uuid PRIMARY KEY);
 CREATE TABLE public.organizations (id uuid PRIMARY KEY);
+CREATE TABLE public.organization_members (org_id uuid, user_id uuid);
+CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT NULL::uuid $$;
 CREATE TABLE public.workflow_runs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
@@ -112,12 +115,13 @@ INSERT INTO public.organizations VALUES ('{ORG}'), ('{OTHER_ORG}');
 
 @pytest.fixture(scope="module")
 def pg():
-    with pg_cluster(BOOTSTRAP_SQL, OUTBOX.read_text(), PURGE.read_text()) as server:
+    with pg_cluster(BOOTSTRAP_SQL, OUTBOX.read_text(), PURGE.read_text(), PROPOSALS.read_text()) as server:
         yield server
 
 
 SEED_SQL = f"""
 DELETE FROM public.org_entity_resolution_records;
+DELETE FROM public.org_entity_merge_proposals;
 DELETE FROM public.org_business_entities;
 DELETE FROM public.knowledge_sync_jobs;
 DELETE FROM public.agent_knowledge_references;
@@ -161,6 +165,10 @@ INSERT INTO public.org_business_entity_bindings (org_id, entity_id, system, reso
   ('{ORG}', 'cccccccc-0000-4000-8000-000000000002', 'hubspot', 'company', 'hs-2'),
   ('{ORG}', 'cccccccc-0000-4000-8000-000000000002', 'zendesk', 'organization', 'zd-2'),
   ('{OTHER_ORG}', 'cccccccc-0000-4000-8000-000000000002', 'hubspot', 'company', 'hs-x');
+INSERT INTO public.org_entity_merge_proposals (org_id, kind, system, resource_type, resource_id, reason, status) VALUES
+  ('{ORG}', 'company', 'hubspot', 'company', 'hs-9', 'multiple_exact_matches', 'proposed'),
+  ('{ORG}', 'company', 'hubspot', 'company', 'hs-8', 'multiple_exact_matches', 'rejected'),
+  ('{ORG}', 'company', 'zendesk', 'organization', 'zd-9', 'multiple_exact_matches', 'proposed');
 INSERT INTO public.org_entity_resolution_records (org_id, alias_normalized, integration) VALUES
   ('{ORG}', 'acme', 'hubspot'), ('{ORG}', 'runbook', 'notion'), ('{OTHER_ORG}', 'acme', 'hubspot');
 """
@@ -236,6 +244,10 @@ def test_purge_removes_derived_data_and_keeps_everything_else(pg):
     assert pg.value(
         "SELECT string_agg(integration || ':' || org_id, ',' ORDER BY integration) FROM public.org_entity_resolution_records;"
     ) == f"hubspot:{OTHER_ORG},notion:{ORG}"
+    # Open proposals about the vendor go; decided ones and other vendors stay.
+    assert pg.value(
+        "SELECT string_agg(resource_id, ',' ORDER BY resource_id) FROM public.org_entity_merge_proposals;"
+    ) == "hs-8,zd-9"
 
 
 def test_second_delivery_removes_nothing_and_keeps_first_receipt(pg):

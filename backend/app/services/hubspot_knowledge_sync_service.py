@@ -255,6 +255,8 @@ def run_hubspot_knowledge_sync(
             job_ids.append(job_id)
             records_synced += 1
             synced_for_kind += 1
+            if kind == "email":
+                _queue_customer_message(client, settings, org_id=org_id, connector_id=connector_id, item=item)
             if modified_ms is not None:
                 if cursor_ms is None or modified_ms > cursor_ms:
                     cursor_ms = modified_ms
@@ -268,6 +270,8 @@ def run_hubspot_knowledge_sync(
             logger.warning("hubspot_knowledge_sync_cursor_stalled org_id=%s kind=%s since_ms=%s", org_id, kind, since_ms)
         if cursor_ms is not None:
             cursors[kind] = {"since_ms": cursor_ms, "ids_at_since": sorted(ids_at_cursor)}
+
+    entities = _write_company_entities(client, settings, org_id=org_id, token=token)
 
     # ``hubspot_last_synced_at`` is the run time used for scheduling; the data cursor lives
     # per object type in ``hubspot_sync_cursors``.
@@ -292,4 +296,49 @@ def run_hubspot_knowledge_sync(
         "last_synced_at": config["hubspot_last_synced_at"],
         "cursors": cursors,
         "has_more": any(has_more.values()),
+        "entities": entities,
     }
+
+
+def _queue_customer_message(
+    client: Any, settings: Settings, *, org_id: str, connector_id: str, item: dict[str, Any]
+) -> None:
+    """Hand an inbound customer email to the observation consumer (Phase 3; off by default)."""
+    from app.services.entity_observations import observations_enabled
+
+    props = item.get("properties") or {}
+    if not observations_enabled(settings) or props.get("hs_email_direction") != "INCOMING_EMAIL":
+        return
+    from app.services.customer_observation_feed import EVENT_CUSTOMER_MESSAGE, enqueue_customer_message
+
+    enqueue_customer_message(
+        client,
+        org_id=org_id,
+        system="hubspot",
+        record_type="email",
+        record_id=str(item.get("id") or ""),
+        connector_id=connector_id,
+        event_type=EVENT_CUSTOMER_MESSAGE,
+    )
+
+
+def _write_company_entities(client: Any, settings: Settings, *, org_id: str, token: str) -> dict[str, Any]:
+    """File recent HubSpot companies into the entity store (Phase 2E; off by default)."""
+    from app.services.entity_writer import (
+        hubspot_company_records,
+        write_provider_records,
+        writer_enabled,
+    )
+
+    if not writer_enabled(settings):
+        return {"skipped": "disabled"}
+    try:
+        from app.connectors.hubspot import list_companies
+
+        payload = list_companies(token, properties=["name", "domain"], limit=100)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("hubspot_entity_feed_failed org_id=%s error=%s", org_id, exc)
+        return {"error": type(exc).__name__}
+    return write_provider_records(
+        client, settings, org_id=org_id, records=hubspot_company_records(payload)
+    ).as_dict()

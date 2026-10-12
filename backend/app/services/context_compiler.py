@@ -10,6 +10,9 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
+# Budget for account cards (Phase 4); past it the turn goes on without them.
+ACCOUNT_CARD_TIMEOUT_S = 0.8
+
 PrepareTurnFn = Callable[[dict[str, Any]], Awaitable[Any]]
 
 
@@ -244,6 +247,7 @@ async def compile_unified_reasoning_context(
     agent: dict[str, Any] | None = None,
     surface: str | None = None,
     workspace_focus: dict[str, Any] | None = None,
+    spoken_mode: bool = False,
 ) -> CompiledTurnContext:
     """Assemble unified-LIVE reasoning context through one canonical contract (E4).
 
@@ -460,6 +464,35 @@ async def compile_unified_reasoning_context(
         reason = "registry:rag_off" if not rag_enabled else "missing_client_or_org"
         knowledge_meta = {"skipped": reason}
         _record("knowledge_fabric", "EXCLUDE", reason)
+
+    from app.services.entity_context_card import (
+        build_entity_context_block,
+        cards_enabled,
+    )
+
+    if cards_enabled(active) and not remind_me and client is not None and org_id:
+        try:
+            # Account cards are extra context: a slow read must not hold up the turn.
+            card_block, card_meta = await asyncio.wait_for(
+                asyncio.to_thread(
+                    build_entity_context_block,
+                    client,
+                    org_id,
+                    message or "",
+                    spoken=bool(spoken_mode),
+                    settings=active,
+                ),
+                timeout=ACCOUNT_CARD_TIMEOUT_S,
+            )
+        except TimeoutError:
+            card_block, card_meta = "", {"skipped": "timeout"}
+        if card_block:
+            _add_part("account_context", card_block)
+            _record("account_context", "INCLUDE", f"accounts:{len(card_meta.get('accounts') or [])}")
+        else:
+            _record("account_context", "EXCLUDE", str(card_meta.get("skipped") or "empty"))
+    else:
+        _record("account_context", "EXCLUDE", "disabled_or_remind_me")
 
     if cognitive_context is not None and not remind_me:
         try:

@@ -255,6 +255,23 @@ async def _retrieve_org_rag(
         top_k=4,
         agent_id=str((agent or {}).get("id") or "") or None,
     )
+    from app.services.ingested_content_guard import (
+        RETRIEVED_DATA_NOTICE,
+        guard_enabled,
+        guard_retrieved_chunks,
+    )
+
+    guarded = guard_enabled(settings)
+    if guarded:
+        chunks, excluded = guard_retrieved_chunks(list(chunks))
+        if excluded:
+            meta["org_rag_injection_excluded"] = len(excluded)
+            logger.warning(
+                "org_rag_injection_excluded org_id=%s count=%s reasons=%s",
+                org_id,
+                len(excluded),
+                sorted(set(excluded)),
+            )
     meta["org_rag_chunk_count"] = len(chunks)
     meta["org_rag_metrics"] = rag_metrics
     for chunk in chunks[:4]:
@@ -277,9 +294,10 @@ async def _retrieve_org_rag(
     for chunk in chunks[:4]:
         source = chunk.source or "org document"
         lines.append(f"- [{source}]\n{(chunk.content or '').strip()}")
-    section = (
-        "ORG PRIVATE KNOWLEDGE (customer RAG; org-scoped only):\n" + "\n\n".join(lines)
-    )
+    heading = "ORG PRIVATE KNOWLEDGE (customer RAG; org-scoped only):\n"
+    if guarded:
+        heading += RETRIEVED_DATA_NOTICE + "\n"
+    section = heading + "\n\n".join(lines)
     return section, meta, rows
 
 

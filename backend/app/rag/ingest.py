@@ -471,6 +471,8 @@ def replace_chunks_and_embeddings(
             for i in range(len(chunks))
         ]
 
+    from app.services.ingested_content_guard import scan_ingested_text
+
     rows = []
     for i, content in enumerate(chunks):
         row = {
@@ -483,6 +485,10 @@ def replace_chunks_and_embeddings(
         }
         if enrich:
             row["context_prefix"] = contexts[i]
+        injection_flag = scan_ingested_text(content)
+        # Kept (the document is the customer's), but marked so retrieval can exclude it.
+        # Every row carries the key: a bulk insert needs the same keys in each object.
+        row["metadata"] = {"injection_flag": injection_flag} if injection_flag else None
         rows.append(row)
     if not rows:
         return 0

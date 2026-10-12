@@ -193,6 +193,11 @@ BEGIN
         DELETE FROM public.org_entity_resolution_records
          WHERE org_id = p_org_id AND lower(integration) = v_vendor;
       END IF;
+      -- Open merge proposals about that vendor's records (table added by 20261012030000).
+      IF to_regclass('public.org_entity_merge_proposals') IS NOT NULL THEN
+        DELETE FROM public.org_entity_merge_proposals
+         WHERE org_id = p_org_id AND lower(system) = v_vendor AND status = 'proposed';
+      END IF;
     END IF;
   END IF;
 

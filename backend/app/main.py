@@ -22,6 +22,7 @@ from app.operator_module import router as operator_router
 from app.operators import router as operators_router
 from app.routers import (
     agent_memories,
+    entity_observations,
     agent_improvements,
     agent_knowledge_assignments,
     knowledge_fabric,
@@ -317,6 +318,14 @@ async def lifespan(app: FastAPI):
         start_domain_event_relay_scheduler,
         stop_domain_event_relay_scheduler,
     )
+    from app.schedulers.knowledge_retention_scheduler import (
+        start_knowledge_retention_scheduler,
+        stop_knowledge_retention_scheduler,
+    )
+    from app.schedulers.rag_ingest_pilot_scheduler import (
+        start_rag_ingest_pilot_scheduler,
+        stop_rag_ingest_pilot_scheduler,
+    )
     from app.schedulers.ops_notifications_scheduler import (
         start_ops_notifications_scheduler,
         stop_ops_notifications_scheduler,
@@ -386,6 +395,10 @@ async def lifespan(app: FastAPI):
     app.state.ops_notifications_task = start_ops_notifications_scheduler()
     # Phase 2A outbox relay; returns None unless DOMAIN_EVENT_RELAY_ENABLED=true.
     app.state.domain_event_relay_task = start_domain_event_relay_scheduler()
+    # Phase 2C retention prune; returns None unless KNOWLEDGE_RETENTION_PRUNE_ENABLED=true.
+    app.state.knowledge_retention_task = start_knowledge_retention_scheduler()
+    # Phase 2D indexing pilot; returns None unless RAG_WORKER_PILOT_ENABLED=true with org ids.
+    app.state.rag_ingest_pilot_task = start_rag_ingest_pilot_scheduler()
     app.state.memory_expiration_task = start_memory_expiration_scheduler()
     app.state.cache_warming_task = start_cache_warming_scheduler()
 
@@ -460,6 +473,8 @@ async def lifespan(app: FastAPI):
         )
         await stop_ops_notifications_scheduler(getattr(app.state, "ops_notifications_task", None))
         await stop_domain_event_relay_scheduler(getattr(app.state, "domain_event_relay_task", None))
+        await stop_knowledge_retention_scheduler(getattr(app.state, "knowledge_retention_task", None))
+        await stop_rag_ingest_pilot_scheduler(getattr(app.state, "rag_ingest_pilot_task", None))
         await stop_memory_scheduler(getattr(app.state, "memory_promotion_task", None))
         schema_check_task = getattr(app.state, "schema_check_task", None)
         if schema_check_task is not None and not schema_check_task.done():
@@ -714,6 +729,7 @@ app.include_router(entitlements.router)
 app.include_router(extension.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
+app.include_router(entity_observations.router)
 app.include_router(enterprise.router)
 app.include_router(platform.router)
 app.include_router(federation.router)

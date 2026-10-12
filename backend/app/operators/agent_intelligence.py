@@ -4250,6 +4250,7 @@ class AgentIntelligence:
                 agent=early_agent,
                 surface=_surface,
                 workspace_focus=resolved_workspace_focus,
+                spoken_mode=bool(spoken_mode),
             )
             _boot_cognitive_trace(task_state if isinstance(task_state, dict) else None)
             if _cognitive_trace_builder is not None:
