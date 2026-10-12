@@ -201,7 +201,9 @@ def _propose(
 
 
 def writer_enabled(settings: Any) -> bool:
-    return getattr(settings, "entity_writer_enabled", False) is True
+    from app.services.ingestion_interlock import ingestion_flag_on
+
+    return ingestion_flag_on(settings, "entity_writer_enabled")
 
 
 def write_provider_records(

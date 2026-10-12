@@ -407,6 +407,14 @@ async def lifespan(app: FastAPI):
     # Phase 2C retention prune; returns None unless KNOWLEDGE_RETENTION_PRUNE_ENABLED=true.
     app.state.knowledge_retention_task = start_knowledge_retention_scheduler()
     app.state.prediction_labeling_task = start_prediction_labeling_scheduler()
+    # Customer ingestion stays inert until source lifecycle is enforced; log what is held back.
+    try:
+        from app.config import get_settings as _ingestion_settings
+        from app.services.ingestion_interlock import log_ingestion_interlock
+
+        log_ingestion_interlock(_ingestion_settings())
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("customer_ingestion_interlock_check_failed error=%s", type(exc).__name__)
     app.state.entity_behavior_signals_task = start_entity_behavior_signals_scheduler()
     # Phase 2D indexing pilot; returns None unless RAG_WORKER_PILOT_ENABLED=true with org ids.
     app.state.rag_ingest_pilot_task = start_rag_ingest_pilot_scheduler()

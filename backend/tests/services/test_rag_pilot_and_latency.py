@@ -9,6 +9,9 @@ import pytest
 from app.rag import worker
 from app.schedulers import rag_ingest_pilot_scheduler as pilot
 from app.services import latency_baseline as lb
+from app.services.ingestion_interlock import LIFECYCLE_PREREQUISITES
+
+LIFECYCLE_ON = dict(LIFECYCLE_PREREQUISITES)
 
 ORG = "11111111-1111-4111-8111-111111111111"
 ORG2 = "22222222-2222-4222-8222-222222222222"
@@ -26,7 +29,7 @@ def test_pilot_org_ids_parse_only_uuids():
 def test_pilot_off_by_default_and_without_orgs(monkeypatch):
     monkeypatch.setattr(pilot, "get_settings", lambda: SimpleNamespace())
     assert pilot.start_rag_ingest_pilot_scheduler() is None
-    monkeypatch.setattr(pilot, "get_settings", lambda: SimpleNamespace(rag_worker_pilot_enabled=True))
+    monkeypatch.setattr(pilot, "get_settings", lambda: SimpleNamespace(rag_worker_pilot_enabled=True, **LIFECYCLE_ON))
     assert pilot.start_rag_ingest_pilot_scheduler() is None
 
 

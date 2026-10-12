@@ -26,6 +26,7 @@ from supabase import create_client
 from app.config import Settings, get_settings
 from app.core.db import shared_service_client
 from app.core.logging import get_logger
+from app.services.ingestion_interlock import ingestion_flag_on
 
 logger = get_logger(__name__)
 
@@ -120,7 +121,7 @@ async def _loop(settings: Settings, interval: int) -> None:
 def start_rag_ingest_pilot_scheduler() -> asyncio.Task | None:
     try:
         settings = get_settings()
-        enabled = getattr(settings, "rag_worker_pilot_enabled", False) is True
+        enabled = ingestion_flag_on(settings, "rag_worker_pilot_enabled")
         interval = int(getattr(settings, "rag_worker_pilot_interval_seconds", 30) or 0)
         orgs = pilot_org_ids(settings)
     except Exception as exc:  # noqa: BLE001

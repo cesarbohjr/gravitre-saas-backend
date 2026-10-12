@@ -8,10 +8,13 @@ from typing import Any
 import pytest
 
 from app.services import entity_writer as ew
+from app.services.ingestion_interlock import LIFECYCLE_PREREQUISITES
 from app.services.source_governance import SETTINGS_KEY
 
+LIFECYCLE_ON = dict(LIFECYCLE_PREREQUISITES)
+
 ORG = "11111111-1111-4111-8111-111111111111"
-ON = SimpleNamespace(entity_writer_enabled=True)
+ON = SimpleNamespace(entity_writer_enabled=True, **LIFECYCLE_ON)
 
 
 class _Q:
