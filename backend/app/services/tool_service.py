@@ -4951,6 +4951,19 @@ def list_registered_actions() -> list[str]:
     return sorted(set(_TOOL_REGISTRY.keys()) | set(list_partner_actions()))
 
 
+def registered_actions_fingerprint() -> tuple[object, int, int]:
+    """Cheap identity of the invoke_tool action set, for caches derived from it.
+
+    Returns ``(registry_dict, len(registry), len(partner_actions))``. Callers compare the
+    first element by identity (``is``) so a swapped-in registry dict (e.g. a test's
+    ``patch("...tool_service._TOOL_REGISTRY", {...})``) or a later partner registration
+    invalidates anything built from :func:`list_registered_actions`.
+    """
+    from app.connectors.sdk.registry import list_partner_actions
+
+    return (_TOOL_REGISTRY, len(_TOOL_REGISTRY), len(list_partner_actions()))
+
+
 def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = None) -> NormalizedResult:
     """Invoke a registered connector tool with audit, rate limits, retries, and agent permissions."""
     from dataclasses import replace

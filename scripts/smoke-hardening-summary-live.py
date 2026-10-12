@@ -61,6 +61,33 @@ def artifact_ok(data: dict[str, Any]) -> bool:
     return False
 
 
+PROBE_OUTCOME_PREFIX = "PROBE_OUTCOME_"
+
+
+def probe_outcomes(env: dict[str, str]) -> dict[str, str]:
+    """Step outcomes the workflow passes in as ``PROBE_OUTCOME_<NAME>=<outcome>``."""
+    return {
+        key[len(PROBE_OUTCOME_PREFIX):]: str(value).strip().lower()
+        for key, value in env.items()
+        if key.startswith(PROBE_OUTCOME_PREFIX)
+    }
+
+
+def failed_probes(outcomes: dict[str, str]) -> list[str]:
+    return sorted(name for name, outcome in outcomes.items() if outcome != "success")
+
+
+def evaluate(results: dict[str, dict[str, Any]], outcomes: dict[str, str]) -> tuple[bool, list[bool], list[str]]:
+    """PASS only when every artifact is ok AND every reported probe step succeeded.
+
+    Artifacts alone are not enough: a probe that crashes before writing its report
+    would otherwise leave an older PASS artifact to be summarized.
+    """
+    oks = [artifact_ok(data) for data in results.values()]
+    failed = failed_probes(outcomes)
+    return bool(oks) and all(oks) and not failed, oks, failed
+
+
 def main() -> int:
     env = load_env()
     from supabase import create_client
@@ -68,8 +95,8 @@ def main() -> int:
     from qa_signal_audit import write_platform_signal
 
     results = {p.name: _read(p) for p in ARTIFACTS}
-    oks = [artifact_ok(data) for data in results.values()]
-    passed = all(oks) and bool(oks)
+    outcomes = probe_outcomes(env)
+    passed, oks, failed = evaluate(results, outcomes)
 
     report = {
         "checked_at": datetime.now(timezone.utc).isoformat(),
@@ -86,6 +113,8 @@ def main() -> int:
             }
             for name, data in results.items()
         },
+        "probe_outcomes": outcomes,
+        "failed_probes": failed,
         "verdict": "PASS" if passed else "PARTIAL",
     }
     out = ROOT / "docs" / "delivery" / "smoke-hardening-summary-latest.json"
@@ -100,7 +129,12 @@ def main() -> int:
         metadata=report,
         resource_id="hardening-smoke",
     )
-    print(json.dumps({"verdict": report["verdict"], "out": str(out), "oks": oks}, indent=2))
+    print(
+        json.dumps(
+            {"verdict": report["verdict"], "out": str(out), "oks": oks, "failed_probes": failed},
+            indent=2,
+        )
+    )
     return 0 if passed else 1
 
 

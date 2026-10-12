@@ -42,6 +42,7 @@ __all__ = [
     "SA_EMAIL",
     "assert_conversation_create_allowed",
     "ensure_isolated_conversation_test_org",
+    "ensure_isolated_smoke_plan",
     "isolated_conversation_test_org_id",
     "mark_smoke_run",
     "resolve_isolated_conversation_actor",
@@ -133,6 +134,46 @@ def ensure_isolated_conversation_test_org(client: Any) -> tuple[str, str]:
     os.environ.setdefault("ISOLATED_CONVERSATION_TEST_ORG_ID", org_id)
     os.environ.setdefault("ISOLATED_CONVERSATION_TEST_USER_ID", user_id)
     return org_id, user_id
+
+
+SMOKE_PLAN_CODE = "control"
+
+
+def ensure_isolated_smoke_plan(client: Any, org_id: str, *, plan_code: str = SMOKE_PLAN_CODE) -> str:
+    """Give the isolated smoke org the plan its smokes exercise (Meson needs Control).
+
+    Test fixture only: refuses any org that is not the isolated smoke org, and any
+    org_billing row tied to a Stripe subscription. Never touches billing for real orgs
+    and does not loosen the tier gate itself. Returns the plan code on the row.
+    """
+    if org_id.lower() != isolated_conversation_test_org_id().lower():
+        raise ConversationWriteBlockedError(f"smoke plan fixture refused for non-isolated org {org_id}")
+    org = client.table("organizations").select("settings").eq("id", org_id).limit(1).execute()
+    settings = dict(((org.data or [{}])[0] or {}).get("settings") or {})
+    if not settings.get("isolated_conversation_test_org"):
+        raise ConversationWriteBlockedError(f"org {org_id} is not marked as the isolated smoke org")
+    rows = (
+        client.table("org_billing")
+        .select("plan_code,billing_status,stripe_subscription_id")
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if rows and rows[0].get("stripe_subscription_id"):
+        raise ConversationWriteBlockedError(f"org {org_id} has a Stripe subscription; not a fixture")
+    if rows and rows[0].get("plan_code") == plan_code and rows[0].get("billing_status") == "active":
+        return plan_code
+    if rows:
+        client.table("org_billing").update({"plan_code": plan_code, "billing_status": "active"}).eq(
+            "org_id", org_id
+        ).execute()
+    else:
+        client.table("org_billing").insert(
+            {"org_id": org_id, "plan_code": plan_code, "billing_status": "active"}
+        ).execute()
+    return plan_code
 
 
 def resolve_isolated_conversation_actor(

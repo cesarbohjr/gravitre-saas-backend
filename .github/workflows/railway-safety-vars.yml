@@ -1,0 +1,86 @@
+# Audit (default) or pin the Gravitre 3.0 Plus safety variables on Railway.
+#
+# audit: read-only. Lists the 21 3.0 Plus settings, which are absent, and
+#        whether required secrets are listed (values are never printed).
+# apply: adds the safety pins that are absent (relay off, purge dry-run,
+#        revoke off, deletion propagation off, retention prune off, retrieval
+#        guard off, RAG pilot off) with --skip-deploys. Every pin equals the
+#        code default, so the running service is unchanged. A variable that is
+#        present with another value is reported and left alone. Nothing here
+#        sets a flag to true.
+name: Railway safety variables
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: audit (read-only) or apply (add absent safety pins)
+        type: choice
+        options: [audit, apply]
+        default: audit
+      railway_environment:
+        description: Railway environment name
+        required: false
+        default: production
+
+concurrency:
+  group: railway-safety-vars
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  safety-vars:
+    name: Railway safety variables (${{ inputs.mode }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      ENV_NAME: ${{ inputs.railway_environment }}
+      SVC: gravitre-saas-backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli@4.65.0
+
+      - name: Audit current variables
+        id: audit
+        run: |
+          set -euo pipefail
+          railway variables --service "$SVC" --environment "$ENV_NAME" --json > "$RUNNER_TEMP/vars.json"
+          set +e
+          python3 scripts/railway_safety_vars.py "$RUNNER_TEMP/vars.json" --plan-out "$RUNNER_TEMP/pins.txt" | tee "$RUNNER_TEMP/audit.txt"
+          rc=${PIPESTATUS[0]}
+          set -e
+          { echo '### Railway safety variables (before)'; echo '```'; cat "$RUNNER_TEMP/audit.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit "$rc"
+
+      - name: Add absent safety pins without redeploying
+        if: inputs.mode == 'apply'
+        run: |
+          set -euo pipefail
+          if [ ! -s "$RUNNER_TEMP/pins.txt" ]; then
+            echo "Every safety pin is already present."
+            exit 0
+          fi
+          args=()
+          while IFS= read -r pin; do
+            case "$pin" in
+              *=true) [ "${pin%%=*}" = "SOURCE_PURGE_DRY_RUN" ] || { echo "refusing to set $pin"; exit 1; } ;;
+            esac
+            args+=(--set "$pin")
+          done < "$RUNNER_TEMP/pins.txt"
+          railway variables --service "$SVC" --environment "$ENV_NAME" --skip-deploys "${args[@]}"
+
+      - name: Verify
+        if: inputs.mode == 'apply'
+        run: |
+          set -euo pipefail
+          railway variables --service "$SVC" --environment "$ENV_NAME" --json > "$RUNNER_TEMP/vars-after.json"
+          python3 scripts/railway_safety_vars.py "$RUNNER_TEMP/vars-after.json" --plan-out "$RUNNER_TEMP/pins-after.txt" | tee "$RUNNER_TEMP/after.txt"
+          { echo '### Railway safety variables (after)'; echo '```'; cat "$RUNNER_TEMP/after.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          if [ -s "$RUNNER_TEMP/pins-after.txt" ]; then
+            echo "Pins still absent after apply:"; cat "$RUNNER_TEMP/pins-after.txt"; exit 1
+          fi

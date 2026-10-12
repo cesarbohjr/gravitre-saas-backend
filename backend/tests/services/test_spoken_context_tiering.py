@@ -10,7 +10,6 @@ together.
 from __future__ import annotations
 
 import asyncio
-import time
 from contextlib import ExitStack
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -87,9 +86,12 @@ async def _prepare(orchestrator: IntelligenceOrchestrator, *, spoken_tier: str |
 @pytest.mark.asyncio
 @pytest.mark.parametrize("tier", ["light", "medium"])
 async def test_spoken_light_and_medium_skip_advisor_brief_and_explainability(tier: str) -> None:
-    turn, advisor, explain = await _prepare(
-        IntelligenceOrchestrator(), spoken_tier=tier, retrieve=AsyncMock(return_value=_retrieval())
-    )
+    # A generous budget: this test is about what is skipped, so a slow runner
+    # (#367) must not drop retrieval through the real 700 ms budget.
+    with patch("app.services.intelligence_orchestrator.spoken_medium_retrieval_budget_s", return_value=30.0):
+        turn, advisor, explain = await _prepare(
+            IntelligenceOrchestrator(), spoken_tier=tier, retrieve=AsyncMock(return_value=_retrieval())
+        )
     advisor.assert_not_awaited()
     explain.assert_not_awaited()
     assert turn.advisor_brief is None
@@ -113,20 +115,27 @@ async def test_deep_and_text_turns_keep_the_full_context(tier: str | None) -> No
 
 @pytest.mark.asyncio
 async def test_spoken_medium_drops_retrieval_that_misses_the_budget() -> None:
-    async def slow_retrieve(**_kwargs):
-        await asyncio.sleep(5)
-        return _retrieval()
+    # Retrieval never finishes on its own, so the turn completing at all proves
+    # the budget cut it off; no wall-clock bound that a loaded runner can miss
+    # (#367). The outer timeout only guards against a hang.
+    cancelled = asyncio.Event()
+
+    async def never_returns(**_kwargs):
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            cancelled.set()
+            raise
 
     orchestrator = IntelligenceOrchestrator()
     with patch(
         "app.services.intelligence_orchestrator.spoken_medium_retrieval_budget_s", return_value=0.05
     ):
-        started = time.perf_counter()
-        turn, _advisor, _explain = await _prepare(
-            orchestrator, spoken_tier="medium", retrieve=AsyncMock(side_effect=slow_retrieve)
+        turn, _advisor, _explain = await asyncio.wait_for(
+            _prepare(orchestrator, spoken_tier="medium", retrieve=AsyncMock(side_effect=never_returns)),
+            timeout=60,
         )
-        elapsed = time.perf_counter() - started
-    assert elapsed < 2.0
+    await asyncio.wait_for(cancelled.wait(), timeout=10)
     assert turn.retrieval.rag_sources == []
     assert "doc" not in turn.ranked_knowledge_block
 
@@ -164,7 +173,7 @@ async def test_gather_within_budget_returns_defaults_for_late_reads_and_cancels_
     results, late = await gather_within_budget([fast(), slow()], ["d0", "d1"], budget_s=0.05)
     assert results == ["fast", "d1"]
     assert late == [1]
-    await asyncio.wait_for(cancelled.wait(), timeout=1)
+    await asyncio.wait_for(cancelled.wait(), timeout=10)
 
 
 @pytest.mark.asyncio

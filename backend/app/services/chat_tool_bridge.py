@@ -1,12 +1,14 @@
 """Dynamic chat ToolRegistry specs from the connector execution matrix."""
 from __future__ import annotations
 
-from functools import lru_cache
 from typing import Any
 
 from app.connectors.action_catalog.action_parameters import parameters_for_action
 from app.connectors.action_catalog.tool_aliases import resolve_registry_action
-from app.services.connector_execution_matrix import build_connector_execution_matrix
+from app.services.connector_execution_matrix import (
+    build_connector_execution_matrix,
+    registry_keyed_cache,
+)
 from app.services.tool_registry import AgentToolSpec
 from app.services.tool_service import list_registered_actions
 
@@ -15,7 +17,7 @@ def _passthrough_mapper(args: dict[str, Any]) -> dict[str, Any]:
     return dict(args or {})
 
 
-@lru_cache(maxsize=1)
+@registry_keyed_cache
 def build_dynamic_chat_tool_specs() -> dict[str, AgentToolSpec]:
     registered = set(list_registered_actions())
     specs: dict[str, AgentToolSpec] = {}

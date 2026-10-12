@@ -7,13 +7,17 @@ counts introduced to correlate context bloat with the llm_first_token p99 tail.
 """
 from __future__ import annotations
 
+import os
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.services.narrowed_tools import mark_narrowed
-from app.services.real_token_counter import count_real_tokens, real_token_counting_available
+from app.services.real_token_counter import (
+    count_real_tokens,
+    real_token_counting_available,
+)
 from app.services.unified_turn_reasoning_service import run_unified_turn_shadow
 
 
@@ -170,7 +174,39 @@ async def test_context_size_breakdown_tool_schemas_reflect_attached_tools():
     assert ctx["tool_schemas"]["tokens"] > 0
 
 
+def _require_real_encoding() -> None:
+    """tiktoken downloads its encoding files on first use (#366).
+
+    CI has network, so a missing encoding there is a real failure. An offline
+    sandbox with no TIKTOKEN_CACHE_DIR cannot load them; it skips with the
+    reason instead of failing for an environment it cannot change.
+    """
+    if real_token_counting_available():
+        return
+    if os.environ.get("CI"):
+        pytest.fail("tiktoken encoding could not be loaded in CI")
+    pytest.skip("tiktoken encoding not cached and no network; set TIKTOKEN_CACHE_DIR (#366)")
+
+
+def test_counter_uses_the_encoding_not_the_heuristic_when_one_loads(monkeypatch):
+    # Hermetic: proves the code path, independent of the network.
+    from app.services import real_token_counter
+
+    class _Enc:
+        def encode(self, text, disallowed_special=()):
+            return text.split()
+
+    monkeypatch.setattr(real_token_counter, "_get_encoding", lambda _name: _Enc())
+    text = "The quick brown fox jumps over the lazy dog." * 5
+    assert count_real_tokens(text, model="gpt-4o-mini") == len(text.split())
+    assert count_real_tokens(text) != max(1, len(text) // 4)
+
+    monkeypatch.setattr(real_token_counter, "_get_encoding", lambda _name: None)
+    assert count_real_tokens(text) == max(1, len(text) // 4)
+
+
 def test_real_token_counter_uses_real_tiktoken_not_chars_heuristic():
+    _require_real_encoding()
     assert real_token_counting_available() is True
     text = "The quick brown fox jumps over the lazy dog." * 5
     tokens = count_real_tokens(text, model="gpt-4o-mini")
