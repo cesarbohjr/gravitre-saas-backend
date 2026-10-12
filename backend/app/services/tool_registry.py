@@ -13,7 +13,11 @@ from typing import Any
 from app.config import get_settings
 from app.connectors.repository import list_connectors
 from app.core.logging import get_logger
-from app.services.tool_service import invoke_tool, list_registered_actions
+from app.services.tool_service import (
+    invoke_tool,
+    list_registered_actions,
+    registered_actions_fingerprint,
+)
 from app.services.tool_types import ToolContext, ToolError, ToolNotFoundError
 
 logger = get_logger(__name__)
@@ -1828,12 +1832,28 @@ class ToolRegistry:
 
 
 _tool_registry_singleton: ToolRegistry | None = None
+_tool_registry_fingerprint: tuple[object, int, int] | None = None
 
 
 def get_tool_registry() -> ToolRegistry:
-    global _tool_registry_singleton
-    if _tool_registry_singleton is None:
+    """Process-wide ToolRegistry, rebuilt when the invoke_tool action set changes.
+
+    The registry snapshots dynamic catalog specs and registered actions at construction,
+    so a singleton built while ``_TOOL_REGISTRY`` was swapped out (or before a partner
+    connector registered) would otherwise stay stale for the life of the process.
+    """
+    global _tool_registry_singleton, _tool_registry_fingerprint
+
+    fingerprint = registered_actions_fingerprint()
+    current = _tool_registry_fingerprint
+    if (
+        _tool_registry_singleton is None
+        or current is None
+        or current[0] is not fingerprint[0]
+        or current[1:] != fingerprint[1:]
+    ):
         _tool_registry_singleton = ToolRegistry()
+        _tool_registry_fingerprint = fingerprint
     return _tool_registry_singleton
 
 
