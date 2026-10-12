@@ -97,9 +97,14 @@ def handle_customer_message(client: Any, event: dict[str, Any], settings: Settin
     from app.services.entity_observations import CustomerMessage, observe_customer_message, observations_enabled
 
     settings = settings or get_settings()
+    from app.core.ingestion_kill_switch import ingestion_disabled
+
     if not observations_enabled(settings):
         return {"skipped": "disabled"}
-    payload = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+    if ingestion_disabled(settings):
+        # Same outcome as the feature being off: the event is handled, nothing is read or written.
+        return {"skipped": "ingestion_disabled"}
+    payload =event.get("payload") if isinstance(event.get("payload"), dict) else {}
     org_id = str(event.get("org_id") or "")
     if payload.get("system") != "hubspot" or payload.get("record_type") != "email":
         return {"skipped": "unsupported_source"}

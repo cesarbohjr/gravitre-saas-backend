@@ -20,6 +20,8 @@ class _Query:
         self._op = "select"
         self._payload: Any = None
         self._filters: list[tuple[str, Any]] = []
+        self._ranges: list[tuple[str, str, Any]] = []
+        self._order: tuple[str, bool] | None = None
         self._limit: int | None = None
 
     # -- verbs -----------------------------------------------------------------
@@ -52,12 +54,31 @@ class _Query:
         self._limit = n
         return self
 
-    def __getattr__(self, _name: str) -> Any:
-        # order, gt, neq, in_, filter, single, maybe_single, ...: accepted, ignored.
+    def __getattr__(self, name: str) -> Any:
+        # With range_filters=True, gt/gte/lt/lte and order are applied (string compare);
+        # otherwise they and neq, in_, filter, single, ...: accepted, ignored.
+        if self._db.range_filters and name in {"gt", "gte", "lt", "lte"}:
+            def _range(column: str, value: Any) -> _Query:
+                self._ranges.append((name, column, value))
+                return self
+
+            return _range
+        if self._db.range_filters and name == "order":
+            def _order(column: str, *_a: Any, desc: bool = False, **_k: Any) -> _Query:
+                self._order = (column, desc)
+                return self
+
+            return _order
         return lambda *_a, **_k: self
 
     def _matches(self, row: dict[str, Any]) -> bool:
-        return all(str(row.get(col)) == str(val) for col, val in self._filters)
+        if not all(str(row.get(col)) == str(val) for col, val in self._filters):
+            return False
+        for op, col, val in self._ranges:
+            have, want = str(row.get(col)), str(val)
+            if not {"gt": have > want, "gte": have >= want, "lt": have < want, "lte": have <= want}[op]:
+                return False
+        return True
 
     def execute(self) -> SimpleNamespace:
         db = self._db
@@ -65,6 +86,9 @@ class _Query:
             if self._op == "select":
                 rows = db.tables.get(self._table, [])
                 found = [copy.deepcopy(r) for r in rows if self._matches(r)]
+                if self._order is not None:
+                    col, desc = self._order
+                    found.sort(key=lambda r: str(r.get(col)), reverse=desc)
                 if self._limit is not None:
                     found = found[: self._limit]
                 return SimpleNamespace(data=found)
@@ -101,7 +125,8 @@ class _Rpc:
 
 
 class FakeSupabaseDB:
-    def __init__(self) -> None:
+    def __init__(self, *, range_filters: bool = False) -> None:
+        self.range_filters = range_filters
         self.tables: dict[str, list[dict[str, Any]]] = {}
         self.writes: list[tuple[str, str, Any, list[tuple[str, Any]]]] = []
         self.lock = threading.RLock()

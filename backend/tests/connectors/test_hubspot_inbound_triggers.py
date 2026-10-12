@@ -124,7 +124,9 @@ async def test_process_hubspot_event_batch_starts_workflow():
     def _table(name: str) -> MagicMock:
         table = MagicMock()
         if name == "connectors":
-            table.select.return_value.eq.return_value.execute.return_value = MagicMock(data=[connector])
+            # Portal lookup pages through live HubSpot connectors (select.eq.is_.order.range).
+            paged = table.select.return_value.eq.return_value.is_.return_value.order.return_value
+            paged.range.return_value.execute.return_value = MagicMock(data=[connector])
         elif name == "workflow_defs":
             chain = table.select.return_value.eq.return_value.eq.return_value.limit.return_value
             chain.execute.return_value = MagicMock(data=[workflow])
