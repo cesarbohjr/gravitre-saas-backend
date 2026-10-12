@@ -4484,6 +4484,17 @@ export interface SourceDataGovernance {
   retentionDays: Record<string, number>
 }
 
+/** The governed Play run an accepted proposal can start. Accepting starts nothing. */
+export interface PlayRunRequest {
+  method: "POST"
+  path: string
+  playKey: string
+  body: { installationId?: string; workObjectId: string; businessEntityId?: string }
+  approvalGated: boolean
+  operatingMode?: string | null
+  blockedReason?: string
+}
+
 export const accountIntelligenceApi = {
   healthList: (limit = 20) =>
     fetcher<{ accounts: AccountHealthListItem[]; generatedAt: string }>(
@@ -4493,10 +4504,12 @@ export const accountIntelligenceApi = {
     fetcher<AccountHealth>(apiUrl(`/api/entities/${encodeURIComponent(entityId)}/health`)),
   feed: () => fetcher<RecommendationFeed>(apiUrl("/api/recommendations/feed")),
   acceptProposal: (workObjectId: string, reason?: string) =>
-    postJson<{ workObject: { id: string; status: string } }>(
+    postJson<{ workObject: { id: string; status: string }; playRunRequest?: PlayRunRequest }>(
       apiUrl(`/api/work-objects/${encodeURIComponent(workObjectId)}/accept`),
       { reason: reason ?? null },
     ),
+  startPlayRun: (request: PlayRunRequest) =>
+    postJson<{ playRunId: string; status: string; workObjectId?: string }>(apiUrl(request.path), request.body),
   dismissProposal: (workObjectId: string, reason?: string) =>
     postJson<{ workObject: { id: string; status: string } }>(
       apiUrl(`/api/work-objects/${encodeURIComponent(workObjectId)}/dismiss`),

@@ -70,3 +70,15 @@ def test_approved_values_cover_only_safety_pins_and_never_add_pins():
 def test_guard_switched_back_off_is_still_clean():
     _lines, problems, _pins = rsv.audit({"RETRIEVED_CONTENT_GUARD_ENABLED": "false"})
     assert problems == []
+
+
+def test_kill_switch_is_reported_with_its_value_and_never_pinned():
+    lines, problems, pins = rsv.audit({})
+    assert "DISABLE_INGESTION: absent (ingestion runs)" in lines
+    assert not any(p.startswith("DISABLE_INGESTION") for p in pins)
+    lines, problems, _ = rsv.audit({"DISABLE_INGESTION": "true"})
+    assert any(line.startswith("DISABLE_INGESTION='true' ON") for line in lines)
+    assert problems == []
+    _lines, problems, _ = rsv.audit({"DISABLE_INGESTION": ""})
+    assert any("DISABLE_INGESTION" in p and "startup" in p for p in problems)
+    assert _default(rsv.KILL_SWITCH) is False

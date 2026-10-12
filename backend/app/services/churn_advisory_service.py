@@ -91,6 +91,7 @@ async def build_churn_advisory_cards(
     settings: Settings | None = None,
     client: Any | None = None,
     limit: int = 25,
+    log_predictions: bool = True,
 ) -> dict[str, Any]:
     """Score customers whose churn outcome is still unknown; suggest-only cards.
 
@@ -190,7 +191,7 @@ async def build_churn_advisory_cards(
             )
             continue
         cards.append(_card(customer_id=str(row.get("customer_id")), prediction=prediction))
-        if trained:
+        if trained and log_predictions:
             _log_checkable_prediction(db, active, org_id, scorer, str(row.get("customer_id")), prediction)
 
     # Sort highest risk first when scores exist.

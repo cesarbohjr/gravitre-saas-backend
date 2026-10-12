@@ -9,3 +9,11 @@ export async function GET(
   const qs = request.nextUrl.search || ""
   return proxyToFastApi(request, `/api/work-objects/${id}${qs}`)
 }
+
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id } = await context.params
+  return proxyToFastApi(request, `/api/work-objects/${id}`)
+}

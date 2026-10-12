@@ -584,10 +584,19 @@ class Settings(BaseSettings):
     goal_links_enabled: bool = False
     # Phase 5: AI-proposed work filed as work_objects.status='proposed' (accept/dismiss).
     work_object_proposals_enabled: bool = False
+    # Close the proposal -> Play run -> goal loop: Play runs accept workObjectId /
+    # businessEntityId (org-checked) and link the run to the work object; accepted
+    # proposals return the Play run request (nothing starts by itself); proposals
+    # inherit the Play setup's goal; work objects can be created / re-linked to a
+    # goal. Goal / entity column writes also need goal_links_enabled (its migration).
+    work_loop_links_enabled: bool = False
     # Phase 5: Play required_signals checked against this org's recent events.
     play_signal_evaluation_enabled: bool = False
     # Phase 5: one ranked recommendation feed (/api/recommendations/feed).
     recommendation_feed_enabled: bool = False
+    # The feed shows one item per account from account health, with churn advisory
+    # merged in (both bases shown when the churn model and customer language disagree).
+    account_feed_unified_v1: bool = False
     # Phase 6 (needs migration 20261012060000): log checkable predictions with a subject
     # and horizon, label them from evidence, and report realized accuracy.
     ml_prediction_outcomes_enabled: bool = False
@@ -599,6 +608,10 @@ class Settings(BaseSettings):
     # aggregates, evaluated on a time split against the 5-feature baseline. The existing
     # champion gate refuses it unless it beats the baseline by a margin on enough labels.
     churn_entity_features_enabled: bool = False
+    # Outcomes reach the learners: an execution.outcome_finalized relay handler records the
+    # run on its linked work object, labels workflow-run predictions and feeds verified Play
+    # results to recommendation learning. Needs DOMAIN_EVENT_RELAY_ENABLED as well.
+    outcome_learning_handler_enabled: bool = False
     # Phase 7: per-dimension account health (/api/entities/health), no composite score.
     account_health_enabled: bool = False
     # Phase 7: daily rule-based behaviour signals (compute_entity_behavior_signals) for orgs
