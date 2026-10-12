@@ -7,7 +7,9 @@ Three pieces, each off until switched on:
   (CONNECTOR_PROVIDER_REVOKE_ON_DISCONNECT).
 * ``handle_source_disconnected`` consumes the ``source.disconnected`` outbox event and
   removes the data derived from that connector in one database transaction
-  (``purge_connector_derived_data``). It writes a dry-run receipt only, until
+  (``purge_connector_derived_data``), then the agent memories tagged with that
+  connector (``purge_connector_memories``; skipped with a warning until migration
+  20261012070000 is applied). It writes a dry-run receipt only, until
   SOURCE_PURGE_DRY_RUN=false. Runs only when the relay is on.
 * ``reconcile_source_documents`` removes indexed documents a full-sweep sync no longer
   finds upstream (SOURCE_DELETION_PROPAGATION_ENABLED).
@@ -61,6 +63,47 @@ def _connector_row(client: Any, org_id: str, connector_id: str) -> dict[str, Any
     return rows[0] if rows else None
 
 
+MEMORY_PURGE_RPC = "purge_connector_memories"
+
+
+def _purge_connector_memories(
+    client: Any, org_id: str, connector_id: str, disconnected_at: Any, dry_run: bool
+) -> dict[str, Any]:
+    """Purge agent memories learned from the connector (lineage, 20261012070000).
+
+    Runs after ``purge_connector_derived_data`` (which wrote the receipt this merges
+    its count into), in its own transaction. A database without the function yet
+    is logged and skipped; any other failure raises so the relay retries the event
+    (the derived-data purge is idempotent and keeps its first receipt).
+    """
+    from app.core.sql_aggregates import is_missing_function_error
+
+    try:
+        res = client.rpc(
+            MEMORY_PURGE_RPC,
+            {
+                "p_org_id": org_id,
+                "p_connector_id": connector_id,
+                "p_disconnected_at": disconnected_at,
+                "p_dry_run": dry_run,
+            },
+        ).execute()
+    except Exception as exc:
+        if is_missing_function_error(exc):
+            logger.warning(
+                "source_purge_memories_unavailable org_id=%s connector_id=%s — apply migration "
+                "20261012070000_agent_memory_source_lineage.sql",
+                org_id,
+                connector_id,
+            )
+            return {"agent_memories": "unavailable"}
+        raise SourcePurgeError(f"memory purge rpc failed: {type(exc).__name__}: {exc}") from exc
+    data = res.data
+    if isinstance(data, list) and len(data) == 1:
+        data = data[0]
+    return data if isinstance(data, dict) else {}
+
+
 def handle_source_disconnected(client: Any, event: dict[str, Any], settings: Settings | None = None) -> dict[str, Any]:
     """Outbox handler for ``source.disconnected``. Idempotent; raises to retry."""
     settings = settings or get_settings()
@@ -97,6 +140,7 @@ def handle_source_disconnected(client: Any, event: dict[str, Any], settings: Set
     except Exception as exc:
         raise SourcePurgeError(f"purge rpc failed: {type(exc).__name__}: {exc}") from exc
     counts = res.data if isinstance(res.data, dict) else {}
+    counts = {**counts, **_purge_connector_memories(client, org_id, connector_id, disconnected_at, dry_run)}
 
     from app.workflows.audit import write_audit_event
 

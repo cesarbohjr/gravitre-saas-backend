@@ -13,6 +13,19 @@ from app.services.memory_contamination_guard import (
 )
 
 
+_LINEAGE_HINT_KEYS = ("source_connector_id", "connector_id", "source_record_ref", "record_ref")
+
+
+def _lineage_hint(source: dict[str, Any] | None) -> dict[str, Any]:
+    """Connector lineage keys present on ``source``, carried to the write candidate.
+
+    The writer (``memory_source_lineage``) decides whether they become columns.
+    """
+    if not isinstance(source, dict):
+        return {}
+    return {k: source[k] for k in _LINEAGE_HINT_KEYS if source.get(k)}
+
+
 def _structured_outcome(
     outcome_event: str,
     act_result: dict[str, Any] | None,
@@ -47,6 +60,9 @@ def _structured_outcome(
         "provenance": f"learn_outcome:{outcome_event}",
         "structured_payload": payload,
         "outcome_event": outcome_event,
+        # An outcome of acting on a connection is learned from it (its errors and
+        # statuses are that system's answers), so it goes when the connection goes.
+        **_lineage_hint(result),
     }
     # Message is context only — never the primary stored content.
     if message and len(summary) < 40:
@@ -140,12 +156,15 @@ def extract_typed_memories_structured(
                         "content": str(content),
                         "category": category,
                         "structured_payload": act_result.get("structured_payload"),
+                        **_lineage_hint(act_result),
                     },
                     provenance=provenance,
                 )
             )
 
-        # Untrusted connector/document payloads — block injection, cap confidence
+        # Untrusted connector/document payloads — block injection, cap confidence.
+        # Lineage keys on the candidate (source_connector_id / source_record_ref)
+        # are kept so the writer can tag the row for purge on disconnect.
         ext = act_result.get("external_memory_candidate")
         if isinstance(ext, dict) and ext.get("content"):
             ext_content = str(ext["content"])

@@ -16,7 +16,9 @@ from app.services.memory_contamination_guard import (
     SOURCE_USER_DIRECT,
     SOURCE_WORKFLOW_OUTCOME,
     classify_memory_source,
+    memory_source_lineage,
     validate_memory_write,
+    without_lineage,
 )
 
 VALID_CATEGORIES = frozenset(
@@ -225,6 +227,8 @@ def create_agent_memory(
     editable: bool = True,
     share_with_department: bool = True,
     source_class: str | None = None,
+    source_connector_id: str | None = None,
+    source_record_ref: str | None = None,
 ) -> dict[str, Any]:
     """Create agent- or workspace-scoped memory. ``agent_id`` may be None (org-wide).
 
@@ -232,6 +236,10 @@ def create_agent_memory(
     the source class is ``source_class`` when given, else derived from
     ``provenance``; a write with a human ``user_id`` and no other provenance signal
     (the per-agent CRUD API) is user-direct. Confidence is capped per class.
+
+    ``source_connector_id`` (a connector row id) and ``source_record_ref`` name the
+    connection the content was learned from, so a disconnect can purge it; stored
+    only when MEMORY_SOURCE_LINEAGE_ENABLED is on.
     """
     if agent_id:
         ensure_agent_in_org(client, org_id, agent_id)
@@ -264,6 +272,12 @@ def create_agent_memory(
         "embedding": embedding,
         "created_by": user_id,
     }
+    payload.update(
+        memory_source_lineage(
+            {"source_connector_id": source_connector_id, "source_record_ref": source_record_ref},
+            settings=settings,
+        )
+    )
     if share_with_department and agent_id:
         dept_id, _ = resolve_department_id_for_agent(client, org_id, agent_id)
         if dept_id:
@@ -271,10 +285,17 @@ def create_agent_memory(
     try:
         r = client.table("agent_memories").insert(payload).execute()
     except Exception:  # noqa: BLE001
-        # source_class column arrives with 20260903120000; keep creating on a
-        # database that has not applied it yet.
-        legacy = {k: v for k, v in payload.items() if k != "source_class"}
-        r = client.table("agent_memories").insert(legacy).execute()
+        # source_class column arrives with 20260903120000 and the lineage columns
+        # with 20261012070000; keep creating on a database that lacks them.
+        r = None
+        if "source_connector_id" in payload:
+            try:
+                r = client.table("agent_memories").insert(without_lineage(payload)).execute()
+            except Exception:  # noqa: BLE001
+                r = None
+        if r is None:
+            legacy = {k: v for k, v in without_lineage(payload).items() if k != "source_class"}
+            r = client.table("agent_memories").insert(legacy).execute()
     if not r.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create memory")
     return _serialize_row(r.data[0])

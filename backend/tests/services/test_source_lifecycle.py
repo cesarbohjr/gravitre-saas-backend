@@ -75,11 +75,18 @@ class _Query:
 
 
 class _Client:
-    def __init__(self, tables: dict[str, list[dict[str, Any]]] | None = None, *, rpc_error: bool = False) -> None:
+    def __init__(
+        self,
+        tables: dict[str, list[dict[str, Any]]] | None = None,
+        *,
+        rpc_error: bool = False,
+        memory_rpc_error: Exception | None = None,
+    ) -> None:
         self.tables = tables or {}
         self.rpc_calls: list[tuple[str, dict[str, Any]]] = []
         self.deletes: list[tuple[str, list]] = []
         self.rpc_error = rpc_error
+        self.memory_rpc_error = memory_rpc_error
         self.events: list[dict[str, Any]] = []
 
     def table(self, name):
@@ -94,6 +101,10 @@ class _Client:
                 if client.rpc_error:
                     raise RuntimeError("db down")
                 return SimpleNamespace(data={"rag_sources": 2, "dry_run_seen": params["p_dry_run"]})
+            if name == "purge_connector_memories":
+                if client.memory_rpc_error is not None:
+                    raise client.memory_rpc_error
+                return SimpleNamespace(data={"agent_memories": 3, "agent_memories_restored": 1, "receipt_merged": True})
             if name == "claim_domain_events":
                 out, client.events = client.events, []
                 return SimpleNamespace(data=out)
@@ -159,6 +170,43 @@ def test_only_explicit_false_turns_dry_run_off(value):
     client = _Client()
     sl.handle_source_disconnected(client, _event(), SimpleNamespace(source_purge_dry_run=value))
     assert client.rpc_calls[0][1]["p_dry_run"] is True
+    assert client.rpc_calls[1][1]["p_dry_run"] is True
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_memory_purge_follows_derived_purge_with_same_mode(_reset, dry_run):
+    client = _Client()
+    counts = sl.handle_source_disconnected(client, _event(), SimpleNamespace(source_purge_dry_run=dry_run))
+    assert [n for n, _ in client.rpc_calls] == ["purge_connector_derived_data", "purge_connector_memories"]
+    assert client.rpc_calls[1][1] == {
+        "p_org_id": ORG,
+        "p_connector_id": CONN,
+        "p_disconnected_at": "2026-10-12T10:00:00+00:00",
+        "p_dry_run": dry_run,
+    }
+    assert counts["rag_sources"] == 2 and counts["agent_memories"] == 3
+    assert _reset[0]["metadata"]["counts"]["agent_memories"] == 3
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        RuntimeError("{'code': 'PGRST202', 'message': 'Could not find the function public.purge_connector_memories'}"),
+        RuntimeError("function public.purge_connector_memories(uuid, uuid, timestamptz, boolean) does not exist"),
+    ],
+)
+def test_missing_memory_purge_function_is_logged_and_skipped(_reset, error):
+    client = _Client(memory_rpc_error=error)
+    counts = sl.handle_source_disconnected(client, _event(), SimpleNamespace())
+    assert counts["rag_sources"] == 2
+    assert counts["agent_memories"] == "unavailable"
+    assert _reset[0]["metadata"]["counts"]["agent_memories"] == "unavailable"
+
+
+def test_memory_purge_failure_raises_so_relay_retries():
+    client = _Client(memory_rpc_error=RuntimeError("connection reset"))
+    with pytest.raises(sl.SourcePurgeError):
+        sl.handle_source_disconnected(client, _event(), SimpleNamespace())
 
 
 def test_handler_purges_when_dry_run_off(_reset):
