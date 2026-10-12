@@ -14,6 +14,7 @@ from app.auth.dependencies import get_org_context, require_admin, require_org_me
 from app.auth.platform_admin import can_trigger_knowledge_sync, is_org_admin_role
 from app.config import Settings, get_settings
 from app.connectors.notion_oauth import normalize_vendor
+from app.core.ingestion_kill_switch import INGESTION_DISABLED_DETAIL, IngestionDisabledError
 from app.services.knowledge_sync_service import (
     list_recent_sync_jobs,
     run_scheduled_knowledge_syncs,
@@ -119,6 +120,8 @@ async def _trigger_connector_sync_handler(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except IngestionDisabledError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=INGESTION_DISABLED_DETAIL) from exc
     return {"connector_id": connector_id, **result}
 
 
@@ -209,4 +212,6 @@ async def webhook_trigger_sync(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except IngestionDisabledError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=INGESTION_DISABLED_DETAIL) from exc
     return {"connector_id": connector_id, "trigger": "webhook", **result}
