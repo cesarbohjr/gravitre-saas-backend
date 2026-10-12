@@ -95,39 +95,110 @@ def _dim(key: str, status: str, value: Any, evidence: list[str], coverage: dict[
     }
 
 
-def _observation_dims(rows: list[dict[str, Any]], now: datetime) -> list[dict[str, Any]]:
+# The direction of change that drives each observation dimension's status. The
+# account health page, the recommendation feed and the chat/voice account card
+# all read trends through ``read_observations`` so the three cannot drift apart.
+OBSERVATION_DIMENSIONS: tuple[str, ...] = (
+    "sentiment",
+    "churn_risk_language",
+    "support_friction",
+    "urgency",
+    "expansion_interest",
+)
+NOTABLE_DIRECTION: dict[str, str] = {
+    "sentiment": "falling",
+    "churn_risk_language": "rising",
+    "support_friction": "rising",
+    "urgency": "rising",
+    "expansion_interest": "rising",
+}
+_NEUTRAL_LABELS = frozenset({"neutral", "none"})
+
+
+def quotable_observations(rows: list[dict[str, Any]], dimension: str | None = None) -> list[dict[str, Any]]:
+    """Observations worth quoting, newest first: not retracted, not a neutral label."""
+    return [
+        r
+        for r in sorted(rows, key=lambda r: str(r.get("observed_at")), reverse=True)
+        if (dimension is None or r.get("dimension") == dimension)
+        and r.get("status") != "retracted"
+        and r.get("label") not in _NEUTRAL_LABELS
+    ]
+
+
+def quote_line(row: dict[str, Any]) -> str:
+    return f'"{row.get("evidence_quote")}" ({row.get("source_system")}, {str(row.get("observed_at"))[:10]})'
+
+
+def observation_status(key: str, direction: str, mean: float | None) -> str:
+    """The written rule for one observation dimension (see DEFINITIONS)."""
+    if direction == "insufficient_evidence":
+        return "unknown"
+    if key == "sentiment":
+        return "at_risk" if direction == "falling" else ("watch" if (mean or 0) < 0 else "healthy")
+    if key in {"churn_risk_language", "support_friction"}:
+        return "at_risk" if direction == "rising" else ("watch" if (mean or 0) > MEAN_WATCH else "healthy")
+    if key == "urgency":
+        return "watch" if direction == "rising" else "healthy"
+    return "healthy"
+
+
+def read_observations(
+    rows: list[dict[str, Any]],
+    *,
+    now: datetime | None = None,
+    dimensions: tuple[str, ...] | list[str] = OBSERVATION_DIMENSIONS,
+    window_days: int = WINDOW_DAYS,
+) -> list[dict[str, Any]]:
+    """One reading per observation dimension: trend, status and quotable evidence.
+
+    ``notable`` is true when the trend moved in the direction that drives the
+    dimension's status (falling sentiment; rising churn language, friction,
+    urgency or expansion interest). ``opportunity`` marks rising expansion.
+    """
     out = []
-    for key in ("sentiment", "churn_risk_language", "support_friction", "urgency", "expansion_interest"):
-        t = trend(rows, dimension=key, now=now, window_days=WINDOW_DAYS)
-        coverage = {"observations": t["observations"], "messages": t["sources"], "window_days": WINDOW_DAYS}
-        quotes = [
-            f'"{r.get("evidence_quote")}" ({r.get("source_system")}, {str(r.get("observed_at"))[:10]})'
-            for r in sorted(rows, key=lambda r: str(r.get("observed_at")), reverse=True)
-            if r.get("dimension") == key and r.get("status") != "retracted" and r.get("label") not in {"neutral", "none"}
-        ]
+    for key in dimensions:
+        t = trend(rows, dimension=key, now=now, window_days=window_days)
         direction = t["direction"]
-        if direction == "insufficient_evidence":
-            out.append(_dim(key, "unknown", None, quotes, coverage, "Not enough observations yet."))
-            continue
-        mean = t.get("latest_mean")
-        value = {"direction": direction, "recent_mean": mean, "change": t.get("delta")}
-        if key == "sentiment":
-            status = "at_risk" if direction == "falling" else ("watch" if (mean or 0) < 0 else "healthy")
-        elif key in {"churn_risk_language", "support_friction"}:
-            status = "at_risk" if direction == "rising" else ("watch" if (mean or 0) > MEAN_WATCH else "healthy")
-        elif key == "urgency":
-            status = "watch" if direction == "rising" else "healthy"
-        else:
-            status = "healthy"
-        note = "Opportunity." if key == "expansion_interest" and direction == "rising" else ""
-        out.append(_dim(key, status, value, quotes, coverage, note))
+        notable = direction == NOTABLE_DIRECTION.get(key)
+        out.append(
+            {
+                "key": key,
+                "trend": t,
+                "direction": direction,
+                "status": observation_status(key, direction, t.get("latest_mean")),
+                "notable": notable,
+                "opportunity": notable and key == "expansion_interest",
+                "quotes": quotable_observations(rows, key),
+            }
+        )
     return out
 
 
-def _signal_dims(signals: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _observation_dims(rows: list[dict[str, Any]], now: datetime) -> list[dict[str, Any]]:
+    out = []
+    for r in read_observations(rows, now=now):
+        key, t, direction = r["key"], r["trend"], r["direction"]
+        coverage = {"observations": t["observations"], "messages": t["sources"], "window_days": WINDOW_DAYS}
+        quotes = [quote_line(q) for q in r["quotes"]]
+        if direction == "insufficient_evidence":
+            out.append(_dim(key, "unknown", None, quotes, coverage, "Not enough observations yet."))
+            continue
+        value = {"direction": direction, "recent_mean": t.get("latest_mean"), "change": t.get("delta")}
+        out.append(_dim(key, r["status"], value, quotes, coverage, "Opportunity." if r["opportunity"] else ""))
+    return out
+
+
+def latest_signals(signals: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """The newest row per behaviour signal."""
     latest: dict[str, dict[str, Any]] = {}
     for s in sorted(signals, key=lambda s: str(s.get("window_end")), reverse=True):
         latest.setdefault(str(s.get("signal")), s)
+    return latest
+
+
+def signal_dims(signals: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    latest = latest_signals(signals)
     out = []
     vol = latest.get("contact_volume_change")
     if vol is None:
@@ -175,7 +246,7 @@ def build_account_health(
     now: datetime | None = None,
 ) -> dict[str, Any]:
     now = now or datetime.now(UTC)
-    dims = _observation_dims(observations, now) + _signal_dims(signals) + [_work_dim(work)]
+    dims = _observation_dims(observations, now) + signal_dims(signals) + [_work_dim(work)]
     counts: dict[str, int] = defaultdict(int)
     for d in dims:
         counts[d["status"]] += 1
@@ -233,8 +304,8 @@ def load_account_health(client: Any, org_id: str, entity: dict[str, Any], *, now
     return build_account_health(entity, observations, signals, work, systems=systems, now=now)
 
 
-def list_account_health(client: Any, org_id: str, *, limit: int = 20, now: datetime | None = None) -> dict[str, Any]:
-    """Accounts with recent evidence, most at-risk dimensions first. Batched reads."""
+def load_health_batch(client: Any, org_id: str, *, now: datetime | None = None) -> list[dict[str, Any]]:
+    """Full health for every account with recent evidence, in a few batched reads."""
     now = now or datetime.now(UTC)
     since = (now - timedelta(days=WINDOW_DAYS)).isoformat()
     observations = (
@@ -259,7 +330,7 @@ def list_account_health(client: Any, org_id: str, *, limit: int = 20, now: datet
     )
     ids = sorted({str(r["entity_id"]) for r in observations + signals if r.get("entity_id")})[:500]
     if not ids:
-        return {"accounts": [], "generatedAt": now.isoformat()}
+        return []
     entities = client.table("org_business_entities").select("id, display_name").eq("org_id", org_id).in_("id", ids).execute().data or []
     work = (
         client.table("work_objects")
@@ -280,10 +351,17 @@ def list_account_health(client: Any, org_id: str, *, limit: int = 20, now: datet
         sig_by[str(r.get("entity_id"))].append(r)
     for r in work:
         work_by[str(r.get("business_entity_id"))].append(r)
+    return [
+        build_account_health(e, obs_by[str(e["id"])], sig_by[str(e["id"])], work_by[str(e["id"])], now=now)
+        for e in entities
+    ]
+
+
+def list_account_health(client: Any, org_id: str, *, limit: int = 20, now: datetime | None = None) -> dict[str, Any]:
+    """Accounts with recent evidence, most at-risk dimensions first. Batched reads."""
+    now = now or datetime.now(UTC)
     accounts = []
-    for e in entities:
-        eid = str(e["id"])
-        h = build_account_health(e, obs_by[eid], sig_by[eid], work_by[eid], now=now)
+    for h in load_health_batch(client, org_id, now=now):
         accounts.append(
             {
                 "entity": h["entity"],
