@@ -1,9 +1,11 @@
 """Connector action execution matrix — catalog vs invoke_tool vs chat exposure."""
 from __future__ import annotations
 
+import functools
+import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from functools import lru_cache
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
 
 from app.connectors.action_catalog.registry import get_vendor_catalog
 from app.connectors.action_catalog.tool_aliases import (
@@ -12,7 +14,54 @@ from app.connectors.action_catalog.tool_aliases import (
     resolve_registry_action,
 )
 from app.services.catalog_write_authority import catalog_action_requires_write_approval
-from app.services.tool_service import list_registered_actions
+from app.services.tool_service import (
+    list_registered_actions,
+    registered_actions_fingerprint,
+)
+
+_T = TypeVar("_T")
+
+
+def registry_keyed_cache(fn: Callable[[], _T]) -> Callable[[], _T]:
+    """Memoize a zero-arg builder derived from the invoke_tool registry.
+
+    A plain ``lru_cache`` froze whatever registry was live on the first call: a matrix
+    first built while ``_TOOL_REGISTRY`` was swapped out (or before a partner connector
+    registered) stayed wrong for the rest of the process. This cache rebuilds whenever
+    :func:`registered_actions_fingerprint` changes; the registry dict is held by
+    reference and compared with ``is`` so a recycled ``id()`` can never alias.
+    """
+    lock = threading.RLock()
+    # One immutable (registry_obj, registry_len, partner_len, value) tuple, swapped atomically.
+    state: list[tuple[object, int, int, Any] | None] = [None]
+
+    def _hit(fingerprint: tuple[object, int, int]) -> tuple[object, int, int, Any] | None:
+        cached = state[0]
+        if cached is not None and cached[0] is fingerprint[0] and cached[1:3] == fingerprint[1:]:
+            return cached
+        return None
+
+    @functools.wraps(fn)
+    def wrapper() -> _T:
+        fingerprint = registered_actions_fingerprint()
+        cached = _hit(fingerprint)
+        if cached is not None:
+            return cached[3]
+        with lock:
+            cached = _hit(fingerprint)
+            if cached is not None:
+                return cached[3]
+            value = fn()
+            state[0] = (*fingerprint, value)
+            return value
+
+    def cache_clear() -> None:
+        with lock:
+            state[0] = None
+
+    wrapper.cache_clear = cache_clear  # type: ignore[attr-defined]
+    return wrapper
+
 
 ImplementationStatus = Literal[
     "executable",
@@ -148,7 +197,7 @@ def _implementation_status(
     return "executable"
 
 
-@lru_cache(maxsize=1)
+@registry_keyed_cache
 def build_connector_execution_matrix() -> tuple[ConnectorActionMatrixEntry, ...]:
     registered = set(list_registered_actions())
     entries: list[ConnectorActionMatrixEntry] = []

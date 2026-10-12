@@ -5,12 +5,25 @@ Metric A: first honest composed loop-stage audio (STA-343 narration).
 Metric B: final composed operator-task answer (plan-without-execute).
 
 Does not claim PASS unless Metric A P50 < 500ms on this sample.
+
+Each turn goes through the production ``POST /api/voice/session/turn`` path, which
+writes the same ``voice.slo.metric_a`` / ``voice.slo.metric_b`` audit rows that
+``check-voice-slo-alerts.py`` reads, attributed to the isolated smoke org.
+
+``--samples-only`` (used by the Voice SLO workflow): exit 0 when every turn
+streamed to ``voice.turn.complete``; the SLO verdict is left to the window check
+on the server-written rows. Without it the exit code is this probe's own
+client-side PASS/FAIL, as before.
+
+Safety: refuses any org but the isolated smoke org, and refuses any prompt that
+is not plan-without-execute or that asks to send/post/email anything.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import os
-import statistics
+import re
 import sys
 import time
 import uuid
@@ -26,7 +39,12 @@ BACKEND = ROOT / "backend"
 sys.path.insert(0, str(BACKEND))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from isolated_conversation_org import resolve_isolated_conversation_actor, smoke_http_headers  # noqa: E402
+from isolated_conversation_org import (
+    DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID,
+    ConversationWriteBlockedError,
+    resolve_isolated_conversation_actor,
+    smoke_http_headers,
+)
 
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 OUT = ROOT / "docs" / "delivery" / "voice-slo-two-metric-live.json"
@@ -38,6 +56,54 @@ OPERATOR_PROMPTS = [
     "What Google Ads campaigns exist, and show me the complete plan before you execute anything. Don't execute without my approval.",
     "Show me the complete plan for a paused Google Ads structure check. Don't execute anything.",
 ]
+
+# Words that would ask the agent to reach someone outside the org. None of the
+# probe prompts may contain them, plan-hold or not.
+_EXTERNAL_COMMS_RE = re.compile(
+    r"(?i)\b(send|email|e-mail|mail|text|sms|message|post|publish|tweet|call|invite|notify|reply|dm)\b"
+)
+
+
+def assert_safe_prompts(prompts: list[str]) -> None:
+    """Every prompt must withhold execution and must not ask for outbound comms."""
+    from app.services.cognitive_loop_controller import is_plan_without_execute_turn
+
+    for prompt in prompts:
+        if not is_plan_without_execute_turn(prompt):
+            raise ConversationWriteBlockedError(f"probe prompt is not plan-without-execute: {prompt!r}")
+        if _EXTERNAL_COMMS_RE.search(prompt):
+            raise ConversationWriteBlockedError(f"probe prompt asks for external comms: {prompt!r}")
+
+
+def assert_isolated_org(*org_ids: str | None) -> None:
+    """Refuse anything but the well-known isolated smoke org.
+
+    Checked before provisioning too: ``ensure_isolated_conversation_test_org``
+    flags whatever org the env names, so a mis-set env must stop here.
+    """
+    for org_id in org_ids:
+        if org_id and org_id.strip().lower() != DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID.lower():
+            raise ConversationWriteBlockedError(
+                f"voice SLO probe only runs on the isolated smoke org "
+                f"{DEFAULT_ISOLATED_CONVERSATION_TEST_ORG_ID}, not {org_id}"
+            )
+
+
+def samples_generated(turns: list[dict]) -> tuple[bool, list[str]]:
+    """True when every turn streamed to completion, so the server wrote its samples."""
+    problems: list[str] = []
+    for idx, turn in enumerate(turns, start=1):
+        if turn.get("http_status") != 200:
+            problems.append(f"turn {idx}: http_status={turn.get('http_status')}")
+        elif turn.get("stream_error"):
+            problems.append(f"turn {idx}: {turn['stream_error']}")
+        elif turn.get("voice_error"):
+            problems.append(f"turn {idx}: voice.error {turn['voice_error']}")
+        elif turn.get("metric_b_ms") is None:
+            problems.append(f"turn {idx}: no voice.turn.complete")
+    if not turns:
+        problems.append("no turns ran")
+    return not problems, problems
 
 
 def load_env() -> dict[str, str]:
@@ -67,7 +133,7 @@ def _pctl(vals: list[int], p: float) -> int | None:
     s = sorted(vals)
     if len(s) == 1:
         return s[0]
-    idx = int(round((len(s) - 1) * p))
+    idx = round((len(s) - 1) * p)
     return s[max(0, min(len(s) - 1, idx))]
 
 
@@ -79,6 +145,8 @@ def _one_turn(client: httpx.Client, headers: dict[str, str], prompt: str, conv: 
     complete_ms = None
     status = None
     stream_error = None
+    voice_error = None
+    server_a = server_b = server_conv = None
     t0 = time.perf_counter()
     try:
         with client.stream(
@@ -109,8 +177,14 @@ def _one_turn(client: httpx.Client, headers: dict[str, str], prompt: str, conv: 
                     first_audio = ms
                 if et == "voice.sse.tool-input-available" and first_tool is None:
                     first_tool = ms
+                if et == "voice.error" and voice_error is None:
+                    voice_error = str(ev.get("error_class") or ev.get("detail") or "error")[:200]
                 if et == "voice.turn.complete" and complete_ms is None:
                     complete_ms = ms
+                    lat = ev.get("latency_ms") if isinstance(ev.get("latency_ms"), dict) else {}
+                    server_a = lat.get("metric_a_ms")
+                    server_b = lat.get("metric_b_ms")
+                    server_conv = ev.get("conversation_id")
                 if len(timeline) < 12:
                     timeline.append({"ms": ms, "type": et})
                 if complete_ms is not None:
@@ -124,17 +198,37 @@ def _one_turn(client: httpx.Client, headers: dict[str, str], prompt: str, conv: 
         "first_text_ms": first_text,
         "metric_b_ms": complete_ms,
         "first_tool_sse_ms": first_tool,
+        # Server-side timings from voice.turn.complete: the same clock the
+        # voice.slo.metric_a/metric_b audit rows are written from.
+        "server_metric_a_ms": server_a,
+        "server_metric_b_ms": server_b,
+        "server_conversation_id": server_conv,
         "timeline_head": timeline,
         "stream_error": stream_error,
+        "voice_error": voice_error,
     }
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--samples-only",
+        action="store_true",
+        help="exit 0 when every turn completed; leave the SLO verdict to check-voice-slo-alerts.py",
+    )
+    args = parser.parse_args(argv)
     env = load_env()
+    prompts = OPERATOR_PROMPTS[:SAMPLE_N]
+    assert_safe_prompts(prompts)
+    assert_isolated_org(
+        env.get("ISOLATED_CONVERSATION_TEST_ORG_ID"),
+        os.environ.get("ISOLATED_CONVERSATION_TEST_ORG_ID"),
+    )
     from supabase import create_client
 
     sb = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
     org_id, user_id, email = resolve_isolated_conversation_actor(env, sb)
+    assert_isolated_org(org_id)
     url = env["SUPABASE_URL"].rstrip("/")
     tok = jwt.encode(
         {
@@ -160,7 +254,7 @@ def main() -> int:
         health = client.get(f"{BASE}/health").json()
     turns: list[dict] = []
     with httpx.Client(timeout=240) as client:
-        for prompt in OPERATOR_PROMPTS[:SAMPLE_N]:
+        for prompt in prompts:
             conv = str(uuid.uuid4())
             create = client.post(
                 f"{BASE}/api/conversations",
@@ -237,8 +331,14 @@ def main() -> int:
             "A genuine write still blocks on verification; this sample is plan-hold."
         ),
     }
+    generated, problems = samples_generated(turns)
+    out["samples_generated"] = {"ok": generated, "problems": problems}
     OUT.write_text(json.dumps(out, indent=2, default=str) + "\n", encoding="utf-8")
     print(json.dumps({k: out[k] for k in out if k != "turns"}, indent=2))
+    if args.samples_only:
+        for problem in problems:
+            print(f"::error::voice SLO probe: {problem}", file=sys.stderr)
+        return 0 if generated else 1
     return 0 if a_pass and b_pass else 1
 
 

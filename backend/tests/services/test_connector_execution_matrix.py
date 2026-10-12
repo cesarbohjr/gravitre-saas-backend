@@ -26,6 +26,34 @@ def test_monday_items_create_executable():
     assert entry.requires_approval is True
 
 
+def test_matrix_and_tool_registry_follow_a_swapped_tool_registry():
+    """Regression: a first build under a patched ``_TOOL_REGISTRY`` must not stick.
+
+    Tests that patch the invoke_tool registry down to one action (and call
+    ``invoke_tool``, which consults the matrix for write classification) used to
+    freeze a near-empty matrix in an ``lru_cache`` for the rest of the worker.
+    """
+    from unittest.mock import patch
+
+    from app.services.chat_tool_bridge import build_dynamic_chat_tool_specs
+    from app.services.tool_registry import get_tool_registry
+
+    build_connector_execution_matrix.cache_clear()
+    build_dynamic_chat_tool_specs.cache_clear()
+    with patch("app.services.tool_service._TOOL_REGISTRY", {"slack.post_message": lambda *_a, **_k: None}):
+        swapped = get_matrix_entry("monday", "monday.items.create")
+        assert swapped is not None
+        assert swapped.implementation_status == "not_implemented"
+        assert "monday_items_create" not in get_tool_registry().list_tool_names()
+
+    entry = get_matrix_entry("monday", "monday.items.create")
+    assert entry is not None
+    assert entry.implementation_status != "not_implemented"
+    assert entry.chat_executable is True
+    assert "monday_items_create" in build_dynamic_chat_tool_specs()
+    assert "monday_items_create" in get_tool_registry().list_tool_names()
+
+
 def test_google_drive_list_executable_with_alias():
     entry = get_matrix_entry("google_drive", "google_drive.files.list")
     assert entry is not None
