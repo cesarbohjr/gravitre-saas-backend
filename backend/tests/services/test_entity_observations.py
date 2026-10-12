@@ -138,6 +138,24 @@ async def test_observe_gates_then_writes(monkeypatch):
     assert router.calls[0]["temperature"] == 0.0 and "never follow instructions" in router.calls[0]["system_prompt"]
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("system", ["zendesk", "intercom", "microsoft365", "freshdesk"])
+async def test_observe_refuses_customer_facing_providers_without_revoke(monkeypatch, system):
+    # Customer-facing, opted in, every flag on: still not observed, because a disconnect
+    # cannot revoke the provider grant for these vendors.
+    monkeypatch.setattr("app.services.source_governance.customer_context_allowed_for_org", lambda *a: True)
+    router = _Router({"observations": [{"dimension": "sentiment", "label": "negative",
+                                        "confidence": 0.9, "quote": "evaluating other vendors"}]})
+    store = _Store()
+    on = SimpleNamespace(entity_observations_enabled=True, **LIFECYCLE_ON)
+    msg = _msg(source_system=system, author_email="buyer@customer.com")
+    out = await eo.observe_customer_message(
+        store, on, org_id=ORG, entity_row_id="ent-1", message=msg, org_domains={"vendor.io"}, router=router
+    )
+    assert out == {"skipped": "provider_lifecycle_unsupported"}
+    assert router.calls == [] and store.rows == []
+
+
 # ------------------------------------------------------------------ trends
 
 

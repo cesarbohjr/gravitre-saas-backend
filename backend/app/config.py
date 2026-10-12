@@ -546,6 +546,12 @@ class Settings(BaseSettings):
     connector_provider_revoke_on_disconnect: bool = False
     # Remove indexed documents a full-sweep sync no longer finds upstream (Notion).
     source_deletion_propagation_enabled: bool = False
+    # Owner switch (default false = current behaviour). When true, the pre-existing
+    # knowledge syncs (Notion, Confluence, HubSpot, Zendesk, Workday; scheduled, manual,
+    # webhook) and the standalone RAG worker also wait for the lifecycle prerequisites
+    # in services/ingestion_interlock.py, and syncs for providers without a wired revoke
+    # call are refused. New 3.0 Plus ingestion is held regardless of this switch.
+    existing_ingestion_requires_lifecycle: bool = False
     # Phase 2C governance. Retention prune of indexed documents per the org's
     # sourceDataGovernance.retentionDays (daily), and retrieval-side exclusion of
     # excerpts that match prompt-injection patterns.

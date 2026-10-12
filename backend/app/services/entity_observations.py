@@ -235,6 +235,11 @@ async def observe_customer_message(
     ok, reason = is_customer_facing(message, org_domains)
     if not ok:
         return {"skipped": reason}
+    from app.services.ingestion_interlock import provider_lifecycle_supported
+
+    if not provider_lifecycle_supported(message.source_system):
+        # No provider revoke wired (e.g. zendesk, intercom, microsoft365): not observed.
+        return {"skipped": "provider_lifecycle_unsupported"}
     if not customer_context_allowed_for_org(client, org_id, message.source_system):
         return {"skipped": "not_opted_in"}
     try:

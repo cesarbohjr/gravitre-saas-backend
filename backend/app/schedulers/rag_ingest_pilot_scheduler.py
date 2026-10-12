@@ -26,7 +26,7 @@ from supabase import create_client
 from app.config import Settings, get_settings
 from app.core.db import shared_service_client
 from app.core.logging import get_logger
-from app.services.ingestion_interlock import ingestion_flag_on
+from app.services.ingestion_interlock import ingestion_flag_on, provider_lifecycle_supported
 
 logger = get_logger(__name__)
 
@@ -47,10 +47,33 @@ def _release_job(client: Any, job: dict[str, Any], reason: str) -> None:
     logger.info("rag_pilot_job_released job_id=%s reason=%s", job.get("id"), reason)
 
 
+def pilot_job_hold_reason(settings: Any, client: Any, job: dict[str, Any]) -> str | None:
+    """Why a claimed job of a pilot org must not be indexed, or None to index it.
+
+    Shared by the in-process pilot and the standalone worker (``app.rag.worker``), so
+    pilot-scoped work gets the same interlock whichever process claims it:
+
+    * the lifecycle interlock for RAG_WORKER_PILOT_ENABLED;
+    * the source's provider must have a revoke call wired (Notion, Confluence,
+      Zendesk, Workday sources are held);
+    * the org must opt in to customer context for that source type.
+    """
+    from app.services.source_governance import customer_context_allowed_for_org
+
+    if not ingestion_flag_on(settings, "rag_worker_pilot_enabled"):
+        return "lifecycle_interlock"
+    org_id = str(job.get("org_id") or "").lower()
+    source_type = _source_type(client, job)
+    if not provider_lifecycle_supported(source_type):
+        return "provider_lifecycle_unsupported"
+    if not customer_context_allowed_for_org(client, org_id, source_type):
+        return "customer_context_not_opted_in"
+    return None
+
+
 def run_pilot_tick(settings: Settings, client: Any, worker_id: str) -> dict[str, int]:
     """Claim and process up to the per-tick limit. Synchronous; run in a thread."""
     from app.rag.worker import process_job
-    from app.services.source_governance import customer_context_allowed_for_org
 
     orgs = pilot_org_ids(settings)
     out = {"processed": 0, "released": 0}
@@ -72,9 +95,11 @@ def run_pilot_tick(settings: Settings, client: Any, worker_id: str) -> dict[str,
         if not job:
             break
         org_id = str(job.get("org_id") or "").lower()
-        source_type = _source_type(client, job)
-        if not customer_context_allowed_for_org(client, org_id, source_type):
-            _release_job(client, job, "customer_context_not_opted_in")
+        reason = pilot_job_hold_reason(settings, client, job)
+        if reason:
+            # The org is left alone for the rest of this tick; claims are oldest-first,
+            # so a held job at the head of an org's queue holds that org back (fail closed).
+            _release_job(client, job, reason)
             released.add(org_id)
             out["released"] += 1
             if len(released) == len(orgs):

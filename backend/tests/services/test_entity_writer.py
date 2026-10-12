@@ -120,11 +120,11 @@ def test_second_system_with_same_host_joins_existing_entity():
         db,
         ON,
         org_id=ORG,
-        records=[ew.ProviderRecord("zendesk", "organization", "zd-7", "Acme Inc", "company", host="acme.com")],
+        records=[ew.ProviderRecord("salesforce", "account", "sf-7", "Acme Inc", "company", host="acme.com")],
     )
     assert res.joined == 1
     assert len(db.entities()) == 1
-    assert sorted(b["system"] for b in db.bindings()) == ["hubspot", "zendesk"]
+    assert sorted(b["system"] for b in db.bindings()) == ["hubspot", "salesforce"]
     assert len({b["entity_id"] for b in db.bindings()}) == 1
 
 
@@ -152,12 +152,27 @@ def test_multiple_candidates_become_a_proposal():
                 "evidence": [{"kind": "host", "value": "acme.com", "source": "x"}],
             }
         )
-    res = ew.write_provider_records(db, ON, org_id=ORG, records=[_company("5", system="quickbooks")])
+    res = ew.write_provider_records(db, ON, org_id=ORG, records=[_company("5", system="salesforce")])
     assert res.proposed == 1
     assert sorted(db.tables[ew.PROPOSALS_TABLE][0]["candidate_keys"]) == ["company:host:acme.com", "legacy:acme"]
     # The same record again does not open a second proposal.
-    ew.write_provider_records(db, ON, org_id=ORG, records=[_company("5", system="quickbooks")])
+    ew.write_provider_records(db, ON, org_id=ORG, records=[_company("5", system="salesforce")])
     assert len(db.tables[ew.PROPOSALS_TABLE]) == 1
+
+
+def test_providers_without_revoke_are_never_filed():
+    # Zendesk, Intercom, Notion, Microsoft 365 have no provider revoke wired: even when
+    # every flag is on and the org opted in, their records do not reach the entity store.
+    db = _DB()
+    records = [
+        ew.ProviderRecord(system, "organization", f"{system}-1", "Acme", "company", host="acme.com")
+        for system in ("zendesk", "intercom", "notion", "microsoft365", "quickbooks")
+    ]
+    res = ew.write_provider_records(db, ON, org_id=ORG, records=records)
+    assert (res.created, res.joined, res.proposed) == (0, 0, 0)
+    assert db.entities() == [] and db.bindings() == []
+    # The same company from HubSpot (revoke wired) is filed.
+    assert ew.write_provider_records(db, ON, org_id=ORG, records=[_company("1")]).created == 1
 
 
 def test_name_only_records_are_never_written():
@@ -169,8 +184,8 @@ def test_name_only_records_are_never_written():
 def test_people_join_on_exact_email_only():
     db = _DB()
     alice = ew.ProviderRecord("hubspot", "contact", "c1", "Alice", "person", email="Alice@Acme.com")
-    namesake = ew.ProviderRecord("zendesk", "user", "u1", "Alice", "person", email="alice@other.com")
-    same = ew.ProviderRecord("zendesk", "user", "u2", "A. Smith", "person", email="alice@acme.com")
+    namesake = ew.ProviderRecord("salesforce", "contact", "u1", "Alice", "person", email="alice@other.com")
+    same = ew.ProviderRecord("salesforce", "contact", "u2", "A. Smith", "person", email="alice@acme.com")
     res = ew.write_provider_records(db, ON, org_id=ORG, records=[alice, namesake, same])
     assert (res.created, res.joined) == (2, 1)
     keys = sorted(e["canonical_key"] for e in db.entities())

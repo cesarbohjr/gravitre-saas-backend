@@ -38,6 +38,7 @@ class _PilotClient:
         self.jobs = jobs
         self.claims: list[dict[str, Any]] = []
         self.updates: list[dict[str, Any]] = []
+        self.source_type = "hubspot"
 
     def rpc(self, name, params):
         assert name == "claim_rag_ingest_job_for_orgs"
@@ -69,7 +70,7 @@ class _PilotClient:
                 return self
 
             def execute(self):
-                return SimpleNamespace(data=[{"type": "notion"}])
+                return SimpleNamespace(data=[{"type": client.source_type}])
 
         return _Q()
 
@@ -85,9 +86,14 @@ def test_pilot_processes_opted_in_orgs_and_releases_others(monkeypatch):
     monkeypatch.setattr(worker, "process_job", lambda s, c, job: processed.append(job["id"]))
     monkeypatch.setattr(
         "app.services.source_governance.customer_context_allowed_for_org",
-        lambda c, org_id, vendor: org_id == ORG and vendor == "notion",
+        lambda c, org_id, vendor: org_id == ORG and vendor == "hubspot",
     )
-    settings = SimpleNamespace(rag_worker_pilot_org_ids=f"{ORG},{ORG2}", rag_worker_pilot_max_jobs_per_tick=10)
+    settings = SimpleNamespace(
+        rag_worker_pilot_enabled=True,
+        rag_worker_pilot_org_ids=f"{ORG},{ORG2}",
+        rag_worker_pilot_max_jobs_per_tick=10,
+        **LIFECYCLE_ON,
+    )
     out = pilot.run_pilot_tick(settings, client, "w")
     assert processed == ["j1", "j3"]
     assert out == {"processed": 2, "released": 1}
@@ -101,7 +107,14 @@ def test_pilot_respects_per_tick_limit(monkeypatch):
     monkeypatch.setattr(worker, "process_job", lambda *a: None)
     monkeypatch.setattr("app.services.source_governance.customer_context_allowed_for_org", lambda *a: True)
     out = pilot.run_pilot_tick(
-        SimpleNamespace(rag_worker_pilot_org_ids=ORG, rag_worker_pilot_max_jobs_per_tick=3), client, "w"
+        SimpleNamespace(
+            rag_worker_pilot_enabled=True,
+            rag_worker_pilot_org_ids=ORG,
+            rag_worker_pilot_max_jobs_per_tick=3,
+            **LIFECYCLE_ON,
+        ),
+        client,
+        "w",
     )
     assert out["processed"] == 3 and len(client.jobs) == 6
 

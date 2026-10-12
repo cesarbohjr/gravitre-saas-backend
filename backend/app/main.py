@@ -14,10 +14,12 @@ from fastapi.responses import JSONResponse
 from app.config import SettingsNotConfiguredError
 from app.core.errors import (
     http_exception_handler,
+    ingestion_held_handler,
     settings_not_configured_handler,
     validation_exception_handler,
 )
 from app.core.logging import get_logger, request_id_ctx
+from app.services.ingestion_interlock import IngestionHeldError
 from app.operator_module import router as operator_router
 from app.operators import router as operators_router
 from app.routers import (
@@ -552,6 +554,7 @@ def root() -> dict:
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(SettingsNotConfiguredError, settings_not_configured_handler)
+app.add_exception_handler(IngestionHeldError, ingestion_held_handler)
 
 
 @app.exception_handler(Exception)
