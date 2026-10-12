@@ -1036,6 +1036,7 @@ async def run_unified_turn_shadow(
                 reasoning_depth=reasoning_depth,
                 actor_id=user_id,
                 conversation_id=conversation_id,
+                spoken_mode=bool(spoken_mode),
             )
             if knowledge_block:
                 _add_part("knowledge_fabric", knowledge_block)
