@@ -82,3 +82,10 @@ def test_kill_switch_is_reported_with_its_value_and_never_pinned():
     _lines, problems, _ = rsv.audit({"DISABLE_INGESTION": ""})
     assert any("DISABLE_INGESTION" in p and "startup" in p for p in problems)
     assert _default(rsv.KILL_SWITCH) is False
+
+
+def test_context_engine_settings_are_reported_never_problems_or_pins():
+    lines, problems, pins = rsv.audit({"CROSS_SOURCE_CONTEXT_ENGINE_ENABLED": "true"})
+    assert "CROSS_SOURCE_CONTEXT_ENGINE_ENABLED='true'" in lines
+    assert "CROSS_SOURCE_CONTEXT_TOKEN_BUDGET: absent (code default 12000)" in lines
+    assert not any("CROSS_SOURCE" in item for item in problems + pins)
