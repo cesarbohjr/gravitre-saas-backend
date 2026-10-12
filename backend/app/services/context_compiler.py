@@ -455,6 +455,7 @@ async def compile_unified_reasoning_context(
                 reasoning_depth=reasoning_depth,
                 actor_id=user_id,
                 conversation_id=conversation_id,
+                spoken_mode=bool(spoken_mode),
             )
             if knowledge_block:
                 _add_part("knowledge_fabric", knowledge_block)
@@ -470,7 +471,17 @@ async def compile_unified_reasoning_context(
         cards_enabled,
     )
 
-    if cards_enabled(active) and not remind_me and client is not None and org_id:
+    _ranking = (knowledge_meta or {}).get("contextRanking") if isinstance(knowledge_meta, dict) else None
+    account_cards_managed = bool(
+        isinstance(_ranking, dict)
+        and _ranking.get("mode") == "active"
+        and _ranking.get("accountSourcesManaged") is True
+    )
+    if account_cards_managed:
+        # The engine ranked the account's observations inside the budget
+        # (CONTEXT_ENGINE_OBSERVATIONS_V1); a second, unbudgeted copy would repeat them.
+        _record("account_context", "DEFER", "knowledge_fabric_managed_account_sources")
+    elif cards_enabled(active) and not remind_me and client is not None and org_id:
         try:
             # Account cards are extra context: a slow read must not hold up the turn.
             card_block, card_meta = await asyncio.wait_for(

@@ -58,6 +58,148 @@ MAX_ADDITIONAL_ROUNDS_CEILING = 3
 CONTEXT_BLOCK_OVERHEAD_TOKENS = 32
 
 
+def liveness_check_enabled(settings: Any) -> bool:
+    return getattr(settings, "cross_source_context_liveness_v1", False) is True
+
+
+def freshness_enabled(settings: Any) -> bool:
+    return getattr(settings, "cross_source_context_freshness_v1", False) is True
+
+
+class _LiveChunk:
+    """A hybrid retrieval row shaped like ``rag_service.Chunk``, metadata kept."""
+
+    def __init__(self, row: dict[str, Any]) -> None:
+        self.id = str(row.get("id") or row.get("chunk_id") or "")
+        self.content = str(row.get("content") or "")
+        self.score = float(row.get("score") or 0.0)
+        self.source = str(row.get("title") or row.get("source_title") or "") or None
+        self.metadata = {
+            key: row[key]
+            for key in (
+                "document_id",
+                "source_id",
+                "last_updated",
+                "source_updated_at",
+                "effective_at",
+                "valid_until",
+                "superseded_at",
+            )
+            if row.get(key)
+        }
+
+
+def keep_live_document_rows(
+    client: Any, org_id: str, rows: list[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Drop rows whose document is gone, inactive, or another org's.
+
+    Retrieval results are cached for minutes, so a document deleted by a user, a
+    retention prune or a connector purge can still be in a cached result. One
+    indexed read of the documents right before prompt assembly closes that gap.
+    Fails closed: if the read fails, no org document reaches the prompt.
+    """
+    meta: dict[str, Any] = {"org_rag_liveness_checked": True}
+    if not rows:
+        return [], meta
+    doc_ids = sorted({str(r.get("document_id")) for r in rows if r.get("document_id")})
+    if client is None or not doc_ids:
+        meta["org_rag_liveness_excluded"] = len(rows)
+        meta["org_rag_liveness_reason"] = "no_client" if client is None else "no_document_ids"
+        return [], meta
+    try:
+        res = (
+            client.table("rag_documents")
+            .select("id, org_id, is_active, updated_at, metadata")
+            .eq("org_id", org_id)
+            .in_("id", doc_ids)
+            .execute()
+        )
+        docs = {
+            str(d.get("id")): d
+            for d in (res.data or [])
+            if isinstance(d, dict)
+            and str(d.get("org_id") or org_id) == org_id
+            and d.get("is_active", True) is not False
+        }
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("org_rag_liveness_failed org_id=%s error=%s", org_id, type(exc).__name__)
+        meta["org_rag_liveness_excluded"] = len(rows)
+        meta["org_rag_liveness_reason"] = "read_failed"
+        return [], meta
+    kept: list[dict[str, Any]] = []
+    for row in rows:
+        doc = docs.get(str(row.get("document_id") or ""))
+        if doc is None:
+            continue
+        doc_meta = doc.get("metadata") if isinstance(doc.get("metadata"), dict) else {}
+        enriched = dict(row)
+        enriched["last_updated"] = (
+            doc_meta.get("source_updated_at") or doc_meta.get("last_updated") or doc.get("updated_at")
+        )
+        for key in ("effective_at", "valid_until", "superseded_at"):
+            if doc_meta.get(key):
+                enriched[key] = doc_meta[key]
+        kept.append(enriched)
+    dropped = len(rows) - len(kept)
+    if dropped:
+        meta["org_rag_liveness_excluded"] = dropped
+        logger.info("org_rag_liveness_excluded org_id=%s count=%s", org_id, dropped)
+    return kept, meta
+
+
+ACCOUNT_SOURCES_TIMEOUT_S = 0.8
+
+
+def account_inputs_requested(settings: Any, client: Any) -> bool:
+    if client is None or not bool(getattr(settings, "cross_source_context_engine_enabled", False)):
+        return False
+    from app.services.account_context_sources import any_enabled
+
+    return any_enabled(settings)
+
+
+async def _account_sources_for_turn(
+    *,
+    settings: Any,
+    client: Any,
+    org_id: str,
+    query: str,
+    spoken_mode: bool,
+    meta: dict[str, Any],
+) -> tuple[list[Any], bool, bool]:
+    """3.0 Plus account inputs as ranked sources. Active ranking only; each input flagged.
+
+    Returns (sources, managed, any_input_on). ``managed`` tells the compiler the
+    engine now owns the account observations, so the separate account card is
+    not appended outside the budget as well.
+    """
+    if not account_inputs_requested(settings, client):
+        return [], False, False
+    from app.services.account_context_sources import (
+        build_account_context_sources,
+        observations_on,
+    )
+
+    try:
+        sources, acct_meta = await asyncio.wait_for(
+            asyncio.to_thread(
+                build_account_context_sources,
+                client,
+                org_id,
+                query,
+                spoken=bool(spoken_mode),
+                settings=settings,
+            ),
+            timeout=ACCOUNT_SOURCES_TIMEOUT_S,
+        )
+    except TimeoutError:
+        sources, acct_meta = [], {"skipped": "timeout"}
+    meta["accountSources"] = acct_meta
+    managed = observations_on(settings) and acct_meta.get("skipped") not in {"timeout", "error"}
+    return list(sources), managed, True
+
+
 def _rows_for_round(
     rows: list[dict[str, Any]],
     *,
@@ -243,18 +385,33 @@ async def _retrieve_org_rag(
     query: str,
     agent: dict[str, Any] | None,
     settings: Settings,
+    client: Any = None,
 ) -> tuple[str, dict[str, Any], list[dict[str, Any]]]:
     from app.services.rag_service import get_rag_service
 
     meta: dict[str, Any] = {}
     rows: list[dict[str, Any]] = []
     rag = get_rag_service()
-    chunks, rag_metrics = await rag.retrieve_chunks(
-        org_id,
-        query,
-        top_k=4,
-        agent_id=str((agent or {}).get("id") or "") or None,
-    )
+    liveness = liveness_check_enabled(settings)
+    if liveness:
+        hybrid_rows, rag_metrics = await rag.retrieve_hybrid_rows(
+            org_id,
+            query,
+            top_k=4,
+            agent_id=str((agent or {}).get("id") or "") or None,
+        )
+        live_rows, live_meta = await asyncio.to_thread(
+            keep_live_document_rows, client, org_id, list(hybrid_rows or [])
+        )
+        meta.update(live_meta)
+        chunks = [_LiveChunk(row) for row in live_rows]
+    else:
+        chunks, rag_metrics = await rag.retrieve_chunks(
+            org_id,
+            query,
+            top_k=4,
+            agent_id=str((agent or {}).get("id") or "") or None,
+        )
     from app.services.ingested_content_guard import (
         RETRIEVED_DATA_NOTICE,
         guard_enabled,
@@ -277,17 +434,22 @@ async def _retrieve_org_rag(
     for chunk in chunks[:4]:
         metadata = getattr(chunk, "metadata", None)
         metadata = metadata if isinstance(metadata, dict) else {}
-        rows.append(
-            {
-                "kind": "knowledge",
-                "content": chunk.content or "",
-                "score": chunk.score or 0.0,
-                "source": chunk.source or "org document",
-                "last_updated": metadata.get("last_updated")
-                or metadata.get("source_updated_at"),
-                "effective_at": metadata.get("effective_at"),
-            }
-        )
+        row = {
+            "kind": "knowledge",
+            "content": chunk.content or "",
+            "score": chunk.score or 0.0,
+            "source": chunk.source or "org document",
+            "last_updated": metadata.get("last_updated")
+            or metadata.get("source_updated_at"),
+            "effective_at": metadata.get("effective_at"),
+        }
+        if liveness:
+            # Provenance survives to the prompt boundary: document identity for
+            # dedup and citation, and the dates freshness ranking needs.
+            for key in ("document_id", "source_id", "valid_until", "superseded_at"):
+                if metadata.get(key):
+                    row[key] = metadata[key]
+        rows.append(row)
     if not chunks:
         return "", meta, rows
     lines = []
@@ -546,6 +708,7 @@ async def build_unified_turn_knowledge_context(
     reasoning_depth: str = "full",
     actor_id: str | None = None,
     conversation_id: str | None = None,
+    spoken_mode: bool = False,
 ) -> tuple[str, dict[str, Any]]:
     """Return (prompt_block, meta) for unified-turn user context."""
     meta: dict[str, Any] = {
@@ -621,6 +784,20 @@ async def build_unified_turn_knowledge_context(
     meta["route_reason"] = route.reason
 
     rag_source_rows: list[dict[str, Any]] = []
+    # 3.0 Plus account inputs read Supabase; start them now so they overlap
+    # retrieval instead of adding to it. Only created when an input flag is on.
+    account_task: asyncio.Task[Any] | None = None
+    if account_inputs_requested(settings, client):
+        account_task = asyncio.create_task(
+            _account_sources_for_turn(
+                settings=settings,
+                client=client,
+                org_id=org_id,
+                query=query,
+                spoken_mode=spoken_mode,
+                meta=meta,
+            )
+        )
     tried: list[str] = []
 
     # ---- round 1: unchanged single-pass behaviour -------------------------
@@ -650,7 +827,7 @@ async def build_unified_turn_knowledge_context(
     tried.append(SOURCE_ORG_RAG)
     try:
         section, rag_meta, rows = await _retrieve_org_rag(
-            org_id=org_id, query=query, agent=agent, settings=settings
+            org_id=org_id, query=query, agent=agent, settings=settings, client=client
         )
         meta.update(rag_meta)
         rag_source_rows.extend(
@@ -1048,7 +1225,11 @@ async def build_unified_turn_knowledge_context(
         ]
 
     sections = evidence_sections + advisory_sections
-    if not sections and not any(
+    account_sources: list[Any] = []
+    account_managed = account_inputs_on = False
+    if account_task is not None:
+        account_sources, account_managed, account_inputs_on = await account_task
+    if not sections and not account_sources and not any(
         (memory_section, kernel_knowledge_section, outcome_bias_section)
     ):
         meta["skipped"] = "no_hits"
@@ -1094,19 +1275,33 @@ async def build_unified_turn_knowledge_context(
                     metadata={"source_identity": "kernel:org_knowledge"},
                 )
             )
+        if account_sources:
+            normalized.extend(account_sources)
         mandatory_sections = list(advisory_sections)
         if active_ranking and outcome_bias_section:
             mandatory_sections.append(outcome_bias_section)
         advisory_tokens = sum(max(1, len(section) // 4) for section in mandatory_sections)
         reserved_tokens = advisory_tokens + CONTEXT_BLOCK_OVERHEAD_TOKENS
         evidence_token_budget = max(0, token_budget - reserved_tokens)
+        fresh_on = freshness_enabled(settings)
+        stale_exclusions: list[dict[str, Any]] = []
+        if fresh_on:
+            from app.services.context_prioritization_engine import apply_source_freshness
+
+            normalized, stale_exclusions = apply_source_freshness(normalized)
         profile = get_context_prioritization_engine().build_context_profile(
             raw_sources=normalized,
             classification=classification or {},
             token_budget=evidence_token_budget,
             department=dept or None,
+            near_duplicates=fresh_on,
         )
         explanation = profile.to_explanation_dict()
+        if stale_exclusions:
+            explanation["excludedSources"] = stale_exclusions + list(
+                explanation["excludedSources"]
+            )
+            explanation["candidateCount"] += len(stale_exclusions)
         selected_by_kind: dict[str, int] = {}
         tokens_by_kind: dict[str, int] = {}
         for source in profile.ranked_sources:
@@ -1143,6 +1338,11 @@ async def build_unified_turn_knowledge_context(
             "legacyPromptChars": len("\n\n".join(sections)),
             "rankedPromptChars": len("\n\n".join(ranked_sections)),
         }
+        if account_inputs_on:
+            meta["contextRanking"]["accountSourcesManaged"] = account_managed
+        if fresh_on:
+            meta["contextRanking"]["freshnessApplied"] = True
+            meta["contextRanking"]["staleExcludedCount"] = len(stale_exclusions)
         if active_ranking:
             sections = ranked_sections
 

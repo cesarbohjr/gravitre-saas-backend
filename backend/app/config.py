@@ -207,6 +207,24 @@ class Settings(BaseSettings):
             "cross_source_context_token_budget",
         ),
     )
+    # Re-check that each org RAG chunk's document still exists and is active right
+    # before it enters the prompt, so a deleted or revoked document cannot come back
+    # from the 5-minute retrieval cache. Rows also keep document id and updated time.
+    cross_source_context_liveness_v1: bool = False
+    # Rank current evidence above stale: freshness from updated/effective dates,
+    # superseded or expired rows left out, dates shown on each source, and a
+    # near-duplicate rule (one excerpt contained in another) on top of exact dedup.
+    cross_source_context_freshness_v1: bool = False
+    # 3.0 Plus account inputs to the active engine (account_context_sources.py), one
+    # flag each; read only on active-ranking turns that name a filed account.
+    # Observations: customer quotes (text only) and Gravitre's trend reading, under
+    # the org's customer-context consent and only from still-connected vendors.
+    # Replaces the separate account card on those turns.
+    context_engine_observations_v1: bool = False
+    # Measured behaviour signals plus the rule-based health status built from them.
+    context_engine_account_signals_v1: bool = False
+    # Work linked to the account (proposals, Plays work, goals) with truthful status.
+    context_engine_work_state_v1: bool = False
     # Unified live turns compile the unified reasoning context (agent_intelligence).
     # Only consulted when unified_turn_live_enabled is on; false skips the compile.
     context_compiler_unified_live_v1: bool = True

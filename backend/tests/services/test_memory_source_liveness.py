@@ -529,3 +529,44 @@ def test_workflow_outcome_memory_drops_provider_error_text_with_lineage_on():
         "Run r1 finished with status failed. 4 step error(s); details are on the run."
     )
     assert _outcome_memory_insight("r1", "completed", [], ON) == "Run r1 finished with status completed."
+
+
+# ---------------------------------------------------------------- context engine account inputs
+
+
+@pytest.mark.parametrize("lineage", [False, True])
+def test_context_engine_drops_a_revoked_connection_even_while_the_vendor_is_live(lineage):
+    """Vendor-level governance keeps HubSpot observations while any HubSpot connection is
+    live. Per-connector lineage also drops those learned through a revoked connection."""
+    import copy
+
+    from app.services import account_context_sources as acs
+    from app.services.entity_context_card import clear_cache_for_tests
+    from tests.context_engine.harness import ORG_A, TABLES, FakeClient
+
+    clear_cache_for_tests()
+    hs_live, hs_old = LIVE, DELETED
+    tables = copy.deepcopy(TABLES)
+    tables["connectors"] = [
+        {"id": hs_live, "org_id": ORG_A, "type": "hubspot", "vendor": "hubspot", "status": "active", "deleted_at": None},
+        {"id": hs_old, "org_id": ORG_A, "type": "hubspot", "vendor": "hubspot", "status": "disconnected",
+         "deleted_at": "2026-10-12T10:00:00+00:00"},
+    ]
+    for row in tables["entity_observations"]:
+        row["source_connector_id"] = hs_live
+    old = dict(tables["entity_observations"][0], id="obs-a-old", source_connector_id=hs_old,
+               evidence_quote="OLD-PORTAL-QUOTE we will not renew")
+    tables["entity_observations"].insert(0, old)
+    settings = SimpleNamespace(
+        context_engine_observations_v1=True,
+        context_engine_account_signals_v1=True,
+        retrieved_content_guard_enabled=True,
+        memory_source_lineage_enabled=lineage,
+    )
+    sources, _meta = acs.build_account_context_sources(
+        FakeClient(tables), ORG_A, "How is Acme Corp doing?", spoken=False, settings=settings
+    )
+    text = "\n".join(s.content for s in sources)
+    assert ("OLD-PORTAL-QUOTE" in text) is (not lineage)
+    assert any(s.source_type == "account_measurement" for s in sources)  # live observations remain
+    clear_cache_for_tests()

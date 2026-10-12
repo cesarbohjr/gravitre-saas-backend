@@ -57,6 +57,11 @@ DEFAULT_OFF: tuple[str, ...] = (
     "ML_PREDICTION_OUTCOMES_ENABLED",
     "OUTCOME_LEARNING_HANDLER_ENABLED",
     "ML_TIME_SPLIT_ENABLED",
+    "CROSS_SOURCE_CONTEXT_LIVENESS_V1",
+    "CROSS_SOURCE_CONTEXT_FRESHNESS_V1",
+    "CONTEXT_ENGINE_OBSERVATIONS_V1",
+    "CONTEXT_ENGINE_ACCOUNT_SIGNALS_V1",
+    "CONTEXT_ENGINE_WORK_STATE_V1",
     # Lineage tags, read-time revoked-source filter, cache invalidation on revoke
     # and the memory/observation purge (PR #374). Needs migration 20261012070000
     # first: before it, recall returns no memories (the filter fails closed).
