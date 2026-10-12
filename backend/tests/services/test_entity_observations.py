@@ -74,11 +74,16 @@ def test_quote_matching_ignores_whitespace_and_case():
         ({"source_system": "bamboohr"}, False, "internal_or_unsupported_source"),
         ({"author_email": "rep@vendor.io"}, False, "author_is_internal"),
         ({"source_system": "gmail", "author_email": ""}, False, "email_author_unknown"),
-        ({"source_system": "zendesk", "author_email": ""}, True, ""),
+        ({"source_system": "zendesk", "source_record_type": "ticket", "author_email": ""}, True, ""),
+        # CRM-logged email is a mailbox too: no author, no observation.
+        ({"source_system": "hubspot", "source_record_type": "email", "author_email": ""}, False,
+         "email_author_unknown"),
+        ({"author_email": "Colleague@Gmail.com"}, False, "author_is_internal"),
+        ({"author_email": "buyer@gmail.com"}, True, ""),
     ],
 )
 def test_customer_facing_scope(kw, ok, reason):
-    assert eo.is_customer_facing(_msg(**kw), {"vendor.io"}) == (ok, reason)
+    assert eo.is_customer_facing(_msg(**kw), {"vendor.io"}, {"colleague@gmail.com"}) == (ok, reason)
 
 
 class _Router:
@@ -270,8 +275,9 @@ def test_fixture_labels_are_valid():
 
 
 class _FeedClient:
-    def __init__(self, bindings: list[dict[str, Any]]) -> None:
+    def __init__(self, bindings: list[dict[str, Any]], members: dict[str, str] | None = None) -> None:
         self.bindings = bindings
+        self.members = members or {}  # auth user id -> email
         self.outbox: list[dict[str, Any]] = []
 
     def table(self, name):
@@ -292,11 +298,19 @@ class _FeedClient:
                 self.f.append((k, list(v)))
                 return self
 
+            def limit(self, _n):
+                return self
+
             def upsert(self, row, **_k):
                 client.outbox.append(row)
                 return self
 
             def execute(self):
+                if name == "organization_members":
+                    return SimpleNamespace(data=[{"user_id": u} for u in client.members])
+                if name == "users":
+                    ids = dict(self.f).get("auth_user_id", [])
+                    return SimpleNamespace(data=[{"email": client.members[u]} for u in ids if u in client.members])
                 if name != "org_business_entity_bindings":
                     return SimpleNamespace(data=[])
                 return SimpleNamespace(
@@ -376,6 +390,7 @@ def test_feed_observes_and_retries_on_extractor_error(_hubspot, monkeypatch):
     on = SimpleNamespace(entity_observations_enabled=True)
     assert feed.handle_customer_message(_FeedClient(bound), _feed_event(), on) == {"written": 2}
     assert seen[0]["entity_row_id"] == "e1" and seen[0]["org_domains"] == {"vendor.io"}
+    assert seen[0]["org_emails"] == set()
     assert seen[0]["message"].author_email == "buyer@customer.com"
 
     async def failing(client, settings, **kw):
@@ -384,6 +399,36 @@ def test_feed_observes_and_retries_on_extractor_error(_hubspot, monkeypatch):
     monkeypatch.setattr(eo, "observe_customer_message", failing)
     with pytest.raises(RuntimeError):
         feed.handle_customer_message(_FeedClient(bound), _feed_event(), on)
+
+
+def test_feed_treats_org_members_as_colleagues_not_customers(_hubspot):
+    """A colleague's email logged in HubSpot is never observed as customer sentiment."""
+    from app.services import customer_observation_feed as feed
+
+    members = {"u1": "Rep@Vendor-Sales.com", "u2": "founder@gmail.com"}
+    domains, emails = feed.org_internal_identities(_FeedClient([], members), ORG, "vendor.io")
+    assert domains == {"vendor.io", "vendor-sales.com"}  # gmail.com stays a customer domain
+    assert emails == {"rep@vendor-sales.com", "founder@gmail.com"}
+    for author, ok in [
+        ("rep@vendor-sales.com", False), ("other@vendor-sales.com", False),
+        ("founder@gmail.com", False), ("buyer@gmail.com", True),
+    ]:
+        msg = _msg(author_email=author)
+        assert eo.is_customer_facing(msg, domains, emails)[0] is ok, author
+
+
+def test_feed_retries_when_members_cannot_be_read(_hubspot):
+    from app.services import customer_observation_feed as feed
+
+    class _Broken(_FeedClient):
+        def table(self, name):
+            if name == "organization_members":
+                raise RuntimeError("db down")
+            return super().table(name)
+
+    bound = [{"org_id": ORG, "system": "hubspot", "resource_type": "company", "resource_id": "co1", "entity_id": "e1"}]
+    with pytest.raises(RuntimeError):
+        feed.handle_customer_message(_Broken(bound), _feed_event(), SimpleNamespace(entity_observations_enabled=True))
 
 
 def test_hubspot_sync_queues_only_inbound_emails_when_enabled():

@@ -207,6 +207,9 @@ class Settings(BaseSettings):
             "cross_source_context_token_budget",
         ),
     )
+    # Unified live turns compile the unified reasoning context (agent_intelligence).
+    # Only consulted when unified_turn_live_enabled is on; false skips the compile.
+    context_compiler_unified_live_v1: bool = True
     # Task-shaped turns: semantic tool retrieval (Phase 0 Future). Social keeps keyword narrow.
     unified_turn_embedding_tool_retrieval: bool = Field(
         default=True,
@@ -386,6 +389,10 @@ class Settings(BaseSettings):
     # Jira Cloud OAuth (STA-36)
     jira_client_id: str = ""
     jira_client_secret: str = ""
+    # Confluence Cloud OAuth. Empty falls back to the Jira Atlassian app above
+    # (connectors/confluence_oauth.confluence_credentials).
+    confluence_client_id: str = ""
+    confluence_client_secret: str = ""
     # Generic OAuth — Xero (PKCE)
     xero_client_id: str = ""
     xero_client_secret: str = ""
@@ -530,6 +537,10 @@ class Settings(BaseSettings):
     company_intelligence_interval_seconds: int = 28800
     # Standing unprompted investigators (read-scoped advisory). 0 disables; default 8 hours.
     standing_investigator_interval_seconds: int = 28800
+    # In-process cache warming scheduler. 0 disables; default hourly.
+    cache_warming_interval_seconds: int = 3600
+    # In-process workflow failure prediction scheduler. 0 disables; default hourly.
+    workflow_failure_prediction_interval_seconds: int = 3600
     # Past-due approval escalation + Monday weekly summary (0 disables).
     ops_notifications_interval_seconds: int = 900
     # Phase 2A durable domain events: in-process relay for domain_event_outbox.
@@ -553,7 +564,7 @@ class Settings(BaseSettings):
     knowledge_retention_interval_seconds: int = 86400
     retrieved_content_guard_enabled: bool = False
     # Phase 2D in-process indexing pilot: only these orgs (comma-separated UUIDs), only
-    # when each also opts in to customer context. Needs migration 20261012020000.
+    # when each also opts in to customer context. Needs migration 20261012024300.
     rag_worker_pilot_enabled: bool = False
     rag_worker_pilot_org_ids: str = ""
     rag_worker_pilot_interval_seconds: int = 30
@@ -712,6 +723,15 @@ class Settings(BaseSettings):
             "voice_pipecat_flux_eot",
         ),
     )
+    # Spoken medium turns wait at most this long (ms) for the parallel retrieval
+    # block; late results are dropped (services/intelligence_orchestrator.py).
+    voice_medium_retrieval_budget_ms: int = 700
+    # Short (few-word) transcripts below this STT confidence are not answered
+    # (pipecat_voice/utterance_gate.py); 0 turns the gate off.
+    voice_min_short_transcript_confidence: float = 0.45
+    # Seconds of silence during an open tool call before a spoken notice
+    # (pipecat_voice/voice_silence_guard.py); 0 turns it off.
+    voice_slow_tool_notice_seconds: float = 4.0
     # Seconds of silence on a deep spoken turn before a short "one moment"
     # acknowledgement is spoken; 0 turns it off.
     voice_deep_ack_seconds: float = Field(
