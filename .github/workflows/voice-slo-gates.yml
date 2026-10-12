@@ -2,6 +2,12 @@ name: Voice SLO two-metric gates
 
 # Standing regression guard: Metric A and Metric B are alerted separately.
 # A blended "voice latency" number is not a pass/fail signal.
+#
+# A run with zero samples is not latency evidence. Each run first drives real
+# production HTTP Talk turns on the isolated smoke org (plan-without-execute
+# prompts only; no writes, no outbound messages), which makes the production
+# voice path write its own voice.slo.metric_a / metric_b audit rows. The window
+# check then judges those rows and still reports (and alerts on) all orgs.
 on:
   schedule:
     - cron: "15 6 * * *"
@@ -11,32 +17,55 @@ concurrency:
   group: voice-slo-gates
   cancel-in-progress: false
 
+env:
+  # Isolated smoke org (app.services.conversation_write_guard). The probe refuses any other org.
+  VOICE_SLO_SMOKE_ORG_ID: f07e57c0-1501-4000-8000-c04e57a00001
+
 jobs:
   voice-slo:
     name: Two-metric voice SLO alerts
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
 
+      # The probe imports backend modules (prompt safety guard, isolated-org guard).
       - name: Install deps
-        run: pip install python-dotenv supabase
+        run: pip install -r backend/requirements.txt httpx PyJWT python-dotenv supabase
 
+      # Fails the job if any turn did not stream to voice.turn.complete, since
+      # then the server did not write that turn's samples.
+      - name: Generate synthetic samples (live HTTP Talk on isolated smoke org)
+        env:
+          LIVE_API_BASE: https://api.gravitre.app
+          VOICE_SLO_LIVE_SAMPLE_N: "5"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python scripts/verify-voice-slo-two-metric-live.py --samples-only
+
+      # A breach (exit 1) or too few samples to judge (exit 2) fails the run.
+      # Runs even when the probe failed so the artifact shows what the window holds.
       - name: Live window alert (Metric A and Metric B separately)
-        continue-on-error: true
+        if: always()
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VOICE_SLO_ALERT_ORG_ID: ${{ env.VOICE_SLO_SMOKE_ORG_ID }}
         run: python scripts/check-voice-slo-alerts.py
 
-      - name: Upload voice SLO alert artifact
+      - name: Upload voice SLO artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: voice-slo-alerts
-          path: docs/delivery/voice-slo-alerts-latest.json
+          path: |
+            docs/delivery/voice-slo-alerts-latest.json
+            docs/delivery/voice-slo-two-metric-live.json
           if-no-files-found: ignore
