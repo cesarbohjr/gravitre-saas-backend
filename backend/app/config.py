@@ -568,6 +568,31 @@ class Settings(BaseSettings):
     entity_observations_enabled: bool = False
     # Phase 4: account cards (observations, trends, behaviour) in the chat and voice context.
     entity_context_cards_enabled: bool = False
+    # Phase 5 (needs migration 20261012050000): goal_id / work_object_id links on
+    # work objects and agent jobs, and goal progress from linked work.
+    goal_links_enabled: bool = False
+    # Phase 5: AI-proposed work filed as work_objects.status='proposed' (accept/dismiss).
+    work_object_proposals_enabled: bool = False
+    # Phase 5: Play required_signals checked against this org's recent events.
+    play_signal_evaluation_enabled: bool = False
+    # Phase 5: one ranked recommendation feed (/api/recommendations/feed).
+    recommendation_feed_enabled: bool = False
+    # Phase 6 (needs migration 20261012060000): log checkable predictions with a subject
+    # and horizon, label them from evidence, and report realized accuracy.
+    ml_prediction_outcomes_enabled: bool = False
+    ml_prediction_labeling_interval_seconds: int = 86400
+    # Phase 6: churn training holds out the most recent outcomes instead of a random fifth.
+    ml_time_split_enabled: bool = False
+    # Phase 7: per-dimension account health (/api/entities/health), no composite score.
+    account_health_enabled: bool = False
+    # Phase 7: daily rule-based behaviour signals (compute_entity_behavior_signals) for orgs
+    # with recent customer observations. Needs migration 20261012040000.
+    entity_behavior_signals_enabled: bool = False
+    entity_behavior_signals_interval_seconds: int = 86400
+    # Phase 8: after the daily behaviour pass, at-risk accounts get a Play *proposal*
+    # (never a run or a customer message). Also needs WORK_OBJECT_PROPOSALS_ENABLED
+    # and ACCOUNT_HEALTH_ENABLED.
+    account_play_proposals_enabled: bool = False
     # Shared secret for /api/watchers/agent/signal HMAC or X-Watcher-Secret header.
     watcher_agent_webhook_secret: str | None = None
     # Memory promotion evaluation (v4). 0 disables; default 8 hours.

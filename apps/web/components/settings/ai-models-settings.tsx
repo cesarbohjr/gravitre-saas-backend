@@ -1,6 +1,7 @@
 "use client"
 
 import { MemoryEntityEmbeddingsSettings } from "@/components/settings/memory-entity-embeddings-settings"
+import { SOURCE_GOVERNANCE_UI_ENABLED, SourceGovernanceSettings } from "@/components/settings/source-governance-settings"
 
 export function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
   return (
@@ -13,6 +14,7 @@ export function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
         </p>
       </div>
       <MemoryEntityEmbeddingsSettings isAdmin={isAdmin} />
+      {SOURCE_GOVERNANCE_UI_ENABLED ? <SourceGovernanceSettings isAdmin={isAdmin} /> : null}
     </div>
   )
 }

@@ -30,6 +30,7 @@ WorkObjectType = Literal[
     "other",
 ]
 WorkObjectStatus = Literal[
+    "proposed",
     "identified",
     "planned",
     "in_progress",
@@ -60,6 +61,7 @@ WORK_OBJECT_TYPES: frozenset[str] = frozenset(
 )
 WORK_OBJECT_STATUS: frozenset[str] = frozenset(
     {
+        "proposed",
         "identified",
         "planned",
         "in_progress",
@@ -262,7 +264,8 @@ def _derive_objective(metadata: dict[str, Any], fallback: str) -> str | None:
 def _derive_work_status(terminal_status: str, *, current_status: str, metadata: dict[str, Any]) -> WorkObjectStatus:
     explicit = _normalize_status(metadata.get("work_object_status"))
     if _as_str(metadata.get("work_object_status")):
-        return explicit
+        # Only the proposal service files proposals; executions never do.
+        return "identified" if explicit == "proposed" else explicit
     closed = bool(metadata.get("work_object_closed"))
     if terminal_status in {"failed"}:
         return "failed"
@@ -351,6 +354,8 @@ def _serialize_work_object(row: dict[str, Any]) -> dict[str, Any]:
         "owner": _as_str(row.get("owner_user_id") or row.get("owner")) or None,
         "status": _as_str(row.get("status")) or "identified",
         "priority": _as_str(row.get("priority")) or "medium",
+        "goalId": _as_str(row.get("goal_id")) or None,
+        "businessEntityId": _as_str(row.get("business_entity_id")) or None,
         "externalEntityType": _as_str(row.get("external_entity_type")) or None,
         "externalEntityId": _as_str(row.get("external_entity_id")) or None,
         "anchorConversationId": _as_str(row.get("anchor_conversation_id")) or None,
@@ -719,7 +724,12 @@ def list_work_objects(
     if priority:
         query = query.eq("priority", _normalize_priority(priority))
     rows = query.execute().data or []
-    return [_serialize_work_object(row) for row in rows if isinstance(row, dict)]
+    # AI proposals are not work yet: they appear only when asked for by status.
+    return [
+        _serialize_work_object(row)
+        for row in rows
+        if isinstance(row, dict) and (status or row.get("status") != "proposed")
+    ]
 
 
 def get_work_object(client: Any, *, org_id: str, work_object_id: str) -> dict[str, Any] | None:
@@ -769,6 +779,7 @@ def summarize_work_object_coverage(client: Any, *, org_id: str) -> dict[str, Any
         .data
         or []
     )
+    rows = [row for row in rows if not (isinstance(row, dict) and row.get("status") == "proposed")]
     by_type: dict[str, int] = {}
     by_department: dict[str, int] = {}
     for row in rows:

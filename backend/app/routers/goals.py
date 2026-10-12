@@ -366,3 +366,91 @@ async def execute_objective(
             request["reason"] = exc.detail
     client.table("goals").update({"status": "active"}).eq("id", objective_id).eq("org_id", org).execute()
     return {"objectiveId": objective_id, "started": started, "steps": requests}
+
+
+# --- Phase 5: one write path for goals (the web routes proxy here) ----------
+
+
+def _goal_org(org_id: str | None) -> str:
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    return org_id
+
+
+@router.get("")
+def list_goals_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    from app.services.goal_records import list_goals
+
+    return {"goals": list_goals(shared_service_client(settings, create_client), _goal_org(org_id))}
+
+
+@router.post("", status_code=status.HTTP_201_CREATED)
+def create_goal_route(
+    body: dict[str, Any],
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    from app.services.goal_records import GoalValidationError, create_goal
+
+    try:
+        goal = create_goal(shared_service_client(settings, create_client), _goal_org(org_id), body)
+    except GoalValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return {"goal": goal}
+
+
+@router.get("/{goal_id}/linked-progress")
+def goal_linked_progress_route(
+    goal_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    from app.services.goal_records import get_goal, goal_link_progress
+
+    if getattr(settings, "goal_links_enabled", False) is not True:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    client = shared_service_client(settings, create_client)
+    org = _goal_org(org_id)
+    if get_goal(client, org, goal_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found")
+    return goal_link_progress(client, org, goal_id)
+
+
+@router.get("/{goal_id}")
+def get_goal_route(
+    goal_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    from app.services.goal_records import get_goal
+
+    goal = get_goal(shared_service_client(settings, create_client), _goal_org(org_id), goal_id)
+    if goal is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found")
+    return {"goal": goal}
+
+
+@router.patch("/{goal_id}")
+def update_goal_route(
+    goal_id: str,
+    body: dict[str, Any],
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    from app.services.goal_records import GoalValidationError, update_goal
+
+    try:
+        goal = update_goal(shared_service_client(settings, create_client), _goal_org(org_id), goal_id, body)
+    except GoalValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    if goal is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Goal not found")
+    return {"goal": goal}

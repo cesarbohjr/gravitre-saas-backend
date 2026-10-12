@@ -51,6 +51,40 @@ def _card(
     }
 
 
+def _log_checkable_prediction(
+    client: Any, settings: Any, org_id: str, scorer: Any, customer_id: str, prediction: dict[str, Any]
+) -> None:
+    """Phase 6: log the score so it can be checked against the customer's real outcome."""
+    from app.ml.churn_feature_ingest import CHURN_ENTITY_TYPE
+    from app.ml.prediction_outcomes import (
+        CHURN_HORIZON_DAYS,
+        churn_prediction_payload,
+        log_subject_prediction,
+        outcomes_enabled,
+    )
+
+    ref = getattr(scorer, "registry_ref", None)
+    if not outcomes_enabled(settings) or not isinstance(ref, dict) or not customer_id:
+        return
+    label, score, payload = churn_prediction_payload(prediction)
+    try:
+        log_subject_prediction(
+            client,
+            settings,
+            org_id=org_id,
+            model_id=ref["model_id"],
+            version=ref["version"],
+            subject_type=CHURN_ENTITY_TYPE,
+            subject_id=customer_id,
+            horizon_days=CHURN_HORIZON_DAYS,
+            predicted_label=label,
+            predicted_score=score,
+            prediction=payload,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("churn_prediction_log_failed org_id=%s error=%s", org_id, type(exc).__name__)
+
+
 async def build_churn_advisory_cards(
     org_id: str,
     *,
@@ -134,6 +168,8 @@ async def build_churn_advisory_cards(
             )
             continue
         cards.append(_card(customer_id=str(row.get("customer_id")), prediction=prediction))
+        if trained:
+            _log_checkable_prediction(db, active, org_id, scorer, str(row.get("customer_id")), prediction)
 
     # Sort highest risk first when scores exist.
     def _sort_key(card: dict[str, Any]) -> float:

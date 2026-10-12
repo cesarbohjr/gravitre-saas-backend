@@ -51,8 +51,14 @@ def create_job(
     created_by: str | None = None,
     timeout_seconds: int = 300,
     max_attempts: int = 3,
+    goal_id: str | None = None,
+    work_object_id: str | None = None,
 ) -> dict[str, Any]:
-    """Insert a queued agent job row."""
+    """Insert a queued agent job row.
+
+    ``goal_id`` / ``work_object_id`` are written only when given, so callers
+    that do not link keep working before migration 20261012050000 is applied.
+    """
     now = datetime.now(timezone.utc)
     timeout_at = now + timedelta(seconds=timeout_seconds)
     row = {
@@ -68,6 +74,10 @@ def create_job(
         "timeout_at": timeout_at.isoformat(),
         "retry_count": 0,
     }
+    if goal_id:
+        row["goal_id"] = goal_id
+    if work_object_id:
+        row["work_object_id"] = work_object_id
     resp = client.table("agent_jobs").insert(row).execute()
     job = resp.data[0] if resp.data else row
     # Lifecycle notify on queue (claim path skipped to avoid double spam).

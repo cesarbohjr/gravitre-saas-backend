@@ -681,7 +681,13 @@ async def train_churn_risk_scorer(
             "metric_name": "churn_customer_signal",
             "note": "Need labeled churn_customer_signal rows via churn_feature_ingest.",
         }
-    metrics = await scorer.train(features, labels)
+    # Phase 6: hold out the most recent outcomes instead of a random fifth.
+    observed_at = (
+        [row.get("measured_at") for row in labeled]
+        if getattr(active, "ml_time_split_enabled", False) is True
+        else None
+    )
+    metrics = await scorer.train(features, labels, observed_at=observed_at)
     registration = await register_trained_artifact_detailed(
         org_id,
         name=CATALOG_MODEL_NAMES["churn_risk_scorer"],

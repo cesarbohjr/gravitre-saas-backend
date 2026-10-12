@@ -4417,3 +4417,100 @@ export const api = {
 }
 
 export default api
+
+// ---------------------------------------------------------------------------
+// Gravitre 3.0 Plus (Phases 5-9). Each backend route answers 404 while its
+// flag is off; the surfaces that use these treat 404 as "not switched on".
+
+export type AccountHealthStatus = "healthy" | "watch" | "at_risk" | "unknown"
+
+export interface AccountHealthDimension {
+  key: string
+  label: string
+  kind: "leading" | "lagging"
+  definition: string
+  status: AccountHealthStatus
+  value: unknown
+  note: string | null
+  evidence: string[]
+  coverage: Record<string, unknown>
+}
+
+export interface AccountHealth {
+  entity: { id: string; name: string | null; systems: string[] }
+  dimensions: AccountHealthDimension[]
+  statusCounts: Partial<Record<AccountHealthStatus, number>>
+  compositeScore: null
+  generatedAt: string
+}
+
+export interface AccountHealthListItem {
+  entity: { id: string; name: string | null; systems: string[] }
+  statusCounts: Partial<Record<AccountHealthStatus, number>>
+  atRisk: string[]
+  watch: string[]
+}
+
+export interface RecommendationFeedItem {
+  id: string
+  kind: string
+  title: string
+  why: string
+  evidence: string[]
+  source: string
+  score: number
+  href: string | null
+  actions: string[]
+  advisoryOnly: boolean
+  workObjectId?: string
+}
+
+export interface RecommendationFeed {
+  items: RecommendationFeedItem[]
+  sources: Record<string, "ok" | "off" | "error">
+  generatedAt: string
+}
+
+export interface GoalLinkedProgress {
+  goalId: string
+  basis: "linked_work"
+  completionPercentage: number | null
+  linkedWork: { total: number; byStatus: Record<string, number> }
+  linkedJobs: { total: number; byStatus: Record<string, number> }
+}
+
+export interface SourceDataGovernance {
+  customerContext: { enabled: boolean; connectors: string[] }
+  retentionDays: Record<string, number>
+}
+
+export const accountIntelligenceApi = {
+  healthList: (limit = 20) =>
+    fetcher<{ accounts: AccountHealthListItem[]; generatedAt: string }>(
+      apiUrl(`/api/entities/health?limit=${limit}`),
+    ),
+  health: (entityId: string) =>
+    fetcher<AccountHealth>(apiUrl(`/api/entities/${encodeURIComponent(entityId)}/health`)),
+  feed: () => fetcher<RecommendationFeed>(apiUrl("/api/recommendations/feed")),
+  acceptProposal: (workObjectId: string, reason?: string) =>
+    postJson<{ workObject: { id: string; status: string } }>(
+      apiUrl(`/api/work-objects/${encodeURIComponent(workObjectId)}/accept`),
+      { reason: reason ?? null },
+    ),
+  dismissProposal: (workObjectId: string, reason?: string) =>
+    postJson<{ workObject: { id: string; status: string } }>(
+      apiUrl(`/api/work-objects/${encodeURIComponent(workObjectId)}/dismiss`),
+      { reason: reason ?? null },
+    ),
+  goalLinkedProgress: (goalId: string) =>
+    fetcher<GoalLinkedProgress>(apiUrl(`/api/goals/${encodeURIComponent(goalId)}/linked-progress`)),
+  sourceGovernance: () =>
+    fetcher<{ sourceDataGovernance: SourceDataGovernance }>(apiUrl("/api/settings/source-governance")),
+  saveSourceGovernance: (policy: SourceDataGovernance) =>
+    putJson<{ sourceDataGovernance: SourceDataGovernance }>(apiUrl("/api/settings/source-governance"), policy),
+}
+
+/** True when a Phase 5-9 route answered "not switched on" (404). */
+export function isFeatureOff(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { status?: unknown }).status === 404
+}

@@ -485,6 +485,8 @@ async def load_org_trained_catalog_model(
         if match:
             artifact = await registry.load_model_artifact(match.id, match.deployed_version)
             instance.load(artifact)
+            # Which registry version produced this instance, for outcome labeling.
+            instance.registry_ref = {"model_id": str(match.id), "version": int(match.deployed_version)}
     except Exception:  # noqa: BLE001
         pass
     return instance

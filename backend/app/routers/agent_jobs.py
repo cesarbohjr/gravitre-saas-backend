@@ -35,6 +35,8 @@ class EnqueueJobRequest(BaseModel):
     session_id: str | None = Field(default=None, alias="sessionId")
     agent_id: str | None = Field(default=None, alias="agentId")
     context: dict[str, Any] | None = None
+    goal_id: str | None = Field(default=None, alias="goalId")
+    work_object_id: str | None = Field(default=None, alias="workObjectId")
 
 
 class AssignmentDecisionRequest(BaseModel):
@@ -60,7 +62,25 @@ def _public(job: dict[str, Any]) -> dict[str, Any]:
         "attempts": job.get("attempts"),
         "createdAt": job.get("created_at"),
         "finishedAt": job.get("finished_at"),
+        "goalId": job.get("goal_id"),
+        "workObjectId": job.get("work_object_id"),
     }
+
+
+def _validated_links(
+    client: Any, settings: Settings, org_id: str, body: EnqueueJobRequest
+) -> tuple[str | None, str | None]:
+    """Goal and work-object links, checked to belong to this org (Phase 5)."""
+    goal_id = (body.goal_id or "").strip() or None
+    work_object_id = (body.work_object_id or "").strip() or None
+    if not (goal_id or work_object_id):
+        return None, None
+    if getattr(settings, "goal_links_enabled", False) is not True:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Goal links are not enabled")
+    for table, value in (("goals", goal_id), ("work_objects", work_object_id)):
+        if value and not (client.table(table).select("id").eq("org_id", org_id).eq("id", value).limit(1).execute().data):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{table[:-1].replace('_', ' ')} not found")
+    return goal_id, work_object_id
 
 
 @router.post("", status_code=status.HTTP_202_ACCEPTED)
@@ -80,14 +100,18 @@ async def enqueue_job(
     if agent_id:
         context.setdefault("agent_id", agent_id)
     kind = "agent_task" if agent_id else "operator_task"
+    client = _client(settings)
+    goal_id, work_object_id = _validated_links(client, settings, org_id, body)
     job = jobs.create_job(
-        _client(settings),
+        client,
         org_id,
         kind=kind,
         session_id=body.session_id,
         environment=environment,
         payload={"task": body.task, "context": context, "agent_id": agent_id},
         created_by=current_user.get("user_id"),
+        goal_id=goal_id,
+        work_object_id=work_object_id,
     )
     from app.workers.queue import enqueue_agent_execution_job
 

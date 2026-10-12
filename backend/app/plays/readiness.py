@@ -63,6 +63,7 @@ def resolve_play_readiness(
     org_id: str | None = None,
     policy_authorized_actions: set[str] | None = None,
     metric_keys: set[str] | None = None,
+    observed_signals: set[str] | None = None,
 ) -> PlayReadiness:
     """Resolve current Play maturity without executing anything.
 
@@ -70,6 +71,9 @@ def resolve_play_readiness(
     evaluation for the relevant agent/context. Absence never means authorized.
     `metric_keys` lets a caller resolving many Plays load the org's metric
     keys once (see `org_metric_keys`) instead of once per Play.
+    `observed_signals` (see `plays.signal_evidence.org_observed_signals`) makes
+    signals count only when this org produced them recently; ``None`` keeps
+    the taxonomy-name check.
     """
 
     blockers: list[str] = []
@@ -149,12 +153,26 @@ def resolve_play_readiness(
         available_write_choices.append(available)
 
     known_signals = _known_signals()
+    if observed_signals is not None:
+        from app.plays.signal_evidence import evaluated_signal_names
+
+        known_signals |= evaluated_signal_names()
     signal_rows: list[dict[str, Any]] = []
     for signal in definition.required_signals:
-        state: Readiness = "AVAILABLE" if signal in known_signals else "MISSING"
-        signal_rows.append({"signal": signal, "status": state})
+        if signal not in known_signals:
+            state: Readiness = "MISSING"
+        elif observed_signals is None or signal in observed_signals:
+            state = "AVAILABLE"
+        else:
+            state = "PARTIAL"
+        row: dict[str, Any] = {"signal": signal, "status": state}
+        if observed_signals is not None:
+            row["observed_recently"] = signal in observed_signals
+        signal_rows.append(row)
         status_values.append(state)
-        if state != "AVAILABLE":
+        if state == "PARTIAL":
+            blockers.append(f"signal {signal}: no events for this org in the last 30 days")
+        elif state != "AVAILABLE":
             blockers.append(f"signal {signal}: {state}")
 
     keys = metric_keys if metric_keys is not None else _metric_keys(client, org_id)
