@@ -120,3 +120,25 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python scripts/smoke-hardening-summary-live.py
+
+      # continue-on-error above keeps later probes running; this makes the run red
+      # when any probe failed, so the workflow can never report PASS over a failure.
+      - name: Fail when any probe failed
+        if: always()
+        env:
+          POST_TIER5: ${{ steps.post_tier5.outcome }}
+          MARKETPLACE: ${{ steps.marketplace.outcome }}
+          AI_SMOKE: ${{ steps.ai_smoke.outcome }}
+          RESEARCH: ${{ steps.research.outcome }}
+          LINK_CHECK: ${{ steps.link_check.outcome }}
+        run: |
+          failed=0
+          for name in POST_TIER5 MARKETPLACE AI_SMOKE RESEARCH LINK_CHECK; do
+            outcome="${!name}"
+            echo "$name=$outcome"
+            if [ "$outcome" != "success" ]; then
+              echo "::error::$name probe outcome: $outcome"
+              failed=1
+            fi
+          done
+          exit $failed

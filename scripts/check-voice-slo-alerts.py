@@ -3,6 +3,7 @@
 
 Never treats a blended e2e number as the SLO. Writes
 platform.voice_slo.alert when a threshold is breached and samples exist.
+Exits 1 on a breach and 2 when either metric has too few samples to judge.
 """
 from __future__ import annotations
 
@@ -128,6 +129,11 @@ def main() -> int:
         "alerts": alerts,
         "verdict": "ALERT" if alerts else "OK",
     }
+    # Fewer than MIN_SAMPLES in either metric is not evidence the SLO holds.
+    short = [name for name, vals in (("metric_a", a_ms), ("metric_b", b_ms)) if len(vals) < MIN_SAMPLES]
+    if not alerts and short:
+        report["verdict"] = "NO_DATA"
+        report["insufficient_samples"] = short
     OUT.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2))
     if alerts:
@@ -138,6 +144,9 @@ def main() -> int:
             metadata=report,
         )
         return 1
+    if report["verdict"] == "NO_DATA":
+        print(f"NO_DATA: fewer than {MIN_SAMPLES} samples in {', '.join(short)}; not a pass", file=sys.stderr)
+        return 2
     return 0
 
 
