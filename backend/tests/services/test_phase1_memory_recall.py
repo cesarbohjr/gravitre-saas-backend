@@ -26,7 +26,7 @@ from app.services.memory_contamination_guard import (
 from app.services.workspace_memory_service import promote_turn_memories, recall_workspace
 
 MIGRATIONS = Path(__file__).resolve().parents[3] / "supabase" / "migrations"
-PHASE1_MIGRATION = MIGRATIONS / "20261011181000_phase1_memory_recall.sql"
+PHASE1_MIGRATION = MIGRATIONS / "20261011192424_phase1_memory_recall.sql"
 
 
 def _chain(data: list | None = None) -> MagicMock:
