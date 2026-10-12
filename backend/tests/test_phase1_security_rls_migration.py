@@ -1,4 +1,4 @@
-"""Contract for 20261011180000_phase1_security_rls.sql (statically checked; applied twice on PG16 in review)."""
+"""Contract for 20261011192411_phase1_security_rls.sql (statically checked; applied twice on PG16 in review)."""
 from __future__ import annotations
 
 import re
@@ -8,7 +8,7 @@ MIGRATION = (
     Path(__file__).resolve().parents[2]
     / "supabase"
     / "migrations"
-    / "20261011180000_phase1_security_rls.sql"
+    / "20261011192411_phase1_security_rls.sql"
 )
 MEMBERSHIP = "org_id IN (SELECT org_id FROM public.organization_members WHERE user_id = auth.uid())"
 

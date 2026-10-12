@@ -7,7 +7,7 @@ from tests.db.pg_harness import MIGRATIONS, pg_cluster, requires_pg
 
 pytestmark = requires_pg
 
-MIGRATION = MIGRATIONS / "20261012020000_rag_ingest_pilot_claim.sql"
+MIGRATION = MIGRATIONS / "20261012024300_rag_ingest_pilot_claim.sql"
 PILOT = "11111111-1111-4111-8111-111111111111"
 OTHER = "33333333-3333-4333-8333-333333333333"
 

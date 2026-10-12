@@ -130,7 +130,7 @@ class FakeClient:
 
 
 def _sql_semantics_rpc(tables: dict[str, list[dict[str, Any]]]) -> Callable[[str, dict], Any]:
-    """Independent re-statement of the SQL in 20261008020000_page_load_aggregates.sql."""
+    """Independent re-statement of the SQL in 20261008053518_page_load_aggregates.sql."""
 
     def _rpc(name: str, params: dict) -> Any:
         if name == "metrics_overview_counts":
