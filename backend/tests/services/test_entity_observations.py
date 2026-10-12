@@ -452,7 +452,7 @@ def test_feed_retries_when_members_cannot_be_read(_hubspot):
 
     bound = [{"org_id": ORG, "system": "hubspot", "resource_type": "company", "resource_id": "co1", "entity_id": "e1"}]
     with pytest.raises(RuntimeError):
-        feed.handle_customer_message(_Broken(bound), _feed_event(), SimpleNamespace(entity_observations_enabled=True))
+        feed.handle_customer_message(_Broken(bound), _feed_event(), SimpleNamespace(entity_observations_enabled=True, **LIFECYCLE_ON))
 
 
 def test_hubspot_sync_queues_only_inbound_emails_when_enabled():

@@ -14,6 +14,7 @@ from app.core.ingestion_kill_switch import (
     ensure_ingestion_enabled,
     ingestion_disabled,
 )
+from app.services.ingestion_interlock import LIFECYCLE_PREREQUISITES
 
 ORG = "11111111-1111-4111-8111-111111111111"
 NOW = datetime(2026, 10, 12, 12, tzinfo=UTC)
@@ -22,6 +23,7 @@ KILLED = SimpleNamespace(
     entity_writer_enabled=True,
     entity_observations_enabled=True,
     account_play_proposals_enabled=False,
+    **dict(LIFECYCLE_PREREQUISITES),
 )
 
 
@@ -136,6 +138,7 @@ def test_entity_writer_writes_nothing() -> None:
     assert result.as_dict()["created"] == 0 and result.as_dict()["joined"] == 0
 
 
+@pytest.mark.usefixtures("lifecycle_runtime_ready")
 def test_hubspot_company_feed_skips_before_calling_hubspot(monkeypatch) -> None:
     import app.connectors.hubspot as hs
     from app.services.hubspot_knowledge_sync_service import _write_company_entities
@@ -151,6 +154,7 @@ def test_hubspot_company_feed_skips_before_calling_hubspot(monkeypatch) -> None:
 # --------------------------------------------------------------------------- observations
 
 
+@pytest.mark.usefixtures("lifecycle_runtime_ready")
 def test_observation_handler_skips_before_reading_the_provider() -> None:
     from app.services.customer_observation_feed import handle_customer_message
 
@@ -158,6 +162,7 @@ def test_observation_handler_skips_before_reading_the_provider() -> None:
     assert handle_customer_message(_untouched_client(), event, KILLED) == {"skipped": "ingestion_disabled"}
 
 
+@pytest.mark.usefixtures("lifecycle_runtime_ready")
 def test_observe_customer_message_writes_nothing() -> None:
     from app.services.entity_observations import (
         CustomerMessage,

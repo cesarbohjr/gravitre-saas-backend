@@ -53,7 +53,7 @@ def _run_scheduled(settings, connectors):
 def test_scheduled_sync_runs_as_before_with_default_settings():
     # Lifecycle prerequisites are all missing by default and sync still runs: no silent switch-off.
     summary, _due, create, execute = _run_scheduled(Settings(), [_connector("notion"), _connector("zendesk", "c2")])
-    assert summary["processed"] == 2 and summary["held"] == 0
+    assert summary["processed"] == 2 and "held" not in summary  # summary shape unchanged while nothing is held
     assert create.call_count == 2 and execute.call_count == 2
 
 

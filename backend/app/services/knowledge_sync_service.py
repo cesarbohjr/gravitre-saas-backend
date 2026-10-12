@@ -469,12 +469,11 @@ def run_scheduled_knowledge_syncs(
             )
 
     ran = [o for o in outcomes if o.get("status") != "held"]
-    return {
-        "due_count": len(due),
-        "processed": len(ran),
-        "held": len(outcomes) - len(ran),
-        "outcomes": outcomes,
-    }
+    summary: dict[str, Any] = {"due_count": len(due), "processed": len(ran), "outcomes": outcomes}
+    if len(outcomes) > len(ran):
+        # Only reported when the lifecycle switch held something, so the summary is unchanged while it is off.
+        summary["held"] = len(outcomes) - len(ran)
+    return summary
 
 
 def trigger_connector_knowledge_sync(
