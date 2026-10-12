@@ -141,7 +141,7 @@ async def build_churn_advisory_cards(
     except Exception as exc:  # noqa: BLE001
         logger.debug("churn_advisory_load_model_skipped org_id=%s err=%s", org_id, exc)
 
-    entity_model = trained and bool(getattr(scorer, "has_optional_features", lambda: False)())
+    entity_model = trained and getattr(scorer, "has_optional_features", lambda: False)() is True
     entity_flag_on = getattr(active, "churn_entity_features_enabled", False) is True
     if entity_model and not entity_flag_on:
         # A model trained with entity features would score every account on
