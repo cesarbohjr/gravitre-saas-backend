@@ -16,7 +16,7 @@ from tests.db.pg_harness import MIGRATIONS, pg_cluster, requires_pg
 pytestmark = requires_pg
 
 HARDENING = MIGRATIONS / "20260903120000_memory_hardening_temporal.sql"
-PURGE = MIGRATIONS / "20261012010000_source_lifecycle_purge.sql"
+PURGE = MIGRATIONS / "20261012024200_source_lifecycle_purge.sql"
 LINEAGE = MIGRATIONS / "20261012070000_agent_memory_source_lineage.sql"
 
 ORG = "11111111-1111-4111-8111-111111111111"

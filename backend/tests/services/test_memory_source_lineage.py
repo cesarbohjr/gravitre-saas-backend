@@ -210,3 +210,99 @@ def test_create_agent_memory_tags_and_falls_back(_embed):
     assert len(missing.attempts) == 2
     assert "source_connector_id" not in missing.inserted[0]
     assert missing.inserted[0]["source_class"]  # kept: only lineage was missing
+
+
+# ------------------------------------------------- confirmed connector actions
+
+
+def _service(settings: Any):
+    from app.services.chat_connector_execution_service import (
+        ChatConnectorExecutionService,
+    )
+
+    service = object.__new__(ChatConnectorExecutionService)
+    service.settings = settings
+    return service
+
+
+def _execution(**overrides: Any):
+    from app.services.conversational_execution_service import ExecutionResult
+
+    fields = {
+        "success": True,
+        "entity_type": "connector",
+        "entity_id": "msg-123",
+        "title": "Send email",
+        "body": "Sent.",
+        "integration": "gmail",
+        "connector_id": CONN,
+    }
+    fields.update(overrides)
+    return ExecutionResult(**fields)
+
+
+def _plan():
+    from app.services.chat_connector_models import ConnectorActionPlan
+
+    return ConnectorActionPlan(
+        tool_name="gmail.send_message",
+        invoke_action="send_message",
+        integration="gmail",
+        kind="write",
+        label="Send email",
+    )
+
+
+def _confirm(settings: Any, execution: Any) -> list[dict[str, Any]]:
+    client = _Client()
+    with (
+        patch("app.services.speculative_execution.defer_if_speculative", return_value=False),
+        patch("app.services.turn_cancellation.superseded_write", return_value=False),
+        patch("app.services.cross_conversation_ledger_memory.promote_confirmed_ledger_slots"),
+    ):
+        _service(settings)._promote_confirmed_workspace_memory(
+            client,
+            org_id=ORG,
+            conversation_id="c-1",
+            task_state={},
+            plan=_plan(),
+            execution=execution,
+        )
+    return client.inserted
+
+
+def test_confirmed_connector_action_memory_names_its_connector_and_record():
+    rows = _confirm(ON, _execution())
+    assert len(rows) == 1
+    assert rows[0]["content"] == "Confirmed action: Send email"
+    assert rows[0]["source_connector_id"] == CONN_LOWER
+    assert rows[0]["source_record_ref"] == "msg-123"
+
+
+def test_record_ref_is_omitted_when_the_entity_is_the_connector_itself():
+    rows = _confirm(ON, _execution(entity_id=CONN))
+    assert rows[0]["source_connector_id"] == CONN_LOWER
+    assert "source_record_ref" not in rows[0]
+
+
+def test_connector_action_without_a_connector_id_is_not_stored_when_lineage_is_on():
+    assert _confirm(ON, _execution(connector_id=None)) == []
+
+
+def test_flag_off_keeps_todays_behaviour_untagged():
+    rows = _confirm(OFF, _execution(connector_id=None))
+    assert len(rows) == 1
+    assert "source_connector_id" not in rows[0]
+    rows = _confirm(OFF, _execution())
+    assert "source_connector_id" not in rows[0]
+
+
+def test_failed_connector_action_teaches_nothing():
+    assert _confirm(ON, _execution(success=False)) == []
+
+
+def test_execution_result_round_trips_connector_id():
+    from app.services.conversational_execution_service import ExecutionResult
+
+    restored = ExecutionResult.from_dict(dict(_execution().__dict__))
+    assert restored.connector_id == CONN
