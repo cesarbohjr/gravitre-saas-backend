@@ -881,8 +881,9 @@ def _build_stream(
                         if isinstance(delta, str) and delta:
                             if not first_token_logged:
                                 perf.stop("planning")
-                                perf.start("first_token")
-                                perf.stop("first_token")
+                                # Time the user waited for the first text,
+                                # from request start (was a 0 ms start/stop).
+                                perf.mark("first_token", perf.total_ms())
                                 first_token_logged = True
                             streamed_text_parts.append(delta)
                     if isinstance(event, AssistantStreamEvent):
