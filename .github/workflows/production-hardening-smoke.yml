@@ -48,6 +48,15 @@ jobs:
           SUPABASE_JWT_SECRET: jwt-secret-test
           OPENAI_API_KEY: sk-test-openai
 
+      # Drop the committed sample reports so a probe that crashes before writing
+      # its own JSON shows up as missing, never as a stale PASS.
+      - name: Remove stale smoke reports
+        run: |
+          rm -f docs/delivery/smoke-marketplace-production-latest.json \
+            docs/delivery/smoke-ai-production-latest.json \
+            docs/delivery/smoke-research-cascade-prod-latest.json \
+            docs/delivery/link-check-production-latest.json
+
       # Each probe writes its own artifact; later steps must still run when one
       # probe fails so the summary is not PARTIAL on stale checkout JSON.
       - name: Run post-Tier 5 production smoke
@@ -119,6 +128,11 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PROBE_OUTCOME_POST_TIER5: ${{ steps.post_tier5.outcome }}
+          PROBE_OUTCOME_MARKETPLACE: ${{ steps.marketplace.outcome }}
+          PROBE_OUTCOME_AI_SMOKE: ${{ steps.ai_smoke.outcome }}
+          PROBE_OUTCOME_RESEARCH: ${{ steps.research.outcome }}
+          PROBE_OUTCOME_LINK_CHECK: ${{ steps.link_check.outcome }}
         run: python scripts/smoke-hardening-summary-live.py
 
       # continue-on-error above keeps later probes running; this makes the run red

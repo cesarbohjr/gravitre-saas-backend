@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import os
 import re
@@ -236,6 +237,38 @@ def _admin_org(env: dict[str, str]) -> tuple[str, str, str]:
     return org_id, user_id, email
 
 
+def _abc_contract_graph() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Sequential contract nodes/edges for the ABC definition (mirrors schema_sync)."""
+    steps = [s for s in ABC_WORKFLOW["steps"] if s.get("id")]
+    nodes = [{"id": str(s["id"]), "type": s.get("type") or "task", "name": s.get("name") or str(s["id"])} for s in steps]
+    edges = [{"from": str(a["id"]), "to": str(b["id"])} for a, b in itertools.pairwise(steps)]
+    return nodes, edges
+
+
+def _ensure_contract_workflow(client: Any, org_id: str, user_id: str, workflow_id: str) -> None:
+    """workflow_versions / workflow_active_versions / workflow_runs FK to ``workflows`` (STA-271).
+
+    A smoke org that only has the legacy ``workflow_defs`` row cannot create a version,
+    so mirror the smoke workflow into the contract table under the same id.
+    """
+    nodes, edges = _abc_contract_graph()
+    client.table("workflows").upsert(
+        {
+            "id": workflow_id,
+            "org_id": org_id,
+            "name": SMOKE_WF_NAME,
+            "description": "Automated production smoke workflow",
+            "status": "active",
+            "environment": ENV_NAME,
+            "nodes": nodes,
+            "edges": edges,
+            "config": {},
+            "created_by": user_id,
+        },
+        on_conflict="id",
+    ).execute()
+
+
 def _ensure_abc_workflow(env: dict[str, str], org_id: str, user_id: str) -> str:
     client = _supabase_client(env)
     existing = (
@@ -268,6 +301,8 @@ def _ensure_abc_workflow(env: dict[str, str], org_id: str, user_id: str) -> str:
             .execute()
         )
         workflow_id = str(created.data[0]["id"])
+
+    _ensure_contract_workflow(client, org_id, user_id, workflow_id)
 
     active = (
         client.table("workflow_active_versions")
@@ -484,6 +519,21 @@ def _run_step(report: SmokeReport, label: str, fn: Callable[[], str]) -> None:
         report.add(label, "fail", msg)
         print(msg, file=sys.stderr)
         raise SystemExit(1) from exc
+    except Exception as exc:  # record any probe crash (e.g. PostgREST APIError) as a fail
+        msg = f"{type(exc).__name__}: {exc}"[:400]
+        report.add(label, "fail", msg)
+        print(msg, file=sys.stderr)
+        raise SystemExit(1) from exc
+
+
+def _write_report(report: SmokeReport, json_path: str | None) -> None:
+    report.finished_at = datetime.now(timezone.utc).isoformat()
+    if not json_path:
+        return
+    out_path = Path(json_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8")
+    print(f"report: {out_path}")
 
 
 def _warn_http(label: str, exc: urllib.error.HTTPError, note: str) -> str:
@@ -814,15 +864,12 @@ def main() -> None:
         ("meson_copilot_routes", meson_copilot_routes),
     ]
 
-    for label, fn in steps:
-        _run_step(report, label, fn)
-
-    report.finished_at = datetime.now(timezone.utc).isoformat()
-    if args.json:
-        out_path = Path(args.json)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8")
-        print(f"report: {out_path}")
+    try:
+        for label, fn in steps:
+            _run_step(report, label, fn)
+    finally:
+        # Always write fresh evidence, so a failed run never leaves an older PASS report in place.
+        _write_report(report, args.json)
 
     print("OK")
 
