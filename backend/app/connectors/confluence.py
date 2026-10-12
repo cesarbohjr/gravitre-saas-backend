@@ -155,12 +155,18 @@ def list_space_pages(
     space_id: str,
     *,
     limit: int = 250,
+    status: str | None = None,
 ) -> list[dict[str, Any]]:
+    """Pages in a space. Without ``status`` the API returns current and archived pages;
+    ``status="trashed"`` lists the pages in the space's trash instead."""
+    params: dict[str, Any] = {"limit": min(max(1, limit), 250)}
+    if status:
+        params["status"] = status
     pages = _paginate(
         cloud_id,
         access_token,
         f"/spaces/{space_id}/pages",
-        params={"limit": min(max(1, limit), 250)},
+        params=params,
     )
     normalized: list[dict[str, Any]] = []
     for page in pages:

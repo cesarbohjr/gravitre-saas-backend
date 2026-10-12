@@ -11,6 +11,8 @@ Three pieces, each off until switched on:
   SOURCE_PURGE_DRY_RUN=false. Runs only when the relay is on.
 * ``reconcile_source_documents`` removes indexed documents a full-sweep sync no longer
   finds upstream (SOURCE_DELETION_PROPAGATION_ENABLED).
+* ``remove_source_documents`` removes the documents of records the provider itself
+  reports as deleted, archived or trashed during an incremental sync (same flag).
 """
 from __future__ import annotations
 
@@ -207,15 +209,67 @@ def reconcile_source_documents(
         for r in (res.data or [])
         if r.get("id") and str(r.get("external_id") or "") not in seen_external_ids
     ]
-    removed = 0
-    for i in range(0, len(stale), 100):
-        chunk = stale[i : i + 100]
-        client.table("rag_documents").delete().eq("org_id", org_id).eq("source_id", source_id).in_(
-            "id", chunk
-        ).execute()
-        removed += len(chunk)
+    removed = _delete_documents(client, org_id=org_id, source_id=source_id, document_ids=stale)
     if removed:
         logger.info(
             "source_documents_reconciled org_id=%s source_id=%s removed=%s", org_id, source_id, removed
         )
     return removed
+
+
+def _delete_documents(client: Any, *, org_id: str, source_id: str, document_ids: list[str]) -> int:
+    """Delete ``rag_documents`` rows by id, always scoped to the org and source."""
+    removed = 0
+    for i in range(0, len(document_ids), 100):
+        chunk = document_ids[i : i + 100]
+        client.table("rag_documents").delete().eq("org_id", org_id).eq("source_id", source_id).in_(
+            "id", chunk
+        ).execute()
+        removed += len(chunk)
+    return removed
+
+
+def remove_source_documents(
+    client: Any,
+    settings: Settings,
+    *,
+    org_id: str,
+    source_id: str,
+    external_ids: set[str] | list[str],
+) -> int:
+    """Delete the named documents of one source after the provider reported them removed.
+
+    For incremental syncs: pass only ids the provider explicitly flagged (deleted,
+    archived, trashed), never ids merely absent from a page. Returns the number of
+    documents removed (chunks and embeddings cascade).
+    """
+    if getattr(settings, "source_deletion_propagation_enabled", False) is not True:
+        return 0
+    wanted = sorted({str(e) for e in external_ids if e})
+    if not org_id or not source_id or not wanted:
+        return 0
+    doc_ids: list[str] = []
+    for i in range(0, len(wanted), 100):
+        res = (
+            client.table("rag_documents")
+            .select("id, external_id")
+            .eq("org_id", org_id)
+            .eq("source_id", source_id)
+            .in_("external_id", wanted[i : i + 100])
+            .execute()
+        )
+        doc_ids.extend(str(r["id"]) for r in (res.data or []) if r.get("id"))
+    removed = _delete_documents(client, org_id=org_id, source_id=source_id, document_ids=doc_ids)
+    if removed:
+        logger.info(
+            "source_documents_removed_upstream org_id=%s source_id=%s flagged=%s removed=%s",
+            org_id,
+            source_id,
+            len(wanted),
+            removed,
+        )
+    return removed
+
+
+def deletion_propagation_enabled(settings: Any) -> bool:
+    return getattr(settings, "source_deletion_propagation_enabled", False) is True

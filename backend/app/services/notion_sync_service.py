@@ -10,7 +10,9 @@ from app.connectors.notion import (
     NotionAPIError,
     collect_database_page_ids,
     export_page_text,
+    get_page,
     normalize_search_result,
+    page_is_removed,
     search,
 )
 from app.connectors.notion_oauth import ensure_notion_session
@@ -223,6 +225,14 @@ def run_notion_sync(
     pages_synced = 0
     errors: list[str] = []
     seen_external_ids: set[str] = set()
+    from app.services.source_lifecycle import (
+        deletion_propagation_enabled,
+        reconcile_source_documents,
+        remove_source_documents,
+    )
+
+    propagate = deletion_propagation_enabled(settings)
+    removed_external_ids: set[str] = set()
 
     for target in targets:
         target_id = str(target.get("id") or "")
@@ -239,7 +249,15 @@ def run_notion_sync(
 
         for page_id in page_ids:
             try:
-                title, body, edited = export_page_text(token, page_id)
+                if propagate:
+                    # The page object says whether Notion archived or trashed it.
+                    page = get_page(token, page_id)
+                    if page_is_removed(page):
+                        removed_external_ids.add(f"notion:page:{page_id}")
+                        continue
+                    title, body, edited = export_page_text(token, page_id, page=page)
+                else:
+                    title, body, edited = export_page_text(token, page_id)
                 job_id = _queue_page_ingest(
                     client,
                     org_id=org_id,
@@ -258,11 +276,16 @@ def run_notion_sync(
                 errors.append(f"page {page_id}: {exc}")
 
     documents_removed = 0
+    removed_external_ids -= seen_external_ids
+    if removed_external_ids:
+        # Pages Notion itself flags as archived or trashed: safe to remove even after a
+        # partial sweep, since the signal is per page.
+        documents_removed += remove_source_documents(
+            client, settings, org_id=org_id, source_id=source_id, external_ids=removed_external_ids
+        )
     if not errors:
         # Only a complete sweep may remove documents: a page we failed to read still exists.
-        from app.services.source_lifecycle import reconcile_source_documents
-
-        documents_removed = reconcile_source_documents(
+        documents_removed += reconcile_source_documents(
             client,
             settings,
             org_id=org_id,

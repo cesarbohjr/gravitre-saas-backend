@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
 from app.config import Settings
@@ -20,6 +20,10 @@ DEFAULT_LOOKBACK_HOURS = 24
 MAX_TICKETS_PER_SYNC = 100  # same per-run volume as before Phase 1
 SEARCH_PAGE_SIZE = 100
 CURSOR_CONFIG_KEY = "zendesk_sync_cursor"
+# Deletion propagation (SOURCE_DELETION_PROPAGATION_ENABLED): lower bound for the next
+# read of the deleted-tickets listing, advanced only after a complete read.
+DELETED_CURSOR_CONFIG_KEY = "zendesk_deleted_scan_since"
+MAX_DELETED_TICKETS_PER_SYNC = 1000
 
 
 def _now_iso() -> str:
@@ -101,6 +105,103 @@ def fetch_solved_tickets_since(
             break
         page += 1
     return tickets[:cap]
+
+
+def fetch_deleted_tickets_since(
+    subdomain: str,
+    email: str | None,
+    api_token: str | None,
+    *,
+    since_iso: str,
+    max_records: int = MAX_DELETED_TICKETS_PER_SYNC,
+) -> tuple[list[str], bool]:
+    """Ids of tickets deleted at or after ``since_iso`` (GET /deleted_tickets, newest first).
+
+    Returns ``(ticket_ids, complete)``. ``complete`` is False when ``max_records`` was hit
+    before reaching ``since_iso``; older deletions in the window were not read.
+    """
+    cap = max(int(max_records), 1)
+    since_dt = _parse_ts(since_iso)
+    ids: list[str] = []
+    page = 1
+    seen = 0
+    while True:
+        data = zendesk_request(
+            subdomain,
+            email,
+            api_token,
+            "GET",
+            "/deleted_tickets.json",
+            params={"sort_by": "deleted_at", "sort_order": "desc", "per_page": SEARCH_PAGE_SIZE, "page": page},
+        )
+        rows = [r for r in (data.get("deleted_tickets") or []) if isinstance(r, dict)]
+        for row in rows:
+            deleted_at = _parse_ts(row.get("deleted_at"))
+            if deleted_at is None:
+                continue
+            if since_dt is not None and deleted_at < since_dt:
+                return ids, True
+            if row.get("id") is not None:
+                ids.append(str(row["id"]))
+        seen += len(rows)
+        if not data.get("next_page") or not rows:
+            return ids, True
+        if seen >= cap:
+            return ids, False
+        page += 1
+
+
+def _remove_deleted_ticket_documents(
+    client: Any,
+    settings: Settings,
+    *,
+    org_id: str,
+    source_id: str,
+    subdomain: str,
+    email: str,
+    api_token: str,
+    config: dict[str, Any],
+    default_since: str,
+    errors: list[str],
+) -> int:
+    """Remove documents of tickets Zendesk lists as deleted (off unless the flag is on).
+
+    Only tickets the deleted-tickets listing names are removed; a ticket missing from the
+    solved-ticket search is never treated as deleted. ``config`` is updated in place.
+    """
+    from app.services.source_lifecycle import (
+        deletion_propagation_enabled,
+        remove_source_documents,
+    )
+
+    if not deletion_propagation_enabled(settings):
+        return 0
+    started = _iso_z(datetime.now(UTC))
+    since = config.get(DELETED_CURSOR_CONFIG_KEY)
+    since_iso = _iso_z(_parse_ts(since)) if _parse_ts(since) else default_since
+    try:
+        ticket_ids, complete = fetch_deleted_tickets_since(
+            subdomain, email, api_token, since_iso=since_iso, max_records=MAX_DELETED_TICKETS_PER_SYNC
+        )
+        removed = remove_source_documents(
+            client,
+            settings,
+            org_id=org_id,
+            source_id=source_id,
+            external_ids={f"zendesk:ticket:{tid}" for tid in ticket_ids},
+        )
+    except Exception as exc:  # noqa: BLE001
+        # The window stays where it was; the next run reads it again.
+        errors.append(f"deleted tickets: {exc}")
+        return 0
+    if complete:
+        config[DELETED_CURSOR_CONFIG_KEY] = started
+    else:
+        errors.append(
+            f"deleted tickets: more than {MAX_DELETED_TICKETS_PER_SYNC} deletions since {since_iso}; "
+            "older ones are read again next run"
+        )
+    return removed
 
 
 def _zendesk_credentials(
@@ -257,6 +358,18 @@ def run_zendesk_knowledge_sync(
         # this updated_at than one run can page through. Report it instead of looping.
         errors.append(f"cursor_stalled: more than {MAX_TICKETS_PER_SYNC} tickets updated at {since_iso}")
         logger.warning("zendesk_knowledge_sync_cursor_stalled org_id=%s since=%s", org_id, since_iso)
+    documents_removed = _remove_deleted_ticket_documents(
+        client,
+        settings,
+        org_id=org_id,
+        source_id=source_id,
+        subdomain=subdomain,
+        email=email,
+        api_token=api_token,
+        config=config,
+        default_since=since_iso,
+        errors=errors,
+    )
     cursor = {"updated_at": _iso_z(cursor_dt), "ids_at_since": sorted(ids_at_cursor)} if cursor_dt else None
     # ``zendesk_last_synced_at`` is the run time used for scheduling; the data cursor
     # lives in ``zendesk_sync_cursor``.
@@ -277,6 +390,7 @@ def run_zendesk_knowledge_sync(
         "source_id": source_id,
         "pages_synced": records_synced,
         "jobs_queued": len(job_ids),
+        "documents_removed": documents_removed,
         "job_ids": job_ids[:20],
         "errors": errors,
         "last_synced_at": config["zendesk_last_synced_at"],

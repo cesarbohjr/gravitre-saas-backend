@@ -193,9 +193,17 @@ def page_title(page: dict[str, Any]) -> str:
     return "Untitled"
 
 
-def export_page_text(access_token: str, page_id: str) -> tuple[str, str, str | None]:
-    """Return (title, body_text, last_edited_time)."""
-    page = get_page(access_token, page_id)
+def page_is_removed(page: dict[str, Any]) -> bool:
+    """True when Notion marks the page object archived or in the trash."""
+    return page.get("archived") is True or page.get("in_trash") is True
+
+
+def export_page_text(
+    access_token: str, page_id: str, *, page: dict[str, Any] | None = None
+) -> tuple[str, str, str | None]:
+    """Return (title, body_text, last_edited_time). Pass ``page`` to reuse a fetched page object."""
+    if page is None:
+        page = get_page(access_token, page_id)
     title = page_title(page)
     body = fetch_block_tree_text(access_token, page_id)
     edited = page.get("last_edited_time")

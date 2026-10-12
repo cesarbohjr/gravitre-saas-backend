@@ -6,7 +6,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.config import Settings
-from app.connectors.hubspot import HubSpotAPIError, list_emails_since, list_notes_since
+from app.connectors.hubspot import (
+    HubSpotAPIError,
+    list_archived_objects,
+    list_emails_since,
+    list_notes_since,
+)
 from app.connectors.hubspot_oauth import ensure_hubspot_access_token
 from app.rag.ingest import create_ingest_job, create_source, get_source
 from app.core.safe_dict import safe_normalize_stored_dict
@@ -19,6 +24,12 @@ DEFAULT_LOOKBACK_HOURS = 24
 # continues from there (nothing beyond the cap is skipped).
 MAX_OBJECTS_PER_SYNC = 100  # same per-run volume as before Phase 1
 CURSORS_CONFIG_KEY = "hubspot_sync_cursors"
+# Deletion propagation (SOURCE_DELETION_PROPAGATION_ENABLED): the archived listing is paged
+# by record id, not by archive time, so each run reads the next slice and the position wraps
+# to the start once the listing is exhausted. Every archived record is seen within a cycle.
+ARCHIVED_CURSORS_CONFIG_KEY = "hubspot_archived_cursors"
+MAX_ARCHIVED_PER_SYNC = 500
+_ARCHIVE_OBJECT_TYPES = (("note", "notes"), ("email", "emails"))
 
 
 def _now_iso() -> str:
@@ -271,6 +282,10 @@ def run_hubspot_knowledge_sync(
         if cursor_ms is not None:
             cursors[kind] = {"since_ms": cursor_ms, "ids_at_since": sorted(ids_at_cursor)}
 
+    documents_removed = _remove_archived_documents(
+        client, settings, org_id=org_id, source_id=source_id, token=token, config=config, errors=errors
+    )
+
     entities = _write_company_entities(client, settings, org_id=org_id, token=token)
 
     # ``hubspot_last_synced_at`` is the run time used for scheduling; the data cursor lives
@@ -291,6 +306,7 @@ def run_hubspot_knowledge_sync(
         "source_id": source_id,
         "pages_synced": records_synced,
         "jobs_queued": len(job_ids),
+        "documents_removed": documents_removed,
         "job_ids": job_ids[:20],
         "errors": errors,
         "last_synced_at": config["hubspot_last_synced_at"],
@@ -298,6 +314,60 @@ def run_hubspot_knowledge_sync(
         "has_more": any(has_more.values()),
         "entities": entities,
     }
+
+
+def _remove_archived_documents(
+    client: Any,
+    settings: Settings,
+    *,
+    org_id: str,
+    source_id: str,
+    token: str,
+    config: dict[str, Any],
+    errors: list[str],
+) -> int:
+    """Remove documents of notes/emails HubSpot reports as archived (off unless the flag is on).
+
+    Only records the archived listing returns with ``archived: true`` are removed; a record
+    missing from an incremental page is never treated as deleted. ``config`` is updated in
+    place with the next listing position; on a listing error the position stays put.
+    """
+    from app.services.source_lifecycle import (
+        deletion_propagation_enabled,
+        remove_source_documents,
+    )
+
+    if not deletion_propagation_enabled(settings):
+        return 0
+    positions = config.get(ARCHIVED_CURSORS_CONFIG_KEY)
+    positions = dict(positions) if isinstance(positions, dict) else {}
+    removed = 0
+    for kind, object_type in _ARCHIVE_OBJECT_TYPES:
+        after = positions.get(kind)
+        try:
+            records, next_after = list_archived_objects(
+                token, object_type, after=str(after) if after else None, max_records=MAX_ARCHIVED_PER_SYNC
+            )
+        except HubSpotAPIError as exc:
+            errors.append(f"{kind} archived: {exc}")
+            continue
+        external_ids = {
+            f"hubspot:{kind}:{r.get('id')}" for r in records if r.get("id") and r.get("archived") is True
+        }
+        try:
+            removed += remove_source_documents(
+                client, settings, org_id=org_id, source_id=source_id, external_ids=external_ids
+            )
+        except Exception as exc:  # noqa: BLE001
+            # Keep the listing position so the same slice is read again next run.
+            errors.append(f"{kind} archived removal: {exc}")
+            continue
+        if next_after:
+            positions[kind] = next_after
+        else:
+            positions.pop(kind, None)
+    config[ARCHIVED_CURSORS_CONFIG_KEY] = positions
+    return removed
 
 
 def _queue_customer_message(

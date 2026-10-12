@@ -887,6 +887,39 @@ def search_crm_objects_page(
     )
 
 
+def list_archived_objects(
+    access_token: str,
+    object_type: str,
+    *,
+    after: str | None = None,
+    max_records: int = 100,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Archived records — GET /crm/v3/objects/{type}?archived=true, following ``paging.next.after``.
+
+    The search API never returns archived records, so this listing is the only place the
+    archive shows up. Returns ``(records, next_after)``; ``next_after`` is None once the
+    listing is exhausted.
+    """
+    if not object_type:
+        raise HubSpotAPIError("object_type is required")
+    cap = max(int(max_records), 1)
+    results: list[dict[str, Any]] = []
+    cursor = str(after) if after else None
+    while len(results) < cap:
+        params: dict[str, Any] = {"archived": "true", "limit": min(100, cap - len(results))}
+        if cursor:
+            params["after"] = cursor
+        page = _request("GET", f"/crm/v3/objects/{_object_plural(object_type)}", access_token, params=params)
+        for row in page.get("results") or []:
+            if isinstance(row, dict):
+                results.append(dict(row))
+        nxt = ((page.get("paging") or {}).get("next") or {}).get("after")
+        cursor = str(nxt) if nxt else None
+        if not cursor:
+            break
+    return results, cursor
+
+
 def search_crm_objects_all(
     access_token: str,
     object_type: str,

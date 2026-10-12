@@ -19,6 +19,8 @@ from app.core.safe_dict import safe_normalize_stored_dict
 logger = logging.getLogger(__name__)
 
 STALE_SYNC_HOURS = 24
+# Page statuses Confluence uses for content that is no longer live.
+REMOVED_PAGE_STATUSES = frozenset({"archived", "trashed", "deleted"})
 
 
 def _now_iso() -> str:
@@ -220,6 +222,14 @@ def run_confluence_sync(
     job_ids: list[str] = []
     pages_synced = 0
     errors: list[str] = []
+    from app.services.source_lifecycle import (
+        deletion_propagation_enabled,
+        remove_source_documents,
+    )
+
+    propagate = deletion_propagation_enabled(settings)
+    removed_external_ids: set[str] = set()
+    live_external_ids: set[str] = set()
 
     for target in targets:
         space_id = str(target.get("id") or "")
@@ -230,11 +240,21 @@ def run_confluence_sync(
         except ConfluenceAPIError as exc:
             errors.append(f"space {space_id}: {exc}")
             continue
+        if propagate:
+            # Trashed pages are not in the default listing; ask for them by status.
+            try:
+                pages = pages + list_space_pages(token, cloud_id, space_id, status="trashed")
+            except ConfluenceAPIError as exc:
+                errors.append(f"space {space_id} trashed: {exc}")
 
         for page in pages:
             page_id = str(page.get("id") or "")
             if not page_id:
                 continue
+            if propagate and str(page.get("status") or "").lower() in REMOVED_PAGE_STATUSES:
+                removed_external_ids.add(f"confluence:page:{page_id}")
+                continue
+            live_external_ids.add(f"confluence:page:{page_id}")
             try:
                 title, body, version_created_at = get_page_view_text(token, cloud_id, page_id)
                 job_id = _queue_page_ingest(
@@ -254,6 +274,16 @@ def run_confluence_sync(
             except ConfluenceAPIError as exc:
                 errors.append(f"page {page_id}: {exc}")
 
+    documents_removed = 0
+    removed_external_ids -= live_external_ids
+    if removed_external_ids:
+        try:
+            documents_removed = remove_source_documents(
+                client, settings, org_id=org_id, source_id=source_id, external_ids=removed_external_ids
+            )
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"removed pages: {exc}")
+
     config = safe_normalize_stored_dict(connector, key="config")
     config["confluence_last_synced_at"] = _now_iso()
     config["confluence_rag_source_id"] = source_id
@@ -271,6 +301,7 @@ def run_confluence_sync(
         "source_id": source_id,
         "pages_synced": pages_synced,
         "jobs_queued": len(job_ids),
+        "documents_removed": documents_removed,
         "job_ids": job_ids[:20],
         "errors": errors,
         "last_synced_at": config["confluence_last_synced_at"],
