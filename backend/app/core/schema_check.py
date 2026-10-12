@@ -29,6 +29,11 @@ SCHEMA_DEPENDENCIES: dict[str, tuple[str, ...]] = {
     # Phase 2B purge receipts (migration 20261012010000).
     "source_purge_receipts": ("connector_id", "disconnected_at", "dry_run", "counts"),
 }
+# agent_memories.source_connector_id / source_record_ref (20261012070000) are
+# deliberately not listed: writers send them only when MEMORY_SOURCE_LINEAGE_ENABLED
+# is on and retry without them otherwise, and the disconnect handler logs when
+# purge_connector_memories is missing, so a startup warning would only add noise
+# before the migration is applied.
 
 DISABLE_ENV = "GRAVITRE_STARTUP_SCHEMA_CHECK"
 

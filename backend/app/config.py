@@ -575,6 +575,12 @@ class Settings(BaseSettings):
     connector_provider_revoke_on_disconnect: bool = False
     # Remove indexed documents a full-sweep sync no longer finds upstream (Notion).
     source_deletion_propagation_enabled: bool = False
+    # Tag agent_memories and entity_observations written from connector content with
+    # source_connector_id (and source_record_ref) so a disconnect can purge them
+    # (purge_connector_memories); connector-derived writes that cannot name their
+    # connector are then refused. Turn on only after
+    # 20261012070000_agent_memory_source_lineage.sql is applied.
+    memory_source_lineage_enabled: bool = False
     # Phase 2C governance. Retention prune of indexed documents per the org's
     # sourceDataGovernance.retentionDays (daily), and retrieval-side exclusion of
     # excerpts that match prompt-injection patterns.

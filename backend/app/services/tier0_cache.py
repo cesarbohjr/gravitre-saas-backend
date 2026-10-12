@@ -68,8 +68,10 @@ async def get_tier0_answer(
     normalized = normalize_query(query)
     if not normalized:
         return None
+    from app.services.memory_source_liveness import epoch_parts
+
     cache = get_cache_service(settings)
-    cached = await cache.get("tier0_answer", org_id, normalized)
+    cached = await cache.get("tier0_answer", org_id, normalized, *epoch_parts(org_id, settings))
     if not isinstance(cached, dict):
         return None
     if await is_cache_entry_stale(settings, cached, org_id, client=client):
@@ -104,7 +106,9 @@ async def set_tier0_answer(
         "confidence": confidence or {},
         "answer_explanation": answer_explanation or "",
     }
-    await cache.set("tier0_answer", payload, ttl_seconds, org_id, normalized)
+    from app.services.memory_source_liveness import epoch_parts
+
+    await cache.set("tier0_answer", payload, ttl_seconds, org_id, normalized, *epoch_parts(org_id, settings))
 
 
 async def is_cache_entry_stale(

@@ -126,13 +126,20 @@ def _effective(row: dict[str, Any]) -> tuple[str, float]:
     return str(corr.get("label") or row.get("label") or ""), float(corr.get("score", row.get("score") or 0.0))
 
 
-def _read_observations(client: Any, org_id: str, entity_id: str, now: datetime) -> list[dict[str, Any]]:
+def _read_observations(
+    client: Any, org_id: str, entity_id: str, now: datetime, settings: Any = None
+) -> list[dict[str, Any]]:
+    from app.services.memory_source_liveness import observation_columns
+
     since = (now - timedelta(days=OBSERVATION_WINDOW_DAYS)).isoformat()
     res = (
         client.table("entity_observations")
         .select(
-            "id, dimension, label, score, confidence, evidence_quote, source_system, "
-            "source_record_id, observed_at, status, correction"
+            observation_columns(
+                "id, dimension, label, score, confidence, evidence_quote, source_system, "
+                "source_record_id, observed_at, status, correction",
+                settings,
+            )
         )
         .eq("org_id", org_id)
         .eq("entity_id", entity_id)
@@ -418,14 +425,24 @@ def build_account_context_sources(
         sources: list[ContextSource] = []
         withheld = 0
         quote_guard_excluded = 0
+        from app.services.memory_source_liveness import (
+            drop_observations_from_revoked_sources,
+        )
+
         for acc in accounts:
             eid = str(acc.get("id") or "")
             name = str(acc.get("display_name") or "")
             observations: list[dict[str, Any]] = []
+            read: list[dict[str, Any]] = []
             if customer_context_on and (_on(settings, OBSERVATIONS_FLAG) or _on(settings, SIGNALS_FLAG)):
-                raw = _read_observations(client, org_id, eid, now)
+                read = _read_observations(client, org_id, eid, now, settings)
+                # Per connector (MEMORY_SOURCE_LINEAGE_ENABLED): a revoked connection is
+                # excluded even while another connection of the same vendor is live.
+                raw, _ = drop_observations_from_revoked_sources(
+                    client, org_id, read, [], settings=settings, entity_id=eid
+                )
                 observations, dropped = governed_observations(raw, policy=policy, live_vendors=live)
-                withheld += dropped
+                withheld += dropped + (len(read) - len(raw))
             if _on(settings, OBSERVATIONS_FLAG) and observations:
                 interp = interpretation_source(name, eid, observations, now=now)
                 if interp is not None:
@@ -435,7 +452,10 @@ def build_account_context_sources(
                     sources.extend(quotes)
                     quote_guard_excluded += excluded
             if _on(settings, SIGNALS_FLAG) and customer_context_on and signal_sources_live:
-                measured = measurement_source(acc, observations, _read_signals(client, org_id, eid), now=now)
+                _, signals = drop_observations_from_revoked_sources(
+                    client, org_id, read, _read_signals(client, org_id, eid), settings=settings, entity_id=eid
+                )
+                measured = measurement_source(acc, observations, signals, now=now)
                 if measured is not None:
                     sources.append(measured)
             if _on(settings, WORK_STATE_FLAG):

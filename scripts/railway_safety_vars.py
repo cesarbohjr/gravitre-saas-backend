@@ -62,6 +62,10 @@ DEFAULT_OFF: tuple[str, ...] = (
     "CONTEXT_ENGINE_OBSERVATIONS_V1",
     "CONTEXT_ENGINE_ACCOUNT_SIGNALS_V1",
     "CONTEXT_ENGINE_WORK_STATE_V1",
+    # Lineage tags, read-time revoked-source filter, cache invalidation on revoke
+    # and the memory/observation purge (PR #374). Needs migration 20261012070000
+    # first: before it, recall returns no memories (the filter fails closed).
+    "MEMORY_SOURCE_LINEAGE_ENABLED",
 )
 
 # A str setting; absent and empty both mean "no pilot orgs".
@@ -76,7 +80,7 @@ REQUIRED_SECRETS: tuple[str, ...] = (
     "SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
 )
-OPTIONAL_REPORTED: tuple[str, ...] = ("TEMPORAL_HOST", "MEMORY_SOURCE_LINEAGE_ENABLED")
+OPTIONAL_REPORTED: tuple[str, ...] = ("TEMPORAL_HOST",)
 
 # Emergency stop for customer-data ingestion (default off). Reported with its
 # value, never pinned: true is a deliberate stop, not a misconfiguration, but it

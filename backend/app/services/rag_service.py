@@ -119,7 +119,12 @@ class RAGService:
         top_k = top_k or self.settings.rag_top_k or 8
         client = get_supabase_client(self.settings)
         cache = get_cache_service(self.settings)
-        cache_parts = retrieval_cache_parts(org_id, query, scope, top_k, filters)
+        from app.services.memory_source_liveness import epoch_parts
+
+        # epoch_parts is empty unless a source of the org was revoked (lineage on).
+        cache_parts = retrieval_cache_parts(org_id, query, scope, top_k, filters) + epoch_parts(
+            org_id, self.settings
+        )
         cached_payload = cache.get_sync("retrieval", *cache_parts)
         if isinstance(cached_payload, dict) and cached_payload.get("rows") is not None:
             await cache.record_hit("retrieval")

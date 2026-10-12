@@ -259,13 +259,25 @@ def build_account_health(
     }
 
 
-def load_account_health(client: Any, org_id: str, entity: dict[str, Any], *, now: datetime | None = None) -> dict[str, Any]:
+def load_account_health(
+    client: Any, org_id: str, entity: dict[str, Any], *, now: datetime | None = None, settings: Any = None
+) -> dict[str, Any]:
     now = now or datetime.now(UTC)
     eid = str(entity["id"])
     since = (now - timedelta(days=WINDOW_DAYS)).isoformat()
+    from app.services.memory_source_liveness import (
+        drop_observations_from_revoked_sources,
+        observation_columns,
+    )
+
     observations = (
         client.table("entity_observations")
-        .select("dimension, label, score, evidence_quote, source_system, source_record_id, observed_at, status, correction")
+        .select(
+            observation_columns(
+                "dimension, label, score, evidence_quote, source_system, source_record_id, observed_at, status, correction",
+                settings,
+            )
+        )
         .eq("org_id", org_id)
         .eq("entity_id", eid)
         .gte("observed_at", since)
@@ -284,6 +296,9 @@ def load_account_health(client: Any, org_id: str, entity: dict[str, Any], *, now
         .execute()
         .data
         or []
+    )
+    observations, signals = drop_observations_from_revoked_sources(
+        client, org_id, observations, signals, settings=settings, entity_id=eid
     )
     work = (
         client.table("work_objects")
@@ -304,13 +319,25 @@ def load_account_health(client: Any, org_id: str, entity: dict[str, Any], *, now
     return build_account_health(entity, observations, signals, work, systems=systems, now=now)
 
 
-def load_health_batch(client: Any, org_id: str, *, now: datetime | None = None) -> list[dict[str, Any]]:
+def load_health_batch(
+    client: Any, org_id: str, *, now: datetime | None = None, settings: Any = None
+) -> list[dict[str, Any]]:
     """Full health for every account with recent evidence, in a few batched reads."""
+    from app.services.memory_source_liveness import (
+        drop_observations_from_revoked_sources,
+        observation_columns,
+    )
+
     now = now or datetime.now(UTC)
     since = (now - timedelta(days=WINDOW_DAYS)).isoformat()
     observations = (
         client.table("entity_observations")
-        .select("entity_id, dimension, label, score, evidence_quote, source_system, source_record_id, observed_at, status, correction")
+        .select(
+            observation_columns(
+                "entity_id, dimension, label, score, evidence_quote, source_system, source_record_id, observed_at, status, correction",
+                settings,
+            )
+        )
         .eq("org_id", org_id)
         .gte("observed_at", since)
         .limit(5000)
@@ -327,6 +354,9 @@ def load_health_batch(client: Any, org_id: str, *, now: datetime | None = None) 
         .execute()
         .data
         or []
+    )
+    observations, signals = drop_observations_from_revoked_sources(
+        client, org_id, observations, signals, settings=settings
     )
     ids = sorted({str(r["entity_id"]) for r in observations + signals if r.get("entity_id")})[:500]
     if not ids:

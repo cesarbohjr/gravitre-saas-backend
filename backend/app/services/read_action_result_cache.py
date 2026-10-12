@@ -13,6 +13,7 @@ logger = get_logger(__name__)
 _DEFAULT_TTL_SECONDS = 90
 _MAX_ENTRIES = 512
 _CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+_CACHED_AT: dict[str, float] = {}
 
 _READ_ACTION_MARKERS = (
     ".list",
@@ -56,6 +57,15 @@ def get_cached_read_result(
     if time.time() > expires_at:
         _CACHE.pop(key, None)
         return None
+    cached_at = _CACHED_AT.get(key)
+    if cached_at is not None:
+        from app.services.memory_source_liveness import cached_before_epoch
+
+        # A source of the org was revoked after this result was cached (any replica).
+        if cached_before_epoch(org_id, cached_at):
+            _CACHE.pop(key, None)
+            _CACHED_AT.pop(key, None)
+            return None
     return dict(payload)
 
 
@@ -70,9 +80,23 @@ def set_cached_read_result(
     if len(_CACHE) >= _MAX_ENTRIES:
         oldest = min(_CACHE.items(), key=lambda item: item[1][0])[0]
         _CACHE.pop(oldest, None)
+        _CACHED_AT.pop(oldest, None)
     key = _cache_key(org_id, invoke_action, params)
-    _CACHE[key] = (time.time() + max(5, ttl_seconds), dict(result))
+    now = time.time()
+    _CACHE[key] = (now + max(5, ttl_seconds), dict(result))
+    _CACHED_AT[key] = now
 
 
 def clear_read_action_result_cache() -> None:
     _CACHE.clear()
+    _CACHED_AT.clear()
+
+
+def invalidate_org_read_results(org_id: str) -> int:
+    """Drop every cached read result of ``org_id`` in this process (source revoked)."""
+    prefix = f"{org_id}:"
+    keys = [k for k in _CACHE if k.startswith(prefix)]
+    for k in keys:
+        _CACHE.pop(k, None)
+        _CACHED_AT.pop(k, None)
+    return len(keys)
