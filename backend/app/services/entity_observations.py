@@ -98,6 +98,9 @@ class CustomerMessage:
     source_record_id: str
     observed_at: str
     author_email: str = ""
+    # connectors.id the message was read through; stored as source_connector_id so a
+    # disconnect removes the observations (MEMORY_SOURCE_LINEAGE_ENABLED).
+    connector_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -187,7 +190,19 @@ def record_observations(
     entity_row_id: str,
     message: CustomerMessage,
     observations: list[Observation],
+    settings: Any = None,
 ) -> int:
+    from app.services.memory_contamination_guard import (
+        lineage_required,
+        memory_source_lineage,
+    )
+
+    lineage = memory_source_lineage({"source_connector_id": message.connector_id}, settings=settings)
+    if not lineage and lineage_required(settings):
+        # Every observation is read from a connection; one we cannot name could never
+        # be removed when that connection goes, so it is not stored.
+        logger.info("entity_observation_skipped_no_lineage org_id=%s system=%s", org_id, message.source_system)
+        return 0
     rows = [
         {
             "org_id": org_id,
@@ -202,16 +217,22 @@ def record_observations(
             "source_record_id": message.source_record_id,
             "observed_at": message.observed_at,
             "extractor_version": EXTRACTOR_VERSION,
+            **({"source_connector_id": lineage["source_connector_id"]} if lineage else {}),
         }
         for o in observations
     ]
     if not rows:
         return 0
-    client.table(TABLE).upsert(
-        rows,
-        on_conflict="org_id,entity_id,dimension,source_system,source_record_id,extractor_version",
-        ignore_duplicates=True,
-    ).execute()
+    on_conflict = "org_id,entity_id,dimension,source_system,source_record_id,extractor_version"
+    try:
+        client.table(TABLE).upsert(rows, on_conflict=on_conflict, ignore_duplicates=True).execute()
+    except Exception as exc:
+        if not lineage:
+            raise
+        # source_connector_id arrives with 20261012070000; keep observing without it.
+        logger.warning("entity_observation_insert_without_lineage error=%s", type(exc).__name__)
+        rows = [{k: v for k, v in r.items() if k != "source_connector_id"} for r in rows]
+        client.table(TABLE).upsert(rows, on_conflict=on_conflict, ignore_duplicates=True).execute()
     return len(rows)
 
 
@@ -238,7 +259,12 @@ async def observe_customer_message(
     try:
         obs = await extract_observations(message.text, org_id=org_id, router=router)
         written = record_observations(
-            client, org_id=org_id, entity_row_id=entity_row_id, message=message, observations=obs
+            client,
+            org_id=org_id,
+            entity_row_id=entity_row_id,
+            message=message,
+            observations=obs,
+            settings=settings,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("entity_observation_failed org_id=%s error=%s", org_id, type(exc).__name__)

@@ -43,7 +43,7 @@ CREATE ROLE service_role NOLOGIN BYPASSRLS;
 CREATE SCHEMA auth;
 CREATE TABLE auth.users (id uuid PRIMARY KEY);
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT NULL::uuid $$;
-CREATE TABLE public.organizations (id uuid PRIMARY KEY);
+CREATE TABLE public.organizations (id uuid PRIMARY KEY, settings jsonb);
 CREATE TABLE public.organization_members (org_id uuid, user_id uuid);
 CREATE TABLE public.connectors (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -67,6 +67,7 @@ CREATE TABLE public.agent_memories (
   provenance text,
   confidence numeric(5, 2) NOT NULL DEFAULT 100,
   is_active boolean NOT NULL DEFAULT true,
+  expires_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -128,7 +129,8 @@ INSERT INTO public.agent_memories
   ('{M_UNTAGGED}', '{ORG}', 'Untagged fact', 'fact', NULL, true, NULL, NULL, NULL,
    '2026-10-01', '2026-10-01');
 
-UPDATE public.agent_memories SET superseded_by = '{M_HS_2}' WHERE id = '{M_USER}';
+UPDATE public.agent_memories SET superseded_by = '{M_HS_2}', source_class = 'user_direct',
+  provenance = 'user_statement' WHERE id = '{M_USER}';
 UPDATE public.agent_memories SET superseded_by = '{M_HS_B}' WHERE id = '{M_USER_B}';
 UPDATE public.agent_memories SET superseded_by = '{M_LATER_B}' WHERE id = '{M_HS_B}';
 
@@ -197,7 +199,15 @@ def test_migration_is_idempotent_and_adds_nullable_columns_and_partial_index(pg)
 def test_dry_run_counts_without_deleting_and_merges_into_dry_run_receipt(pg):
     _derived_purge(pg, dry_run=True)
     counts = _purge(pg, dry_run=True)
-    assert counts == {"agent_memories": 3, "agent_memories_restored": 1, "receipt_merged": True}
+    assert counts == {
+        "agent_memories": 3,
+        "agent_memories_restored": 1,
+        "agent_memories_not_restored": 0,
+        "entity_observations": 0,
+        "entity_observations_unattributed": 0,
+        "entity_behavior_signals": 0,
+        "receipt_merged": True,
+    }
     assert len(_ids(pg)) == 10
     assert pg.value(f"SELECT is_current FROM public.agent_memories WHERE id = '{M_USER}';") == "f"
     receipt = _receipt(pg, dry_run=True)
@@ -237,7 +247,15 @@ def test_second_delivery_removes_nothing_and_keeps_first_receipt_count(pg):
     first = _purge(pg, dry_run=False)
     second = _purge(pg, dry_run=False)
     assert first["agent_memories"] == 3 and first["receipt_merged"] is True
-    assert second == {"agent_memories": 0, "agent_memories_restored": 0, "receipt_merged": False}
+    assert second == {
+        "agent_memories": 0,
+        "agent_memories_restored": 0,
+        "agent_memories_not_restored": 0,
+        "entity_observations": 0,
+        "entity_observations_unattributed": 0,
+        "entity_behavior_signals": 0,
+        "receipt_merged": False,
+    }
     assert _receipt(pg, dry_run=False)["agent_memories"] == 3
 
 
@@ -275,7 +293,7 @@ def test_only_service_role_may_execute(pg):
         assert res.returncode != 0 and "permission denied" in res.stderr
     assert pg.value(
         "SELECT has_function_privilege('public', "
-        "'public.purge_connector_memories(uuid, uuid, timestamptz, boolean)', 'EXECUTE');"
+        "'public.purge_connector_memories(uuid, uuid, timestamptz, boolean, text)', 'EXECUTE');"
     ) == "f"
     ok = pg.psql(
         f"SET ROLE service_role; SELECT public.purge_connector_memories('{ORG}', '{HUBSPOT}', "
@@ -290,3 +308,92 @@ def test_required_arguments(pg):
         check=False,
     )
     assert res.returncode != 0 and "required" in res.stderr
+
+
+# ------------------------------------------------------------------ superseded-value reveal rules
+# M_USER (key preference:icp) was replaced by M_HS_2 (HubSpot). Each case changes
+# M_USER's provenance or retention and checks whether the purge gives it back.
+
+GONE = "aaaaaaaa-0000-4000-8000-000000000003"  # another connector, also disconnected
+
+
+def _older(pg, sql_set: str) -> None:
+    pg.psql(f"UPDATE public.agent_memories SET {sql_set} WHERE id = '{M_USER}';")
+
+
+def _revealed(pg) -> bool:
+    return pg.value(f"SELECT is_current FROM public.agent_memories WHERE id = '{M_USER}';") == "t"
+
+
+@pytest.mark.parametrize(
+    "sql_set",
+    [
+        "source_class = 'untrusted_external', provenance = 'connector:hubspot'",
+        "source_class = NULL, provenance = NULL",  # pre-hardening legacy row: provenance unknown
+        "source_class = 'model_inference', provenance = 'turn_extract'",
+        "source_class = 'user_direct', provenance = 'connector_confirm:conversation:x'",
+        "source_class = 'workflow_outcome', provenance = 'rag:doc-1'",
+        f"source_connector_id = '{GONE}'",  # from a connector that is no longer connected
+        "is_active = false",
+        "expires_at = now() - interval '1 day'",
+    ],
+)
+def test_older_value_without_valid_provenance_or_retention_is_not_revealed(pg, sql_set):
+    pg.psql(
+        "INSERT INTO public.connectors (id, org_id, type, vendor, deleted_at) VALUES "
+        f"('{GONE}', '{ORG}', 'gmail', 'gmail', now());"
+    )
+    _older(pg, sql_set)
+    counts = _purge(pg, dry_run=False)
+    assert counts["agent_memories"] == 3
+    assert counts["agent_memories_restored"] == 0 and counts["agent_memories_not_restored"] == 1
+    assert not _revealed(pg)
+    # It stays a non-current former value, unlinked from the purged row.
+    assert pg.value(f"SELECT superseded_by IS NULL FROM public.agent_memories WHERE id = '{M_USER}';") == "t"
+    assert pg.value(
+        "SELECT count(*) FROM public.agent_memories WHERE memory_key = 'preference:icp' AND is_current;"
+    ) == "0"
+
+
+@pytest.mark.parametrize(
+    "sql_set",
+    [
+        "source_class = 'user_direct', provenance = 'user_statement'",
+        "source_class = 'workflow_outcome', provenance = 'outcome_learning'",
+        f"source_connector_id = '{NOTION}', source_class = 'untrusted_external'",  # still connected
+        "expires_at = now() + interval '30 days'",
+    ],
+)
+def test_older_value_with_valid_provenance_within_retention_is_revealed(pg, sql_set):
+    _older(pg, sql_set)
+    counts = _purge(pg, dry_run=False)
+    assert counts["agent_memories_restored"] == 1 and counts["agent_memories_not_restored"] == 0
+    assert _revealed(pg)
+
+
+def _retention(pg, days: int | None) -> None:
+    value = "NULL" if days is None else (
+        "'{\"sourceDataGovernance\": {\"retentionDays\": {\"notion\": " + str(days) + "}}}'"
+    )
+    pg.psql(f"UPDATE public.organizations SET settings = {value} WHERE id = '{ORG}';")
+
+
+def test_still_connected_source_value_obeys_that_vendors_retention(pg):
+    _older(pg, f"source_connector_id = '{NOTION}', created_at = now() - interval '20 days'")
+    try:
+        _retention(pg, 7)
+        assert _purge(pg, dry_run=True)["agent_memories_not_restored"] == 1
+        _retention(pg, 30)
+        assert _purge(pg, dry_run=False)["agent_memories_restored"] == 1
+        assert _revealed(pg)
+    finally:
+        _retention(pg, None)
+
+
+def test_dry_run_reports_the_reveal_decision_without_changing_anything(pg):
+    _older(pg, "source_class = 'untrusted_external'")
+    snapshot = "SELECT md5(string_agg(t::text, ',' ORDER BY id)) FROM public.agent_memories t;"
+    before = pg.value(snapshot)
+    counts = _purge(pg, dry_run=True)
+    assert counts["agent_memories_not_restored"] == 1
+    assert pg.value(snapshot) == before

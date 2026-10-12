@@ -16,7 +16,9 @@ from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.memory_contamination_guard import (
     LINEAGE_COLUMNS,
+    SOURCE_UNTRUSTED_EXTERNAL,
     attach_recall_honesty,
+    lineage_required,
     memory_source_lineage,
     validate_memory_write,
     without_lineage,
@@ -214,7 +216,17 @@ def promote_turn_memories(
             payload["memory_key"] = memory_key
         # Connector lineage (source_connector_id / source_record_ref) when the
         # candidate names the connection it came from and the flag is on.
-        payload.update(memory_source_lineage(enriched, settings=active_settings))
+        lineage = memory_source_lineage(enriched, settings=active_settings)
+        if (
+            not lineage
+            and enriched.get("source_class") == SOURCE_UNTRUSTED_EXTERNAL
+            and lineage_required(active_settings)
+        ):
+            # Connector or document content that cannot name its connection could
+            # never be removed when that connection goes: do not store it.
+            logger.info("workspace_memory_skipped_no_lineage org_id=%s category=%s", org_id, category)
+            continue
+        payload.update(lineage)
 
         try:
             from app.rag.embedding import get_embedding

@@ -136,6 +136,16 @@ LINEAGE_COLUMNS = ("source_connector_id", "source_record_ref")
 _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
 
 
+def lineage_required(settings: Any = None) -> bool:
+    """True when MEMORY_SOURCE_LINEAGE_ENABLED is on: connector-derived writes must
+    name their connector (and are refused when they cannot)."""
+    if settings is None:
+        from app.config import get_settings
+
+        settings = get_settings()
+    return getattr(settings, "memory_source_lineage_enabled", False) is True
+
+
 def memory_source_lineage(raw: dict[str, Any] | None, *, settings: Any = None) -> dict[str, str]:
     """Columns naming the connector (and record) a memory was learned from.
 
@@ -145,13 +155,7 @@ def memory_source_lineage(raw: dict[str, Any] | None, *, settings: Any = None) -
     connection, and cannot be purged by. Empty unless MEMORY_SOURCE_LINEAGE_ENABLED,
     so nothing new is written before migration 20261012070000 is applied.
     """
-    if not isinstance(raw, dict):
-        return {}
-    if settings is None:
-        from app.config import get_settings
-
-        settings = get_settings()
-    if getattr(settings, "memory_source_lineage_enabled", False) is not True:
+    if not isinstance(raw, dict) or not lineage_required(settings):
         return {}
     connector_id = str(raw.get("source_connector_id") or raw.get("connector_id") or "").strip()
     if not _UUID_RE.match(connector_id):

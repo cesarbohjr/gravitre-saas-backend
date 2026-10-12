@@ -103,6 +103,7 @@ def handle_customer_message(client: Any, event: dict[str, Any], settings: Settin
         source_record_id=record_id,
         observed_at=str(props.get("hs_timestamp") or event.get("created_at") or ""),
         author_email=str(props.get("hs_email_from_email") or ""),
+        connector_id=str(payload.get("connector_id") or ""),
     )
     # The relay runs handlers in a worker thread with no running event loop.
     result = asyncio.run(

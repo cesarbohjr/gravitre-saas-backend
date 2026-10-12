@@ -7,8 +7,9 @@ Three pieces, each off until switched on:
   (CONNECTOR_PROVIDER_REVOKE_ON_DISCONNECT).
 * ``handle_source_disconnected`` consumes the ``source.disconnected`` outbox event and
   removes the data derived from that connector in one database transaction
-  (``purge_connector_derived_data``), then the agent memories tagged with that
-  connector (``purge_connector_memories``; skipped with a warning until migration
+  (``purge_connector_derived_data``), then the agent memories, customer observations
+  and behaviour signals derived from that connector (``purge_connector_memories``;
+  skipped with a warning until migration
   20261012070000 is applied). It writes a dry-run receipt only, until
   SOURCE_PURGE_DRY_RUN=false. Runs only when the relay is on.
 * ``reconcile_source_documents`` removes indexed documents a full-sweep sync no longer
@@ -67,9 +68,14 @@ MEMORY_PURGE_RPC = "purge_connector_memories"
 
 
 def _purge_connector_memories(
-    client: Any, org_id: str, connector_id: str, disconnected_at: Any, dry_run: bool
+    client: Any, org_id: str, connector_id: str, disconnected_at: Any, dry_run: bool, vendor: str | None = None
 ) -> dict[str, Any]:
-    """Purge agent memories learned from the connector (lineage, 20261012070000).
+    """Purge agent memories, customer observations and the behaviour signals built on
+    them that were learned from the connector (lineage, 20261012070000).
+
+    Source-scoped: rows tagged with this connector, plus untagged observations of its
+    vendor only when no other live connection of that vendor remains. User-confirmed
+    recipients and channels are not touched.
 
     Runs after ``purge_connector_derived_data`` (which wrote the receipt this merges
     its count into), in its own transaction. A database without the function yet
@@ -86,6 +92,7 @@ def _purge_connector_memories(
                 "p_connector_id": connector_id,
                 "p_disconnected_at": disconnected_at,
                 "p_dry_run": dry_run,
+                "p_vendor": vendor or None,
             },
         ).execute()
     except Exception as exc:
@@ -140,7 +147,7 @@ def handle_source_disconnected(client: Any, event: dict[str, Any], settings: Set
     except Exception as exc:
         raise SourcePurgeError(f"purge rpc failed: {type(exc).__name__}: {exc}") from exc
     counts = res.data if isinstance(res.data, dict) else {}
-    counts = {**counts, **_purge_connector_memories(client, org_id, connector_id, disconnected_at, dry_run)}
+    counts = {**counts, **_purge_connector_memories(client, org_id, connector_id, disconnected_at, dry_run, vendor)}
 
     from app.workflows.audit import write_audit_event
 

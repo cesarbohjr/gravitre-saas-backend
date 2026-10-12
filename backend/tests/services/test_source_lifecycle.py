@@ -183,6 +183,7 @@ def test_memory_purge_follows_derived_purge_with_same_mode(_reset, dry_run):
         "p_connector_id": CONN,
         "p_disconnected_at": "2026-10-12T10:00:00+00:00",
         "p_dry_run": dry_run,
+        "p_vendor": "hubspot",
     }
     assert counts["rag_sources"] == 2 and counts["agent_memories"] == 3
     assert _reset[0]["metadata"]["counts"]["agent_memories"] == 3
@@ -220,6 +221,8 @@ def test_hard_deleted_connector_uses_payload_vendor():
     client = _Client()  # row is gone
     sl.handle_source_disconnected(client, _event(connector_type="gmail", hard_deleted=True), SimpleNamespace())
     assert client.rpc_calls[0][1]["p_vendor"] == "gmail"
+    # The memory purge gets the same vendor, to scope untagged observations.
+    assert client.rpc_calls[1][1]["p_vendor"] == "gmail"
 
 
 def test_malformed_event_completes_without_purging():

@@ -12,7 +12,6 @@ from app.services.memory_contamination_guard import (
     validate_memory_write,
 )
 
-
 _LINEAGE_HINT_KEYS = ("source_connector_id", "connector_id", "source_record_ref", "record_ref")
 
 
@@ -24,6 +23,14 @@ def _lineage_hint(source: dict[str, Any] | None) -> dict[str, Any]:
     if not isinstance(source, dict):
         return {}
     return {k: source[k] for k in _LINEAGE_HINT_KEYS if source.get(k)}
+
+
+def _inherit_lineage(candidate: dict[str, Any], act_lineage: dict[str, Any]) -> dict[str, Any]:
+    """``act_lineage`` under ``candidate``, unless the candidate names its own connector
+    (then its own record ref, or none, is kept: never another connector's)."""
+    if candidate.get("source_connector_id") or candidate.get("connector_id"):
+        return candidate
+    return {**act_lineage, **candidate}
 
 
 def _structured_outcome(
@@ -131,6 +138,9 @@ def extract_typed_memories_structured(
     """Structured replacement for raw transcript memory extraction."""
     out: list[dict[str, Any]] = []
     if isinstance(act_result, dict):
+        # The connection the act ran through; every candidate below that does not
+        # name its own inherits it, so a disconnect can remove what it taught.
+        act_lineage = _lineage_hint(act_result)
         for key in ("typed_memories", "memories", "workspace_memories"):
             raw = act_result.get(key)
             if isinstance(raw, list):
@@ -138,7 +148,7 @@ def extract_typed_memories_structured(
                     if isinstance(item, dict) and (item.get("content") or item.get("memory_text")):
                         enriched = validate_memory_write(
                             {
-                                **item,
+                                **_inherit_lineage(item, act_lineage),
                                 "content": str(item.get("content") or item.get("memory_text")),
                             },
                             provenance=provenance or str(item.get("provenance") or ""),
@@ -156,7 +166,7 @@ def extract_typed_memories_structured(
                         "content": str(content),
                         "category": category,
                         "structured_payload": act_result.get("structured_payload"),
-                        **_lineage_hint(act_result),
+                        **act_lineage,
                     },
                     provenance=provenance,
                 )
@@ -173,7 +183,7 @@ def extract_typed_memories_structured(
                 ext["confidence"] = 10
             ext_row = validate_memory_write(
                 {
-                    **ext,
+                    **_inherit_lineage(ext, act_lineage),
                     "from_untrusted_external": True,
                     "category": ext.get("category") or "episodic",
                 },
