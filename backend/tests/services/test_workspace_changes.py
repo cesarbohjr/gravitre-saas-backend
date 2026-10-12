@@ -183,3 +183,14 @@ def test_a_read_the_user_asked_for_is_not_offered_back(message: str, expected: b
     from app.services.offered_action_continuation import user_requested_read
 
     assert user_requested_read(message) is expected
+
+
+def test_a_workspace_question_does_not_accept_an_open_offer() -> None:
+    from app.services.offered_action_continuation import resolve_offered_action_turn
+
+    state = {"offered_action": {"id": "o1", "scope": ["workflows", "connectors"], "status": "awaiting_user_confirmation"}}
+    asked = resolve_offered_action_turn("What changed in my workspace since yesterday?", task_state=state)
+    assert asked.kind == "topic_change"
+    # A real acceptance still runs the offered check.
+    assert resolve_offered_action_turn("yes please", task_state=state).kind == "execute_read"
+    assert resolve_offered_action_turn("sure, check it", task_state=state).kind == "execute_read"
