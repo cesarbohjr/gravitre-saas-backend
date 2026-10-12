@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+import uuid
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -48,6 +49,14 @@ class SourceNotFoundError(LookupError):
     """The source does not belong to the caller's org (or environment)."""
 
 
+def _is_uuid(value: str) -> bool:
+    try:
+        uuid.UUID(str(value))
+    except (ValueError, TypeError, AttributeError):
+        return False
+    return True
+
+
 class Document(BaseModel):
     source_id: str
     external_id: str | None = None
@@ -84,6 +93,9 @@ class RAGService:
         """
         if getattr(self.settings, "disable_ingestion", False) is True:
             raise IngestionDisabledError("Ingestion is disabled")
+        if not _is_uuid(document.source_id):
+            # A malformed id cannot name a source of this org; answer like any other miss.
+            raise SourceNotFoundError("Source not found")
         client = get_supabase_client(self.settings)
         if not get_source(client, org_id, document.source_id, environment_name=document.environment):
             raise SourceNotFoundError("Source not found")

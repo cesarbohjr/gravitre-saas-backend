@@ -14,6 +14,7 @@ from supabase import create_client
 from app.config import Settings, get_settings
 from app.core.db import shared_service_client
 from app.core.logging import get_logger
+from app.services import lifecycle_runtime
 from app.services.domain_events import (
     DomainEventRelay,
     domain_event_outbox_stats,
@@ -38,10 +39,13 @@ async def _loop(settings: Settings, interval: int) -> None:
     await asyncio.sleep(min(_INITIAL_DELAY_S, interval))
     last_prune = 0.0
     last_stats = 0.0
+    last_probe = 0.0
     while True:
         try:
             started = time.monotonic()
             result = await asyncio.to_thread(relay.run_once)
+            # Heartbeat for the ingestion interlock: a tick that claimed and settled.
+            lifecycle_runtime.record_relay_tick(ok=True)
             if result.claimed:
                 logger.info(
                     "domain_event_relay_tick worker=%s duration_ms=%s %s",
@@ -50,6 +54,12 @@ async def _loop(settings: Settings, interval: int) -> None:
                     result.as_dict(),
                 )
             now = time.monotonic()
+            if now - last_probe >= lifecycle_runtime.DB_PROBE_EVERY_S:
+                last_probe = now
+                probe = await asyncio.to_thread(lifecycle_runtime.probe_lifecycle_database, client)
+                lifecycle_runtime.record_db_probe(probe)
+                if not probe.get("ok"):
+                    logger.warning("lifecycle_runtime_probe_failed %s", probe)
             if now - last_stats >= _STATS_EVERY_S:
                 last_stats = now
                 stats = await asyncio.to_thread(domain_event_outbox_stats, client)
@@ -67,6 +77,7 @@ async def _loop(settings: Settings, interval: int) -> None:
             if result.claimed >= relay.batch_size:
                 continue
         except Exception as exc:  # noqa: BLE001
+            lifecycle_runtime.record_relay_tick(ok=False, error=f"{type(exc).__name__}: {exc}")
             logger.warning("domain_event_relay_tick_failed error=%s", exc)
         await asyncio.sleep(interval)
 
@@ -90,12 +101,19 @@ def start_domain_event_relay_scheduler() -> asyncio.Task | None:
 
     register_source_lifecycle_handlers()
     register_customer_observation_handlers()
-    return asyncio.create_task(_loop(settings, interval))
+    task = asyncio.create_task(_loop(settings, interval))
+    lifecycle_runtime.relay_started(
+        task,
+        interval_s=interval,
+        lease_s=max(10, int(getattr(settings, "domain_event_relay_lease_seconds", 120) or 120)),
+    )
+    return task
 
 
 async def stop_domain_event_relay_scheduler(task: asyncio.Task | None) -> None:
     if task is None:
         return
+    lifecycle_runtime.relay_stopped()
     task.cancel()
     try:
         await task

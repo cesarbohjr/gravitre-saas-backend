@@ -10,7 +10,8 @@ Two kinds of ingestion are covered, and treated differently on purpose:
 
 * **New ingestion** (``INGESTION_FLAGS``): the entity writer, customer
   observations, behaviour signals and the in-process indexing pilot. Held
-  until the lifecycle prerequisites hold, and then only for connectors whose
+  until the lifecycle prerequisites hold in configuration *and* at runtime
+  (``lifecycle_runtime.runtime_lifecycle_blockers``), and then only for connectors whose
   provider has a revoke call wired (``provider_lifecycle_supported``).
 * **Existing ingestion**: the knowledge syncs customers already rely on
   (Notion, Confluence, HubSpot, Zendesk, Workday: scheduled, manual and
@@ -21,10 +22,12 @@ Two kinds of ingestion are covered, and treated differently on purpose:
 
 Limitations (read before relying on this as a privacy control):
 
-* The prerequisites are configuration flags, not proof of enforcement. Nothing
-  here checks that the domain event relay task is alive, that the
-  ``source.disconnected`` handler is registered, or that the purge and claim
-  migrations are applied.
+* The configuration prerequisites are necessary, not sufficient. New ingestion
+  (and, with the owner switch on, existing ingestion) also needs runtime
+  evidence from ``lifecycle_runtime``: relay task alive with a recent heartbeat,
+  purge handler registered, purge RPC present and callable (dry run), no purge
+  dead-lettered or lagging. No evidence means not ready (fail closed). The
+  evidence is per process: a process without its own relay is never ready.
 * Revoke on disconnect is a no-op (``not_supported``) for Notion, Microsoft 365,
   Zendesk, Atlassian (Confluence, Jira), Intercom, Workday and every other vendor
   outside ``provider_revoke.SUPPORTED_VENDORS``. New ingestion is therefore
@@ -66,8 +69,8 @@ KNOWLEDGE_SYNC_VENDORS: tuple[str, ...] = ("notion", "confluence", "hubspot", "z
 
 LIMITATIONS: tuple[str, ...] = (
     (
-        "prerequisites are configuration flags only; relay liveness, handler registration "
-        "and applied migrations are not checked"
+        "runtime readiness is per process and comes from the relay running in that process; "
+        "a process without the relay (scripts/ingest_worker.py) never counts as ready"
     ),
     (
         "revoke on disconnect is not wired for notion, microsoft365, zendesk, atlassian "
@@ -92,11 +95,38 @@ def missing_lifecycle_prerequisites(settings: Any) -> list[str]:
     ]
 
 
-def ingestion_flag_on(settings: Any, flag: str) -> bool:
-    """``flag`` is on and the lifecycle prerequisites hold."""
+def runtime_blockers() -> list[str]:
+    """Runtime lifecycle evidence missing in this process ([] = ready). Fails closed."""
+    try:
+        from app.services.lifecycle_runtime import runtime_lifecycle_blockers
+
+        return runtime_lifecycle_blockers()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("lifecycle_runtime_unavailable error=%s", type(exc).__name__)
+        return ["runtime_state_unknown"]
+
+
+def lifecycle_blockers(settings: Any) -> list[str]:
+    """Configuration prerequisites missing, then runtime evidence missing ([] = ready)."""
+    return missing_lifecycle_prerequisites(settings) + [f"runtime:{b}" for b in runtime_blockers()]
+
+
+def ingestion_flag_configured(settings: Any, flag: str) -> bool:
+    """``flag`` is on and the configuration prerequisites hold (no runtime check).
+
+    For deciding whether to *start* a scheduler at boot, before the relay has had a
+    chance to tick. Each unit of work must still pass ``ingestion_flag_on``.
+    """
     if getattr(settings, flag, False) is not True:
         return False
     return not missing_lifecycle_prerequisites(settings)
+
+
+def ingestion_flag_on(settings: Any, flag: str) -> bool:
+    """``flag`` is on and lifecycle is enforced, in configuration and at runtime."""
+    if not ingestion_flag_configured(settings, flag):
+        return False
+    return not runtime_blockers()
 
 
 def provider_lifecycle_supported(vendor: str | None) -> bool:
@@ -134,6 +164,9 @@ def existing_ingestion_hold_reason(settings: Any, vendor: str | None = None) -> 
     missing = missing_lifecycle_prerequisites(settings)
     if missing:
         return "lifecycle_prerequisites_missing:" + ",".join(missing)
+    runtime = runtime_blockers()
+    if runtime:
+        return "lifecycle_runtime_not_ready:" + ",".join(runtime)
     if vendor is not None and not provider_lifecycle_supported(vendor):
         return f"provider_revoke_not_supported:{str(vendor).strip().lower() or 'unknown'}"
     return None
@@ -148,7 +181,10 @@ def ensure_existing_ingestion_allowed(settings: Any, vendor: str | None = None) 
 
 def ingestion_interlock_report(settings: Any) -> dict[str, Any]:
     """Readiness report: what is held, what still runs ungated, and why."""
+    from app.services.lifecycle_runtime import runtime_lifecycle_status
+
     missing = missing_lifecycle_prerequisites(settings)
+    runtime = runtime_lifecycle_status()
     gated = existing_ingestion_gated(settings)
     sync_vendors: dict[str, str] = {}
     for vendor in KNOWLEDGE_SYNC_VENDORS:
@@ -158,7 +194,9 @@ def ingestion_interlock_report(settings: Any) -> dict[str, Any]:
             reason = existing_ingestion_hold_reason(settings, vendor)
             sync_vendors[vendor] = f"held:{reason}" if reason else "allowed"
     return {
-        "lifecycle_ready": not missing,
+        "lifecycle_ready": not missing and runtime["ready"] is True,
+        "lifecycle_configured": not missing,
+        "runtime": runtime,
         "prerequisites": {
             name: {
                 "required": want,
@@ -180,7 +218,7 @@ def ingestion_interlock_report(settings: Any) -> dict[str, Any]:
             "knowledge_sync": sync_vendors,
             "standalone_worker": "running_ungated"
             if not gated
-            else ("held" if missing else "allowed"),
+            else ("held" if (missing or not runtime["ready"]) else "allowed"),
         },
         "providers_without_revoke": sorted(
             v for v in KNOWLEDGE_SYNC_VENDORS if not provider_lifecycle_supported(v)

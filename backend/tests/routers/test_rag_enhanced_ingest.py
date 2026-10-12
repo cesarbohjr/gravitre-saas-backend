@@ -11,7 +11,8 @@ from app.main import app
 from app.services.rag_service import RAGService, get_rag_service
 
 ORG = "11111111-1111-4111-8111-111111111111"
-BODY = {"source_id": "src-1", "content": "Customer contract terms", "environment": "production"}
+SRC = "5f0c1c4e-0000-4000-8000-000000000001"
+BODY = {"source_id": SRC, "content": "Customer contract terms", "environment": "production"}
 
 
 def _settings(**kw) -> Settings:
@@ -60,14 +61,14 @@ async def test_source_of_another_org_answers_404_and_writes_nothing(async_client
         resp = await async_client.post("/api/rag-enhanced/ingest", json=BODY)
     assert resp.status_code == 404
     # Looked up in the caller's org and the requested environment only.
-    get_source.assert_called_once_with(client, ORG, "src-1", environment_name="production")
+    get_source.assert_called_once_with(client, ORG, SRC, environment_name="production")
     upsert.assert_not_called()
     replace.assert_not_called()
 
 
 async def test_source_of_this_org_is_indexed(async_client, service):
     with patch("app.services.rag_service.get_supabase_client", return_value=MagicMock()), patch(
-        "app.services.rag_service.get_source", return_value={"id": "src-1", "org_id": ORG}
+        "app.services.rag_service.get_source", return_value={"id": SRC, "org_id": ORG}
     ), patch("app.services.rag_service.upsert_document", return_value={"id": "doc-1"}) as upsert, patch(
         "app.services.rag_service.chunk_document_text", return_value=["a", "b"]
     ), patch(
@@ -77,3 +78,14 @@ async def test_source_of_this_org_is_indexed(async_client, service):
     assert resp.status_code == 200
     assert resp.json()["total"] == 2
     assert upsert.call_args.kwargs["org_id"] == ORG
+
+
+async def test_malformed_source_id_answers_404_without_a_lookup(async_client, service):
+    with patch("app.services.rag_service.get_supabase_client") as get_client, patch(
+        "app.services.rag_service.get_source"
+    ) as get_source, patch("app.services.rag_service.upsert_document") as upsert:
+        resp = await async_client.post("/api/rag-enhanced/ingest", json={**BODY, "source_id": "src-1' OR 1=1"})
+    assert resp.status_code == 404
+    get_client.assert_not_called()
+    get_source.assert_not_called()
+    upsert.assert_not_called()

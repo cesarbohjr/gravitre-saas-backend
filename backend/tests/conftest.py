@@ -52,6 +52,47 @@ def _set_required_env_vars():
     yield
 
 
+class _AliveTask:
+    """Stands in for the relay's asyncio.Task in lifecycle runtime tests."""
+
+    def __init__(self) -> None:
+        self.finished = False
+
+    def done(self) -> bool:
+        return self.finished
+
+
+@pytest.fixture(autouse=True)
+def _reset_lifecycle_runtime():
+    """Runtime lifecycle evidence is process state; every test starts with none (not ready)."""
+    from app.services.lifecycle_runtime import reset_lifecycle_runtime_for_tests
+
+    reset_lifecycle_runtime_for_tests()
+    yield
+    reset_lifecycle_runtime_for_tests()
+
+
+@pytest.fixture
+def lifecycle_runtime_ready():
+    """Put this process in the state a healthy relay leaves it in.
+
+    Relay task alive, a successful tick just now, the purge handler registered and a
+    passing database probe. Yields the fake task so a test can make it exit.
+    """
+    from app.services import domain_events, lifecycle_runtime
+    from app.services.source_lifecycle import register_source_lifecycle_handlers
+
+    saved = {k: list(v) for k, v in domain_events._handlers.items()}
+    register_source_lifecycle_handlers()
+    task = _AliveTask()
+    lifecycle_runtime.relay_started(task, interval_s=15, lease_s=120)
+    lifecycle_runtime.record_relay_tick(ok=True)
+    lifecycle_runtime.record_db_probe({"ok": True, "blockers": [], "checks": {"purge_rpc": "present"}})
+    yield task
+    domain_events._handlers.clear()
+    domain_events._handlers.update(saved)
+
+
 @pytest.fixture(autouse=True)
 def _clear_conversation_write_guard_smoke_flags():
     """Prevent GRAVITRE_SMOKE_RUN / ContextVar leaks from blocking unit tests on org-1."""

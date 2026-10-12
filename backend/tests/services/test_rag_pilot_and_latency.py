@@ -12,6 +12,9 @@ from app.services import latency_baseline as lb
 from app.services.ingestion_interlock import LIFECYCLE_PREREQUISITES
 
 LIFECYCLE_ON = dict(LIFECYCLE_PREREQUISITES)
+# Configuration is what these tests vary; runtime lifecycle evidence is present
+# (healthy relay in this process). Runtime-state cases: test_lifecycle_runtime.py.
+pytestmark = pytest.mark.usefixtures("lifecycle_runtime_ready")
 
 ORG = "11111111-1111-4111-8111-111111111111"
 ORG2 = "22222222-2222-4222-8222-222222222222"

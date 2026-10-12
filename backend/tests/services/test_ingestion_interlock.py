@@ -25,6 +25,9 @@ from app.services.ingestion_interlock import (
 )
 
 LIFECYCLE_ON = dict(LIFECYCLE_PREREQUISITES)
+# Configuration is what these tests vary; runtime lifecycle evidence is present
+# (healthy relay in this process). Runtime-state cases: test_lifecycle_runtime.py.
+pytestmark = pytest.mark.usefixtures("lifecycle_runtime_ready")
 ALL_INGESTION = {flag: True for flag in INGESTION_FLAGS}
 
 
@@ -129,7 +132,7 @@ def test_report_shows_ungated_existing_ingestion_and_limitations():
     assert report["existing_ingestion"]["standalone_worker"] == "running_ungated"
     assert report["providers_without_revoke"] == ["confluence", "notion", "workday", "zendesk"]
     text = " ".join(report["limitations"])
-    assert "configuration flags only" in text and "entity_observations" in text and "intercom" in text
+    assert "runtime readiness is per process" in text and "entity_observations" in text and "intercom" in text
 
 
 def test_report_with_owner_switch_and_lifecycle_on():

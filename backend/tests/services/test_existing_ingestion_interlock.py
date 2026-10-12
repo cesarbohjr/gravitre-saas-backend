@@ -17,6 +17,9 @@ from app.services import knowledge_sync_service as ks
 from app.services.ingestion_interlock import LIFECYCLE_PREREQUISITES, IngestionHeldError
 
 LIFECYCLE_ON = dict(LIFECYCLE_PREREQUISITES)
+# Configuration is what these tests vary; runtime lifecycle evidence is present
+# (healthy relay in this process). Runtime-state cases: test_lifecycle_runtime.py.
+pytestmark = pytest.mark.usefixtures("lifecycle_runtime_ready")
 GATED = SimpleNamespace(existing_ingestion_requires_lifecycle=True)
 GATED_READY = SimpleNamespace(existing_ingestion_requires_lifecycle=True, **LIFECYCLE_ON)
 ORG = "11111111-1111-4111-8111-111111111111"

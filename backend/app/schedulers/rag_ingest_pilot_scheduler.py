@@ -26,7 +26,11 @@ from supabase import create_client
 from app.config import Settings, get_settings
 from app.core.db import shared_service_client
 from app.core.logging import get_logger
-from app.services.ingestion_interlock import ingestion_flag_on, provider_lifecycle_supported
+from app.services.ingestion_interlock import (
+    ingestion_flag_configured,
+    ingestion_flag_on,
+    provider_lifecycle_supported,
+)
 
 logger = get_logger(__name__)
 
@@ -134,7 +138,11 @@ async def _loop(settings: Settings, interval: int) -> None:
     await asyncio.sleep(min(_INITIAL_DELAY_S, interval))
     while True:
         try:
-            if not getattr(settings, "disable_ingestion", False):
+            disabled = bool(getattr(settings, "disable_ingestion", False))
+            if not disabled and not ingestion_flag_on(settings, "rag_worker_pilot_enabled"):
+                # Nothing is claimed while lifecycle cannot be proven; queued jobs stay queued.
+                logger.warning("rag_pilot_tick_held reason=lifecycle_interlock")
+            elif not disabled:
                 result = await asyncio.to_thread(run_pilot_tick, settings, client, worker_id)
                 if result["processed"] or result["released"]:
                     logger.info("rag_pilot_tick worker=%s %s", worker_id, result)
@@ -146,7 +154,8 @@ async def _loop(settings: Settings, interval: int) -> None:
 def start_rag_ingest_pilot_scheduler() -> asyncio.Task | None:
     try:
         settings = get_settings()
-        enabled = ingestion_flag_on(settings, "rag_worker_pilot_enabled")
+        # Configuration only at boot (the relay has not ticked yet); each tick checks runtime.
+        enabled = ingestion_flag_configured(settings, "rag_worker_pilot_enabled")
         interval = int(getattr(settings, "rag_worker_pilot_interval_seconds", 30) or 0)
         orgs = pilot_org_ids(settings)
     except Exception as exc:  # noqa: BLE001
