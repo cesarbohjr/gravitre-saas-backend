@@ -212,7 +212,7 @@ def items_from_accounts(
                         "actionability": 0.6,
                         "novelty": 0.8,
                     },
-                    href=f"/entities/{eid}",
+                    href="/intelligence/predictive",
                     extra={"businessEntityId": eid, "dimension": dim},
                 )
             )
@@ -236,8 +236,9 @@ def items_from_accounts(
                 why=why,
                 evidence=[f"{s.get('signal')}={value:g} (rule {s.get('rule_version') or 'beh-v1'})"],
                 source="entity_behavior_signals",
+                # confidence-honesty-ok: fixed ranking weight for a rule-based signal, never shown as a confidence
                 axes={"impact": 0.6, "urgency": urgency, "confidence": 0.6, "relevance": 0.8, "actionability": 0.5, "novelty": 0.7},
-                href=f"/entities/{eid}",
+                href="/intelligence/predictive",
                 extra={"businessEntityId": eid, "signal": s.get("signal")},
             )
         )
