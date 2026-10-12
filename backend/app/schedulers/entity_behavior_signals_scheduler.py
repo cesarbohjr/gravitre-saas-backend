@@ -18,6 +18,7 @@ from supabase import create_client
 from app.config import Settings, get_settings
 from app.core.db import shared_service_client
 from app.core.logging import get_logger
+from app.services.ingestion_interlock import ingestion_flag_configured, ingestion_flag_on
 
 logger = get_logger(__name__)
 
@@ -96,6 +97,11 @@ async def _loop(settings: Settings, interval: int) -> None:
     await asyncio.sleep(min(_INITIAL_DELAY_S, interval))
     while True:
         try:
+            # Re-checked every tick: runtime lifecycle evidence can lapse after startup.
+            if not ingestion_flag_on(settings, "entity_behavior_signals_enabled"):
+                logger.warning("behavior_signals_tick_held reason=lifecycle_interlock")
+                await asyncio.sleep(interval)
+                continue
             written = await asyncio.to_thread(run_behavior_signals, client, settings=settings)
             logger.info("behavior_signals_tick orgs=%s rows=%s", len(written), sum(written.values()))
         except Exception as exc:  # noqa: BLE001
@@ -106,7 +112,8 @@ async def _loop(settings: Settings, interval: int) -> None:
 def start_entity_behavior_signals_scheduler() -> asyncio.Task | None:
     try:
         settings = get_settings()
-        enabled = getattr(settings, "entity_behavior_signals_enabled", False) is True
+        # Configuration only at boot (the relay has not ticked yet); each tick checks runtime.
+        enabled = ingestion_flag_configured(settings, "entity_behavior_signals_enabled")
         interval = int(getattr(settings, "entity_behavior_signals_interval_seconds", 86400) or 0)
     except Exception as exc:  # noqa: BLE001
         logger.warning("behavior signals not started: %s", exc)

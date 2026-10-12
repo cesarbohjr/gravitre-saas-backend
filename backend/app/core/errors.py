@@ -108,3 +108,14 @@ async def settings_not_configured_handler(_: Request, exc: SettingsNotConfigured
         "details": {"missing": exc.missing_fields},
     }
     return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=payload)
+
+
+async def ingestion_held_handler(_: Request, exc: Exception) -> JSONResponse:
+    """IngestionHeldError: the lifecycle interlock refused an ingestion path."""
+    payload = {
+        "success": False,
+        "error": str(exc) or "Ingestion is held until source lifecycle is enforced",
+        "code": "INGESTION_HELD",
+        "details": {},
+    }
+    return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=payload)

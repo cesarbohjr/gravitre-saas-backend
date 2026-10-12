@@ -1741,3 +1741,18 @@ async def domain_event_outbox_status(
         logger.warning("domain_event_outbox_stats_failed error=%s", exc)
         return {"ok": False, "relay_enabled": bool(settings.domain_event_relay_enabled), "error": str(exc)}
     return {"ok": True, "relay_enabled": bool(settings.domain_event_relay_enabled), "stats": stats}
+
+
+@router.get("/ingestion-interlock")
+async def ingestion_interlock_status(
+    settings: Annotated[Settings, Depends(get_settings)],
+    _: Annotated[None, Depends(require_internal_secret)] = None,
+) -> dict[str, Any]:
+    """Lifecycle readiness of the replica that answers: configuration, runtime evidence
+    (relay heartbeat, purge handler, purge RPC probe) and what ingestion is held.
+
+    Readiness is per process; each replica answers for itself. No I/O beyond memory.
+    """
+    from app.services.ingestion_interlock import ingestion_interlock_report
+
+    return ingestion_interlock_report(settings)

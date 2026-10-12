@@ -10,7 +10,7 @@ import uuid
 from supabase import create_client
 
 from app.config import get_settings
-from app.rag.worker import _claim_job, process_job
+from app.rag.worker import run_worker_once
 
 
 def main() -> None:
@@ -28,20 +28,14 @@ def main() -> None:
         worker_id = f"{socket.gethostname()}-{os.getpid()}-{uuid.uuid4().hex[:8]}"
 
     while True:
-        if settings.disable_ingestion:
-            if args.once:
-                return
-            time.sleep(args.poll_interval)
-            continue
-        job = _claim_job(client, worker_id=worker_id, visibility_timeout_s=args.visibility_timeout)
-        if job:
-            process_job(settings, client, job)
-            if args.once:
-                return
-            continue
+        # Same gates as ``python -m app.rag.worker``: DISABLE_INGESTION, the owner's
+        # EXISTING_INGESTION_REQUIRES_LIFECYCLE switch, and the pilot interlock for
+        # jobs of RAG_WORKER_PILOT_ORG_IDS orgs.
+        outcome = run_worker_once(settings, client, worker_id, args.visibility_timeout)
         if args.once:
             return
-        time.sleep(args.poll_interval)
+        if outcome != "processed":
+            time.sleep(args.poll_interval)
 
 
 if __name__ == "__main__":

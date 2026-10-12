@@ -201,7 +201,9 @@ def _propose(
 
 
 def writer_enabled(settings: Any) -> bool:
-    return getattr(settings, "entity_writer_enabled", False) is True
+    from app.services.ingestion_interlock import ingestion_flag_on
+
+    return ingestion_flag_on(settings, "entity_writer_enabled")
 
 
 def write_provider_records(
@@ -229,8 +231,13 @@ def write_provider_records(
     except Exception as exc:  # noqa: BLE001
         logger.warning("entity_writer_policy_unreadable org_id=%s error=%s", org_id, exc)
         return result
+    from app.services.ingestion_interlock import provider_lifecycle_supported
+
     for record in records:
         if not customer_context_allowed(policy, record.system):
+            continue
+        if not provider_lifecycle_supported(record.system):
+            # No provider revoke wired for this vendor: its records are not filed.
             continue
         try:
             _write_one(client, org_id, record, result)

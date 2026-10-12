@@ -7,8 +7,11 @@ from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from app.services import account_health as ah
 from app.services import recommendation_feed as rf
+from app.services.ingestion_interlock import LIFECYCLE_PREREQUISITES
 from tests.services.fake_supabase_db import FakeSupabaseDB
 
 ORG = "11111111-1111-4111-8111-111111111111"
@@ -197,9 +200,11 @@ def _seeded_db() -> FakeSupabaseDB:
     return db
 
 
+@pytest.mark.usefixtures("lifecycle_runtime_ready")
 def test_flag_off_keeps_todays_feed_and_never_reads_churn():
     churn = AsyncMock(return_value={"recommendations": [_churn("e1", "high", 0.9)], "trained": True})
-    out = _feed(SimpleNamespace(entity_observations_enabled=True), _seeded_db(), churn)
+    settings = SimpleNamespace(entity_observations_enabled=True, **dict(LIFECYCLE_PREREQUISITES))
+    out = _feed(settings, _seeded_db(), churn)
     churn.assert_not_awaited()
     assert "churn_advisory" not in out["sources"]
     assert [i["id"] for i in out["items"]] == ["account:e1:sentiment"]

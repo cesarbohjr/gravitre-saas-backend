@@ -405,6 +405,14 @@ def run_scheduled_knowledge_syncs(
         logger.warning("knowledge_sync_skipped reason=ingestion_disabled")
         return {"due_count": 0, "processed": 0, "outcomes": [], "skipped": "ingestion_disabled"}
 
+    from app.services.ingestion_interlock import existing_ingestion_hold_reason
+
+    # Existing syncs run as before unless EXISTING_INGESTION_REQUIRES_LIFECYCLE=true.
+    held = existing_ingestion_hold_reason(settings)
+    if held:
+        logger.warning("knowledge_sync_held reason=%s", held)
+        return {"due_count": 0, "processed": 0, "outcomes": [], "held_reason": held}
+
     client = client or shared_service_client(settings, create_client)
     due = list_due_knowledge_connectors(client)
     outcomes: list[dict[str, Any]] = []
@@ -413,6 +421,11 @@ def run_scheduled_knowledge_syncs(
         org_id = str(connector["org_id"])
         connector_id = str(connector["id"])
         source_type = str(connector.get("type") or "").lower()
+        held = existing_ingestion_hold_reason(settings, source_type)
+        if held:
+            # Skipped before a sync job row is written, so nothing is queued or marked failed.
+            outcomes.append({"connector_id": connector_id, "status": "held", "reason": held})
+            continue
         env = str(connector.get("environment") or "production")
         job = create_knowledge_sync_job(
             client,
@@ -455,7 +468,12 @@ def run_scheduled_knowledge_syncs(
                 }
             )
 
-    return {"due_count": len(due), "processed": len(outcomes), "outcomes": outcomes}
+    ran = [o for o in outcomes if o.get("status") != "held"]
+    summary: dict[str, Any] = {"due_count": len(due), "processed": len(ran), "outcomes": outcomes}
+    if len(outcomes) > len(ran):
+        # Only reported when the lifecycle switch held something, so the summary is unchanged while it is off.
+        summary["held"] = len(outcomes) - len(ran)
+    return summary
 
 
 def trigger_connector_knowledge_sync(
@@ -487,6 +505,11 @@ def trigger_connector_knowledge_sync(
     source_type = str(connector.get("type") or "").lower()
     if source_type not in SOURCE_REGISTRY:
         raise ValueError(f"Connector type {source_type} does not support knowledge sync")
+
+    from app.services.ingestion_interlock import ensure_existing_ingestion_allowed
+
+    # Raises IngestionHeldError (503) only when EXISTING_INGESTION_REQUIRES_LIFECYCLE=true.
+    ensure_existing_ingestion_allowed(settings, source_type)
 
     job = create_knowledge_sync_job(
         client,

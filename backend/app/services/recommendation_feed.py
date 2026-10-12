@@ -543,7 +543,9 @@ async def build_feed(client: Any, settings: Any, *, org_id: str, user_id: str | 
         return items_from_proposals(rows)
 
     def _accounts() -> list[dict[str, Any]]:
-        if getattr(settings, "entity_observations_enabled", False) is not True:
+        from app.services.entity_observations import observations_enabled
+
+        if not observations_enabled(settings):
             raise _Skipped()
         from app.services.memory_source_liveness import (
             drop_observations_from_revoked_sources,

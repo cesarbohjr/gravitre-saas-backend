@@ -315,3 +315,29 @@ def test_disconnect_event_reaches_outbox_for_handler(pg):
                  f"AND aggregate_id = '{NOTION}';")
     )
     assert payload["connector_id"] == NOTION and payload["connector_type"] == "notion"
+
+
+def test_lifecycle_runtime_probe_call_proves_presence_and_writes_nothing(pg):
+    """The readiness probe calls the purge with null arguments (dry run) as service_role.
+
+    It must raise the sentinel the probe looks for, before reading or writing anything.
+    """
+    from app.services.lifecycle_runtime import PURGE_RPC_SENTINEL
+
+    receipts = _count(pg, "SELECT count(*) FROM public.source_purge_receipts;")
+    sources = _sources(pg)
+    res = pg.psql(
+        "SET ROLE service_role;"
+        " SELECT public.purge_connector_derived_data(NULL, NULL, NULL, NULL, true, NULL);",
+        check=False,
+    )
+    assert res.returncode != 0
+    assert PURGE_RPC_SENTINEL in res.stderr
+    assert _count(pg, "SELECT count(*) FROM public.source_purge_receipts;") == receipts
+    assert _sources(pg) == sources
+
+    # A database without the function fails differently, so the probe reports it missing.
+    missing = pg.psql(
+        "SELECT public.purge_connector_derived_data_absent(NULL, NULL, NULL, NULL, true, NULL);", check=False
+    )
+    assert missing.returncode != 0 and PURGE_RPC_SENTINEL not in missing.stderr

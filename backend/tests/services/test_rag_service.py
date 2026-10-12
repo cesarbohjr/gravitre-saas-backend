@@ -5,7 +5,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.rag_service import Document, RAGService
+from app.services.rag_service import (
+    Document,
+    IngestionDisabledError,
+    RAGService,
+    SourceNotFoundError,
+)
+
+SRC = "5f0c1c4e-0000-4000-8000-000000000001"
+OTHER_ORG_SRC = "5f0c1c4e-0000-4000-8000-000000000002"
 
 
 @pytest.fixture
@@ -28,16 +36,50 @@ def test_rrf_merge_and_rerank(service: RAGService):
 @pytest.mark.asyncio
 async def test_ingest_document(service: RAGService):
     mock_client = MagicMock()
+    source = {"id": SRC, "org_id": "org-1"}
     with patch("app.services.rag_service.get_supabase_client", return_value=mock_client):
-        with patch("app.services.rag_service.upsert_document", return_value={"id": "doc-1"}):
-            with patch("app.services.rag_service.chunk_document_text", return_value=["chunk 1", "chunk 2"]):
-                with patch("app.services.rag_service.replace_chunks_and_embeddings", return_value=2):
-                    chunks = await service.ingest_document(
-                        org_id="org-1",
-                        document=Document(source_id="src-1", title="Title", content="Body text"),
-                    )
+        with patch("app.services.rag_service.get_source", return_value=source) as get_source:
+            with patch("app.services.rag_service.upsert_document", return_value={"id": "doc-1"}):
+                with patch("app.services.rag_service.chunk_document_text", return_value=["chunk 1", "chunk 2"]):
+                    with patch("app.services.rag_service.replace_chunks_and_embeddings", return_value=2):
+                        chunks = await service.ingest_document(
+                            org_id="org-1",
+                            document=Document(source_id=SRC, title="Title", content="Body text"),
+                        )
     assert len(chunks) == 2
     assert chunks[0].id == "doc-1:0"
+    get_source.assert_called_once_with(mock_client, "org-1", SRC, environment_name="default")
+
+
+@pytest.mark.asyncio
+async def test_ingest_document_refuses_a_source_of_another_org(service: RAGService):
+    upsert = MagicMock()
+    with (
+        patch("app.services.rag_service.get_supabase_client", return_value=MagicMock()),
+        patch("app.services.rag_service.get_source", return_value=None),
+        patch("app.services.rag_service.upsert_document", upsert),
+        patch("app.services.rag_service.replace_chunks_and_embeddings") as replace,
+        pytest.raises(SourceNotFoundError),
+    ):
+        await service.ingest_document(
+            org_id="org-1",
+            document=Document(source_id=OTHER_ORG_SRC, content="Body text"),
+        )
+    upsert.assert_not_called()
+    replace.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_ingest_document_honours_disable_ingestion(service: RAGService):
+    service.settings = SimpleNamespace(disable_ingestion=True)
+    with (
+        patch("app.services.rag_service.get_supabase_client") as get_client,
+        patch("app.services.rag_service.upsert_document") as upsert,
+        pytest.raises(IngestionDisabledError),
+    ):
+        await service.ingest_document(org_id="org-1", document=Document(source_id=SRC, content="Body text"))
+    get_client.assert_not_called()
+    upsert.assert_not_called()
 
 
 @pytest.mark.asyncio

@@ -20,6 +20,7 @@ from typing import Any
 import pytest
 
 from app.services import entity_observations as eo
+from app.services.ingestion_interlock import LIFECYCLE_PREREQUISITES
 from app.services.memory_contamination_guard import (
     SOURCE_UNTRUSTED_EXTERNAL,
     lineage_required,
@@ -311,6 +312,7 @@ def test_observations_written_without_the_column_before_the_migration():
     assert store.attempts == 2 and "source_connector_id" not in store.rows[0]
 
 
+@pytest.mark.usefixtures("lifecycle_runtime_ready")
 def test_feed_passes_the_events_connector_to_the_observation(_hubspot, monkeypatch):  # noqa: F811
     from app.services import customer_observation_feed as feed
 
@@ -322,5 +324,7 @@ def test_feed_passes_the_events_connector_to_the_observation(_hubspot, monkeypat
 
     monkeypatch.setattr(eo, "observe_customer_message", fake_observe)
     bound = [{"org_id": ORG, "system": "hubspot", "resource_type": "company", "resource_id": "co1", "entity_id": "e1"}]
-    feed.handle_customer_message(_FeedClient(bound), _feed_event(), SimpleNamespace(entity_observations_enabled=True))
+    feed.handle_customer_message(
+        _FeedClient(bound), _feed_event(), SimpleNamespace(entity_observations_enabled=True, **dict(LIFECYCLE_PREREQUISITES))
+    )
     assert seen[0]["message"].connector_id == "c1"

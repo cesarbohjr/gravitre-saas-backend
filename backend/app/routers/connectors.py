@@ -946,6 +946,7 @@ async def sync_connector_route_alias(
     import asyncio
 
     from app.core.ingestion_kill_switch import INGESTION_DISABLED_DETAIL, IngestionDisabledError
+    from app.services.ingestion_interlock import IngestionHeldError
     from app.services.knowledge_sync_service import SOURCE_REGISTRY, trigger_connector_knowledge_sync
 
     _user, org_id = _admin
@@ -983,6 +984,8 @@ async def sync_connector_route_alias(
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=INGESTION_DISABLED_DETAIL
             ) from exc
+        except IngestionHeldError:
+            raise  # answered 503 INGESTION_HELD by the app-level handler
         except Exception as exc:  # noqa: BLE001
             # Surface PostgREST/schema errors (e.g. missing rag_sources.created_by) instead of opaque 500.
             raise HTTPException(
