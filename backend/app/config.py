@@ -588,6 +588,9 @@ class Settings(BaseSettings):
     play_signal_evaluation_enabled: bool = False
     # Phase 5: one ranked recommendation feed (/api/recommendations/feed).
     recommendation_feed_enabled: bool = False
+    # The feed shows one item per account from account health, with churn advisory
+    # merged in (both bases shown when the churn model and customer language disagree).
+    account_feed_unified_v1: bool = False
     # Phase 6 (needs migration 20261012060000): log checkable predictions with a subject
     # and horizon, label them from evidence, and report realized accuracy.
     ml_prediction_outcomes_enabled: bool = False

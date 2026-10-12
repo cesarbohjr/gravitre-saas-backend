@@ -20,7 +20,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.core.logging import get_logger
-from app.services.entity_observations import DIMENSIONS, trend
+from app.services.account_health import quotable_observations, read_observations
+from app.services.entity_observations import DIMENSIONS
 from app.services.org_business_identity import normalize_host
 
 logger = get_logger(__name__)
@@ -140,6 +141,19 @@ def _signal_line(s: dict[str, Any]) -> str:
     return f"{s.get('signal')}={value:g}"
 
 
+def _card_quotes(observations: list[dict[str, Any]], *, guard: bool, excluded: list[str] | None) -> list[dict[str, Any]]:
+    """Up to two quotable observations. With the retrieval guard on, injection-like quotes are dropped first."""
+    rows = quotable_observations(observations)
+    if guard:
+        from app.services.ingested_content_guard import guard_retrieved_chunks
+
+        kept, reasons = guard_retrieved_chunks([{"content": str(r.get("evidence_quote") or ""), "row": r} for r in rows])
+        rows = [k["row"] for k in kept]
+        if excluded is not None:
+            excluded.extend(reasons)
+    return rows[:2]
+
+
 def render_card(
     name: str,
     systems: list[str],
@@ -147,18 +161,19 @@ def render_card(
     signals: list[dict[str, Any]],
     *,
     spoken: bool,
+    guard: bool = False,
+    excluded: list[str] | None = None,
 ) -> str:
     lines = [f"- {name}" + (f" (in {', '.join(systems)})" if systems else "")]
-    for dim in DIMENSIONS:
-        t = trend(observations, dimension=dim, window_days=30)
-        if t["direction"] == "insufficient_evidence":
+    # Same reading the account health page and the feed use (account_health.read_observations).
+    for r in read_observations(observations, dimensions=tuple(DIMENSIONS), window_days=30):
+        if r["direction"] == "insufficient_evidence":
             continue
-        lines.append(f"  {dim.replace('_', ' ')}: {t['direction']} over 30 days ({t['observations']} observations)")
+        lines.append(f"  {r['key'].replace('_', ' ')}: {r['direction']} over 30 days ({r['trend']['observations']} observations)")
     for s in signals:
         lines.append(f"  {_signal_line(s)}")
     if not spoken:
-        quotes = [o for o in observations if o.get("label") not in {"neutral", "none"}][:2]
-        for q in quotes:
+        for q in _card_quotes(observations, guard=guard, excluded=excluded):
             lines.append(f'  "{str(q.get("evidence_quote") or "")[:160]}" ({q.get("source_system")}, {str(q.get("observed_at"))[:10]})')
     if len(lines) == 1:
         lines.append("  no observations with enough evidence yet")
@@ -180,6 +195,10 @@ def build_entity_context_block(
         accounts = match_accounts(message, _org_entities(client, org_id))
         if not accounts:
             return "", {"skipped": "no_account_named"}
+        from app.services.ingested_content_guard import guard_enabled
+
+        guard = guard_enabled(settings)
+        excluded: list[str] = []
         budget = SPOKEN_BUDGET_CHARS if spoken else TEXT_BUDGET_CHARS
         cards: list[str] = []
         used = len(HEADER)
@@ -191,6 +210,8 @@ def build_entity_context_block(
                 _observations(client, org_id, eid),
                 _signals(client, org_id, eid),
                 spoken=spoken,
+                guard=guard,
+                excluded=excluded,
             )
             if used + len(card) + 1 > budget:
                 card = card[: max(0, budget - used - 2)].rsplit("\n", 1)[0]
@@ -199,7 +220,16 @@ def build_entity_context_block(
             cards.append(card)
             used += len(card) + 1
         block = HEADER + "\n" + "\n".join(cards)
-        return block, {"accounts": [str(a["id"]) for a in accounts], "chars": len(block), "spoken": spoken}
+        meta: dict[str, Any] = {"accounts": [str(a["id"]) for a in accounts], "chars": len(block), "spoken": spoken}
+        if excluded:
+            meta["quote_injection_excluded"] = len(excluded)
+            logger.warning(
+                "entity_context_card_quote_excluded org_id=%s count=%s reasons=%s",
+                org_id,
+                len(excluded),
+                sorted(set(excluded)),
+            )
+        return block, meta
     except Exception as exc:  # noqa: BLE001
         logger.warning("entity_context_card_failed org_id=%s error=%s", org_id, type(exc).__name__)
         return "", {"skipped": "error"}
