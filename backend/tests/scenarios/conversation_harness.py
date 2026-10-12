@@ -746,6 +746,9 @@ class ScenarioHarness:
             google_api_key="",
             ai_moderation_enabled=False,
             unified_turn_live_enabled=True,
+            # The spoken "one moment" filler fires on wall-clock time, so a slow CI runner
+            # would prepend it to replies these scenarios compare exactly. It has its own tests.
+            voice_deep_ack_seconds=0,
         )
         self._install()
         return self
