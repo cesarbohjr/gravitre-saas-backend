@@ -97,10 +97,13 @@ def start_domain_event_relay_scheduler() -> asyncio.Task | None:
         logger.info("domain event relay disabled (interval<=0)")
         return None
     from app.services.customer_observation_feed import register_customer_observation_handlers
+    from app.services.outcome_learning_handler import register_outcome_learning_handlers
     from app.services.source_lifecycle import register_source_lifecycle_handlers
 
     register_source_lifecycle_handlers()
     register_customer_observation_handlers()
+    # No-op unless OUTCOME_LEARNING_HANDLER_ENABLED is true.
+    register_outcome_learning_handlers(settings)
     task = asyncio.create_task(_loop(settings, interval))
     lifecycle_runtime.relay_started(
         task,

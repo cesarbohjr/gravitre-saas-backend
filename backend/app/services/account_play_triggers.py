@@ -185,7 +185,7 @@ def run_account_play_proposals(
             continue
         entity = {"id": account["entity"]["id"], "display_name": account["entity"]["name"]}
         try:
-            health = load_account_health(client, org_id, entity, now=now)
+            health = load_account_health(client, org_id, entity, now=now, settings=settings)
             out.extend(propose_for_account(client, settings, org_id=org_id, health=health, now=now))
         except Exception as exc:  # noqa: BLE001
             logger.warning("account_play_proposal_failed org_id=%s error=%s", org_id, type(exc).__name__)

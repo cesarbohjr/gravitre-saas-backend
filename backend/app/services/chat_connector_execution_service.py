@@ -2512,6 +2512,7 @@ class ChatConnectorExecutionService:
             structured=structured_payload or None,
             assumption_notes=_assumption_notes_from_plan(plan),
             outcome_verified=bool(observation.get("outcome_verified")) if plan.kind == "write" else True,
+            connector_id=connector_id or None,
         )
         if plan.kind == "write":
             from app.services.connector_output_contract import assert_execution_result_verifiable
@@ -3743,15 +3744,38 @@ class ChatConnectorExecutionService:
                         }
                     ]
             if typed:
+                lineage = self._connector_memory_lineage(execution)
+                if not lineage and getattr(self.settings, "memory_source_lineage_enabled", False) is True:
+                    # Learned from a connector action we cannot name, so a disconnect
+                    # could never purge it: do not store it at all.
+                    logger.info(
+                        "confirmed_workspace_memory_skipped_no_lineage org_id=%s integration=%s",
+                        org_id,
+                        getattr(plan, "integration", None),
+                    )
+                    return
                 promote_turn_memories(
                     client,
                     org_id=org_id,
-                    memories=typed,
+                    memories=[{**lineage, **m} for m in typed],
                     conversation_id=conversation_id,
                     provenance="connector_confirm",
+                    settings=self.settings,
                 )
         except Exception:  # noqa: BLE001
             pass
+
+    @staticmethod
+    def _connector_memory_lineage(execution: ExecutionResult | None) -> dict[str, str]:
+        """source_connector_id / source_record_ref for memories learned from this action."""
+        connector_id = str(getattr(execution, "connector_id", None) or "").strip()
+        if not connector_id:
+            return {}
+        lineage = {"source_connector_id": connector_id}
+        record_ref = str(getattr(execution, "entity_id", None) or "").strip()
+        if record_ref and record_ref != connector_id:
+            lineage["source_record_ref"] = record_ref
+        return lineage
 
     def _turn_from_execution(
         self,

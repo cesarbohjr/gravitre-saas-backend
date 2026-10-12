@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import uuid
 from typing import Any
 from uuid import uuid4
 
@@ -12,6 +13,23 @@ from app.services.outcome_learning_service import get_outcome_learning_service
 logger = get_logger(__name__)
 
 MIN_QUALITY_THRESHOLD = 0.35
+
+# Verified Play results become recommendation outcomes under "play:<key>".
+PLAY_RECOMMENDATION_PREFIX = "play:"
+_PLAY_RESULT_LEARNING_EVENTS = {
+    "VERIFIED SUCCESS": "business_metric_improved",
+    "VERIFIED FAILURE": "business_metric_declined",
+}
+_LEARNING_ID_NAMESPACE = uuid.UUID("6f1d3c52-8a8e-4c1b-9a51-0b7c3f7d2e10")
+
+
+def outcome_learning_enabled(settings: Any) -> bool:
+    return getattr(settings, "outcome_learning_handler_enabled", False) is True
+
+
+def _row_play_key(row: dict[str, Any]) -> str:
+    play = row.get("play") if isinstance(row.get("play"), dict) else {}
+    return str(row.get("play_key") or row.get("playKey") or play.get("key") or "").strip()
 
 
 class RecommendationQualityEngine:
@@ -124,6 +142,73 @@ class RecommendationQualityEngine:
             "recommendation_approved" if accepted else "recommendation_rejected",
             department=department,
         )
+
+    async def learn_from_run_outcome(
+        self,
+        client: Any,
+        *,
+        org_id: str,
+        run_id: str,
+        play_key: str | None,
+        department: str | None,
+    ) -> dict[str, int]:
+        """Feed the verified Play results of one finished run into recommendation learning.
+
+        Only VERIFIED SUCCESS / VERIFIED FAILURE count. ACTIONED (the write
+        happened), PENDING and INCONCLUSIVE results are not evidence that the
+        recommendation worked, so they are skipped. Each Play result is learned
+        once: the learning row id is derived from the Play result id, so a
+        replayed event finds it and records nothing. Read and write errors
+        propagate so the caller can retry.
+        """
+        from app.plays.outcomes import PLAY_BUSINESS_RESULT_EVENT
+
+        rows = (
+            client.table("intelligence_outcome_events")
+            .select("id, metadata")
+            .eq("org_id", org_id)
+            .eq("workflow_run_id", run_id)
+            .eq("outcome_event", PLAY_BUSINESS_RESULT_EVENT)
+            .limit(200)
+            .execute()
+            .data
+            or []
+        )
+        counts = {"recorded": 0, "already_recorded": 0, "not_verified": 0}
+        for row in rows:
+            meta = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+            event = _PLAY_RESULT_LEARNING_EVENTS.get(str(meta.get("verification_state") or ""))
+            key = str(play_key or meta.get("play_key") or "").strip()
+            if event is None or meta.get("verified") is not True or not key or not row.get("id"):
+                counts["not_verified"] += 1
+                continue
+            learning_id = str(uuid.uuid5(_LEARNING_ID_NAMESPACE, f"play_result:{row['id']}"))
+            existing = (
+                client.table("intelligence_outcome_events")
+                .select("id")
+                .eq("org_id", org_id)
+                .eq("id", learning_id)
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
+            if existing:
+                counts["already_recorded"] += 1
+                continue
+            await self._outcomes.record_recommendation_outcome(
+                org_id,
+                f"{PLAY_RECOMMENDATION_PREFIX}{key}",
+                event,
+                department=department,
+                task_type="play_business_result",
+                metadata={"source_play_result_id": str(row["id"]), "workflow_run_id": run_id},
+                outcome_id=learning_id,
+                client=client,
+                strict=True,
+            )
+            counts["recorded"] += 1
+        return counts
 
     def stable_recommendation_id(self, org_id: str, action: str, source: str) -> str:
         digest = hashlib.sha256(f"{org_id}:{action}:{source}".encode()).hexdigest()[:24]
@@ -246,6 +331,13 @@ class RecommendationQualityEngine:
                 "recommendation",
                 recommendation_id,
                 since_days=90,
+            )
+            if result.get("status") == "ok":
+                return float(result.get("score") or 0.5)
+        play_key = _row_play_key(row)
+        if play_key and outcome_learning_enabled(self.settings):
+            result = await self._outcomes.calculate_outcome_score(
+                org_id, "recommendation", f"{PLAY_RECOMMENDATION_PREFIX}{play_key}", since_days=90
             )
             if result.get("status") == "ok":
                 return float(result.get("score") or 0.5)

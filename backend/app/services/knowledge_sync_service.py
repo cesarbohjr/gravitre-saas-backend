@@ -398,6 +398,13 @@ def run_scheduled_knowledge_syncs(
     """Process all connectors due for scheduled knowledge sync."""
     from supabase import create_client
 
+    from app.core.ingestion_kill_switch import ingestion_disabled
+
+    if ingestion_disabled(settings):
+        # Kill switch: nothing is listed, no sync job row is written, due connectors stay due.
+        logger.warning("knowledge_sync_skipped reason=ingestion_disabled")
+        return {"due_count": 0, "processed": 0, "outcomes": [], "skipped": "ingestion_disabled"}
+
     from app.services.ingestion_interlock import existing_ingestion_hold_reason
 
     # Existing syncs run as before unless EXISTING_INGESTION_REQUIRES_LIFECYCLE=true.
@@ -480,6 +487,10 @@ def trigger_connector_knowledge_sync(
     trigger_type: str = "manual",
     full_sync: bool = False,
 ) -> dict[str, Any]:
+    from app.core.ingestion_kill_switch import ensure_ingestion_enabled
+
+    # Manual, webhook and connector-alias syncs: refused before any row is written.
+    ensure_ingestion_enabled(settings, "knowledge_sync.trigger")
     row = (
         client.table("connectors")
         .select("id,org_id,type,vendor,status,config,environment,sync_frequency,last_sync_at")

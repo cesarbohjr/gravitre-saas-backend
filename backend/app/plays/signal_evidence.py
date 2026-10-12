@@ -9,7 +9,7 @@ org has produced it recently:
 - workflow run terminal states (``workflow_completed`` / ``workflow_failed``),
 - customer observations, as ``observation.<dimension>``.
 
-These names count as known only in evaluated mode, so the legacy name check
+Observation names count as known only in evaluated mode, so the legacy name check
 never treats an observation signal as available without evidence.
 
 A known signal with no recent events reads PARTIAL with the reason, not
@@ -25,7 +25,9 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 WINDOW_DAYS = 30
-_RUN_SIGNALS = {"completed": "workflow_completed", "failed": "workflow_failed"}
+# Workflow run terminal status -> signal name. Also published in the platform event
+# taxonomy (capabilities.registry.event_taxonomy, "workflow_run_signals").
+WORKFLOW_RUN_SIGNALS = {"completed": "workflow_completed", "failed": "workflow_failed"}
 
 
 def signal_evaluation_enabled(settings: Any) -> bool:
@@ -39,10 +41,9 @@ def observation_signal_names() -> set[str]:
 
 
 def evaluated_signal_names() -> set[str]:
-    """Signals this module can observe. ``workflow_completed`` is not in the
-    platform event taxonomy, so without evaluation a Play requiring it reads
-    MISSING however many runs complete."""
-    return set(_RUN_SIGNALS.values()) | observation_signal_names()
+    """Signals this module can observe: workflow run signals (also in the platform
+    event taxonomy) and observation signals (known only in evaluated mode)."""
+    return set(WORKFLOW_RUN_SIGNALS.values()) | observation_signal_names()
 
 
 def org_observed_signals(client: Any, org_id: str, *, window_days: int = WINDOW_DAYS) -> set[str]:
@@ -51,7 +52,7 @@ def org_observed_signals(client: Any, org_id: str, *, window_days: int = WINDOW_
     seen: set[str] = set()
     reads = (
         ("intelligence_outcome_events", "outcome_event", "created_at", lambda v: str(v)),
-        ("workflow_runs", "status", "created_at", lambda v: _RUN_SIGNALS.get(str(v), "")),
+        ("workflow_runs", "status", "created_at", lambda v: WORKFLOW_RUN_SIGNALS.get(str(v), "")),
         ("entity_observations", "dimension", "observed_at", lambda v: f"observation.{v}"),
     )
     for table, column, ts, to_signal in reads:

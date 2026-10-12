@@ -83,6 +83,13 @@ class OrgContextService:
             if key.startswith(prefix):
                 del self._cache[key]
 
+    def invalidate_org(self, org_id: str) -> None:
+        """Drop the org's cached snapshots in every environment."""
+        prefix = f"{org_id}:"
+        for key in list(self._cache):
+            if key.startswith(prefix):
+                del self._cache[key]
+
     def get_snapshot(
         self,
         client: Any,

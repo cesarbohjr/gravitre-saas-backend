@@ -245,16 +245,21 @@ def find_hubspot_connector_by_portal(client: Any, portal_id: int | str) -> dict[
     is connected in more than one org the event is ambiguous and is not fired.
     """
     from app.connectors.constants import is_connector_usable
+    from app.core.sql_aggregates import fetch_all_rows
 
     hub_key = str(portal_id)
-    result = (
-        client.table("connectors")
+    # Every live HubSpot connector, paged in id order: a single select stops at the
+    # PostgREST row cap (~1000), which could hide the match or a second org's
+    # match and route the event to the wrong org instead of failing closed.
+    rows = fetch_all_rows(
+        lambda: client.table("connectors")
         .select("id,org_id,type,status,config,environment,deleted_at")
         .eq("type", "hubspot")
-        .execute()
+        .is_("deleted_at", "null")
+        .order("id")
     )
     matches: list[dict[str, Any]] = []
-    for row in result.data or []:
+    for row in rows:
         if row.get("deleted_at") or not is_connector_usable(row.get("status")):
             continue
         config = row.get("config") or {}

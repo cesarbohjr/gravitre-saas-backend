@@ -64,6 +64,18 @@ def test_event_taxonomy_separates_execution_from_business_impact():
     assert set(tax["signal_events"]) == {"recommendation_created", "prediction_generated"}
 
 
+def test_event_taxonomy_lists_both_workflow_run_signals():
+    from app.plays.catalog import PROCESS_DRIFT_DETECTOR
+    from app.plays.signal_evidence import WORKFLOW_RUN_SIGNALS
+
+    tax = registry.event_taxonomy()
+    assert tax["workflow_run_signals"] == ["workflow_completed", "workflow_failed"]
+    assert set(tax["workflow_run_signals"]) == set(WORKFLOW_RUN_SIGNALS.values())
+    known = {name for values in tax.values() for name in values}
+    # Every workflow signal a platform Play requires is a known taxonomy name.
+    assert set(PROCESS_DRIFT_DETECTOR.required_signals) <= known
+
+
 def test_evidence_states_are_distinct():
     sources = registry.evidence_sources()
     assert tuple(sources) == registry.EVIDENCE_STATES

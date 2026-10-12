@@ -44,6 +44,15 @@ def clear_connector_snapshot_cache() -> None:
     _CACHE.clear()
 
 
+def invalidate_org_connected(org_id: str) -> int:
+    """Drop the org's cached connected-integration lists in this process."""
+    prefix = f"{org_id}:"
+    keys = [k for k in _CACHE if k.startswith(prefix)]
+    for k in keys:
+        _CACHE.pop(k, None)
+    return len(keys)
+
+
 def list_connected_integrations_cached(
     client: Any,
     org_id: str,
