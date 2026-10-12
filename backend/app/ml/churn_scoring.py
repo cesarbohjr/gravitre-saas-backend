@@ -11,6 +11,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 
 from app.ml.base import BaseMLModel, ModelMetrics, ModelStatus, ModelType
+from app.ml.splits import time_split
 
 FEATURE_KEYS = (
     "days_since_last_activity",
@@ -46,6 +47,7 @@ class ChurnRiskScorer(BaseMLModel):
         y: np.ndarray | list[str] | list[float] | None = None,
         *,
         features: list[dict] | None = None,
+        observed_at: list[Any] | None = None,
         **kwargs: Any,
     ) -> ModelMetrics:
         _ = kwargs
@@ -58,9 +60,18 @@ class ChurnRiskScorer(BaseMLModel):
             raise ValueError("Labels required for ChurnRiskScorer.train")
         labels = np.array([1 if bool(v) else 0 for v in y])
         matrix = self._vectorize(rows)
-        x_train, x_test, y_train, y_test = train_test_split(
-            matrix, labels, test_size=0.2, random_state=42, stratify=labels
-        )
+        split = time_split(list(observed_at or []), labels.tolist()) if observed_at else None
+        if split is not None:
+            # Train on earlier outcomes, hold out the latest (Phase 6).
+            train_idx, hold_idx, holdout_from = split
+            x_train, x_test = matrix[train_idx], matrix[hold_idx]
+            y_train, y_test = labels[train_idx], labels[hold_idx]
+            split_info: dict[str, Any] = {"split": "time", "holdout_from": holdout_from}
+        else:
+            x_train, x_test, y_train, y_test = train_test_split(
+                matrix, labels, test_size=0.2, random_state=42, stratify=labels
+            )
+            split_info = {"split": "random"}
         try:
             model: GradientBoostingClassifier | LogisticRegression = GradientBoostingClassifier(
                 random_state=42
@@ -77,6 +88,7 @@ class ChurnRiskScorer(BaseMLModel):
             auc_roc=roc_auc_score(y_test, y_proba) if len(set(y_test)) > 1 else None,
             training_samples=len(x_train),
             validation_samples=len(x_test),
+            custom_metrics=split_info,
         )
 
     async def predict(

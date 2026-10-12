@@ -161,6 +161,7 @@ def list_churn_training_rows(client: Any, org_id: str) -> list[dict[str, Any]]:
                 "features": features,
                 "churned": churned,
                 "outcome_success": not churned,
+                "measured_at": row.get("measured_at"),
             }
         )
     return usable

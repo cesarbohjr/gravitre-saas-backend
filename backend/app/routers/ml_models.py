@@ -196,3 +196,27 @@ def start_training(
     worker = create_training_worker()
     background_tasks.add_task(worker.process_job, job_id)
     return {"ok": True, "message": "Training started"}
+
+
+@router.get("/models/{model_id}/realized-performance", dependencies=_CONTROL_TIER)
+async def get_realized_performance(
+    model_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+) -> dict:
+    """Phase 6: how the model's logged predictions turned out, per version."""
+    import asyncio
+
+    from app.config import get_settings
+    from app.ml.prediction_outcomes import outcomes_enabled, realized_report
+    from app.workflows.repository import get_supabase_client
+
+    settings = get_settings()
+    if not outcomes_enabled(settings):
+        raise HTTPException(status_code=404, detail="Not found")
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    model = await get_model_registry().get_model(model_id)
+    if not model or model.org_id != org_id:
+        raise HTTPException(status_code=404, detail="Model not found")
+    return await asyncio.to_thread(realized_report, get_supabase_client(settings), org_id, model_id)

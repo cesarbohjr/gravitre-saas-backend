@@ -577,6 +577,12 @@ class Settings(BaseSettings):
     play_signal_evaluation_enabled: bool = False
     # Phase 5: one ranked recommendation feed (/api/recommendations/feed).
     recommendation_feed_enabled: bool = False
+    # Phase 6 (needs migration 20261012060000): log checkable predictions with a subject
+    # and horizon, label them from evidence, and report realized accuracy.
+    ml_prediction_outcomes_enabled: bool = False
+    ml_prediction_labeling_interval_seconds: int = 86400
+    # Phase 6: churn training holds out the most recent outcomes instead of a random fifth.
+    ml_time_split_enabled: bool = False
     # Shared secret for /api/watchers/agent/signal HMAC or X-Watcher-Secret header.
     watcher_agent_webhook_secret: str | None = None
     # Memory promotion evaluation (v4). 0 disables; default 8 hours.
