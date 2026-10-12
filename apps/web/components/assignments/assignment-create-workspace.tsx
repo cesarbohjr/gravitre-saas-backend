@@ -40,7 +40,11 @@ const briefStarters: Record<string, string> = {
 
 export function NewAssignmentPageContent() {
   const router = useRouter()
-  const preselectedAgent = useSearchParams().get("agent")
+  const searchParams = useSearchParams()
+  const preselectedAgent = searchParams.get("agent")
+  // Set when work is assigned from a goal or a work object, so the job counts toward it.
+  const linkedGoalId = searchParams.get("goal") || undefined
+  const linkedWorkObjectId = searchParams.get("workObject") || undefined
   const agentRequest = useSWR("assignment-agents", () => agentsApi.list(), {
     revalidateOnFocus: false,
   })
@@ -139,6 +143,8 @@ export function NewAssignmentPageContent() {
     try {
       const job = await submitJob(brief.trim(), {
         agentId: agent!.id,
+        ...(linkedGoalId ? { goalId: linkedGoalId } : {}),
+        ...(linkedWorkObjectId ? { workObjectId: linkedWorkObjectId } : {}),
         context: {
           priority,
           useTrainingKnowledge,

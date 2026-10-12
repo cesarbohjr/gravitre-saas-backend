@@ -573,6 +573,12 @@ class Settings(BaseSettings):
     goal_links_enabled: bool = False
     # Phase 5: AI-proposed work filed as work_objects.status='proposed' (accept/dismiss).
     work_object_proposals_enabled: bool = False
+    # Close the proposal -> Play run -> goal loop: Play runs accept workObjectId /
+    # businessEntityId (org-checked) and link the run to the work object; accepted
+    # proposals return the Play run request (nothing starts by itself); proposals
+    # inherit the Play setup's goal; work objects can be created / re-linked to a
+    # goal. Goal / entity column writes also need goal_links_enabled (its migration).
+    work_loop_links_enabled: bool = False
     # Phase 5: Play required_signals checked against this org's recent events.
     play_signal_evaluation_enabled: bool = False
     # Phase 5: one ranked recommendation feed (/api/recommendations/feed).

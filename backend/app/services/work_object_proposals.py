@@ -35,6 +35,19 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def _inherited_goal_id(client: Any, settings: Any, *, org_id: str, play_key: str) -> str | None:
+    """A Play proposal serves the goal its Play setup names (work_loop_links_enabled)."""
+    from app.services.work_loop_links import goal_links_writable, installation_goal_id
+
+    if not goal_links_writable(settings):
+        return None
+    try:
+        return installation_goal_id(client, org_id, play_key)
+    except Exception as exc:  # noqa: BLE001 - a missing goal never blocks a proposal
+        logger.warning("proposal_goal_inherit_failed org_id=%s play_key=%s error=%s", org_id, play_key, exc)
+        return None
+
+
 def propose_work_object(
     client: Any,
     settings: Any,
@@ -73,6 +86,8 @@ def propose_work_object(
     )
     if existing:
         return {"id": existing[0]["id"], "status": existing[0]["status"], "deduplicated": True}
+    if not goal_id and play_key:
+        goal_id = _inherited_goal_id(client, settings, org_id=org_id, play_key=play_key)
     now = _now()
     row: dict[str, Any] = {
         "org_id": org_id,
@@ -117,7 +132,7 @@ def decide_proposal(
     """Accept (to ``planned``) or dismiss (to ``archived``) a pending proposal."""
     rows = (
         client.table("work_objects")
-        .select("id, status, metadata")
+        .select("id, status, metadata, goal_id, business_entity_id")
         .eq("org_id", org_id)
         .eq("id", work_object_id)
         .limit(1)
@@ -148,4 +163,10 @@ def decide_proposal(
         .eq("status", "proposed")  # a concurrent decision wins once
         .execute()
     )
-    return {"id": work_object_id, "status": new_status}
+    return {
+        "id": work_object_id,
+        "status": new_status,
+        "metadata": metadata,
+        "goal_id": row.get("goal_id"),
+        "business_entity_id": row.get("business_entity_id"),
+    }

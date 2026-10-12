@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
   entries: {} as Record<string, { data?: unknown; error?: unknown; isLoading?: boolean }>,
   accept: vi.fn(),
   dismiss: vi.fn(),
+  start: vi.fn(),
   refresh: vi.fn(),
 }))
 
@@ -23,9 +24,10 @@ vi.mock("swr", () => ({
   }),
 }))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+import { toast } from "sonner"
 vi.mock("next/link", () => ({ default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a> }))
 vi.mock("@/lib/api", () => ({
-  accountIntelligenceApi: { acceptProposal: state.accept, dismissProposal: state.dismiss },
+  accountIntelligenceApi: { acceptProposal: state.accept, dismissProposal: state.dismiss, startPlayRun: state.start },
   isFeatureOff: (e: unknown) => typeof e === "object" && e !== null && (e as { status?: number }).status === 404,
 }))
 
@@ -147,6 +149,50 @@ describe("recommendation feed", () => {
     expect(state.dismiss).not.toHaveBeenCalled()
     expect(state.refresh).toHaveBeenCalled()
   })
+
+  it("offers the governed Play run after accepting, and starts it only on click", async () => {
+    const run = {
+      method: "POST",
+      path: "/api/plays/customer-rescue/runs",
+      playKey: "customer-rescue",
+      body: { installationId: "inst-1", workObjectId: "w1", businessEntityId: "e1" },
+      approvalGated: true,
+    }
+    state.accept.mockResolvedValue({ workObject: { id: "w1", status: "planned" }, playRunRequest: run })
+    state.start.mockResolvedValue({ playRunId: "pr1", status: "awaiting_approval" })
+    vi.mocked(toast.success).mockClear()
+    state.entries = {
+      "recommendation-feed": {
+        data: {
+          generatedAt: "",
+          sources: { proposals: "ok" },
+          items: [
+            {
+              id: "proposal:w1",
+              kind: "proposed_work",
+              title: "Review Acme for Customer Rescue",
+              why: "Sentiment at risk",
+              evidence: [],
+              source: "account_health",
+              score: 0.8,
+              href: "/activity?tab=objects",
+              actions: ["accept", "dismiss"],
+              advisoryOnly: true,
+              workObjectId: "w1",
+            },
+          ],
+        },
+      },
+    }
+    await render(<RecommendationFeedPanel />)
+    const accept = [...host.querySelectorAll("button")].find((b) => b.textContent === "Accept")!
+    await act(async () => accept.click())
+    expect(state.start).not.toHaveBeenCalled()
+    const options = vi.mocked(toast.success).mock.calls[0][1] as { action: { label: string; onClick: () => void } }
+    expect(options.action.label).toBe("Start Play")
+    await act(async () => options.action.onClick())
+    expect(state.start).toHaveBeenCalledWith(run)
+  })
 })
 
 describe("goal linked progress", () => {
@@ -165,5 +211,6 @@ describe("goal linked progress", () => {
     await render(<GoalLinkedProgress goalId="g1" />)
     expect(host.textContent).toContain("50% of linked work is done.")
     expect(host.textContent).toContain("1 in progress")
+    expect(host.querySelector("a")?.getAttribute("href")).toBe("/assignments/new?goal=g1")
   })
 })
