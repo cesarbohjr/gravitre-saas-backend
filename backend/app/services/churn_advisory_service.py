@@ -140,9 +140,27 @@ async def build_churn_advisory_cards(
     except Exception as exc:  # noqa: BLE001
         logger.debug("churn_advisory_load_model_skipped org_id=%s err=%s", org_id, exc)
 
+    batch = rows[: max(1, int(limit))]
+    entity_features: list[dict[str, Any]] = [{} for _ in batch]
+    if (
+        trained
+        and getattr(active, "churn_entity_features_enabled", False) is True
+        and getattr(scorer, "has_optional_features", lambda: False)()
+    ):
+        # The deployed model was trained with entity features: give it the same
+        # aggregates, as of now (missing stays missing).
+        from datetime import UTC, datetime
+
+        from app.ml.churn_entity_features import load_entity_features
+
+        now = datetime.now(UTC)
+        entity_features, _coverage = load_entity_features(
+            db, org_id, [(str(row.get("customer_id")), now) for row in batch]
+        )
+
     cards: list[dict[str, Any]] = []
-    for row in rows[: max(1, int(limit))]:
-        features = row.get("features") or {}
+    for row, extra in zip(batch, entity_features, strict=True):
+        features = {**(row.get("features") or {}), **extra}
         prediction = await scorer.predict_structured(customer_features=features)
         if prediction.get("status") in {"not_trained", "insufficient_data"} and not trained:
             # Still emit a review card so UI is not empty when gate is building.

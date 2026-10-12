@@ -583,6 +583,11 @@ class Settings(BaseSettings):
     ml_prediction_labeling_interval_seconds: int = 86400
     # Phase 6: churn training holds out the most recent outcomes instead of a random fifth.
     ml_time_split_enabled: bool = False
+    # Churn training also builds an entity-feature challenger: churn customer_ids mapped
+    # to org_business_entities via bindings, plus windowed observation and behaviour-signal
+    # aggregates, evaluated on a time split against the 5-feature baseline. The existing
+    # champion gate refuses it unless it beats the baseline by a margin on enough labels.
+    churn_entity_features_enabled: bool = False
     # Phase 7: per-dimension account health (/api/entities/health), no composite score.
     account_health_enabled: bool = False
     # Phase 7: daily rule-based behaviour signals (compute_entity_behavior_signals) for orgs
