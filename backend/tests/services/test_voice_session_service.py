@@ -126,9 +126,14 @@ _PLAN_HOLD_PROBE_PROMPT = (
 async def test_plan_hold_turn_speaks_honest_plan_draft_before_kernel(monkeypatch, mock_settings):
     """Metric A on a plan-hold turn is the honest PLAN draft, spoken before the kernel runs.
 
-    The kernel says the same sentence at its PLAN stage after retrieval and
-    planning; the voice turn must not speak it twice.
+    Only behind VOICE_EARLY_PLAN_ACK_ENABLED + the org allowlist, and only
+    after the shared safety gate allowed the turn (see
+    test_voice_early_plan_ack.py). The kernel says the same sentence at its
+    PLAN stage after retrieval and planning; the voice turn must not speak it
+    twice.
     """
+    mock_settings.voice_early_plan_ack_enabled = True
+    mock_settings.voice_early_plan_ack_org_ids = "org-1"
     from app.services.cognitive_loop_controller import speakable_loop_stage
     from app.services.voice_slo import EARLY_PLAN_HOLD_DRAFT
 
@@ -191,6 +196,8 @@ async def test_connector_status_plan_hold_turn_gets_no_early_plan_draft(monkeypa
     """The kernel stays silent on stages for connector-status asks; so does the early draft."""
     from app.services.voice_slo import EARLY_PLAN_HOLD_DRAFT
 
+    mock_settings.voice_early_plan_ack_enabled = True
+    mock_settings.voice_early_plan_ack_org_ids = "org-1"
     monkeypatch.setattr(
         "app.operators.agent_intelligence.get_agent_intelligence",
         lambda: _FakeIntelligence(["Google Ads is connected."]),
