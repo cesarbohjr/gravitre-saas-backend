@@ -157,6 +157,16 @@ def champion_challenger_decision(
     caller's existing non-ML fallback when there is none, in place.
     """
     challenger_metrics = _metrics_dict(challenger)
+    # A challenger that was measured against a baseline on a time split (churn
+    # entity features) must beat it by the margin on enough labels first.
+    from app.ml.churn_time_split_eval import baseline_gate_refusal
+
+    custom = challenger_metrics.get("custom_metrics")
+    refusal = baseline_gate_refusal(custom if isinstance(custom, dict) else None)
+    if refusal is not None:
+        return False, refusal, {
+            "baseline_gate": {k: v for k, v in (custom or {}).items() if str(k).startswith("bg_")}
+        }
     primary = _held_out_primary(challenger_metrics)
     if primary is None:
         return False, "not_deployed_no_held_out_metric", {}
@@ -681,6 +691,22 @@ async def train_churn_risk_scorer(
             "metric_name": "churn_customer_signal",
             "note": "Need labeled churn_customer_signal rows via churn_feature_ingest.",
         }
+    entity_report: dict[str, Any] | None = None
+    if getattr(active, "churn_entity_features_enabled", False) is True:
+        challenger = await _train_churn_entity_challenger(db, org_id, labeled, labels)
+        entity_report = challenger["report"]
+        registration = challenger.get("registration")
+        if registration is not None:
+            entity_report["registration"] = registration_summary(registration)
+            if registration.get("deployed"):
+                return {
+                    **registration_summary(registration),
+                    "training_examples": len(features),
+                    "feature_set": "crm_plus_entity",
+                    "entity_features": entity_report,
+                }
+        # Not promoted (or no time split to compare on): the baseline path below
+        # runs exactly as it does with the flag off.
     # Phase 6: hold out the most recent outcomes instead of a random fifth.
     observed_at = (
         [row.get("measured_at") for row in labeled]
@@ -696,7 +722,56 @@ async def train_churn_risk_scorer(
         artifact=scorer.save(),
         metrics=metrics,
     )
-    return {**registration_summary(registration), "training_examples": len(features)}
+    out = {**registration_summary(registration), "training_examples": len(features)}
+    if entity_report is not None:
+        out["entity_features"] = entity_report
+    return out
+
+
+async def _train_churn_entity_challenger(
+    db: Any, org_id: str, labeled: list[dict[str, Any]], labels: list[int]
+) -> dict[str, Any]:
+    """CHURN_ENTITY_FEATURES_ENABLED: fit the entity-feature challenger on a time split.
+
+    Registers it through the normal champion gate, which refuses it unless it
+    beats the 5-feature baseline (same split) by the margin on enough labels.
+    Rows whose label time is unknown cannot be placed in time and are dropped.
+    """
+    from app.ml.churn_entity_features import (
+        ENTITY_FEATURE_KEYS,
+        join_features,
+        load_entity_features,
+        training_as_of,
+    )
+    from app.ml.churn_time_split_eval import evaluate_entity_challenger
+
+    usable = [
+        (row, label, training_as_of(row.get("measured_at")))
+        for row, label in zip(labeled, labels, strict=True)
+    ]
+    usable = [u for u in usable if u[2] is not None]
+    entity_rows, coverage = load_entity_features(
+        db, org_id, [(str(row.get("customer_id")), as_of) for row, _l, as_of in usable]  # type: ignore[misc]
+    )
+    rows = [join_features(row["features"], ent) for (row, _l, _a), ent in zip(usable, entity_rows, strict=True)]
+    report, challenger, metrics = evaluate_entity_challenger(
+        rows,
+        [label for _r, label, _a in usable],
+        [row.get("measured_at") for row, _l, _a in usable],
+        entity_keys=ENTITY_FEATURE_KEYS,
+    )
+    report["coverage"] = coverage
+    if challenger is None or metrics is None:
+        return {"report": report, "registration": None}
+    registration = await register_trained_artifact_detailed(
+        org_id,
+        name=CATALOG_MODEL_NAMES["churn_risk_scorer"],
+        model_type=ModelType.CLASSIFIER,
+        base_model="churn_risk_scorer",
+        artifact=challenger.save(),
+        metrics=metrics,
+    )
+    return {"report": report, "registration": registration}
 
 
 async def train_cf_matrix_factorizer(

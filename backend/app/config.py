@@ -603,6 +603,11 @@ class Settings(BaseSettings):
     ml_prediction_labeling_interval_seconds: int = 86400
     # Phase 6: churn training holds out the most recent outcomes instead of a random fifth.
     ml_time_split_enabled: bool = False
+    # Churn training also builds an entity-feature challenger: churn customer_ids mapped
+    # to org_business_entities via bindings, plus windowed observation and behaviour-signal
+    # aggregates, evaluated on a time split against the 5-feature baseline. The existing
+    # champion gate refuses it unless it beats the baseline by a margin on enough labels.
+    churn_entity_features_enabled: bool = False
     # Outcomes reach the learners: an execution.outcome_finalized relay handler records the
     # run on its linked work object, labels workflow-run predictions and feeds verified Play
     # results to recommendation learning. Needs DOMAIN_EVENT_RELAY_ENABLED as well.

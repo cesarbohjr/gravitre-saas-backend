@@ -6,9 +6,11 @@ from typing import Any
 
 import numpy as np
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline, make_pipeline
 
 from app.ml.base import BaseMLModel, ModelMetrics, ModelStatus, ModelType
 from app.ml.splits import time_split
@@ -34,12 +36,55 @@ class ChurnRiskScorer(BaseMLModel):
     advisory_only = True
     MIN_TRAINING_EXAMPLES = 30
 
-    def __init__(self) -> None:
-        self._model: GradientBoostingClassifier | LogisticRegression | None = None
-        self._feature_names = list(FEATURE_KEYS)
+    def __init__(self, feature_names: list[str] | tuple[str, ...] | None = None) -> None:
+        self._model: GradientBoostingClassifier | LogisticRegression | Pipeline | None = None
+        self._feature_names = list(feature_names or FEATURE_KEYS)
+
+    @property
+    def feature_names(self) -> list[str]:
+        return list(self._feature_names)
+
+    def has_optional_features(self) -> bool:
+        """True when the model uses features beyond the five CRM keys (entity features)."""
+        return any(k not in FEATURE_KEYS for k in self._feature_names)
+
+    @staticmethod
+    def _value(row: dict, key: str) -> float:
+        raw = row.get(key)
+        if key in FEATURE_KEYS:
+            # The CRM contract has always read a missing key as 0; unchanged.
+            return float(raw or 0.0)
+        # Optional (entity) features: missing means "no evidence", never 0.
+        if raw is None:
+            return float("nan")
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            return float("nan")
 
     def _vectorize(self, rows: list[dict]) -> np.ndarray:
-        return np.array([[float(row.get(k) or 0.0) for k in self._feature_names] for row in rows])
+        return np.array([[self._value(row, k) for k in self._feature_names] for row in rows], dtype=float)
+
+    def _fit(self, x_train: np.ndarray, y_train: np.ndarray) -> None:
+        """Fit on a prepared matrix. Optional features go through a median imputer
+        with missing-indicator columns, so "no evidence" stays distinguishable."""
+        optional = self.has_optional_features()
+
+        def _wrap(estimator: Any) -> Any:
+            if not optional:
+                return estimator
+            return make_pipeline(
+                SimpleImputer(strategy="median", add_indicator=True, keep_empty_features=True),
+                estimator,
+            )
+
+        try:
+            model = _wrap(GradientBoostingClassifier(random_state=42))
+            model.fit(x_train, y_train)
+        except Exception:  # noqa: BLE001
+            model = _wrap(LogisticRegression(max_iter=1000))
+            model.fit(x_train, y_train)
+        self._model = model
 
     async def train(
         self,
@@ -72,15 +117,8 @@ class ChurnRiskScorer(BaseMLModel):
                 matrix, labels, test_size=0.2, random_state=42, stratify=labels
             )
             split_info = {"split": "random"}
-        try:
-            model: GradientBoostingClassifier | LogisticRegression = GradientBoostingClassifier(
-                random_state=42
-            )
-            model.fit(x_train, y_train)
-        except Exception:  # noqa: BLE001
-            model = LogisticRegression(max_iter=1000)
-            model.fit(x_train, y_train)
-        self._model = model
+        self._fit(x_train, y_train)
+        model = self._model
         y_pred = model.predict(x_test)
         y_proba = model.predict_proba(x_test)[:, 1]
         return ModelMetrics(
@@ -128,7 +166,7 @@ class ChurnRiskScorer(BaseMLModel):
         factors = [
             key.replace("_", " ")
             for key in self._feature_names
-            if float(row.get(key) or 0.0) > 0
+            if key in FEATURE_KEYS and float(row.get(key) or 0.0) > 0
         ]
         return {
             "status": "ok",
