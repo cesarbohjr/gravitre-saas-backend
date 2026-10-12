@@ -39,6 +39,14 @@ from tests.services.test_incremental_deletion_propagation import (
 
 
 @pytest.fixture(autouse=True)
+def _no_live_provider_lookups(monkeypatch):
+    # Keep the check-by-id pass off the real Confluence/HubSpot APIs; tests that
+    # exercise it patch these again with their own answers.
+    monkeypatch.setattr(conf, "get_page_status", lambda *_a, **_k: "current")
+    monkeypatch.setattr(hs, "crm_object_is_gone", lambda *_a, **_k: False)
+
+
+@pytest.fixture(autouse=True)
 def audits(monkeypatch):
     rows: list[dict[str, Any]] = []
     monkeypatch.setattr("app.workflows.audit.write_audit_event", lambda client, **kw: rows.append(kw))
