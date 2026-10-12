@@ -32,19 +32,23 @@ jobs:
     timeout-minutes: 10
     environment: production
     env:
-      PLATFORM_LIVE_BEARER_TOKEN: ${{ secrets.PLATFORM_LIVE_BEARER_TOKEN }}
-      PLATFORM_LIVE_ORG_ID: ${{ secrets.PLATFORM_LIVE_ORG_ID }}
+      # Unattended runs mint a 10-minute token for the isolated smoke-org service
+      # account in-process; no long-lived Plays credential is stored. Manual owner
+      # runs can still pass PLATFORM_LIVE_BEARER_TOKEN locally instead.
+      PLAYS_ACCEPTANCE_AUTH: smoke-org
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
       PLATFORM_LIVE_ENVIRONMENT: production
       BACKEND_URL: ${{ inputs.backend_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - name: Require authorized production session
+      - name: Require signing configuration
         run: |
-          test -n "$PLATFORM_LIVE_BEARER_TOKEN" || (echo "::error::Missing PLATFORM_LIVE_BEARER_TOKEN" && exit 2)
-          test -n "$PLATFORM_LIVE_ORG_ID" || (echo "::error::Missing PLATFORM_LIVE_ORG_ID" && exit 2)
-      - run: pip install "httpx>=0.27,<1"
+          test -n "$SUPABASE_URL" || (echo "::error::Missing SUPABASE_URL secret" && exit 2)
+          test -n "$SUPABASE_JWT_SECRET" || (echo "::error::Missing SUPABASE_JWT_SECRET secret" && exit 2)
+      - run: pip install "httpx>=0.27,<1" "PyJWT>=2.8,<3" python-dotenv
       - name: Verify production without mutation
         run: python scripts/verify-plays-production.py
       - name: Upload acceptance evidence
