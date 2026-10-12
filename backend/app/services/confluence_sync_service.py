@@ -8,6 +8,7 @@ from typing import Any
 from app.config import Settings
 from app.connectors.confluence import (
     ConfluenceAPIError,
+    get_page_status,
     get_page_view_text,
     list_space_pages,
     search_spaces,
@@ -21,6 +22,19 @@ logger = logging.getLogger(__name__)
 STALE_SYNC_HOURS = 24
 # Page statuses Confluence uses for content that is no longer live.
 REMOVED_PAGE_STATUSES = frozenset({"archived", "trashed", "deleted"})
+# Check-by-id of indexed pages, for pages purged from the trash (in no listing).
+VERIFY_POSITION_CONFIG_KEY = "confluence_verify_position"
+VERIFY_BATCH_PER_SYNC = 25
+
+
+def _page_gone_checker(token: str, cloud_id: str):
+    """``is_gone`` for the check-by-id pass: 404, or a removed status, only."""
+
+    def is_gone(external_id: str) -> bool:
+        status = get_page_status(token, cloud_id, external_id.removeprefix("confluence:page:"))
+        return status is None or status in REMOVED_PAGE_STATUSES
+
+    return is_gone
 
 
 def _now_iso() -> str:
@@ -225,6 +239,7 @@ def run_confluence_sync(
     from app.services.source_lifecycle import (
         deletion_propagation_enabled,
         remove_source_documents,
+        verify_source_documents,
     )
 
     propagate = deletion_propagation_enabled(settings)
@@ -279,12 +294,36 @@ def run_confluence_sync(
     if removed_external_ids:
         try:
             documents_removed = remove_source_documents(
-                client, settings, org_id=org_id, source_id=source_id, external_ids=removed_external_ids
+                client,
+                settings,
+                org_id=org_id,
+                source_id=source_id,
+                external_ids=removed_external_ids,
+                signal="confluence_page_status",
             )
         except Exception as exc:  # noqa: BLE001
             errors.append(f"removed pages: {exc}")
 
     config = safe_normalize_stored_dict(connector, key="config")
+    if propagate:
+        position = config.get(VERIFY_POSITION_CONFIG_KEY)
+        position = dict(position) if isinstance(position, dict) else {}
+        try:
+            documents_removed += verify_source_documents(
+                client,
+                settings,
+                org_id=org_id,
+                source_id=source_id,
+                external_id_prefix="confluence:page:",
+                is_gone=_page_gone_checker(token, cloud_id),
+                position=position,
+                batch_size=VERIFY_BATCH_PER_SYNC,
+                errors=errors,
+                signal="confluence_page_404",
+            )
+            config[VERIFY_POSITION_CONFIG_KEY] = position
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"verify pages: {type(exc).__name__}: {exc}")
     config["confluence_last_synced_at"] = _now_iso()
     config["confluence_rag_source_id"] = source_id
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()

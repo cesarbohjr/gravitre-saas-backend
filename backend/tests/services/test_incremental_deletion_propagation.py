@@ -25,8 +25,16 @@ OTHER_ORG = "22222222-2222-4222-8222-222222222222"
 CONN = "aaaaaaaa-0000-4000-8000-000000000001"
 SRC = "s1"
 
-ON = SimpleNamespace(source_deletion_propagation_enabled=True)
+ON = SimpleNamespace(source_deletion_propagation_enabled=True, source_purge_dry_run=False)
+DRY = SimpleNamespace(source_deletion_propagation_enabled=True)  # dry-run unless explicitly False
 OFF = SimpleNamespace()
+
+
+@pytest.fixture(autouse=True)
+def audits(monkeypatch):
+    rows: list[dict[str, Any]] = []
+    monkeypatch.setattr("app.workflows.audit.write_audit_event", lambda client, **kw: rows.append(kw))
+    return rows
 
 
 class _Query:
@@ -36,6 +44,8 @@ class _Query:
         self.filters: list[tuple[str, str, Any]] = []
         self.op = "select"
         self.payload: dict[str, Any] | None = None
+        self.order_col: str | None = None
+        self.window: tuple[int, int] | None = None
 
     def select(self, *_a, **_k):
         return self
@@ -65,7 +75,20 @@ class _Query:
         self.filters.append(("is", col, val))
         return self
 
-    def limit(self, _n):
+    def gt(self, col, val):
+        self.filters.append(("gt", col, val))
+        return self
+
+    def order(self, col):
+        self.order_col = col
+        return self
+
+    def range(self, start, end):
+        self.window = (start, end + 1)
+        return self
+
+    def limit(self, n):
+        self.window = (0, n)
         return self
 
     def _match(self, row: dict[str, Any]) -> bool:
@@ -79,11 +102,18 @@ class _Query:
                 return False
             if kind == "is" and val == "null" and v is not None:
                 return False
+            if kind == "gt" and not str(v or "") > val:
+                return False
         return True
 
     def execute(self):
         rows = self.client.tables.setdefault(self.table, [])
         hits = [r for r in rows if self._match(r)]
+        if self.op == "select":
+            if self.order_col:
+                hits = sorted(hits, key=lambda r: str(r.get(self.order_col) or ""))
+            if self.window:
+                hits = hits[self.window[0] : self.window[1]]
         if self.op == "delete":
             self.client.tables[self.table] = [r for r in rows if r not in hits]
             self.client.deletes.append((self.table, list(self.filters)))
@@ -145,9 +175,15 @@ def test_remove_source_documents_removes_only_named_ids_in_that_org_and_source()
     )
     assert removed == 1
     assert _doc_ids(client) == ["d2", "d3", "d4"]
-    # Every delete is scoped by org and source as well as by id.
-    for _table, filters in client.deletes:
-        assert ("eq", "org_id", ORG) in filters and ("eq", "source_id", SRC) in filters
+    # Every document delete is scoped by org and source as well as by id; derived
+    # observations (no source column) are scoped by org and the record's system/type/id.
+    for table, filters in client.deletes:
+        assert ("eq", "org_id", ORG) in filters
+        if table == "rag_documents":
+            assert ("eq", "source_id", SRC) in filters
+        else:
+            assert table == "entity_observations"
+            assert ("eq", "source_system", "notion") in filters and ("eq", "source_record_type", "page") in filters
 
 
 @pytest.mark.parametrize("settings", [OFF, SimpleNamespace(source_deletion_propagation_enabled="true"), MagicMock()])
@@ -177,8 +213,15 @@ def _hubspot_docs() -> list[dict[str, Any]]:
     ]
 
 
-def _run_hubspot(client, settings, archived: dict[str, list[dict[str, Any]]], *, notes=None, next_after=None):
+def _run_hubspot(
+    client, settings, archived: dict[str, list[dict[str, Any]]], *, notes=None, next_after=None, gone=None, by_id=None
+):
     calls: list[tuple[str, str | None]] = []
+    by_id = by_id if by_id is not None else []
+
+    def fake_is_gone(token, object_type, object_id):
+        by_id.append((object_type, object_id))
+        return (object_type, object_id) in (gone or set())
 
     def fake_archived(token, object_type, *, after=None, max_records=100):
         calls.append((object_type, after))
@@ -190,7 +233,7 @@ def _run_hubspot(client, settings, archived: dict[str, list[dict[str, Any]]], *,
         hs, "list_emails_since", MagicMock(return_value=[])
     ), patch.object(hs, "create_ingest_job", MagicMock(return_value={"id": "job"})), patch.object(
         hs, "list_archived_objects", fake_archived
-    ):
+    ), patch.object(hs, "crm_object_is_gone", fake_is_gone):
         result = hs.run_hubspot_knowledge_sync(client, ORG, CONN, settings, actor_id="u")
     return result, calls
 
@@ -280,10 +323,17 @@ def _zendesk_docs() -> list[dict[str, Any]]:
     ]
 
 
-def _run_zendesk(client, settings, *, solved=None, deleted_pages=None):
+def _run_zendesk(client, settings, *, solved=None, deleted_pages=None, gone_tickets=None):
+    from app.connectors.zendesk import ZendeskAPIError
+
     requests: list[dict[str, Any]] = []
 
     def fake_request(_sub, _email, _tok, method, path, **kw):
+        if path.startswith("/tickets/"):
+            tid = path.removeprefix("/tickets/").removesuffix(".json")
+            if tid in (gone_tickets or set()):
+                raise ZendeskAPIError("Zendesk API 404", status_code=404)
+            return {"ticket": {"id": int(tid)}}
         requests.append({"method": method, "path": path, **kw})
         pages = deleted_pages or [{"deleted_tickets": [], "next_page": None}]
         return pages[min(kw["params"]["page"] - 1, len(pages) - 1)]
@@ -301,9 +351,9 @@ def test_zendesk_deleted_ticket_removes_exactly_its_document():
     client = _client({"zendesk_sync_cursor": {"updated_at": "2026-10-01T00:00:00Z", "ids_at_since": []}}, _zendesk_docs())
     deleted = {
         "deleted_tickets": [
-            {"id": 1, "deleted_at": "2026-10-02T00:00:00Z"},
-            # Deleted before the window: already handled by an earlier run, listing stops here.
+            # Deleted before the window: already handled by an earlier run, skipped.
             {"id": 3, "deleted_at": "2026-09-01T00:00:00Z"},
+            {"id": 1, "deleted_at": "2026-10-02T00:00:00Z"},
         ],
         "next_page": None,
     }
@@ -316,8 +366,9 @@ def test_zendesk_deleted_ticket_removes_exactly_its_document():
     assert result["documents_removed"] == 1
     assert _doc_ids(client) == ["t2", "t3", "x1", "y1"]
     assert requests[0]["path"] == "/deleted_tickets.json"
-    assert requests[0]["params"]["sort_by"] == "deleted_at" and requests[0]["params"]["sort_order"] == "desc"
-    assert zd.DELETED_CURSOR_CONFIG_KEY in _saved_config(client)
+    assert requests[0]["params"]["sort_by"] == "deleted_at" and requests[0]["params"]["sort_order"] == "asc"
+    # Complete read: the window moves to the run start less the clock-skew overlap.
+    assert _saved_config(client)[zd.DELETED_CURSOR_CONFIG_KEY] > "2026-10-02"
 
 
 def test_zendesk_flag_off_reads_no_deletions_and_removes_nothing():
@@ -355,14 +406,16 @@ def test_zendesk_deleted_listing_error_removes_nothing_and_keeps_window():
     assert _saved_config(client)[zd.DELETED_CURSOR_CONFIG_KEY] == "2026-10-01T00:00:00Z"
 
 
-def test_zendesk_truncated_deleted_listing_removes_what_it_read_but_keeps_window():
+def test_zendesk_truncated_deleted_listing_removes_what_it_read_and_advances_to_it():
     client = _client({zd.DELETED_CURSOR_CONFIG_KEY: "2026-10-01T00:00:00Z"}, _zendesk_docs())
     page = {"deleted_tickets": [{"id": 1, "deleted_at": "2026-10-05T00:00:00Z"}], "next_page": "more"}
     with patch.object(zd, "MAX_DELETED_TICKETS_PER_SYNC", 1):
         result, _ = _run_zendesk(client, ON, deleted_pages=[page])
     assert result["documents_removed"] == 1
-    assert _saved_config(client)[zd.DELETED_CURSOR_CONFIG_KEY] == "2026-10-01T00:00:00Z"
-    assert any("more than" in e for e in result["errors"])
+    # Read oldest first, so every deletion up to the last one read is done: the window
+    # moves there (inclusive) instead of staying put and re-reading the same slice.
+    assert _saved_config(client)[zd.DELETED_CURSOR_CONFIG_KEY] == "2026-10-05T00:00:00Z"
+    assert any("read through" in e for e in result["errors"])
 
 
 # ------------------------------------------------------------------ Confluence
@@ -379,7 +432,8 @@ def _confluence_docs() -> list[dict[str, Any]]:
     ]
 
 
-def _run_confluence(client, settings, default_pages, trashed_pages):
+def _run_confluence(client, settings, default_pages, trashed_pages, statuses=None):
+    statuses = statuses or {}
     listing_calls: list[str | None] = []
 
     def fake_list(token, cloud_id, space_id, *, status=None, limit=250):
@@ -391,7 +445,9 @@ def _run_confluence(client, settings, default_pages, trashed_pages):
         conf, "ensure_confluence_rag_source", return_value=SRC
     ), patch.object(conf, "list_space_pages", fake_list), patch.object(
         conf, "get_page_view_text", return_value=("t", "body", None)
-    ), patch.object(conf, "_queue_page_ingest", ingest):
+    ), patch.object(conf, "_queue_page_ingest", ingest), patch.object(
+        conf, "get_page_status", lambda tok, cloud, pid: statuses.get(pid, "current")
+    ):
         result = conf.run_confluence_sync(client, ORG, CONN, settings, actor_id="u")
     return result, listing_calls, ingest
 
@@ -475,6 +531,8 @@ def _run_notion(client, settings, pages: dict[str, dict[str, Any]], *, fail: set
     def fake_get_page(token, page_id):
         if page_id in (fail or set()):
             raise NotionAPIError("rate limited", status_code=429)
+        if page_id not in pages:
+            raise NotionAPIError("Notion API 404", status_code=404)  # deleted upstream
         return pages[page_id]
 
     def fake_export(token, page_id, *, page=None):

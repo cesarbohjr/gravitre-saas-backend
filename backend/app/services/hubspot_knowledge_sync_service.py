@@ -8,6 +8,7 @@ from typing import Any
 from app.config import Settings
 from app.connectors.hubspot import (
     HubSpotAPIError,
+    crm_object_is_gone,
     list_archived_objects,
     list_emails_since,
     list_notes_since,
@@ -29,6 +30,9 @@ CURSORS_CONFIG_KEY = "hubspot_sync_cursors"
 # to the start once the listing is exhausted. Every archived record is seen within a cycle.
 ARCHIVED_CURSORS_CONFIG_KEY = "hubspot_archived_cursors"
 MAX_ARCHIVED_PER_SYNC = 500
+# Check-by-id of indexed notes/emails, for permanent deletes no listing reports.
+VERIFY_POSITION_CONFIG_KEY = "hubspot_verify_position"
+VERIFY_BATCH_PER_SYNC = 25
 _ARCHIVE_OBJECT_TYPES = (("note", "notes"), ("email", "emails"))
 
 
@@ -348,15 +352,24 @@ def _remove_archived_documents(
             records, next_after = list_archived_objects(
                 token, object_type, after=str(after) if after else None, max_records=MAX_ARCHIVED_PER_SYNC
             )
-        except HubSpotAPIError as exc:
-            errors.append(f"{kind} archived: {exc}")
+        except Exception as exc:  # noqa: BLE001
+            # Any listing failure (API error, undecodable body) keeps the position and
+            # never fails the sync after its ingest jobs were queued.
+            errors.append(f"{kind} archived: {type(exc).__name__}: {exc}")
             continue
         external_ids = {
-            f"hubspot:{kind}:{r.get('id')}" for r in records if r.get("id") and r.get("archived") is True
+            f"hubspot:{kind}:{r.get('id')}"
+            for r in records
+            if isinstance(r, dict) and r.get("id") and r.get("archived") is True
         }
         try:
             removed += remove_source_documents(
-                client, settings, org_id=org_id, source_id=source_id, external_ids=external_ids
+                client,
+                settings,
+                org_id=org_id,
+                source_id=source_id,
+                external_ids=external_ids,
+                signal="hubspot_archived",
             )
         except Exception as exc:  # noqa: BLE001
             # Keep the listing position so the same slice is read again next run.
@@ -367,6 +380,62 @@ def _remove_archived_documents(
         else:
             positions.pop(kind, None)
     config[ARCHIVED_CURSORS_CONFIG_KEY] = positions
+    removed += _verify_record_documents(
+        client, settings, org_id=org_id, source_id=source_id, token=token, config=config, errors=errors
+    )
+    return removed
+
+
+def _record_gone_checker(token: str):
+    """``is_gone`` for the check-by-id pass over ``hubspot:{note|email}:{id}`` documents."""
+
+    def is_gone(external_id: str) -> bool:
+        parts = external_id.split(":", 2)
+        if len(parts) != 3 or parts[1] not in {"note", "email"} or not parts[2]:
+            return False  # not a record this sync indexes: never removed here
+        return crm_object_is_gone(token, f"{parts[1]}s", parts[2])
+
+    return is_gone
+
+
+def _verify_record_documents(
+    client: Any,
+    settings: Settings,
+    *,
+    org_id: str,
+    source_id: str,
+    token: str,
+    config: dict[str, Any],
+    errors: list[str],
+) -> int:
+    """Check a batch of indexed notes/emails by id each run.
+
+    The archived listing only holds soft-deleted records (the recycle bin); records
+    deleted permanently (GDPR delete, or purged from the bin) appear in no listing, and a
+    404 on a direct read is the only signal left. Every document is checked once per
+    rotation of ``hubspot_verify_position``.
+    """
+    from app.services.source_lifecycle import verify_source_documents
+
+    position = config.get(VERIFY_POSITION_CONFIG_KEY)
+    position = dict(position) if isinstance(position, dict) else {}
+    try:
+        removed = verify_source_documents(
+            client,
+            settings,
+            org_id=org_id,
+            source_id=source_id,
+            external_id_prefix="hubspot:",
+            is_gone=_record_gone_checker(token),
+            position=position,
+            batch_size=VERIFY_BATCH_PER_SYNC,
+            errors=errors,
+            signal="hubspot_record_404",
+        )
+    except Exception as exc:  # noqa: BLE001
+        errors.append(f"verify records: {type(exc).__name__}: {exc}")
+        return 0
+    config[VERIFY_POSITION_CONFIG_KEY] = position
     return removed
 
 

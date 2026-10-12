@@ -210,20 +210,47 @@ def export_page_text(
     return title, body, str(edited) if edited else None
 
 
+class NotionListingIncomplete(NotionAPIError):
+    """A database listing that cannot be proven complete (malformed or truncated)."""
+
+
+MAX_DATABASE_PAGES = 1000  # listing pages per database (100 rows each)
+
+
 def collect_database_page_ids(access_token: str, database_id: str) -> list[str]:
+    """Every page id of a database, or raise when the listing is not provably complete.
+
+    Deletion propagation treats this listing as the database's full membership, so a
+    body that is not a well-formed list response (``{}``, ``{"object": "error"}``, no
+    ``results`` list, no boolean ``has_more``) or pagination that stops early
+    (``has_more`` without ``next_cursor``, a repeated cursor) raises
+    ``NotionListingIncomplete`` instead of reading as an empty or shorter database.
+    """
     ids: list[str] = []
     cursor: str | None = None
-    while True:
+    seen_cursors: set[str] = set()
+    for _ in range(MAX_DATABASE_PAGES):
         data = query_database(access_token, database_id, start_cursor=cursor)
-        for row in data.get("results") or []:
+        if not isinstance(data, dict):
+            raise NotionListingIncomplete(f"Notion database {database_id}: malformed listing page")
+        results = data.get("results")
+        has_more = data.get("has_more")
+        if data.get("object") != "list" or not isinstance(results, list) or not isinstance(has_more, bool):
+            raise NotionListingIncomplete(
+                f"Notion database {database_id}: malformed listing page",
+                details={"object": data.get("object")},
+            )
+        for row in results:
             if isinstance(row, dict) and row.get("object") == "page" and row.get("id"):
                 ids.append(str(row["id"]))
-        if not data.get("has_more"):
-            break
-        cursor = data.get("next_cursor")
-        if not cursor:
-            break
-    return ids
+        if not has_more:
+            return ids
+        nxt = data.get("next_cursor")
+        if not isinstance(nxt, str) or not nxt or nxt in seen_cursors:
+            raise NotionListingIncomplete(f"Notion database {database_id}: has_more without a usable next_cursor")
+        seen_cursors.add(nxt)
+        cursor = nxt
+    raise NotionListingIncomplete(f"Notion database {database_id}: more than {MAX_DATABASE_PAGES} listing pages")
 
 
 def normalize_search_result(item: dict[str, Any]) -> dict[str, Any]:

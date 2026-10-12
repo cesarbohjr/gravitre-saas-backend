@@ -920,6 +920,31 @@ def list_archived_objects(
     return results, cursor
 
 
+def crm_object_is_gone(access_token: str, object_type: str, object_id: str) -> bool:
+    """True only when HubSpot itself says the record is gone.
+
+    GET /crm/v3/objects/{type}/{id} answers 404 for a record that was deleted (archived,
+    or permanently/GDPR deleted, which no listing reports). Any other error raises, so
+    an auth, scope or rate-limit failure is never read as a deletion.
+    """
+    if not object_type or not object_id:
+        raise HubSpotAPIError("object_type and object_id are required")
+    try:
+        data = _request(
+            "GET",
+            f"/crm/v3/objects/{_object_plural(object_type)}/{object_id}",
+            access_token,
+            params={"properties": "hs_object_id"},
+        )
+    except HubSpotAPIError as exc:
+        if exc.status_code == 404:
+            return True
+        raise
+    if not isinstance(data, dict) or not data.get("id"):
+        raise HubSpotAPIError(f"HubSpot {object_type} {object_id}: malformed response")
+    return data.get("archived") is True
+
+
 def search_crm_objects_all(
     access_token: str,
     object_type: str,

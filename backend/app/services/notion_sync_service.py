@@ -22,6 +22,24 @@ from app.core.safe_dict import safe_normalize_stored_dict
 logger = logging.getLogger(__name__)
 
 STALE_SYNC_HOURS = 24
+# Rotation position of the reconcile's check-by-id of unseen pages (deletion propagation).
+RECONCILE_POSITION_CONFIG_KEY = "notion_reconcile_position"
+
+
+def _page_gone_checker(token: str):
+    """``is_gone`` for reconcile: True only when Notion itself says the page is gone."""
+
+    def is_gone(external_id: str) -> bool:
+        page_id = external_id.removeprefix("notion:page:")
+        try:
+            page = get_page(token, page_id)
+        except NotionAPIError as exc:
+            if exc.status_code == 404:
+                return True
+            raise
+        return page_is_removed(page if isinstance(page, dict) else {})
+
+    return is_gone
 
 
 def _now_iso() -> str:
@@ -251,7 +269,14 @@ def run_notion_sync(
             try:
                 if propagate:
                     # The page object says whether Notion archived or trashed it.
-                    page = get_page(token, page_id)
+                    try:
+                        page = get_page(token, page_id)
+                    except NotionAPIError as exc:
+                        if exc.status_code == 404:
+                            # Deleted or unshared. Not an error that blocks the sweep, and
+                            # not seen: reconcile re-checks it by id under the safety cap.
+                            continue
+                        raise
                     if page_is_removed(page):
                         removed_external_ids.add(f"notion:page:{page_id}")
                         continue
@@ -280,21 +305,38 @@ def run_notion_sync(
     if removed_external_ids:
         # Pages Notion itself flags as archived or trashed: safe to remove even after a
         # partial sweep, since the signal is per page.
-        documents_removed += remove_source_documents(
-            client, settings, org_id=org_id, source_id=source_id, external_ids=removed_external_ids
-        )
-    if not errors:
-        # Only a complete sweep may remove documents: a page we failed to read still exists.
-        documents_removed += reconcile_source_documents(
-            client,
-            settings,
-            org_id=org_id,
-            source_id=source_id,
-            external_id_prefix="notion:page:",
-            seen_external_ids=seen_external_ids,
-        )
-
+        try:
+            documents_removed += remove_source_documents(
+                client, settings, org_id=org_id, source_id=source_id, external_ids=removed_external_ids
+            )
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"removed pages: {type(exc).__name__}: {exc}")
     config = safe_normalize_stored_dict(connector, key="config")
+    position = config.get(RECONCILE_POSITION_CONFIG_KEY)
+    position = dict(position) if isinstance(position, dict) else {}
+    if not errors:
+        # Only a complete sweep (every database listing well formed and fully paged, every
+        # page read) nominates anything, and a nominated page is removed only when Notion
+        # confirms it is gone (404, archived, in trash). A page that still exists but is no
+        # longer under a configured target is out of scope and kept for an explicit purge.
+        try:
+            documents_removed += reconcile_source_documents(
+                client,
+                settings,
+                org_id=org_id,
+                source_id=source_id,
+                external_id_prefix="notion:page:",
+                seen_external_ids=seen_external_ids,
+                is_gone=_page_gone_checker(token),
+                sweep_complete=True,
+                position=position,
+                errors=errors,
+            )
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"reconcile: {type(exc).__name__}: {exc}")
+    if propagate:
+        config[RECONCILE_POSITION_CONFIG_KEY] = position
+
     config["notion_last_synced_at"] = _now_iso()
     config["notion_rag_source_id"] = source_id
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()

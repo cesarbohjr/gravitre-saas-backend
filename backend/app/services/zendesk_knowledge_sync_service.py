@@ -21,9 +21,16 @@ MAX_TICKETS_PER_SYNC = 100  # same per-run volume as before Phase 1
 SEARCH_PAGE_SIZE = 100
 CURSOR_CONFIG_KEY = "zendesk_sync_cursor"
 # Deletion propagation (SOURCE_DELETION_PROPAGATION_ENABLED): lower bound for the next
-# read of the deleted-tickets listing, advanced only after a complete read.
+# read of the deleted-tickets listing. The listing is read oldest deletion first; the
+# window advances to the last deletion read in order (or to the run start, less an
+# overlap for clock skew, once the listing end is reached).
 DELETED_CURSOR_CONFIG_KEY = "zendesk_deleted_scan_since"
 MAX_DELETED_TICKETS_PER_SYNC = 1000
+MAX_DELETED_PAGES_PER_SYNC = 50
+DELETED_WINDOW_OVERLAP = timedelta(minutes=5)
+# Check-by-id of indexed tickets, for deletions the listing no longer reports.
+VERIFY_POSITION_CONFIG_KEY = "zendesk_verify_position"
+VERIFY_BATCH_PER_SYNC = 25
 
 
 def _now_iso() -> str:
@@ -114,41 +121,63 @@ def fetch_deleted_tickets_since(
     *,
     since_iso: str,
     max_records: int = MAX_DELETED_TICKETS_PER_SYNC,
-) -> tuple[list[str], bool]:
-    """Ids of tickets deleted at or after ``since_iso`` (GET /deleted_tickets, newest first).
+    max_pages: int = MAX_DELETED_PAGES_PER_SYNC,
+) -> tuple[list[str], datetime | None, bool]:
+    """Tickets deleted at or after ``since_iso`` (GET /deleted_tickets, oldest deletion first).
 
-    Returns ``(ticket_ids, complete)``. ``complete`` is False when ``max_records`` was hit
-    before reaching ``since_iso``; older deletions in the window were not read.
+    Returns ``(ticket_ids, read_through, complete)``:
+
+    * ``read_through``: ``deleted_at`` of the last in-window row read. Rows are read in
+      ascending ``deleted_at`` order, so every deletion up to that instant has been seen
+      and the window may advance to it (inclusive) even when the read stopped early.
+    * ``complete``: True only when the end of the listing was reached.
+
+    The read stops early (``complete=False``) after ``max_records`` rows strictly newer
+    than ``since`` (rows exactly at ``since`` are re-read but not counted, so a window
+    that advanced to an instant shared by many deletions still moves on), after
+    ``max_pages`` pages, or on an empty page that still names a next page. A page that is
+    not a list, or rows out of ascending order, raise ``ZendeskAPIError``: the window
+    must never advance past rows that were not read.
     """
     cap = max(int(max_records), 1)
     since_dt = _parse_ts(since_iso)
     ids: list[str] = []
-    page = 1
-    seen = 0
-    while True:
+    read_through: datetime | None = None
+    previous: datetime | None = None
+    counted = 0
+    for page in range(1, max(int(max_pages), 1) + 1):
         data = zendesk_request(
             subdomain,
             email,
             api_token,
             "GET",
             "/deleted_tickets.json",
-            params={"sort_by": "deleted_at", "sort_order": "desc", "per_page": SEARCH_PAGE_SIZE, "page": page},
+            params={"sort_by": "deleted_at", "sort_order": "asc", "per_page": SEARCH_PAGE_SIZE, "page": page},
         )
-        rows = [r for r in (data.get("deleted_tickets") or []) if isinstance(r, dict)]
+        rows = data.get("deleted_tickets") if isinstance(data, dict) else None
+        if not isinstance(rows, list):
+            raise ZendeskAPIError("Zendesk deleted tickets: malformed listing page")
         for row in rows:
+            if not isinstance(row, dict):
+                continue
             deleted_at = _parse_ts(row.get("deleted_at"))
             if deleted_at is None:
                 continue
+            if previous is not None and deleted_at < previous:
+                raise ZendeskAPIError("Zendesk deleted tickets: listing not in ascending deleted_at order")
+            previous = deleted_at
             if since_dt is not None and deleted_at < since_dt:
-                return ids, True
+                continue
             if row.get("id") is not None:
                 ids.append(str(row["id"]))
-        seen += len(rows)
-        if not data.get("next_page") or not rows:
-            return ids, True
-        if seen >= cap:
-            return ids, False
-        page += 1
+            read_through = deleted_at
+            if since_dt is None or deleted_at > since_dt:
+                counted += 1
+        if not data.get("next_page"):
+            return ids, read_through, True
+        if not rows or counted >= cap:
+            return ids, read_through, False
+    return ids, read_through, False
 
 
 def _remove_deleted_ticket_documents(
@@ -167,20 +196,24 @@ def _remove_deleted_ticket_documents(
     """Remove documents of tickets Zendesk lists as deleted (off unless the flag is on).
 
     Only tickets the deleted-tickets listing names are removed; a ticket missing from the
-    solved-ticket search is never treated as deleted. ``config`` is updated in place.
+    solved-ticket search is never treated as deleted. ``config`` is updated in place:
+    the window advances to the end of the listing (less a clock-skew overlap) after a
+    complete read, or to the last deletion read in order after a partial one. In
+    dry-run the window stays put, so nothing planned is skipped once dry-run is off.
     """
     from app.services.source_lifecycle import (
+        deletion_dry_run,
         deletion_propagation_enabled,
         remove_source_documents,
     )
 
     if not deletion_propagation_enabled(settings):
         return 0
-    started = _iso_z(datetime.now(UTC))
-    since = config.get(DELETED_CURSOR_CONFIG_KEY)
-    since_iso = _iso_z(_parse_ts(since)) if _parse_ts(since) else default_since
+    started = datetime.now(UTC)
+    since = _parse_ts(config.get(DELETED_CURSOR_CONFIG_KEY))
+    since_iso = _iso_z(since) if since else default_since
     try:
-        ticket_ids, complete = fetch_deleted_tickets_since(
+        ticket_ids, read_through, complete = fetch_deleted_tickets_since(
             subdomain, email, api_token, since_iso=since_iso, max_records=MAX_DELETED_TICKETS_PER_SYNC
         )
         removed = remove_source_documents(
@@ -189,18 +222,88 @@ def _remove_deleted_ticket_documents(
             org_id=org_id,
             source_id=source_id,
             external_ids={f"zendesk:ticket:{tid}" for tid in ticket_ids},
+            signal="zendesk_deleted_tickets",
         )
     except Exception as exc:  # noqa: BLE001
         # The window stays where it was; the next run reads it again.
         errors.append(f"deleted tickets: {exc}")
         return 0
+    if deletion_dry_run(settings):
+        return removed
     if complete:
-        config[DELETED_CURSOR_CONFIG_KEY] = started
-    else:
+        config[DELETED_CURSOR_CONFIG_KEY] = _iso_z(started - DELETED_WINDOW_OVERLAP)
+        return removed
+    since_dt = _parse_ts(since_iso)
+    if read_through is not None and (since_dt is None or read_through > since_dt):
+        config[DELETED_CURSOR_CONFIG_KEY] = _iso_z(read_through)
         errors.append(
-            f"deleted tickets: more than {MAX_DELETED_TICKETS_PER_SYNC} deletions since {since_iso}; "
-            "older ones are read again next run"
+            f"deleted tickets: read through {_iso_z(read_through)} of the window since {since_iso}; "
+            "the rest is read next run"
         )
+    else:
+        errors.append(f"deleted tickets: listing incomplete since {since_iso}; read again next run")
+    return removed
+
+
+def _ticket_gone_checker(subdomain: str, email: str, api_token: str):
+    """``is_gone`` for the check-by-id pass: True only on a 404 for the ticket."""
+
+    def is_gone(external_id: str) -> bool:
+        ticket_id = external_id.removeprefix("zendesk:ticket:")
+        try:
+            zendesk_request(subdomain, email, api_token, "GET", f"/tickets/{ticket_id}.json")
+        except ZendeskAPIError as exc:
+            if exc.status_code == 404:
+                return True
+            raise
+        return False
+
+    return is_gone
+
+
+def _verify_ticket_documents(
+    client: Any,
+    settings: Settings,
+    *,
+    org_id: str,
+    source_id: str,
+    subdomain: str,
+    email: str,
+    api_token: str,
+    config: dict[str, Any],
+    errors: list[str],
+) -> int:
+    """Check a batch of indexed tickets by id each run (deletions the listing no longer has).
+
+    ``/deleted_tickets`` only lists soft-deleted tickets for about 30 days and never lists
+    permanently deleted ones; a direct read returning 404 is the only signal left.
+    """
+    from app.services.source_lifecycle import (
+        deletion_propagation_enabled,
+        verify_source_documents,
+    )
+
+    if not deletion_propagation_enabled(settings):
+        return 0
+    position = config.get(VERIFY_POSITION_CONFIG_KEY)
+    position = dict(position) if isinstance(position, dict) else {}
+    try:
+        removed = verify_source_documents(
+            client,
+            settings,
+            org_id=org_id,
+            source_id=source_id,
+            external_id_prefix="zendesk:ticket:",
+            is_gone=_ticket_gone_checker(subdomain, email, api_token),
+            position=position,
+            batch_size=VERIFY_BATCH_PER_SYNC,
+            errors=errors,
+            signal="zendesk_ticket_404",
+        )
+    except Exception as exc:  # noqa: BLE001
+        errors.append(f"verify tickets: {type(exc).__name__}: {exc}")
+        return 0
+    config[VERIFY_POSITION_CONFIG_KEY] = position
     return removed
 
 
@@ -370,7 +473,18 @@ def run_zendesk_knowledge_sync(
         default_since=since_iso,
         errors=errors,
     )
-    cursor = {"updated_at": _iso_z(cursor_dt), "ids_at_since": sorted(ids_at_cursor)} if cursor_dt else None
+    documents_removed += _verify_ticket_documents(
+        client,
+        settings,
+        org_id=org_id,
+        source_id=source_id,
+        subdomain=subdomain,
+        email=email,
+        api_token=api_token,
+        config=config,
+        errors=errors,
+    )
+    cursor ={"updated_at": _iso_z(cursor_dt), "ids_at_since": sorted(ids_at_cursor)} if cursor_dt else None
     # ``zendesk_last_synced_at`` is the run time used for scheduling; the data cursor
     # lives in ``zendesk_sync_cursor``.
     config["zendesk_last_synced_at"] = _now_iso()

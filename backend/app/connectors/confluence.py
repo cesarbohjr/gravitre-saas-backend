@@ -177,7 +177,9 @@ def list_space_pages(
             {
                 "id": str(page_id),
                 "title": str(page.get("title") or page_id),
-                "status": str(page.get("status") or "current"),
+                # A row without a status keeps the status it was listed under, so a page
+                # from the trashed listing is never read as current.
+                "status": str(page.get("status") or status or "current"),
                 "space_id": str(space_id),
             }
         )
@@ -205,6 +207,23 @@ def get_page(access_token: str, cloud_id: str, page_id: str) -> dict[str, Any]:
         f"/pages/{page_id}",
         params={"body-format": "view"},
     )
+
+
+def get_page_status(access_token: str, cloud_id: str, page_id: str) -> str | None:
+    """The page's status (current/archived/trashed/...), or None when Confluence answers 404.
+
+    A page purged from the trash is in no listing; 404 on a direct read is the only
+    signal left. Any other error raises, so it is never read as a deletion.
+    """
+    try:
+        data = _request("GET", cloud_id, access_token, f"/pages/{page_id}")
+    except ConfluenceAPIError as exc:
+        if exc.status_code == 404:
+            return None
+        raise
+    if not isinstance(data, dict) or not data.get("id"):
+        raise ConfluenceAPIError(f"Confluence page {page_id}: malformed response")
+    return str(data.get("status") or "current").lower()
 
 
 def search_pages(
