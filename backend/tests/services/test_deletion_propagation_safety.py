@@ -31,6 +31,7 @@ from tests.services.test_incremental_deletion_propagation import (
     _client,
     _doc,
     _doc_ids,
+    _excluded_ids,
     _run_confluence,
     _run_hubspot,
     _run_zendesk,
@@ -43,7 +44,7 @@ def _no_live_provider_lookups(monkeypatch):
     # Keep the check-by-id pass off the real Confluence/HubSpot APIs; tests that
     # exercise it patch these again with their own answers.
     monkeypatch.setattr(conf, "get_page_status", lambda *_a, **_k: "current")
-    monkeypatch.setattr(hs, "crm_object_is_gone", lambda *_a, **_k: False)
+    monkeypatch.setattr(hs, "crm_object_state", lambda *_a, **_k: "present")
 
 
 @pytest.fixture(autouse=True)
@@ -141,9 +142,10 @@ def test_notion_complete_empty_listing_removes_only_pages_notion_confirms_gone()
         return {"object": "page", "in_trash": pid == "p4"}
 
     result = _notion(client, ON, query=[empty], get_page=get_page)
-    # Absence alone removed nothing: p0-p2 still exist in Notion and are kept.
-    assert _doc_ids(client) == ["d0", "d1", "d2"]
-    assert result["documents_removed"] == 2 and result["errors"] == []
+    # Absence alone removed nothing: p0-p2 still exist in Notion and are kept. p3 answers
+    # 404 (removed); p4 is in Notion's trash, still restorable: excluded, not removed.
+    assert _doc_ids(client) == ["d0", "d1", "d2", "d4"] and _excluded_ids(client) == ["d4"]
+    assert result["documents_removed"] == 1 and result["errors"] == []
 
 
 def test_notion_target_removed_from_config_is_out_of_scope_not_deleted():
@@ -212,15 +214,15 @@ def test_notion_429_records_error_and_keeps_docs():
     assert result["errors"] and len(_doc_ids(client)) == 3
 
 
-def test_notion_removal_failure_is_reported_not_raised():
+def test_notion_exclusion_failure_is_reported_not_raised():
     client = _client({"notion_sync_targets": [{"id": "p1", "type": "page"}]}, [_doc("d1", "notion:page:p1")])
     with patch.object(ns, "get_page", return_value={"in_trash": True}), patch(
-        "app.services.source_lifecycle.remove_source_documents", side_effect=RuntimeError("db down")
+        "app.services.source_lifecycle.exclude_source_documents", side_effect=RuntimeError("db down")
     ), patch.object(ns, "ensure_notion_session", return_value=("tok", None)), patch.object(
         ns, "ensure_notion_rag_source", return_value=SRC
     ):
         result = ns.run_notion_sync(client, ORG, CONN, ON, actor_id="u")
-    assert any("removed pages" in e for e in result["errors"])
+    assert any("excluded pages" in e for e in result["errors"])
     assert "notion_last_synced_at" in _saved_config(client)
 
 
@@ -297,13 +299,13 @@ def test_zendesk_dry_run_does_not_advance_the_deleted_window():
     # Nothing planned is skipped once dry-run is switched off.
     assert _saved_config(client)[zd.DELETED_CURSOR_CONFIG_KEY] == "2026-10-01T00:00:00Z"
     result, _ = _run_zendesk(client, ON, deleted_pages=[page])
-    assert result["documents_removed"] == 1 and _doc_ids(client) == []
+    assert result["documents_excluded"] == 1 and _excluded_ids(client) == ["t1"]
 
 
 # ------------------------------------------------------------------ queued jobs cannot resurrect (F3, F11)
 
 
-def test_deleted_ticket_cancels_its_queued_ingest_job():
+def test_soft_deleted_ticket_cancels_its_queued_ingest_job():
     client = _client({zd.DELETED_CURSOR_CONFIG_KEY: "2026-10-01T00:00:00Z"}, [])
     client.tables["rag_ingest_jobs"] = [
         {"id": "j7", "org_id": ORG, "source_id": SRC, "external_id": "zendesk:ticket:7", "status": "queued",
@@ -317,7 +319,9 @@ def test_deleted_ticket_cancels_its_queued_ingest_job():
     page = {"deleted_tickets": [{"id": 7, "deleted_at": "2026-10-05T00:00:00Z"}], "next_page": None}
     _run_zendesk(client, ON, deleted_pages=[page])
     jobs = {j["id"]: j for j in client.tables["rag_ingest_jobs"]}
-    assert jobs["j7"]["status"] == "failed" and jobs["j7"]["error_code"] == sl.SOURCE_DELETED_ERROR_CODE
+    # Soft-deleted (restorable) ticket: the job is cancelled as an exclusion, which the
+    # worker honours exactly like a deletion, so it cannot put the ticket back.
+    assert jobs["j7"]["status"] == "failed" and jobs["j7"]["error_code"] == sl.SOURCE_EXCLUDED_ERROR_CODE
     assert jobs["j7"]["request_payload"] is None  # raw text of the deleted ticket dropped
     assert jobs["j8"]["status"] == "queued" and jobs["jx"]["status"] == "queued"
     assert jobs["jd"]["status"] == "completed"
@@ -325,13 +329,13 @@ def test_deleted_ticket_cancels_its_queued_ingest_job():
 
 def test_a_document_that_appears_after_its_deletion_window_is_still_found_by_id():
     # Backstop for any path that indexes a ticket after its deletion was read (for
-    # example a job created outside the sync): the check-by-id pass removes it.
+    # example a job created outside the sync): the check-by-id pass excludes it.
     client = _client({zd.DELETED_CURSOR_CONFIG_KEY: "2026-10-01T00:00:00Z"}, [])
     page = {"deleted_tickets": [{"id": 7, "deleted_at": "2026-10-05T00:00:00Z"}], "next_page": None}
     _run_zendesk(client, ON, deleted_pages=[page], gone_tickets={"7"})
     client.tables["rag_documents"].append(_doc("t7", "zendesk:ticket:7"))
     _run_zendesk(client, ON, deleted_pages=[page], gone_tickets={"7"})
-    assert _doc_ids(client) == []
+    assert _excluded_ids(client) == ["t7"]
 
 
 def _process(cancelled_answers: list[bool]):
@@ -377,9 +381,13 @@ def test_ingest_job_cancelled_reads_the_marker():
     client.tables["rag_ingest_jobs"] = [
         {"id": "a", "status": "failed", "error_code": "source_deleted"},
         {"id": "b", "status": "running", "error_code": None},
+        {"id": "c", "status": "failed", "error_code": "source_excluded"},
+        {"id": "d", "status": "failed", "error_code": "embedding_failed"},
     ]
     assert sl.ingest_job_cancelled(client, "a") is True
     assert sl.ingest_job_cancelled(client, "b") is False
+    assert sl.ingest_job_cancelled(client, "c") is True
+    assert sl.ingest_job_cancelled(client, "d") is False
     assert sl.ingest_job_cancelled(MagicMock(), "a") is False  # unreadable: never blocks ingest
 
 
@@ -416,7 +424,7 @@ def test_zendesk_over_cap_window_advances_until_older_deletions_are_reached():
     assert page_reads == [[1], [1, 2], [1, 2, 3]]
     assert windows[0] == "2026-10-02T00:00:00Z" and windows[1] == "2026-10-03T00:00:00Z"
     assert windows[2] > "2026-10-04"
-    assert _doc_ids(client) == []  # the oldest-listed deletion was reached and applied
+    assert _excluded_ids(client) == ["old"]  # the oldest-listed deletion was reached and applied
 
 
 def test_zendesk_empty_page_with_next_page_does_not_advance_the_window():
@@ -444,8 +452,20 @@ def test_zendesk_out_of_order_or_malformed_listing_keeps_the_window(page):
 # ------------------------------------------------------------------ permanent deletes: check by id (F5)
 
 
-def test_zendesk_permanently_deleted_ticket_is_found_by_id():
+def test_zendesk_404_by_id_excludes_then_purges_only_after_the_restore_window():
     client = _client({}, [_doc("t1", "zendesk:ticket:1"), _doc("t2", "zendesk:ticket:2")])
+    # 404 alone may be a soft-deleted ticket that can still be restored: excluded only.
+    result, _ = _run_zendesk(client, ON, gone_tickets={"2"})
+    assert result["documents_removed"] == 0 and _excluded_ids(client) == ["t2"]
+    assert len(_doc_ids(client)) == 2
+    # Still 404 inside the 30-day restore window: still only excluded.
+    _saved_config(client).pop(zd.VERIFY_POSITION_CONFIG_KEY, None)
+    result, _ = _run_zendesk(client, ON, gone_tickets={"2"})
+    assert result["documents_removed"] == 0 and len(_doc_ids(client)) == 2
+    # Excluded more than 30 days ago and still 404: Zendesk has scrubbed it for good.
+    doc = next(r for r in client.tables["rag_documents"] if r["id"] == "t2")
+    doc["metadata"][sl.EXCLUSION_METADATA_KEY]["excluded_at"] = "2026-01-01T00:00:00+00:00"
+    _saved_config(client).pop(zd.VERIFY_POSITION_CONFIG_KEY, None)
     result, _ = _run_zendesk(client, ON, gone_tickets={"2"})
     assert _doc_ids(client) == ["t1"] and result["documents_removed"] == 1
 
@@ -477,7 +497,7 @@ def test_hubspot_verify_error_stops_the_pass_and_keeps_position():
     ), patch.object(hs, "list_notes_since", MagicMock(return_value=[])), patch.object(
         hs, "list_emails_since", MagicMock(return_value=[])
     ), patch.object(hs, "list_archived_objects", return_value=([], None)), patch.object(
-        hs, "crm_object_is_gone", boom
+        hs, "crm_object_state", boom
     ):
         result = hs.run_hubspot_knowledge_sync(client, ORG, CONN, ON, actor_id="u")
     assert _doc_ids(client) == ["n1"] and any("401" in e for e in result["errors"])
@@ -496,19 +516,32 @@ def test_verify_safety_cap_refuses_a_batch_that_is_mostly_gone(audits):
     assert _actions(audits) == ["source.documents_removal_refused"] and errors
 
 
-def test_hubspot_crm_object_is_gone_only_on_404():
+def test_hubspot_crm_object_state_tells_archived_from_deleted():
     from app.connectors import hubspot as hc
 
-    with patch.object(hc, "_request", side_effect=hc.HubSpotAPIError("x", status_code=404)):
+    not_found = hc.HubSpotAPIError("x", status_code=404)
+    # 404 on the plain read and on the archived=true read: deleted for good.
+    with patch.object(hc, "_request", side_effect=[not_found, not_found]) as req:
+        assert hc.crm_object_state("tok", "notes", "1") == "deleted"
+    assert req.call_args_list[0][1]["params"].get("archived") is None
+    assert req.call_args_list[1][1]["params"]["archived"] == "true"
+    with patch.object(hc, "_request", side_effect=[not_found, not_found]):
         assert hc.crm_object_is_gone("tok", "notes", "1") is True
-    with patch.object(hc, "_request", return_value={"id": "1", "archived": False}) as req:
+    # 404 on the plain read but found with archived=true: in the recycle bin, restorable.
+    with patch.object(hc, "_request", side_effect=[not_found, {"id": "1", "archived": True}]):
+        assert hc.crm_object_state("tok", "notes", "1") == "archived"
+    with patch.object(hc, "_request", side_effect=[not_found, {"id": "1", "archived": True}]):
         assert hc.crm_object_is_gone("tok", "notes", "1") is False
-    assert req.call_args[0][1] == "/crm/v3/objects/notes/1"
+    with patch.object(hc, "_request", return_value={"id": "1", "archived": False}) as req:
+        assert hc.crm_object_state("tok", "notes", "1") == "present"
+    assert req.call_args[0][1] == "/crm/v3/objects/notes/1" and req.call_count == 1
     for err in (hc.HubSpotAPIError("x", status_code=401), hc.HubSpotAPIError("x", status_code=429)):
         with patch.object(hc, "_request", side_effect=err), pytest.raises(hc.HubSpotAPIError):
-            hc.crm_object_is_gone("tok", "notes", "1")
+            hc.crm_object_state("tok", "notes", "1")
+        with patch.object(hc, "_request", side_effect=[not_found, err]), pytest.raises(hc.HubSpotAPIError):
+            hc.crm_object_state("tok", "notes", "1")
     with patch.object(hc, "_request", return_value={}), pytest.raises(hc.HubSpotAPIError):
-        hc.crm_object_is_gone("tok", "notes", "1")
+        hc.crm_object_state("tok", "notes", "1")
 
 
 def test_confluence_purged_page_is_found_by_id():
@@ -523,8 +556,11 @@ def test_confluence_purged_page_is_found_by_id():
 def test_confluence_get_page_status_is_none_only_on_404():
     with patch.object(cc, "_request", side_effect=cc.ConfluenceAPIError("x", status_code=404)):
         assert cc.get_page_status("tok", "cloud", "1") is None
-    with patch.object(cc, "_request", return_value={"id": "1", "status": "trashed"}):
+    with patch.object(cc, "_request", return_value={"id": "1", "status": "trashed"}) as req:
         assert cc.get_page_status("tok", "cloud", "1") == "trashed"
+    # Every status is asked for, so an archived or trashed page answers 200, never a 404
+    # that would read as a permanent deletion.
+    assert set(req.call_args[1]["params"]["status"]) == {"current", "archived", "trashed", "deleted"}
     with patch.object(cc, "_request", side_effect=cc.ConfluenceAPIError("x", status_code=403)), pytest.raises(
         cc.ConfluenceAPIError
     ):
@@ -542,7 +578,7 @@ def test_confluence_trashed_listing_without_status_stays_trashed():
         assert cc.list_space_pages("tok", "cloud", "space")[0]["status"] == "current"
 
 
-def test_confluence_trashed_page_without_status_is_removed_not_reingested():
+def test_confluence_trashed_page_without_status_is_excluded_not_reingested():
     client = _client({"confluence_sync_targets": [{"id": "space-1", "type": "space"}]}, [_doc("c9", "confluence:page:9")])
 
     def fake_paginate(cloud_id, token, path, *, params):
@@ -555,7 +591,8 @@ def test_confluence_trashed_page_without_status_is_removed_not_reingested():
         conf, "get_page_status", return_value="trashed"
     ):
         result = conf.run_confluence_sync(client, ORG, CONN, ON, actor_id="u")
-    assert ingest.call_count == 0 and _doc_ids(client) == [] and result["documents_removed"] == 1
+    assert ingest.call_count == 0 and _excluded_ids(client) == ["c9"]
+    assert result["documents_excluded"] == 1 and result["documents_removed"] == 0
 
 
 def test_hubspot_archived_listing_valueerror_is_recorded_and_cursors_saved():

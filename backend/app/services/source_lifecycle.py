@@ -11,8 +11,13 @@ Three pieces, each off until switched on:
   SOURCE_PURGE_DRY_RUN=false. Runs only when the relay is on.
 * ``reconcile_source_documents`` removes indexed documents a complete full-sweep sync no
   longer finds upstream AND the provider confirms are gone (SOURCE_DELETION_PROPAGATION_ENABLED).
-* ``remove_source_documents`` removes the documents of records the provider itself
-  reports as deleted, archived or trashed during an incremental sync (same flag).
+* ``remove_source_documents`` permanently removes the documents of records the provider
+  itself confirms are deleted (a deleted status, or 404 on a direct read by id) during
+  an incremental sync (same flag).
+* ``exclude_source_documents`` hides, without deleting, the documents of records the
+  provider reports as archived, trashed or soft-deleted: states the provider can still
+  undo. ``restore_source_documents`` brings them back when the record is live again
+  (same flag).
 * ``verify_source_documents`` checks indexed documents by id, a batch per run, for
   deletions no provider listing reports (same flag).
 
@@ -190,9 +195,17 @@ def revoke_on_disconnect(
 # Deletion propagation (SOURCE_DELETION_PROPAGATION_ENABLED)
 #
 # Safety rules:
+#   0. Archived is not deleted. A record the provider can still restore (Confluence
+#      archived or trashed page, HubSpot archived record, Zendesk soft-deleted ticket,
+#      Notion archived / in-trash page) is only EXCLUDED from retrieval: its active
+#      document version is deactivated (``is_active=false``, the flag every retrieval
+#      path filters on) and marked with ``metadata.source_exclusion``. Nothing is deleted
+#      and the exclusion is undone when the record is live again. Permanent removal needs
+#      confirmed deletion (rule 1) or the org's separately configured retention prune
+#      (KNOWLEDGE_RETENTION_PRUNE_ENABLED + retentionDays).
 #   1. Absence is never proof. A record missing from a listing only nominates its
-#      document; it is removed only when the provider itself says the record is gone
-#      (archived, trashed, deleted, or 404 on a direct read by id).
+#      document; it is removed only when the provider itself confirms the record is gone
+#      (a deleted status, or 404 on a direct read by id that cannot mean "archived").
 #   2. A sweep nominates anything only when the caller proved it complete (every listing
 #      well formed, pagination finished, no errors).
 #   3. Safety cap: one reconcile or verification pass may remove at most
@@ -213,6 +226,14 @@ DOCUMENT_PAGE_SIZE = 1000
 # Ingest jobs cancelled because their record was removed upstream. The status stays within
 # the existing CHECK constraint (queued/running/completed/failed); the error code marks it.
 SOURCE_DELETED_ERROR_CODE = "source_deleted"
+# Ingest jobs cancelled because their record was archived/trashed upstream (reversible).
+SOURCE_EXCLUDED_ERROR_CODE = "source_excluded"
+_CANCELLED_ERROR_CODES = frozenset({SOURCE_DELETED_ERROR_CODE, SOURCE_EXCLUDED_ERROR_CODE})
+# Marker on a document version hidden from retrieval because its record was archived.
+EXCLUSION_METADATA_KEY = "source_exclusion"
+# Verdict an ``is_gone`` checker returns for "the provider still has it, archived or
+# trashed": exclude from retrieval, never delete. True means confirmed deleted, False live.
+EXCLUDE = "exclude"
 _AUDIT_ID_SAMPLE = 50
 
 
@@ -304,8 +325,15 @@ def _select_in(
     return rows
 
 
-def _cancel_ingest_jobs(client: Any, *, org_id: str, source_id: str, job_ids: list[str]) -> None:
-    """Fail queued/running ingest jobs of removed records and drop their raw payloads.
+def _cancel_ingest_jobs(
+    client: Any,
+    *,
+    org_id: str,
+    source_id: str,
+    job_ids: list[str],
+    error_code: str = SOURCE_DELETED_ERROR_CODE,
+) -> None:
+    """Fail queued/running ingest jobs of removed or excluded records and drop their raw payloads.
 
     The worker re-reads this marker after activating a version and discards that version,
     so a job claimed before the cancel cannot bring the document back.
@@ -315,7 +343,7 @@ def _cancel_ingest_jobs(client: Any, *, org_id: str, source_id: str, job_ids: li
         client.table("rag_ingest_jobs").update(
             {
                 "status": "failed",
-                "error_code": SOURCE_DELETED_ERROR_CODE,
+                "error_code": error_code,
                 "request_payload": None,
                 "completed_at": now,
                 "updated_at": now,
@@ -361,8 +389,9 @@ def remove_source_documents(
 ) -> int:
     """Remove the named records of one source after the provider reported them removed.
 
-    Pass only ids the provider explicitly flagged (deleted, archived, trashed, 404 by id),
-    never ids merely absent from a page. Besides the documents (chunks and embeddings
+    Pass only ids the provider confirms are deleted (a deleted status, 404 by id that
+    cannot mean "archived"), never ids merely absent from a page, and never archived or
+    trashed ids: those go to ``exclude_source_documents``. Besides the documents (chunks and embeddings
     cascade) this fails the records' queued/running ingest jobs and clears their raw
     payloads, so a queued job cannot resurrect a deleted record, and deletes observations
     derived from them. Honours dry-run and writes an audit receipt. Returns the number of
@@ -426,6 +455,227 @@ def remove_source_documents(
     return removed
 
 
+# ---------------------------------------------------------------------------------------
+# Reversible exclusion (archived / trashed / soft-deleted upstream)
+# ---------------------------------------------------------------------------------------
+
+
+def _documents_in(
+    client: Any, *, org_id: str, source_id: str, values: list[str], active: bool
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for i in range(0, len(values), 100):
+        res = (
+            client.table("rag_documents")
+            .select("id, external_id, metadata, is_active")
+            .eq("org_id", org_id)
+            .eq("source_id", source_id)
+            .eq("is_active", active)
+            .in_("external_id", values[i : i + 100])
+            .execute()
+        )
+        rows.extend(r for r in (res.data or []) if isinstance(r, dict) and r.get("id"))
+    return rows
+
+
+def _exclusion(row: dict[str, Any]) -> dict[str, Any] | None:
+    meta = row.get("metadata")
+    marker = meta.get(EXCLUSION_METADATA_KEY) if isinstance(meta, dict) else None
+    return marker if isinstance(marker, dict) else None
+
+
+def exclude_source_documents(
+    client: Any,
+    settings: Settings,
+    *,
+    org_id: str,
+    source_id: str,
+    external_ids: set[str] | list[str],
+    signal: str,
+    reason: str = "archived",
+) -> int:
+    """Hide the named records' documents from retrieval without deleting anything.
+
+    For records the provider still holds in a recoverable state (archived, trashed,
+    soft-deleted). The active version is deactivated (``is_active=false``: the vector
+    search RPC, the keyword arm and every other retrieval read filter on it) and marked
+    with ``metadata.source_exclusion``; chunks, embeddings and observations stay, so
+    ``restore_source_documents`` can undo it. Queued/running ingest jobs of the records
+    are failed with ``source_excluded`` so a job cannot re-activate the record. Honours
+    the flag and dry-run, writes an audit receipt, and is idempotent (an already
+    excluded record has no active version left to exclude). Returns documents excluded.
+    """
+    if not deletion_propagation_enabled(settings):
+        return 0
+    wanted = sorted({str(e) for e in external_ids if e})
+    if not org_id or not source_id or not wanted:
+        return 0
+    dry_run = deletion_dry_run(settings)
+    jobs = _select_in(
+        client, "rag_ingest_jobs", org_id=org_id, source_id=source_id, values=wanted, statuses=["queued", "running"]
+    )
+    job_ids = sorted({str(j["id"]) for j in jobs if j.get("id")})
+    if job_ids and not dry_run:
+        _cancel_ingest_jobs(
+            client, org_id=org_id, source_id=source_id, job_ids=job_ids, error_code=SOURCE_EXCLUDED_ERROR_CODE
+        )
+    docs = _documents_in(client, org_id=org_id, source_id=source_id, values=wanted, active=True)
+    if not docs and not job_ids:
+        return 0
+    meta = {
+        "flagged": len(wanted),
+        "documents": len(docs),
+        "ingest_jobs": len(job_ids),
+        "dry_run": dry_run,
+        "reason": reason,
+        "reversible": True,
+        "external_ids": wanted[:_AUDIT_ID_SAMPLE],
+    }
+    if dry_run:
+        _record(
+            client,
+            org_id=org_id,
+            source_id=source_id,
+            action="source.documents_exclusion_planned",
+            signal=signal,
+            metadata=meta,
+        )
+        logger.info(
+            "source_documents_exclusion_planned org_id=%s source_id=%s signal=%s documents=%s jobs=%s",
+            org_id,
+            source_id,
+            signal,
+            len(docs),
+            len(job_ids),
+        )
+        return 0
+    now = datetime.now(UTC).isoformat()
+    excluded = 0
+    for row in docs:
+        current = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        marker = {"reason": reason, "signal": signal, "excluded_at": now}
+        client.table("rag_documents").update(
+            {"is_active": False, "archived_at": now, "metadata": {**current, EXCLUSION_METADATA_KEY: marker}}
+        ).eq("org_id", org_id).eq("source_id", source_id).eq("id", str(row["id"])).execute()
+        excluded += 1
+    _record(client, org_id=org_id, source_id=source_id, action="source.documents_excluded", signal=signal, metadata=meta)
+    logger.info(
+        "source_documents_excluded org_id=%s source_id=%s signal=%s reason=%s excluded=%s jobs_cancelled=%s",
+        org_id,
+        source_id,
+        signal,
+        reason,
+        excluded,
+        len(job_ids),
+    )
+    return excluded
+
+
+def restore_source_documents(
+    client: Any,
+    settings: Settings,
+    *,
+    org_id: str,
+    source_id: str,
+    external_ids: set[str] | list[str],
+    signal: str,
+) -> int:
+    """Undo ``exclude_source_documents`` for records the provider reports live again.
+
+    Re-activates the most recently excluded version of each named record, only when the
+    record has no active version (a re-ingest may already have activated a newer one),
+    and clears its marker. Never touches a version this module did not exclude
+    (superseded versions carry no marker). Runs whenever the flag is on, dry-run
+    included: it only reverses an earlier exclusion. Returns documents restored.
+    """
+    if not deletion_propagation_enabled(settings):
+        return 0
+    wanted = sorted({str(e) for e in external_ids if e})
+    if not org_id or not source_id or not wanted:
+        return 0
+    latest: dict[str, dict[str, Any]] = {}
+    for row in _documents_in(client, org_id=org_id, source_id=source_id, values=wanted, active=False):
+        marker = _exclusion(row)
+        ext = str(row.get("external_id") or "")
+        if marker is None or not ext:
+            continue
+        best = latest.get(ext)
+        best_at = str((_exclusion(best) or {}).get("excluded_at") or "") if best else ""
+        if best is None or str(marker.get("excluded_at") or "") > best_at:
+            latest[ext] = row
+    if not latest:
+        return 0
+    active = {
+        str(r.get("external_id"))
+        for r in _documents_in(client, org_id=org_id, source_id=source_id, values=sorted(latest), active=True)
+    }
+    restored: list[str] = []
+    for ext, row in sorted(latest.items()):
+        meta = dict(row.get("metadata") or {})
+        meta.pop(EXCLUSION_METADATA_KEY, None)
+        if ext in active:
+            # A newer version is live already; only drop the stale marker.
+            client.table("rag_documents").update({"metadata": meta}).eq("org_id", org_id).eq(
+                "source_id", source_id
+            ).eq("id", str(row["id"])).execute()
+            continue
+        client.table("rag_documents").update({"is_active": True, "archived_at": None, "metadata": meta}).eq(
+            "org_id", org_id
+        ).eq("source_id", source_id).eq("id", str(row["id"])).execute()
+        restored.append(ext)
+    if restored:
+        _record(
+            client,
+            org_id=org_id,
+            source_id=source_id,
+            action="source.documents_restored",
+            signal=signal,
+            metadata={"documents": len(restored), "external_ids": restored[:_AUDIT_ID_SAMPLE]},
+        )
+        logger.info(
+            "source_documents_restored org_id=%s source_id=%s signal=%s restored=%s",
+            org_id,
+            source_id,
+            signal,
+            len(restored),
+        )
+    return len(restored)
+
+
+def excluded_since(client: Any, *, org_id: str, source_id: str, external_id: str) -> datetime | None:
+    """When this module excluded ``external_id`` (earliest marker), or None if it is not excluded."""
+    rows = _documents_in(client, org_id=org_id, source_id=source_id, values=[external_id], active=False)
+    stamps: list[datetime] = []
+    for row in rows:
+        raw = str((_exclusion(row) or {}).get("excluded_at") or "")
+        try:
+            ts = datetime.fromisoformat(raw) if raw else None
+        except ValueError:
+            ts = None
+        if ts is not None:
+            stamps.append(ts if ts.tzinfo else ts.replace(tzinfo=UTC))
+    return min(stamps) if stamps else None
+
+
+def _apply_reversible_verdicts(
+    client: Any,
+    settings: Settings,
+    *,
+    org_id: str,
+    source_id: str,
+    excluded: list[str],
+    live: list[str],
+    signal: str,
+) -> None:
+    """Exclude records a check by id found archived; restore excluded ones found live."""
+    if excluded:
+        exclude_source_documents(
+            client, settings, org_id=org_id, source_id=source_id, external_ids=excluded, signal=signal
+        )
+    if live:
+        restore_source_documents(client, settings, org_id=org_id, source_id=source_id, external_ids=live, signal=signal)
+
+
 def _refuse(
     client: Any,
     *,
@@ -479,9 +729,11 @@ def reconcile_source_documents(
     ``sweep_complete`` must be True only when every listing of the sweep was well formed
     and fully paginated, with no errors; otherwise nothing is nominated. Each unseen
     document is then checked by id with ``is_gone(external_id)``: True when the provider
-    says it is deleted/archived/trashed/404; False when it still exists (for example a
-    target removed from the sync config: out of scope, kept for an explicit purge);
-    raising means unknown and keeps it. At most ``max_verifications`` are checked per
+    confirms it is deleted; ``EXCLUDE`` when it is archived/trashed (recoverable: the
+    document is excluded from retrieval, not deleted); False when it still exists (for
+    example a target removed from the sync config: out of scope, kept for an explicit
+    purge; an excluded document found live again is restored); raising means unknown
+    and keeps it. At most ``max_verifications`` are checked per
     pass, rotating through ``position["after"]`` so every candidate is reached over
     several passes. The safety cap applies to the source's documents under ``prefix``.
     Returns the number of documents removed.
@@ -507,17 +759,24 @@ def reconcile_source_documents(
     start = next((i for i, c in enumerate(candidates) if c > after), len(candidates)) if after else 0
     batch = (candidates[start:] + candidates[:start])[: max(int(max_verifications), 0)]
     gone: list[str] = []
+    excluded: list[str] = []
+    live: list[str] = []
     kept = 0
     for ext in batch:
         try:
-            if is_gone(ext):
-                gone.append(ext)
-            else:
-                kept += 1
+            verdict = is_gone(ext)
         except Exception as exc:  # noqa: BLE001
             kept += 1
             if errors is not None:
                 errors.append(f"{signal} verify {ext}: {type(exc).__name__}: {exc}")
+            continue
+        if verdict == EXCLUDE:
+            excluded.append(ext)
+        elif verdict is True:
+            gone.append(ext)
+        else:
+            kept += 1
+            live.append(ext)
     if position is not None:
         if batch and len(batch) < len(candidates):
             position["after"] = batch[-1]
@@ -530,6 +789,9 @@ def reconcile_source_documents(
             source_id,
             kept,
         )
+    _apply_reversible_verdicts(
+        client, settings, org_id=org_id, source_id=source_id, excluded=excluded, live=live, signal=signal
+    )
     if not gone:
         return 0
     if not within_safety_cap(total, len(gone)):
@@ -559,7 +821,9 @@ def verify_source_documents(
     Zendesk tickets purged from the deleted-tickets list, Confluence pages purged from
     the trash). Each pass reads ``batch_size`` documents after ``position["after"]``
     (ordered by external_id) and asks the provider for each by id; ``is_gone`` returns
-    True only on an explicit signal (404 / archived / trashed). The position wraps, so
+    True only on confirmed deletion, ``EXCLUDE`` for archived/trashed (excluded from
+    retrieval, not deleted) and False for live (an excluded document is restored). Only
+    confirmed deletions count toward the safety cap. The position wraps, so
     every indexed document is checked once per cycle. A provider error stops the pass at
     that document (the position stays before it); the safety cap applies per batch.
     """
@@ -582,15 +846,25 @@ def verify_source_documents(
         if ext and ext not in ext_ids:
             ext_ids.append(ext)
     gone: list[str] = []
+    excluded: list[str] = []
+    live: list[str] = []
     checked: list[str] = []
     for ext in ext_ids:
         try:
-            if is_gone(ext):
-                gone.append(ext)
+            verdict = is_gone(ext)
         except Exception as exc:  # noqa: BLE001
             errors.append(f"{signal} {ext}: {type(exc).__name__}: {exc}")
             break
+        if verdict == EXCLUDE:
+            excluded.append(ext)
+        elif verdict is True:
+            gone.append(ext)
+        else:
+            live.append(ext)
         checked.append(ext)
+    _apply_reversible_verdicts(
+        client, settings, org_id=org_id, source_id=source_id, excluded=excluded, live=live, signal=signal
+    )
     if gone and not within_safety_cap(len(checked), len(gone)):
         # Too many at once to be a normal deletion rate: keep the position, delete nothing.
         _refuse(
@@ -625,11 +899,11 @@ def _delete_documents(client: Any, *, org_id: str, source_id: str, document_ids:
 
 
 def ingest_job_cancelled(client: Any, job_id: str) -> bool:
-    """True when deletion propagation failed this ingest job after it was claimed."""
+    """True when deletion propagation failed (deleted or excluded) this ingest job after it was claimed."""
     try:
         res = client.table("rag_ingest_jobs").select("status, error_code").eq("id", job_id).limit(1).execute()
     except Exception as exc:  # noqa: BLE001
         logger.warning("rag_ingest_cancel_check_failed job_id=%s error=%s", job_id, type(exc).__name__)
         return False
     rows = res.data if isinstance(res.data, list) else []
-    return bool(rows) and isinstance(rows[0], dict) and rows[0].get("error_code") == SOURCE_DELETED_ERROR_CODE
+    return bool(rows) and isinstance(rows[0], dict) and rows[0].get("error_code") in _CANCELLED_ERROR_CODES

@@ -209,14 +209,22 @@ def get_page(access_token: str, cloud_id: str, page_id: str) -> dict[str, Any]:
     )
 
 
+# Statuses requested on a by-id read (Confluence Cloud REST v2 GET /pages/{id} ``status``).
+PAGE_STATUSES_BY_ID = ("current", "archived", "trashed", "deleted")
+
+
 def get_page_status(access_token: str, cloud_id: str, page_id: str) -> str | None:
     """The page's status (current/archived/trashed/...), or None when Confluence answers 404.
 
-    A page purged from the trash is in no listing; 404 on a direct read is the only
-    signal left. Any other error raises, so it is never read as a deletion.
+    The read asks for every status explicitly (``PAGE_STATUSES_BY_ID``) so an archived or
+    trashed page answers 200 with its status instead of a 404 that would look like a
+    permanent deletion. A page purged from the trash is in no listing; 404 on that read
+    is the only signal left. Any other error raises, so it is never read as a deletion.
     """
     try:
-        data = _request("GET", cloud_id, access_token, f"/pages/{page_id}")
+        data = _request(
+            "GET", cloud_id, access_token, f"/pages/{page_id}", params={"status": list(PAGE_STATUSES_BY_ID)}
+        )
     except ConfluenceAPIError as exc:
         if exc.status_code == 404:
             return None

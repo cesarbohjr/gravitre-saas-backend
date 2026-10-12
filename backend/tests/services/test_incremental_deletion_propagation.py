@@ -1,9 +1,12 @@
-"""Incremental syncs remove documents of records the provider itself reports as removed.
+"""Incremental syncs act on what the provider itself reports about a record.
 
-Each provider's own signal (HubSpot archived listing, Zendesk deleted tickets, Confluence
-page status, Notion archived/in_trash) removes exactly that record's document, only while
-SOURCE_DELETION_PROPAGATION_ENABLED is on, only in the syncing org and source, and never
-because a record is merely absent from an incremental page.
+Archived is not deleted: a provider's "archived / trashed / soft-deleted" signal (HubSpot
+archived listing, Zendesk deleted-tickets listing, Confluence archived or trashed page,
+Notion archived / in_trash) EXCLUDES exactly that record's document from retrieval and
+keeps it, so it comes back if the record is restored. Only a confirmed deletion (a
+deleted status, or a by-id read that cannot mean "archived") removes a document. Both
+happen only while SOURCE_DELETION_PROPAGATION_ENABLED is on, only in the syncing org and
+source, and never because a record is merely absent from an incremental page.
 """
 from __future__ import annotations
 
@@ -36,7 +39,7 @@ def _no_live_provider_lookups(monkeypatch):
     # (a 404 from a fake cloud id reads as "deleted"). Tests that exercise it
     # patch these again with their own answers.
     monkeypatch.setattr(conf, "get_page_status", lambda *_a, **_k: "current")
-    monkeypatch.setattr(hs, "crm_object_is_gone", lambda *_a, **_k: False)
+    monkeypatch.setattr(hs, "crm_object_state", lambda *_a, **_k: "present")
 
 
 @pytest.fixture(autouse=True)
@@ -129,6 +132,7 @@ class _Query:
         elif self.op == "update":
             for r in hits:
                 r.update(self.payload or {})
+            self.client.updates.append((self.table, list(self.filters), dict(self.payload or {})))
         return SimpleNamespace(data=hits)
 
 
@@ -136,13 +140,34 @@ class _Client:
     def __init__(self, tables: dict[str, list[dict[str, Any]]]) -> None:
         self.tables = tables
         self.deletes: list[tuple[str, list]] = []
+        self.updates: list[tuple[str, list, dict]] = []
 
     def table(self, name):
         return _Query(self, name)
 
 
 def _doc(doc_id: str, external_id: str, *, org: str = ORG, source: str = SRC) -> dict[str, Any]:
-    return {"id": doc_id, "org_id": org, "source_id": source, "external_id": external_id}
+    return {
+        "id": doc_id,
+        "org_id": org,
+        "source_id": source,
+        "external_id": external_id,
+        "is_active": True,
+        "metadata": {},
+    }
+
+
+def _active_ids(client: _Client) -> list[str]:
+    """Documents retrieval can still see (every retrieval path filters ``is_active``)."""
+    return sorted(r["id"] for r in client.tables["rag_documents"] if r.get("is_active") is True)
+
+
+def _excluded_ids(client: _Client) -> list[str]:
+    return sorted(
+        r["id"]
+        for r in client.tables["rag_documents"]
+        if r.get("is_active") is False and sl.EXCLUSION_METADATA_KEY in (r.get("metadata") or {})
+    )
 
 
 def _client(connector_config: dict[str, Any], docs: list[dict[str, Any]]) -> _Client:
@@ -223,14 +248,35 @@ def _hubspot_docs() -> list[dict[str, Any]]:
 
 
 def _run_hubspot(
-    client, settings, archived: dict[str, list[dict[str, Any]]], *, notes=None, next_after=None, gone=None, by_id=None
+    client,
+    settings,
+    archived: dict[str, list[dict[str, Any]]],
+    *,
+    notes=None,
+    next_after=None,
+    gone=None,
+    archived_by_id=None,
+    by_id=None,
 ):
     calls: list[tuple[str, str | None]] = []
     by_id = by_id if by_id is not None else []
 
-    def fake_is_gone(token, object_type, object_id):
+    # A record the archived listing returns is archived when read by id too (one
+    # consistent upstream state per run), unless a test says otherwise.
+    archived_by_id = set(archived_by_id or set()) | {
+        (object_type, str(r.get("id")))
+        for object_type, rows in archived.items()
+        for r in rows
+        if isinstance(r, dict) and r.get("archived") is True
+    }
+
+    def fake_state(token, object_type, object_id):
         by_id.append((object_type, object_id))
-        return (object_type, object_id) in (gone or set())
+        if (object_type, object_id) in (gone or set()):
+            return "deleted"
+        if (object_type, object_id) in archived_by_id:
+            return "archived"
+        return "present"
 
     def fake_archived(token, object_type, *, after=None, max_records=100):
         calls.append((object_type, after))
@@ -242,12 +288,12 @@ def _run_hubspot(
         hs, "list_emails_since", MagicMock(return_value=[])
     ), patch.object(hs, "create_ingest_job", MagicMock(return_value={"id": "job"})), patch.object(
         hs, "list_archived_objects", fake_archived
-    ), patch.object(hs, "crm_object_is_gone", fake_is_gone):
+    ), patch.object(hs, "crm_object_state", fake_state):
         result = hs.run_hubspot_knowledge_sync(client, ORG, CONN, settings, actor_id="u")
     return result, calls
 
 
-def test_hubspot_archived_record_removes_exactly_its_document():
+def test_hubspot_archived_record_is_excluded_from_retrieval_not_deleted():
     client = _client({}, _hubspot_docs())
     # Note 2 is modified in this incremental page but not archived; email 9 is simply absent.
     result, calls = _run_hubspot(
@@ -256,16 +302,21 @@ def test_hubspot_archived_record_removes_exactly_its_document():
         {"notes": [{"id": "1", "archived": True}], "emails": [{"id": "1", "archived": True}]},
         notes=[{"id": "2", "properties": {"hs_note_body": "b", "hs_lastmodifieddate": "1700000000000"}}],
     )
-    assert result["documents_removed"] == 2
-    assert _doc_ids(client) == ["e9", "n2", "x1", "y1"]
+    # HubSpot archived records sit in the recycle bin and can be restored: nothing is
+    # deleted, the two archived records just leave retrieval.
+    assert result["documents_removed"] == 0 and result["documents_excluded"] == 2
+    assert client.deletes == []
+    assert _doc_ids(client) == ["e1", "e9", "n1", "n2", "x1", "y1"]
+    assert _excluded_ids(client) == ["e1", "n1"]
+    assert _active_ids(client) == ["e9", "n2", "x1", "y1"]
     assert sorted(c[0] for c in calls) == ["emails", "notes"]
 
 
-def test_hubspot_record_without_archived_true_is_not_removed():
+def test_hubspot_record_without_archived_true_is_not_excluded():
     client = _client({}, _hubspot_docs())
     result, _ = _run_hubspot(client, ON, {"notes": [{"id": "1"}, {"id": "2", "archived": False}]})
-    assert result["documents_removed"] == 0
-    assert len(client.tables["rag_documents"]) == 6
+    assert result["documents_removed"] == 0 and result["documents_excluded"] == 0
+    assert len(_active_ids(client)) == 6
 
 
 def test_hubspot_flag_off_reads_no_archive_and_removes_nothing():
@@ -337,10 +388,19 @@ def _run_zendesk(client, settings, *, solved=None, deleted_pages=None, gone_tick
 
     requests: list[dict[str, Any]] = []
 
+    # A ticket the deleted-tickets listing names answers 404 by id too (Zendesk hides
+    # soft-deleted tickets from GET /tickets/{id}), unless a test says otherwise.
+    not_found = set(gone_tickets or set()) | {
+        str(row.get("id"))
+        for page in (deleted_pages or [])
+        for row in (page.get("deleted_tickets") or [])
+        if isinstance(row, dict)
+    }
+
     def fake_request(_sub, _email, _tok, method, path, **kw):
         if path.startswith("/tickets/"):
             tid = path.removeprefix("/tickets/").removesuffix(".json")
-            if tid in (gone_tickets or set()):
+            if tid in not_found:
                 raise ZendeskAPIError("Zendesk API 404", status_code=404)
             return {"ticket": {"id": int(tid)}}
         requests.append({"method": method, "path": path, **kw})
@@ -356,7 +416,7 @@ def _run_zendesk(client, settings, *, solved=None, deleted_pages=None, gone_tick
     return result, requests
 
 
-def test_zendesk_deleted_ticket_removes_exactly_its_document():
+def test_zendesk_soft_deleted_ticket_is_excluded_not_deleted():
     client = _client({"zendesk_sync_cursor": {"updated_at": "2026-10-01T00:00:00Z", "ids_at_since": []}}, _zendesk_docs())
     deleted = {
         "deleted_tickets": [
@@ -372,8 +432,12 @@ def test_zendesk_deleted_ticket_removes_exactly_its_document():
         solved=[{"id": 2, "subject": "s", "status": "solved", "updated_at": "2026-10-01T05:00:00Z"}],
         deleted_pages=[deleted],
     )
-    assert result["documents_removed"] == 1
-    assert _doc_ids(client) == ["t2", "t3", "x1", "y1"]
+    # A ticket in "Deleted tickets" can still be restored for 30 days: excluded only.
+    # The listing excluded ticket 1; ticket 3 (skipped by the listing window) answers 404
+    # to the check-by-id pass and is excluded there, also without deleting anything.
+    assert result["documents_removed"] == 0 and result["documents_excluded"] == 1
+    assert client.deletes == [] and len(_doc_ids(client)) == 5
+    assert _excluded_ids(client) == ["t1", "t3"] and _active_ids(client) == ["t2", "x1", "y1"]
     assert requests[0]["path"] == "/deleted_tickets.json"
     assert requests[0]["params"]["sort_by"] == "deleted_at" and requests[0]["params"]["sort_order"] == "asc"
     # Complete read: the window moves to the run start less the clock-skew overlap.
@@ -415,12 +479,12 @@ def test_zendesk_deleted_listing_error_removes_nothing_and_keeps_window():
     assert _saved_config(client)[zd.DELETED_CURSOR_CONFIG_KEY] == "2026-10-01T00:00:00Z"
 
 
-def test_zendesk_truncated_deleted_listing_removes_what_it_read_and_advances_to_it():
+def test_zendesk_truncated_deleted_listing_excludes_what_it_read_and_advances_to_it():
     client = _client({zd.DELETED_CURSOR_CONFIG_KEY: "2026-10-01T00:00:00Z"}, _zendesk_docs())
     page = {"deleted_tickets": [{"id": 1, "deleted_at": "2026-10-05T00:00:00Z"}], "next_page": "more"}
     with patch.object(zd, "MAX_DELETED_TICKETS_PER_SYNC", 1):
         result, _ = _run_zendesk(client, ON, deleted_pages=[page])
-    assert result["documents_removed"] == 1
+    assert result["documents_excluded"] == 1 and _excluded_ids(client) == ["t1"]
     # Read oldest first, so every deletion up to the last one read is done: the window
     # moves there (inclusive) instead of staying put and re-reading the same slice.
     assert _saved_config(client)[zd.DELETED_CURSOR_CONFIG_KEY] == "2026-10-05T00:00:00Z"
@@ -442,7 +506,10 @@ def _confluence_docs() -> list[dict[str, Any]]:
 
 
 def _run_confluence(client, settings, default_pages, trashed_pages, statuses=None):
-    statuses = statuses or {}
+    # A page's by-id status matches its listing status (one consistent upstream state
+    # per run), unless a test says otherwise.
+    listed = {str(p.get("id")): p.get("status") for p in [*default_pages, *trashed_pages] if p.get("status")}
+    statuses = {**listed, **(statuses or {})}
     listing_calls: list[str | None] = []
 
     def fake_list(token, cloud_id, space_id, *, status=None, limit=250):
@@ -464,7 +531,7 @@ def _run_confluence(client, settings, default_pages, trashed_pages, statuses=Non
 _CONF_CONFIG = {"confluence_sync_targets": [{"id": "space-1", "type": "space"}]}
 
 
-def test_confluence_archived_and_trashed_pages_remove_exactly_their_documents():
+def test_confluence_archived_and_trashed_pages_are_excluded_not_deleted():
     client = _client(dict(_CONF_CONFIG), _confluence_docs())
     # Page 4 is absent from both listings: not a deletion signal.
     result, calls, ingest = _run_confluence(
@@ -474,9 +541,25 @@ def test_confluence_archived_and_trashed_pages_remove_exactly_their_documents():
         [{"id": "3", "status": "trashed"}],
     )
     assert calls == [None, "trashed"]
-    assert result["documents_removed"] == 2
-    assert _doc_ids(client) == ["c1", "c4", "x1", "y1"]
+    # Archived content is not deleted content: both pages leave retrieval, nothing is
+    # purged, and the other org's / other source's copy of page 2 is untouched.
+    assert result["documents_removed"] == 0 and result["documents_excluded"] == 2
+    assert client.deletes == []
+    assert _excluded_ids(client) == ["c2", "c3"]
+    assert _active_ids(client) == ["c1", "c4", "x1", "y1"]
     assert [c.kwargs["page_id"] for c in ingest.call_args_list] == ["1"]
+
+
+def test_confluence_deleted_status_is_the_only_listing_signal_that_purges():
+    client = _client(dict(_CONF_CONFIG), _confluence_docs())
+    result, _, _ = _run_confluence(
+        client,
+        ON,
+        [{"id": "1", "status": "current"}, {"id": "2", "status": "deleted"}],
+        [{"id": "3", "status": "trashed"}],
+    )
+    assert result["documents_removed"] == 1 and result["documents_excluded"] == 1
+    assert _doc_ids(client) == ["c1", "c3", "c4", "x1", "y1"] and _excluded_ids(client) == ["c3"]
 
 
 def test_confluence_flag_off_keeps_todays_behaviour():
@@ -501,9 +584,12 @@ def test_confluence_trashed_listing_error_still_honours_per_page_status():
 
     with patch.object(conf, "ensure_confluence_session", return_value=("tok", "cloud", None)), patch.object(
         conf, "ensure_confluence_rag_source", return_value=SRC
-    ), patch.object(conf, "list_space_pages", fake_list), patch.object(conf, "_queue_page_ingest", MagicMock()):
+    ), patch.object(conf, "list_space_pages", fake_list), patch.object(conf, "_queue_page_ingest", MagicMock()), patch.object(
+        conf, "get_page_status", lambda tok, cloud, pid: "archived" if pid == "2" else "current"
+    ):
         result = conf.run_confluence_sync(client, ORG, CONN, ON, actor_id="u")
-    assert result["documents_removed"] == 1 and _doc_ids(client) == ["c1", "c3", "c4", "x1", "y1"]
+    assert result["documents_excluded"] == 1 and result["documents_removed"] == 0
+    assert _excluded_ids(client) == ["c2"] and len(_doc_ids(client)) == 6
     assert any("trashed" in e for e in result["errors"])
 
 
@@ -561,10 +647,10 @@ def _notion_config(*ids: str) -> dict[str, Any]:
     return {"notion_sync_targets": [{"id": i, "type": "page"} for i in ids]}
 
 
-def test_notion_archived_or_trashed_page_removes_exactly_its_document_even_after_a_partial_sweep():
+def test_notion_archived_or_trashed_page_is_excluded_even_after_a_partial_sweep():
     client = _client(_notion_config("p1", "p2", "p3"), _notion_docs())
     # p3 fails to read: the sweep is partial, so reconcile must not run, but p2's own
-    # in_trash flag is still a safe per-page signal.
+    # in_trash flag is still a safe per-page signal: excluded, not deleted.
     result, exports = _run_notion(
         client,
         ON,
@@ -572,16 +658,19 @@ def test_notion_archived_or_trashed_page_removes_exactly_its_document_even_after
         fail={"p3"},
     )
     assert exports == ["p1"]
-    assert result["documents_removed"] == 1
-    assert _doc_ids(client) == ["p1", "p3", "x1", "y1"]
+    assert result["documents_removed"] == 0 and result["documents_excluded"] == 1
+    assert client.deletes == [] and _excluded_ids(client) == ["p2"]
+    assert _active_ids(client) == ["p1", "p3", "x1", "y1"]
 
 
-def test_notion_archived_flag_alone_is_a_removal_signal():
+def test_notion_archived_flag_excludes_and_only_a_404_removes():
     client = _client(_notion_config("p1", "p2"), _notion_docs())
     result, _ = _run_notion(client, ON, {"p1": {}, "p2": {"archived": True}})
-    # A clean sweep: p2 by its own flag, p3 by the existing full-sweep reconcile.
-    assert _doc_ids(client) == ["p1", "x1", "y1"]
-    assert result["documents_removed"] == 2
+    # A clean sweep: p2 excluded by its own flag (restorable from Notion's trash); p3
+    # answers 404 by id in the full-sweep reconcile, the only signal that removes.
+    assert _doc_ids(client) == ["p1", "p2", "x1", "y1"]
+    assert _excluded_ids(client) == ["p2"]
+    assert result["documents_removed"] == 1 and result["documents_excluded"] == 1
 
 
 def test_notion_flag_off_reads_page_once_and_removes_nothing():

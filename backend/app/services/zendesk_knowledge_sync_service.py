@@ -31,6 +31,10 @@ DELETED_WINDOW_OVERLAP = timedelta(minutes=5)
 # Check-by-id of indexed tickets, for deletions the listing no longer reports.
 VERIFY_POSITION_CONFIG_KEY = "zendesk_verify_position"
 VERIFY_BATCH_PER_SYNC = 25
+# Zendesk keeps a deleted ticket in "Deleted tickets" (restorable) for 30 days, then
+# scrubs it for good. Inside that window a ticket is only excluded from retrieval; a
+# ticket we excluded that still answers 404 after the window is confirmed deleted.
+SOFT_DELETE_RESTORE_WINDOW = timedelta(days=30)
 
 
 def _now_iso() -> str:
@@ -180,7 +184,7 @@ def fetch_deleted_tickets_since(
     return ids, read_through, False
 
 
-def _remove_deleted_ticket_documents(
+def _exclude_soft_deleted_ticket_documents(
     client: Any,
     settings: Settings,
     *,
@@ -193,10 +197,12 @@ def _remove_deleted_ticket_documents(
     default_since: str,
     errors: list[str],
 ) -> int:
-    """Remove documents of tickets Zendesk lists as deleted (off unless the flag is on).
+    """Exclude from retrieval the tickets Zendesk lists as deleted (off unless the flag is on).
 
-    Only tickets the deleted-tickets listing names are removed; a ticket missing from the
-    solved-ticket search is never treated as deleted. ``config`` is updated in place:
+    ``/deleted_tickets`` lists soft-deleted tickets, which an admin can still restore for
+    30 days: their documents are excluded (reversible), never deleted here. Only tickets
+    the listing names are excluded; a ticket missing from the solved-ticket search is
+    never treated as deleted. ``config`` is updated in place:
     the window advances to the end of the listing (less a clock-skew overlap) after a
     complete read, or to the last deletion read in order after a partial one. In
     dry-run the window stays put, so nothing planned is skipped once dry-run is off.
@@ -204,7 +210,7 @@ def _remove_deleted_ticket_documents(
     from app.services.source_lifecycle import (
         deletion_dry_run,
         deletion_propagation_enabled,
-        remove_source_documents,
+        exclude_source_documents,
     )
 
     if not deletion_propagation_enabled(settings):
@@ -216,13 +222,14 @@ def _remove_deleted_ticket_documents(
         ticket_ids, read_through, complete = fetch_deleted_tickets_since(
             subdomain, email, api_token, since_iso=since_iso, max_records=MAX_DELETED_TICKETS_PER_SYNC
         )
-        removed = remove_source_documents(
+        removed = exclude_source_documents(
             client,
             settings,
             org_id=org_id,
             source_id=source_id,
             external_ids={f"zendesk:ticket:{tid}" for tid in ticket_ids},
             signal="zendesk_deleted_tickets",
+            reason="soft_deleted",
         )
     except Exception as exc:  # noqa: BLE001
         # The window stays where it was; the next run reads it again.
@@ -245,17 +252,44 @@ def _remove_deleted_ticket_documents(
     return removed
 
 
-def _ticket_gone_checker(subdomain: str, email: str, api_token: str):
-    """``is_gone`` for the check-by-id pass: True only on a 404 for the ticket."""
+def _ticket_gone_checker(
+    subdomain: str,
+    email: str,
+    api_token: str,
+    *,
+    client: Any = None,
+    org_id: str = "",
+    source_id: str = "",
+):
+    """``is_gone`` for the check-by-id pass.
 
-    def is_gone(external_id: str) -> bool:
+    GET /tickets/{id} answers 404 for a soft-deleted ticket (still restorable) as well as
+    for one deleted for good, so a 404 alone is not a confirmed deletion: it excludes the
+    ticket (``EXCLUDE``). The deletion is confirmed (True, purge) only for a ticket this
+    pipeline excluded more than ``SOFT_DELETE_RESTORE_WINDOW`` ago that still answers 404:
+    by then Zendesk has scrubbed it and it can no longer be restored. A ticket returned
+    with ``status: deleted`` is excluded; any other 200 is live (and restores an exclusion).
+    """
+    from app.services.source_lifecycle import EXCLUDE, excluded_since
+
+    def is_gone(external_id: str) -> bool | str:
         ticket_id = external_id.removeprefix("zendesk:ticket:")
         try:
-            zendesk_request(subdomain, email, api_token, "GET", f"/tickets/{ticket_id}.json")
+            data = zendesk_request(subdomain, email, api_token, "GET", f"/tickets/{ticket_id}.json")
         except ZendeskAPIError as exc:
-            if exc.status_code == 404:
+            if exc.status_code != 404:
+                raise
+            since = (
+                excluded_since(client, org_id=org_id, source_id=source_id, external_id=external_id)
+                if client is not None
+                else None
+            )
+            if since is not None and datetime.now(UTC) - since >= SOFT_DELETE_RESTORE_WINDOW:
                 return True
-            raise
+            return EXCLUDE
+        ticket = data.get("ticket") if isinstance(data, dict) else None
+        if isinstance(ticket, dict) and str(ticket.get("status") or "").lower() == "deleted":
+            return EXCLUDE
         return False
 
     return is_gone
@@ -276,7 +310,8 @@ def _verify_ticket_documents(
     """Check a batch of indexed tickets by id each run (deletions the listing no longer has).
 
     ``/deleted_tickets`` only lists soft-deleted tickets for about 30 days and never lists
-    permanently deleted ones; a direct read returning 404 is the only signal left.
+    permanently deleted ones; a direct read is the only signal left (see
+    ``_ticket_gone_checker`` for when it confirms a deletion).
     """
     from app.services.source_lifecycle import (
         deletion_propagation_enabled,
@@ -294,11 +329,13 @@ def _verify_ticket_documents(
             org_id=org_id,
             source_id=source_id,
             external_id_prefix="zendesk:ticket:",
-            is_gone=_ticket_gone_checker(subdomain, email, api_token),
+            is_gone=_ticket_gone_checker(
+                subdomain, email, api_token, client=client, org_id=org_id, source_id=source_id
+            ),
             position=position,
             batch_size=VERIFY_BATCH_PER_SYNC,
             errors=errors,
-            signal="zendesk_ticket_404",
+            signal="zendesk_ticket_by_id",
         )
     except Exception as exc:  # noqa: BLE001
         errors.append(f"verify tickets: {type(exc).__name__}: {exc}")
@@ -461,7 +498,7 @@ def run_zendesk_knowledge_sync(
         # this updated_at than one run can page through. Report it instead of looping.
         errors.append(f"cursor_stalled: more than {MAX_TICKETS_PER_SYNC} tickets updated at {since_iso}")
         logger.warning("zendesk_knowledge_sync_cursor_stalled org_id=%s since=%s", org_id, since_iso)
-    documents_removed = _remove_deleted_ticket_documents(
+    documents_excluded = _exclude_soft_deleted_ticket_documents(
         client,
         settings,
         org_id=org_id,
@@ -473,7 +510,7 @@ def run_zendesk_knowledge_sync(
         default_since=since_iso,
         errors=errors,
     )
-    documents_removed += _verify_ticket_documents(
+    documents_removed = _verify_ticket_documents(
         client,
         settings,
         org_id=org_id,
@@ -484,7 +521,7 @@ def run_zendesk_knowledge_sync(
         config=config,
         errors=errors,
     )
-    cursor ={"updated_at": _iso_z(cursor_dt), "ids_at_since": sorted(ids_at_cursor)} if cursor_dt else None
+    cursor = {"updated_at": _iso_z(cursor_dt), "ids_at_since": sorted(ids_at_cursor)} if cursor_dt else None
     # ``zendesk_last_synced_at`` is the run time used for scheduling; the data cursor
     # lives in ``zendesk_sync_cursor``.
     config["zendesk_last_synced_at"] = _now_iso()
@@ -505,6 +542,7 @@ def run_zendesk_knowledge_sync(
         "pages_synced": records_synced,
         "jobs_queued": len(job_ids),
         "documents_removed": documents_removed,
+        "documents_excluded": documents_excluded,
         "job_ids": job_ids[:20],
         "errors": errors,
         "last_synced_at": config["zendesk_last_synced_at"],

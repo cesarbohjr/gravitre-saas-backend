@@ -114,8 +114,9 @@ def _discard_if_source_deleted(client: Client, org_id: str, job_id: str, doc_id:
     """Drop this job's document version when deletion propagation cancelled the job.
 
     Deletion propagation fails queued/running jobs of records the provider deleted
-    (``error_code='source_deleted'``); without this check a job claimed before the
-    deletion would recreate the deleted document.
+    (``error_code='source_deleted'``) or archived (``'source_excluded'``); without this
+    check a job claimed before the deletion would recreate the deleted document, or put
+    an archived record back into retrieval.
     """
     from app.services.source_lifecycle import ingest_job_cancelled
 
