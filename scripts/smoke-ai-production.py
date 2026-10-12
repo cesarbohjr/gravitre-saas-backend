@@ -224,10 +224,15 @@ def _admin_org(env: dict[str, str]) -> tuple[str, str, str]:
     """Conversation-creating smoke — isolated org only (never operator workspace)."""
     sys.path.insert(0, str(REPO))
     sys.path.insert(0, str(REPO / "scripts"))
-    from isolated_conversation_org import resolve_isolated_conversation_actor
+    from isolated_conversation_org import (
+        ensure_isolated_smoke_plan,
+        resolve_isolated_conversation_actor,
+    )
 
     client = _supabase_client(env)
     org_id, user_id, email = resolve_isolated_conversation_actor(env, client)
+    # Meson routes require the Control tier; without this the fixture org is on the default plan.
+    ensure_isolated_smoke_plan(client, org_id)
     return org_id, user_id, email
 
 

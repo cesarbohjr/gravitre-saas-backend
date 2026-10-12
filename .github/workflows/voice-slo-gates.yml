@@ -26,8 +26,8 @@ jobs:
       - name: Install deps
         run: pip install python-dotenv supabase
 
+      # A breach (exit 1) or too few samples to judge (exit 2) fails the run.
       - name: Live window alert (Metric A and Metric B separately)
-        continue-on-error: true
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
