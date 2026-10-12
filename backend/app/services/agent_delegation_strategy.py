@@ -6,6 +6,21 @@ from uuid import uuid4
 
 from app.services.execution_plan_service import ExecutionObservation, ExecutionPlan, ExecutionStep
 
+MAX_DELEGATION_DEPTH = 3
+
+
+class DelegationLoopError(ValueError):
+    """Delegating would hand work back to an agent already in the chain, or go too deep."""
+
+
+def delegation_chain(plan: ExecutionPlan) -> list[str]:
+    """Agents this plan was delegated through, outermost first (empty for a root plan)."""
+    for step in plan.steps:
+        chain = (step.meta or {}).get("delegation_chain")
+        if step.kind == "agent_delegation" and isinstance(chain, list):
+            return [str(a) for a in chain]
+    return []
+
 
 def execution_plan_with_agent_delegation_step(
     parent: ExecutionPlan,
@@ -41,6 +56,11 @@ def create_child_plan_for_delegation(
     agent_id: str,
     objective: str,
 ) -> ExecutionPlan:
+    chain = delegation_chain(parent)
+    if agent_id in chain:
+        raise DelegationLoopError(f"agent {agent_id} is already in this delegation chain")
+    if len(chain) >= MAX_DELEGATION_DEPTH:
+        raise DelegationLoopError(f"delegation deeper than {MAX_DELEGATION_DEPTH} agents")
     child_id = str(uuid4())
     return ExecutionPlan(
         plan_id=child_id,
@@ -52,7 +72,7 @@ def create_child_plan_for_delegation(
                 title=objective,
                 kind="agent_delegation",
                 status="pending",
-                meta={"agent_id": agent_id},
+                meta={"agent_id": agent_id, "delegation_chain": [*chain, agent_id]},
             )
         ],
         source=f"agent_delegation:{agent_id}",

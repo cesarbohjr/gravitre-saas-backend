@@ -41,9 +41,19 @@ def orgs_with_recent_observations(client: Any, *, now: datetime | None = None) -
     return sorted({str(r["org_id"]) for r in rows if r.get("org_id")})
 
 
-def run_behavior_signals(client: Any, *, now: datetime | None = None) -> dict[str, int]:
-    """One pass over all orgs; returns rows written per org. Never raises per org."""
+def run_behavior_signals(client: Any, *, now: datetime | None = None, settings: Any = None) -> dict[str, int]:
+    """One pass over all orgs; returns rows written per org. Never raises per org.
+
+    With ACCOUNT_PLAY_PROPOSALS_ENABLED, each org's at-risk accounts then get
+    Play proposals (Phase 8) from the fresh signals.
+    """
+    from app.services.account_play_triggers import (
+        account_play_proposals_enabled,
+        run_account_play_proposals,
+    )
+
     now = now or datetime.now(UTC)
+    propose = settings is not None and account_play_proposals_enabled(settings)
     written: dict[str, int] = {}
     for org_id in orgs_with_recent_observations(client, now=now):
         try:
@@ -53,6 +63,12 @@ def run_behavior_signals(client: Any, *, now: datetime | None = None) -> dict[st
             written[org_id] = int(res.data or 0)
         except Exception as exc:  # noqa: BLE001
             logger.warning("behavior_signals_org_failed org_id=%s error=%s", org_id, type(exc).__name__)
+            continue
+        if propose:
+            proposals = run_account_play_proposals(client, settings, org_id, now=now)
+            filed = sum(1 for p in proposals if p.get("status") == "proposed" and not p.get("deduplicated"))
+            if filed:
+                logger.info("account_play_proposals org_id=%s filed=%s", org_id, filed)
     return written
 
 
@@ -61,7 +77,7 @@ async def _loop(settings: Settings, interval: int) -> None:
     await asyncio.sleep(min(_INITIAL_DELAY_S, interval))
     while True:
         try:
-            written = await asyncio.to_thread(run_behavior_signals, client)
+            written = await asyncio.to_thread(run_behavior_signals, client, settings=settings)
             logger.info("behavior_signals_tick orgs=%s rows=%s", len(written), sum(written.values()))
         except Exception as exc:  # noqa: BLE001
             logger.warning("behavior_signals_tick_failed error=%s", exc)

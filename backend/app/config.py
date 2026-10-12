@@ -589,6 +589,10 @@ class Settings(BaseSettings):
     # with recent customer observations. Needs migration 20261012040000.
     entity_behavior_signals_enabled: bool = False
     entity_behavior_signals_interval_seconds: int = 86400
+    # Phase 8: after the daily behaviour pass, at-risk accounts get a Play *proposal*
+    # (never a run or a customer message). Also needs WORK_OBJECT_PROPOSALS_ENABLED
+    # and ACCOUNT_HEALTH_ENABLED.
+    account_play_proposals_enabled: bool = False
     # Shared secret for /api/watchers/agent/signal HMAC or X-Watcher-Secret header.
     watcher_agent_webhook_secret: str | None = None
     # Memory promotion evaluation (v4). 0 disables; default 8 hours.

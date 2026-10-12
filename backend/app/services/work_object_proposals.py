@@ -50,6 +50,7 @@ def propose_work_object(
     priority: str = "medium",
     goal_id: str | None = None,
     business_entity_id: str | None = None,
+    play_key: str | None = None,
 ) -> dict[str, Any]:
     """File one proposal, or return the existing one for the same key."""
     if not proposals_enabled(settings):
@@ -88,6 +89,7 @@ def propose_work_object(
                 "source": source,
                 "evidence": evidence[:MAX_EVIDENCE],
                 "proposed_at": now,
+                **({"play_key": play_key} if play_key else {}),
             }
         },
         "created_at": now,
