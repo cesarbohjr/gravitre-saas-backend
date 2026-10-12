@@ -39,6 +39,7 @@ from app.connectors.provider_revoke import (
     revoke_provider_tokens,
 )
 from app.core.logging import get_logger
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.domain_events import (
     EVENT_SOURCE_DISCONNECTED,
     handlers_for,
@@ -611,7 +612,7 @@ def restore_source_documents(
     }
     restored: list[str] = []
     for ext, row in sorted(latest.items()):
-        meta = dict(row.get("metadata") or {})
+        meta = safe_normalize_stored_dict(row, key="metadata")
         meta.pop(EXCLUSION_METADATA_KEY, None)
         if ext in active:
             # A newer version is live already; only drop the stale marker.
