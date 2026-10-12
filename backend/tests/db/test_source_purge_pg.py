@@ -14,8 +14,8 @@ from tests.db.pg_harness import MIGRATIONS, pg_cluster, requires_pg
 
 pytestmark = requires_pg
 
-OUTBOX = MIGRATIONS / "20261011220000_domain_event_outbox.sql"
-PURGE = MIGRATIONS / "20261012010000_source_lifecycle_purge.sql"
+OUTBOX = MIGRATIONS / "20261012024141_domain_event_outbox.sql"
+PURGE = MIGRATIONS / "20261012024200_source_lifecycle_purge.sql"
 PROPOSALS = MIGRATIONS / "20261012030000_entity_merge_proposals.sql"
 
 ORG = "11111111-1111-4111-8111-111111111111"

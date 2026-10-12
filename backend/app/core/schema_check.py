@@ -24,9 +24,9 @@ SCHEMA_DEPENDENCIES: dict[str, tuple[str, ...]] = {
     "goals": ("category",),
     "agent_memories": ("is_current",),
     "org_metric_definitions": ("definition",),
-    # Phase 2A outbox (migration 20261011220000); logs until the migration is applied.
+    # Phase 2A outbox (migration 20261012024141); logs until the migration is applied.
     "domain_event_outbox": ("event_type", "status", "lease_owner", "delivered_handlers"),
-    # Phase 2B purge receipts (migration 20261012010000).
+    # Phase 2B purge receipts (migration 20261012024200).
     "source_purge_receipts": ("connector_id", "disconnected_at", "dry_run", "counts"),
 }
 

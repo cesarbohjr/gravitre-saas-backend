@@ -3,7 +3,7 @@
 Producers
 ---------
 Critical events are written by Postgres triggers in the same transaction as the
-business change (``supabase/migrations/20261011220000_domain_event_outbox.sql``):
+business change (``supabase/migrations/20261012024141_domain_event_outbox.sql``):
 
 * ``execution.outcome_finalized``: a ``workflow_runs`` row enters a terminal status.
 * ``source.disconnected``: a connector is soft-deleted, or a connected row is

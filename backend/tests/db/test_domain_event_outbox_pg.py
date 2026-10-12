@@ -2,7 +2,7 @@
 
 Starts a private cluster (initdb + pg_ctl on a unix socket in a temp dir), creates
 the Supabase roles and the minimal shapes of the tables the triggers attach to,
-applies ``20261011220000_domain_event_outbox.sql`` unchanged, and checks the
+applies ``20261012024141_domain_event_outbox.sql`` unchanged, and checks the
 properties the outbox relies on: same-transaction writes, idempotency, RLS,
 SKIP LOCKED claiming across concurrent sessions, leases, retries and
 dead-lettering. Skips when no PostgreSQL server binaries are installed.
@@ -17,7 +17,7 @@ import pytest
 
 from tests.db.pg_harness import MIGRATIONS, PG_BIN, Pg, pg_cluster, requires_pg
 
-MIGRATION = MIGRATIONS / "20261011220000_domain_event_outbox.sql"
+MIGRATION = MIGRATIONS / "20261012024141_domain_event_outbox.sql"
 
 ORG = "11111111-1111-4111-8111-111111111111"
 USER = "22222222-2222-4222-8222-222222222222"

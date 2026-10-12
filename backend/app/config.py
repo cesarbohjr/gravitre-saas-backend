@@ -553,7 +553,7 @@ class Settings(BaseSettings):
     knowledge_retention_interval_seconds: int = 86400
     retrieved_content_guard_enabled: bool = False
     # Phase 2D in-process indexing pilot: only these orgs (comma-separated UUIDs), only
-    # when each also opts in to customer context. Needs migration 20261012020000.
+    # when each also opts in to customer context. Needs migration 20261012024300.
     rag_worker_pilot_enabled: bool = False
     rag_worker_pilot_org_ids: str = ""
     rag_worker_pilot_interval_seconds: int = 30
