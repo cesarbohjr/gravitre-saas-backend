@@ -140,12 +140,25 @@ def _earned_modes(readiness: Any) -> set[str]:
     return earned
 
 
+def _observed_signals(settings: Any, client: Any, org_id: str) -> set[str] | None:
+    """This org's recent signals when Play signal evaluation is on, else None."""
+    from app.plays.signal_evidence import (
+        org_observed_signals,
+        signal_evaluation_enabled,
+    )
+
+    if not signal_evaluation_enabled(settings):
+        return None
+    return org_observed_signals(client, org_id)
+
+
 def _resolve_current_readiness(
     *,
     play: Any,
     client: Any,
     org_id: str,
     environment_name: str,
+    settings: Any = None,
 ) -> Any:
     connected = connected_vendors(client, org_id, environment_name)
     return resolve_play_readiness(
@@ -154,6 +167,7 @@ def _resolve_current_readiness(
         client=client,
         org_id=org_id,
         policy_authorized_actions=set(),
+        observed_signals=_observed_signals(settings, client, org_id),
     )
 
 
@@ -169,6 +183,7 @@ def list_plays(
     # One read each for metrics and workflow bindings, shared by every Play,
     # instead of two queries per Play (~100 sequential calls per page load).
     metric_keys = org_metric_keys(client, org_id)
+    observed_signals = _observed_signals(settings, client, org_id)
     bindings_by_play = list_all_play_workflow_bindings(client, org_id)
     items = []
     for play in platform_play_templates():
@@ -178,6 +193,7 @@ def list_plays(
             client=client,
             org_id=org_id,
             policy_authorized_actions=set(),
+            observed_signals=observed_signals,
             metric_keys=metric_keys,
         )
         bindings = bindings_by_play.get(play.key.strip().lower(), [])
@@ -259,6 +275,7 @@ def save_play_installation(
         client=client,
         org_id=org_id,
         environment_name=environment_name,
+        settings=settings,
     )
     earned = _earned_modes(readiness)
     if mode not in earned:
@@ -313,6 +330,7 @@ async def observe_customer_rescue_play(
         client=client,
         org_id=org_id,
         policy_authorized_actions=set(),
+        observed_signals=_observed_signals(settings, client, org_id),
     )
     observed = await observe_customer_rescue(
         org_id,
@@ -345,6 +363,7 @@ def observe_marketing_performance(
         client=client,
         org_id=org_id,
         policy_authorized_actions=set(),
+        observed_signals=_observed_signals(settings, client, org_id),
     )
     signals = list_marketing_performance_signals(client, org_id, limit=limit)
     return {
@@ -380,6 +399,7 @@ def observe_revenue_recovery(
         client=client,
         org_id=org_id,
         policy_authorized_actions=set(),
+        observed_signals=_observed_signals(settings, client, org_id),
     )
     signals = list_revenue_recovery_signals(client, org_id, limit=limit)
     return {
@@ -416,6 +436,7 @@ def get_play_readiness(
         client=client,
         org_id=org_id,
         policy_authorized_actions=set(),
+        observed_signals=_observed_signals(settings, client, org_id),
     )
     bindings = list_play_workflow_bindings(client, org_id, play.key)
     return {
@@ -472,6 +493,7 @@ async def run_play(
         client=client,
         org_id=org_id,
         policy_authorized_actions=set(),
+        observed_signals=_observed_signals(settings, client, org_id),
     )
     if mode == "ACT WITH APPROVAL" and not readiness.act_with_approval_ready:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Play is not ready to act with approval")

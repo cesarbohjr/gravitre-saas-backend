@@ -23,6 +23,7 @@ from app.operators import router as operators_router
 from app.routers import (
     agent_memories,
     entity_observations,
+    recommendation_feed,
     agent_improvements,
     agent_knowledge_assignments,
     knowledge_fabric,
@@ -730,6 +731,7 @@ app.include_router(extension.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
 app.include_router(entity_observations.router)
+app.include_router(recommendation_feed.router)
 app.include_router(enterprise.router)
 app.include_router(platform.router)
 app.include_router(federation.router)

@@ -428,6 +428,10 @@ def measure_actioned_row(
     only_record: str | None = None,
 ) -> MeasurementSummary:
     """Measure one ACTIONED result against every recipe candidate it carries."""
+    from app.outcome_packs.observation_operands import (
+        observation_operands,
+        recipe_uses_observations,
+    )
     from app.outcome_packs.registry import get_recipe, metric_definition
     from app.plays.verification import record_inconclusive_play_result
     from app.services.cognitive_metrics import get_org_metric_semantics
@@ -472,6 +476,18 @@ def measure_actioned_row(
             summary.errors += 1
             summary.exceptions.append({"outcomeId": actioned_id, "kind": "read_failed", "message": str(exc)[:300]})
             continue
+        if recipe_uses_observations(recipe) and isinstance(record, dict):
+            record = {
+                **record,
+                "observations": observation_operands(
+                    client,
+                    org_id,
+                    system=str(candidate["system"]),
+                    record_type=str(candidate["record_type"]),
+                    record_id=str(candidate["record_id"]),
+                    now=now,
+                ),
+            }
         observed_at = now.isoformat()
         for contribution in open_contributions:
             metric = contribution.metric_key

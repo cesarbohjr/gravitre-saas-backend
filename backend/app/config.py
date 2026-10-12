@@ -568,6 +568,15 @@ class Settings(BaseSettings):
     entity_observations_enabled: bool = False
     # Phase 4: account cards (observations, trends, behaviour) in the chat and voice context.
     entity_context_cards_enabled: bool = False
+    # Phase 5 (needs migration 20261012050000): goal_id / work_object_id links on
+    # work objects and agent jobs, and goal progress from linked work.
+    goal_links_enabled: bool = False
+    # Phase 5: AI-proposed work filed as work_objects.status='proposed' (accept/dismiss).
+    work_object_proposals_enabled: bool = False
+    # Phase 5: Play required_signals checked against this org's recent events.
+    play_signal_evaluation_enabled: bool = False
+    # Phase 5: one ranked recommendation feed (/api/recommendations/feed).
+    recommendation_feed_enabled: bool = False
     # Shared secret for /api/watchers/agent/signal HMAC or X-Watcher-Secret header.
     watcher_agent_webhook_secret: str | None = None
     # Memory promotion evaluation (v4). 0 disables; default 8 hours.

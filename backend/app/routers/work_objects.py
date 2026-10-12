@@ -8,6 +8,7 @@ from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
@@ -82,3 +83,76 @@ def get_work_object_route(
         limit=events_limit,
     )
     return {"workObject": item, "events": events}
+
+
+class ProposalDecisionRequest(BaseModel):
+    reason: str | None = None
+
+
+def _decide(
+    work_object_id: UUID,
+    body: ProposalDecisionRequest,
+    user: dict,
+    org_id: str | None,
+    settings: Settings,
+    *,
+    accept: bool,
+) -> dict[str, Any]:
+    from app.services.work_object_proposals import (
+        ProposalError,
+        decide_proposal,
+        proposals_enabled,
+    )
+    from app.workflows.audit import write_audit_event
+
+    if not proposals_enabled(settings):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = get_supabase_client(settings)
+    try:
+        result = decide_proposal(
+            client,
+            org_id=org_id,
+            work_object_id=str(work_object_id),
+            actor_id=str(user.get("user_id") or ""),
+            accept=accept,
+            reason=body.reason,
+        )
+    except ProposalError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="WorkObject not found")
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=str(user.get("user_id") or ""),
+        action="work_object.proposal_accepted" if accept else "work_object.proposal_dismissed",
+        resource_type="work_object",
+        resource_id=str(work_object_id),
+        metadata={"reason": body.reason},
+    )
+    return {"workObject": result}
+
+
+@router.post("/{work_object_id}/accept")
+def accept_proposal_route(
+    work_object_id: UUID,
+    body: ProposalDecisionRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Turn an AI proposal into planned work. Nothing runs until someone starts it."""
+    return _decide(work_object_id, body, user, org_id, settings, accept=True)
+
+
+@router.post("/{work_object_id}/dismiss")
+def dismiss_proposal_route(
+    work_object_id: UUID,
+    body: ProposalDecisionRequest,
+    user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    return _decide(work_object_id, body, user, org_id, settings, accept=False)

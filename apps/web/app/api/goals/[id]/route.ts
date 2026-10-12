@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from "next/server"
 import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
 import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
+import { proxyToFastApi } from "@/lib/backend-proxy"
+
+// Phase 5: with GOALS_BACKEND_WRITES=true, goals are read and written through the
+// FastAPI goals API (one write path, same response shape). Off: unchanged.
+function goalsViaBackend() {
+  return process.env.GOALS_BACKEND_WRITES === "true"
+}
 
 interface RouteParams {
   params: Promise<{ id: string }>
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
+  if (goalsViaBackend()) {
+    const { id } = await params
+    return proxyToFastApi(request, `/api/goals/${encodeURIComponent(id)}`)
+  }
   try {
     const { id } = await params
     const supabase = createSupabaseRouteClient(request)
@@ -36,6 +47,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  if (goalsViaBackend()) {
+    const { id } = await params
+    return proxyToFastApi(request, `/api/goals/${encodeURIComponent(id)}`)
+  }
   try {
     const { id } = await params
     const supabase = createSupabaseRouteClient(request)
