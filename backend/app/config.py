@@ -597,6 +597,10 @@ class Settings(BaseSettings):
     ml_prediction_labeling_interval_seconds: int = 86400
     # Phase 6: churn training holds out the most recent outcomes instead of a random fifth.
     ml_time_split_enabled: bool = False
+    # Outcomes reach the learners: an execution.outcome_finalized relay handler records the
+    # run on its linked work object, labels workflow-run predictions and feeds verified Play
+    # results to recommendation learning. Needs DOMAIN_EVENT_RELAY_ENABLED as well.
+    outcome_learning_handler_enabled: bool = False
     # Phase 7: per-dimension account health (/api/entities/health), no composite score.
     account_health_enabled: bool = False
     # Phase 7: daily rule-based behaviour signals (compute_entity_behavior_signals) for orgs
