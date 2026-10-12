@@ -52,3 +52,21 @@ def test_an_enabled_feature_or_pilot_org_list_is_reported():
     _lines, problems, _pins = rsv.audit({"ENTITY_WRITER_ENABLED": "true", "RAG_WORKER_PILOT_ORG_IDS": "a,b"})
     assert any("ENTITY_WRITER_ENABLED" in p for p in problems)
     assert any("RAG_WORKER_PILOT_ORG_IDS" in p for p in problems)
+
+
+def test_owner_approved_value_is_reported_not_a_problem():
+    lines, problems, pins = rsv.audit({"RETRIEVED_CONTENT_GUARD_ENABLED": "true"})
+    assert problems == []
+    assert "RETRIEVED_CONTENT_GUARD_ENABLED=true" not in pins
+    assert "RETRIEVED_CONTENT_GUARD_ENABLED='true' (owner-approved)" in lines
+
+
+def test_approved_values_cover_only_safety_pins_and_never_add_pins():
+    assert set(rsv.APPROVED_VALUES) <= set(rsv.SAFETY_PINS)
+    _lines, _problems, pins = rsv.audit({})
+    assert "RETRIEVED_CONTENT_GUARD_ENABLED=false" in pins
+
+
+def test_guard_switched_back_off_is_still_clean():
+    _lines, problems, _pins = rsv.audit({"RETRIEVED_CONTENT_GUARD_ENABLED": "false"})
+    assert problems == []
