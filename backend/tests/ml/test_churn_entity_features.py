@@ -442,6 +442,10 @@ async def test_advisory_gives_a_deployed_entity_model_its_features_only_with_fla
             await svc.build_churn_advisory_cards(
                 ORG, settings=Settings(churn_entity_features_enabled=flag), client=_FakeDB()
             )
+        assert loader.called is expect_enriched
+        if not flag:
+            # Flag off: the entity-trained model is never fed imputed features.
+            assert not scorer.predict_structured.await_count
+            continue
         sent = scorer.predict_structured.await_args.kwargs["customer_features"]
         assert ("obs_sentiment_mean" in sent) is expect_enriched
-        assert loader.called is expect_enriched

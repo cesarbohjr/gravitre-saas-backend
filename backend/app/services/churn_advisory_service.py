@@ -140,13 +140,17 @@ async def build_churn_advisory_cards(
     except Exception as exc:  # noqa: BLE001
         logger.debug("churn_advisory_load_model_skipped org_id=%s err=%s", org_id, exc)
 
+    entity_model = trained and bool(getattr(scorer, "has_optional_features", lambda: False)())
+    entity_flag_on = getattr(active, "churn_entity_features_enabled", False) is True
+    if entity_model and not entity_flag_on:
+        # A model trained with entity features would score every account on
+        # imputed values with the flag off: don't use it at all.
+        logger.info("churn_advisory_entity_model_needs_flag org_id=%s", org_id)
+        scorer, trained = ChurnRiskScorer(), False
+
     batch = rows[: max(1, int(limit))]
     entity_features: list[dict[str, Any]] = [{} for _ in batch]
-    if (
-        trained
-        and getattr(active, "churn_entity_features_enabled", False) is True
-        and getattr(scorer, "has_optional_features", lambda: False)()
-    ):
+    if trained and entity_model and entity_flag_on:
         # The deployed model was trained with entity features: give it the same
         # aggregates, as of now (missing stays missing).
         from datetime import UTC, datetime
