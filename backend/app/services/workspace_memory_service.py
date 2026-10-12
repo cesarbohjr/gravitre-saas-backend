@@ -24,6 +24,7 @@ from app.services.memory_contamination_guard import (
     without_lineage,
 )
 from app.services.memory_extraction_service import extract_typed_memories_structured
+from app.services.memory_source_liveness import drop_memories_from_revoked_sources
 from app.services.memory_temporal_service import (
     APPEND_ONLY_CATEGORIES,
     TEMPORAL_CATEGORIES,
@@ -297,6 +298,9 @@ def recall_workspace(
         from app.services.memory_temporal_service import get_memory_history
 
         history = get_memory_history(client, org_id, memory_key)
+        history = drop_memories_from_revoked_sources(
+            client, org_id, history, settings=settings, surface="workspace_memory_history"
+        )
         return [attach_recall_honesty(h) for h in history]
 
     limit = max(1, min(int(top_k), 50))
@@ -377,7 +381,13 @@ def recall_workspace(
         scored.append((score, labeled))
 
     scored.sort(key=lambda pair: pair[0], reverse=True)
-    return [item for _, item in scored[:limit]]
+    ranked = [item for _, item in scored]
+    # Never recall a memory learned from a connector that is no longer live, even
+    # before the disconnect purge has run (no-op unless lineage is on).
+    ranked = drop_memories_from_revoked_sources(
+        client, org_id, ranked, settings=settings, surface="workspace_memory_recall"
+    )
+    return ranked[:limit]
 
 
 def extract_typed_memories_from_act(

@@ -20,6 +20,7 @@ from app.services.memory_contamination_guard import (
     validate_memory_write,
     without_lineage,
 )
+from app.services.memory_source_liveness import drop_memories_from_revoked_sources
 
 VALID_CATEGORIES = frozenset(
     {
@@ -394,7 +395,9 @@ def search_agent_memories(
         "p_category": _normalize_category(category) if category and category != "all" else None,
     }
     r = client.rpc("agent_memory_search", payload).execute()
-    rows = list(r.data or [])
+    rows = drop_memories_from_revoked_sources(
+        client, org_id, list(r.data or []), settings=settings, surface="agent_memory_search"
+    )
     memory_ids = [str(row["memory_id"]) for row in rows if row.get("memory_id")]
     if memory_ids:
         increment_memory_usage(client, memory_ids, org_id=org_id)
@@ -455,6 +458,9 @@ def search_department_memories(
             .data
             or []
         )
+        rows = drop_memories_from_revoked_sources(
+            client, org_id, rows, settings=settings, surface="department_memory_fallback"
+        )
         return [
             {
                 "id": str(row.get("id")),
@@ -473,6 +479,9 @@ def search_department_memories(
             }
             for row in rows
         ]
+    rows = drop_memories_from_revoked_sources(
+        client, org_id, rows, settings=settings, surface="department_memory_search"
+    )
     memory_ids = [str(row["memory_id"]) for row in rows if row.get("memory_id")]
     if memory_ids:
         increment_memory_usage(client, memory_ids, org_id=org_id)
@@ -710,7 +719,9 @@ async def get_relevant_agent_memory(
         results: list[dict[str, Any]] = []
         for category in memory_categories:
             results.extend(list_agent_memories(client, org_id, agent_id, category=category, query=query))
-        return results
+        return drop_memories_from_revoked_sources(
+            client, org_id, results, settings=settings, surface="agent_memory_list"
+        )
     return search_agent_memories(settings, client, org_id, agent_id, query)
 
 

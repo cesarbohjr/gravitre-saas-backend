@@ -242,6 +242,24 @@ _EMAIL_STATUSES = frozenset(
 )
 
 
+def _outcome_memory_insight(run_id: Any, final_status: str, errors: list[str] | None, settings: Any) -> str:
+    """Text of the workflow-outcome agent memory.
+
+    Step errors can quote a provider's response, and a run can touch several
+    connectors, so this memory cannot name one source to be purged by. With
+    MEMORY_SOURCE_LINEAGE_ENABLED it keeps the error count, not the text; off, it
+    is unchanged.
+    """
+    from app.services.memory_contamination_guard import lineage_required
+
+    insight = f"Run {run_id} finished with status {final_status}."
+    if errors and lineage_required(settings):
+        insight += f" {len(errors)} step error(s); details are on the run."
+    elif errors:
+        insight += f" Errors: {'; '.join(errors[:3])}"
+    return insight
+
+
 def _finalize_run(
     ctx: _GraphRunContext,
     *,
@@ -409,9 +427,7 @@ def _finalize_run(
                     # procedure merely because its graph reached a terminal node.
                     may_learn = final_status == RUN_STATUS_FAILED or workflow_verified
                     if may_learn:
-                        insight = f"Run {ctx.run_id} finished with status {final_status}."
-                        if errors:
-                            insight += f" Errors: {'; '.join(errors[:3])}"
+                        insight = _outcome_memory_insight(ctx.run_id, final_status, errors, ctx.settings)
                         create_agent_memory(
                             ctx.settings,
                             ctx.client,

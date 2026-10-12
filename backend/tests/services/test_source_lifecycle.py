@@ -146,6 +146,8 @@ def _reset(monkeypatch):
 
 # ------------------------------------------------------------------ purge handler
 
+LINEAGE_ON = SimpleNamespace(memory_source_lineage_enabled=True)
+
 
 def test_handler_plans_by_default(_reset):
     client = _Client({"connectors": [{"id": CONN, "org_id": ORG, "vendor": "HubSpot", "type": "hubspot"}]})
@@ -168,7 +170,9 @@ def test_handler_plans_by_default(_reset):
 @pytest.mark.parametrize("value", [None, "false", 0, True])
 def test_only_explicit_false_turns_dry_run_off(value):
     client = _Client()
-    sl.handle_source_disconnected(client, _event(), SimpleNamespace(source_purge_dry_run=value))
+    sl.handle_source_disconnected(
+        client, _event(), SimpleNamespace(source_purge_dry_run=value, memory_source_lineage_enabled=True)
+    )
     assert client.rpc_calls[0][1]["p_dry_run"] is True
     assert client.rpc_calls[1][1]["p_dry_run"] is True
 
@@ -176,7 +180,9 @@ def test_only_explicit_false_turns_dry_run_off(value):
 @pytest.mark.parametrize("dry_run", [True, False])
 def test_memory_purge_follows_derived_purge_with_same_mode(_reset, dry_run):
     client = _Client()
-    counts = sl.handle_source_disconnected(client, _event(), SimpleNamespace(source_purge_dry_run=dry_run))
+    counts = sl.handle_source_disconnected(
+        client, _event(), SimpleNamespace(source_purge_dry_run=dry_run, memory_source_lineage_enabled=True)
+    )
     assert [n for n, _ in client.rpc_calls] == ["purge_connector_derived_data", "purge_connector_memories"]
     assert client.rpc_calls[1][1] == {
         "p_org_id": ORG,
@@ -198,7 +204,7 @@ def test_memory_purge_follows_derived_purge_with_same_mode(_reset, dry_run):
 )
 def test_missing_memory_purge_function_is_logged_and_skipped(_reset, error):
     client = _Client(memory_rpc_error=error)
-    counts = sl.handle_source_disconnected(client, _event(), SimpleNamespace())
+    counts = sl.handle_source_disconnected(client, _event(), LINEAGE_ON)
     assert counts["rag_sources"] == 2
     assert counts["agent_memories"] == "unavailable"
     assert _reset[0]["metadata"]["counts"]["agent_memories"] == "unavailable"
@@ -207,7 +213,7 @@ def test_missing_memory_purge_function_is_logged_and_skipped(_reset, error):
 def test_memory_purge_failure_raises_so_relay_retries():
     client = _Client(memory_rpc_error=RuntimeError("connection reset"))
     with pytest.raises(sl.SourcePurgeError):
-        sl.handle_source_disconnected(client, _event(), SimpleNamespace())
+        sl.handle_source_disconnected(client, _event(), LINEAGE_ON)
 
 
 def test_handler_purges_when_dry_run_off(_reset):
@@ -219,10 +225,32 @@ def test_handler_purges_when_dry_run_off(_reset):
 
 def test_hard_deleted_connector_uses_payload_vendor():
     client = _Client()  # row is gone
-    sl.handle_source_disconnected(client, _event(connector_type="gmail", hard_deleted=True), SimpleNamespace())
+    sl.handle_source_disconnected(client, _event(connector_type="gmail", hard_deleted=True), LINEAGE_ON)
     assert client.rpc_calls[0][1]["p_vendor"] == "gmail"
     # The memory purge gets the same vendor, to scope untagged observations.
     assert client.rpc_calls[1][1]["p_vendor"] == "gmail"
+
+
+def test_memory_purge_does_not_run_with_lineage_off(_reset):
+    """Flag off: only the derived-data purge runs, exactly as before this PR."""
+    client = _Client()
+    counts = sl.handle_source_disconnected(client, _event(), SimpleNamespace(source_purge_dry_run=False))
+    assert [n for n, _ in client.rpc_calls] == ["purge_connector_derived_data"]
+    assert counts["agent_memories"] == "lineage_off"
+
+
+def test_disconnect_handler_invalidates_derived_context_caches(_reset, monkeypatch):
+    from app.services import memory_source_liveness as msl
+
+    calls: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        msl, "invalidate_org_derived_context", lambda org_id, settings=None, reason="": calls.append((org_id, reason))
+    )
+    sl.handle_source_disconnected(_Client(), _event(), LINEAGE_ON)
+    assert calls == [(ORG, "source.disconnected")]
+    calls.clear()
+    sl.handle_source_disconnected(_Client(), _event(), SimpleNamespace())
+    assert calls == []
 
 
 def test_malformed_event_completes_without_purging():

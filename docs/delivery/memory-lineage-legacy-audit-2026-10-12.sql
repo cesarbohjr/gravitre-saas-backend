@@ -102,3 +102,99 @@ SELECT lower(o.source_system) AS source_system,
   FROM public.entity_observations o
  GROUP BY 1
  ORDER BY 1;
+
+-- 6) Likely origin of the untagged memories that may hold connector content
+--    (G2, G3, G7, G8): the connector vendor named in the row's provenance or text
+--    (matched against every vendor the org has ever connected, disconnected ones
+--    included), and whether that vendor still has a live connector in the org.
+--      revoked_vendor  the named vendor has no live connector: the rows most likely
+--                      to surface data from a removed source. Review these first.
+--      live_vendor     the vendor is still connected.
+--      no_vendor_named nothing in the row names a vendor the org has connected.
+--    A guess to order the review, never a tag: the read-time filter and the purge
+--    act only on source_connector_id. A row naming two vendors is counted under each.
+--    Works before and after 20261012070000 (reads the lineage column through
+--    to_jsonb, which is NULL when the column does not exist yet). The text match
+--    scans every candidate row; on a large table run it outside peak hours.
+WITH vendors AS (
+  SELECT DISTINCT c.org_id, lower(coalesce(nullif(c.vendor, ''), c.type)) AS vendor
+    FROM public.connectors c
+   WHERE length(coalesce(nullif(c.vendor, ''), c.type, '')) >= 3
+),
+live AS (
+  SELECT DISTINCT c.org_id, lower(coalesce(nullif(c.vendor, ''), c.type)) AS vendor
+    FROM public.connectors c
+   WHERE c.deleted_at IS NULL
+     AND lower(coalesce(to_jsonb(c) ->> 'status', '')) NOT IN ('revoked', 'disconnected', 'deleted', 'inactive', 'disabled')
+),
+candidates AS (
+  SELECT m.id, m.org_id, m.is_active, m.created_at,
+         CASE
+           WHEN m.provenance LIKE 'connector_confirm%' THEN 'G2 connector_confirm'
+           WHEN m.source_class = 'untrusted_external' THEN 'G3 external_content'
+           WHEN m.source_class = 'model_inference' THEN 'G7 model_inference'
+           ELSE 'G8 unclassified'
+         END AS legacy_group,
+         lower(coalesce(m.provenance, '') || ' ' || coalesce(m.content, '')) AS body
+    FROM public.agent_memories m
+   WHERE to_jsonb(m) ->> 'source_connector_id' IS NULL
+     AND NOT (coalesce(m.source_class, '') = 'probe' OR coalesce(m.provenance, '') ~* '(probe|smoke)')
+     AND (m.provenance LIKE 'connector_confirm%'
+          OR m.source_class = 'untrusted_external'
+          OR (m.source_class = 'model_inference')
+          OR (m.source_class IS NULL
+              AND coalesce(m.provenance, '') NOT LIKE 'v4:%'
+              AND coalesce(m.provenance, '') NOT LIKE 'learn_outcome:%'
+              AND coalesce(m.provenance, '') NOT LIKE 'outcome_learning%'))
+)
+SELECT 'origin' AS query,
+       cand.legacy_group,
+       coalesce(v.vendor, '-') AS likely_vendor,
+       CASE WHEN v.vendor IS NULL THEN 'no_vendor_named'
+            WHEN lv.vendor IS NULL THEN 'revoked_vendor'
+            ELSE 'live_vendor' END AS vendor_state,
+       count(DISTINCT cand.id) AS rows,
+       count(DISTINCT cand.id) FILTER (WHERE cand.is_active) AS active,
+       count(DISTINCT cand.org_id) AS orgs,
+       min(cand.created_at) AS oldest,
+       max(cand.created_at) AS newest
+  FROM candidates cand
+  LEFT JOIN vendors v ON v.org_id = cand.org_id AND position(v.vendor IN cand.body) > 0
+  LEFT JOIN live lv ON lv.org_id = cand.org_id AND lv.vendor = v.vendor
+ GROUP BY 2, 3, 4
+ ORDER BY 2, 4, 3;
+
+-- 7) Per org, active untagged memories naming a vendor that is no longer connected
+--    (the "revoked_vendor" rows of query 6). Ids only, for the owner's sampling;
+--    open individual rows in the table editor rather than exporting content.
+WITH vendors AS (
+  SELECT DISTINCT c.org_id, lower(coalesce(nullif(c.vendor, ''), c.type)) AS vendor
+    FROM public.connectors c
+   WHERE length(coalesce(nullif(c.vendor, ''), c.type, '')) >= 3
+),
+live AS (
+  SELECT DISTINCT c.org_id, lower(coalesce(nullif(c.vendor, ''), c.type)) AS vendor
+    FROM public.connectors c
+   WHERE c.deleted_at IS NULL
+     AND lower(coalesce(to_jsonb(c) ->> 'status', '')) NOT IN ('revoked', 'disconnected', 'deleted', 'inactive', 'disabled')
+)
+SELECT 'revoked_sample' AS query, m.org_id, v.vendor AS likely_vendor,
+       count(*) AS active_rows,
+       (array_agg(m.id ORDER BY m.created_at DESC))[1:20] AS sample_ids
+  FROM public.agent_memories m
+  JOIN vendors v ON v.org_id = m.org_id
+   AND position(v.vendor IN lower(coalesce(m.provenance, '') || ' ' || coalesce(m.content, ''))) > 0
+  LEFT JOIN live lv ON lv.org_id = m.org_id AND lv.vendor = v.vendor
+ WHERE lv.vendor IS NULL
+   AND m.is_active
+   AND to_jsonb(m) ->> 'source_connector_id' IS NULL
+   AND NOT (coalesce(m.source_class, '') = 'probe' OR coalesce(m.provenance, '') ~* '(probe|smoke)')
+   AND (m.provenance LIKE 'connector_confirm%'
+        OR m.source_class = 'untrusted_external'
+        OR (m.source_class = 'model_inference')
+        OR (m.source_class IS NULL
+            AND coalesce(m.provenance, '') NOT LIKE 'v4:%'
+            AND coalesce(m.provenance, '') NOT LIKE 'learn_outcome:%'
+            AND coalesce(m.provenance, '') NOT LIKE 'outcome_learning%'))
+ GROUP BY m.org_id, v.vendor
+ ORDER BY count(*) DESC;

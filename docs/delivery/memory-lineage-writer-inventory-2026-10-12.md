@@ -20,7 +20,7 @@ Every code path that writes `agent_memories`, `entity_observations` or `entity_b
 |---|---|
 | `routers/agent_memories.py` → `create_agent_memory` | Per-agent memory API: what a user typed. |
 | `agent_memory_service.remember_*` (via `learning_feedback_loop`) | Gravitre feedback, approval and prediction events. |
-| `workflows/execution_engine_runtime.py` → `create_agent_memory` | Workflow id, run status and Gravitre step errors. A step error can include a provider's error message; audit group G4 spot-checks this (residual, see below). |
+| `workflows/execution_engine_runtime.py` → `create_agent_memory` | Workflow id, run status and Gravitre step errors. A step error can include a provider's error message, so with lineage on the memory keeps the error count only (`_outcome_memory_insight`). Rows written before that are spot-checked by audit group G4. |
 | `memory_promotion_service._write_memories` | Aggregates over glossary terms, workflow runs, query patterns and approvals. |
 | `cognitive_turn_kernel.run_learn` → `promote_turn_memories` | Today its callers pass status summaries only. If an act result ever names a connector, its candidates inherit it. |
 | `routers/ops_internal.py` (probes) | Synthetic smoke and isolation rows. |
@@ -32,7 +32,25 @@ Every code path that writes `agent_memories`, `entity_observations` or `entity_b
 | `org_entity_resolution_records`, `org_business_entity_bindings`, `org_business_entities` | `purge_connector_derived_data` (M1, applied) by vendor when no other live connection of the vendor remains. User-confirmed recipients and channels (integration `email` / `conversation`) are never matched by a vendor and persist. |
 | `agent_knowledge_references`, `rag_*` | M1, by connector. |
 
+## Read side (before and after the purge)
+
+With `MEMORY_SOURCE_LINEAGE_ENABLED=true` (`backend/app/services/memory_source_liveness.py`):
+
+| Reader | What is dropped |
+|---|---|
+| `search_agent_memories`, `search_department_memories` (RPC and fallback), `get_relevant_agent_memory` | Memories whose `source_connector_id` names a connector that is soft-deleted, has status revoked/disconnected/deleted/inactive/disabled, belongs to another org, or no longer exists |
+| `recall_workspace` (and its history branch), `HybridMemoryService._query_agent_memories` | Same. These feed the cognitive kernel's RECALL (Chat and Voice) and the classical retrieval path |
+| `entity_context_card`, `account_health.load_account_health` / `load_health_batch`, `recommendation_feed` accounts | Observations from such a connector, and the behaviour signals of an account whose every observation read came from one |
+
+Untagged rows are kept. A failed liveness read drops the memories (and tagged observations and all signals) for that read.
+
+On a disconnect (route `DELETE /connectors/{id}`, `DELETE /sources/{id}`, and the `source.disconnected` handler) the org's context epoch is bumped. It is part of the retrieval, instant-answer (tier 0) and source-summary cache keys and is checked by the connector read-result cache, so those miss on every replica that shares Redis. In-process caches for the org (connector read results, connected-integration snapshot, account names, org context, intelligence projection) are cleared on the replica that handled it.
+
 ## Residual (owner to decide; not changed here)
+
+- A connector re-added under the same name reuses its row (`deleted_at` is cleared), so memories tagged with it become readable again unless the purge already removed them. The data comes from the same account the user re-authorised; the purge (dry run off) is what removes it for good.
+- Without Redis, the context epoch is per process: other replicas' caches expire on their own TTLs (retrieval 5 min, instant answers 1 h unless their source documents changed, connector reads 90 s).
+- A connector whose status is `error` (for example a refresh failure) is not treated as revoked.
 
 - `org_memory_entity_embeddings`: opaque HMAC tokens of entity names, which expire after 30 days. They are not purged per connector and age out instead.
 - `org_entity_relationships`: built from glossary terms and departments. These are not connector records.

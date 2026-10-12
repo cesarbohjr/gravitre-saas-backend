@@ -167,4 +167,4 @@ def get_account_health(
         raise HTTPException(status_code=403, detail="Organization context required")
     client = shared_service_client(settings, create_client)
     entity = _entity_row(client, org_id, entity_id)
-    return load_account_health(client, org_id, entity)
+    return load_account_health(client, org_id, entity, settings=settings)

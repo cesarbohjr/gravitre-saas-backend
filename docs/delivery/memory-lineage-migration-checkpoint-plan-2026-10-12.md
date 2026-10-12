@@ -104,7 +104,7 @@ Stop if a dry run counts rows in another org, or if it counts observations of a 
 ## Checkpoint 5: before turning anything on (separate decisions)
 
 1. Owner decides the legacy groups (`memory-lineage-legacy-handling-proposal-2026-10-12.md`).
-2. `MEMORY_SOURCE_LINEAGE_ENABLED=true` is a separate, explicit owner decision. After it, re-run the post-check count of tagged rows. It should rise only for new connector writes.
+2. `MEMORY_SOURCE_LINEAGE_ENABLED=true` is a separate, explicit owner decision, and only after the migration is applied. It turns on, together: lineage tags on new writes; the read-time filter (memories and observations naming a connector that is deleted, revoked, disconnected or gone are not recalled, failing closed if the liveness read fails); cache invalidation on disconnect; and the memory/observation part of the disconnect purge (dry run still honoured). Before the migration, the filter's lineage read fails and recall returns no memories, so never turn it on first. After it, re-run the post-check count of tagged rows. It should rise only for new connector writes. Watch `memory_source_liveness_failed_closed` (should be zero) and `memory_source_revoked_excluded` in the logs for a day.
 3. `SOURCE_PURGE_DRY_RUN=false` (live purge) is another separate decision. It is out of scope for this PR. Until then, every disconnect only records a dry-run receipt, which now includes the memory and observation counts as evidence.
 
 ## Rollback

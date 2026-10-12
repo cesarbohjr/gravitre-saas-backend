@@ -1449,6 +1449,11 @@ async def _delete_connector_impl(
     )
     if not updated.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
+    # Context built from this connector must stop being served now, not when the
+    # disconnect purge runs (no-op unless MEMORY_SOURCE_LINEAGE_ENABLED).
+    from app.services.memory_source_liveness import invalidate_org_derived_context
+
+    invalidate_org_derived_context(org_id, settings=settings, reason="connector.deleted")
     # Ask the provider to revoke the grant while we still hold the token (off by default).
     from app.services.source_lifecycle import revoke_on_disconnect
 

@@ -34,10 +34,19 @@ class HybridMemoryService:
     ) -> list[dict[str, Any]]:
         # Recall only live rows: superseded temporal facts (is_current=false) and
         # expired rows must not reach the prompt.
+        from app.services.memory_source_liveness import (
+            drop_memories_from_revoked_sources,
+            liveness_enabled,
+        )
+
         now_iso = datetime.now(timezone.utc).isoformat()
+        lineage_on = liveness_enabled(self.settings)
+        columns = "id, content, category, confidence, usage_count, source_class"
+        if lineage_on:
+            columns += ", source_connector_id"
         q = (
             client.table("agent_memories")
-            .select("id, content, category, confidence, usage_count, source_class")
+            .select(columns)
             .eq("org_id", org_id)
             .eq("is_active", True)
             .eq("is_current", True)
@@ -47,6 +56,16 @@ class HybridMemoryService:
         if agent_id:
             q = q.eq("agent_id", agent_id)
         rows = (await run_io(q.execute)).data or []
+        if lineage_on:
+            # Never recall a memory learned from a connector that is no longer live.
+            rows = await run_io(
+                drop_memories_from_revoked_sources,
+                client,
+                org_id,
+                rows,
+                settings=self.settings,
+                surface="hybrid_memory",
+            )
         needle = normalize_query(query).lower()
         scored = []
         for row in rows:

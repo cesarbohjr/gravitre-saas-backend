@@ -9,11 +9,15 @@ Date: 2026-10-12. Related: PR #374, migration `20261012070000_agent_memory_sourc
 
 ## How to size it
 
-Run `docs/delivery/memory-lineage-legacy-audit-2026-10-12.sql` (read-only; safe inside `BEGIN READ ONLY ... ROLLBACK`). Query 2 puts every agent memory into exactly one group. Query 3 breaks the two groups that may hold connector content down by org. Query 5 sizes untagged customer observations by source system. Record the counts in the release report before deciding.
+Run `docs/delivery/memory-lineage-legacy-audit-2026-10-12.sql` (read-only; safe inside `BEGIN READ ONLY ... ROLLBACK`). Query 2 puts every agent memory into exactly one group. Query 3 breaks the two groups that may hold connector content down by org. Query 5 sizes untagged customer observations by source system. Query 6 guesses the likely origin of the rows that may hold connector content (G2, G3, G7, G8): the connector vendor their provenance or text names, and whether that vendor is still connected (`revoked_vendor`, `live_vendor`, `no_vendor_named`). Query 7 lists, per org, up to 20 ids of active `revoked_vendor` rows to sample. Record the counts in the release report before deciding.
+
+Why this matters even with the new read-time filter: the filter (`MEMORY_SOURCE_LINEAGE_ENABLED`) hides memories whose tagged connector is gone, but it cannot judge an untagged row, so legacy rows from a removed source are still recalled until the owner decides their group. The `revoked_vendor` rows of query 6 are the ones to decide first.
 
 `tests/db/test_memory_lineage_legacy_audit_pg.py` runs the file against real PostgreSQL in a read-only transaction and checks the grouping.
 
 ## Groups and proposed handling
+
+For any group decided as **review**, start with its `revoked_vendor` rows (query 6/7): proposed default for those is retire, because their vendor is no longer connected and nothing else will ever remove them.
 
 Each group gets an owner decision: **retire** (the row stops being recalled), **accept** (the row stays as it is), or **review** (a person samples rows first). "Retire" means a reviewed one-off statement the owner runs, setting `is_active = false, is_current = false` for the rows in that group. It does not delete them, so it can be undone. No statement is included here on purpose. The owner writes and runs it after deciding.
 

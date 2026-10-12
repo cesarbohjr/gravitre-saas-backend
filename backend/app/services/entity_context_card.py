@@ -47,6 +47,11 @@ def clear_cache_for_tests() -> None:
     _name_cache.clear()
 
 
+def invalidate_org_names(org_id: str) -> None:
+    """Forget the org's cached account names (a source of the org was revoked)."""
+    _name_cache.pop(org_id, None)
+
+
 def _org_entities(client: Any, org_id: str) -> list[dict[str, Any]]:
     hit = _name_cache.get(org_id)
     if hit and time.monotonic() - hit[0] < NAME_CACHE_TTL_S:
@@ -101,11 +106,18 @@ def _systems(client: Any, org_id: str, entity_id: str) -> list[str]:
     return sorted({str(r.get("system")) for r in res.data or [] if r.get("system")})
 
 
-def _observations(client: Any, org_id: str, entity_id: str) -> list[dict[str, Any]]:
+def _observations(client: Any, org_id: str, entity_id: str, settings: Any = None) -> list[dict[str, Any]]:
+    from app.services.memory_source_liveness import observation_columns
+
     since = (datetime.now(UTC) - timedelta(days=90)).isoformat()
     res = (
         client.table("entity_observations")
-        .select("dimension, label, score, evidence_quote, source_system, source_record_id, observed_at, status, correction")
+        .select(
+            observation_columns(
+                "dimension, label, score, evidence_quote, source_system, source_record_id, observed_at, status, correction",
+                settings,
+            )
+        )
         .eq("org_id", org_id)
         .eq("entity_id", entity_id)
         .gte("observed_at", since)
@@ -202,13 +214,26 @@ def build_entity_context_block(
         budget = SPOKEN_BUDGET_CHARS if spoken else TEXT_BUDGET_CHARS
         cards: list[str] = []
         used = len(HEADER)
+        from app.services.memory_source_liveness import (
+            drop_observations_from_revoked_sources,
+        )
+
         for acc in accounts:
             eid = str(acc["id"])
+            # Nothing learned from a revoked connector reaches the card (lineage on).
+            observations, signals = drop_observations_from_revoked_sources(
+                client,
+                org_id,
+                _observations(client, org_id, eid, settings),
+                _signals(client, org_id, eid),
+                settings=settings,
+                entity_id=eid,
+            )
             card = render_card(
                 str(acc.get("display_name") or ""),
                 _systems(client, org_id, eid),
-                _observations(client, org_id, eid),
-                _signals(client, org_id, eid),
+                observations,
+                signals,
                 spoken=spoken,
                 guard=guard,
                 excluded=excluded,

@@ -545,10 +545,20 @@ async def build_feed(client: Any, settings: Any, *, org_id: str, user_id: str | 
     def _accounts() -> list[dict[str, Any]]:
         if getattr(settings, "entity_observations_enabled", False) is not True:
             raise _Skipped()
+        from app.services.memory_source_liveness import (
+            drop_observations_from_revoked_sources,
+            observation_columns,
+        )
+
         since = (datetime.now(UTC) - timedelta(days=30)).isoformat()
         obs = (
             client.table("entity_observations")
-            .select("entity_id, dimension, label, score, evidence_quote, source_system, source_record_id, observed_at, status, correction")
+            .select(
+                observation_columns(
+                    "entity_id, dimension, label, score, evidence_quote, source_system, source_record_id, observed_at, status, correction",
+                    settings,
+                )
+            )
             .eq("org_id", org_id)
             .gte("observed_at", since)
             .limit(3000)
@@ -566,6 +576,7 @@ async def build_feed(client: Any, settings: Any, *, org_id: str, user_id: str | 
             .data
             or []
         )
+        obs, sig = drop_observations_from_revoked_sources(client, org_id, obs, sig, settings=settings)
         ids = sorted({str(r.get("entity_id")) for r in obs + sig if r.get("entity_id")})[:200]
         names: dict[str, str] = {}
         if ids:
@@ -581,7 +592,7 @@ async def build_feed(client: Any, settings: Any, *, org_id: str, user_id: str | 
 
         if getattr(settings, "entity_observations_enabled", False) is not True:
             raise _Skipped()
-        healths.extend(load_health_batch(client, org_id))
+        healths.extend(load_health_batch(client, org_id, settings=settings))
         return []  # items are built once churn advisory is in, one per account
 
     try:
