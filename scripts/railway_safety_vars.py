@@ -69,6 +69,11 @@ REQUIRED_SECRETS: tuple[str, ...] = (
 )
 OPTIONAL_REPORTED: tuple[str, ...] = ("TEMPORAL_HOST", "MEMORY_SOURCE_LINEAGE_ENABLED")
 
+# Emergency stop for customer-data ingestion (default off). Reported with its
+# value, never pinned: true is a deliberate stop, not a misconfiguration, but it
+# pauses every knowledge sync, so it must be visible.
+KILL_SWITCH = "DISABLE_INGESTION"
+
 _TRUE = {"1", "true", "yes", "on", "t", "y"}
 _FALSE = {"0", "false", "no", "off", "f", "n"}
 
@@ -120,6 +125,16 @@ def audit(env: dict[str, str]) -> tuple[list[str], list[str], list[str]]:
         elif parsed:
             problems.append(f"{key} is on; 3.0 Plus features stay off until acceptance")
         lines.append(f"{key}={env[key]!r}")
+
+    kill = env.get(KILL_SWITCH)
+    if kill is None:
+        lines.append(f"{KILL_SWITCH}: absent (ingestion runs)")
+    else:
+        parsed = _bool(kill)
+        if parsed is None:
+            problems.append(f"{KILL_SWITCH}={kill!r} is not a boolean; startup would fail")
+        state = "ON: all ingestion and knowledge syncs are stopped" if parsed else "off (ingestion runs)"
+        lines.append(f"{KILL_SWITCH}={kill!r} {state}")
 
     # Informational only: sealed variables are not returned with their values,
     # and a running service already proves the required ones are present.
