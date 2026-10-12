@@ -212,6 +212,7 @@ def write_provider_records(
     records: list[ProviderRecord],
 ) -> WriteResult:
     """File provider records into the entity store. Never raises per record."""
+    from app.core.ingestion_kill_switch import ingestion_disabled
     from app.services.source_governance import (
         customer_context_allowed,
         load_source_governance,
@@ -219,6 +220,9 @@ def write_provider_records(
 
     result = WriteResult()
     if not writer_enabled(settings) or not records:
+        return result
+    if ingestion_disabled(settings):
+        logger.warning("entity_writer_skipped org_id=%s reason=ingestion_disabled", org_id)
         return result
     try:
         policy = load_source_governance(client, org_id)

@@ -226,10 +226,13 @@ async def observe_customer_message(
     router: Any | None = None,
 ) -> dict[str, Any]:
     """Gate, extract and store. Returns what happened, never raises."""
+    from app.core.ingestion_kill_switch import ingestion_disabled
     from app.services.source_governance import customer_context_allowed_for_org
 
     if not observations_enabled(settings):
         return {"skipped": "disabled"}
+    if ingestion_disabled(settings):
+        return {"skipped": "ingestion_disabled"}
     ok, reason = is_customer_facing(message, org_domains)
     if not ok:
         return {"skipped": reason}

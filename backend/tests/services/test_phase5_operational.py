@@ -213,9 +213,9 @@ def test_signal_readiness_unchanged_without_evidence_and_partial_with_it():
 
     play = _play(("workflow_completed", "observation.sentiment", "not_a_signal"))
     legacy = resolve_play_readiness(play, connected_vendors=set(), policy_authorized_actions=set(), metric_keys=set())
-    # Legacy name check: workflow_completed is absent from the event taxonomy
-    # and observation signals are unknown without evidence.
-    assert [r["status"] for r in legacy.signals] == ["MISSING", "MISSING", "MISSING"]
+    # Legacy name check: workflow_completed is a known taxonomy name (like
+    # workflow_failed); observation signals are unknown without evidence.
+    assert [r["status"] for r in legacy.signals] == ["AVAILABLE", "MISSING", "MISSING"]
     evaluated = resolve_play_readiness(
         play, connected_vendors=set(), policy_authorized_actions=set(), metric_keys=set(),
         observed_signals={"observation.sentiment"},
