@@ -50,41 +50,50 @@ _STRIKETHROUGH = re.compile(r"~~([^~\n]+)~~")
 # marker, never speakable content.
 _STRAY_ASTERISK = re.compile(r"\*+")
 
-# Cached TTS of the standing PERCEIVE draft (same sentence every operator turn).
-# Keyed by voice/model/format so Metric A is not charged a cold ElevenLabs hop
-# on every subsequent turn in this worker.
-_PERCEIVE_TTS_CACHE: dict[tuple[str, str, str], list[bytes]] = {}
+# Cached TTS of the standing drafts (the same sentence on every matching turn:
+# the PERCEIVE draft and the plan-hold draft, see voice_slo.standing_spoken_drafts).
+# Keyed by voice/model/format/text so Metric A is not charged a cold ElevenLabs
+# hop on every subsequent turn in this worker.
+_PERCEIVE_TTS_CACHE: dict[tuple[str, str, str, str], list[bytes]] = {}
+
+
+def _standing_draft_texts() -> set[str]:
+    from app.services.voice_slo import standing_spoken_drafts
+
+    return {t for t in (normalize_spoken_text(d) for d in standing_spoken_drafts()) if t}
 
 
 def warm_perceive_tts_cache(settings: Settings, *, voice_key: str | None = None) -> bool:
-    """Pre-synthesize standing PERCEIVE draft for default voice (worker startup)."""
-    from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
-
-    perceive_text = normalize_spoken_text(EARLY_PERCEIVE_DRAFT)
-    if not perceive_text:
+    """Pre-synthesize the standing drafts for the default voice (worker startup)."""
+    texts = sorted(_standing_draft_texts())
+    if not texts:
         return False
     resolved_voice = voice_key or "sarah"
     model = "eleven_flash_v2_5"
     fmt = "mp3_44100_128"
-    cache_key = (str(resolved_voice), str(model), str(fmt))
-    if cache_key in _PERCEIVE_TTS_CACHE:
-        return True
-    try:
-        chunks = list(
-            synthesize_speech_stream(
-                settings,
-                text=perceive_text,
-                voice_key=resolved_voice,
-                model_id=model,
-                output_format=fmt,
+    warmed = False
+    for spoken in texts:
+        cache_key = (str(resolved_voice), str(model), str(fmt), spoken)
+        if cache_key in _PERCEIVE_TTS_CACHE:
+            warmed = True
+            continue
+        try:
+            chunks = list(
+                synthesize_speech_stream(
+                    settings,
+                    text=spoken,
+                    voice_key=resolved_voice,
+                    model_id=model,
+                    output_format=fmt,
+                )
             )
-        )
+        except Exception as exc:  # noqa: BLE001 — best-effort warm, never fail startup
+            logger.debug("voice_standing_draft_tts_warm_failed err=%s", exc)
+            continue
         if chunks:
             _PERCEIVE_TTS_CACHE[cache_key] = chunks
-            return True
-    except Exception:  # noqa: BLE001 — best-effort warm, never fail startup
-        return False
-    return False
+            warmed = True
+    return warmed
 
 
 def peek_cached_perceive_chunks(
@@ -94,8 +103,14 @@ def peek_cached_perceive_chunks(
     output_format: str = "mp3_44100_128",
 ) -> list[bytes]:
     """In-process PERCEIVE TTS warmup (same worker). Empty on cache miss."""
+    from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
+
+    perceive_text = normalize_spoken_text(EARLY_PERCEIVE_DRAFT)
+    if not perceive_text:
+        return []
     resolved = (voice_key or "sarah").strip() or "sarah"
-    return list(_PERCEIVE_TTS_CACHE.get((str(resolved), str(model), str(output_format))) or [])
+    key = (str(resolved), str(model), str(output_format), perceive_text)
+    return list(_PERCEIVE_TTS_CACHE.get(key) or [])
 
 
 # Short-lived barge-in cancel flags (turn_id → expiry epoch seconds).
@@ -466,19 +481,14 @@ async def stream_voice_turn_events(
             return
             yield  # pragma: no cover — keeps this an async generator
         first_piece = True
-        from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
-
-        perceive_text = normalize_spoken_text(EARLY_PERCEIVE_DRAFT)
+        standing = spoken_chunk in _standing_draft_texts()
         cache_key = (
             str(resolved_voice or ""),
             str(model or ""),
             str(tts_output_format),
+            spoken_chunk,
         )
-        cached_pieces = (
-            _PERCEIVE_TTS_CACHE.get(cache_key)
-            if spoken_chunk == perceive_text
-            else None
-        )
+        cached_pieces = _PERCEIVE_TTS_CACHE.get(cache_key) if standing else None
         collected: list[bytes] = []
         try:
             if cached_pieces is not None:
@@ -497,7 +507,7 @@ async def stream_voice_turn_events(
                     )
 
                 audio_chunks = await asyncio.to_thread(_fetch_chunks)
-                if cached_pieces is None and spoken_chunk == perceive_text and audio_chunks:
+                if cached_pieces is None and standing and audio_chunks:
                     _PERCEIVE_TTS_CACHE[cache_key] = audio_chunks
             for audio in audio_chunks:
                 if _cancelled():
@@ -529,7 +539,7 @@ async def stream_voice_turn_events(
                             ms=first_audio_ms,
                             source=is_metric_a_source(
                                 first_text_preview,
-                                loop_stage="PERCEIVE" if loop_stage_spoken else None,
+                                loop_stage=(early_loop_stage or "PERCEIVE") if loop_stage_spoken else None,
                             ),
                             operator_task=operator_task or loop_stage_spoken,
                             composed=True,
@@ -545,11 +555,11 @@ async def stream_voice_turn_events(
                     "turn_id": resolved_turn_id,
                 }
                 first_piece = False
-                if cached_pieces is None and spoken_chunk == perceive_text:
+                if cached_pieces is None and standing:
                     collected.append(audio)
             if (
                 cached_pieces is None
-                and spoken_chunk == perceive_text
+                and standing
                 and collected
                 and cache_key not in _PERCEIVE_TTS_CACHE
             ):
@@ -582,16 +592,34 @@ async def stream_voice_turn_events(
             return
 
     early_perceive_draft: str | None = None
+    early_loop_stage: str | None = None
     from app.services.cognitive_loop_controller import is_plan_without_execute_turn
 
-    if looks_like_operator_task(text) and not is_plan_without_execute_turn(text):
-        from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
+    if looks_like_operator_task(text):
+        if is_plan_without_execute_turn(text):
+            # Plan-hold: the kernel says this exact sentence at its PLAN stage,
+            # but only after retrieval and planning (seconds). It is already
+            # true now, so say it first and drop the kernel's copy below.
+            # Connector-status asks get no stage speech from the kernel either.
+            from app.services.connector_status_reply_service import (
+                is_connector_status_question,
+            )
 
-        early_perceive_draft = EARLY_PERCEIVE_DRAFT
+            if not is_connector_status_question(text):
+                from app.services.voice_slo import EARLY_PLAN_HOLD_DRAFT
+
+                early_perceive_draft = EARLY_PLAN_HOLD_DRAFT
+                early_loop_stage = "PLAN"
+        else:
+            from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
+
+            early_perceive_draft = EARLY_PERCEIVE_DRAFT
+            early_loop_stage = "PERCEIVE"
         if early_perceive_draft:
             operator_task = True
             loop_stage_spoken = True
-            if skip_early_perceive:
+            # The router only pre-speaks the cached PERCEIVE draft.
+            if skip_early_perceive and early_loop_stage == "PERCEIVE":
                 full_text.append(early_perceive_draft)
             else:
                 yield {

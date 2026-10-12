@@ -116,6 +116,130 @@ async def test_operator_turn_speaks_perceive_before_kernel(monkeypatch, mock_set
     assert "classified this as" not in texts.lower()
 
 
+_PLAN_HOLD_PROBE_PROMPT = (
+    "List my HubSpot contacts at a high level and show the complete plan before "
+    "you execute anything. Don't execute."
+)
+
+
+@pytest.mark.asyncio
+async def test_plan_hold_turn_speaks_honest_plan_draft_before_kernel(monkeypatch, mock_settings):
+    """Metric A on a plan-hold turn is the honest PLAN draft, spoken before the kernel runs.
+
+    The kernel says the same sentence at its PLAN stage after retrieval and
+    planning; the voice turn must not speak it twice.
+    """
+    from app.services.cognitive_loop_controller import speakable_loop_stage
+    from app.services.voice_slo import EARLY_PLAN_HOLD_DRAFT
+
+    kernel_draft = speakable_loop_stage("PLAN", extras={"plan_without_execute": True})
+    assert kernel_draft == EARLY_PLAN_HOLD_DRAFT
+    order: list[str] = []
+    slo_rows: list[dict[str, Any]] = []
+
+    class _PlanHoldKernel(_FakeIntelligence):
+        async def execute_task_streaming(self, **kwargs: Any) -> AsyncIterator[Any]:
+            order.append("kernel")
+            async for ev in super().execute_task_streaming(**kwargs):
+                yield ev
+
+    monkeypatch.setattr(
+        "app.operators.agent_intelligence.get_agent_intelligence",
+        lambda: _PlanHoldKernel(
+            [kernel_draft, "Step one reads HubSpot contacts. Nothing has run."],
+        ),
+    )
+
+    def _tts(*_: Any, **kwargs: Any) -> Iterator[bytes]:
+        order.append(f"tts:{kwargs.get('text')}")
+        yield b"audio"
+
+    monkeypatch.setattr(voice_session_service, "_PERCEIVE_TTS_CACHE", {})
+    monkeypatch.setattr(voice_session_service, "synthesize_speech_stream", _tts)
+    monkeypatch.setattr(
+        "app.services.pipecat_voice.voice_latency_metrics.record_voice_slo_metric",
+        lambda *_a, **kw: slo_rows.append(kw),
+    )
+    events = [
+        event
+        async for event in voice_session_service.stream_voice_turn_events(
+            settings=_settings_with_voice(mock_settings),
+            org_id="org-1",
+            user_id="user-1",
+            text=_PLAN_HOLD_PROBE_PROMPT,
+            agent={"id": "agent-1"},
+            conversation_id="conv-1",
+        )
+    ]
+    deltas = [str(e.get("delta") or "") for e in events if e.get("type") == "voice.text.delta"]
+    assert deltas[0] == EARLY_PLAN_HOLD_DRAFT
+    assert deltas.count(EARLY_PLAN_HOLD_DRAFT) == 1
+    first_tts = next(i for i, step in enumerate(order) if step.startswith("tts:"))
+    assert order[first_tts] == f"tts:{EARLY_PLAN_HOLD_DRAFT}"
+    assert first_tts < order.index("kernel")
+    assert order.count(f"tts:{EARLY_PLAN_HOLD_DRAFT}") == 1
+    metric_a = [row for row in slo_rows if row.get("metric") == "time_to_first_honest_response"]
+    assert metric_a and metric_a[0]["source"] == "loop_stage:PLAN"
+    # Honest: never claims work ran, never the retired generic filler.
+    joined = " ".join(deltas).lower()
+    assert "classified this as" not in joined
+    assert "running the full loop" not in joined
+
+
+@pytest.mark.asyncio
+async def test_connector_status_plan_hold_turn_gets_no_early_plan_draft(monkeypatch, mock_settings):
+    """The kernel stays silent on stages for connector-status asks; so does the early draft."""
+    from app.services.voice_slo import EARLY_PLAN_HOLD_DRAFT
+
+    monkeypatch.setattr(
+        "app.operators.agent_intelligence.get_agent_intelligence",
+        lambda: _FakeIntelligence(["Google Ads is connected."]),
+    )
+    monkeypatch.setattr(
+        voice_session_service, "synthesize_speech_stream", lambda *_, **__: iter((b"a",))
+    )
+    events = [
+        event
+        async for event in voice_session_service.stream_voice_turn_events(
+            settings=_settings_with_voice(mock_settings),
+            org_id="org-1",
+            user_id="user-1",
+            text=(
+                "Check that my Google Ads account is actually connected, and show me the "
+                "complete plan before you execute anything. Don't execute without my approval."
+            ),
+            agent={"id": "agent-1"},
+            conversation_id="conv-1",
+        )
+    ]
+    deltas = [str(e.get("delta") or "") for e in events if e.get("type") == "voice.text.delta"]
+    assert EARLY_PLAN_HOLD_DRAFT not in deltas
+
+
+def test_standing_plan_hold_draft_audio_is_cached(monkeypatch, mock_settings):
+    """Warm-up synthesizes the plan-hold draft once so Metric A skips the TTS round trip."""
+    from app.services.voice_slo import EARLY_PLAN_HOLD_DRAFT
+
+    calls: list[str] = []
+
+    def _tts(*_: Any, **kwargs: Any) -> Iterator[bytes]:
+        calls.append(str(kwargs.get("text")))
+        yield b"warm"
+
+    monkeypatch.setattr(voice_session_service, "_PERCEIVE_TTS_CACHE", {})
+    monkeypatch.setattr(voice_session_service, "synthesize_speech_stream", _tts)
+    assert voice_session_service.warm_perceive_tts_cache(_settings_with_voice(mock_settings))
+    assert voice_session_service.warm_perceive_tts_cache(_settings_with_voice(mock_settings))
+    spoken = voice_session_service.normalize_spoken_text(EARLY_PLAN_HOLD_DRAFT)
+    assert calls == [spoken]
+    assert (
+        "sarah",
+        "eleven_flash_v2_5",
+        "mp3_44100_128",
+        spoken,
+    ) in voice_session_service._PERCEIVE_TTS_CACHE
+
+
 @pytest.mark.asyncio
 async def test_stream_voice_turn_keeps_text_path_when_tts_fails(monkeypatch, mock_settings):
     monkeypatch.setattr(
