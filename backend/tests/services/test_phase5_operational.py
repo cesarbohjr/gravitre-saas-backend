@@ -194,7 +194,7 @@ def test_proposal_routes_are_hidden_when_off():
     from app.routers.work_objects import ProposalDecisionRequest, accept_proposal_route
 
     with pytest.raises(HTTPException) as e:
-        accept_proposal_route("00000000-0000-4000-8000-000000000001", ProposalDecisionRequest(), {"user_id": "u"}, ORG, SimpleNamespace())
+        accept_proposal_route("00000000-0000-4000-8000-000000000001", ProposalDecisionRequest(), {"user_id": "u"}, ORG, SimpleNamespace(), "production")
     assert e.value.status_code == 404
 
 

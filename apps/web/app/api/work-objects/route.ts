@@ -5,3 +5,7 @@ export async function GET(request: NextRequest) {
   const qs = request.nextUrl.search || ""
   return proxyToFastApi(request, `/api/work-objects${qs}`)
 }
+
+export async function POST(request: NextRequest) {
+  return proxyToFastApi(request, "/api/work-objects")
+}

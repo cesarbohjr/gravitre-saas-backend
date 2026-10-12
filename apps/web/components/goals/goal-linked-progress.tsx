@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import useSWR from "swr"
 import { accountIntelligenceApi, isFeatureOff } from "@/lib/api"
 
@@ -39,6 +40,12 @@ export function GoalLinkedProgress({ goalId }: { goalId: string }) {
           ) : null}
         </>
       )}
+      <Link
+        href={`/assignments/new?goal=${encodeURIComponent(goalId)}`}
+        className="inline-block text-sm font-medium text-foreground underline underline-offset-4"
+      >
+        Assign work toward this goal
+      </Link>
     </section>
   )
 }

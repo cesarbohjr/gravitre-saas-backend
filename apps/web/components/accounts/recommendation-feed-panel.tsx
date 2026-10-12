@@ -22,9 +22,35 @@ function FeedItem({ item, onDecided }: { item: RecommendationFeedItem; onDecided
     if (!item.workObjectId) return
     setBusy(accept ? "accept" : "dismiss")
     try {
-      if (accept) await accountIntelligenceApi.acceptProposal(item.workObjectId)
-      else await accountIntelligenceApi.dismissProposal(item.workObjectId)
-      toast.success(accept ? "Added to planned work. Nothing runs until someone starts it." : "Dismissed.")
+      if (accept) {
+        const { playRunRequest: run } = await accountIntelligenceApi.acceptProposal(item.workObjectId)
+        if (run && !run.blockedReason && run.body.installationId) {
+          toast.success("Added to planned work. Nothing runs until someone starts it.", {
+            action: {
+              label: "Start Play",
+              onClick: () => {
+                accountIntelligenceApi
+                  .startPlayRun(run)
+                  .then((res) =>
+                    toast.success(res.status === "awaiting_approval" ? "Play started and is awaiting approval." : "Play started."),
+                  )
+                  .catch((error: unknown) =>
+                    toast.error(error instanceof Error ? error.message : "Couldn't start the Play."),
+                  )
+              },
+            },
+          })
+        } else {
+          toast.success(
+            run?.blockedReason
+              ? `Added to planned work. ${run.blockedReason}`
+              : "Added to planned work. Nothing runs until someone starts it.",
+          )
+        }
+      } else {
+        await accountIntelligenceApi.dismissProposal(item.workObjectId)
+        toast.success("Dismissed.")
+      }
       onDecided()
     } catch {
       toast.error("Couldn't save that decision. Try again.")
