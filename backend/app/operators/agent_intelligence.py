@@ -4351,6 +4351,11 @@ class AgentIntelligence:
             _mark("unified_live_resolved")
 
             if live_turn and live_turn.get("stop_pipeline"):
+                # LIVE answered: the classical-path prefetch will never be
+                # adopted, so stop its retrieval (and any web research) now.
+                if _context_task is not None and not _context_task.done():
+                    _context_task.cancel()
+                    _mark("context_prefetch_cancelled")
                 task_state = live_turn.get("task_state") or task_state
                 if conversation_id and isinstance(task_state, dict) and (
                     task_state.get("work_artifacts") or task_state.get("durable_deliverable")

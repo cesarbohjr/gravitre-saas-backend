@@ -200,6 +200,20 @@ def claims_future_action(text: str) -> bool:
     return bool(_CLAIMS_FUTURE_RE.search(text or ""))
 
 
+def user_requested_read(message: str) -> bool:
+    """True when the user's own message already asks for a workspace read.
+
+    Promising to check ("I'll look into it") is a non-answer to a question
+    like "what changed in my workspace yesterday?": the read was the request.
+    """
+    from app.services.adaptive_research_cascade import is_tenant_local_question
+
+    text = (message or "").strip()
+    if not text or is_confirm_utterance(text) or _WRITE_OFFER_RE.search(text):
+        return False
+    return is_tenant_local_question(text)
+
+
 def last_assistant_text(history: list[dict[str, Any]] | None) -> str:
     for row in reversed(history or []):
         if not isinstance(row, dict):

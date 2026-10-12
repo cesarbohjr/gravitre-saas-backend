@@ -24,6 +24,10 @@ NO_WEB = (
     "Explain what a conversion is.",
     "What's on my calendar today?",
     "How did the website do last week?",
+    # 2026-10-12: private-workspace questions went to public search.
+    "What changed in my workspace since yesterday?",
+    "Which segments did we add this week?",
+    "Show me my lists",
 )
 
 
@@ -64,6 +68,11 @@ async def test_a_news_question_still_searches(surface: str) -> None:
         ("Compare HubSpot and Salesforce pricing", False),
         ("What are good B2B email subject lines?", False),
         ("How did my campaigns do this week?", True),
+        ("Catch me up on what happened yesterday", True),
+        ("What's new in Gravitre this week?", True),
+        ("How do my open rates compare to the industry average?", False),
+        ("What happened with Ukraine this week?", False),
+        ("What are the best tools for SEO?", False),
     ],
 )
 def test_answerable_without_web(message: str, expected: bool) -> None:

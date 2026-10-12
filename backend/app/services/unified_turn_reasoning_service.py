@@ -2709,6 +2709,7 @@ async def apply_unified_turn_live(
             patch_task_state_offered,
             persist_offered_action,
             resolve_offered_action_turn,
+            user_requested_read,
         )
 
         offered_now = extract_offered_action(result.user_message)
@@ -2724,7 +2725,8 @@ async def apply_unified_turn_live(
             task_state = {**(task_state or {}), **plan_patch}
             task_state = patch_task_state_offered(task_state, offered_from_state(task_state) or offered_now)
         if claims_future_action(result.user_message):
-            if is_confirm_utterance(message or ""):
+            asked_for_read = user_requested_read(message or "")
+            if is_confirm_utterance(message or "") or asked_for_read:
                 retry = resolve_offered_action_turn(
                     "yes",
                     task_state=task_state if isinstance(task_state, dict) else {},
@@ -2756,6 +2758,10 @@ async def apply_unified_turn_live(
                     )
                     merged_state = {**(task_state or {}), **plan_patch}
                     return live_payload_for_execution(executed, merged_state)
+            if asked_for_read:
+                # The user asked for the read; a promise to check is not an
+                # answer. Classical ReAct runs the read tools this turn.
+                return None
             result.user_message = (
                 "I can check that, but I haven't run it yet. Say yes and I'll inspect "
                 "the systems I offered."
