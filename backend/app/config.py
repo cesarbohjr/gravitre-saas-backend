@@ -348,6 +348,9 @@ class Settings(BaseSettings):
     connector_secrets_encryption_key: str = ""
     # Phase 15: AES-256-GCM key for connector/source config (32-byte base64 or raw)
     encryption_key: str = ""
+    # Signed webhook triggers: how many X-Forwarded-For entries, counted from the
+    # right, were appended by our own proxies (0 = trust only the socket peer).
+    webhook_trusted_proxy_hops: int = 0
 
     # MCP stdio runs a command on the backend host. Off: no org can register or run a
     # stdio MCP server, and existing stdio rows are refused at discovery and call time.

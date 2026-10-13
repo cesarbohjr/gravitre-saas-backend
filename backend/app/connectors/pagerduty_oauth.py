@@ -276,8 +276,10 @@ def complete_pagerduty_oauth_connection(
     )
     config = safe_normalize_stored_dict((existing.data or [{}])[0], key="config")
     config["oauth_provider"] = "pagerduty"
-    webhook_secret = (config.get("webhook_secret") or "").strip() or secrets.token_hex(32)
-    config["webhook_secret"] = webhook_secret
+    from app.services.connector_webhook_secret_store import read_secret, seal_plaintext, store_secret
+
+    webhook_secret = read_secret(config, "webhook_secret", settings) or secrets.token_hex(32)
+    store_secret(config, "webhook_secret", webhook_secret, settings)
 
     user = fetch_current_user(access_token)
     if user.get("id"):
@@ -299,7 +301,9 @@ def complete_pagerduty_oauth_connection(
                 config["pagerduty_webhook_subscription_id"] = str(subscription["id"])
             signing = subscription.get("_signing_secret")
             if signing:
-                config["pagerduty_signing_secret"] = str(signing)
+                store_secret(config, "pagerduty_signing_secret", str(signing), settings)
+
+    seal_plaintext(config, settings)
 
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
 

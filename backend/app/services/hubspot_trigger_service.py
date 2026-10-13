@@ -218,18 +218,21 @@ def maybe_emit_crm_outcome_from_hubspot_event(
     return result
 
 
-def _resolve_triggered_by(client: Any, org_id: str) -> str:
-    membership = (
-        client.table("organization_members")
-        .select("user_id")
-        .eq("org_id", org_id)
-        .in_("role", ["owner", "admin", "member"])
-        .limit(1)
-        .execute()
+def _resolve_triggered_by(
+    client: Any,
+    org_id: str,
+    *,
+    parameters: dict[str, Any] | None = None,
+    workflow: dict[str, Any] | None = None,
+) -> str | None:
+    from app.services.automation_actor import configured_by_from_parameters, resolve_automation_actor
+
+    return resolve_automation_actor(
+        client,
+        org_id,
+        configured_by=configured_by_from_parameters(parameters),
+        workflow_created_by=(workflow or {}).get("created_by"),
     )
-    if membership.data:
-        return str(membership.data[0]["user_id"])
-    return org_id
 
 
 def hubspot_event_id(event: dict[str, Any]) -> str | None:
@@ -308,7 +311,7 @@ def set_hubspot_triggers(
 def _load_active_workflow(client: Any, org_id: str, workflow_id: str) -> dict[str, Any] | None:
     result = (
         client.table("workflow_defs")
-        .select("id,name,org_id,status,definition")
+        .select("id,name,org_id,status,definition,created_by")
         .eq("id", workflow_id)
         .eq("org_id", org_id)
         .limit(1)
@@ -364,7 +367,11 @@ async def start_workflow_from_hubspot(
         return {"workflow_id": workflow_id, "status": "skipped", "reason": "workflow_not_active"}
 
     definition = workflow.get("definition") or {"schema_version": "v1", "steps": []}
-    triggered_by = _resolve_triggered_by(client, org_id)
+    triggered_by = _resolve_triggered_by(client, org_id, parameters=parameters, workflow=workflow)
+    if not triggered_by:
+        from app.services.automation_actor import NO_ACTOR_REASON
+
+        return {"workflow_id": workflow_id, "status": "skipped", "reason": NO_ACTOR_REASON}
     from app.services.event_triggered_runs import start_event_triggered_run
 
     outcome = await start_event_triggered_run(
