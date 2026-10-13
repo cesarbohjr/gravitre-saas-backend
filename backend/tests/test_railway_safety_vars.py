@@ -89,3 +89,19 @@ def test_context_engine_settings_are_reported_never_problems_or_pins():
     assert "CROSS_SOURCE_CONTEXT_ENGINE_ENABLED='true'" in lines
     assert "CROSS_SOURCE_CONTEXT_TOKEN_BUDGET: absent (code default 12000)" in lines
     assert not any("CROSS_SOURCE" in item for item in problems + pins)
+
+
+def test_owner_approved_context_flags_on_are_reported_not_problems():
+    env = {k: "true" for k in rsv.APPROVED_ON}
+    lines, problems, pins = rsv.audit(env)
+    assert problems == []
+    for key in rsv.APPROVED_ON:
+        assert f"{key}='true' (owner-approved)" in lines
+    # Customer-data flags stay a problem when on.
+    _, problems, _ = rsv.audit({"CONTEXT_ENGINE_OBSERVATIONS_V1": "true", "ENTITY_OBSERVATIONS_ENABLED": "true"})
+    assert len(problems) == 2
+
+
+def test_approved_on_flags_are_default_off_and_carry_no_customer_data():
+    assert rsv.APPROVED_ON <= set(rsv.DEFAULT_OFF)
+    assert not any("OBSERVATIONS" in k or "SIGNALS" in k or "ENTITY" in k for k in rsv.APPROVED_ON)

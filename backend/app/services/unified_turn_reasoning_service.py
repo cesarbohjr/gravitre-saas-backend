@@ -346,6 +346,7 @@ async def _complete_unified_turn(
     model_start: float,
     timeout_s: float = 20.0,
     on_text_delta: Any | None = None,
+    on_tool_call_delta: Any | None = None,
 ) -> _StreamedCompletion:
     """Dispatch tool completion to the agent's configured provider."""
     from app.services.providers.provider_tool_router import (
@@ -362,6 +363,7 @@ async def _complete_unified_turn(
             model_start=model_start,
             timeout_s=timeout_s,
             on_text_delta=on_text_delta,
+            on_tool_call_delta=on_tool_call_delta,
         )
 
     cap = max(5.0, float(timeout_s or 20.0))
@@ -581,6 +583,7 @@ async def run_unified_turn_shadow(
     research_scope: str | None = None,
     cognitive_context: Any | None = None,
     on_text_delta: Any | None = None,
+    on_tool_call_delta: Any | None = None,
     reasoning_depth: str = "full",
     compiled_reasoning_context: Any | None = None,
     response_style_key: str | None = None,
@@ -1362,6 +1365,7 @@ async def run_unified_turn_shadow(
                 model_start=model_start if prog_round == 0 else time.perf_counter(),
                 timeout_s=stream_timeout_s,
                 on_text_delta=on_text_delta if prog_round == 0 else None,
+                on_tool_call_delta=on_tool_call_delta if prog_round == 0 else None,
             )
             progressive_round_ms.append(int((time.perf_counter() - round_start) * 1000))
             breakdown["progressive_round_ms"] = list(progressive_round_ms)
@@ -1615,6 +1619,7 @@ async def run_unified_turn_shadow(
                         model_start=time.perf_counter(),
                         timeout_s=stream_timeout_s,
                         on_text_delta=on_text_delta,
+                        on_tool_call_delta=on_tool_call_delta,
                     )
                     breakdown["auto_schema_retry_ms"] = int(
                         (time.perf_counter() - retry_start) * 1000
@@ -1988,6 +1993,7 @@ async def apply_unified_turn_live(
     research_scope: str | None = None,
     cognitive_context: Any | None = None,
     on_text_delta: Any | None = None,
+    on_tool_call_delta: Any | None = None,
     reasoning_depth: str = "full",
     compiled_reasoning_context: Any | None = None,
     response_style_key: str | None = None,
@@ -2315,6 +2321,7 @@ async def apply_unified_turn_live(
         reasoning_depth=reasoning_depth,
         cognitive_context=cognitive_context,
         on_text_delta=on_text_delta,
+        on_tool_call_delta=on_tool_call_delta,
         compiled_reasoning_context=compiled_reasoning_context,
         response_style_key=response_style_key,
         conversation_tier=conversation_tier,
