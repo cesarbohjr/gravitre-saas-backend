@@ -3,7 +3,7 @@
 // Connectors Page - Integration Hub with Network Topology View
 import { Suspense, startTransition, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import useSWR from "swr"
+import useSWR, { mutate as globalMutate } from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -20,6 +20,7 @@ import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connecto
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
 import { AvailableConnectorsStrip } from "@/components/connectors/available-connectors-strip"
+import { DATA_REMOVAL_KEY, DataRemovalReceipts, DisconnectImpact, useDataRemoval } from "@/components/connectors/data-removal"
 import {
   ConnectorAttentionList,
   ResponsiveConnectorInspector,
@@ -918,6 +919,7 @@ function DeleteModal({
 }) {
   const [confirmText, setConfirmText] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
+  const { data: removal } = useDataRemoval(open)
 
   const handleDelete = async () => {
     setIsDeleting(true)
@@ -939,11 +941,12 @@ function DeleteModal({
             </div>
             <div>
               <DialogTitle>Remove connector</DialogTitle>
-              <DialogDescription>This cannot be undone</DialogDescription>
+              <DialogDescription>Disconnecting {connector.name} cannot be undone</DialogDescription>
             </div>
           </div>
         </DialogHeader>
         <div className="py-4 space-y-4">
+          <DisconnectImpact policy={removal?.policy} vendorLabel={connector.type} vendor={connector.vendorKey || connector.type} />
           <p className="text-sm text-muted-foreground">
             Type <span className="font-mono text-foreground">{connector.name}</span> to confirm removal.
           </p>
@@ -2835,6 +2838,7 @@ function ConnectorsPageContent() {
       await connectorsApi.delete(connectorId, confirmName)
       toast.success("Connector removed")
       await mutate()
+      void globalMutate(DATA_REMOVAL_KEY)
     } catch (err) {
       console.error("[connectors] Failed to delete connector:", err)
       await mutate({ connectors: previousConnectors }, false)
@@ -3483,6 +3487,7 @@ function ConnectorsPageContent() {
           )}
           </>
           )}
+          {!chromeCollapsed ? <DataRemovalReceipts className="mt-8" /> : null}
           {!chromeCollapsed && connectors.length > 0 ? (
             <div className="-mx-4 mt-8 border-t border-[color:var(--g-border-default)] pt-2 md:-mx-6" data-testid="connectors-discovery">
               <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />
