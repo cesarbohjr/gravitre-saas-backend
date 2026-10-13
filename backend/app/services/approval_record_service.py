@@ -93,7 +93,10 @@ def create_contract_approval(
         "status": status,
         "requested_by": requested_by,
         "requested_at": datetime.now(timezone.utc).isoformat(),
-        "context": context or {},
+        # approvals has no parameters column; the exact arguments the approver is
+        # deciding on are kept in context so the approve path can execute and
+        # verify them (they were silently dropped before).
+        "context": {**(context or {}), **({"parameters": parameters} if parameters else {})},
         "numeric_value": numeric_value,
         "numeric_value_currency": currency if numeric_value is not None else None,
         "numeric_value_label": label if numeric_value is not None else None,

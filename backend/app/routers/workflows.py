@@ -3849,7 +3849,7 @@ async def approve_run_alias(
     try:
         chat_rows = (
             client.table("approvals")
-            .select("id, type, status, context, parameters, requested_by")
+            .select("id, type, status, context, requested_by, reviewed_at")
             .eq("id", str(run_id))
             .eq("org_id", org_id)
             .limit(1)
@@ -3876,11 +3876,8 @@ async def approve_run_alias(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin approval required")
 
         ctx = chat_rows[0].get("context") if isinstance(chat_rows[0].get("context"), dict) else {}
-        params = (
-            chat_rows[0].get("parameters")
-            if isinstance(chat_rows[0].get("parameters"), dict)
-            else {}
-        )
+        params = ctx.get("parameters") if isinstance(ctx.get("parameters"), dict) else {}
+        binding = ctx.get("binding") if isinstance(ctx.get("binding"), dict) else {}
         conversation_id = str(ctx.get("conversation_id") or "")
         if not conversation_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing conversation")
@@ -3896,9 +3893,51 @@ async def approve_run_alias(
         plan = service.plan_action("", connected_integrations=[], task_state=task_state)
         if not plan:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Pending write is incomplete")
+
+        # Execute only what was approved: same tool, action, integration and exact
+        # arguments. Rows queued before the binding existed are refused (ask again).
+        from app.services.approval_action_binding import digest_plan_args
+
+        actual = {
+            "tool_name": plan.tool_name,
+            "invoke_action": plan.invoke_action,
+            "integration": plan.integration,
+            "args_digest": digest_plan_args(plan.args),
+        }
+        if not binding or any(str(binding.get(k) or "") != str(v or "") for k, v in actual.items()):
+            write_audit_event(
+                client,
+                org_id=org_id,
+                actor_id=str(current_user.get("user_id") or ""),
+                action="connector.approval.action_mismatch",
+                resource_type="approval",
+                resource_id=str(run_id),
+                metadata={"approved": binding or None, "requested": actual},
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This approval no longer matches the requested action. Ask for approval again.",
+            )
+
+        # Claim once: concurrent approvals of the same row run the write at most once.
+        reviewer = str(current_user.get("user_id") or "")
+        claimed = (
+            client.table("approvals")
+            .update({"reviewed_by": reviewer, "reviewed_at": datetime.now(timezone.utc).isoformat()})
+            .eq("id", str(run_id))
+            .eq("org_id", org_id)
+            .eq("status", "pending")
+            .is_("reviewed_at", "null")
+            .execute()
+            .data
+            or []
+        )
+        if not claimed:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Approval already being decided")
+
         execution = await service.execute_plan(
             org_id=org_id,
-            user_id=str(chat_rows[0].get("requested_by") or current_user.get("user_id") or ""),
+            user_id=str(chat_rows[0].get("requested_by") or reviewer),
             conversation_id=conversation_id,
             plan=plan,
             client=client,
@@ -3906,12 +3945,26 @@ async def approve_run_alias(
             environment_name=environment_name,
         )
         client.table("approvals").update(
-            {
-                "status": "approved" if execution.success else "rejected",
-                "reviewed_by": str(current_user.get("user_id") or ""),
-                "reviewed_at": datetime.now(timezone.utc).isoformat(),
-            }
+            {"status": "approved" if execution.success else "rejected"}
         ).eq("id", str(run_id)).eq("org_id", org_id).execute()
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=reviewer,
+            action="connector.approval.decided",
+            resource_type="approval",
+            resource_id=str(run_id),
+            metadata={
+                "decision": "approved",
+                "executed": True,
+                "success": bool(execution.success),
+                "tool_name": actual["tool_name"],
+                "invoke_action": actual["invoke_action"],
+                "integration": actual["integration"],
+                "args_digest": actual["args_digest"],
+                "requested_by": chat_rows[0].get("requested_by"),
+            },
+        )
         from app.services.conversation_state_service import get_conversation_state_service
 
         await get_conversation_state_service(settings).update_task_state(
