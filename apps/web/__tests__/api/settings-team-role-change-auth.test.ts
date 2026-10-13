@@ -39,6 +39,11 @@ function builder(table: string) {
     state.usersUpdate(table, patch)
     return b
   }
+  b.delete = () => {
+    state.usersUpdate(table, "DELETE")
+    return b
+  }
+  b.then = (resolve: (v: unknown) => unknown) => resolve({ error: null })
   b.maybeSingle = async () => {
     if (table === "organization_members" && filters.user_id === state.callerId) {
       return { data: state.callerRole ? { role: state.callerRole } : null }
@@ -143,5 +148,65 @@ describe("PATCH /api/settings/team role changes", () => {
     const res = await PATCH(patch({ id: "u1", fullName: "New Name" }))
     expect(res.status).toBe(200)
     expect(callFastApiAsCaller).not.toHaveBeenCalled()
+  })
+})
+
+
+function del(body: unknown) {
+  return new NextRequest("https://gravitre.app/api/settings/team", {
+    method: "DELETE",
+    headers: { authorization: "Bearer jwt", "content-type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
+
+describe("DELETE /api/settings/team", () => {
+  beforeEach(() => {
+    state.callerId = "caller"
+    state.callerRole = "member"
+    state.targetUser = { auth_user_id: "target" }
+    state.usersUpdate = vi.fn()
+    callFastApiAsCaller.mockReset()
+    callFastApiAsCaller.mockResolvedValue({ ok: true, status: 200, payload: {} })
+  })
+
+  it("refuses a member removing a teammate", async () => {
+    const { DELETE } = await import("@/app/api/settings/team/route")
+    const res = await DELETE(del({ id: "u1" }))
+    expect(res.status).toBe(403)
+    expect(state.usersUpdate).not.toHaveBeenCalled()
+    expect(callFastApiAsCaller).not.toHaveBeenCalled()
+  })
+
+  it("refuses an anonymous caller", async () => {
+    state.callerId = null
+    const { DELETE } = await import("@/app/api/settings/team/route")
+    const res = await DELETE(del({ id: "u1" }))
+    expect(res.status).toBe(401)
+    expect(state.usersUpdate).not.toHaveBeenCalled()
+  })
+
+  it("removes the membership through the backend, then the user row", async () => {
+    state.callerRole = "admin"
+    const { DELETE } = await import("@/app/api/settings/team/route")
+    const res = await DELETE(del({ id: "u1" }))
+    expect(res.status).toBe(200)
+    expect(callFastApiAsCaller).toHaveBeenCalledWith(
+      expect.anything(),
+      `/api/organizations/${ORG}/members/target`,
+      "DELETE",
+      {},
+      ORG,
+    )
+    expect(state.usersUpdate).toHaveBeenCalledWith("users", "DELETE")
+  })
+
+  it("keeps the user row when the backend refuses (e.g. removing an owner)", async () => {
+    state.callerRole = "admin"
+    callFastApiAsCaller.mockResolvedValue({ ok: false, status: 403, payload: { detail: "Only an owner can change an owner" } })
+    const { DELETE } = await import("@/app/api/settings/team/route")
+    const res = await DELETE(del({ id: "u1" }))
+    expect(res.status).toBe(403)
+    expect(state.usersUpdate).not.toHaveBeenCalled()
   })
 })

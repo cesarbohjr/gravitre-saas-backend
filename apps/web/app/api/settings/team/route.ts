@@ -245,6 +245,50 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "id or email is required" }, { status: 400 })
     }
 
+    // Removing someone is an admin action. Members used to be able to delete
+    // any teammate's row here. The membership is removed by the backend
+    // (owner/admin check, owner protection, keep-an-owner rule, audit) before
+    // the display copy in public.users is touched.
+    const { data: authData } = await supabase.auth.getUser()
+    const callerId = authData.user?.id
+    if (!callerId) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    }
+    const { data: callerMembership } = await supabase
+      .from("organization_members")
+      .select("role")
+      .eq("org_id", orgId)
+      .eq("user_id", callerId)
+      .maybeSingle()
+    const callerRole = String(callerMembership?.role ?? "").toLowerCase()
+    if (callerRole !== "owner" && callerRole !== "admin") {
+      return NextResponse.json({ error: "Only an org admin can remove members" }, { status: 403 })
+    }
+
+    let target = supabase.from("users").select("auth_user_id").eq("org_id", orgId)
+    target = id ? target.eq("id", id) : target.eq("email", email ?? "")
+    const { data: targetUser } = await target.maybeSingle()
+    if (!targetUser) {
+      return NextResponse.json({ error: "Member not found" }, { status: 404 })
+    }
+    if (targetUser.auth_user_id) {
+      // Keyed by auth user id (the caller cannot read others' membership rows).
+      const removal = await callFastApiAsCaller(
+        request,
+        `/api/organizations/${encodeURIComponent(orgId)}/members/${encodeURIComponent(String(targetUser.auth_user_id))}`,
+        "DELETE",
+        {},
+        orgId,
+      )
+      // 404: no membership in this org (e.g. an invited user row); the display
+      // row can still be removed. Any other refusal stops here.
+      if (!removal.ok && removal.status !== 404) {
+        return NextResponse.json(removal.payload ?? { error: "Member removal failed" }, {
+          status: removal.status,
+        })
+      }
+    }
+
     let query = supabase.from("users").delete().eq("org_id", orgId)
     query = id ? query.eq("id", id) : query.eq("email", email ?? "")
 
