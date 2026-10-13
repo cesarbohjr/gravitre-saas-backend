@@ -1,0 +1,63 @@
+name: Supabase migration safety
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/workflows/supabase-migration-safety.yml'
+      - 'docs/delivery/AI_RELEASE_INSTRUCTIONS.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-migrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check migration version uniqueness and file format
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib, re, sys
+          root = pathlib.Path("supabase/migrations")
+          if not root.is_dir():
+              sys.exit("Missing supabase/migrations")
+          versions = {}
+          bad = []
+          for f in root.iterdir():
+              if not f.is_file() or f.suffix != ".sql":
+                  continue
+              m = re.fullmatch(r"(\d{8,14})_[A-Za-z0-9_]+\.sql", f.name)
+              if not m:
+                  bad.append(f"Invalid filename: {f.name}")
+                  continue
+              v = m.group(1)
+              if v in versions:
+                  bad.append(f"Duplicate version {v}: {versions[v]} and {f.name}")
+              versions[v] = f.name
+              if not f.read_text(encoding="utf-8").strip():
+                  bad.append(f"Empty migration: {f.name}")
+          if bad:
+              sys.exit("\n".join(bad))
+          print(f"Validated {len(versions)} migration filenames (no database touched).")
+          PY
+      - name: Show potential destructive statements for review
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import pathlib, re
+          root=pathlib.Path("supabase/migrations")
+          risky=re.compile(r"\b(drop\s+(?:table|schema|column)|truncate|delete\s+from|alter\s+table[\s\S]{0,120}drop\s+column|revoke|create\s+policy|drop\s+policy)\b", re.I)
+          matched=[]
+          for f in root.glob("*.sql"):
+              if risky.search(f.read_text(encoding="utf-8")):
+                  matched.append(f.name)
+          print(f"Historical migrations flagged for human review: {len(matched)} (informational; not executing SQL).")
+          PY
