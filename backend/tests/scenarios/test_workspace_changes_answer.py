@@ -32,7 +32,11 @@ def _answer_from_context(call: BrainCall) -> Reply:
 
 
 def _seed(h: ScenarioHarness) -> None:
-    recent = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+    # Inside "today" whatever the hour: two hours back crosses midnight
+    # when the suite runs just after 00:00 UTC.
+    now = datetime.now(timezone.utc)
+    midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    recent = max(now - timedelta(hours=2), midnight).isoformat()
     h.db.tables["workflow_defs"] = [{"id": "wf1", "org_id": ORG, "name": "Weekly newsletter"}]
     h.db.tables["workflow_runs"] = [
         {"org_id": ORG, "workflow_id": "wf1", "status": "completed", "run_type": "live", "created_at": recent},
