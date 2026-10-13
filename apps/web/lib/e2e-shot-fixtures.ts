@@ -374,12 +374,17 @@ const agents = [
 ]
 
 /**
- * Shape must match normalizeWorkflow() in app/(app)/workflows/page.tsx.
- *
- * `successRate` and `lastRun` are STRINGS rendered verbatim into the table, so
- * they carry their own units — a bare number would print "98.2" with no percent
- * sign. `status` outside active|paused|draft|error silently becomes "draft".
+ * Shape of GET /api/workflows (backend list_workflows_route): ISO `lastRun`,
+ * numeric `successRate`, the newest run's status, whether a run is live, the
+ * last runs oldest first and department names. Read by
+ * components/workflows/workflow-fleet-model.ts.
  */
+const runs = (pattern: string, minutesApart = 60) =>
+  pattern.split("").map((c, i) => ({
+    status: c === "x" ? "failed" : c === "r" ? "running" : "completed",
+    createdAt: AGO((pattern.length - i) * minutesApart),
+  }))
+
 const workflows = [
   {
     id: "wf_lead_triage",
@@ -387,10 +392,14 @@ const workflows = [
     description: "Enrich inbound form fills and stage the CRM contact for approval.",
     status: "active",
     environment: "production",
-    lastRun: "4 min ago",
-    successRate: "98.2%",
+    lastRun: AGO(4),
+    lastRunStatus: "running",
+    successRate: 98.2,
     runCount: 1284,
     isRunning: true,
+    recentRuns: runs("oooooxooooor", 15),
+    departments: ["Sales"],
+    nodes: [{ name: "Trigger: new form fill" }, { name: "Enrich in Apollo" }, { name: "Stage contact in HubSpot" }],
   },
   {
     id: "wf_deal_desk",
@@ -398,9 +407,13 @@ const workflows = [
     description: "Reconcile opportunity stages against meeting notes and support threads.",
     status: "active",
     environment: "production",
-    lastRun: "38 min ago",
-    successRate: "94.7%",
+    lastRun: AGO(38),
+    lastRunStatus: "completed",
+    successRate: 94.7,
     runCount: 412,
+    recentRuns: runs("ooooxooooooo"),
+    departments: ["Sales"],
+    nodes: [{ name: "Trigger: weekday schedule" }, { name: "Read open opportunities" }, { name: "Post summary to Slack" }],
   },
   {
     id: "wf_support_routing",
@@ -408,29 +421,45 @@ const workflows = [
     description: "Attach account context to new tickets and page the on-call owner.",
     status: "active",
     environment: "production",
-    lastRun: "12 min ago",
-    successRate: "96.1%",
+    lastRun: AGO(44),
+    lastRunStatus: "failed",
+    successRate: 78,
     runCount: 903,
+    recentRuns: runs("ooxoooxooxox"),
+    departments: ["Support"],
+    nodes: [
+      { name: "Fetch open escalations" },
+      { name: "Classify severity" },
+      { name: "Approve P1 reassignment" },
+      { name: "Assign tickets in Zendesk" },
+    ],
   },
   {
     id: "wf_invoice_recon",
     name: "Invoice reconciliation",
     description: "Match paid invoices to closed-won deals and flag mismatches.",
     status: "paused",
-    environment: "staging",
-    lastRun: "yesterday",
-    successRate: "99.0%",
+    environment: "production",
+    lastRun: AGO(2880),
+    lastRunStatus: "completed",
+    successRate: 99,
     runCount: 156,
+    recentRuns: runs("oooooooooooo", 1440),
+    departments: ["Finance"],
+    nodes: [{ name: "Read paid invoices" }, { name: "Match closed-won deals" }],
   },
   {
     id: "wf_churn_digest",
     name: "Churn risk digest",
     description: "Weekly summary of accounts with falling usage and open escalations.",
     status: "draft",
-    environment: "staging",
-    lastRun: "Never",
-    successRate: "-",
+    environment: "production",
+    lastRun: null,
+    lastRunStatus: null,
+    successRate: 0,
     runCount: 0,
+    recentRuns: [],
+    departments: [],
   },
 ]
 
@@ -1553,57 +1582,335 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     ],
   },
   "/api/plays": {
-    count: 3,
+    "count": 8,
+    "plays": [
+      {
+        "play": {
+          "key": "pipeline_recovery",
+          "name": "Stalled pipeline recovery",
+          "objective": "Find deals that have gone quiet, draft the right follow-up, and route it to the owner for approval.",
+          "version": "1",
+          "department": "sales",
+          "executable": false,
+          "executionAuthority": "canonical_workflow_runtime"
+        },
+        "readiness": {
+          "play_key": "pipeline_recovery",
+          "dependency_status": "AVAILABLE",
+          "observe_ready": true,
+          "recommend_ready": true,
+          "act_with_approval_ready": true,
+          "act_within_policy_ready": false,
+          "blockers": [],
+          "connector_groups": [
+            {
+              "vendors": [
+                "hubspot",
+                "salesforce"
+              ],
+              "status": "AVAILABLE",
+              "alternatives": {
+                "hubspot": "AVAILABLE",
+                "salesforce": "MISSING"
+              }
+            }
+          ]
+        },
+        "workflowBindings": [],
+        "workflowBindingCount": 3,
+        "installation": {
+          "id": "inst_pipeline_recovery",
+          "playKey": "pipeline_recovery",
+          "playVersion": "1",
+          "operatingMode": "RECOMMEND",
+          "status": "ready",
+          "goalId": null
+        }
+      },
+      {
+        "play": {
+          "key": "churn_early_warning",
+          "name": "Churn early warning",
+          "objective": "Watch support and billing signals for at-risk accounts and recommend a save plan.",
+          "version": "1",
+          "department": "customer_success",
+          "executable": false,
+          "executionAuthority": "canonical_workflow_runtime"
+        },
+        "readiness": {
+          "play_key": "churn_early_warning",
+          "dependency_status": "AVAILABLE",
+          "observe_ready": true,
+          "recommend_ready": true,
+          "act_with_approval_ready": false,
+          "act_within_policy_ready": false,
+          "blockers": [],
+          "connector_groups": [
+            {
+              "vendors": [
+                "hubspot"
+              ],
+              "status": "AVAILABLE",
+              "alternatives": {
+                "hubspot": "AVAILABLE"
+              }
+            },
+            {
+              "vendors": [
+                "zendesk",
+                "intercom"
+              ],
+              "status": "AVAILABLE",
+              "alternatives": {
+                "zendesk": "AVAILABLE",
+                "intercom": "MISSING"
+              }
+            }
+          ]
+        },
+        "workflowBindings": [],
+        "workflowBindingCount": 1,
+        "installation": {
+          "id": "inst_churn_early_warning",
+          "playKey": "churn_early_warning",
+          "playVersion": "1",
+          "operatingMode": "OBSERVE",
+          "status": "ready",
+          "goalId": null
+        }
+      },
+      {
+        "play": {
+          "key": "invoice_collections",
+          "name": "Invoice collections",
+          "objective": "Chase overdue invoices with polite, escalating reminders and flag disputes for a person.",
+          "version": "1",
+          "department": "finance",
+          "executable": false,
+          "executionAuthority": "canonical_workflow_runtime"
+        },
+        "readiness": {
+          "play_key": "invoice_collections",
+          "dependency_status": "MISSING",
+          "observe_ready": false,
+          "recommend_ready": false,
+          "act_with_approval_ready": false,
+          "act_within_policy_ready": false,
+          "blockers": [
+            "connector group quickbooks | xero: Connect required app"
+          ],
+          "connector_groups": [
+            {
+              "vendors": [
+                "quickbooks",
+                "xero"
+              ],
+              "status": "MISSING",
+              "alternatives": {
+                "quickbooks": "MISSING",
+                "xero": "MISSING"
+              }
+            }
+          ]
+        },
+        "workflowBindings": [],
+        "workflowBindingCount": 0,
+        "installation": null
+      },
+      {
+        "play": {
+          "key": "inbound_speed_to_lead",
+          "name": "Inbound lead speed to lead",
+          "objective": "Reply to new inbound leads within minutes with a booking link.",
+          "version": "1",
+          "department": "growth",
+          "executable": false,
+          "executionAuthority": "canonical_workflow_runtime"
+        },
+        "readiness": {
+          "play_key": "inbound_speed_to_lead",
+          "dependency_status": "AVAILABLE",
+          "observe_ready": true,
+          "recommend_ready": true,
+          "act_with_approval_ready": true,
+          "act_within_policy_ready": false,
+          "blockers": [],
+          "connector_groups": [
+            {
+              "vendors": [
+                "hubspot"
+              ],
+              "status": "AVAILABLE",
+              "alternatives": {
+                "hubspot": "AVAILABLE"
+              }
+            }
+          ]
+        },
+        "workflowBindings": [],
+        "workflowBindingCount": 2,
+        "installation": {
+          "id": "inst_inbound_speed_to_lead",
+          "playKey": "inbound_speed_to_lead",
+          "playVersion": "1",
+          "operatingMode": "ACT WITH APPROVAL",
+          "status": "ready",
+          "goalId": null
+        }
+      },
+      {
+        "play": {
+          "key": "seo_content_refresh",
+          "name": "SEO content refresh",
+          "objective": "Find pages losing rank and propose a refresh brief.",
+          "version": "1",
+          "department": "marketing",
+          "executable": false,
+          "executionAuthority": "canonical_workflow_runtime"
+        },
+        "readiness": {
+          "play_key": "seo_content_refresh",
+          "dependency_status": "AVAILABLE",
+          "observe_ready": true,
+          "recommend_ready": true,
+          "act_with_approval_ready": false,
+          "act_within_policy_ready": false,
+          "blockers": [],
+          "connector_groups": [
+            {
+              "vendors": [
+                "google_search_console"
+              ],
+              "status": "AVAILABLE",
+              "alternatives": {
+                "google_search_console": "AVAILABLE"
+              }
+            }
+          ]
+        },
+        "workflowBindings": [],
+        "workflowBindingCount": 1,
+        "installation": null
+      },
+      {
+        "play": {
+          "key": "sla_rescue",
+          "name": "SLA rescue",
+          "objective": "Escalate tickets close to breaching their SLA before they do.",
+          "version": "1",
+          "department": "msp",
+          "executable": false,
+          "executionAuthority": "canonical_workflow_runtime"
+        },
+        "readiness": {
+          "play_key": "sla_rescue",
+          "dependency_status": "AVAILABLE",
+          "observe_ready": true,
+          "recommend_ready": true,
+          "act_with_approval_ready": true,
+          "act_within_policy_ready": false,
+          "blockers": [],
+          "connector_groups": [
+            {
+              "vendors": [
+                "freshservice"
+              ],
+              "status": "AVAILABLE",
+              "alternatives": {
+                "freshservice": "AVAILABLE"
+              }
+            }
+          ]
+        },
+        "workflowBindings": [],
+        "workflowBindingCount": 1,
+        "installation": null
+      },
+      {
+        "play": {
+          "key": "forecast_hygiene",
+          "name": "Forecast hygiene",
+          "objective": "Flag deals with stale close dates or missing next steps before the forecast call.",
+          "version": "1",
+          "department": "sales",
+          "executable": false,
+          "executionAuthority": "canonical_workflow_runtime"
+        },
+        "readiness": {
+          "play_key": "forecast_hygiene",
+          "dependency_status": "AVAILABLE",
+          "observe_ready": true,
+          "recommend_ready": true,
+          "act_with_approval_ready": false,
+          "act_within_policy_ready": false,
+          "blockers": [],
+          "connector_groups": [
+            {
+              "vendors": [
+                "hubspot",
+                "salesforce"
+              ],
+              "status": "AVAILABLE",
+              "alternatives": {
+                "hubspot": "AVAILABLE",
+                "salesforce": "MISSING"
+              }
+            }
+          ]
+        },
+        "workflowBindings": [],
+        "workflowBindingCount": 1,
+        "installation": {
+          "id": "inst_forecast_hygiene",
+          "playKey": "forecast_hygiene",
+          "playVersion": "1",
+          "operatingMode": "RECOMMEND",
+          "status": "ready",
+          "goalId": null
+        }
+      },
+      {
+        "play": {
+          "key": "executive_brief",
+          "name": "Executive morning command brief",
+          "objective": "Produce a concise cross-department brief of material changes, risks and approvals required.",
+          "version": "1",
+          "department": "",
+          "executable": false,
+          "executionAuthority": "canonical_workflow_runtime"
+        },
+        "readiness": {
+          "play_key": "executive_brief",
+          "dependency_status": "AVAILABLE",
+          "observe_ready": true,
+          "recommend_ready": true,
+          "act_with_approval_ready": false,
+          "act_within_policy_ready": false,
+          "blockers": [],
+          "connector_groups": []
+        },
+        "workflowBindings": [],
+        "workflowBindingCount": 0,
+        "installation": {
+          "id": "inst_executive_brief",
+          "playKey": "executive_brief",
+          "playVersion": "1",
+          "operatingMode": "OBSERVE",
+          "status": "ready",
+          "goalId": null
+        }
+      }
+    ]
+  },
+  "/api/plays/impact": {
     plays: [
-      {
-        play: {
-          key: "pipeline_recovery",
-          name: "Stalled pipeline recovery",
-          objective: "Find deals that have gone quiet, draft the right follow-up, and route it to the owner for approval.",
-          version: "1.3.0",
-        },
-        readiness: {
-          dependency_status: "ready",
-          observe_ready: true,
-          recommend_ready: true,
-          act_with_approval_ready: true,
-          act_within_policy_ready: false,
-          blockers: [],
-          connector_groups: [{ ready: true }, { ready: true }],
-        },
-        workflowBindingCount: 3,
-      },
-      {
-        play: {
-          key: "churn_early_warning",
-          name: "Churn early warning",
-          objective: "Watch support and billing signals for at-risk accounts and recommend a save plan.",
-          version: "0.9.2",
-        },
-        readiness: {
-          observe_ready: true,
-          recommend_ready: true,
-          act_with_approval_ready: false,
-          blockers: [],
-          connector_groups: [{ ready: true }, { ready: true }, { ready: false }],
-        },
-        workflowBindingCount: 1,
-      },
-      {
-        play: {
-          key: "invoice_collections",
-          name: "Invoice collections",
-          objective: "Chase overdue invoices with polite, escalating reminders and flag disputes for a person.",
-          version: "1.0.0",
-        },
-        readiness: {
-          observe_ready: false,
-          blockers: ["Connect an accounting connector such as QuickBooks or Xero"],
-          connector_groups: [{ ready: false }],
-        },
-        workflowBindingCount: 0,
-      },
+      { playKey: "pipeline_recovery", verifiedSuccessCount: 6, verifiedFailureCount: 1, pendingVerificationCount: 2, actionedCount: 9, verifiedMetrics: [] },
+      { playKey: "inbound_speed_to_lead", verifiedSuccessCount: 14, verifiedFailureCount: 0, pendingVerificationCount: 1, actionedCount: 15, verifiedMetrics: [] },
     ],
+    verifiedResultCount: 20,
+    pendingVerificationCount: 3,
+    verifiedMetrics: [],
+    truthRule: "Only source-of-record verified results count.",
   },
   "/api/plays/pipeline_recovery/readiness": {
     play: {
@@ -1743,7 +2050,43 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       { kind: "workflow", id: "sch_deal_desk", title: "Deal desk sync", subtitle: "Weekdays at 08:00", status: "enabled", cron: "0 8 * * 1-5", timezone: "America/New_York", scheduleType: "recurring", workflowId: "wf_deal_desk", lastRunAt: T(38), nextRunAt: T(-960) },
       { kind: "workflow", id: "sch_support_routing", title: "Support escalation routing", subtitle: "Hourly", status: "failed", cron: "0 * * * *", timezone: "UTC", scheduleType: "recurring", workflowId: "wf_support_routing", lastRunAt: T(44), nextRunAt: T(-16) },
       { kind: "workflow", id: "sch_invoice_recon", title: "Invoice reconciliation", subtitle: "Paused by operator", status: "disabled", cron: "30 6 * * *", timezone: "Europe/London", scheduleType: "recurring", workflowId: "wf_invoice_recon", lastRunAt: T(2880) },
-      { kind: "workflow", id: "sch_churn_digest", title: "Churn risk digest", subtitle: "Once", status: "scheduled", timezone: "America/Chicago", scheduleType: "once", workflowId: "wf_churn_digest", runAt: T(-2880), nextRunAt: T(-2880) },
+      { kind: "workflow", id: "sch_churn_digest", title: "Churn risk digest", subtitle: "Once", status: "scheduled", timezone: "America/Chicago", scheduleType: "once", workflowId: "wf_churn_digest", runAt: AGO(-2880), nextRunAt: AGO(-2880) },
+      // Task runs relative to the capture clock, so the month grid, day agenda
+      // and failure hotspots have something to show.
+      ...Array.from({ length: 18 }, (_, i) => {
+        const failed = i % 4 === 1 || i % 7 === 3
+        const wf =
+          i % 3 === 0
+            ? ["wf_support_routing", "Support escalation routing"]
+            : i % 3 === 1
+              ? ["wf_lead_triage", "Inbound lead triage"]
+              : ["wf_deal_desk", "Deal desk sync"]
+        return {
+          kind: "task",
+          id: `run_shot_${i}`,
+          title: `Run · ${wf[1]}`,
+          workflowName: wf[1],
+          subtitle: failed ? "failed · execute" : "completed · execute",
+          status: failed ? "failed" : "completed",
+          workflowId: wf[0],
+          startedAt: AGO(60 * 9 * (i + 1)),
+          completedAt: AGO(60 * 9 * (i + 1) - 2),
+          durationMs: failed ? 19000 + i * 1000 : 120000 + i * 3000,
+          ...(failed
+            ? { error: i % 2 ? "HubSpot token expired. Reconnect HubSpot to continue." : "Zendesk returned 429 Too Many Requests." }
+            : {}),
+        }
+      }),
+      {
+        kind: "task",
+        id: "run_shot_live",
+        title: "Run · Inbound lead triage",
+        workflowName: "Inbound lead triage",
+        subtitle: "running · execute",
+        status: "running",
+        workflowId: "wf_lead_triage",
+        startedAt: AGO(4),
+      },
     ],
   },
   "/api/runs/run_support_4821": {

@@ -373,6 +373,13 @@ export interface ScheduledItem {
   runAt?: string
   endsAt?: string
   name?: string
+  /** Task runs: how long the run took, when recorded. */
+  durationMs?: number
+  /** Failed task runs: a short excerpt of the recorded error. */
+  error?: string
+  /** Task runs: the owning workflow's name. */
+  workflowName?: string
+  triggerType?: string
 }
 
 export interface SchedulesListResponse {

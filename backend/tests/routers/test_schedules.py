@@ -106,3 +106,43 @@ def test_default_projection_window_covers_month_plus_slack():
     start, end = service_module.default_projection_window(datetime(2026, 6, 15, tzinfo=timezone.utc))
     assert start.month == 5 and start.day == 25
     assert end.month == 7
+
+
+def test_task_runs_are_the_requested_months_runs_with_failure_detail(monkeypatch):
+    """A month view shows that month's runs, with duration and why a run failed."""
+    from tests.services.fake_supabase_db import FakeSupabaseDB
+
+    db = FakeSupabaseDB(range_filters=True)
+    base = {"org_id": "org-1", "environment": "production", "workflow_id": "wf-1", "run_type": "execute"}
+    db.tables["workflow_runs"] = [
+        {**base, "id": "run-sept", "status": "completed", "created_at": "2026-09-20T08:00:00+00:00"},
+        {**base, "id": "run-oct-ok", "status": "completed", "created_at": "2026-10-06T06:10:00+00:00", "duration_ms": 147000},
+        {
+            **base,
+            "id": "run-oct-fail",
+            "status": "failed",
+            "created_at": "2026-10-13T02:00:00+00:00",
+            "duration_ms": 19000,
+            "error_message": "HubSpot   token expired\nreconnect required",
+        },
+        {**base, "id": "run-nov", "status": "completed", "created_at": "2026-11-02T08:00:00+00:00"},
+    ]
+    monkeypatch.setattr(service_module, "workflow_names_for_ids", lambda client, org_id, ids: {"wf-1": "Lead enrichment"})
+
+    items = service_module.list_scheduled_items(
+        db,
+        "org-1",
+        "production",
+        window_start=datetime(2026, 10, 1, tzinfo=timezone.utc),
+        window_end=datetime(2026, 11, 1, tzinfo=timezone.utc),
+        kinds=frozenset({"task"}),
+    )
+    by_id = {item["id"]: item for item in items}
+    assert set(by_id) == {"run-oct-ok", "run-oct-fail"}
+    failed = by_id["run-oct-fail"]
+    assert failed["status"] == "failed"
+    assert failed["durationMs"] == 19000
+    assert failed["error"] == "HubSpot token expired reconnect required"
+    assert failed["workflowName"] == "Lead enrichment"
+    assert "error" not in by_id["run-oct-ok"]
+    assert by_id["run-oct-ok"]["durationMs"] == 147000

@@ -44,6 +44,10 @@ function mapApiItem(item: ApiScheduledItem): ScheduledItem {
     runAt: item.runAt,
     endsAt: item.endsAt,
     name: item.name,
+    durationMs: item.durationMs,
+    error: item.error,
+    workflowName: item.workflowName,
+    triggerType: item.triggerType,
   }
 }
 

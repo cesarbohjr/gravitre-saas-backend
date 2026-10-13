@@ -310,6 +310,7 @@ def play_definitions() -> tuple[Any, ...]:
                 write_action_groups=tuple(write_groups),
                 outcome_metrics=tuple(item.kpi_keys),
                 verification_requirements=verification,
+                department=pack.department,
             )
         )
     return tuple(out)

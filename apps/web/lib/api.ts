@@ -2653,6 +2653,9 @@ export type PlayListItem = {
     objective: string
     executable: boolean
     executionAuthority: string
+    /** Outcome Pack department ("" for cross-department platform Plays). */
+    department?: string
+    required_connector_groups?: string[][]
   }
   readiness: PlayReadinessSummary
   workflowBindings: Array<{
@@ -2662,6 +2665,20 @@ export type PlayListItem = {
     stage?: string | null
   }>
   workflowBindingCount: number
+  /** The authority this org switched on; null until the Play is set up. */
+  installation?: PlayInstallation | null
+}
+
+export type PlayOperatingMode = "OBSERVE" | "RECOMMEND" | "ACT WITH APPROVAL" | "ACT WITHIN POLICY"
+
+export type PlayInstallation = {
+  id: string
+  playKey: string
+  playVersion: string
+  operatingMode: PlayOperatingMode
+  status: string
+  goalId?: string | null
+  updatedAt?: string | null
 }
 
 export type PlayImpactMetric = { metricKey: string; value: number; unit?: string | null; currency?: string | null }

@@ -4610,9 +4610,9 @@ def list_workflows_route(
         )
         workflows = [w for w in workflows if str(w.get("id")) in allowed]
     workflow_ids = [str(w["id"]) for w in workflows if w.get("id")]
-    counts: dict[str, int] = {}
-    success_counts: dict[str, int] = {}
-    last_runs: dict[str, str] = {}
+    from app.services.workflow_fleet import summarize_runs, workflow_department_names
+
+    run_rows: list[dict] = []
     if workflow_ids:
         r = (
             client.table("workflow_runs")
@@ -4620,46 +4620,44 @@ def list_workflows_route(
             .eq("org_id", org_id)
             .eq("environment", environment_name)
             .in_("workflow_id", workflow_ids)
+            .order("created_at", desc=True)
             .execute()
         )
-        for row in list(r.data or []):
-            key = str(row.get("workflow_id"))
-            counts[key] = counts.get(key, 0) + 1
-            if row.get("status") == "completed":
-                success_counts[key] = success_counts.get(key, 0) + 1
-            created_at = row.get("created_at")
-            if created_at and key not in last_runs:
-                last_runs[key] = created_at
-    return {
-        "workflows": [
-            {
-                "id": str(w["id"]),
-                "name": w["name"],
-                "goal": w.get("goal") or _generate_goal(w.get("name") or "", w.get("description")),
-                "description": w.get("description"),
-                "status": w.get("status") or "draft",
-                "stage": w.get("stage") or "build",
-                "version": w.get("version") or "v1.0.0",
-                "schema_version": w["schema_version"],
-                "updated_at": w["updated_at"],
-                "runCount": w.get("run_count") or counts.get(str(w["id"]), 0),
-                "successRate": float(w.get("success_rate") or 0)
-                if w.get("success_rate") is not None
-                else (
-                    round(
-                        (success_counts.get(str(w["id"]), 0) / counts.get(str(w["id"]), 1)) * 100,
-                        2,
-                    )
-                    if counts.get(str(w["id"]), 0)
-                    else 0
-                ),
-                "lastRun": w.get("last_run_at") or last_runs.get(str(w["id"])),
-                "nextRunAt": w.get("next_run_at"),
-                "environment": environment_name,
-            }
-            for w in workflows
-        ],
-    }
+        run_rows = list(r.data or [])
+    runs_by_workflow = summarize_runs(run_rows)
+    departments = workflow_department_names(client, org_id, workflow_ids)
+
+    def _row(w: dict) -> dict:
+        wid = str(w["id"])
+        runs = runs_by_workflow.get(wid) or {}
+        count = int(runs.get("count") or 0)
+        success_rate = (
+            float(w.get("success_rate") or 0)
+            if w.get("success_rate") is not None
+            else (round((int(runs.get("completed") or 0) / count) * 100, 2) if count else 0)
+        )
+        return {
+            "id": wid,
+            "name": w["name"],
+            "goal": w.get("goal") or _generate_goal(w.get("name") or "", w.get("description")),
+            "description": w.get("description"),
+            "status": w.get("status") or "draft",
+            "stage": w.get("stage") or "build",
+            "version": w.get("version") or "v1.0.0",
+            "schema_version": w["schema_version"],
+            "updated_at": w["updated_at"],
+            "runCount": w.get("run_count") or count,
+            "successRate": success_rate,
+            "lastRun": w.get("last_run_at") or runs.get("lastRun"),
+            "lastRunStatus": runs.get("lastRunStatus"),
+            "isRunning": bool(runs.get("isRunning")),
+            "recentRuns": list(runs.get("recentRuns") or []),
+            "departments": departments.get(wid, []),
+            "nextRunAt": w.get("next_run_at"),
+            "environment": environment_name,
+        }
+
+    return {"workflows": [_row(w) for w in workflows]}
 
 
 @router.get("/stats")

@@ -1,682 +1,746 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import useSWR from "swr"
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { Blocks, ChevronDown, LayoutGrid, Plus, Rows3, Search, SquareKanban, Store, Target } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { GravitrePageHeader, LiveStatus } from "@/components/gravitre/nodus-product"
-import { OperatingEmpty, PhaseBand } from "@/components/gravitre/operating/operating-primitives"
-import { WorkflowCard, WorkflowGrid } from "@/components/gravitre/workflow-card"
-import { ErrorState, NoResultsState } from "@/components/gravitre/empty-state"
-import { Illustration } from "@/components/gravitre/illustration"
-import { CardSkeleton } from "@/components/gravitre/loading-state"
-import { DataFreshness } from "@/components/gravitre/data-freshness"
-import { DataTable } from "@/components/gravitre/data-table"
-import { StatusBadge } from "@/components/gravitre/status-badge"
-import { EnvironmentBadge } from "@/components/gravitre/environment-badge"
-import { WorkflowFleetSummary } from "@/components/workflows/workflow-fleet-summary"
-import { Button } from "@/components/ui/button"
-import { Icon } from "@/lib/icons"
-import { Blocks, ChevronDown, Edit, LayoutGrid, Rows3, Target } from "lucide-react"
-import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
+import { WsPage } from "@/components/workspace/ws-page"
+import { AuPages, paginate } from "@/components/workspace/au-pages"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
+import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
+import { MesonWizard } from "@/components/gravitre/meson-wizard"
+import { GoalWorkflowWizard } from "@/components/gravitre/goal-workflow-wizard"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuCheckboxItem,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { SegmentedControl } from "@/components/gravitre/filter-chip"
-import { INTERACTION, RADIUS } from "@/lib/design-system"
-import { cn } from "@/lib/utils"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { MesonWizard } from "@/components/gravitre/meson-wizard"
-import { GoalWorkflowWizard } from "@/components/gravitre/goal-workflow-wizard"
-import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
-import { toast } from "sonner"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { ensureSelectedOrg, getQuickOrgId } from "@/lib/org-context"
 import { workflowsApi } from "@/lib/api"
 import { relativeTime } from "@/lib/agent-job-result"
-import { SURFACE_COPY } from "@/lib/surface-copy"
-import type { Workflow as ApiWorkflow, WorkflowStatus } from "@/types/api"
+import { cn } from "@/lib/utils"
+import type { WorkflowStatus } from "@/types/api"
+import {
+  STATE_LABEL,
+  filterWorkflows,
+  isFailing,
+  lastRunDay,
+  normalizeWorkflows,
+  runTone,
+  sortWorkflows,
+  successTone,
+  summarizeFleet,
+  type FleetWorkflow,
+  type WorkflowSegment,
+  type WorkflowSort,
+} from "@/components/workflows/workflow-fleet-model"
+import "@/components/workspace/ops-v4.css"
+import "@/components/workspace/automate-v1.css"
 
-interface WorkflowNode {
-  id: string
-  type: "source" | "agent" | "task" | "connector" | "approval"
-  name: string
-  status?: "success" | "running" | "failed" | "pending"
-}
+type WorkflowView = "table" | "cards" | "board"
 
-interface Workflow {
-  id: string
-  name: string
-  description: string
-  status: "active" | "paused" | "draft" | "error"
-  environment: "production" | "staging"
-  lastRun: string
-  successRate: string
-  runCount: number
-  nodes?: WorkflowNode[]
-  isRunning?: boolean
-  fromMarketplace?: boolean
-}
+const PAGE_SIZE = 10
 
-function normalizeWorkflowStatus(raw: string): Workflow["status"] {
-  if (raw === "active" || raw === "paused" || raw === "draft" || raw === "error") {
-    return raw
-  }
-  if (raw === "inactive" || raw === "archived") {
-    return "paused"
-  }
-  return "draft"
-}
+const VIEWS: Array<{ id: WorkflowView; label: string; icon: typeof Rows3 }> = [
+  { id: "table", label: "Table", icon: Rows3 },
+  { id: "cards", label: "Cards", icon: LayoutGrid },
+  { id: "board", label: "Board", icon: SquareKanban },
+]
 
-function formatLastRun(value: unknown): string {
-  if (typeof value !== "string" || !value.trim() || value === "Never") return "Never"
-  return relativeTime(value)
-}
+const SORTS: Array<{ id: WorkflowSort; label: string }> = [
+  { id: "recent", label: "Recently run" },
+  { id: "name", label: "Name" },
+  { id: "success", label: "Success rate" },
+  { id: "runs", label: "Most runs" },
+]
 
-function formatSuccessRate(value: unknown, runCount: number): string {
-  if (runCount <= 0) return "—"
-  const rate = typeof value === "number" ? value : Number.parseFloat(String(value ?? ""))
-  return Number.isFinite(rate) ? `${Math.round(rate)}%` : "—"
-}
+const BOARD_COLUMNS: Array<{ id: Exclude<WorkflowSegment, "all">; label: string }> = [
+  { id: "active", label: "Active" },
+  { id: "failing", label: "Failing" },
+  { id: "paused", label: "Paused" },
+  { id: "draft", label: "Draft" },
+]
 
-function normalizeWorkflow(input: Record<string, unknown>): Workflow {
-  const status = String(input.status ?? "draft")
-  const environment = String(input.environment ?? "staging")
-  const config = (input.config ?? {}) as Record<string, unknown>
-  const activeVersion = (input.active_version ?? input.activeVersion) as Record<string, unknown> | undefined
-  const versionConfig = (activeVersion?.config ?? {}) as Record<string, unknown>
-  const fromMarketplace = Boolean(
-    config.marketplaceAssetId || versionConfig.marketplaceAssetId,
-  )
-  const runCount = Number(input.runCount ?? input.run_count ?? 0) || 0
-  return {
-    id: String(input.id ?? ""),
-    name: String(input.name ?? "workflow"),
-    description: String(input.description ?? ""),
-    status: normalizeWorkflowStatus(status),
-    environment: environment === "production" ? "production" : "staging",
-    lastRun: formatLastRun(input.lastRun ?? input.last_run),
-    successRate: formatSuccessRate(input.successRate ?? input.success_rate, runCount),
-    runCount,
-    nodes: Array.isArray(input.nodes) ? (input.nodes as WorkflowNode[]) : undefined,
-    isRunning: Boolean(input.isRunning ?? input.is_running ?? false),
-    fromMarketplace,
-  }
-}
-
-function normalizeWorkflowsResponse(payload: unknown): Workflow[] {
-  if (!payload || typeof payload !== "object") return []
-  const model = payload as Record<string, unknown>
-  const raw =
-    (Array.isArray(model.workflows) ? model.workflows : null) ??
-    (Array.isArray(model.data) ? model.data : null) ??
-    (Array.isArray(model.items) ? model.items : null)
-  if (!raw) return []
-  return raw
-    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
-    .map((item) => normalizeWorkflow(item))
-    .filter((item) => item.id.length > 0)
-}
-
-const statusVariants: Record<string, "success" | "warning" | "muted"> = {
-  active: "success",
-  paused: "warning",
-  draft: "muted",
-}
-
-const columns = [
+const EXPLAINERS = [
   {
-    key: "name",
-    header: "Workflow",
-    render: (item: Workflow) => (
-      <Link href={`/workflows/${item.id}`} className="group block min-w-0 max-w-md">
-        <span className="block truncate font-medium text-foreground group-hover:text-[color:var(--g-emerald-deep)]">{item.name}</span>
-        {item.description ? (
-          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground" title={item.description}>{item.description}</p>
-        ) : null}
-      </Link>
-    ),
+    eyebrow: "01 · Trigger",
+    title: "A connector event starts it",
+    body: "A new record in a connected app, a schedule or a webhook kicks off the run.",
+    art: "/illustrations/spot-connectors.svg",
   },
   {
-    key: "status",
-    header: "Status",
-    className: "w-28",
-    render: (item: Workflow) => (
-      <StatusBadge variant={statusVariants[item.status]} dot>
-        {item.status}
-      </StatusBadge>
-    ),
+    eyebrow: "02 · Steps and gates",
+    title: "Agents work, writes wait for you",
+    body: "Steps that only read run on their own. Steps that change a record can wait for your approval first.",
+    art: "/illustrations/ops-approvals.svg",
   },
   {
-    key: "environment",
-    header: "Environment",
-    className: "w-32",
-    render: (item: Workflow) => (
-      <EnvironmentBadge environment={item.environment} />
-    ),
-  },
-  {
-    key: "lastRun",
-    header: "Last run",
-    className: "w-32",
-    render: (item: Workflow) => (
-      <span className="text-muted-foreground">{item.lastRun}</span>
-    ),
-  },
-  {
-    key: "successRate",
-    header: "Success rate",
-    className: "w-28 text-right",
-    render: (item: Workflow) => (
-      <span className="text-muted-foreground">{item.successRate}</span>
-    ),
-  },
-  {
-    key: "runCount",
-    header: "Runs",
-    className: "w-20 text-right",
-    render: (item: Workflow) => (
-      <span className="text-muted-foreground">{item.runCount.toLocaleString()}</span>
-    ),
-  },
-  {
-    key: "actions",
-    header: "",
-    className: "w-24 text-right",
-    render: (item: Workflow) => (
-      <Button asChild variant="ghost" size="sm" className="h-7 gap-1.5 text-xs">
-        <Link href={`/workflows/${item.id}/builder`}>
-          <Edit className="h-3 w-3" />
-          Edit
-        </Link>
-      </Button>
-    ),
+    eyebrow: "03 · Verified outcome",
+    title: "Every run leaves evidence",
+    body: "Each run lands in Activity with its steps and results, so success rates come from real runs.",
+    art: "/illustrations/ops-activity.svg",
   },
 ]
 
-/** Options for the grid/table switcher, declared once outside render. */
-const VIEW_MODES = [
-  { id: "grid" as const, label: "Grid", icon: LayoutGrid },
-  { id: "table" as const, label: "Table", icon: Rows3 },
-] as const
+function updatedLabel(at: number | null, now: number): string {
+  if (at == null) return "Not updated yet"
+  const secs = Math.max(0, Math.floor((now - at) / 1000))
+  if (secs < 45) return "Updated just now"
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `Updated ${Math.max(1, mins)}m ago`
+  return `Updated ${Math.floor(mins / 60)}h ago`
+}
 
-type WorkflowPhase = "running" | "active" | "error" | "paused" | "draft"
+function statusTone(workflow: FleetWorkflow): "green" | "amber" | "red" | undefined {
+  if (isFailing(workflow)) return "red"
+  if (workflow.status === "active") return "green"
+  if (workflow.status === "paused") return "amber"
+  return undefined
+}
 
-type WorkflowStatsPayload = {
-  overallSuccessRate?: number
-  totalRunsThisWeek?: number
+function statusLabel(workflow: FleetWorkflow): string {
+  if (workflow.isRunning) return "Running"
+  if (isFailing(workflow)) return "Failing"
+  return STATE_LABEL[workflow.status]
 }
 
 export default function WorkflowsPage() {
+  return (
+    <AppShell title="Workflows">
+      <WsPage wide={false}>
+        <WorkflowFleet />
+      </WsPage>
+    </AppShell>
+  )
+}
+
+function WorkflowFleet() {
   const router = useRouter()
-  const reducedMotion = useReducedMotion()
-  const [lastFetchedAt, setLastFetchedAt] = useState<number | null>(null)
   const { user } = useAuth()
   const [orgId, setOrgId] = useState<string | null>(() => getQuickOrgId())
-  const [viewMode, setViewMode] = useState<"grid" | "table">("table")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [mesonWizardOpen, setMesonWizardOpen] = useState(false)
-  const [goalWizardOpen, setGoalWizardOpen] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<string[]>([])
-  const [envFilter, setEnvFilter] = useState<string[]>([])
-  const [phase, setPhase] = useState<WorkflowPhase | null>(null)
+  const [segment, setSegment] = useState<WorkflowSegment>("all")
+  const [runningOnly, setRunningOnly] = useState(false)
+  const [query, setQuery] = useState("")
+  const [department, setDepartment] = useState("all")
+  const [sort, setSort] = useState<WorkflowSort>("recent")
+  const [view, setView] = useState<WorkflowView>("table")
+  const [page, setPage] = useState(1)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [busy, setBusy] = useState<"run" | "toggle" | null>(null)
+  const [mesonOpen, setMesonOpen] = useState(false)
+  const [goalOpen, setGoalOpen] = useState(false)
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null)
+  const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
     if (user) void ensureSelectedOrg().then(setOrgId)
   }, [user])
-  
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
   // Wait for org context so /api/workflows receives x-org-id / org_id (matches Connectors).
   const { data, error, isLoading, isValidating, mutate } = useSWR(
     user && orgId ? `/api/workflows?org_id=${orgId}` : null,
     apiFetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnMount: true,
-      onSuccess: () => setLastFetchedAt(Date.now()),
-      onError: (err) => {
-        console.error("[v0] Workflows fetch error:", err)
-      },
-    }
-  )
-  const { data: statsData } = useSWR<WorkflowStatsPayload>(
-    user && orgId ? `/api/workflows/stats?org_id=${orgId}` : null,
-    apiFetcher,
-    {
-      revalidateOnFocus: false,
-    }
+    { revalidateOnFocus: true, refreshInterval: 60_000, onSuccess: () => setUpdatedAt(Date.now()) },
   )
 
-  const workflows = normalizeWorkflowsResponse(data)
-  const footerSuccessRate =
-    typeof statsData?.overallSuccessRate === "number" && Number.isFinite(statsData.overallSuccessRate) ? statsData.overallSuccessRate : null
-  const footerRunsThisWeek =
-    typeof statsData?.totalRunsThisWeek === "number" && Number.isFinite(statsData.totalRunsThisWeek) ? statsData.totalRunsThisWeek : null
-  const activeCount = workflows.filter((w) => w.status === "active").length
-  const pausedCount = workflows.filter((w) => w.status === "paused").length
-  const runningCount = workflows.filter((w) => w.isRunning).length
-  const errorCount = workflows.filter((w) => w.status === "error").length
-  const draftCount = workflows.filter((w) => w.status === "draft").length
+  const workflows = useMemo(() => normalizeWorkflows(data), [data])
+  const summary = useMemo(() => summarizeFleet(workflows), [workflows])
+  const departments = useMemo(
+    () => Array.from(new Set(workflows.flatMap((w) => w.departments))).sort((a, b) => a.localeCompare(b)),
+    [workflows],
+  )
+  const visible = useMemo(
+    () => sortWorkflows(filterWorkflows(workflows, { query, segment, department, runningOnly }), sort),
+    [workflows, query, segment, department, runningOnly, sort],
+  )
+  const paged = paginate(visible, page, PAGE_SIZE)
+  const selected = visible.find((w) => w.id === selectedId) ?? paged.rows[0] ?? null
 
-  const filteredWorkflows = workflows.filter(w => {
-    const matchesSearch = w.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      w.description.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(w.status)
-    const matchesEnv = envFilter.length === 0 || envFilter.includes(w.environment)
-    const matchesPhase = !phase || (phase === "running" ? Boolean(w.isRunning) : w.status === phase)
-    return matchesSearch && matchesStatus && matchesEnv && matchesPhase
-  })
-  
-  const activeFiltersCount = statusFilter.length + envFilter.length
+  // Only a workflow the user picked becomes AI context; the default first row does not.
+  const picked = selectedId ? visible.find((w) => w.id === selectedId) ?? null : null
+  usePublishGravitreAISelection(picked ? { kind: "workflow", id: picked.id, label: picked.name } : null)
 
-  // Handler functions for workflow actions
-  const handleEditWorkflow = (id: string) => {
-    router.push(`/workflows/${id}/builder`)
+  useEffect(() => {
+    if (paged.page !== page) setPage(paged.page)
+  }, [paged.page, page])
+
+  const pickSegment = (next: WorkflowSegment) => {
+    setSegment(next)
+    setRunningOnly(false)
+    setPage(1)
   }
 
-  const handleViewRuns = (id: string) => {
-    router.push(`/runs?workflow=${id}`)
-  }
-
-  const handleDuplicateWorkflow = async (workflow: Workflow) => {
+  const runNow = async (workflow: FleetWorkflow) => {
+    setBusy("run")
     try {
-      const duplicated = await workflowsApi.create({
-        name: `${workflow.name}-copy`,
-        description: workflow.description,
+      const result = await workflowsApi.execute({ workflow_id: workflow.id })
+      toast.success(result?.approval_required ? `${workflow.name} is waiting for approval` : `${workflow.name} started`, {
+        description: result?.approval_required ? "It runs once someone approves it in Approvals." : result?.run_id ? "Follow it in Activity." : undefined,
+        action: result?.run_id ? { label: "Open run", onClick: () => router.push(`/runs/${result.run_id}`) } : undefined,
       })
       await mutate()
-      toast.success(`Workflow duplicated: ${duplicated.name}`)
-      router.push(`/workflows/${duplicated.id}/builder`)
     } catch (err) {
-      console.error("[v0] Failed to duplicate workflow:", err)
-      toast.error("Failed to duplicate workflow")
+      toast.error(err instanceof Error ? err.message : "Could not start this workflow")
+    } finally {
+      setBusy(null)
     }
   }
 
-  const handleDeleteWorkflow = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this workflow?")) return
-    
-    // Optimistic update
-    const previousWorkflows = workflows
-    mutate({ workflows: workflows.filter(w => w.id !== id) }, false)
-    
+  const toggleStatus = async (workflow: FleetWorkflow) => {
+    const next: WorkflowStatus = workflow.status === "active" ? "paused" : "active"
+    setBusy("toggle")
     try {
-      await workflowsApi.delete(id)
-      toast.success("Workflow deleted")
-    } catch (err) {
-      console.error("[v0] Failed to delete workflow:", err)
-      mutate({ workflows: previousWorkflows }, false)
-      toast.error("Failed to delete workflow")
-    }
-  }
-
-  const handleToggleStatus = async (workflow: Workflow) => {
-    const newStatus: Workflow["status"] = workflow.status === "active" ? "paused" : "active"
-    const previousWorkflows = workflows
-    const optimistic = workflows.map((w) =>
-      w.id === workflow.id ? { ...w, status: newStatus } : w
-    )
-    mutate({ workflows: optimistic }, false)
-
-    try {
-      await workflowsApi.update(workflow.id, { status: newStatus as WorkflowStatus })
+      await workflowsApi.update(workflow.id, { status: next })
+      toast.success(`${workflow.name} ${next === "active" ? "activated" : "paused"}`)
       await mutate()
-      toast.success(`Workflow ${newStatus === "active" ? "activated" : "paused"}`)
     } catch (err) {
-      console.error("[v0] Failed to toggle workflow status:", err)
-      mutate({ workflows: previousWorkflows }, false)
-      const message = err instanceof Error ? err.message : "Unable to update workflow status"
-      toast.error(message)
+      toast.error(err instanceof Error ? err.message : "Could not update this workflow")
+    } finally {
+      setBusy(null)
     }
   }
+
+  const loading = isLoading && !data
+  const segments: Array<{ id: WorkflowSegment; label: string; count: number; dot: string }> = [
+    { id: "all", label: "All", count: summary.all, dot: "ink" },
+    { id: "active", label: "Active", count: summary.active, dot: "green" },
+    { id: "paused", label: "Paused", count: summary.paused, dot: "amber" },
+    { id: "failing", label: "Failing", count: summary.failing, dot: "red" },
+    { id: "draft", label: "Draft", count: summary.draft, dot: "" },
+  ]
+  const showPaused = segment === "paused"
 
   return (
-    <AppShell title={SURFACE_COPY.pages.workflows.title}>
-      <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--g-canvas)]" data-composition="operate">
-        {/* Header */}
-        <div className="relative z-10 border-b border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]/88 backdrop-blur-sm">
-          <GravitrePageHeader
-            title={SURFACE_COPY.pages.workflows.title}
-            description={SURFACE_COPY.pages.workflows.description}
-            status={
-              workflows.length > 0 ? (
-                <LiveStatus tone={runningCount > 0 ? "live" : errorCount > 0 ? "attention" : "idle"}>
-                  {runningCount > 0
-                    ? `${runningCount} running now`
-                    : errorCount > 0
-                      ? `${errorCount} failing`
-                      : "Nothing running"}
-                </LiveStatus>
-              ) : undefined
-            }
-            icon={<NucleoWorkflow className="h-5 w-5" />}
-            actions={
-            <>
-              <AskGravitreSummonButton />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn("h-11 min-w-11 gap-2 sm:h-8 sm:min-w-0", RADIUS.control)}>
-                    <Target className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Start from</span>
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
-                  <DropdownMenuItem onSelect={() => setGoalWizardOpen(true)} className="flex items-start gap-3 py-2">
-                    <Target className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--g-emerald-deep)]" />
-                    <span className="flex flex-col">
-                      <span className="text-sm font-medium">Create from Goal</span>
-                      <span className="text-xs text-muted-foreground">Describe an outcome, review the plan</span>
-                    </span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setMesonWizardOpen(true)} className="flex items-start gap-3 py-2">
-                    <Blocks className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--g-emerald-deep)]" />
-                    <span className="flex flex-col">
-                      <span className="text-sm font-medium">Build with Meson</span>
-                      <span className="text-xs text-muted-foreground">Let Meson draft the steps for you</span>
-                    </span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button size="sm" className={cn("h-11 gap-2 px-4 sm:h-8 sm:px-3", RADIUS.control)} asChild>
-                <Link href="/workflows/new/builder">
-                  <Icon name="add" size="sm" />
-                  <span className="sm:hidden">New</span>
-                  <span className="hidden sm:inline">New workflow</span>
-                </Link>
-              </Button>
-            </>
-          }
-          />
-          <div className="px-4 pb-4 md:px-6">
-          <PhaseBand
-            label="Workflow phases"
-            loading={isLoading && workflows.length === 0}
-            phases={[
-              { id: "running", label: "Running now", count: runningCount, tone: "live", hint: runningCount ? "In flight" : undefined },
-              { id: "active", label: "Active", count: activeCount, tone: "done" },
-              { id: "error", label: "Failing", count: errorCount, tone: "risk" },
-              { id: "paused", label: "Paused", count: pausedCount, tone: "attention" },
-              { id: "draft", label: "Draft", count: draftCount, tone: "neutral" },
-            ]}
-            active={phase}
-            onSelect={(next) => setPhase(next as WorkflowPhase | null)}
-          />
+    <div className="ov-page" data-composition="operate">
+      <section aria-labelledby="workflows-hero" className="ov-hero">
+        <div className="ov-hero-art">
+          {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
+          <img src="/illustrations/hero-workflows.svg" alt="" />
+          {workflows.length ? (
+            <div className="au-art-chip">
+              <span className="t">
+                <i aria-hidden className={summary.running ? undefined : "idle"} />
+                {summary.running ? `${summary.running} running now` : "Nothing running"} · {summary.active} active
+              </span>
+              <button type="button" aria-pressed={showPaused} onClick={() => pickSegment(showPaused ? "all" : "paused")}>
+                {showPaused ? "Show all" : "Show paused"}
+              </button>
+            </div>
+          ) : null}
+        </div>
+        <div className="ov-hero-copy">
+          <div className="ov-hero-eb">
+            <span className="ov-eyebrow">Automate / Workflows</span>
+            {error && data ? (
+              <span className="ov-fresh stale" role="status">
+                <i aria-hidden />
+                Could not refresh
+                <button type="button" onClick={() => void mutate()}>
+                  Retry
+                </button>
+              </span>
+            ) : (
+              <span className="ov-fresh">
+                <i aria-hidden />
+                {isValidating && updatedAt ? "Refreshing..." : updatedLabel(updatedAt, now)}
+              </span>
+            )}
+          </div>
+          <h1 id="workflows-hero">Workflows</h1>
+          <p className="ov-lead">
+            Automations across your connectors, with status, runs and failure signals in one place. Steps that write to
+            your apps can wait for your OK.
+          </p>
+          <div className="ov-stats">
+            <Stat value={loading ? null : summary.running} label="Running now" tone="green" onClick={() => { pickSegment("all"); setRunningOnly(true) }} />
+            <Stat value={loading ? null : summary.active} label="Active" onClick={() => pickSegment("active")} />
+            <Stat value={loading ? null : summary.paused} label="Paused" tone={summary.paused ? "amber" : undefined} onClick={() => pickSegment("paused")} />
+            <Stat value={loading ? null : summary.failing} label="Failing" tone={summary.failing ? "red" : undefined} onClick={() => pickSegment("failing")} />
+          </div>
+          <div className="ov-actions">
+            <Link className="ov-btn dark" href="/workflows/new/builder">
+              <Plus size={16} aria-hidden />
+              New workflow
+            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className="ov-btn">
+                  Start from a template
+                  <ChevronDown size={14} aria-hidden />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-64">
+                <DropdownMenuItem onSelect={() => setGoalOpen(true)} className="flex items-start gap-3 py-2">
+                  <Target className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span className="flex flex-col">
+                    <span className="text-sm font-medium">Create from a goal</span>
+                    <span className="text-xs text-muted-foreground">Describe an outcome, review the plan</span>
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setMesonOpen(true)} className="flex items-start gap-3 py-2">
+                  <Blocks className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span className="flex flex-col">
+                    <span className="text-sm font-medium">Build with Meson</span>
+                    <span className="text-xs text-muted-foreground">Let Meson draft the steps for you</span>
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => router.push("/marketplace")} className="flex items-start gap-3 py-2">
+                  <Store className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span className="flex flex-col">
+                    <span className="text-sm font-medium">Browse templates</span>
+                    <span className="text-xs text-muted-foreground">Install a ready made workflow</span>
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <AskGravitreSummonButton
+              className="au-ask"
+              label="Ask Gravitre about failures"
+              prompt="Which of my workflows are failing or getting worse, why, and what should I fix first?"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="ov-panel" aria-labelledby="workflows-list">
+        <div className="ov-band">
+          <div className="ov-band-l">
+            <span className="ov-dots" aria-hidden>
+              <i />
+              <i />
+              <i />
+            </span>
+            <h2 id="workflows-list">All workflows</h2>
+          </div>
+          <div className="ov-seg" role="group" aria-label="Filter by status">
+            {segments.map((item) => (
+              <button key={item.id} type="button" aria-pressed={segment === item.id && !runningOnly} onClick={() => pickSegment(item.id)}>
+                <span className={cn("d", item.dot)} aria-hidden />
+                {item.label}
+                <span className="c">{loading ? "" : item.count}</span>
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* List is the product; live counts live in Totals. */}
-
-        <div className="relative z-10 flex-1 overflow-y-auto px-4 py-5 md:px-6 md:py-6 scrollbar-on-hover">
-          {/* Error state with retry */}
-          {error && (
-            <ErrorState
-              title="Failed to load workflows"
-              description="We couldn't reach your workflows. Check your organization context and try again."
-              onRetry={() => mutate()}
-            />
-          )}
-
-          {isLoading && workflows.length === 0 && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <CardSkeleton key={i} />
-              ))}
-            </div>
-          )}
-
-          {!isLoading && !error && workflows.length === 0 && (
-            <div className="py-4">
-            <Illustration name="moment-welcome" width={180} className="mb-2" />
-            <OperatingEmpty
-              className="px-0 py-4 sm:px-0"
-              title="No workflows yet"
-              body="A workflow turns an objective into repeatable steps across your connected systems. Start from a goal, let Meson draft it, or build it step by step."
-              path={["Describe the objective", "Build the steps", "Run with approvals", "Review outcomes"]}
-              action={
-                <>
-                  <Button size="sm" className={cn("gap-2", RADIUS.control)} onClick={() => setGoalWizardOpen(true)}>
-                    <Target className="h-3.5 w-3.5" />
-                    Create from Goal
-                  </Button>
-                  <Button variant="outline" size="sm" className={cn("gap-2", RADIUS.control)} asChild>
-                    <Link href="/workflows/new/builder">New workflow</Link>
-                  </Button>
-                </>
-              }
-            />
-            </div>
-          )}
-
-          {workflows.length > 0 && (
-          <>
-          {/* Search and View Toggle */}
-          <div className="mb-4 flex flex-col gap-3 rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative flex-1 sm:max-w-xs md:max-w-sm">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                <Icon name="search" size="sm" className="text-muted-foreground" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search workflows..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={cn(
-                  "h-9 w-full border-0 bg-transparent pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground",
-                  // Uses the shared ring token instead of a raw blue-500 focus
-                  // ring, so keyboard focus looks identical to every other input.
-                  RADIUS.control,
-                  INTERACTION,
-                )}
-              />
-            </div>
-            
-            <div className="flex items-center gap-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" aria-label="Filter workflows" className={cn("h-11 min-w-11 gap-2 sm:h-8 sm:min-w-0", RADIUS.control)}>
-                      <Icon name="filter" size="sm" />
-                      <span className="hidden sm:inline">Filter</span>
-                      {activeFiltersCount > 0 && (
-                        <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-info text-[10px] font-medium text-info-foreground">
-                          {activeFiltersCount}
-                        </span>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuLabel>Status</DropdownMenuLabel>
-                    <DropdownMenuCheckboxItem
-                      checked={statusFilter.includes("active")}
-                      onCheckedChange={(checked) => 
-                        setStatusFilter(checked 
-                          ? [...statusFilter, "active"] 
-                          : statusFilter.filter(s => s !== "active")
-                        )
-                      }
-                    >
-                      Active
-                    </DropdownMenuCheckboxItem>
-                    <DropdownMenuCheckboxItem
-                      checked={statusFilter.includes("paused")}
-                      onCheckedChange={(checked) => 
-                        setStatusFilter(checked 
-                          ? [...statusFilter, "paused"] 
-                          : statusFilter.filter(s => s !== "paused")
-                        )
-                      }
-                    >
-                      Paused
-                    </DropdownMenuCheckboxItem>
-                    <DropdownMenuCheckboxItem
-                      checked={statusFilter.includes("draft")}
-                      onCheckedChange={(checked) => 
-                        setStatusFilter(checked 
-                          ? [...statusFilter, "draft"] 
-                          : statusFilter.filter(s => s !== "draft")
-                        )
-                      }
-                    >
-                      Draft
-                    </DropdownMenuCheckboxItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel>Environment</DropdownMenuLabel>
-                    <DropdownMenuCheckboxItem
-                      checked={envFilter.includes("production")}
-                      onCheckedChange={(checked) => 
-                        setEnvFilter(checked 
-                          ? [...envFilter, "production"] 
-                          : envFilter.filter(e => e !== "production")
-                        )
-                      }
-                    >
-                      Production
-                    </DropdownMenuCheckboxItem>
-                    <DropdownMenuCheckboxItem
-                      checked={envFilter.includes("staging")}
-                      onCheckedChange={(checked) => 
-                        setEnvFilter(checked 
-                          ? [...envFilter, "staging"] 
-                          : envFilter.filter(e => e !== "staging")
-                        )
-                      }
-                    >
-                      Staging
-                    </DropdownMenuCheckboxItem>
-                    {activeFiltersCount > 0 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onSelect={() => {
-                            setStatusFilter([])
-                            setEnvFilter([])
-                          }}
-                          className="text-xs text-muted-foreground"
-                        >
-                          Clear all filters
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-            <SegmentedControl
-              options={VIEW_MODES}
-              value={viewMode}
-              onChange={setViewMode}
-              ariaLabel="Switch workflow layout"
-              className="hidden shrink-0 bg-secondary/50 md:inline-flex"
-            />
-            </div>
-          </div>
-
-          {/* Freshness + result count */}
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
-              {filteredWorkflows.length} of {workflows.length} workflow{workflows.length === 1 ? "" : "s"}
-            </span>
-            <DataFreshness
-              updatedAt={lastFetchedAt}
-              isRefreshing={isValidating}
-              onRefresh={() => mutate()}
-            />
-          </div>
-
-          {/* Filtered no-results */}
-          {filteredWorkflows.length === 0 ? (
-            <NoResultsState
-              onClear={() => {
-                setSearchQuery("")
-                setStatusFilter([])
-                setEnvFilter([])
-                setPhase(null)
+        <div className="au-tools">
+          <label className="ov-search">
+            <Search size={16} aria-hidden />
+            <span className="ov-sr">Search workflows</span>
+            <input
+              type="search"
+              placeholder="Search workflows, apps or departments"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                setPage(1)
               }}
             />
-          ) : (
-          /* Content - Premium animated */
-          <AnimatePresence mode="wait">
-            {viewMode === "grid" ? (
-              <motion.div
-                key="grid"
-                initial={reducedMotion ? false : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reducedMotion ? undefined : { opacity: 0, y: -8 }}
-                transition={{ duration: reducedMotion ? 0 : 0.18 }}
+          </label>
+          {departments.length ? (
+            <label className="au-field">
+              Department
+              <select
+                value={department}
+                onChange={(e) => {
+                  setDepartment(e.target.value)
+                  setPage(1)
+                }}
               >
-                <WorkflowGrid>
-                  {filteredWorkflows.map((workflow) => (
-                    <motion.div
-                      key={workflow.id}
-                      initial={false}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: reducedMotion ? 0 : 0.18 }}
-                    >
-                      <WorkflowCard
-                        {...workflow}
-                        onClick={() => router.push(`/workflows/${workflow.id}/builder`)}
-                        onEdit={() => handleEditWorkflow(workflow.id)}
-                        onViewRuns={() => handleViewRuns(workflow.id)}
-                        onDuplicate={() => handleDuplicateWorkflow(workflow)}
-                        onDelete={() => handleDeleteWorkflow(workflow.id)}
-                        onToggleStatus={() => handleToggleStatus(workflow)}
-                      />
-                    </motion.div>
-                  ))}
-                </WorkflowGrid>
-                
-              </motion.div>
-            ) : (
-              <motion.div
-                key="table"
-                initial={reducedMotion ? false : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reducedMotion ? undefined : { opacity: 0, y: -8 }}
-                transition={{ duration: reducedMotion ? 0 : 0.18 }}
-                className="overflow-x-auto rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]"
-              >
-                <DataTable
-                  columns={columns}
-                  data={filteredWorkflows}
-                  onRowClick={(workflow) => router.push(`/workflows/${workflow.id}/builder`)}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-          )}
-          <WorkflowFleetSummary successRate={footerSuccessRate} weeklyRuns={footerRunsThisWeek} />
-          </>
-          )}
+                <option value="all">All</option>
+                {departments.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <label className="au-field">
+            Sort
+            <select value={sort} onChange={(e) => setSort(e.target.value as WorkflowSort)}>
+              {SORTS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="ov-seg" role="group" aria-label="Layout">
+            {VIEWS.map(({ id, label, icon: Icon }) => (
+              <button key={id} type="button" aria-pressed={view === id} onClick={() => setView(id)}>
+                <Icon size={14} aria-hidden />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Meson Wizard */}
-        <MesonWizard 
-          open={mesonWizardOpen} 
-          onClose={() => setMesonWizardOpen(false)}
-          onComplete={(result) => {
-            if (result.workflowId) {
-              router.push(`/workflows/${result.workflowId}/builder`)
-              return
-            }
-            if (result.agentId) {
-              router.push(`/agents/${result.agentId}`)
-              return
-            }
-            router.push("/workflows")
-          }}
-        />
+        <div className="au-split">
+          <div className="au-main">
+            {error && !data ? (
+              <div className="ov-empty" role="alert">
+                {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
+                <img src="/illustrations/moment-error.svg" alt="" width={160} />
+                <b>Failed to load workflows</b>
+                <p>We couldn&apos;t reach your workflows. Check your organization context and try again.</p>
+                <button type="button" className="ov-btn sm" onClick={() => void mutate()}>
+                  Try again
+                </button>
+              </div>
+            ) : loading ? (
+              <div className="ov-pad" aria-busy="true">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="ov-skel-n" style={{ display: "block", width: "100%", height: 44, marginBottom: 8 }} />
+                ))}
+              </div>
+            ) : workflows.length === 0 ? (
+              <div className="ov-empty">
+                {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
+                <img src="/illustrations/moment-welcome.svg" alt="" width={160} />
+                <b>No workflows yet</b>
+                <p>
+                  A workflow turns an objective into repeatable steps across your connected systems. Start from a goal, let
+                  Meson draft it, or build it step by step.
+                </p>
+                <div className="ov-actions">
+                  <button type="button" className="ov-btn sm dark" onClick={() => setGoalOpen(true)}>
+                    Create from a goal
+                  </button>
+                  <Link className="ov-btn sm" href="/workflows/new/builder">
+                    New workflow
+                  </Link>
+                </div>
+              </div>
+            ) : visible.length === 0 ? (
+              <div className="ov-empty">
+                <b>No workflows match</b>
+                <button
+                  type="button"
+                  className="ov-linkbtn"
+                  onClick={() => {
+                    setQuery("")
+                    setDepartment("all")
+                    pickSegment("all")
+                  }}
+                >
+                  Clear filters
+                </button>
+              </div>
+            ) : view === "table" ? (
+              <div className="au-table-wrap">
+                <table className="au-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Workflow</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Department</th>
+                      <th scope="col">Last run</th>
+                      <th scope="col">Success</th>
+                      <th scope="col" className="num">Runs</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paged.rows.map((workflow) => (
+                      <tr key={workflow.id} aria-selected={selected?.id === workflow.id} onClick={() => setSelectedId(workflow.id)}>
+                        <td>
+                          <button type="button" className="au-name" onClick={() => setSelectedId(workflow.id)}>
+                            <b>{workflow.name}</b>
+                            {workflow.description ? <span>{workflow.description}</span> : null}
+                          </button>
+                        </td>
+                        <td>
+                          <StatusPill workflow={workflow} />
+                        </td>
+                        <td>
+                          {workflow.departments.length ? (
+                            <span className="au-tag">{workflow.departments[0]}</span>
+                          ) : (
+                            <span className="ov-cell m">None</span>
+                          )}
+                        </td>
+                        <td>
+                          <span className="au-mono" title={workflow.lastRun ? relativeTime(workflow.lastRun) : undefined}>
+                            {lastRunDay(workflow.lastRun)}
+                          </span>
+                        </td>
+                        <td>
+                          <SuccessBar rate={workflow.successRate} />
+                        </td>
+                        <td className="num au-mono">{workflow.runCount.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : view === "cards" ? (
+              <div className="au-cards">
+                {paged.rows.map((workflow) => (
+                  <WorkflowCard
+                    key={workflow.id}
+                    workflow={workflow}
+                    selected={selected?.id === workflow.id}
+                    onSelect={() => setSelectedId(workflow.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="au-board">
+                {BOARD_COLUMNS.map((column) => {
+                  const rows = visible.filter((w) => (column.id === "failing" ? isFailing(w) : !isFailing(w) && w.status === column.id))
+                  return (
+                    <section key={column.id} className="au-col" aria-label={column.label}>
+                      <header>
+                        <span>{column.label}</span>
+                        <small>{rows.length}</small>
+                      </header>
+                      {rows.length === 0 ? (
+                        <p className="au-col-empty">None.</p>
+                      ) : (
+                        rows.map((workflow) => (
+                          <WorkflowCard
+                            key={workflow.id}
+                            workflow={workflow}
+                            compact
+                            selected={selected?.id === workflow.id}
+                            onSelect={() => setSelectedId(workflow.id)}
+                          />
+                        ))
+                      )}
+                    </section>
+                  )
+                })}
+              </div>
+            )}
 
-        {/* Goal Workflow Wizard */}
-        <GoalWorkflowWizard
-          open={goalWizardOpen}
-          onOpenChange={setGoalWizardOpen}
-        />
+            {visible.length > 0 && view !== "board" ? (
+              <div className="au-foot">
+                <span>
+                  Showing{" "}
+                  <b>
+                    {paged.from} to {paged.to}
+                  </b>{" "}
+                  of {visible.length}
+                </span>
+                <AuPages page={paged.page} pageCount={paged.pageCount} onPage={setPage} label="Workflow pages" />
+              </div>
+            ) : null}
+          </div>
+
+          {selected ? (
+            <WorkflowSide
+              workflow={selected}
+              busy={busy}
+              onRun={() => void runNow(selected)}
+              onToggle={() => void toggleStatus(selected)}
+            />
+          ) : null}
+        </div>
+      </section>
+
+      <section className="au-features" aria-label="How workflows run">
+        {EXPLAINERS.map((card) => (
+          <article key={card.title} className="au-feature">
+            <div className="au-feature-art tall">
+              {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
+              <img src={card.art} alt="" />
+            </div>
+            <div className="au-feature-body">
+              <span className="au-eyebrow">{card.eyebrow}</span>
+              <b>{card.title}</b>
+              <p>{card.body}</p>
+            </div>
+          </article>
+        ))}
+      </section>
+
+      <MesonWizard
+        open={mesonOpen}
+        onClose={() => setMesonOpen(false)}
+        onComplete={(result) => {
+          if (result.workflowId) {
+            router.push(`/workflows/${result.workflowId}/builder`)
+            return
+          }
+          if (result.agentId) {
+            router.push(`/agents/${result.agentId}`)
+            return
+          }
+          void mutate()
+        }}
+      />
+      <GoalWorkflowWizard open={goalOpen} onOpenChange={setGoalOpen} />
+    </div>
+  )
+}
+
+function Stat({
+  value,
+  label,
+  tone,
+  onClick,
+}: {
+  value: number | null
+  label: string
+  tone?: "green" | "amber" | "red"
+  onClick: () => void
+}) {
+  return (
+    <button type="button" className={cn("ov-stat", tone)} onClick={onClick}>
+      <span className="v">{value === null ? <span className="ov-skel-n" aria-hidden /> : value}</span>
+      <span className="k">{label}</span>
+    </button>
+  )
+}
+
+function StatusPill({ workflow }: { workflow: FleetWorkflow }) {
+  const tone = workflow.isRunning ? "green" : statusTone(workflow)
+  return (
+    <span className={cn("ov-pill", tone)} style={{ fontWeight: 500, fontSize: 12, padding: "3px 10px" }}>
+      <span className="ov-dot" aria-hidden />
+      {statusLabel(workflow)}
+    </span>
+  )
+}
+
+function SuccessBar({ rate }: { rate: number | null }) {
+  if (rate === null) return <span className="ov-cell m">No runs</span>
+  return (
+    <span className={cn("au-succ", successTone(rate))}>
+      <span className="track" aria-hidden>
+        <span style={{ width: `${Math.max(0, Math.min(100, rate))}%` }} />
+      </span>
+      {rate}%
+    </span>
+  )
+}
+
+function RunBars({ workflow }: { workflow: FleetWorkflow }) {
+  if (workflow.recentRuns.length === 0) return <p className="au-runs-empty">No runs yet.</p>
+  return (
+    <div className="au-runs" role="img" aria-label={`Last ${workflow.recentRuns.length} runs, oldest first`}>
+      {workflow.recentRuns.map((run, index) => {
+        const tone = runTone(run.status)
+        return <i key={`${run.createdAt ?? index}-${index}`} className={tone === "ok" ? undefined : tone} title={run.status} />
+      })}
+    </div>
+  )
+}
+
+function WorkflowCard({
+  workflow,
+  selected,
+  compact = false,
+  onSelect,
+}: {
+  workflow: FleetWorkflow
+  selected: boolean
+  compact?: boolean
+  onSelect: () => void
+}) {
+  const tone = isFailing(workflow) ? "tone-off" : workflow.status === "active" ? "tone-act" : workflow.status === "paused" ? "tone-recommend" : "tone-observe"
+  return (
+    <button type="button" className={cn("au-card", tone)} aria-pressed={selected} onClick={onSelect}>
+      <span className="row">
+        <StatusPill workflow={workflow} />
+        <small>{workflow.runCount} runs</small>
+      </span>
+      <b>{workflow.name}</b>
+      {compact || !workflow.description ? null : <p>{workflow.description}</p>}
+      {compact ? null : <RunBars workflow={workflow} />}
+      <span className="row foot">
+        {workflow.departments.length ? <span className="au-tag">{workflow.departments[0]}</span> : <span />}
+        <SuccessBar rate={workflow.successRate} />
+      </span>
+    </button>
+  )
+}
+
+function WorkflowSide({
+  workflow,
+  busy,
+  onRun,
+  onToggle,
+}: {
+  workflow: FleetWorkflow
+  busy: "run" | "toggle" | null
+  onRun: () => void
+  onToggle: () => void
+}) {
+  return (
+    <aside className="au-side" aria-label={`${workflow.name} details`}>
+      <div className="ov-chips">
+        <StatusPill workflow={workflow} />
+        {workflow.departments.map((name) => (
+          <span key={name} className="au-tag">
+            {name}
+          </span>
+        ))}
+        <span className="au-tag">{workflow.environment === "production" ? "Production" : workflow.environment}</span>
       </div>
-    </AppShell>
+      <h3>
+        <Link href={`/workflows/${workflow.id}`}>{workflow.name}</Link>
+      </h3>
+      {workflow.description ? <p className="desc">{workflow.description}</p> : null}
+
+      <div className="au-facts">
+        <div className="au-fact">
+          <b>{workflow.successRate === null ? "None" : `${workflow.successRate}%`}</b>
+          <span>Success</span>
+        </div>
+        <div className="au-fact">
+          <b>{workflow.runCount.toLocaleString()}</b>
+          <span>Runs</span>
+        </div>
+        <div className="au-fact">
+          <b>{workflow.steps.length}</b>
+          <span>Steps</span>
+        </div>
+      </div>
+
+      <span className="au-eyebrow">Last {Math.max(workflow.recentRuns.length, 1) === 1 ? "run" : `${workflow.recentRuns.length} runs`}</span>
+      <RunBars workflow={workflow} />
+
+      {workflow.steps.length ? (
+        <>
+          <span className="au-eyebrow">Path</span>
+          <ol className="au-path">
+            {workflow.steps.slice(0, 6).map((step, index) => (
+              <li key={`${step}-${index}`}>
+                <span className="n">{index + 1}</span>
+                <span className="t">{step}</span>
+              </li>
+            ))}
+            {workflow.steps.length > 6 ? <li className="ov-kicker">and {workflow.steps.length - 6} more steps</li> : null}
+          </ol>
+        </>
+      ) : null}
+
+      <div className="au-side-foot">
+        {workflow.status === "active" ? (
+          <button type="button" className="ov-btn sm green" disabled={busy !== null} onClick={onRun}>
+            {busy === "run" ? "Starting..." : "Run now"}
+          </button>
+        ) : null}
+        <Link className="ov-btn sm" href={`/workflows/${workflow.id}/builder`}>
+          Edit
+        </Link>
+        {workflow.status === "active" || workflow.status === "paused" ? (
+          <button type="button" className="ov-btn sm" disabled={busy !== null} onClick={onToggle}>
+            {busy === "toggle" ? "Saving..." : workflow.status === "active" ? "Pause" : "Activate"}
+          </button>
+        ) : null}
+      </div>
+    </aside>
   )
 }

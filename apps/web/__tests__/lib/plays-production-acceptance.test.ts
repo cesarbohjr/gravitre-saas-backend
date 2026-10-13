@@ -11,7 +11,7 @@ describe("Plays production acceptance", () => {
     const page = read("app/(app)/plays/page.tsx")
     expect(routes).toMatch(/plays: "\/plays"/)
     expect(nav).toMatch(/APP_ROUTES\.plays/)
-    expect(page).toMatch(/Turn business goals into coordinated action/)
+    expect(page).toMatch(/grant more authority when the results earn it/)
   })
 
   it("keeps action authority in canonical workflows", () => {

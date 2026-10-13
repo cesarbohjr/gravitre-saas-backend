@@ -22,6 +22,9 @@ RUN_STATUS_TO_SCHEDULED = {
     "rejected": "failed",
     "cancelled": "failed",
 }
+# A month grid of runs: enough for a busy org's month without an unbounded read.
+RUN_WINDOW_LIMIT = 1000
+ERROR_SNIPPET_LIMIT = 200
 JOB_STATUS_TO_SCHEDULED = {
     "queued": "queued",
     "training": "running",
@@ -139,23 +142,24 @@ def _task_run_items(
     *,
     workflow_id: str | None,
     workflow_names: dict[str, str],
-    limit: int = 200,
+    runs: list[dict[str, Any]] | None = None,
+    window_start: datetime | None = None,
+    window_end: datetime | None = None,
+    limit: int = RUN_WINDOW_LIMIT,
 ) -> list[dict[str, Any]]:
-    q = (
-        client.table("workflow_runs")
-        .select("id, workflow_id, status, run_type, created_at, completed_at, trigger_type")
-        .eq("org_id", org_id)
-        .eq("environment", environment_name)
-        .order("created_at", desc=True)
-        .limit(limit)
-    )
-    if workflow_id:
-        q = q.eq("workflow_id", workflow_id)
-    try:
-        response = q.execute()
-    except Exception:  # noqa: BLE001
-        return []
-    runs = list(response.data or [])
+    if runs is None:
+        try:
+            runs = _windowed_runs(
+                client,
+                org_id,
+                environment_name,
+                workflow_id=workflow_id,
+                window_start=window_start,
+                window_end=window_end,
+                limit=limit,
+            )
+        except Exception:  # noqa: BLE001
+            return []
     items: list[dict[str, Any]] = []
     for run in runs:
         wf_id = str(run.get("workflow_id") or "")
@@ -179,8 +183,54 @@ def _task_run_items(
             item["startedAt"] = run.get("created_at")
         if run.get("completed_at"):
             item["completedAt"] = run.get("completed_at")
+        duration = run.get("duration_ms")
+        if isinstance(duration, (int, float)) and not isinstance(duration, bool) and duration >= 0:
+            item["durationMs"] = int(duration)
+        if mapped == "failed" and run.get("error_message"):
+            item["error"] = _short_error(run.get("error_message"))
+        if wf_id and workflow_names.get(wf_id):
+            item["workflowName"] = workflow_names[wf_id]
+        if run.get("trigger_type"):
+            item["triggerType"] = str(run.get("trigger_type"))
         items.append(item)
     return items
+
+
+def _short_error(value: Any, limit: int = ERROR_SNIPPET_LIMIT) -> str:
+    text = " ".join(str(value or "").split())
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+
+def _windowed_runs(
+    client: Any,
+    org_id: str,
+    environment_name: str,
+    *,
+    workflow_id: str | None,
+    window_start: datetime | None,
+    window_end: datetime | None,
+    limit: int = RUN_WINDOW_LIMIT,
+) -> list[dict[str, Any]]:
+    """Runs started inside the requested window, newest first.
+
+    Without a window this is the latest ``limit`` runs, as before. With one, a
+    month view shows that month's runs instead of whatever the newest 200 were.
+    """
+    q = (
+        client.table("workflow_runs")
+        .select(
+            "id, workflow_id, status, run_type, created_at, completed_at, trigger_type, duration_ms, error_message"
+        )
+        .eq("org_id", org_id)
+        .eq("environment", environment_name)
+    )
+    if window_start is not None:
+        q = q.gte("created_at", window_start.isoformat())
+    if window_end is not None:
+        q = q.lt("created_at", window_end.isoformat())
+    if workflow_id:
+        q = q.eq("workflow_id", workflow_id)
+    return list(q.order("created_at", desc=True).limit(limit).execute().data or [])
 
 
 def _training_job_items(
@@ -258,17 +308,14 @@ def list_scheduled_items(
 
     runs: list[dict[str, Any]] = []
     if "task" in selected_kinds:
-        runs_q = (
-            client.table("workflow_runs")
-            .select("workflow_id")
-            .eq("org_id", org_id)
-            .eq("environment", environment_name)
-            .order("created_at", desc=True)
-            .limit(200)
+        runs = _windowed_runs(
+            client,
+            org_id,
+            environment_name,
+            workflow_id=workflow_id,
+            window_start=window_start,
+            window_end=window_end,
         )
-        if workflow_id:
-            runs_q = runs_q.eq("workflow_id", workflow_id)
-        runs = list(runs_q.execute().data or [])
         workflow_ids.update(str(row.get("workflow_id") or "") for row in runs if row.get("workflow_id"))
 
     workflow_names = workflow_names_for_ids(client, org_id, sorted(workflow_ids))
@@ -295,6 +342,7 @@ def list_scheduled_items(
                 environment_name,
                 workflow_id=workflow_id,
                 workflow_names=workflow_names,
+                runs=runs,
             )
         )
 
