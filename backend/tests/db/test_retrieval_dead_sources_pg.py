@@ -192,3 +192,41 @@ def test_migration_is_idempotent(pg):
         "SELECT count(*) FROM pg_trigger WHERE tgname IN "
         "('rag_sources_deactivate_documents_on_delete', 'connectors_deactivate_documents_on_disconnect');"
     ) == "2"
+
+
+def test_legacy_overloads_also_skip_deleted_sources(pg):
+    """Production still has the 5- and 6-argument rag_search; they must apply the rule too."""
+    legacy = """
+    CREATE FUNCTION public.rag_search(p_org_id uuid, p_query_embedding text, p_top_k int,
+      p_source_id uuid DEFAULT NULL, p_document_id uuid DEFAULT NULL)
+    RETURNS TABLE (chunk_id uuid, content text, source_id uuid, document_id uuid, chunk_index int,
+      score float, source_title text, document_title text)
+    LANGUAGE sql STABLE AS $$ SELECT NULL::uuid, NULL::text, NULL::uuid, NULL::uuid, 0, 0::float, 'stale'::text, NULL::text $$;
+    CREATE FUNCTION public.rag_search(p_org_id uuid, p_query_embedding text, p_top_k int,
+      p_source_id uuid DEFAULT NULL, p_document_id uuid DEFAULT NULL, p_environment text DEFAULT 'default')
+    RETURNS TABLE (chunk_id uuid, content text, source_id uuid, document_id uuid, chunk_index int,
+      score float, source_title text, document_title text)
+    LANGUAGE sql STABLE AS $$ SELECT NULL::uuid, NULL::text, NULL::uuid, NULL::uuid, 0, 0::float, 'stale'::text, NULL::text $$;
+    """
+    pg.psql(legacy)
+    pg.psql(MIGRATION.read_text())
+    # Both legacy bodies now delegate to the 8-argument version.
+    for sig in ("uuid,text,integer,uuid,uuid", "uuid,text,integer,uuid,uuid,text"):
+        assert pg.value(
+            f"SELECT prosrc LIKE '%p_department_id => NULL%' FROM pg_proc WHERE oid = 'public.rag_search({sig})'::regprocedure;"
+        ) == "t", sig
+        assert "stale" not in pg.value(f"SELECT prosrc FROM pg_proc WHERE oid = 'public.rag_search({sig})'::regprocedure;")
+    keep = _source(pg, "keep")
+    drop = _source(pg, "drop")
+    pg.psql(f"UPDATE public.rag_sources SET deleted_at = now() WHERE id = '{drop}';")
+    titles = pg.value(
+        "SELECT string_agg(source_title, ',') FROM public.rag_search("
+        f"p_org_id => '{ORG}'::uuid, p_query_embedding => '{VEC}', p_top_k => 50, p_source_id => NULL::uuid, "
+        "p_document_id => NULL::uuid, p_environment => 'default', p_department_id => NULL::uuid, p_agent_id => NULL::uuid);"
+    )
+    assert titles == "keep" and keep
+
+
+def test_migration_does_not_create_legacy_overloads(pg):
+    pg.psql(MIGRATION.read_text())
+    assert pg.value("SELECT count(*) FROM pg_proc WHERE proname = 'rag_search';") == "1"

@@ -98,6 +98,77 @@ AS $$
   LIMIT p_top_k;
 $$;
 
+-- Older overloads still exist in production (5 and 6 arguments). Nothing in the
+-- backend calls them (it always passes all 8), but they are reachable through
+-- PostgREST and lacked the live-source rule. Where they exist they now delegate
+-- to the 8-argument version; where they do not, nothing is created (creating them
+-- would make shorter calls ambiguous).
+DO $outer$
+BEGIN
+  IF to_regprocedure('public.rag_search(uuid,text,integer,uuid,uuid)') IS NOT NULL THEN
+    EXECUTE $ddl$
+CREATE OR REPLACE FUNCTION public.rag_search(
+  p_org_id uuid,
+  p_query_embedding text,
+  p_top_k int,
+  p_source_id uuid DEFAULT NULL,
+  p_document_id uuid DEFAULT NULL
+)
+RETURNS TABLE (
+  chunk_id uuid,
+  content text,
+  source_id uuid,
+  document_id uuid,
+  chunk_index int,
+  score float,
+  source_title text,
+  document_title text
+)
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT * FROM public.rag_search(
+    p_org_id => p_org_id, p_query_embedding => p_query_embedding, p_top_k => p_top_k,
+    p_source_id => p_source_id, p_document_id => p_document_id, p_environment => 'default',
+    p_department_id => NULL::uuid, p_agent_id => NULL::uuid
+  );
+$$;
+    $ddl$;
+  END IF;
+  IF to_regprocedure('public.rag_search(uuid,text,integer,uuid,uuid,text)') IS NOT NULL THEN
+    EXECUTE $ddl$
+CREATE OR REPLACE FUNCTION public.rag_search(
+  p_org_id uuid,
+  p_query_embedding text,
+  p_top_k int,
+  p_source_id uuid DEFAULT NULL,
+  p_document_id uuid DEFAULT NULL,
+  p_environment text DEFAULT 'default'
+)
+RETURNS TABLE (
+  chunk_id uuid,
+  content text,
+  source_id uuid,
+  document_id uuid,
+  chunk_index int,
+  score float,
+  source_title text,
+  document_title text
+)
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT * FROM public.rag_search(
+    p_org_id => p_org_id, p_query_embedding => p_query_embedding, p_top_k => p_top_k,
+    p_source_id => p_source_id, p_document_id => p_document_id, p_environment => p_environment,
+    p_department_id => NULL::uuid, p_agent_id => NULL::uuid
+  );
+$$;
+    $ddl$;
+  END IF;
+END;
+$outer$;
+
 -- -----------------------------------------------------------------------------
 -- 2) Sources a connector created at or before a point in time, and that no other
 --    live connector still uses
