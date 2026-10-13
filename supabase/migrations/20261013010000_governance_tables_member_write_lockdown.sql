@@ -139,7 +139,10 @@ REVOKE ALL ON FUNCTION public.guard_org_approval_rules() FROM PUBLIC, anon, auth
 
 DO $$
 BEGIN
-  IF to_regclass('public.organizations') IS NOT NULL THEN
+  IF to_regclass('public.organizations') IS NOT NULL AND EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'organizations' AND column_name = 'settings'
+  ) THEN
     DROP TRIGGER IF EXISTS organizations_guard_approval_rules ON public.organizations;
     CREATE TRIGGER organizations_guard_approval_rules
       BEFORE UPDATE OF settings ON public.organizations
