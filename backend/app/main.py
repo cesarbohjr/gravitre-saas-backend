@@ -16,10 +16,12 @@ from app.core.errors import (
     http_exception_handler,
     ingestion_held_handler,
     settings_not_configured_handler,
+    storage_quota_exceeded_handler,
     validation_exception_handler,
 )
 from app.core.logging import get_logger, request_id_ctx
 from app.services.ingestion_interlock import IngestionHeldError
+from app.services.storage_meter import StorageQuotaExceededError
 from app.operator_module import router as operator_router
 from app.operators import router as operators_router
 from app.routers import (
@@ -101,6 +103,7 @@ from app.routers import (
     enterprise,
     federation,
     settings,
+    storage_settings,
     slack_commands,
     verticals_healthcare,
     verticals_legal,
@@ -325,6 +328,14 @@ async def lifespan(app: FastAPI):
         start_knowledge_retention_scheduler,
         stop_knowledge_retention_scheduler,
     )
+    from app.schedulers.audit_retention_scheduler import (
+        start_audit_retention_scheduler,
+        stop_audit_retention_scheduler,
+    )
+    from app.schedulers.storage_meter_scheduler import (
+        start_storage_meter_scheduler,
+        stop_storage_meter_scheduler,
+    )
     from app.schedulers.prediction_labeling_scheduler import (
         start_prediction_labeling_scheduler,
         stop_prediction_labeling_scheduler,
@@ -408,6 +419,11 @@ async def lifespan(app: FastAPI):
     app.state.domain_event_relay_task = start_domain_event_relay_scheduler()
     # Phase 2C retention prune; returns None unless KNOWLEDGE_RETENTION_PRUNE_ENABLED=true.
     app.state.knowledge_retention_task = start_knowledge_retention_scheduler()
+    # Audit/telemetry retention; returns None while AUDIT_RETENTION_DAYS and
+    # TELEMETRY_RETENTION_DAYS are 0 (keep forever). Dry run unless AUDIT_RETENTION_DRY_RUN=false.
+    app.state.audit_retention_task = start_audit_retention_scheduler()
+    # Daily per-org storage snapshot; returns None unless STORAGE_METER_ENABLED=true.
+    app.state.storage_meter_task = start_storage_meter_scheduler()
     app.state.prediction_labeling_task = start_prediction_labeling_scheduler()
     # Customer ingestion stays inert until source lifecycle is enforced; log what is held back.
     try:
@@ -495,6 +511,8 @@ async def lifespan(app: FastAPI):
         await stop_ops_notifications_scheduler(getattr(app.state, "ops_notifications_task", None))
         await stop_domain_event_relay_scheduler(getattr(app.state, "domain_event_relay_task", None))
         await stop_knowledge_retention_scheduler(getattr(app.state, "knowledge_retention_task", None))
+        await stop_audit_retention_scheduler(getattr(app.state, "audit_retention_task", None))
+        await stop_storage_meter_scheduler(getattr(app.state, "storage_meter_task", None))
         await stop_prediction_labeling_scheduler(getattr(app.state, "prediction_labeling_task", None))
         await stop_entity_behavior_signals_scheduler(getattr(app.state, "entity_behavior_signals_task", None))
         await stop_rag_ingest_pilot_scheduler(getattr(app.state, "rag_ingest_pilot_task", None))
@@ -555,6 +573,8 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(SettingsNotConfiguredError, settings_not_configured_handler)
 app.add_exception_handler(IngestionHeldError, ingestion_held_handler)
+# Subclass of IngestionHeldError; its own handler answers 402 STORAGE_QUOTA_EXCEEDED.
+app.add_exception_handler(StorageQuotaExceededError, storage_quota_exceeded_handler)
 
 
 @app.exception_handler(Exception)
@@ -753,6 +773,7 @@ app.include_router(entitlements.router)
 app.include_router(extension.router)
 app.include_router(environments.router)
 app.include_router(settings.router)
+app.include_router(storage_settings.router)
 app.include_router(entity_observations.router)
 app.include_router(recommendation_feed.router)
 app.include_router(enterprise.router)

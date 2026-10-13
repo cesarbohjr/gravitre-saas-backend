@@ -174,6 +174,10 @@ def run_hubspot_knowledge_sync(
 
     # No-op unless EXISTING_INGESTION_REQUIRES_LIFECYCLE=true (owner switch, default off).
     ensure_existing_ingestion_allowed(settings, "hubspot")
+    from app.services.storage_meter import ensure_storage_quota
+
+    # 402 only with STORAGE_QUOTA_ENFORCEMENT_ENABLED=true and the org over its plan limit.
+    ensure_storage_quota(client, settings, org_id, action="hubspot_sync")
     row = (
         client.table("connectors")
         .select("id,name,config,environment,status")

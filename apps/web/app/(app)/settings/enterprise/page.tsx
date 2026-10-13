@@ -11,7 +11,7 @@ import { useOrgAdmin } from "@/lib/use-org-admin"
 import { fetcher } from "@/lib/fetcher"
 import { cn } from "@/lib/utils"
 import { TYPE } from "@/lib/design-system"
-import { Globe, Palette, Users, DollarSign, ShieldAlert, Lock, HeartPulse, BookOpen, LineChart } from "lucide-react"
+import { Globe, Palette, Users, DollarSign, ShieldAlert, Lock, HeartPulse, BookOpen, LineChart, HardDrive } from "lucide-react"
 import { RegionTab } from "@/components/enterprise/region-tab"
 import { BrandingTab } from "@/components/enterprise/branding-tab"
 import { WorkforceTab } from "@/components/enterprise/workforce-tab"
@@ -20,22 +20,23 @@ import { AgentRoiTab } from "@/components/enterprise/agent-roi-tab"
 import { SiemTab } from "@/components/enterprise/siem-tab"
 import { CsDashboardTab } from "@/components/enterprise/cs-dashboard-tab"
 import { KnowledgeSyncTab } from "@/components/enterprise/knowledge-sync-tab"
+import { BYO_STORAGE_SWR_KEY, FileStorageTab } from "@/components/enterprise/file-storage-tab"
+import { storageApi, type ByoStorageStatus } from "@/lib/api"
 import { PlatformOrgViewBanner } from "@/components/enterprise/platform-org-view-banner"
 
-type TabId = "cs" | "knowledge" | "region" | "branding" | "workforce" | "cost" | "roi" | "siem"
+type TabId = "cs" | "knowledge" | "region" | "files" | "branding" | "workforce" | "cost" | "roi" | "siem"
 
 const TABS: { id: TabId; label: string; icon: typeof Globe; description: string }[] = [
   { id: "cs", label: "Command center", icon: HeartPulse, description: "Integration health and recommendations" },
   { id: "knowledge", label: "Knowledge sync", icon: BookOpen, description: "Connector knowledge ingest jobs and manual sync" },
   { id: "region", label: "Data residency", icon: Globe, description: "Control where your data is stored" },
+  { id: "files", label: "File storage", icon: HardDrive, description: "Keep uploaded files in your own bucket" },
   { id: "branding", label: "White label", icon: Palette, description: "Custom logo, color, and domain" },
   { id: "workforce", label: "Workforce", icon: Users, description: "Operational agent task counts (not hours saved)" },
   { id: "cost", label: "Cost attribution", icon: DollarSign, description: "Spend by agent and department" },
   { id: "roi", label: "Agent ROI", icon: LineChart, description: "Measured cost vs estimated labor value per agent" },
   { id: "siem", label: "SIEM Export", icon: ShieldAlert, description: "Stream audit logs to your SIEM" },
 ]
-
-const TAB_IDS = TABS.map((t) => t.id)
 
 export default function EnterprisePage() {
   return (
@@ -51,12 +52,19 @@ function EnterprisePageContent() {
   const pathname = usePathname()
   const tabParam = searchParams.get("tab")
   // The URL is the single source of truth for the active tab (supports deep links).
-  const activeTab: TabId = TAB_IDS.includes(tabParam as TabId) ? (tabParam as TabId) : "cs"
   const { user, loading } = useAuth()
   const { data: me } = useSWR(user ? "/api/auth/me" : null, fetcher)
   const isPlatformAdmin = Boolean((me as { platformAdmin?: boolean } | undefined)?.platformAdmin)
   const { isAdmin } = useOrgAdmin()
   const canAccessEnterprise = isAdmin || isPlatformAdmin
+  // The file storage tab exists only for entitled orgs with the feature switched on.
+  const { data: byoStatus } = useSWR<ByoStorageStatus>(
+    canAccessEnterprise ? BYO_STORAGE_SWR_KEY : null,
+    () => storageApi.getByo(),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  )
+  const visibleTabs = TABS.filter((tab) => tab.id !== "files" || Boolean(byoStatus?.available))
+  const activeTab: TabId = visibleTabs.some((tab) => tab.id === tabParam) ? (tabParam as TabId) : "cs"
 
   const selectTab = (id: TabId) => {
     const params = new URLSearchParams(Array.from(searchParams.entries()))
@@ -99,7 +107,7 @@ function EnterprisePageContent() {
             <nav aria-label="Enterprise settings" className="lg:w-64 lg:shrink-0">
               {/* Mobile: horizontal scroll. Desktop: vertical list */}
               <div className="flex gap-2 overflow-x-auto pb-2 lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0">
-                {TABS.map((tab) => {
+                {visibleTabs.map((tab) => {
                   const Icon = tab.icon
                   const active = activeTab === tab.id
                   return (
@@ -141,6 +149,7 @@ function EnterprisePageContent() {
               {activeTab === "cs" && <CsDashboardTab />}
               {activeTab === "knowledge" && <KnowledgeSyncTab isAdmin={isAdmin || isPlatformAdmin} />}
               {activeTab === "region" && <RegionTab isAdmin={isAdmin || isPlatformAdmin} />}
+              {activeTab === "files" && <FileStorageTab isAdmin={isAdmin || isPlatformAdmin} />}
               {activeTab === "branding" && <BrandingTab isAdmin={isAdmin || isPlatformAdmin} />}
               {activeTab === "workforce" && <WorkforceTab />}
               {activeTab === "cost" && <CostTab />}
