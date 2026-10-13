@@ -111,6 +111,7 @@ def update_salesforce_triggers(
                 "stage": item.stage,
                 "active": item.active,
                 "label": item.label,
+                "configured_by": str(_user.get("user_id") or "") or None,
             }
         )
 

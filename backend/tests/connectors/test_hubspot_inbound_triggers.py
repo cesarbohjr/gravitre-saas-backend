@@ -131,8 +131,9 @@ async def test_process_hubspot_event_batch_starts_workflow():
             chain = table.select.return_value.eq.return_value.eq.return_value.limit.return_value
             chain.execute.return_value = MagicMock(data=[workflow])
         elif name == "organization_members":
-            table.select.return_value.eq.return_value.in_.return_value.limit.return_value.execute.return_value = (
-                MagicMock(data=[{"user_id": "user-1"}])
+            # Attribution reads memberships ordered by join date and picks an owner.
+            table.select.return_value.eq.return_value.order.return_value.execute.return_value = MagicMock(
+                data=[{"user_id": "user-1", "role": "owner", "created_at": "2026-01-01"}]
             )
         elif name == "workflow_runs":
             table.insert.return_value.execute.return_value = MagicMock(data=[{"id": "run-1"}])

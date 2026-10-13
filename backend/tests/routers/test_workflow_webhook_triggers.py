@@ -41,6 +41,9 @@ class _Query:
     def limit(self, *_a, **_k):
         return self
 
+    def order(self, *_a, **_k):
+        return self
+
     def update(self, payload):
         self.op, self.payload = "update", payload
         return self
@@ -61,7 +64,7 @@ class _Query:
         if self.table == "workflow_defs":
             return SimpleNamespace(data=[dict(self.db.workflow)])
         if self.table == "organization_members":
-            return SimpleNamespace(data=[{"user_id": "member-1", "role": "admin"}])
+            return SimpleNamespace(data=list(self.db.members))
         return SimpleNamespace(data=[])
 
 
@@ -77,6 +80,11 @@ class _DB:
         }
         self.updates: list = []
         self.inserts: list = []
+        self.members: list = [
+            {"user_id": "member-1", "role": "member", "created_at": "2026-01-01"},
+            {"user_id": "owner-1", "role": "owner", "created_at": "2026-01-02"},
+            {"user_id": "admin-1", "role": "admin", "created_at": "2026-01-03"},
+        ]
 
     def table(self, name: str) -> _Query:
         return _Query(self, name)
@@ -301,3 +309,29 @@ def test_watcher_verify_signature_keeps_optional_timestamp():
     sig = hmac.new(b"s", body, hashlib.sha256).hexdigest()
     assert wt.verify_signature(body, sig, "s") is True
     assert wt.verify_signature(body, sig, "s", require_timestamp=True) is False
+
+
+def test_run_is_attributed_to_configuring_admin(harness):
+    client = harness["make"](_enc_config(configured_by="admin-1"))
+    client.post(f"/api/webhooks/triggers/{WF}", content=BODY, headers=_signed(BODY))
+    assert harness["runs"][0]["actor_id"] == "admin-1"
+
+
+def test_run_falls_back_to_earliest_owner_not_arbitrary_member(harness):
+    client = harness["make"](_enc_config())
+    client.post(f"/api/webhooks/triggers/{WF}", content=BODY, headers=_signed(BODY))
+    assert harness["runs"][0]["actor_id"] == "owner-1"
+
+
+def test_no_accountable_member_refuses_run(harness):
+    client = harness["make"](_enc_config(configured_by="gone"))
+    harness["db"].members = [{"user_id": "v1", "role": "viewer", "created_at": "2026-01-01"}]
+    r = client.post(f"/api/webhooks/triggers/{WF}", content=BODY, headers=_signed(BODY))
+    assert r.status_code == 409
+    assert harness["runs"] == []
+
+
+def test_put_config_records_configuring_admin(harness):
+    client = harness["make"]({"enabled": False})
+    client.put(f"/api/webhooks/triggers/{WF}/config", json={"enabled": True})
+    assert harness["db"].workflow["webhook_config"]["configured_by"] == "admin-1"

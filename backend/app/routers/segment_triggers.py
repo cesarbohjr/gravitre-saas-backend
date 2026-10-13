@@ -111,6 +111,7 @@ def update_segment_triggers(
                 "workflow_id": item.workflow_id,
                 "active": item.active,
                 "label": item.label,
+                "configured_by": str(_user.get("user_id") or "") or None,
                 "program_id": item.program_id,
                 "nurture_list_id": item.nurture_list_id,
             }

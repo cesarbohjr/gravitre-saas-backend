@@ -37,6 +37,8 @@ class WebhookConfig(BaseModel):
     secret_rotated_at: str | None = None
     allowed_ips: list[str] | None = None
     rate_limit_per_minute: int = 60
+    # Admin who last configured the trigger; runs are attributed to them.
+    configured_by: str | None = None
 
 
 EVENT_ID_HEADER = "X-Gravitre-Event-Id"
@@ -108,7 +110,7 @@ def _get_workflow_webhook_config(workflow_id: str, settings: Settings) -> tuple[
     client = get_supabase_client(settings)
     result = (
         client.table("workflow_defs")
-        .select("id,name,org_id,status,definition,webhook_config")
+        .select("id,name,org_id,status,definition,webhook_config,created_by")
         .eq("id", workflow_id)
         .limit(1)
         .execute()
@@ -129,19 +131,20 @@ def _get_workflow_webhook_config(workflow_id: str, settings: Settings) -> tuple[
     return workflow, webhook_config
 
 
-def _resolve_triggered_by(settings: Settings, org_id: str) -> str:
-    client = get_supabase_client(settings)
-    membership = (
-        client.table("organization_members")
-        .select("user_id,role")
-        .eq("org_id", org_id)
-        .in_("role", ["owner", "admin", "member"])
-        .limit(1)
-        .execute()
+def _resolve_triggered_by(
+    settings: Settings, org_id: str, workflow: dict[str, Any], config: WebhookConfig
+) -> str:
+    from app.services.automation_actor import resolve_automation_actor
+
+    actor = resolve_automation_actor(
+        get_supabase_client(settings),
+        org_id,
+        configured_by=config.configured_by,
+        workflow_created_by=workflow.get("created_by"),
     )
-    if not membership.data:
-        raise HTTPException(status_code=400, detail="No organization member available to attribute webhook run")
-    return str(membership.data[0]["user_id"])
+    if not actor:
+        raise HTTPException(status_code=409, detail="No accountable organization member to attribute this run to")
+    return actor
 
 
 @router.post("/{workflow_id}", response_model=WebhookTriggerResponse)
@@ -194,7 +197,7 @@ async def trigger_workflow(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload") from exc
 
     org_id = str(workflow["org_id"])
-    triggered_by = _resolve_triggered_by(settings, org_id)
+    triggered_by = _resolve_triggered_by(settings, org_id, workflow, webhook_config)
     definition = workflow.get("definition") or {"schema_version": "v1", "steps": []}
     parameters = payload if isinstance(payload, dict) else {"payload": payload}
     client = get_supabase_client(settings)
@@ -341,11 +344,12 @@ def update_webhook_config(
         data["secret"] = None
         data["secret_rotated_at"] = datetime.now(timezone.utc).isoformat()
 
+    user, org_id = admin
+    data["configured_by"] = str(user.get("user_id") or "") or None
     client = get_supabase_client(settings)
     client.table("workflow_defs").update({"webhook_config": data}).eq("id", workflow_id).eq(
         "org_id", str(workflow["org_id"])
     ).execute()
-    user, org_id = admin
     write_audit_event(
         client,
         org_id=org_id,
