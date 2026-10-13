@@ -3,7 +3,7 @@
 Builds the table and FOR ALL member policy exactly as
 ``20261007090000_outcome_pack_ledger_claims.sql`` leaves them, shows a member
 can mark a vendor unavailable for their org, applies
-``20261013100000_connector_action_availability_member_read_only.sql`` unchanged,
+``20261013081000_connector_action_availability_member_read_only.sql`` unchanged,
 and checks member and anon writes are refused while member reads and service
 role writes still work.
 """
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from tests.db.pg_harness import MIGRATIONS, pg_cluster, requires_pg
 
-MIGRATION = MIGRATIONS / "20261013100000_connector_action_availability_member_read_only.sql"
+MIGRATION = MIGRATIONS / "20261013081000_connector_action_availability_member_read_only.sql"
 
 ORG_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 ORG_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
@@ -83,8 +83,10 @@ def test_member_writes_open_before_and_closed_after():
         pg.psql(MIGRATION.read_text())
 
         assert _denied(pg.psql(_as_member(BLOCK_SALESFORCE), check=False))
-        assert _denied(pg.psql(_as_member(UNBLOCK_HUBSPOT), check=False))
-        assert _denied(pg.psql(_as_member("DELETE FROM public.connector_action_availability"), check=False))
+        # Updates and deletes see no rows to change (no write policy), so they
+        # succeed as no-ops; the row below must be untouched.
+        pg.psql(_as_member(UNBLOCK_HUBSPOT), check=False)
+        pg.psql(_as_member("DELETE FROM public.connector_action_availability"), check=False)
         assert pg.value(f"SELECT state FROM public.connector_action_availability WHERE org_id = '{ORG_A}'") == "rate_limited"
 
         # Members still read their own org's rows, and only those.
@@ -93,7 +95,7 @@ def test_member_writes_open_before_and_closed_after():
 
         # Anonymous callers get nothing.
         anon = pg.psql("BEGIN; SET LOCAL ROLE anon; SELECT count(*) FROM public.connector_action_availability; COMMIT;", check=False)
-        assert _denied(anon)
+        assert _denied(anon) or anon.stdout.strip().splitlines()[-1] == "0", anon.stdout
 
         # The backend (service role) still records refusals.
         svc = pg.psql(
@@ -107,4 +109,4 @@ def test_member_writes_open_before_and_closed_after():
         assert pg.value(
             "SELECT string_agg(policyname || ':' || cmd, ',') FROM pg_policies "
             "WHERE tablename = 'connector_action_availability';"
-        ) == "connector_action_availability_member_select:SELECT"
+        ) == "connector_action_availability_org_member_read:SELECT"

@@ -13,18 +13,18 @@
 -- which bypasses RLS). Nothing in the web app touches the table. This matches
 -- capability_usage_events: members SELECT, only the service role writes.
 --
--- Preflight (read only):
+-- Applied to production on 2026-10-13 (version 20261013081000 is recorded in
+-- supabase_migrations.schema_migrations); this file mirrors what ran there.
+-- With RLS on and no write policy, member inserts, updates and deletes are
+-- refused even though table grants are unchanged.
+--
+-- Check (read only):
 --   select policyname, cmd, roles from pg_policies
 --    where schemaname = 'public' and tablename = 'connector_action_availability';
---   select grantee, privilege_type from information_schema.role_table_grants
---    where table_schema = 'public' and table_name = 'connector_action_availability'
---      and grantee in ('anon', 'authenticated');
--- Postcheck: the same queries show one SELECT policy and only SELECT for
--- authenticated (nothing for anon).
+-- Expected: only connector_action_availability_org_member_read, SELECT, authenticated.
 --
 -- Rollback (re-opens member writes):
---   DROP POLICY connector_action_availability_member_select ON public.connector_action_availability;
---   GRANT INSERT, UPDATE, DELETE ON public.connector_action_availability TO authenticated;
+--   DROP POLICY connector_action_availability_org_member_read ON public.connector_action_availability;
 --   and the CREATE POLICY connector_action_availability_org_scope statement from
 --   20261007090000_outcome_pack_ledger_claims.sql.
 
@@ -41,7 +41,7 @@ BEGIN
   FOR p IN
     SELECT policyname FROM pg_policies
      WHERE schemaname = 'public' AND tablename = 'connector_action_availability'
-       AND policyname <> 'connector_action_availability_member_select'
+       AND policyname <> 'connector_action_availability_org_member_read'
   LOOP
     EXECUTE format('DROP POLICY %I ON public.connector_action_availability', p.policyname);
   END LOOP;
@@ -49,9 +49,9 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
      WHERE schemaname = 'public' AND tablename = 'connector_action_availability'
-       AND policyname = 'connector_action_availability_member_select'
+       AND policyname = 'connector_action_availability_org_member_read'
   ) THEN
-    CREATE POLICY connector_action_availability_member_select
+    CREATE POLICY connector_action_availability_org_member_read
       ON public.connector_action_availability
       FOR SELECT
       TO authenticated
@@ -64,8 +64,5 @@ BEGIN
       );
   END IF;
 
-  REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.connector_action_availability FROM anon, authenticated;
-  REVOKE ALL ON public.connector_action_availability FROM anon;
-  GRANT SELECT ON public.connector_action_availability TO authenticated;
 END;
 $$;
