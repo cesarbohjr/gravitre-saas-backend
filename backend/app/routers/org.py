@@ -16,6 +16,7 @@ from app.auth.org_role_permissions import get_org_role_permissions_matrix
 from app.config import Settings, get_settings
 from app.services.org_member_invite_service import invite_org_member_by_email, normalize_org_member_role
 from app.workflows.audit import write_audit_event
+from app.services.org_member_guard import assert_member_change_allowed, load_member
 
 router = APIRouter(prefix="/api/org", tags=["org"])
 organizations_router = APIRouter(prefix="/api/organizations", tags=["organizations"])
@@ -197,41 +198,19 @@ def update_member(
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    """Update member role. Admin only. Cannot demote self if last admin."""
+    """Update member role. Owner/admin only; owners change only by an owner; the org keeps an owner and an admin."""
     _user, org_id = _admin
     mid = str(member_id)
     client = shared_service_client(settings, create_client)
-
-    existing = (
-        client.table("organization_members")
-        .select("id, user_id, role")
-        .eq("id", mid)
-        .eq("org_id", org_id)
-        .limit(1)
-        .execute()
+    target = load_member(client, org_id, member_id=mid)
+    if target is not None and target.role == body.role:
+        return {"id": mid, "user_id": target.user_id, "role": body.role}
+    target = assert_member_change_allowed(
+        client, org_id, actor_user_id=_user["user_id"], target=target, new_role=body.role
     )
-    if not existing.data or len(existing.data) == 0:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
-    row = existing.data[0]
-    if row["role"] == body.role:
-        return {"id": mid, "user_id": str(row["user_id"]), "role": body.role}
 
-    if str(row["user_id"]) == _user["user_id"] and body.role != "admin":
-        admins = (
-            client.table("organization_members")
-            .select("id")
-            .eq("org_id", org_id)
-            .eq("role", "admin")
-            .execute()
-        )
-        if len(admins.data or []) <= 1:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot demote yourself; you are the only admin",
-            )
-
-    client.table("organization_members").update({"role": body.role}).eq("id", mid).execute()
-    invalidate_org_and_users(org_id, [str(row["user_id"])])
+    client.table("organization_members").update({"role": body.role}).eq("id", mid).eq("org_id", org_id).execute()
+    invalidate_org_and_users(org_id, [target.user_id])
     write_audit_event(
         client,
         org_id=org_id,
@@ -239,9 +218,9 @@ def update_member(
         action=AUDIT_ORG_MEMBER_UPDATED,
         resource_type=RESOURCE_TYPE_ORG_MEMBER,
         resource_id=mid,
-        metadata={"old_role": row["role"], "new_role": body.role},
+        metadata={"old_role": target.role, "new_role": body.role},
     )
-    return {"id": mid, "user_id": str(row["user_id"]), "role": body.role}
+    return {"id": mid, "user_id": target.user_id, "role": body.role}
 
 
 @router.delete("/members/{member_id}")
@@ -250,38 +229,20 @@ def remove_member(
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    """Remove member from org. Admin only. Cannot remove self if last admin."""
+    """Remove member from org. Owner/admin only; owners removed only by an owner; the org keeps an owner and an admin."""
     _user, org_id = _admin
     mid = str(member_id)
     client = shared_service_client(settings, create_client)
-
-    existing = (
-        client.table("organization_members")
-        .select("id, user_id")
-        .eq("id", mid)
-        .eq("org_id", org_id)
-        .limit(1)
-        .execute()
+    target = assert_member_change_allowed(
+        client,
+        org_id,
+        actor_user_id=_user["user_id"],
+        target=load_member(client, org_id, member_id=mid),
+        new_role=None,
     )
-    if not existing.data or len(existing.data) == 0:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
-    row = existing.data[0]
-    if str(row["user_id"]) == _user["user_id"]:
-        admins = (
-            client.table("organization_members")
-            .select("id")
-            .eq("org_id", org_id)
-            .eq("role", "admin")
-            .execute()
-        )
-        if len(admins.data or []) <= 1:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot remove yourself; you are the only admin",
-            )
 
-    client.table("organization_members").delete().eq("id", mid).execute()
-    invalidate_org_and_users(org_id, [str(row["user_id"])])
+    client.table("organization_members").delete().eq("id", mid).eq("org_id", org_id).execute()
+    invalidate_org_and_users(org_id, [target.user_id])
     write_audit_event(
         client,
         org_id=org_id,
@@ -289,9 +250,9 @@ def remove_member(
         action=AUDIT_ORG_MEMBER_REMOVED,
         resource_type=RESOURCE_TYPE_ORG_MEMBER,
         resource_id=mid,
-        metadata={"removed_user_id": str(row["user_id"])},
+        metadata={"removed_user_id": target.user_id, "role": target.role},
     )
-    return {"id": mid, "message": "Member removed"}
+    return {"removed": True, "id": mid}
 
 
 @organizations_router.get("")
@@ -383,6 +344,8 @@ def update_organization(
     _require_org_admin(client, org_id_str, current_user["user_id"])
 
     payload = {k: v for k, v in body.model_dump().items() if v is not None}
+    # The plan is set by billing, never by an org admin through this endpoint.
+    payload.pop("plan", None)
     if "slug" in payload:
         payload["slug"] = _slugify(payload["slug"])
     if not payload:
@@ -421,7 +384,10 @@ def delete_organization(
 ) -> dict:
     org_id_str = str(org_id)
     client = shared_service_client(settings, create_client)
-    _require_org_admin(client, org_id_str, current_user["user_id"])
+    # Deleting the organization is an owner decision, not an admin one.
+    actor = load_member(client, org_id_str, user_id=current_user["user_id"])
+    if actor is None or actor.role != "owner":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only an owner can delete the organization")
     client.table("organizations").delete().eq("id", org_id_str).execute()
     invalidate_org_and_users(org_id_str, [current_user["user_id"]])
     return {"ok": True}
@@ -552,20 +518,26 @@ def update_organization_member_role(
     org_id_str = str(org_id)
     member_user_id = str(user_id)
     client = shared_service_client(settings, create_client)
-    _require_org_admin(client, org_id_str, current_user["user_id"])
-    # Bug fix: .update() returns SyncFilterRequestBuilder, which has no
-    # .select()/.limit() — chaining them raised AttributeError -> HTTP 500.
-    # .update() already returns the full updated row(s) by default.
-    updated = (
-        client.table("organization_members")
-        .update({"role": body.role})
-        .eq("org_id", org_id_str)
-        .eq("user_id", member_user_id)
-        .execute()
+    target = assert_member_change_allowed(
+        client,
+        org_id_str,
+        actor_user_id=current_user["user_id"],
+        target=load_member(client, org_id_str, user_id=member_user_id),
+        new_role=body.role,
     )
+    client.table("organization_members").update({"role": body.role}).eq("org_id", org_id_str).eq(
+        "user_id", member_user_id
+    ).execute()
     invalidate_org_and_users(org_id_str, [member_user_id])
-    if not updated.data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+    write_audit_event(
+        client,
+        org_id=org_id_str,
+        actor_id=current_user["user_id"],
+        action=AUDIT_ORG_MEMBER_UPDATED,
+        resource_type=RESOURCE_TYPE_ORG_MEMBER,
+        resource_id=target.id,
+        metadata={"old_role": target.role, "new_role": body.role},
+    )
     return {"ok": True}
 
 
@@ -579,9 +551,24 @@ def remove_organization_member(
     org_id_str = str(org_id)
     member_user_id = str(user_id)
     client = shared_service_client(settings, create_client)
-    _require_org_admin(client, org_id_str, current_user["user_id"])
+    target = assert_member_change_allowed(
+        client,
+        org_id_str,
+        actor_user_id=current_user["user_id"],
+        target=load_member(client, org_id_str, user_id=member_user_id),
+        new_role=None,
+    )
     client.table("organization_members").delete().eq("org_id", org_id_str).eq("user_id", member_user_id).execute()
     invalidate_org_and_users(org_id_str, [member_user_id])
+    write_audit_event(
+        client,
+        org_id=org_id_str,
+        actor_id=current_user["user_id"],
+        action=AUDIT_ORG_MEMBER_REMOVED,
+        resource_type=RESOURCE_TYPE_ORG_MEMBER,
+        resource_id=target.id,
+        metadata={"removed_user_id": member_user_id, "role": target.role},
+    )
     return {"ok": True}
 
 
@@ -592,17 +579,38 @@ def transfer_organization_ownership(
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
+    """An owner hands ownership to another member: they become owner, the caller becomes admin.
+
+    Previously any admin could call this, and it set the new "owner" to admin and
+    the caller to member, so ownership never moved and an admin could demote
+    themselves while promoting someone else to admin.
+    """
     org_id_str = str(org_id)
     client = shared_service_client(settings, create_client)
-    _require_org_admin(client, org_id_str, current_user["user_id"])
-    _require_org_member(client, org_id_str, body.new_owner_id)
+    actor = load_member(client, org_id_str, user_id=current_user["user_id"])
+    if actor is None or actor.role != "owner":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only an owner can transfer ownership")
+    new_owner = load_member(client, org_id_str, user_id=body.new_owner_id)
+    if new_owner is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+    if new_owner.user_id == actor.user_id:
+        return {"ok": True}
 
-    client.table("organization_members").update({"role": "admin"}).eq("org_id", org_id_str).eq(
-        "user_id", body.new_owner_id
+    client.table("organization_members").update({"role": "owner"}).eq("org_id", org_id_str).eq(
+        "user_id", new_owner.user_id
     ).execute()
-    if body.new_owner_id != current_user["user_id"]:
-        client.table("organization_members").update({"role": "member"}).eq("org_id", org_id_str).eq(
-            "user_id", current_user["user_id"]
-        ).execute()
-    invalidate_org_and_users(org_id_str, [body.new_owner_id, current_user["user_id"]])
+    client.table("organization_members").update({"role": "admin"}).eq("org_id", org_id_str).eq(
+        "user_id", actor.user_id
+    ).execute()
+    invalidate_org_and_users(org_id_str, [new_owner.user_id, actor.user_id])
+    write_audit_event(
+        client,
+        org_id=org_id_str,
+        actor_id=actor.user_id,
+        action=AUDIT_ORG_MEMBER_UPDATED,
+        resource_type=RESOURCE_TYPE_ORG_MEMBER,
+        resource_id=new_owner.id,
+        metadata={"ownership_transfer": True, "from_user_id": actor.user_id, "to_user_id": new_owner.user_id},
+    )
     return {"ok": True}
+
