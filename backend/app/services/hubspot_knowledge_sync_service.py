@@ -190,6 +190,10 @@ def run_hubspot_knowledge_sync(
     actor_id: str,
     full_sync: bool = False,
 ) -> dict[str, Any]:
+    from app.services.ingestion_interlock import ensure_existing_ingestion_allowed
+
+    # No-op unless EXISTING_INGESTION_REQUIRES_LIFECYCLE=true (owner switch, default off).
+    ensure_existing_ingestion_allowed(settings, "hubspot")
     row = (
         client.table("connectors")
         .select("id,name,config,environment,status")
@@ -481,6 +485,7 @@ def _queue_customer_message(
 
 def _write_company_entities(client: Any, settings: Settings, *, org_id: str, token: str) -> dict[str, Any]:
     """File recent HubSpot companies into the entity store (Phase 2E; off by default)."""
+    from app.core.ingestion_kill_switch import ingestion_disabled
     from app.services.entity_writer import (
         hubspot_company_records,
         write_provider_records,
@@ -489,6 +494,9 @@ def _write_company_entities(client: Any, settings: Settings, *, org_id: str, tok
 
     if not writer_enabled(settings):
         return {"skipped": "disabled"}
+    if ingestion_disabled(settings):
+        # Checked before the provider read, so the kill switch costs no HubSpot call.
+        return {"skipped": "ingestion_disabled"}
     try:
         from app.connectors.hubspot import list_companies
 

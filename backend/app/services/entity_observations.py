@@ -65,6 +65,12 @@ CUSTOMER_FACING_SOURCES = frozenset(
     {"hubspot", "zendesk", "intercom", "freshdesk", "salesforce", "helpscout", "front", "gmail", "microsoft365"}
 )
 EMAIL_SOURCES = frozenset({"gmail", "microsoft365"})
+# Shared consumer mail domains: a colleague on gmail.com makes only their own
+# address internal, never every gmail.com customer.
+FREE_MAIL_DOMAINS = frozenset(
+    {"gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "msn.com", "yahoo.com",
+     "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "zoho.com"}
+)
 
 SYSTEM_PROMPT = f"""You label one customer message for a B2B account team. Extractor {EXTRACTOR_VERSION}.
 Return JSON only, matching the schema. For each dimension that applies, give the label,
@@ -98,6 +104,9 @@ class CustomerMessage:
     source_record_id: str
     observed_at: str
     author_email: str = ""
+    # connectors.id the message was read through; stored as source_connector_id so a
+    # disconnect removes the observations (MEMORY_SOURCE_LINEAGE_ENABLED).
+    connector_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -110,19 +119,27 @@ class Observation:
 
 
 def observations_enabled(settings: Any) -> bool:
-    return getattr(settings, "entity_observations_enabled", False) is True
+    from app.services.ingestion_interlock import ingestion_flag_on
+
+    return ingestion_flag_on(settings, "entity_observations_enabled")
 
 
-def is_customer_facing(message: CustomerMessage, org_domains: set[str]) -> tuple[bool, str]:
+def is_customer_facing(
+    message: CustomerMessage, org_domains: set[str], org_emails: frozenset[str] | set[str] = frozenset()
+) -> tuple[bool, str]:
     system = message.source_system.strip().lower()
     if system not in CUSTOMER_FACING_SOURCES:
         return False, "internal_or_unsupported_source"
     author = message.author_email.strip().lower()
     domain = author.rsplit("@", 1)[-1] if "@" in author else ""
+    if author and author in {e.strip().lower() for e in org_emails}:
+        return False, "author_is_internal"
     if domain and domain in {d.strip().lower() for d in org_domains}:
         return False, "author_is_internal"
-    if system in EMAIL_SOURCES and not domain:
-        # Mailboxes hold colleagues' mail too: no known external author, no observation.
+    is_email = system in EMAIL_SOURCES or message.source_record_type.strip().lower() == "email"
+    if is_email and not domain:
+        # Mailboxes and CRM-logged email hold colleagues' mail too: no known
+        # external author, no observation.
         return False, "email_author_unknown"
     return True, ""
 
@@ -187,7 +204,19 @@ def record_observations(
     entity_row_id: str,
     message: CustomerMessage,
     observations: list[Observation],
+    settings: Any = None,
 ) -> int:
+    from app.services.memory_contamination_guard import (
+        lineage_required,
+        memory_source_lineage,
+    )
+
+    lineage = memory_source_lineage({"source_connector_id": message.connector_id}, settings=settings)
+    if not lineage and lineage_required(settings):
+        # Every observation is read from a connection; one we cannot name could never
+        # be removed when that connection goes, so it is not stored.
+        logger.info("entity_observation_skipped_no_lineage org_id=%s system=%s", org_id, message.source_system)
+        return 0
     rows = [
         {
             "org_id": org_id,
@@ -202,16 +231,22 @@ def record_observations(
             "source_record_id": message.source_record_id,
             "observed_at": message.observed_at,
             "extractor_version": EXTRACTOR_VERSION,
+            **({"source_connector_id": lineage["source_connector_id"]} if lineage else {}),
         }
         for o in observations
     ]
     if not rows:
         return 0
-    client.table(TABLE).upsert(
-        rows,
-        on_conflict="org_id,entity_id,dimension,source_system,source_record_id,extractor_version",
-        ignore_duplicates=True,
-    ).execute()
+    on_conflict = "org_id,entity_id,dimension,source_system,source_record_id,extractor_version"
+    try:
+        client.table(TABLE).upsert(rows, on_conflict=on_conflict, ignore_duplicates=True).execute()
+    except Exception as exc:
+        if not lineage:
+            raise
+        # source_connector_id arrives with 20261012070000; keep observing without it.
+        logger.warning("entity_observation_insert_without_lineage error=%s", type(exc).__name__)
+        rows = [{k: v for k, v in r.items() if k != "source_connector_id"} for r in rows]
+        client.table(TABLE).upsert(rows, on_conflict=on_conflict, ignore_duplicates=True).execute()
     return len(rows)
 
 
@@ -223,22 +258,36 @@ async def observe_customer_message(
     entity_row_id: str,
     message: CustomerMessage,
     org_domains: set[str],
+    org_emails: frozenset[str] | set[str] = frozenset(),
     router: Any | None = None,
 ) -> dict[str, Any]:
     """Gate, extract and store. Returns what happened, never raises."""
+    from app.core.ingestion_kill_switch import ingestion_disabled
     from app.services.source_governance import customer_context_allowed_for_org
 
     if not observations_enabled(settings):
         return {"skipped": "disabled"}
-    ok, reason = is_customer_facing(message, org_domains)
+    if ingestion_disabled(settings):
+        return {"skipped": "ingestion_disabled"}
+    ok, reason = is_customer_facing(message, org_domains, org_emails)
     if not ok:
         return {"skipped": reason}
+    from app.services.ingestion_interlock import provider_lifecycle_supported
+
+    if not provider_lifecycle_supported(message.source_system):
+        # No provider revoke wired (e.g. zendesk, intercom, microsoft365): not observed.
+        return {"skipped": "provider_lifecycle_unsupported"}
     if not customer_context_allowed_for_org(client, org_id, message.source_system):
         return {"skipped": "not_opted_in"}
     try:
         obs = await extract_observations(message.text, org_id=org_id, router=router)
         written = record_observations(
-            client, org_id=org_id, entity_row_id=entity_row_id, message=message, observations=obs
+            client,
+            org_id=org_id,
+            entity_row_id=entity_row_id,
+            message=message,
+            observations=obs,
+            settings=settings,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("entity_observation_failed org_id=%s error=%s", org_id, type(exc).__name__)

@@ -777,3 +777,85 @@ def test_unified_turn_audit_payload_includes_connected_integrations():
     )
     payload = result.to_audit_payload()
     assert payload["connected_integrations"] == ["gmail", "hubspot"]
+
+
+@pytest.mark.asyncio
+async def test_workspace_question_is_answered_while_a_draft_waits():
+    """A workspace question during a pending email is LIVE's to answer; the draft keeps waiting."""
+    from app.services.unified_turn_reasoning_service import UnifiedTurnShadowResult
+
+    settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
+    state = {
+        "pending_task": {
+            "type": "connector_action",
+            "status": "awaiting_confirm",
+            "params": {"invoke_action": "gmail.messages.send", "label": "Send email"},
+        }
+    }
+    answer = UnifiedTurnShadowResult(
+        outcome_kind="conversational_reply",
+        user_message="Since yesterday, two workflow runs finished and one approval is waiting.",
+        live_served=True,
+        model="m",
+    )
+    classify = AsyncMock(return_value="unrelated")
+    with patch(
+        "app.services.unified_turn_pending_live.classify_pending_reply", new=classify
+    ), patch(
+        "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
+        new=AsyncMock(return_value=answer),
+    ) as mock_shadow, patch(
+        "app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit",
+    ):
+        out = await apply_unified_turn_live(
+            org_id="org",
+            user_id="user",
+            conversation_id="conv",
+            message="What changed in my workspace since yesterday?",
+            task_state=state,
+            conversation_history=[],
+            connected_integrations=["gmail"],
+            settings=settings,
+        )
+    classify.assert_not_called()
+    mock_shadow.assert_called_once()
+    assert out is not None
+    assert "two workflow runs" in out["message"]
+    assert out["task_state"]["pending_task"]["params"]["invoke_action"] == "gmail.messages.send"
+
+
+@pytest.mark.asyncio
+async def test_a_question_about_the_draft_stays_with_the_pending_classifier():
+    settings = MagicMock(unified_turn_live_enabled=True, openai_api_key="sk-test")
+    state = {
+        "pending_task": {
+            "type": "connector_action",
+            "status": "awaiting_confirm",
+            "params": {"invoke_action": "gmail.messages.send", "label": "Send email"},
+        }
+    }
+    classify = AsyncMock(return_value="confirm")
+    with patch(
+        "app.services.unified_turn_pending_live.classify_pending_reply", new=classify
+    ), patch(
+        "app.services.unified_turn_pending_live._execute_governed_pending_confirm",
+        new=AsyncMock(return_value=None),
+    ), patch(
+        "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
+        new=AsyncMock(),
+    ) as mock_shadow, patch(
+        "app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit",
+    ):
+        out = await apply_unified_turn_live(
+            org_id="org",
+            user_id="user",
+            conversation_id="conv",
+            message="What happened to my email?",
+            task_state=state,
+            conversation_history=[],
+            connected_integrations=["gmail"],
+            settings=settings,
+        )
+    classify.assert_called_once()
+    mock_shadow.assert_not_called()
+    assert out is None

@@ -93,12 +93,14 @@ async def generate_answer_explanation_cached(
     refined_query: str | None = None,
 ) -> str:
     cache = get_cache_service(settings)
+    from app.services.memory_source_liveness import epoch_parts
+
     parts = source_summary_cache_parts(
         org_id,
         sources_used,
         conflict_count=len(conflicts or []),
         refined_query=refined_query,
-    )
+    ) + epoch_parts(org_id, settings)
     cached = await cache.get("source_summary", *parts)
     if isinstance(cached, dict) and cached.get("text"):
         await cache.record_hit("source_summary")

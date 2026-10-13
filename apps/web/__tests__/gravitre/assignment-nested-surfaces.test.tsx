@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   data: {} as Record<string, unknown>,
   errors: {} as Record<string, unknown>,
   submit: vi.fn(),
+  search: "",
   push: vi.fn(),
   mutate: vi.fn(),
   deploy: vi.fn(),
@@ -29,7 +30,7 @@ vi.mock("swr", () => ({
 }))
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: state.push }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(state.search),
   useParams: () => ({ name: "test_model" }),
 }))
 vi.mock("@/lib/auth-context", () => ({
@@ -101,6 +102,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 let root: Root, container: HTMLDivElement
 beforeEach(() => {
   vi.clearAllMocks()
+  state.search = ""
   state.errors = {}
   state.data = {
     "assignment-agents": {
@@ -201,6 +203,15 @@ it("submits the existing context and opens the returned job immediately", async 
     },
   )
   expect(state.push).toHaveBeenCalledWith("/assignments/created-job")
+})
+it("links the job to the goal and work object it was assigned from", async () => {
+  state.search = "goal=g1&workObject=w1"
+  createToReview()
+  await act(async () => click("Run task"))
+  expect(state.submit).toHaveBeenCalledWith(
+    "Research our audience and prepare a report",
+    expect.objectContaining({ agentId: "agent", goalId: "g1", workObjectId: "w1" }),
+  )
 })
 it("preserves the review after submission failure", async () => {
   state.submit.mockRejectedValue(new Error("Permission denied"))

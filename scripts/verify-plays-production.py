@@ -8,6 +8,7 @@ import httpx
 
 ROOT=Path(__file__).resolve().parent.parent
 OUT=ROOT/"docs"/"delivery"/"plays-production-acceptance.json"
+GATE="plays_read_only_acceptance"
 BASE=os.environ.get("BACKEND_URL","https://gravitre-saas-backend-production.up.railway.app").rstrip("/")
 
 def req(name):
@@ -45,8 +46,8 @@ def main():
         if readiness.get("act_within_policy_ready") is True:
             failures.append(f"{key}:act_within_policy_not_fail_closed")
     health=by.get("/health",{})
-    report={"at":datetime.now(timezone.utc).isoformat(),"backend_url":BASE,"git_sha":health.get("git_sha"),"mutation":False,"probes":probes,"failures":failures,"pass":not failures,"claim":"PASS — Plays production read-path, tenant context, governance posture and outcome truth contract are healthy" if not failures else "FAIL — Plays production acceptance failed"}
+    report={"at":datetime.now(timezone.utc).isoformat(),"backend_url":BASE,"gate":GATE,"execution_acceptance":"not_evaluated","auth_mode":os.environ.get("PLATFORM_LIVE_AUTH_MODE","owner_session"),"org_id":req("PLATFORM_LIVE_ORG_ID"),"git_sha":health.get("git_sha"),"mutation":False,"probes":probes,"failures":failures,"pass":not failures,"claim":"PASS — Plays production read-path, tenant context, governance posture and outcome truth contract are healthy (read-only; Plays execution not evaluated)" if not failures else "FAIL — Plays production acceptance failed"}
     OUT.parent.mkdir(parents=True,exist_ok=True); OUT.write_text(json.dumps(report,indent=2),encoding="utf-8")
-    print(json.dumps({k:report[k] for k in ("git_sha","mutation","failures","pass","claim")},indent=2))
+    print(json.dumps({k:report[k] for k in ("gate","auth_mode","git_sha","mutation","failures","pass","claim")},indent=2))
     return 0 if report["pass"] else 1
 if __name__=="__main__": raise SystemExit(main())

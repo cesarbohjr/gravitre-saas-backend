@@ -6,7 +6,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
-from app.services.rag_service import Document, RAGResponse, RAGService, get_rag_service
+from app.config import Settings, get_settings
+from app.services.rag_service import (
+    Document,
+    IngestionDisabledError,
+    RAGResponse,
+    RAGService,
+    SourceNotFoundError,
+    get_rag_service,
+)
 from app.services.unified_retrieval_service import get_unified_retrieval_service
 
 router = APIRouter(prefix="/api/rag-enhanced", tags=["rag-enhanced"])
@@ -33,20 +41,29 @@ class RAGQueryRequest(BaseModel):
 async def ingest_document(
     body: RAGIngestRequest,
     _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
     rag_service: RAGService = Depends(get_rag_service),
 ) -> dict:
+    """Synchronous admin ingest. Honours DISABLE_INGESTION like POST /api/rag/ingest."""
     _user, org_id = _admin
-    chunks = await rag_service.ingest_document(
-        org_id=org_id,
-        document=Document(
-            source_id=body.source_id,
-            external_id=body.external_id,
-            title=body.title,
-            content=body.content,
-            metadata=body.metadata,
-            environment=body.environment,
-        ),
-    )
+    if settings.disable_ingestion:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Ingestion is disabled")
+    try:
+        chunks = await rag_service.ingest_document(
+            org_id=org_id,
+            document=Document(
+                source_id=body.source_id,
+                external_id=body.external_id,
+                title=body.title,
+                content=body.content,
+                metadata=body.metadata,
+                environment=body.environment,
+            ),
+        )
+    except IngestionDisabledError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Ingestion is disabled") from exc
+    except SourceNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found") from exc
     return {"chunks": [chunk.model_dump() for chunk in chunks], "total": len(chunks)}
 
 

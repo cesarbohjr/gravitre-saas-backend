@@ -201,7 +201,9 @@ def _propose(
 
 
 def writer_enabled(settings: Any) -> bool:
-    return getattr(settings, "entity_writer_enabled", False) is True
+    from app.services.ingestion_interlock import ingestion_flag_on
+
+    return ingestion_flag_on(settings, "entity_writer_enabled")
 
 
 def write_provider_records(
@@ -212,6 +214,7 @@ def write_provider_records(
     records: list[ProviderRecord],
 ) -> WriteResult:
     """File provider records into the entity store. Never raises per record."""
+    from app.core.ingestion_kill_switch import ingestion_disabled
     from app.services.source_governance import (
         customer_context_allowed,
         load_source_governance,
@@ -220,13 +223,21 @@ def write_provider_records(
     result = WriteResult()
     if not writer_enabled(settings) or not records:
         return result
+    if ingestion_disabled(settings):
+        logger.warning("entity_writer_skipped org_id=%s reason=ingestion_disabled", org_id)
+        return result
     try:
         policy = load_source_governance(client, org_id)
     except Exception as exc:  # noqa: BLE001
         logger.warning("entity_writer_policy_unreadable org_id=%s error=%s", org_id, exc)
         return result
+    from app.services.ingestion_interlock import provider_lifecycle_supported
+
     for record in records:
         if not customer_context_allowed(policy, record.system):
+            continue
+        if not provider_lifecycle_supported(record.system):
+            # No provider revoke wired for this vendor: its records are not filed.
             continue
         try:
             _write_one(client, org_id, record, result)

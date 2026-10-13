@@ -114,6 +114,14 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("UNIFIED_TURN_LIVE_ENABLED", "unified_turn_live_enabled"),
     )
+    # Typed LIVE answers stream as checked sentences (typed_live_stream.py).
+    # False restores the whole-reply typed path.
+    typed_live_streaming_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TYPED_LIVE_STREAMING_ENABLED", "typed_live_streaming_enabled"
+        ),
+    )
     # Convergence P1 — LIVE proposal executes classically without a second model tool-choice.
     convergence_p1_single_selection_v1: bool = Field(
         default=True,
@@ -207,6 +215,27 @@ class Settings(BaseSettings):
             "cross_source_context_token_budget",
         ),
     )
+    # Re-check that each org RAG chunk's document still exists and is active right
+    # before it enters the prompt, so a deleted or revoked document cannot come back
+    # from the 5-minute retrieval cache. Rows also keep document id and updated time.
+    cross_source_context_liveness_v1: bool = False
+    # Rank current evidence above stale: freshness from updated/effective dates,
+    # superseded or expired rows left out, dates shown on each source, and a
+    # near-duplicate rule (one excerpt contained in another) on top of exact dedup.
+    cross_source_context_freshness_v1: bool = False
+    # 3.0 Plus account inputs to the active engine (account_context_sources.py), one
+    # flag each; read only on active-ranking turns that name a filed account.
+    # Observations: customer quotes (text only) and Gravitre's trend reading, under
+    # the org's customer-context consent and only from still-connected vendors.
+    # Replaces the separate account card on those turns.
+    context_engine_observations_v1: bool = False
+    # Measured behaviour signals plus the rule-based health status built from them.
+    context_engine_account_signals_v1: bool = False
+    # Work linked to the account (proposals, Plays work, goals) with truthful status.
+    context_engine_work_state_v1: bool = False
+    # Unified live turns compile the unified reasoning context (agent_intelligence).
+    # Only consulted when unified_turn_live_enabled is on; false skips the compile.
+    context_compiler_unified_live_v1: bool = True
     # Task-shaped turns: semantic tool retrieval (Phase 0 Future). Social keeps keyword narrow.
     unified_turn_embedding_tool_retrieval: bool = Field(
         default=True,
@@ -386,6 +415,10 @@ class Settings(BaseSettings):
     # Jira Cloud OAuth (STA-36)
     jira_client_id: str = ""
     jira_client_secret: str = ""
+    # Confluence Cloud OAuth. Empty falls back to the Jira Atlassian app above
+    # (connectors/confluence_oauth.confluence_credentials).
+    confluence_client_id: str = ""
+    confluence_client_secret: str = ""
     # Generic OAuth — Xero (PKCE)
     xero_client_id: str = ""
     xero_client_secret: str = ""
@@ -530,6 +563,10 @@ class Settings(BaseSettings):
     company_intelligence_interval_seconds: int = 28800
     # Standing unprompted investigators (read-scoped advisory). 0 disables; default 8 hours.
     standing_investigator_interval_seconds: int = 28800
+    # In-process cache warming scheduler. 0 disables; default hourly.
+    cache_warming_interval_seconds: int = 3600
+    # In-process workflow failure prediction scheduler. 0 disables; default hourly.
+    workflow_failure_prediction_interval_seconds: int = 3600
     # Past-due approval escalation + Monday weekly summary (0 disables).
     ops_notifications_interval_seconds: int = 900
     # Phase 2A durable domain events: in-process relay for domain_event_outbox.
@@ -546,6 +583,18 @@ class Settings(BaseSettings):
     connector_provider_revoke_on_disconnect: bool = False
     # Remove indexed documents a full-sweep sync no longer finds upstream (Notion).
     source_deletion_propagation_enabled: bool = False
+    # Owner switch (default false = current behaviour). When true, the pre-existing
+    # knowledge syncs (Notion, Confluence, HubSpot, Zendesk, Workday; scheduled, manual,
+    # webhook) and the standalone RAG worker also wait for the lifecycle prerequisites
+    # in services/ingestion_interlock.py, and syncs for providers without a wired revoke
+    # call are refused. New 3.0 Plus ingestion is held regardless of this switch.
+    existing_ingestion_requires_lifecycle: bool = False
+    # Tag agent_memories and entity_observations written from connector content with
+    # source_connector_id (and source_record_ref) so a disconnect can purge them
+    # (purge_connector_memories); connector-derived writes that cannot name their
+    # connector are then refused. Turn on only after
+    # 20261012070000_agent_memory_source_lineage.sql is applied.
+    memory_source_lineage_enabled: bool = False
     # Phase 2C governance. Retention prune of indexed documents per the org's
     # sourceDataGovernance.retentionDays (daily), and retrieval-side exclusion of
     # excerpts that match prompt-injection patterns.
@@ -553,7 +602,7 @@ class Settings(BaseSettings):
     knowledge_retention_interval_seconds: int = 86400
     retrieved_content_guard_enabled: bool = False
     # Phase 2D in-process indexing pilot: only these orgs (comma-separated UUIDs), only
-    # when each also opts in to customer context. Needs migration 20261012020000.
+    # when each also opts in to customer context. Needs migration 20261012024300.
     rag_worker_pilot_enabled: bool = False
     rag_worker_pilot_org_ids: str = ""
     rag_worker_pilot_interval_seconds: int = 30
@@ -573,16 +622,34 @@ class Settings(BaseSettings):
     goal_links_enabled: bool = False
     # Phase 5: AI-proposed work filed as work_objects.status='proposed' (accept/dismiss).
     work_object_proposals_enabled: bool = False
+    # Close the proposal -> Play run -> goal loop: Play runs accept workObjectId /
+    # businessEntityId (org-checked) and link the run to the work object; accepted
+    # proposals return the Play run request (nothing starts by itself); proposals
+    # inherit the Play setup's goal; work objects can be created / re-linked to a
+    # goal. Goal / entity column writes also need goal_links_enabled (its migration).
+    work_loop_links_enabled: bool = False
     # Phase 5: Play required_signals checked against this org's recent events.
     play_signal_evaluation_enabled: bool = False
     # Phase 5: one ranked recommendation feed (/api/recommendations/feed).
     recommendation_feed_enabled: bool = False
+    # The feed shows one item per account from account health, with churn advisory
+    # merged in (both bases shown when the churn model and customer language disagree).
+    account_feed_unified_v1: bool = False
     # Phase 6 (needs migration 20261012060000): log checkable predictions with a subject
     # and horizon, label them from evidence, and report realized accuracy.
     ml_prediction_outcomes_enabled: bool = False
     ml_prediction_labeling_interval_seconds: int = 86400
     # Phase 6: churn training holds out the most recent outcomes instead of a random fifth.
     ml_time_split_enabled: bool = False
+    # Churn training also builds an entity-feature challenger: churn customer_ids mapped
+    # to org_business_entities via bindings, plus windowed observation and behaviour-signal
+    # aggregates, evaluated on a time split against the 5-feature baseline. The existing
+    # champion gate refuses it unless it beats the baseline by a margin on enough labels.
+    churn_entity_features_enabled: bool = False
+    # Outcomes reach the learners: an execution.outcome_finalized relay handler records the
+    # run on its linked work object, labels workflow-run predictions and feeds verified Play
+    # results to recommendation learning. Needs DOMAIN_EVENT_RELAY_ENABLED as well.
+    outcome_learning_handler_enabled: bool = False
     # Phase 7: per-dimension account health (/api/entities/health), no composite score.
     account_health_enabled: bool = False
     # Phase 7: daily rule-based behaviour signals (compute_entity_behavior_signals) for orgs
@@ -709,6 +776,15 @@ class Settings(BaseSettings):
             "voice_pipecat_flux_eot",
         ),
     )
+    # Spoken medium turns wait at most this long (ms) for the parallel retrieval
+    # block; late results are dropped (services/intelligence_orchestrator.py).
+    voice_medium_retrieval_budget_ms: int = 700
+    # Short (few-word) transcripts below this STT confidence are not answered
+    # (pipecat_voice/utterance_gate.py); 0 turns the gate off.
+    voice_min_short_transcript_confidence: float = 0.45
+    # Seconds of silence during an open tool call before a spoken notice
+    # (pipecat_voice/voice_silence_guard.py); 0 turns it off.
+    voice_slow_tool_notice_seconds: float = 4.0
     # Seconds of silence on a deep spoken turn before a short "one moment"
     # acknowledgement is spoken; 0 turns it off.
     voice_deep_ack_seconds: float = Field(

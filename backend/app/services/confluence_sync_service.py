@@ -224,6 +224,10 @@ def run_confluence_sync(
     full_sync: bool = False,
 ) -> dict[str, Any]:
     """Sync configured Confluence spaces into RAG ingest jobs."""
+    from app.services.ingestion_interlock import ensure_existing_ingestion_allowed
+
+    # No-op unless EXISTING_INGESTION_REQUIRES_LIFECYCLE=true (owner switch, default off).
+    ensure_existing_ingestion_allowed(settings, "confluence")
     _ = full_sync
     row = (
         client.table("connectors")

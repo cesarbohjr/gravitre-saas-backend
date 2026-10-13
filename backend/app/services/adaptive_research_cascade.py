@@ -221,8 +221,33 @@ _OWN_DATA_RE = re.compile(
     r"(?i)\b(?:my|our)\s+(?:own\s+)?(?:calendar|schedule|meetings?|inbox|e-?mails?|gmail|outlook|website|site|"
     r"traffic|analytics|ads?|campaigns?|crm|pipeline|deals?|leads?|contacts?|customers?|clients?|tickets?|"
     r"invoices?|revenue|sales|numbers|metrics|dashboard|team|tasks?|projects?|files?|docs?|documents?|"
-    r"workflows?|agents?|account|accounts|data|reports?|slack|hubspot|salesforce|stripe|shopify)\b"
+    r"workflows?|agents?|account|accounts|data|reports?|slack|hubspot|salesforce|stripe|shopify|"
+    r"workspace|org|organi[sz]ation|company|business|lists?|segments?|audiences?|subscribers?|activity|"
+    r"runs?|approvals?|goals?|plays?|connectors?|integrations?|apps?|tools?|notifications?|alerts?|"
+    r"orders?|products?|inventory|budget|spend|kpis?|okrs?|forms?|conversations?|chats?|history|"
+    r"users?|members?|settings|stuff|things)\b"
     r"|\bhow\s+(?:did|is|was)\s+(?:the|my|our)\s+(?:website|site|traffic|campaign)\b"
+    r"|\b(?:in|on|across|inside)\s+(?:my|our|the)\s+(?:workspace|account|org|organi[sz]ation)\b"
+    r"|\bgravitre\b"
+    r"|\b(?:did|have|has)\s+(?:we|i)\s+(?:add|create|launch|change|update|send|run|publish|set\s+up|build|approve|connect)"
+)
+# "What changed since yesterday?", "Anything new overnight?": a question about
+# what happened in the user's own workspace over a period. A capitalised name
+# ("What happened in Ukraine yesterday?") is a question about the world.
+_WORKSPACE_CHANGE_RE = re.compile(
+    r"(?i)\b(?:what(?:'s|\s+has|\s+have)?\s+(?:changed|happened|new|gone\s+on|been\s+going\s+on|moved)|"
+    r"anything\s+(?:new|changed?|happen(?:ed)?)|any\s+(?:changes|updates|news)|catch\s+me\s+up|"
+    r"what\s+did\s+i\s+miss|while\s+i\s+was\s+(?:away|out|gone))\b"
+)
+# "How do our prices compare with competitors?": the user's data and the world.
+_OUTSIDE_COMPARISON_RE = re.compile(
+    r"(?i)\b(?:compar(?:e|ed|ing|ison)|versus|vs\.?|competitors?|competition|market|industry|benchmarks?|"
+    r"average\s+for|typical\s+for|best\s+practices?)\b"
+)
+_PERIOD_RE = re.compile(
+    r"(?i)\b(?:since|yesterday|today|tonight|overnight|this\s+(?:morning|afternoon|week|month)|"
+    r"last\s+(?:night|week|month|\d+\s+(?:hours?|days?))|(?:past|last)\s+(?:\d+\s+)?(?:hours?|days?|weeks?)|"
+    r"while\s+i\s+was|catch\s+me\s+up|did\s+i\s+miss)\b"
 )
 # Recency cues mean the model's own knowledge may be out of date.
 _RECENCY_RE = re.compile(
@@ -234,6 +259,25 @@ _DEFINITION_RE = re.compile(
     r"(?i)^\s*(?:can\s+you\s+)?(?:explain|define|what(?:'s|\s+is|\s+are|\s+does))\s+"
     r"(?:what\s+)?(?:an?\s+|the\s+)?[a-z][a-z\s-]{0,40}?(?:\s+(?:is|are|means?|mean))?\s*[?.!]?\s*$"
 )
+
+
+def is_tenant_local_question(query: str | None) -> bool:
+    """True when the answer can only come from the user's own workspace and apps.
+
+    "What changed in my workspace since yesterday?", "How are our segments
+    doing?", "Anything new since this morning?". A public web search cannot
+    answer these, and sending them to one leaks private wording.
+    """
+    text = str(query or "").strip()
+    if not text or _OUTSIDE_COMPARISON_RE.search(text):
+        return False
+    if _OWN_DATA_RE.search(text):
+        return True
+    if _WORKSPACE_CHANGE_RE.search(text) and _PERIOD_RE.search(text):
+        # A proper name after the first word is a question about the world.
+        rest = re.sub(r"^\W*\w+", "", text)
+        return not re.search(r"\b(?!I\b)[A-Z][a-z]", rest)
+    return False
 
 
 def answerable_without_web(query: str | None) -> bool:
@@ -249,7 +293,7 @@ def answerable_without_web(query: str | None) -> bool:
         return False
     if _ARITHMETIC_RE.match(text) or _CLOCK_RE.match(text) or _CONVERSATION_MEMORY_RE.search(text):
         return True
-    if _OWN_DATA_RE.search(text):
+    if is_tenant_local_question(text):
         return True
     if _RECENCY_RE.search(text):
         return False

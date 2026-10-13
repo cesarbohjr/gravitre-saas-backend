@@ -10,6 +10,7 @@ from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
+from app.core.ingestion_kill_switch import INGESTION_DISABLED_DETAIL, ingestion_disabled
 from app.connectors.workday_oauth import normalize_vendor
 from app.services.workday_sync_service import (
     get_workday_sync_status,
@@ -128,6 +129,9 @@ def workday_sync_run(
     _admin: Annotated[None, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
+    # Kill switch first: no database or provider call while ingestion is disabled.
+    if ingestion_disabled(settings):
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=INGESTION_DISABLED_DETAIL)
     client = shared_service_client(settings, create_client)
     _load_workday_connector(client, org_id, connector_id)
     try:

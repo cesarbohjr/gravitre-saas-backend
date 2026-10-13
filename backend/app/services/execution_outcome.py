@@ -1128,8 +1128,9 @@ def finalize_execution_outcome(
     try:
         from app.services.outcome_event_bus import publish_outcome
 
-        publish_outcome(event.org_id, stream_payload)
-        fanout["outcome_stream_published"] = True
+        # Published only when a live subscriber took it. The durable copy of this
+        # outcome is the workflow_runs outbox event (execution.outcome_finalized).
+        fanout["outcome_stream_published"] = publish_outcome(event.org_id, stream_payload) > 0
     except Exception as exc:  # noqa: BLE001
         fanout["outcome_stream_published"] = False
         logger.debug(

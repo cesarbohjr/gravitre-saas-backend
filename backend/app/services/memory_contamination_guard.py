@@ -132,6 +132,46 @@ def attach_recall_honesty(row: dict[str, Any]) -> dict[str, Any]:
     return labeled
 
 
+LINEAGE_COLUMNS = ("source_connector_id", "source_record_ref")
+_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
+
+
+def lineage_required(settings: Any = None) -> bool:
+    """True when MEMORY_SOURCE_LINEAGE_ENABLED is on: connector-derived writes must
+    name their connector (and are refused when they cannot)."""
+    if settings is None:
+        from app.config import get_settings
+
+        settings = get_settings()
+    return getattr(settings, "memory_source_lineage_enabled", False) is True
+
+
+def memory_source_lineage(raw: dict[str, Any] | None, *, settings: Any = None) -> dict[str, str]:
+    """Columns naming the connector (and record) a memory was learned from.
+
+    Reads ``source_connector_id`` (or ``connector_id``) and ``source_record_ref``
+    (or ``record_ref``) from a write candidate. Only a connector row id (UUID)
+    counts: integration slugs such as ``"hubspot"`` name a vendor, not a
+    connection, and cannot be purged by. Empty unless MEMORY_SOURCE_LINEAGE_ENABLED,
+    so nothing new is written before migration 20261012070000 is applied.
+    """
+    if not isinstance(raw, dict) or not lineage_required(settings):
+        return {}
+    connector_id = str(raw.get("source_connector_id") or raw.get("connector_id") or "").strip()
+    if not _UUID_RE.match(connector_id):
+        return {}
+    out = {"source_connector_id": connector_id.lower()}
+    record_ref = str(raw.get("source_record_ref") or raw.get("record_ref") or "").strip()
+    if record_ref:
+        out["source_record_ref"] = record_ref[:500]
+    return out
+
+
+def without_lineage(payload: dict[str, Any]) -> dict[str, Any]:
+    """The payload minus lineage columns (insert retry on a database without them)."""
+    return {k: v for k, v in payload.items() if k not in LINEAGE_COLUMNS}
+
+
 def looks_like_injection(content: str) -> bool:
     """Heuristic guard for plausible false instructions in untrusted text."""
     text = (content or "").strip().lower()

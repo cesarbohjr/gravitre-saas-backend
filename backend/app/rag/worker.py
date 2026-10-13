@@ -330,6 +330,61 @@ def process_job(settings: Settings, client: Client, job: dict) -> None:
         logger.warning("rag_ingest_failed org_id=%s job_id=%s error=ingest_failed", org_id, str(job["id"]))
 
 
+def claimed_job_hold_reason(settings: Settings, client: Client, job: dict) -> str | None:
+    """Why the standalone worker must hand ``job`` back instead of indexing it.
+
+    * Jobs of orgs in RAG_WORKER_PILOT_ORG_IDS are pilot-scoped work: they get the
+      same interlock as the in-process pilot (lifecycle prerequisites, provider
+      revoke wired, customer-context opt-in), whichever process claims them.
+    * With EXISTING_INGESTION_REQUIRES_LIFECYCLE=true (owner switch, default off),
+      jobs of sources whose provider has no revoke call wired are held too.
+    Otherwise None: the standalone worker indexes as it always has.
+    """
+    from app.schedulers.rag_ingest_pilot_scheduler import (
+        _source_type,
+        pilot_job_hold_reason,
+        pilot_org_ids,
+    )
+    from app.services.ingestion_interlock import (
+        existing_ingestion_gated,
+        existing_ingestion_hold_reason,
+    )
+
+    if str(job.get("org_id") or "").lower() in pilot_org_ids(settings):
+        return pilot_job_hold_reason(settings, client, job)
+    if existing_ingestion_gated(settings):
+        return existing_ingestion_hold_reason(settings, _source_type(client, job))
+    return None
+
+
+def run_worker_once(
+    settings: Settings,
+    client: Client,
+    worker_id: str,
+    visibility_timeout_s: int = 300,
+) -> str:
+    """One poll of the standalone worker: disabled | held | idle | released | processed."""
+    from app.services.ingestion_interlock import existing_ingestion_hold_reason
+
+    if settings.disable_ingestion:
+        return "disabled"
+    held = existing_ingestion_hold_reason(settings)
+    if held:
+        logger.warning("rag_worker_held reason=%s", held)
+        return "held"
+    job = _claim_job(client, worker_id=worker_id, visibility_timeout_s=visibility_timeout_s)
+    if not job:
+        return "idle"
+    reason = claimed_job_hold_reason(settings, client, job)
+    if reason:
+        from app.schedulers.rag_ingest_pilot_scheduler import _release_job
+
+        _release_job(client, {**job, "worker_id": job.get("worker_id") or worker_id}, reason)
+        return "released"
+    process_job(settings, client, job)
+    return "processed"
+
+
 def run_worker(
     poll_interval_s: int = 5,
     visibility_timeout_s: int = 300,
@@ -345,13 +400,9 @@ def run_worker(
         worker_id,
     )
     while True:
-        if settings.disable_ingestion:
-            time.sleep(poll_interval_s)
-            continue
-        job = _claim_job(client, worker_id=worker_id, visibility_timeout_s=visibility_timeout_s)
-        if job:
-            process_job(settings, client, job)
-        else:
+        outcome = run_worker_once(settings, client, worker_id, visibility_timeout_s)
+        if outcome != "processed":
+            # A released job is reclaimed oldest-first, so back off instead of spinning.
             time.sleep(poll_interval_s)
 
 

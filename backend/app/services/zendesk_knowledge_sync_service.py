@@ -414,6 +414,10 @@ def run_zendesk_knowledge_sync(
     actor_id: str,
     full_sync: bool = False,
 ) -> dict[str, Any]:
+    from app.services.ingestion_interlock import ensure_existing_ingestion_allowed
+
+    # No-op unless EXISTING_INGESTION_REQUIRES_LIFECYCLE=true (owner switch, default off).
+    ensure_existing_ingestion_allowed(settings, "zendesk")
     row = (
         client.table("connectors")
         .select("id,name,config,environment,status")

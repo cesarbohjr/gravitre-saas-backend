@@ -84,6 +84,8 @@ class ExecutionResult:
     assumption_notes: list[str] | None = None
     # Outcome Ownership: provider/task success is distinct from verified completion.
     outcome_verified: bool = False
+    # connectors.id the action ran through (entity_id may be the provider record id).
+    connector_id: str | None = None
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> ExecutionResult:

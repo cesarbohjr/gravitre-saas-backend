@@ -945,6 +945,8 @@ async def sync_connector_route_alias(
     """Manual sync — runs knowledge sync for Notion; legacy status for other connectors."""
     import asyncio
 
+    from app.core.ingestion_kill_switch import INGESTION_DISABLED_DETAIL, IngestionDisabledError
+    from app.services.ingestion_interlock import IngestionHeldError
     from app.services.knowledge_sync_service import SOURCE_REGISTRY, trigger_connector_knowledge_sync
 
     _user, org_id = _admin
@@ -978,6 +980,12 @@ async def sync_connector_route_alias(
             )
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        except IngestionDisabledError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=INGESTION_DISABLED_DETAIL
+            ) from exc
+        except IngestionHeldError:
+            raise  # answered 503 INGESTION_HELD by the app-level handler
         except Exception as exc:  # noqa: BLE001
             # Surface PostgREST/schema errors (e.g. missing rag_sources.created_by) instead of opaque 500.
             raise HTTPException(
@@ -1444,6 +1452,11 @@ async def _delete_connector_impl(
     )
     if not updated.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
+    # Context built from this connector must stop being served now, not when the
+    # disconnect purge runs (no-op unless MEMORY_SOURCE_LINEAGE_ENABLED).
+    from app.services.memory_source_liveness import invalidate_org_derived_context
+
+    invalidate_org_derived_context(org_id, settings=settings, reason="connector.deleted")
     # Ask the provider to revoke the grant while we still hold the token (off by default).
     from app.services.source_lifecycle import revoke_on_disconnect
 
