@@ -114,7 +114,13 @@ _SUCCESS_CLAIM = re.compile(r"\b(?:is confirmed|I created|successfully created|a
 _COMPLETION_CLAIM = re.compile(
     r"\b(?:done|completed|complete|finished|is confirmed|I(?:'ve| have)? (?:created|updated|sent|posted|added)|"
     r"successfully (?:created|updated|sent|posted|completed|added)|all set|it's done|"
-    r"it is done|went through|has been (?:created|updated|sent|completed|added|posted))\b",
+    r"it is done|went through|has been (?:created|updated|sent|completed|added|posted)|"
+    # Passive and state forms: "The email was sent.", "Message delivered.",
+    # "Your contact is now in HubSpot." used to pass while still verifying.
+    r"(?:was|were|got|have been|had been) (?:sent|created|updated|added|posted|delivered|saved|scheduled|booked)|"
+    r"(?:sent|delivered|posted|created|saved|scheduled|booked) (?:successfully|to\b)|"
+    r"(?:message|email|e-mail|contact|ticket|task|record|invite|reply) (?:sent|delivered|created|posted|added|updated)|"
+    r"is now (?:in|on|live|created|saved|scheduled)|are now (?:in|on|live))\b",
     re.I,
 )
 # A claim word governed by one of these is not a completion claim
