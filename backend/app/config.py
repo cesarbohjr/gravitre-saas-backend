@@ -662,6 +662,8 @@ class Settings(BaseSettings):
     account_play_proposals_enabled: bool = False
     # Shared secret for /api/watchers/agent/signal HMAC or X-Watcher-Secret header.
     watcher_agent_webhook_secret: str | None = None
+    # Write authority on the invoke spine: shadow (log missing authority), enforce, off.
+    write_authority_mode: str = "shadow"
     # Memory promotion evaluation (v4). 0 disables; default 8 hours.
     memory_promotion_eval_interval_seconds: int = 28800
     # Memory expiration/decay checks (v4). 0 disables; default daily.

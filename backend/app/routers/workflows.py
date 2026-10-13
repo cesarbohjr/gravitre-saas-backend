@@ -3935,6 +3935,9 @@ async def approve_run_alias(
         if not claimed:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Approval already being decided")
 
+        from app.services.write_authority import declare_write_authority
+
+        declare_write_authority("human", f"approval:{run_id}")  # an admin approved this queued write
         execution = await service.execute_plan(
             org_id=org_id,
             user_id=str(chat_rows[0].get("requested_by") or reviewer),

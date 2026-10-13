@@ -5035,6 +5035,19 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
         params["_capability_resolved_from"] = cap_resolution.capability_id
         params["_capability_resolved_vendor"] = cap_resolution.resolved_vendor
 
+    # One write-authority check for every caller (shadow by default; see write_authority).
+    from app.services.write_authority import WriteAuthorityError, check_write_authority
+
+    try:
+        check_write_authority(
+            action,
+            settings=getattr(ctx, "settings", None),
+            org_id=ctx.org_id,
+            actor_id=getattr(ctx, "actor_id", None),
+        )
+    except WriteAuthorityError as exc:
+        raise ToolValidationError(str(exc), code=WriteAuthorityError.code) from exc
+
     # Module 0 — credential/isolation guard on the shared write spine (chat/ReAct/canvas).
     from app.services.conversation_write_guard import (
         ConversationWriteBlockedError,

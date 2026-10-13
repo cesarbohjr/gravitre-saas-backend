@@ -1471,17 +1471,21 @@ class ChatOrchestrationService:
                 ),
                 execution_context={"strategy": "SEQUENTIAL"},
             )
-        result = await self._connector.execute_plan(
-            org_id=org_id,
-            user_id=user_id,
-            conversation_id=conversation_id,
-            plan=plan,
-            client=client,
-            classification=classification,
-            environment_name=environment_name,
-            # Orchestration owns the single Module A terminal for the whole run.
-            own_terminal_outcome=False,
-        )
+        from app.services.write_authority import write_authority
+
+        # Reached only after the user confirmed this step (awaiting_step_confirm).
+        with write_authority("human", f"orchestration_step:{conversation_id}"):
+            result = await self._connector.execute_plan(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                plan=plan,
+                client=client,
+                classification=classification,
+                environment_name=environment_name,
+                # Orchestration owns the single Module A terminal for the whole run.
+                own_terminal_outcome=False,
+            )
         step_results = list(params.get("step_results") or [])
         step_results.append(_step_result_row(step, result))
         completed = list(task_state.get("completed_steps") or [])
@@ -1818,16 +1822,20 @@ class ChatOrchestrationService:
                 }
 
             plan = self._enrich_plan_with_context(step.plan, params.get("step_results") or [])
-            result = await self._connector.execute_plan(
-                org_id=org_id,
-                user_id=user_id,
-                conversation_id=conversation_id,
-                plan=plan,
-                client=client,
-                classification=classification,
-                environment_name=environment_name,
-                own_terminal_outcome=False,
-            )
+            from app.services.write_authority import write_authority
+
+            # Steps that needed approval stopped above; this one did not need it.
+            with write_authority("policy", f"orchestration:{conversation_id}"):
+                result = await self._connector.execute_plan(
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    plan=plan,
+                    client=client,
+                    classification=classification,
+                    environment_name=environment_name,
+                    own_terminal_outcome=False,
+                )
             if not result.success:
                 if run_id:
                     sync_orchestration_step(

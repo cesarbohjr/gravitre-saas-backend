@@ -5,6 +5,8 @@ catalog_write_authority; terminals use finalize_execution_outcome.
 """
 from __future__ import annotations
 
+from app.services.write_authority import authorized as _write_authorized
+
 import re
 from typing import Any
 from urllib.parse import quote
@@ -843,6 +845,8 @@ def _alert_extension_finalize_failure(
             )
 
 
+# Runs only after the one-time server confirm token was consumed.
+@_write_authorized("human", "extension_confirm")
 def _run_confirmed_extension_action(
     ctx: ToolContext,
     *,
