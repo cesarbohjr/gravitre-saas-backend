@@ -106,7 +106,7 @@ def test_two_approvals_for_deletes_only():
 def test_customer_email_rule_holds_autonomous_agents():
     identity = type("Identity", (), {"trust_level": "autonomous", "approval_rule_overrides": {}})()
     with patch("app.services.write_governance.resolve_approval_override", return_value="auto_run"):
-        allowed, _ = resolve_write_user_approval(
+        allowed, _reason_off = resolve_write_user_approval(
             is_write=True,
             invoke_action="gmail.send_message",
             action_kind="write",
@@ -123,9 +123,10 @@ def test_customer_email_rule_holds_autonomous_agents():
             rules=ApprovalRules(customer_email_approval=True),
         )
     assert held is True
-    assert reason == "org_rule_customer_email_waits_for_approval"
-    # With the rule off the outcome falls through to the existing resolver.
-    assert isinstance(allowed, bool)
+    # Any external send now always needs approval (capability, not vendor), so the
+    # send is held before the org rule is consulted, with the rule on or off.
+    assert reason == "high_risk_or_f1_write_always_requires_approval"
+    assert allowed is True
 
 
 def test_partial_preference_update_keeps_other_events():
