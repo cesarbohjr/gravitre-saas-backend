@@ -384,6 +384,8 @@ export interface ScheduledItem {
 
 export interface SchedulesListResponse {
   items: ScheduledItem[]
+  /** True when the window held more runs than the backend reads, so the oldest are missing. */
+  runsTruncated?: boolean
 }
 
 export interface SchedulesListParams {

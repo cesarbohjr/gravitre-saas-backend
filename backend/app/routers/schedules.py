@@ -52,6 +52,7 @@ def list_schedules(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="to must be after from")
 
     client = get_supabase_client(settings)
+    meta: dict = {"runsTruncated": False}
     items = list_scheduled_items(
         client,
         org_id,
@@ -60,5 +61,8 @@ def list_schedules(
         window_start=window_start,
         window_end=window_end,
         kinds=selected_kinds,
+        meta=meta,
     )
-    return {"items": items}
+    # runsTruncated: the window held more runs than one read returns, so the
+    # oldest runs in it are missing. The UI says so instead of implying a full month.
+    return {"items": items, "runsTruncated": bool(meta.get("runsTruncated"))}

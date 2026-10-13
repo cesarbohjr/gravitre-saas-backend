@@ -122,7 +122,7 @@ function SchedulesCalendar() {
     return { from, to }
   }, [grid])
 
-  const { items, isLoading, error, refresh } = useSchedules({ from: range.from.toISOString(), to: range.to.toISOString() })
+  const { items, isLoading, error, refresh, truncated } = useSchedules({ from: range.from.toISOString(), to: range.to.toISOString() })
 
   const { data: workflowData } = useSWR(user ? ["schedules-workflows"] : null, () => workflowsApi.list(), {
     revalidateOnFocus: false,
@@ -373,6 +373,13 @@ function SchedulesCalendar() {
             </label>
           ) : null}
         </div>
+
+        {truncated ? (
+          <p className="ov-alert" role="status" style={{ margin: "12px 16px 0", color: "var(--ov-amber-ink)", background: "var(--ov-amber-bg)" }}>
+            This month has more runs than the calendar loads at once, so the oldest runs in it are not shown and the
+            counts on this page are lower than the real totals.
+          </p>
+        ) : null}
 
         <div className="au-split">
           <div className="au-main">

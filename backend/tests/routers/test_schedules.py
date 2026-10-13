@@ -146,3 +146,106 @@ def test_task_runs_are_the_requested_months_runs_with_failure_detail(monkeypatch
     assert failed["workflowName"] == "Lead enrichment"
     assert "error" not in by_id["run-oct-ok"]
     assert by_id["run-oct-ok"]["durationMs"] == 147000
+
+
+class _PagedRuns:
+    """Minimal query builder that honours range() so paging can be exercised."""
+
+    def __init__(self, rows):
+        self.rows = rows
+        self.ranges: list[tuple[int, int]] = []
+
+    def table(self, _name):
+        return self
+
+    def select(self, *_a, **_k):
+        return self
+
+    def eq(self, *_a, **_k):
+        return self
+
+    def gte(self, *_a, **_k):
+        return self
+
+    def lt(self, *_a, **_k):
+        return self
+
+    def order(self, *_a, **_k):
+        return self
+
+    def range(self, start, end):
+        self.ranges.append((start, end))
+        self._slice = (start, end)
+        return self
+
+    def execute(self):
+        from types import SimpleNamespace
+
+        start, end = self._slice
+        return SimpleNamespace(data=self.rows[start : end + 1])
+
+
+def _paged_rows(n):
+    return [{"id": f"run-{i:05d}", "workflow_id": "wf-1", "status": "completed", "created_at": "2026-10-05T08:00:00+00:00"} for i in range(n)]
+
+
+def test_windowed_runs_page_through_the_whole_window():
+    db = _PagedRuns(_paged_rows(2500))
+    rows, truncated = service_module._windowed_runs(
+        db,
+        "org-1",
+        "production",
+        workflow_id=None,
+        window_start=datetime(2026, 10, 1, tzinfo=timezone.utc),
+        window_end=datetime(2026, 11, 1, tzinfo=timezone.utc),
+        page_size=1000,
+    )
+    assert len(rows) == 2500
+    assert truncated is False
+    assert db.ranges == [(0, 999), (1000, 1999), (2000, 2999)]
+
+
+def test_windowed_runs_report_when_the_ceiling_cuts_the_window_short():
+    db = _PagedRuns(_paged_rows(30))
+    rows, truncated = service_module._windowed_runs(
+        db,
+        "org-1",
+        "production",
+        workflow_id=None,
+        window_start=datetime(2026, 10, 1, tzinfo=timezone.utc),
+        window_end=datetime(2026, 11, 1, tzinfo=timezone.utc),
+        page_size=10,
+        ceiling=20,
+    )
+    assert len(rows) == 20
+    assert truncated is True
+
+
+def test_exactly_full_last_page_is_not_reported_as_truncated():
+    db = _PagedRuns(_paged_rows(20))
+    rows, truncated = service_module._windowed_runs(
+        db,
+        "org-1",
+        "production",
+        workflow_id=None,
+        window_start=datetime(2026, 10, 1, tzinfo=timezone.utc),
+        window_end=datetime(2026, 11, 1, tzinfo=timezone.utc),
+        page_size=10,
+        ceiling=100,
+    )
+    assert len(rows) == 20
+    assert truncated is False
+
+
+async def test_list_schedules_reports_truncation(async_client, monkeypatch):
+    _authenticate()
+
+    def fake_list_scheduled_items(client, org_id, environment_name, **kwargs):
+        kwargs["meta"]["runsTruncated"] = True
+        return []
+
+    monkeypatch.setattr("app.routers.schedules.list_scheduled_items", fake_list_scheduled_items)
+    monkeypatch.setattr("app.routers.schedules.get_supabase_client", lambda settings: MagicMock())
+    resp = await async_client.get("/api/schedules")
+    assert resp.status_code == 200
+    assert resp.json() == {"items": [], "runsTruncated": True}

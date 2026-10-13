@@ -21,6 +21,8 @@ export interface UseSchedulesResult {
   error: unknown
   /** Always false — sample fallback removed; empty state shown instead. */
   isSample: boolean
+  /** True when the backend read its run ceiling, so the oldest runs in the window are missing. */
+  truncated: boolean
   refresh: () => void
 }
 
@@ -51,7 +53,11 @@ function mapApiItem(item: ApiScheduledItem): ScheduledItem {
   }
 }
 
-async function loadSchedules(options: UseSchedulesOptions): Promise<ScheduledItem[]> {
+const EMPTY_ITEMS: ScheduledItem[] = []
+
+type LoadedSchedules = { items: ScheduledItem[]; truncated: boolean }
+
+async function loadSchedules(options: UseSchedulesOptions): Promise<LoadedSchedules> {
   const preferUnified = options.preferUnifiedEndpoint !== false
   if (preferUnified) {
     try {
@@ -61,7 +67,7 @@ async function loadSchedules(options: UseSchedulesOptions): Promise<ScheduledIte
         to: options.to,
         kinds: options.kinds,
       })
-      return response.items.map(mapApiItem)
+      return { items: response.items.map(mapApiItem), truncated: response.runsTruncated === true }
     } catch (error) {
       const status = error instanceof ApiError ? error.status : undefined
       if (status && status !== 404 && status !== 501) {
@@ -70,13 +76,14 @@ async function loadSchedules(options: UseSchedulesOptions): Promise<ScheduledIte
     }
   }
 
-  return aggregateSchedulesClientSide({
+  const items = await aggregateSchedulesClientSide({
     listWorkflows: workflowsApi.list,
     listSchedules: workflowsApi.listSchedules,
     listRuns: runsApi.list,
     listJobs: trainingApi.listJobs,
     workflowId: options.workflowId,
   })
+  return { items, truncated: false }
 }
 
 /**
@@ -100,19 +107,20 @@ export function useSchedules(optionsOrWorkflowId?: string | UseSchedulesOptions)
       ]
     : null
 
-  const { data, error, isLoading, mutate } = useSWR<ScheduledItem[]>(
+  const { data, error, isLoading, mutate } = useSWR<LoadedSchedules>(
     key,
     () => loadSchedules(options),
     { revalidateOnFocus: false, keepPreviousData: true },
   )
 
-  const liveItems = data ?? []
+  const liveItems = data?.items ?? EMPTY_ITEMS
 
   return {
     items: liveItems,
     isLoading,
     error,
     isSample: false,
+    truncated: data?.truncated === true,
     refresh: () => {
       void mutate()
     },
