@@ -172,7 +172,11 @@ def _invoke_canvas_registered_tool(
     )
     if blocked is not None:
         return blocked
-    return invoke_tool(tool_ctx, action, bound)
+    from app.services.write_authority import write_authority
+
+    # Every canvas write step passed _enforce_canvas_write_authority (approved run).
+    with write_authority("run", str(context.run_id or "")):
+        return invoke_tool(tool_ctx, action, bound)
 
 
 def _attach_step_verification(

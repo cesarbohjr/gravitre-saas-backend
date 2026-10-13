@@ -1,6 +1,8 @@
 """Compensating transactions for failed autonomous workflow runs (STA-107)."""
 from __future__ import annotations
 
+from app.services.write_authority import authorized as _write_authorized
+
 from datetime import datetime, timezone
 from typing import Any
 
@@ -253,6 +255,8 @@ def authorize_compensation_write(forward_action: str, compensating_action: str) 
         )
 
 
+# Undoes writes of an earlier run.
+@_write_authorized("compensation", "run_compensation")
 def execute_compensations(
     client: Any,
     settings: Any,
@@ -368,6 +372,8 @@ def _org_compensation_webhook_connector_id(client: Any, org_id: str) -> str | No
     return str(connector_id) if connector_id else None
 
 
+# Notifies about a compensation.
+@_write_authorized("compensation", "compensation_notify")
 def notify_compensation_webhook(
     client: Any,
     settings: Any,

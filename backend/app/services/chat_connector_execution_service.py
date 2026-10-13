@@ -1997,6 +1997,21 @@ class ChatConnectorExecutionService:
             )
 
     async def execute_plan(self, **kwargs: Any) -> ExecutionResult:
+        """Execute a plan under a declared write authority (see write_authority).
+
+        A confirmed write (``approved_params``) is a person's approval; otherwise
+        the HITL policy decided no approval was needed. An outer caller that
+        already declared authority (approval queue, orchestration) keeps it.
+        """
+        from app.services.write_authority import current_write_authority, write_authority
+
+        if current_write_authority() is not None:
+            return await self._execute_plan_shielded(**kwargs)
+        kind = "human" if kwargs.get("approved_params") is not None else "policy"
+        with write_authority(kind, f"chat:{kwargs.get('conversation_id') or ''}"):
+            return await self._execute_plan_shielded(**kwargs)
+
+    async def _execute_plan_shielded(self, **kwargs: Any) -> ExecutionResult:
         """Execute a connector plan; a WRITE finishes even if its turn is cancelled.
 
         A barge-in or stop cancels the turn that awaits this. Before the

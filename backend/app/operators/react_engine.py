@@ -1130,9 +1130,12 @@ class ReActEngine:
                             }
                         ctx = dc_replace(ctx, preflight_result=proof)
                         args = dict(proof.compiled_parameters)
-                    return await self.registry.execute_tool(
-                        ctx=ctx, tool_name=tool_name, args=args
-                    )
+                    from app.services.write_authority import write_authority
+
+                    with write_authority("run", str(ctx.run_id)):
+                        return await self.registry.execute_tool(
+                            ctx=ctx, tool_name=tool_name, args=args
+                        )
                 return {
                     "success": False,
                     "tool": tool_name,
@@ -1270,6 +1273,12 @@ class ReActEngine:
             if preflight is not None and preflight.ok:
                 ctx = dc_replace(ctx, preflight_result=preflight)
                 execute_args = dict(preflight.compiled_parameters)
+        if requires_write:
+            # The gate let it through: org policy (auto_run trust) needs no person here.
+            from app.services.write_authority import write_authority
+
+            with write_authority("policy", f"react:{ctx.agent_id or 'agent'}"):
+                return await self.registry.execute_tool(ctx=ctx, tool_name=tool_name, args=execute_args)
         return await self.registry.execute_tool(ctx=ctx, tool_name=tool_name, args=execute_args)
 
     async def _chat_with_tools(
