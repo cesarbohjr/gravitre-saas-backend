@@ -105,6 +105,23 @@ def release_webhook_event(client: Any, *, org_id: str, provider: str, event_id: 
         )
 
 
+# Postgres rejected the statement, so no row exists: check, not-null, foreign key,
+# unique (another receipt path already created it is handled by the receipt),
+# invalid text representation, string too long.
+_REJECTED_SQLSTATES = frozenset({"23514", "23502", "23503", "22P02", "22001"})
+
+
+def _definitely_not_written(exc: BaseException) -> bool:
+    """True when the run insert was refused by the database (the row was not created)."""
+    code = str(getattr(exc, "code", "") or "")
+    if code in _REJECTED_SQLSTATES:
+        return True
+    text = str(exc)
+    return any(f"'{c}'" in text or f'"{c}"' in text or f"code: {c}" in text for c in _REJECTED_SQLSTATES) or (
+        "violates check constraint" in text
+    )
+
+
 async def start_event_triggered_run(
     settings: Settings,
     client: Any,
@@ -162,8 +179,10 @@ async def start_event_triggered_run(
             environment_name=environment_name,
             progress=progress,
         )
-    except Exception:
-        if receipt_id and not progress["run_write_attempted"]:
+    except Exception as exc:
+        if receipt_id and (not progress["run_write_attempted"] or _definitely_not_written(exc)):
+            # Nothing was created, so a provider retry must be able to start the
+            # run. (A rejected insert used to keep the receipt and lose the event.)
             release_webhook_event(client, org_id=org_id, provider=trigger_type, event_id=receipt_id)
         raise
     if receipt_id and not progress["run_write_attempted"] and not result.get("run_id"):

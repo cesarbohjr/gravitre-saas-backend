@@ -233,3 +233,29 @@ async def test_receipt_released_when_policy_lookup_fails() -> None:
         )
     assert out["status"] == "failed"
     assert ("org-1", "hubspot", "evt-9:wf-1") not in receipts.keys
+
+
+class _RejectedInsert(Exception):
+    """Shape of postgrest.APIError for a check-constraint violation."""
+
+    code = "23514"
+
+
+@pytest.mark.asyncio
+async def test_receipt_released_when_the_database_rejects_the_run_insert() -> None:
+    """A refused insert created nothing: the provider's retry must be able to run.
+
+    Salesforce/Segment/PagerDuty runs were refused by workflow_runs_trigger_type_check
+    and the kept receipt then skipped every retry, losing the event.
+    """
+    receipts = _Receipts()
+    with pytest.raises(_RejectedInsert):
+        await _start(
+            receipts.client(),
+            event_id="evt-1",
+            create_side_effect=_RejectedInsert('new row violates check constraint "workflow_runs_trigger_type_check"'),
+        )
+    assert ("org-1", "hubspot", "evt-1:wf-1") not in receipts.keys
+    retry, ex = await _start(receipts.client(), event_id="evt-1")
+    assert retry["status"] == "completed"
+    ex.execute_workflow.assert_awaited_once()
