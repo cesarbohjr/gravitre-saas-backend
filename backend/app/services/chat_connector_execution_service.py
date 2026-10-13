@@ -4063,6 +4063,7 @@ class ChatConnectorExecutionService:
         hitl: Any | None = None,
     ) -> str | None:
         """Persist a Decision Queue row and notify configured approvers — not a polite no-op."""
+        from app.services.approval_action_binding import digest_plan_args
         from app.services.approval_record_service import create_contract_approval
 
         vendor = (plan.integration or "connector").replace("_", " ").title()
@@ -4101,6 +4102,14 @@ class ChatConnectorExecutionService:
                 or ("high" if plan.destructive else "low"),
                 "approval_reason": plan.approval_reason
                 or pending_params.get("approval_reason"),
+                # What the approver approves: this tool, action and integration with
+                # exactly these arguments. The approve route refuses anything else.
+                "binding": {
+                    "tool_name": plan.tool_name,
+                    "invoke_action": plan.invoke_action,
+                    "integration": plan.integration,
+                    "args_digest": digest_plan_args(plan.args),
+                },
             },
             parameters=dict(pending_params),
             payload={"args": dict(plan.args or {})},
