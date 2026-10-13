@@ -9,7 +9,11 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
 from app.config import Settings, get_settings
 from app.services.event_triggered_runs import raise_if_retryable
-from app.connectors.hubspot_webhooks import verify_hubspot_signature_v3, webhook_client_secret
+from app.connectors.hubspot_webhooks import (
+    hubspot_signed_uri_candidates,
+    verify_hubspot_signature_v3,
+    webhook_client_secret,
+)
 from app.services.hubspot_trigger_service import process_hubspot_event_batch
 
 logger = logging.getLogger(__name__)
@@ -32,17 +36,22 @@ async def hubspot_inbound_webhook(
             detail="HubSpot webhook verification is not configured",
         )
 
-    request_uri = str(request.url.path)
-    if request.url.query:
-        request_uri = f"{request_uri}?{request.url.query}"
-
-    if not verify_hubspot_signature_v3(
-        method=request.method,
-        request_uri=request_uri,
-        body=body,
-        timestamp_ms=x_hubspot_request_timestamp,
-        signature=x_hubspot_signature_v3,
-        client_secret=secret,
+    candidates = hubspot_signed_uri_candidates(
+        settings,
+        path=str(request.url.path),
+        query=str(request.url.query or ""),
+        host=request.headers.get("host"),
+    )
+    if not any(
+        verify_hubspot_signature_v3(
+            method=request.method,
+            request_uri=uri,
+            body=body,
+            timestamp_ms=x_hubspot_request_timestamp,
+            signature=x_hubspot_signature_v3,
+            client_secret=secret,
+        )
+        for uri in candidates
     ):
         logger.warning("hubspot_webhook_signature_invalid")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid signature")
