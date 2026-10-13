@@ -302,6 +302,10 @@ def _latest_rag_search_definition() -> str:
     for path in sorted(MIGRATIONS.glob("*.sql")):
         sql = path.read_text()
         for m in re.finditer(r"CREATE OR REPLACE FUNCTION public\.rag_search\(.*?\$\$;", sql, flags=re.DOTALL):
+            # Legacy overloads that only delegate to the full version hold no
+            # filters of their own; check the definition that reads the tables.
+            if "FROM public.rag_embeddings" not in m.group(0):
+                continue
             defs.append((path.name, m.group(0)))
     assert defs, "rag_search not found in migrations"
     return defs[-1][1]
