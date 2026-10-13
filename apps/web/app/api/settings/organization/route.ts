@@ -44,14 +44,20 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json()
     const snake = camelToSnake(body as Record<string, unknown>)
 
+    // Only fields the caller sent, and only columns that exist. organizations has
+    // no primary_domain column, so sending it failed every save; and writing
+    // null for omitted fields erased the name or logo on partial updates.
+    const updates: Record<string, unknown> = {}
+    if (snake.name !== undefined) updates.name = snake.name
+    if (snake.slug !== undefined) updates.slug = snake.slug
+    if (snake.logo_url !== undefined) updates.logo_url = snake.logo_url
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "No updatable fields provided" }, { status: 400 })
+    }
+
     const { data, error } = await supabase
       .from("organizations")
-      .update({
-        name: snake.name ?? null,
-        slug: snake.slug ?? null,
-        primary_domain: snake.primary_domain ?? snake.primaryDomain ?? null,
-        logo_url: snake.logo_url ?? snake.logoUrl ?? null,
-      })
+      .update(updates)
       .eq("id", orgId)
       .select("*")
       .single()
