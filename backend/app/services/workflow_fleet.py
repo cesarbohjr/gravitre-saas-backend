@@ -10,6 +10,48 @@ from typing import Any, Iterable
 
 RECENT_RUN_LIMIT = 12
 LIVE_RUN_STATUSES = frozenset({"running"})
+RUN_PAGE_SIZE = 1000
+# Past this many runs the list stops counting and says so (runStatsComplete:
+# false) rather than publishing a success rate computed from part of the history.
+RUN_HISTORY_CEILING = 20_000
+
+
+def read_run_history(client: Any, *, org_id: str, environment_name: str, workflow_ids: list[str]) -> tuple[list[dict[str, Any]], bool]:
+    """Every run of these workflows, newest first, in pages; and whether the ceiling cut it short.
+
+    PostgREST caps a single unbounded select (often at 1,000 rows), which would
+    silently undercount runs and skew success rates for a busy org, so the
+    history is paged explicitly. Reaching the ceiling probes one more row, so a
+    history of exactly RUN_HISTORY_CEILING runs is reported complete.
+    """
+    if not workflow_ids:
+        return [], False
+
+    def query():
+        return (
+            client.table("workflow_runs")
+            .select("id, workflow_id, status, created_at")
+            .eq("org_id", org_id)
+            .eq("environment", environment_name)
+            .in_("workflow_id", workflow_ids)
+            .order("created_at", desc=True)
+            .order("id", desc=True)
+        )
+
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    while len(rows) < RUN_HISTORY_CEILING:
+        start = len(rows)
+        want = min(RUN_PAGE_SIZE, RUN_HISTORY_CEILING - start)
+        page = list(query().range(start, start + want - 1).execute().data or [])
+        fresh = [row for row in page if str(row.get("id")) not in seen]
+        for row in fresh:
+            seen.add(str(row.get("id")))
+        rows.extend(fresh)
+        if len(page) < want or not fresh:
+            return rows, False
+    probe = list(query().range(RUN_HISTORY_CEILING, RUN_HISTORY_CEILING).execute().data or [])
+    return rows, any(str(row.get("id")) not in seen for row in probe)
 
 
 def summarize_runs(rows: Iterable[dict[str, Any]], *, recent_limit: int = RECENT_RUN_LIMIT) -> dict[str, dict[str, Any]]:

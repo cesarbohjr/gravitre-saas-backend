@@ -100,3 +100,31 @@ def test_list_without_runs_reports_nothing_invented():
     assert row["lastRunStatus"] is None
     assert row["isRunning"] is False
     assert row["recentRuns"] == []
+
+
+def test_truncated_history_without_stored_totals_withholds_the_success_rate():
+    """When the history read is cut short, a rate from part of the history is not published."""
+    _auth()
+    db = FakeSupabaseDB()
+    db.tables["workflow_runs"] = [
+        {"org_id": "org-1", "environment": "production", "workflow_id": "wf-1", "status": "completed", "created_at": "2026-10-10T08:00:00+00:00"},
+    ]
+    stored = {**_workflow("wf-2", "Counted by runtime"), "run_count": 50000, "success_rate": 97.5}
+    with patch("app.routers.workflows.get_supabase_client", return_value=db), patch(
+        "app.routers.workflows.list_workflows", return_value=[_workflow("wf-1", "Derived"), stored]
+    ), patch("app.billing.seat_context.resolve_seat_context", return_value={"is_lite": False}), patch(
+        "app.services.workflow_fleet.read_run_history", return_value=(db.tables["workflow_runs"], True)
+    ):
+        response = client.get("/api/workflows")
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["runHistoryTruncated"] is True
+    rows = {row["id"]: row for row in body["workflows"]}
+    assert rows["wf-1"]["successRate"] is None
+    assert rows["wf-1"]["runCount"] == 1
+    assert rows["wf-1"]["runStatsComplete"] is False
+    # Stored totals are complete whatever the read ceiling.
+    assert rows["wf-2"]["successRate"] == 97.5
+    assert rows["wf-2"]["runCount"] == 50000
+    assert rows["wf-2"]["runStatsComplete"] is True

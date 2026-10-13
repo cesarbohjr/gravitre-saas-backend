@@ -260,3 +260,18 @@ describe("Pager", () => {
     expect([result.from, result.to]).toEqual([21, 23])
   })
 })
+
+describe("Workflow fleet model: partial run history", () => {
+  it("withholds a success rate the backend did not publish and marks counts as lower bounds", () => {
+    const [partial, stored] = normalizeWorkflows({
+      workflows: [
+        { id: "p", name: "Partial", status: "active", runCount: 20000, successRate: null, runStatsComplete: false },
+        { id: "s", name: "Stored", status: "active", runCount: 50000, successRate: 97.5, runStatsComplete: true },
+      ],
+    })
+    expect(partial.successRate).toBeNull()
+    expect(partial.runStatsComplete).toBe(false)
+    expect(stored.successRate).toBe(98)
+    expect(stored.runStatsComplete).toBe(true)
+  })
+})

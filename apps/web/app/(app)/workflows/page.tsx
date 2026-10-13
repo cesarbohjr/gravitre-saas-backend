@@ -475,9 +475,12 @@ function WorkflowFleet() {
                           </span>
                         </td>
                         <td>
-                          <SuccessBar rate={workflow.successRate} />
+                          <SuccessBar rate={workflow.successRate} complete={workflow.runStatsComplete} runCount={workflow.runCount} />
                         </td>
-                        <td className="num au-mono">{workflow.runCount.toLocaleString()}</td>
+                        <td className="num au-mono" title={workflow.runStatsComplete ? undefined : "At least this many; the full history was too long to count"}>
+                          {workflow.runCount.toLocaleString()}
+                          {workflow.runStatsComplete ? "" : "+"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -613,8 +616,11 @@ function StatusPill({ workflow }: { workflow: FleetWorkflow }) {
   )
 }
 
-function SuccessBar({ rate }: { rate: number | null }) {
-  if (rate === null) return <span className="ov-cell m">No runs</span>
+function SuccessBar({ rate, complete = true, runCount = 0 }: { rate: number | null; complete?: boolean; runCount?: number }) {
+  if (rate === null) {
+    // Null with runs means the history was too long to read in full, so no rate is published.
+    return <span className="ov-cell m">{!complete || runCount > 0 ? "Not computed" : "No runs"}</span>
+  }
   return (
     <span className={cn("au-succ", successTone(rate))}>
       <span className="track" aria-hidden>
@@ -660,7 +666,7 @@ function WorkflowCard({
       {compact ? null : <RunBars workflow={workflow} />}
       <span className="row foot">
         {workflow.departments.length ? <span className="au-tag">{workflow.departments[0]}</span> : <span />}
-        <SuccessBar rate={workflow.successRate} />
+        <SuccessBar rate={workflow.successRate} complete={workflow.runStatsComplete} runCount={workflow.runCount} />
       </span>
     </button>
   )
@@ -695,12 +701,15 @@ function WorkflowSide({
 
       <div className="au-facts">
         <div className="au-fact">
-          <b>{workflow.successRate === null ? "None" : `${workflow.successRate}%`}</b>
+          <b>{workflow.successRate === null ? (workflow.runCount > 0 ? "n/a" : "None") : `${workflow.successRate}%`}</b>
           <span>Success</span>
         </div>
         <div className="au-fact">
-          <b>{workflow.runCount.toLocaleString()}</b>
-          <span>Runs</span>
+          <b>
+            {workflow.runCount.toLocaleString()}
+            {workflow.runStatsComplete ? "" : "+"}
+          </b>
+          <span>{workflow.runStatsComplete ? "Runs" : "Runs (at least)"}</span>
         </div>
         <div className="au-fact">
           <b>{workflow.steps.length}</b>

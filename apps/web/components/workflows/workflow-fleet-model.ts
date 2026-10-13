@@ -23,6 +23,8 @@ export type FleetWorkflow = {
   runCount: number
   recentRuns: RecentRun[]
   steps: string[]
+  /** False when the run history read was cut short and no stored totals exist: runCount is a lower bound. */
+  runStatsComplete: boolean
 }
 
 function normalizeStatus(raw: unknown): WorkflowState {
@@ -57,13 +59,15 @@ export function normalizeWorkflow(input: Record<string, unknown>): FleetWorkflow
     lastRun: typeof input.lastRun === "string" && input.lastRun && input.lastRun !== "Never" ? input.lastRun : null,
     lastRunStatus: typeof input.lastRunStatus === "string" ? input.lastRunStatus : null,
     isRunning: Boolean(input.isRunning ?? input.is_running ?? false),
-    // A success rate only means something once the workflow has run.
-    successRate: runCount > 0 && Number.isFinite(rate) ? Math.round(rate) : null,
+    // A success rate only means something once the workflow has run, and only
+    // when the backend computed it from the whole history (null otherwise).
+    successRate: runCount > 0 && input.successRate !== null && Number.isFinite(rate) ? Math.round(rate) : null,
     runCount,
     recentRuns: recent
       .filter((run): run is Record<string, unknown> => Boolean(run) && typeof run === "object")
       .map((run) => ({ status: String(run.status ?? "unknown"), createdAt: (run.createdAt as string | undefined) ?? null })),
     steps: stepNames(input.nodes),
+    runStatsComplete: input.runStatsComplete !== false,
   }
 }
 

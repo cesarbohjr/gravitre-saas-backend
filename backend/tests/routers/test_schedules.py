@@ -178,10 +178,17 @@ class _PagedRuns:
         self._slice = (start, end)
         return self
 
+    def limit(self, n):
+        # Only the live-run query uses limit(); it reads from `live`, not `rows`.
+        self._slice = ("live", n)
+        return self
+
     def execute(self):
         from types import SimpleNamespace
 
         start, end = self._slice
+        if start == "live":
+            return SimpleNamespace(data=list(getattr(self, "live", []))[:end])
         return SimpleNamespace(data=self.rows[start : end + 1])
 
 
@@ -249,3 +256,42 @@ async def test_list_schedules_reports_truncation(async_client, monkeypatch):
     resp = await async_client.get("/api/schedules")
     assert resp.status_code == 200
     assert resp.json() == {"items": [], "runsTruncated": True}
+
+
+def test_exactly_ceiling_runs_are_not_reported_as_truncated():
+    db = _PagedRuns(_paged_rows(20))
+    rows, truncated = service_module._windowed_runs(
+        db,
+        "org-1",
+        "production",
+        workflow_id=None,
+        window_start=datetime(2026, 10, 1, tzinfo=timezone.utc),
+        window_end=datetime(2026, 11, 1, tzinfo=timezone.utc),
+        page_size=10,
+        ceiling=20,
+    )
+    assert len(rows) == 20
+    assert truncated is False
+    # The ceiling was reached, so one more row was probed and found absent.
+    assert db.ranges[-1] == (20, 20)
+
+
+def test_live_runs_outside_the_window_are_still_included():
+    db = _PagedRuns(_paged_rows(3))
+    db.live = [
+        {"id": "run-live-old", "workflow_id": "wf-1", "status": "running", "created_at": "2026-09-28T23:00:00+00:00"},
+        {"id": "run-00001", "workflow_id": "wf-1", "status": "running", "created_at": "2026-10-05T08:00:00+00:00"},
+    ]
+    rows, truncated = service_module._windowed_runs(
+        db,
+        "org-1",
+        "production",
+        workflow_id=None,
+        window_start=datetime(2026, 10, 1, tzinfo=timezone.utc),
+        window_end=datetime(2026, 11, 1, tzinfo=timezone.utc),
+        page_size=10,
+    )
+    ids = [row["id"] for row in rows]
+    assert "run-live-old" in ids
+    assert ids.count("run-00001") == 1
+    assert truncated is False

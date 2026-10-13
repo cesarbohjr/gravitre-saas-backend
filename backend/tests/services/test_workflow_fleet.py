@@ -68,3 +68,60 @@ def test_department_lookup_failure_leaves_labels_empty():
 
     assert workflow_department_names(Broken(), "org-1", ["wf-1"]) == {}
     assert workflow_department_names(Broken(), "org-1", []) == {}
+
+
+class _PagedRuns:
+    def __init__(self, rows):
+        self.rows, self.ranges = rows, []
+
+    def table(self, _n):
+        return self
+
+    def select(self, *a, **k):
+        return self
+
+    def eq(self, *a, **k):
+        return self
+
+    def in_(self, *a, **k):
+        return self
+
+    def order(self, *a, **k):
+        return self
+
+    def range(self, start, end):
+        self.ranges.append((start, end))
+        self._slice = (start, end)
+        return self
+
+    def execute(self):
+        from types import SimpleNamespace
+
+        s, e = self._slice
+        return SimpleNamespace(data=self.rows[s : e + 1])
+
+
+def _rows(n):
+    return [{"id": f"r{i:06d}", "workflow_id": "wf-1", "status": "completed", "created_at": "2026-10-01T00:00:00+00:00"} for i in range(n)]
+
+
+def test_run_history_is_read_in_pages_past_the_postgrest_cap(monkeypatch):
+    from app.services import workflow_fleet
+
+    monkeypatch.setattr(workflow_fleet, "RUN_PAGE_SIZE", 1000)
+    db = _PagedRuns(_rows(2345))
+    rows, truncated = workflow_fleet.read_run_history(db, org_id="o", environment_name="production", workflow_ids=["wf-1"])
+    assert len(rows) == 2345
+    assert truncated is False
+    assert db.ranges == [(0, 999), (1000, 1999), (2000, 2999)]
+
+
+def test_run_history_exactly_at_ceiling_is_complete_and_past_it_is_not(monkeypatch):
+    from app.services import workflow_fleet
+
+    monkeypatch.setattr(workflow_fleet, "RUN_PAGE_SIZE", 10)
+    monkeypatch.setattr(workflow_fleet, "RUN_HISTORY_CEILING", 30)
+    exact = workflow_fleet.read_run_history(_PagedRuns(_rows(30)), org_id="o", environment_name="production", workflow_ids=["wf-1"])
+    assert (len(exact[0]), exact[1]) == (30, False)
+    over = workflow_fleet.read_run_history(_PagedRuns(_rows(31)), org_id="o", environment_name="production", workflow_ids=["wf-1"])
+    assert (len(over[0]), over[1]) == (30, True)

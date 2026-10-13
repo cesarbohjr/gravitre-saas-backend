@@ -21,8 +21,13 @@ export interface UseSchedulesResult {
   error: unknown
   /** Always false — sample fallback removed; empty state shown instead. */
   isSample: boolean
-  /** True when the backend read its run ceiling, so the oldest runs in the window are missing. */
-  truncated: boolean
+  /**
+   * How much of the window's run history is present:
+   * "complete"  the unified endpoint read every run in the window;
+   * "truncated" it hit its read ceiling, so the oldest runs are missing;
+   * "unknown"   the legacy fan-out served the data, which only reads the latest 100 runs.
+   */
+  coverage: ScheduleCoverage
   refresh: () => void
 }
 
@@ -55,7 +60,9 @@ function mapApiItem(item: ApiScheduledItem): ScheduledItem {
 
 const EMPTY_ITEMS: ScheduledItem[] = []
 
-type LoadedSchedules = { items: ScheduledItem[]; truncated: boolean }
+export type ScheduleCoverage = "complete" | "truncated" | "unknown"
+
+type LoadedSchedules = { items: ScheduledItem[]; coverage: ScheduleCoverage }
 
 async function loadSchedules(options: UseSchedulesOptions): Promise<LoadedSchedules> {
   const preferUnified = options.preferUnifiedEndpoint !== false
@@ -67,7 +74,7 @@ async function loadSchedules(options: UseSchedulesOptions): Promise<LoadedSchedu
         to: options.to,
         kinds: options.kinds,
       })
-      return { items: response.items.map(mapApiItem), truncated: response.runsTruncated === true }
+      return { items: response.items.map(mapApiItem), coverage: response.runsTruncated === true ? "truncated" : "complete" }
     } catch (error) {
       const status = error instanceof ApiError ? error.status : undefined
       if (status && status !== 404 && status !== 501) {
@@ -83,7 +90,8 @@ async function loadSchedules(options: UseSchedulesOptions): Promise<LoadedSchedu
     listJobs: trainingApi.listJobs,
     workflowId: options.workflowId,
   })
-  return { items, truncated: false }
+  // The fan-out reads at most 100 runs, so it cannot vouch for a whole month.
+  return { items, coverage: "unknown" }
 }
 
 /**
@@ -120,7 +128,7 @@ export function useSchedules(optionsOrWorkflowId?: string | UseSchedulesOptions)
     isLoading,
     error,
     isSample: false,
-    truncated: data?.truncated === true,
+    coverage: data?.coverage ?? "unknown",
     refresh: () => {
       void mutate()
     },

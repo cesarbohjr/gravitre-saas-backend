@@ -244,18 +244,51 @@ def _windowed_runs(
     if window_start is None and window_end is None:
         return list(_query().limit(RUN_WINDOW_LIMIT).execute().data or []), False
 
+    rows, truncated = _page_all(_query, page_size=page_size, ceiling=ceiling)
+
+    # A run that started before the window and is still going is "running now"
+    # today, so live runs are always included whatever window was asked for.
+    live_q = (
+        client.table("workflow_runs")
+        .select(
+            "id, workflow_id, status, run_type, created_at, completed_at, trigger_type, duration_ms, error_message"
+        )
+        .eq("org_id", org_id)
+        .eq("environment", environment_name)
+        .eq("status", "running")
+    )
+    if workflow_id:
+        live_q = live_q.eq("workflow_id", workflow_id)
+    seen = {str(row.get("id")) for row in rows}
+    for row in list(live_q.order("created_at", desc=True).limit(page_size).execute().data or []):
+        if str(row.get("id")) not in seen:
+            rows.append(row)
+            seen.add(str(row.get("id")))
+    return rows, truncated
+
+
+def _page_all(make_query: Any, *, page_size: int, ceiling: int) -> tuple[list[dict[str, Any]], bool]:
+    """Read every row of a newest-first query in pages, up to ``ceiling``.
+
+    Returns the rows and whether more rows exist beyond them. Reaching the
+    ceiling alone is not truncation: one more row is probed, so a window of
+    exactly ``ceiling`` runs is reported complete.
+    """
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
     while len(rows) < ceiling:
         start = len(rows)
-        page = list(_query().range(start, start + page_size - 1).execute().data or [])
+        want = min(page_size, ceiling - start)
+        page = list(make_query().range(start, start + want - 1).execute().data or [])
         fresh = [row for row in page if str(row.get("id")) not in seen]
         for row in fresh:
             seen.add(str(row.get("id")))
         rows.extend(fresh)
-        if len(page) < page_size or not fresh:
+        if len(page) < want or not fresh:
             return rows[:ceiling], False
-    return rows[:ceiling], True
+    probe = list(make_query().range(ceiling, ceiling).execute().data or [])
+    more = any(str(row.get("id")) not in seen for row in probe)
+    return rows[:ceiling], more
 
 
 def _training_job_items(
