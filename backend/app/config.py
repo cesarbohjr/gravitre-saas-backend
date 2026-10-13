@@ -349,6 +349,15 @@ class Settings(BaseSettings):
     # Phase 15: AES-256-GCM key for connector/source config (32-byte base64 or raw)
     encryption_key: str = ""
 
+    # MCP stdio runs a command on the backend host. Off: no org can register or run a
+    # stdio MCP server, and existing stdio rows are refused at discovery and call time.
+    # Only an operator running a single-tenant deployment should turn this on.
+    mcp_stdio_transport_enabled: bool = False
+    # Off: admin-added MCP servers must resolve to public addresses (no loopback,
+    # private, link-local or reserved ranges), checked again right before each use.
+    # Single-tenant deployments with MCP servers inside their own network can opt in.
+    mcp_allow_private_network_servers: bool = False
+
     # Gravitre core DB URL (optional; Supabase used for default storage)
     database_url: str = ""
 

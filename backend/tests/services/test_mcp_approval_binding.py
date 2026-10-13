@@ -15,7 +15,7 @@ _WRITE_TOOL = {
     "capability_tier": "write",
     "enabled": True,
 }
-_SERVER = {"id": "srv-1", "server_url": "echo test", "transport": "stdio", "enabled": True, "auth_config": {}}
+_SERVER = {"id": "srv-1", "server_url": "https://93.184.216.34/mcp", "transport": "streamable_http", "enabled": True, "auth_config": {}}
 
 
 class _Approvals:

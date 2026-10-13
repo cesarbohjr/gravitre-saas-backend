@@ -66,7 +66,7 @@ async def test_read_tool_executes_without_approval(mcp_service, settings):
         "capability_tier": "read",
         "enabled": True,
     }
-    server = {"id": "srv-1", "server_url": "echo test", "transport": "stdio", "enabled": True, "auth_config": {}}
+    server = {"id": "srv-1", "server_url": "https://93.184.216.34/mcp", "transport": "streamable_http", "enabled": True, "auth_config": {}}
     client = _mock_supabase(tools=[read_tool], servers=[server])
     with patch.object(mcp_service, "_client", return_value=client):
         with patch.object(mcp_service, "_call_mcp_server", new=AsyncMock(return_value={"ok": True})):
@@ -116,7 +116,7 @@ async def test_write_tool_executes_with_valid_approval_id(mcp_service):
         "capability_tier": "write",
         "enabled": True,
     }
-    server = {"id": "srv-1", "server_url": "echo test", "transport": "stdio", "enabled": True, "auth_config": {}}
+    server = {"id": "srv-1", "server_url": "https://93.184.216.34/mcp", "transport": "streamable_http", "enabled": True, "auth_config": {}}
     approval = [
         {
             "id": "appr-1",
@@ -218,7 +218,7 @@ async def test_execution_logged_on_every_call(mcp_service):
         "capability_tier": "read",
         "enabled": True,
     }
-    server = {"id": "srv-1", "server_url": "echo test", "transport": "stdio", "enabled": True, "auth_config": {}}
+    server = {"id": "srv-1", "server_url": "https://93.184.216.34/mcp", "transport": "streamable_http", "enabled": True, "auth_config": {}}
     client = _mock_supabase(tools=[read_tool], servers=[server])
     log_mock = AsyncMock()
     with patch.object(mcp_service, "_client", return_value=client):
@@ -239,7 +239,7 @@ async def test_audit_event_written_on_execution(mcp_service):
         "capability_tier": "read",
         "enabled": True,
     }
-    server = {"id": "srv-1", "server_url": "echo test", "transport": "stdio", "enabled": True, "auth_config": {}}
+    server = {"id": "srv-1", "server_url": "https://93.184.216.34/mcp", "transport": "streamable_http", "enabled": True, "auth_config": {}}
     client = _mock_supabase(tools=[read_tool], servers=[server])
     audit_mock = AsyncMock()
     with patch.object(mcp_service, "_client", return_value=client):

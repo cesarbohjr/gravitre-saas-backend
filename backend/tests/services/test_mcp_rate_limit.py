@@ -11,7 +11,7 @@ from app.services.mcp_client_service import MCPClientService, mcp_input_sha256
 
 _READ_TOOL = {"id": "tool-read", "server_id": "srv-1", "tool_name": "list", "capability_tier": "read", "enabled": True}
 _WRITE_TOOL = {**_READ_TOOL, "id": "tool-write", "tool_name": "create", "capability_tier": "write"}
-_SERVER = {"id": "srv-1", "server_url": "echo test", "transport": "stdio", "enabled": True, "auth_config": {}}
+_SERVER = {"id": "srv-1", "server_url": "https://93.184.216.34/mcp", "transport": "streamable_http", "enabled": True, "auth_config": {}}
 
 
 def _client(*, allowed: bool, approval: dict | None = None) -> MagicMock:

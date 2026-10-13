@@ -134,48 +134,104 @@ def _streamable_http_client():
         return streamablehttp_client
 
 
-async def _validate_portable_mcp_runtime_endpoint(server: dict[str, Any]) -> None:
-    """Re-resolve package-managed MCP endpoints immediately before network use.
+class MCPTransportNotAllowedError(ValueError):
+    """Raised when a server's transport is switched off for this deployment."""
+
+
+def mcp_stdio_allowed(settings: Any) -> bool:
+    """stdio launches a process on the backend host; operator opt-in only."""
+    return bool(getattr(settings, "mcp_stdio_transport_enabled", False))
+
+
+def assert_mcp_transport_allowed(transport: str | None, settings: Any) -> None:
+    normalized = str(transport or "stdio").strip().lower().replace("-", "_")
+    if normalized == "stdio" and not mcp_stdio_allowed(settings):
+        raise MCPTransportNotAllowedError(
+            "stdio MCP servers are disabled on this deployment; use an HTTPS MCP endpoint"
+        )
+
+
+def _is_blocked_address(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    mapped = getattr(address, "ipv4_mapped", None)
+    if mapped is not None:
+        address = mapped
+    return bool(
+        address.is_private
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_multicast
+        or address.is_reserved
+        or address.is_unspecified
+    )
+
+
+async def _resolve_host_addresses(host: str, port: int) -> set[ipaddress.IPv4Address | ipaddress.IPv6Address]:
+    try:
+        return {ipaddress.ip_address(host)}
+    except ValueError:
+        pass
+    try:
+        rows = await asyncio.to_thread(socket.getaddrinfo, host, port, type=socket.SOCK_STREAM)
+    except OSError as exc:
+        raise ValueError("MCP endpoint DNS resolution failed") from exc
+    addresses: set[ipaddress.IPv4Address | ipaddress.IPv6Address] = set()
+    for row in rows:
+        sockaddr = row[4]
+        if not sockaddr:
+            continue
+        try:
+            addresses.add(ipaddress.ip_address(str(sockaddr[0])))
+        except ValueError:
+            continue
+    if not addresses:
+        raise ValueError("MCP endpoint resolved to no usable address")
+    return addresses
+
+
+async def _validate_mcp_runtime_endpoint(
+    server: dict[str, Any],
+    *,
+    allow_private_network: bool = False,
+) -> None:
+    """Re-resolve a remote MCP endpoint immediately before network use.
 
     Registration-time URL checks are insufficient because DNS can later resolve
     a public hostname to loopback/private/link-local space.
+
+    Package-managed servers must be HTTPS and public, always. Admin-added servers
+    may be HTTP or HTTPS and must resolve to public addresses unless the operator
+    set ``MCP_ALLOW_PRIVATE_NETWORK_SERVERS`` for a single-tenant deployment.
     """
-    if not bool(server.get("source_capability_package_id")):
-        return
+    package_managed = bool(server.get("source_capability_package_id"))
     raw_url = str(server.get("server_url") or "").strip()
     parsed = urlparse(raw_url)
     host = (parsed.hostname or "").strip().lower()
-    if parsed.scheme != "https" or not host or parsed.username or parsed.password:
-        raise ValueError("Portable MCP endpoint is no longer a valid reviewed HTTPS URL")
+    if package_managed:
+        if parsed.scheme != "https" or not host or parsed.username or parsed.password:
+            raise ValueError("Portable MCP endpoint is no longer a valid reviewed HTTPS URL")
+    else:
+        if parsed.scheme not in {"http", "https"} or not host:
+            raise ValueError("MCP endpoint must be an http(s) URL")
+        if parsed.username or parsed.password:
+            raise ValueError("MCP endpoint URL must not embed credentials; use the server auth settings")
+        if allow_private_network:
+            return
+    default_port = 443 if parsed.scheme == "https" else 80
     try:
-        literal = ipaddress.ip_address(host)
-        addresses = {literal}
-    except ValueError:
-        try:
-            rows = await asyncio.to_thread(socket.getaddrinfo, host, parsed.port or 443, type=socket.SOCK_STREAM)
-        except OSError as exc:
-            raise ValueError("Portable MCP endpoint DNS resolution failed") from exc
-        addresses = set()
-        for row in rows:
-            sockaddr = row[4]
-            if not sockaddr:
-                continue
-            try:
-                addresses.add(ipaddress.ip_address(str(sockaddr[0])))
-            except ValueError:
-                continue
-        if not addresses:
-            raise ValueError("Portable MCP endpoint resolved to no usable address")
+        addresses = await _resolve_host_addresses(host, parsed.port or default_port)
+    except ValueError as exc:
+        if package_managed:
+            raise ValueError(str(exc).replace("MCP endpoint", "Portable MCP endpoint")) from exc
+        raise
     for address in addresses:
-        if (
-            address.is_private
-            or address.is_loopback
-            or address.is_link_local
-            or address.is_multicast
-            or address.is_reserved
-            or address.is_unspecified
-        ):
-            raise ValueError("Portable MCP endpoint resolved to private or reserved network space")
+        if _is_blocked_address(address):
+            prefix = "Portable MCP endpoint" if package_managed else "MCP endpoint"
+            raise ValueError(f"{prefix} resolved to private or reserved network space")
+
+
+async def _validate_portable_mcp_runtime_endpoint(server: dict[str, Any]) -> None:
+    """Backward-compatible name: same check with the private-network opt-in off."""
+    await _validate_mcp_runtime_endpoint(server, allow_private_network=False)
 
 
 def _restricted_mcp_httpx_client_factory(
@@ -383,6 +439,20 @@ class MCPClientService:
     def _now(self) -> str:
         return datetime.now(timezone.utc).isoformat()
 
+    async def _preflight_server(self, server: dict[str, Any]) -> None:
+        transport = str(server.get("transport") or "stdio").strip().lower().replace("-", "_")
+        assert_mcp_transport_allowed(transport, self.settings)
+        if transport != "stdio":
+            await self._validate_endpoint(server)
+
+    async def _validate_endpoint(self, server: dict[str, Any]) -> None:
+        await _validate_mcp_runtime_endpoint(
+            server,
+            allow_private_network=bool(
+                getattr(self.settings, "mcp_allow_private_network_servers", False)
+            ),
+        )
+
     def _encryption_key(self) -> str:
         key = getattr(self.settings, "connector_secrets_encryption_key", None) or ""
         if not key:
@@ -569,6 +639,9 @@ class MCPClientService:
 
         try:
             server = await self._load_server(str(tool["server_id"]), org_id)
+            # Transport and network policy are checked before anything is sent, so a
+            # refusal here keeps the approval reusable once the server is fixed.
+            await self._preflight_server(server)
         except Exception:
             # Nothing was sent to the MCP server, so the approval can be used again.
             if claim_token:
@@ -985,6 +1058,7 @@ class MCPClientService:
     async def _list_remote_tools(self, server: dict[str, Any]) -> list[dict[str, Any]]:
         """List tools from MCP server; override in tests via patch."""
         transport = str(server.get("transport") or "stdio")
+        assert_mcp_transport_allowed(transport, self.settings)
         if transport == "stdio":
             return await self._list_tools_stdio(server)
         if transport in {"sse", "http"}:
@@ -1000,6 +1074,7 @@ class MCPClientService:
         input_data: dict[str, Any],
     ) -> dict[str, Any]:
         transport = str(server.get("transport") or "stdio")
+        assert_mcp_transport_allowed(transport, self.settings)
         if transport == "stdio":
             return await self._call_stdio(server, tool_name, input_data)
         if transport in {"sse", "http"}:
@@ -1009,6 +1084,7 @@ class MCPClientService:
         raise ValueError(f"Unsupported MCP transport: {transport}")
 
     async def _list_tools_stdio(self, server: dict[str, Any]) -> list[dict[str, Any]]:
+        assert_mcp_transport_allowed("stdio", self.settings)
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
 
@@ -1034,7 +1110,7 @@ class MCPClientService:
         from mcp.client.sse import sse_client
 
         url = str(server.get("server_url") or "")
-        await _validate_portable_mcp_runtime_endpoint(server)
+        await self._validate_endpoint(server)
         headers = self._auth_headers(server)
         async with sse_client(
             url,
@@ -1059,7 +1135,7 @@ class MCPClientService:
         from mcp import ClientSession
 
         url = str(server.get("server_url") or "")
-        await _validate_portable_mcp_runtime_endpoint(server)
+        await self._validate_endpoint(server)
         headers = self._auth_headers(server)
         client_factory = _streamable_http_client()
         async with client_factory(
@@ -1086,6 +1162,7 @@ class MCPClientService:
         tool_name: str,
         input_data: dict[str, Any],
     ) -> dict[str, Any]:
+        assert_mcp_transport_allowed("stdio", self.settings)
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
 
@@ -1108,7 +1185,7 @@ class MCPClientService:
         from mcp.client.sse import sse_client
 
         url = str(server.get("server_url") or "")
-        await _validate_portable_mcp_runtime_endpoint(server)
+        await self._validate_endpoint(server)
         headers = self._auth_headers(server)
         async with sse_client(
             url,
@@ -1129,7 +1206,7 @@ class MCPClientService:
         from mcp import ClientSession
 
         url = str(server.get("server_url") or "")
-        await _validate_portable_mcp_runtime_endpoint(server)
+        await self._validate_endpoint(server)
         headers = self._auth_headers(server)
         client_factory = _streamable_http_client()
         async with client_factory(
