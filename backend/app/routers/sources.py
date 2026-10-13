@@ -531,6 +531,11 @@ def delete_source_route(
     from app.services.memory_source_liveness import invalidate_org_derived_context
 
     invalidate_org_derived_context(org_id, settings=settings, reason="source.deleted")
+    # Always on: retrieval cached before the delete stops matching. The documents
+    # were deactivated in the same transaction by a database trigger.
+    from app.services.memory_source_liveness import invalidate_org_retrieval_cache
+
+    invalidate_org_retrieval_cache(org_id, reason="source.deleted")
     write_audit_event(
         client,
         org_id=org_id,

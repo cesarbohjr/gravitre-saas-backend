@@ -88,6 +88,10 @@ class _FakeBuilder:
         self._log.append("in_")
         return self
 
+    def is_(self, *a, **k):
+        self._log.append("is_")
+        return self
+
     def limit(self, *a, **k):
         self._log.append("limit")
         return self
