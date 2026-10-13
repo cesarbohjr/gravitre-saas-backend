@@ -187,18 +187,12 @@ export async function PATCH(request: NextRequest) {
       if (!targetUser?.auth_user_id) {
         return NextResponse.json({ error: "Member not found" }, { status: 404 })
       }
-      const { data: membership } = await supabase
-        .from("organization_members")
-        .select("id")
-        .eq("org_id", orgId)
-        .eq("user_id", targetUser.auth_user_id)
-        .maybeSingle()
-      if (!membership?.id) {
-        return NextResponse.json({ error: "Member not found" }, { status: 404 })
-      }
+      // Keyed by the member's auth user id: RLS lets a caller read only their
+      // own membership row, so the web app cannot look up someone else's
+      // membership id. The backend resolves it within the org.
       const roleChange = await callFastApiAsCaller(
         request,
-        `/api/org/members/${encodeURIComponent(String(membership.id))}`,
+        `/api/organizations/${encodeURIComponent(orgId)}/members/${encodeURIComponent(String(targetUser.auth_user_id))}`,
         "PATCH",
         { role: updates.role },
         orgId,

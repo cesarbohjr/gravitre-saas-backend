@@ -119,7 +119,7 @@ describe("PATCH /api/settings/team role changes", () => {
     expect(res.status).toBe(200)
     expect(callFastApiAsCaller).toHaveBeenCalledWith(
       expect.anything(),
-      "/api/org/members/mem-1",
+      `/api/organizations/${ORG}/members/target`,
       "PATCH",
       { role: "admin" },
       ORG,
