@@ -1,0 +1,37 @@
+{
+  "_source": "Zendesk Support API reference (developer.zendesk.com/api-reference/ticketing): GET /api/v2/search.json, GET /api/v2/deleted_tickets.json, GET /api/v2/tickets/{id}.json. Response shapes follow the published schema; ids and text are synthetic.",
+  "search_empty": {"status": 200, "body": {"results": [], "facets": null, "next_page": null, "previous_page": null, "count": 0}},
+  "deleted_tickets": {
+    "status": 200,
+    "body": {
+      "deleted_tickets": [
+        {
+          "id": 301,
+          "subject": "Printer on fire",
+          "description": "The printer on floor 2 is on fire.",
+          "actor": {"id": 902, "name": "Agent Smith"},
+          "deleted_at": "2026-10-05T10:00:00Z",
+          "previous_state": "solved"
+        }
+      ],
+      "next_page": null,
+      "previous_page": null,
+      "count": 1
+    }
+  },
+  "record_not_found": {"status": 404, "body": {"error": "RecordNotFound", "description": "Not found"}},
+  "ticket_303": {
+    "status": 200,
+    "body": {
+      "ticket": {
+        "id": 303,
+        "url": "https://example-sandbox.zendesk.com/api/v2/tickets/303.json",
+        "subject": "VPN access",
+        "status": "solved",
+        "requester_id": 901,
+        "created_at": "2026-09-01T10:00:00Z",
+        "updated_at": "2026-10-01T10:00:00Z"
+      }
+    }
+  }
+}

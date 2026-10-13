@@ -110,6 +110,23 @@ def _unchanged_active_document(
     return None
 
 
+def _discard_if_source_deleted(client: Client, org_id: str, job_id: str, doc_id: str) -> bool:
+    """Drop this job's document version when deletion propagation cancelled the job.
+
+    Deletion propagation fails queued/running jobs of records the provider deleted
+    (``error_code='source_deleted'``) or archived (``'source_excluded'``); without this
+    check a job claimed before the deletion would recreate the deleted document, or put
+    an archived record back into retrieval.
+    """
+    from app.services.source_lifecycle import ingest_job_cancelled
+
+    if not ingest_job_cancelled(client, job_id):
+        return False
+    cleanup_document_version(client, org_id, doc_id)
+    logger.info("rag_ingest_discarded_source_deleted org_id=%s job_id=%s", org_id, job_id)
+    return True
+
+
 def process_job(settings: Settings, client: Client, job: dict) -> None:
     org_id = str(job["org_id"])
     job_id = str(job["id"])
@@ -212,6 +229,8 @@ def process_job(settings: Settings, client: Client, job: dict) -> None:
             synopsis=synopsis,
         )
         _heartbeat_job(client, job_id, worker_id)
+        if _discard_if_source_deleted(client, org_id, job_id, str(doc["id"])):
+            return
         if external_id:
             client.rpc(
                 "activate_rag_document_version",
@@ -224,6 +243,10 @@ def process_job(settings: Settings, client: Client, job: dict) -> None:
             ).execute()
         else:
             activate_document(client, org_id=org_id, doc_id=str(doc["id"]))
+        # Checked again after activation: a removal that cancelled this job between the
+        # first check and activation read the documents before this version existed.
+        if _discard_if_source_deleted(client, org_id, job_id, str(doc["id"])):
+            return
         finalize_ingest_job(
             client,
             job_id=job_id,

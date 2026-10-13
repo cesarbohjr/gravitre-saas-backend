@@ -1,0 +1,92 @@
+{
+  "_source": "Confluence Cloud REST API v2 reference (developer.atlassian.com/cloud/confluence/rest/v2): GET /spaces/{id}/pages, GET /pages/{id}. Response shapes follow the published schema; ids, titles and text are synthetic.",
+  "space_pages_default": {
+    "status": 200,
+    "body": {
+      "results": [
+        {
+          "id": "101",
+          "status": "current",
+          "title": "Onboarding checklist",
+          "spaceId": "S1",
+          "parentId": "100",
+          "parentType": "page",
+          "position": 1,
+          "authorId": "557058:aaaa",
+          "ownerId": "557058:aaaa",
+          "lastOwnerId": null,
+          "createdAt": "2026-09-01T10:00:00.000Z",
+          "version": {"createdAt": "2026-10-01T09:00:00.000Z", "message": "", "number": 4, "minorEdit": false, "authorId": "557058:aaaa"},
+          "_links": {"webui": "/spaces/ENG/pages/101/Onboarding+checklist"}
+        },
+        {
+          "id": "102",
+          "status": "archived",
+          "title": "2024 launch plan",
+          "spaceId": "S1",
+          "parentId": "100",
+          "parentType": "page",
+          "position": 2,
+          "authorId": "557058:bbbb",
+          "ownerId": "557058:bbbb",
+          "lastOwnerId": null,
+          "createdAt": "2024-01-10T10:00:00.000Z",
+          "version": {"createdAt": "2026-09-20T09:00:00.000Z", "message": "", "number": 9, "minorEdit": false, "authorId": "557058:bbbb"},
+          "_links": {"webui": "/spaces/ENG/pages/102/2024+launch+plan"}
+        }
+      ],
+      "_links": {"base": "https://example-sandbox.atlassian.net/wiki"}
+    }
+  },
+  "space_pages_trashed": {
+    "status": 200,
+    "body": {
+      "results": [
+        {
+          "id": "103",
+          "status": "trashed",
+          "title": "Old vendor list",
+          "spaceId": "S1",
+          "parentId": "100",
+          "parentType": "page",
+          "position": 3,
+          "authorId": "557058:cccc",
+          "ownerId": "557058:cccc",
+          "lastOwnerId": null,
+          "createdAt": "2025-03-01T10:00:00.000Z",
+          "version": {"createdAt": "2026-10-03T09:00:00.000Z", "message": "", "number": 2, "minorEdit": false, "authorId": "557058:cccc"},
+          "_links": {"webui": "/spaces/ENG/pages/103/Old+vendor+list"}
+        }
+      ],
+      "_links": {"base": "https://example-sandbox.atlassian.net/wiki"}
+    }
+  },
+  "page_101_view": {
+    "status": 200,
+    "body": {
+      "id": "101",
+      "status": "current",
+      "title": "Onboarding checklist",
+      "spaceId": "S1",
+      "parentId": "100",
+      "parentType": "page",
+      "authorId": "557058:aaaa",
+      "createdAt": "2026-09-01T10:00:00.000Z",
+      "version": {"createdAt": "2026-10-01T09:00:00.000Z", "message": "", "number": 4, "minorEdit": false, "authorId": "557058:aaaa"},
+      "body": {"view": {"representation": "view", "value": "<p>Step 1: <strong>request laptop</strong></p>"}},
+      "_links": {"webui": "/spaces/ENG/pages/101/Onboarding+checklist"}
+    }
+  },
+  "page_by_id": {
+    "101": {"status": 200, "body": {"id": "101", "status": "current", "title": "Onboarding checklist", "spaceId": "S1", "version": {"number": 4}}},
+    "102": {"status": 200, "body": {"id": "102", "status": "archived", "title": "2024 launch plan", "spaceId": "S1", "version": {"number": 9}}},
+    "103": {"status": 200, "body": {"id": "103", "status": "trashed", "title": "Old vendor list", "spaceId": "S1", "version": {"number": 2}}},
+    "104": {"status": 404, "body": {"errors": [{"status": 404, "code": "NOT_FOUND", "title": "Not Found", "detail": null}]}},
+    "105": {"status": 200, "body": {"id": "105", "status": "current", "title": "Runbook", "spaceId": "S1", "version": {"number": 1}}},
+    "106": {"status": 403, "body": {"errors": [{"status": 403, "code": "FORBIDDEN", "title": "Forbidden", "detail": null}]}}
+  },
+  "rate_limited": {
+    "status": 429,
+    "body": {"errors": [{"status": 429, "code": "TOO_MANY_REQUESTS", "title": "Too Many Requests", "detail": null}]}
+  }
+}
