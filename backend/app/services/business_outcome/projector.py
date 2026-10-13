@@ -428,6 +428,31 @@ def _verification(
                 "Do not treat this as a verified create until proof appears.",
             ],
         )
+    if mutating:
+        # A provider id or link proves the provider accepted the write, not that
+        # the source system now holds it. Only a read-back makes it verified.
+        verification = (
+            structured.get("verification")
+            if isinstance(structured.get("verification"), dict)
+            else params.get("verification")
+            if isinstance(params.get("verification"), dict)
+            else {}
+        )
+        read_back = bool(
+            verification.get("verified") is True
+            or str(structured.get("verification_status") or params.get("verification_status") or "").lower()
+            == "verified"
+        )
+        if not read_back:
+            return VerificationSection(
+                verified=True,
+                confidence="accepted_unproven",
+                method="provider_accepted_not_read_back",
+                detail=(
+                    "The provider accepted the write and returned a record; Gravitre has "
+                    "not read it back from the source system yet."
+                ),
+            )
     if body or external or result_url:
         return VerificationSection(
             verified=True,
