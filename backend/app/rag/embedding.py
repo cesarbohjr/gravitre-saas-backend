@@ -73,7 +73,10 @@ def record_embedding_cost(
         from app.workflows.repository import get_supabase_client
 
         client = get_supabase_client(settings)
-        client.table("model_calls").insert(
+        from app.services.cost_attribution import insert_model_call
+
+        insert_model_call(
+            client,
             {
                 "org_id": org_id,
                 "task_type": "embedding",
@@ -83,8 +86,8 @@ def record_embedding_cost(
                 "output_tokens": 0,
                 "cost_usd": cost_usd,
                 "cache_hit": False,
-            }
-        ).execute()
+            },
+        )
     except Exception as exc:  # noqa: BLE001
         logger.warning("embedding cost record failed org_id=%s error=%s", org_id, str(exc))
 

@@ -133,7 +133,7 @@ from app.routers.webhooks import (
     salesforce_inbound,
     segment_inbound,
 )
-from app.routers import freshservice_triggers
+from app.routers import freshservice_triggers, run_cost
 from app.routers.webhooks import stripe as stripe_webhooks
 from app.samples.stripe_connect_v2.router import router as stripe_connect_sample_router
 from app.routers.webhooks import workflow_triggers
@@ -787,6 +787,7 @@ app.include_router(segment_triggers.router)
 app.include_router(segment_inbound.router)
 app.include_router(freshservice_triggers.router)
 app.include_router(freshservice_inbound.router)
+app.include_router(run_cost.router)
 app.include_router(decisions.router)
 app.include_router(agent_council.router)
 app.include_router(agent_collaboration.router)

@@ -824,7 +824,9 @@ class ModelRouter:
             }
             # Blocking Supabase insert after every model call, including the
             # classification calls in front of a spoken reply: off the event loop.
-            resp = await asyncio.to_thread(lambda: client.table("model_calls").insert(row).execute())
+            from app.services.cost_attribution import insert_model_call
+
+            resp = await asyncio.to_thread(insert_model_call, client, row)
             if resp.data:
                 return str(resp.data[0].get("id"))
             return None
