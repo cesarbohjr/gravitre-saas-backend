@@ -13,7 +13,8 @@ interface RouteParams {
 }
 
 function buildTarget(path: string[] | undefined): string {
-  const segments = path ?? []
+  // Each segment is encoded so a decoded "../" cannot climb out of /api/training.
+  const segments = (path ?? []).map((segment) => encodeURIComponent(segment))
   const suffix = segments.length > 0 ? `/${segments.join("/")}` : ""
   return `/api/training${suffix}`
 }
