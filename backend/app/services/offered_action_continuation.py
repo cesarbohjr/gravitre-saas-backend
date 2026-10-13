@@ -219,6 +219,34 @@ def user_requested_read(message: str) -> bool:
     return is_tenant_local_question(text)
 
 
+# Words that tie a message to whatever is waiting (an email draft, a staged
+# write): "what happened to my email?", "change the subject", "send it".
+_PENDING_ITEM_REF_RE = re.compile(
+    r"(?i)\b(?:drafts?|e-?mails?|messages?|subject|recipients?|send|sent|sending|"
+    r"it|that|this\s+one)\b"
+)
+_STARTS_EDIT_RE = re.compile(
+    r"(?i)^\s*(?:change|make|set|update|add|remove|replace|use|switch|cancel|hold|"
+    r"don'?t|do\s+not|no\b|nope|nah)"
+)
+
+
+def is_unrelated_read_question(message: str) -> bool:
+    """A workspace read question that is not about the item waiting for a yes.
+
+    While an email draft waits, "What changed in my workspace since
+    yesterday?" is its own question: answer it and leave the draft waiting.
+    Anything naming the draft, the email or "it", accepting, declining or
+    editing stays with the pending-reply classifier.
+    """
+    text = (message or "").strip()
+    if not text or _STARTS_AFFIRM_RE.match(text) or _STARTS_EDIT_RE.match(text):
+        return False
+    if _PENDING_ITEM_REF_RE.search(text):
+        return False
+    return user_requested_read(text)
+
+
 def last_assistant_text(history: list[dict[str, Any]] | None) -> str:
     for row in reversed(history or []):
         if not isinstance(row, dict):

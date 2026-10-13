@@ -194,3 +194,21 @@ def test_a_workspace_question_does_not_accept_an_open_offer() -> None:
     # A real acceptance still runs the offered check.
     assert resolve_offered_action_turn("yes please", task_state=state).kind == "execute_read"
     assert resolve_offered_action_turn("sure, check it", task_state=state).kind == "execute_read"
+
+
+@pytest.mark.parametrize(
+    "message,expected",
+    [
+        ("What changed in my workspace since yesterday?", True),
+        ("Catch me up on what happened today", True),
+        ("What happened to my email?", False),
+        ("Show me my email draft", False),
+        ("Yes, and what changed in my workspace today?", False),
+        ("Change the subject to what changed today", False),
+        ("What does my draft say?", False),
+    ],
+)
+def test_unrelated_read_question_while_something_waits(message: str, expected: bool) -> None:
+    from app.services.offered_action_continuation import is_unrelated_read_question
+
+    assert is_unrelated_read_question(message) is expected

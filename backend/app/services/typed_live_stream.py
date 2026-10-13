@@ -8,8 +8,8 @@ round). Sending raw tokens would show text the turn later disowns.
 This module streams only what those checks would keep:
 
 - ``typed_should_stream_live_deltas`` decides before the model call. Turns
-  whose fallthrough is already decided by the message (operator tasks, a task
-  in progress, orchestration, evidence-plan reads, pack intents, classical
+  whose fallthrough is already decided by the message (operator tasks, a reply
+  to a task in progress, orchestration, evidence-plan reads, pack intents, classical
   tool SSE) keep the whole-reply path.
 - ``TypedLiveRelease`` holds model text until a sentence or line is complete
   and releases it only when everything released so far, plus that unit,
@@ -51,9 +51,15 @@ def typed_should_stream_live_deltas(
     if not text:
         return False
     from app.services.conversation_tier import has_pending_task_state
+    from app.services.offered_action_continuation import is_unrelated_read_question
     from app.services.operator_task_intent import should_force_live_connector_pipeline
 
-    if should_force_live_connector_pipeline(text) or has_pending_task_state(task_state):
+    if should_force_live_connector_pipeline(text):
+        return False
+    # A draft or offer waiting for a yes keeps the whole-reply path, except
+    # for a workspace question that is not about it ("What changed in my
+    # workspace since yesterday?"), which LIVE answers on its own.
+    if has_pending_task_state(task_state) and not is_unrelated_read_question(text):
         return False
     state = task_state if isinstance(task_state, dict) else {}
     plan = state.get("capability_evidence_plan")
