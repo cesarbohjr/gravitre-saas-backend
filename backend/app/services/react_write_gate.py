@@ -140,6 +140,7 @@ def tool_requires_user_write_approval(
             requires_approval=meta.get("requires_approval"),
             read_only_hint=meta.get("read_only_hint"),
             destructive_hint=meta.get("destructive_hint"),
+            tool_name=str(meta.get("tool_name") or meta.get("remote_tool_name") or name.replace("mcp_", "", 1)),
         )
         label = str(meta.get("label") or meta.get("description") or name)
         return requires, f"mcp.{name}", "mcp", label

@@ -21,14 +21,17 @@ def test_mcp_hints_from_schema_annotations():
     assert mcp_tool_requires_write_approval(destructive_hint=de) is True
 
 
-def test_mcp_read_only_hint_skips_write_gate():
+def test_mcp_read_only_hint_cannot_downgrade_a_gravitre_write():
+    # The remote server's readOnlyHint is advisory; it used to override
+    # Gravitre's own write classification and skip the approval gate.
     assert (
         mcp_tool_requires_write_approval(
             capability_tier="write",
             read_only_hint=True,
         )
-        is False
+        is True
     )
+    assert mcp_tool_requires_write_approval(capability_tier="read", read_only_hint=True) is False
 
 
 def test_react_write_gate_mcp_destructive_requires_approval():

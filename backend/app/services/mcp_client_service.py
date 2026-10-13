@@ -72,6 +72,11 @@ def resolve_mcp_tool_authority(
     )
 
     read_only, destructive = mcp_hints_from_schema(input_schema)
+    from app.services.write_capability import capability_of_mcp_tool
+
+    if capability_of_mcp_tool(tool_name):
+        # A send is a write whatever the server's readOnlyHint says.
+        return "write", True, read_only, destructive
     if read_only is True:
         return "read", False, read_only, destructive
     if destructive is True:
@@ -609,6 +614,7 @@ class MCPClientService:
             requires_approval=bool(tool.get("requires_approval")),
             read_only_hint=read_only_hint,
             destructive_hint=destructive_hint,
+            tool_name=str(tool.get("tool_name") or ""),
         )
         if not (requires_write and not approval_id):
             # Throttle before an approval is consumed, so a refused call keeps it.
@@ -767,6 +773,7 @@ class MCPClientService:
                 requires_approval=bool(row.get("requires_approval")),
                 read_only_hint=read_only_hint,
                 destructive_hint=destructive_hint,
+                tool_name=str(row.get("tool_name") or ""),
             )
             tools.append(
                 {
