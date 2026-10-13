@@ -38,6 +38,17 @@ APPROVED_VALUES: dict[str, str] = {
     "RETRIEVED_CONTENT_GUARD_ENABLED": "true",
 }
 
+# Default-off flags the owner approved switching on (2026-10-13, "safe subset"):
+# read-path context ranking only, no customer data and no writes. On is reported,
+# not a problem; absent is still fine.
+APPROVED_ON: frozenset[str] = frozenset(
+    {
+        "CROSS_SOURCE_CONTEXT_LIVENESS_V1",
+        "CROSS_SOURCE_CONTEXT_FRESHNESS_V1",
+        "CONTEXT_ENGINE_WORK_STATE_V1",
+    }
+)
+
 # Left absent: each defaults to off in config.py, and absent is the safe value.
 DEFAULT_OFF: tuple[str, ...] = (
     "RAG_INGEST_CHECKSUM_SKIP_ENABLED",
@@ -145,6 +156,9 @@ def audit(env: dict[str, str]) -> tuple[list[str], list[str], list[str]]:
         parsed = _bool(env[key])
         if parsed is None:
             problems.append(f"{key}={env[key]!r} is not a boolean; startup would fail")
+        elif parsed and key in APPROVED_ON:
+            lines.append(f"{key}={env[key]!r} (owner-approved)")
+            continue
         elif parsed:
             problems.append(f"{key} is on; 3.0 Plus features stay off until acceptance")
         lines.append(f"{key}={env[key]!r}")
