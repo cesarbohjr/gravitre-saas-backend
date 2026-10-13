@@ -209,6 +209,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      # tests/db/*_pg.py start a throwaway PostgreSQL from the runner's server
+      # binaries; the retrieval migration test also needs pgvector. Best effort:
+      # without it that one test module skips.
+      - name: Install pgvector for migration tests
+        run: sudo apt-get install -y -q postgresql-16-pgvector || echo "pgvector unavailable; vector migration tests will skip"
+
       - name: Lint confidence honesty (Module C)
         working-directory: .
         run: |

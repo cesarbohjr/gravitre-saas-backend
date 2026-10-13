@@ -180,6 +180,10 @@ def handle_source_disconnected(client: Any, event: dict[str, Any], settings: Set
         # Flag off: the memory/observation purge does not run (behaviour as before
         # migration 20261012070000).
         counts = {**counts, "agent_memories": "lineage_off"}
+    if not dry_run:
+        from app.services.memory_source_liveness import invalidate_org_retrieval_cache
+
+        invalidate_org_retrieval_cache(org_id, reason="source.purged")
 
     from app.workflows.audit import write_audit_event
 

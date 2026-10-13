@@ -35,6 +35,10 @@ logger = get_logger(__name__)
 DEAD_CONNECTOR_STATUSES = frozenset({"revoked", "disconnected", "deleted", "inactive", "disabled"})
 
 EPOCH_NAMESPACE = "context_epoch"
+# Bumped whenever a knowledge source is deleted or a connector disconnected,
+# independent of MEMORY_SOURCE_LINEAGE_ENABLED: retrieval caches key on it so
+# removed documents stop being served from cache at once.
+RETRIEVAL_EPOCH_NAMESPACE = "org_retrieval_epoch"
 # Longer than the longest cache that keys on the epoch (instant answers, 1 hour).
 EPOCH_TTL_SECONDS = 86400 * 2
 
@@ -234,10 +238,33 @@ def org_context_epoch(org_id: str | None, settings: Any = None) -> str:
     return str(value or "")
 
 
+def org_retrieval_epoch(org_id: str | None) -> str:
+    """The org's retrieval epoch ("" until a source was deleted or disconnected).
+
+    Always on. Shared across replicas through Redis when configured, else per
+    process (then another replica can serve its cached retrieval until its TTL).
+    """
+    if not org_id:
+        return ""
+    try:
+        from app.services.cache_service import get_cache_service
+
+        value = get_cache_service().get_sync(RETRIEVAL_EPOCH_NAMESPACE, str(org_id))
+    except Exception:  # noqa: BLE001
+        return ""
+    return str(value or "")
+
+
 def epoch_parts(org_id: str | None, settings: Any = None) -> tuple[str, ...]:
     """Cache key suffix: empty when there is no epoch, so keys are unchanged."""
+    parts: list[str] = []
     epoch = org_context_epoch(org_id, settings)
-    return (f"epoch:{epoch}",) if epoch else ()
+    if epoch:
+        parts.append(f"epoch:{epoch}")
+    retrieval = org_retrieval_epoch(org_id)
+    if retrieval:
+        parts.append(f"repoch:{retrieval}")
+    return tuple(parts)
 
 
 def cached_before_epoch(org_id: str | None, cached_at: float, settings: Any = None) -> bool:
@@ -249,6 +276,28 @@ def cached_before_epoch(org_id: str | None, cached_at: float, settings: Any = No
         return float(cached_at) < float(epoch)
     except (TypeError, ValueError):
         return True
+
+
+def invalidate_org_retrieval_cache(org_id: str | None, *, reason: str = "") -> bool:
+    """Make cached retrieval for the org miss from now on (always on, never raises).
+
+    Called when a knowledge source is deleted or a connector is disconnected. The
+    documents themselves are deactivated in the same database transaction (see
+    migration 20261013030000); this covers results cached before that.
+    """
+    if not org_id:
+        return False
+    try:
+        from app.services.cache_service import get_cache_service
+
+        get_cache_service().set_sync(
+            RETRIEVAL_EPOCH_NAMESPACE, f"{time.time():.6f}", EPOCH_TTL_SECONDS, str(org_id)
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("retrieval_epoch_bump_failed org_id=%s error=%s", org_id, str(exc)[:200])
+        return False
+    logger.info("org_retrieval_cache_invalidated org_id=%s reason=%s", org_id, reason)
+    return True
 
 
 def invalidate_org_derived_context(org_id: str | None, *, settings: Any = None, reason: str = "") -> bool:
