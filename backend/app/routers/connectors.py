@@ -756,6 +756,22 @@ def get_connector_action_catalog_vendor(
     return payload
 
 
+@connectors_router.get("/data-removal")
+def connector_data_removal_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """What a disconnect removes under the current switches, and recent removal receipts."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.services.data_removal_status import list_removals, removal_policy
+
+    policy = removal_policy(settings)
+    client = shared_service_client(settings, create_client)
+    return {"policy": policy, "removals": list_removals(client, org_id, policy["dataRemoval"])}
+
+
 @connectors_router.get("/{connector_id}")
 async def get_connector_route_alias(
     connector_id: UUID,
