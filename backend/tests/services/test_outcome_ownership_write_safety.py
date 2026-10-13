@@ -195,3 +195,65 @@ def test_reconcile_without_natural_key_is_unknown() -> None:
         ctx=_lookup_ctx(), invoke_action="hubspot.notes.create", args={"body": "x"}
     )
     assert out.state == "unknown"
+
+
+def _http_error(status: int) -> httpx.HTTPStatusError:
+    req = httpx.Request("POST", "https://slack.com/api/chat.postMessage")
+    return httpx.HTTPStatusError(f"Server error '{status}'", request=req, response=httpx.Response(status, request=req))
+
+
+@pytest.mark.parametrize("status", [500, 502, 503, 504])
+def test_write_5xx_after_commit_is_not_replayed(tool_ctx: ToolContext, status: int) -> None:
+    """A provider that commits and then returns 5xx must not get a second write."""
+    calls = {"n": 0}
+
+    def commits_then_fails(*_a, **_k):
+        calls["n"] += 1
+        raise _http_error(status)
+
+    result = _invoke_with(tool_ctx, "slack.post_message", commits_then_fails)
+    assert calls["n"] == 1
+    assert result.success is False
+    assert result.error_code == "outcome_uncertain"
+
+
+def test_write_unknown_transient_error_is_not_retried(tool_ctx: ToolContext) -> None:
+    from app.services.tool_types import ToolError
+
+    calls = {"n": 0}
+
+    def odd(*_a, **_k):
+        calls["n"] += 1
+        raise ToolError("provider hiccup", code="channel_not_found_temporarily")
+
+    _invoke_with(tool_ctx, "slack.post_message", odd)
+    assert calls["n"] == 1
+
+
+def test_write_rate_limit_is_still_retried(tool_ctx: ToolContext) -> None:
+    from app.services.tool_types import ToolRateLimitedError
+
+    calls = {"n": 0}
+
+    def limited_then_ok(*_a, **_k):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise ToolRateLimitedError("429")
+        return NormalizedResult(success=True, action="slack.post_message", data={"ok": True, "ts": "1"})
+
+    result = _invoke_with(tool_ctx, "slack.post_message", limited_then_ok)
+    assert result.success is True and calls["n"] == 2
+
+
+def test_read_5xx_still_retries(tool_ctx: ToolContext) -> None:
+    action = next(a for a in ("hubspot.contacts.search", "slack.channels.list") if not is_write_action(a))
+    calls = {"n": 0}
+
+    def flaky(*_a, **_k):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise httpx.ConnectTimeout("timed out")
+        return NormalizedResult(success=True, action=action, data={"results": []})
+
+    result = _invoke_with(tool_ctx, action, flaky)
+    assert result.success is True and calls["n"] == 2

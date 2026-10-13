@@ -263,6 +263,56 @@ def is_ambiguous_delivery_failure(exc: BaseException, tool_exc: ToolError | None
     return any(h in msg for h in _TIMEOUT_HINTS) or any(h in msg for h in _TRANSPORT_HINTS)
 
 
+_SERVER_ERROR_HINTS = (
+    "server error",
+    "internal server error",
+    "bad gateway",
+    "service unavailable",
+    "gateway timeout",
+    " 500",
+    " 502",
+    " 503",
+    " 504",
+)
+_SERVER_ERROR_CODES = frozenset({"server_error", "provider_error", "upstream_error", "http_5xx"})
+
+
+def _provider_server_error(exc: BaseException, tool_exc: ToolError | None = None) -> bool:
+    """True for a 5xx from the provider: it may have committed before failing."""
+    import httpx
+
+    if isinstance(exc, httpx.HTTPStatusError):
+        try:
+            return int(exc.response.status_code) >= 500
+        except Exception:  # noqa: BLE001
+            return True
+    if tool_exc is not None and str(tool_exc.code or "") in _SERVER_ERROR_CODES:
+        return True
+    msg = f" {str(exc).lower()}"
+    return any(h in msg for h in _SERVER_ERROR_HINTS)
+
+
+def write_retry_is_safe(exc: BaseException, tool_exc: ToolError | None = None) -> bool:
+    """A failed write may be retried only when the provider cannot have applied it.
+
+    Safe: rate limited (429 is a refusal), a failure before the request was sent
+    (connection refused, DNS), or Postgres rolling the statement back. Anything
+    else (a 5xx, a timeout, a dropped connection, an unknown error) may have
+    landed at the provider, and without a provider idempotency key a retry can
+    send the email or create the record twice.
+    """
+    import httpx
+
+    if isinstance(tool_exc, ToolRateLimitedError):
+        return True
+    if (tool_exc is not None and tool_exc.code == "statement_timeout") or _is_statement_timeout(exc):
+        return True
+    msg = str(exc).lower()
+    if isinstance(exc, httpx.ConnectError) or any(h in msg for h in _PRE_SEND_HINTS):
+        return True
+    return False
+
+
 def _is_write_invoke(action: str) -> bool:
     from app.services.outcome_verification import is_write_action
 
@@ -5333,6 +5383,21 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                         "attempt": attempt + 1,
                     },
                 )
+                break
+            if _is_write_invoke(action) and _provider_server_error(exc, tool_exc):
+                # A 5xx after the request reached the provider: it may have
+                # committed. Same rule as an ambiguous delivery: reconcile, do not
+                # replay.
+                last_error = ToolOutcomeUncertainError(
+                    f"{action} failed at the provider and may have been applied: {exc}",
+                    details={
+                        "requires_reconciliation": True,
+                        "underlying_code": tool_exc.code,
+                        "attempt": attempt + 1,
+                    },
+                )
+                break
+            if _is_write_invoke(action) and not write_retry_is_safe(exc, tool_exc):
                 break
             retryable = isinstance(tool_exc, ToolRateLimitedError) or (
                 not isinstance(tool_exc, (ToolValidationError, ToolAuthExpiredError, ToolNotFoundError))
