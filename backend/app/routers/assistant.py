@@ -232,22 +232,39 @@ async def _log_assistant_guardrail_event(
         )
 
 
+def assistant_billing_source_id(model_call_id: str | None, turn_id: str | None) -> str:
+    """Idempotency anchor for one assistant turn's usage row.
+
+    The model call id when there is one, else the turn's assistant message id, else
+    a fresh id. It used to fall back to the org id, which gave every turn in a
+    billing period the same idempotency key, so the unique index kept only the
+    first row per org per period and dropped every later turn.
+    """
+    if model_call_id:
+        return str(model_call_id)
+    if turn_id:
+        return f"turn:{turn_id}"
+    return f"turn:{uuid.uuid4().hex}"
+
+
 async def _record_assistant_billing(
     settings: Settings,
     org_id: str,
     result: ModelResponse,
+    *,
+    turn_id: str | None = None,
 ) -> None:
     """Record assistant AI credits to usage_tracking after a successful completion.
 
-    Idempotent via metadata source=assistant + model_calls row id. On failure,
-    logs billing_write_failed to guardrail_events; never raises to the caller.
+    Idempotent per turn (model_calls row id, else the assistant message id). On
+    failure, logs billing_write_failed to guardrail_events; never raises.
     """
     model_call_id = result.model_call_id
     try:
         client = get_supabase_client(settings)
         plan = get_plan_for_org(client, org_id)
         period_start, period_end = get_current_period()
-        source_id = model_call_id or org_id
+        source_id = assistant_billing_source_id(model_call_id, turn_id)
         ai_meta = build_ai_usage_metadata_from_tokens(
             result.input_tokens,
             result.output_tokens,
@@ -255,6 +272,9 @@ async def _record_assistant_billing(
             "assistant",
             source_id,
         )
+        # Token counts are estimated from text length when no model call row backs
+        # the turn; say so instead of presenting them as measured.
+        ai_meta["usage_estimated"] = not bool(model_call_id)
         apply_usage_with_overage(
             client=client,
             org_id=org_id,
@@ -800,7 +820,9 @@ def _build_stream(
                 model="intelligence_hub:canonical_agent_roster",
                 latency_ms=elapsed_ms,
             )
-            asyncio.create_task(_record_assistant_billing(settings, org_id, billing_result))
+            asyncio.create_task(
+                _record_assistant_billing(settings, org_id, billing_result, turn_id=message_id)
+            )
             asyncio.create_task(
                 get_user_intelligence_service().record_query(
                     settings,
@@ -1116,7 +1138,14 @@ def _build_stream(
             model=complete.model if complete else "stream",
             latency_ms=elapsed_ms,
         )
-        asyncio.create_task(_record_assistant_billing(settings, org_id, billing_result))
+        asyncio.create_task(
+            _record_assistant_billing(
+                settings,
+                org_id,
+                billing_result,
+                turn_id=(complete.message_id if complete else None),
+            )
+        )
         asyncio.create_task(
             get_user_intelligence_service().record_query(
                 settings,
