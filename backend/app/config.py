@@ -114,6 +114,14 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("UNIFIED_TURN_LIVE_ENABLED", "unified_turn_live_enabled"),
     )
+    # Typed LIVE answers stream as checked sentences (typed_live_stream.py).
+    # False restores the whole-reply typed path.
+    typed_live_streaming_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TYPED_LIVE_STREAMING_ENABLED", "typed_live_streaming_enabled"
+        ),
+    )
     # Convergence P1 — LIVE proposal executes classically without a second model tool-choice.
     convergence_p1_single_selection_v1: bool = Field(
         default=True,

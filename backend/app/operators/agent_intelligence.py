@@ -2332,6 +2332,8 @@ class AgentIntelligence:
 
         spoken_progress_text_id: str | None = None
         spoken_progress_text = ""
+        # Typed LIVE text already shown when LIVE then handed the turn on.
+        live_typed_preamble = ""
         spoken_progress_stages: set[str] = set()
 
         async def _loop_stage_speech(
@@ -4276,7 +4278,13 @@ class AgentIntelligence:
 
             delta_queue: asyncio.Queue[str | None] | None = None
             on_text_delta = None
+            on_tool_call_delta = None
+            typed_release = None
             from app.services.operator_task_intent import spoken_should_stream_live_deltas
+            from app.services.typed_live_stream import (
+                TypedLiveRelease,
+                typed_should_stream_live_deltas,
+            )
 
             if spoken_should_stream_live_deltas(
                 spoken_mode=bool(spoken_mode),
@@ -4290,6 +4298,31 @@ class AgentIntelligence:
                         await delta_queue.put(piece)
 
                 on_text_delta = _on_text_delta
+            elif getattr(active_settings, "typed_live_streaming_enabled", True) and (
+                typed_should_stream_live_deltas(
+                    spoken_mode=bool(spoken_mode),
+                    message=task_text,
+                    task_state=task_state if isinstance(task_state, dict) else None,
+                    classification=pipeline_classification
+                    if isinstance(pipeline_classification, dict)
+                    else None,
+                    connected_integrations=list(connected_early or []),
+                )
+            ):
+                # Typed text is released a checked sentence at a time, so
+                # nothing LIVE would later drop or rewrite reaches the screen.
+                delta_queue = asyncio.Queue()
+                typed_release = TypedLiveRelease(
+                    connected_integrations=list(connected_early or [])
+                )
+
+                async def _on_text_delta(piece: str) -> None:
+                    ready = typed_release.feed(piece) if typed_release is not None else ""
+                    if ready and delta_queue is not None:
+                        await delta_queue.put(ready)
+
+                on_text_delta = _on_text_delta
+                on_tool_call_delta = typed_release.on_tool_call
 
             async def _run_unified_live() -> dict[str, Any] | None:
                 try:
@@ -4323,6 +4356,7 @@ class AgentIntelligence:
                         reasoning_depth=reasoning_depth,
                         cognitive_context=cognitive_ctx,
                         on_text_delta=on_text_delta,
+                        on_tool_call_delta=on_tool_call_delta,
                         compiled_reasoning_context=_compiled_unified_reasoning,
                         response_style_key=str(persona.get("persona_key") or "") or None,
                         conversation_tier=conversation_tier.tier,
@@ -4334,7 +4368,7 @@ class AgentIntelligence:
             live_turn: dict[str, Any] | None
             streamed_voice_text = False
             text_id: str | None = spoken_progress_text_id
-            if spoken_mode and delta_queue is not None:
+            if delta_queue is not None:
                 live_task = asyncio.create_task(_run_unified_live())
                 while True:
                     piece = await delta_queue.get()
@@ -4343,12 +4377,26 @@ class AgentIntelligence:
                     if text_id is None:
                         text_id, start_event = emit_text_start()
                         yield start_event
+                    if not streamed_voice_text:
+                        _mark("live_first_text_delta")
                     streamed_voice_text = True
                     yield emit_text_delta(text_id, adopt_model_delta(piece))
                 live_turn = await live_task
             else:
                 live_turn = await _run_unified_live()
             _mark("unified_live_resolved")
+
+            typed_streamed_text = ""
+            if typed_release is not None and streamed_voice_text:
+                typed_streamed_text = typed_release.released
+                if not (live_turn and live_turn.get("stop_pipeline")):
+                    # LIVE handed the turn on after text was shown. Keep it as
+                    # the opening paragraph; the next path continues the same
+                    # text part instead of starting a second answer.
+                    _mark("typed_live_preamble_kept")
+                    yield emit_text_delta(text_id, "\n\n")
+                    spoken_progress_text_id = text_id
+                    live_typed_preamble = typed_streamed_text.rstrip()
 
             if live_turn and live_turn.get("stop_pipeline"):
                 # LIVE answered: the classical-path prefetch will never be
@@ -4399,7 +4447,8 @@ class AgentIntelligence:
                         ),
                         "unifiedOutcomeKind": live_turn.get("unified_outcome_kind"),
                         "reasoningDepth": reasoning_depth,
-                        "spokenStreamed": streamed_voice_text,
+                        "spokenStreamed": streamed_voice_text and bool(spoken_mode),
+                        "typedStreamed": bool(typed_streamed_text),
                         "cachedPromptTokens": lat_bd.get("cached_prompt_tokens"),
                         "cachedPromptRatio": lat_bd.get("cached_prompt_ratio"),
                         # Cold-path voice latency attribution (same keys as unified audits).
@@ -4458,7 +4507,25 @@ class AgentIntelligence:
                         },
                     ):
                         yield ev
-                if not streamed_voice_text and not (
+                if typed_streamed_text:
+                    from app.services.typed_live_stream import reconcile_final
+                    from app.services.user_facing_copy_guard import (
+                        finalize_user_facing_message,
+                    )
+
+                    try:
+                        final_text = finalize_user_facing_message(
+                            response_text, context="typed_live_stream_final"
+                        )
+                    except Exception:  # noqa: BLE001 - keep only what was shown
+                        final_text = ""
+                    if looks_like_raw_backend(final_text):
+                        final_text = ""
+                    rest, response_text = reconcile_final(typed_streamed_text, final_text)
+                    if rest:
+                        yield emit_text_delta(text_id, rest)
+                    yield emit_text_end(text_id)
+                elif not streamed_voice_text and not (
                     plan_staged and str(response_text or "").strip()
                 ):
                     live_kind = "clarify" if dialogue_mode in {"clarify", "confirm"} else "success"
@@ -5400,6 +5467,8 @@ class AgentIntelligence:
         streamed_content = ""
         full_content_parts: list[str] = []
         post_tool_hold = False
+        if live_typed_preamble:
+            full_content_parts.append(f"{live_typed_preamble}\n\n")
         if correction_ack:
             packed = await _composed_reply(
                 correction_ack + "\n\n",
@@ -6182,8 +6251,17 @@ class AgentIntelligence:
         )
 
         streamed_content = "".join(full_content_parts)
+        # What the client has already been sent (a typed LIVE opening included).
+        shown_content = streamed_content
         if react_result is not None and not streamed_content.strip():
             streamed_content = react_result.answer or ""
+        elif (
+            react_result is not None
+            and live_typed_preamble
+            and streamed_content.strip() == live_typed_preamble.strip()
+        ):
+            # Only the typed LIVE opening was shown; the answer follows it.
+            streamed_content = f"{live_typed_preamble}\n\n{react_result.answer or ''}".strip()
         if post_tool_hold and react_result is not None:
             from app.services.first_token_honesty import looks_like_tool_payload
 
@@ -6521,7 +6599,20 @@ class AgentIntelligence:
         from app.services.response_envelope import envelope_kind as _envelope_kind
 
         tool_env = envelope_from_tool_results(tool_results)
-        if tool_env is not None and (
+        if (
+            live_typed_preamble
+            and text_id is not None
+            and tool_env is None
+            and not looks_like_raw_backend(full_content)
+        ):
+            # The typed LIVE opening is on screen: send only what follows it.
+            from app.services.typed_live_stream import reconcile_final
+
+            rest, full_content = reconcile_final(shown_content, full_content)
+            if rest:
+                yield emit_text_delta(text_id, rest)
+            yield emit_text_end(text_id)
+        elif tool_env is not None and (
             looks_like_tool_payload(full_content)
             or (
                 post_tool_hold
