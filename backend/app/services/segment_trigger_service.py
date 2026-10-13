@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import secrets
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -68,29 +67,22 @@ def ensure_connector_webhook_secret(
     org_id: str,
     connector_id: str,
 ) -> str:
-    row = (
-        client.table("connectors")
-        .select("config")
-        .eq("id", connector_id)
-        .eq("org_id", org_id)
-        .limit(1)
-        .execute()
+    """Signing secret for inbound events; stored encrypted, plaintext sealed on read."""
+    from app.services.connector_webhook_secret_store import ensure_webhook_secret
+
+    return ensure_webhook_secret(
+        client,
+        org_id,
+        connector_id,
+        read_keys=('segment_webhook_secret', 'webhook_secret'),
+        generate_keys=('webhook_secret', 'segment_webhook_secret'),
     )
-    if not row.data:
-        raise ValueError("Connector not found")
-    config = safe_normalize_stored_dict(row.data[0], key='config')
-    secret = (config.get("segment_webhook_secret") or config.get("webhook_secret") or "").strip()
-    if not secret:
-        secret = secrets.token_hex(32)
-        config["webhook_secret"] = secret
-        config["segment_webhook_secret"] = secret
-        client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
-    return secret
 
 
 def get_connector_webhook_secret(connector: dict[str, Any]) -> str:
-    config = connector.get("config") or {}
-    return str(config.get("segment_webhook_secret") or config.get("webhook_secret") or "").strip()
+    from app.services.connector_webhook_secret_store import first_secret
+
+    return first_secret(connector.get("config") or {}, ('segment_webhook_secret', 'webhook_secret'))
 
 
 def _load_active_workflow(client: Any, org_id: str, workflow_id: str) -> dict[str, Any] | None:
