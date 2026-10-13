@@ -126,7 +126,14 @@ from app.routers import (
     workday_sync,
     voice_gateway,
 )
-from app.routers.webhooks import hubspot_inbound, pagerduty_inbound, salesforce_inbound, segment_inbound
+from app.routers.webhooks import (
+    freshservice_inbound,
+    hubspot_inbound,
+    pagerduty_inbound,
+    salesforce_inbound,
+    segment_inbound,
+)
+from app.routers import freshservice_triggers
 from app.routers.webhooks import stripe as stripe_webhooks
 from app.samples.stripe_connect_v2.router import router as stripe_connect_sample_router
 from app.routers.webhooks import workflow_triggers
@@ -778,6 +785,8 @@ app.include_router(google_search_console.router)
 app.include_router(google_ads.router)
 app.include_router(segment_triggers.router)
 app.include_router(segment_inbound.router)
+app.include_router(freshservice_triggers.router)
+app.include_router(freshservice_inbound.router)
 app.include_router(decisions.router)
 app.include_router(agent_council.router)
 app.include_router(agent_collaboration.router)

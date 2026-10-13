@@ -35,6 +35,7 @@ TIER_AGNOSTIC_PREFIXES: tuple[str, ...] = (
     "/api/webhooks/salesforce",
     "/api/webhooks/pagerduty",
     "/api/webhooks/segment",
+    "/api/webhooks/freshservice",
     "/api/internal",
     "/api/ops/",
     "/api/platform/cs/",
