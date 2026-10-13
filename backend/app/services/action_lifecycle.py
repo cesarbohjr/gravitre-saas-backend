@@ -903,7 +903,7 @@ def background_verification_patch(
     rows = state.get("execution_observations")
     if isinstance(rows, list) and rows and isinstance(rows[-1], dict):
         last = dict(rows[-1])
-        structured = dict(last.get("structured") if isinstance(last.get("structured"), dict) else {})
+        structured = dict(safe_normalize_stored_dict(last, key="structured"))
         status_word = "verified" if verified else ("failed" if terminal == "failed" else "inconclusive")
         structured["verification"] = {**verification, "verified": verified, "async": True}
         structured["verification_status"] = status_word
