@@ -341,6 +341,21 @@ class TestGate:
             spoken_mode=False, message="Explain what a churn rate means.", task_state=state
         )
 
+    def test_a_workspace_question_streams_while_a_draft_waits(self) -> None:
+        state = {"pending_task": {"type": "connector_action", "status": "awaiting_confirm"}}
+        assert typed_should_stream_live_deltas(
+            spoken_mode=False,
+            message="What changed in my workspace since yesterday?",
+            task_state=state,
+        )
+
+    def test_a_question_about_the_draft_keeps_the_whole_reply(self) -> None:
+        state = {"pending_task": {"type": "connector_action", "status": "awaiting_confirm"}}
+        for message in ("What happened to my email?", "Show me my email draft"):
+            assert not typed_should_stream_live_deltas(
+                spoken_mode=False, message=message, task_state=state
+            )
+
     def test_evidence_plan_reads_keep_the_whole_reply(self) -> None:
         state = {"capability_evidence_plan": {"required": ["hubspot"]}}
         assert not typed_should_stream_live_deltas(

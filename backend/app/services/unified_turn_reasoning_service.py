@@ -2047,18 +2047,26 @@ async def apply_unified_turn_live(
     )
     from app.services.pending_reply_classifier import has_pending_family
 
+    from app.services.offered_action_continuation import is_unrelated_read_question
+
     _guard_t0 = time.perf_counter()
+    # "What changed in my workspace since yesterday?" while an email draft
+    # waits is its own question: LIVE answers it and the draft keeps waiting.
+    # Everything else about a pending item stays with the pending resolver.
+    unrelated_read = has_pending_family(task_state) and is_unrelated_read_question(message)
     # Channel override + meta-capability are Intent Gateway candidates.
     # LIVE may only continue a pending family (kernel, not a new-request shortcut).
-    pending_result = await resolve_unified_live_pending_reply(
-        message=message,
-        task_state=task_state,
-        org_id=org_id,
-        user_id=user_id,
-        conversation_id=conversation_id,
-        client=client,
-        settings=active,
-    )
+    pending_result = None
+    if not unrelated_read:
+        pending_result = await resolve_unified_live_pending_reply(
+            message=message,
+            task_state=task_state,
+            org_id=org_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            client=client,
+            settings=active,
+        )
     _guard_t3 = time.perf_counter()
     logger.info(
         "apply_unified_turn_live_guards_ms org_id=%s channel_ms=0 meta_ms=0 pending_ms=%s "
@@ -2091,7 +2099,7 @@ async def apply_unified_turn_live(
     # exact path that re-parsed compound subject/body and corrupted a live Gmail send.
     from app.services.pending_reply_classifier import has_pending_family
 
-    if has_pending_family(task_state):
+    if has_pending_family(task_state) and not unrelated_read:
         pending = task_state.get("pending_task") if isinstance(task_state, dict) else None
         pending = pending if isinstance(pending, dict) else {}
         params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
