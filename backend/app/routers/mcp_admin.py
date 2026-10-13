@@ -10,6 +10,9 @@ from app.auth.dependencies import get_org_context, require_admin
 from app.config import Settings, get_settings
 from app.services.mcp_client_service import (
     MCPClientService,
+    MCPTransportNotAllowedError,
+    _validate_mcp_runtime_endpoint,
+    assert_mcp_transport_allowed,
     encrypt_auth_config,
     get_mcp_client_service,
     refresh_package_mcp_runtime_registration,
@@ -24,7 +27,7 @@ _SUPPORTED_MCP_TRANSPORTS = {"stdio", "sse", "http", "streamable_http"}
 
 
 def _normalize_mcp_transport(value: str | None) -> str:
-    transport = str(value or "stdio").strip().lower().replace("-", "_")
+    transport = str(value or "streamable_http").strip().lower().replace("-", "_")
     if transport == "streamablehttp":
         transport = "streamable_http"
     if transport not in _SUPPORTED_MCP_TRANSPORTS:
@@ -35,7 +38,7 @@ def _normalize_mcp_transport(value: str | None) -> str:
 class MCPServerCreateRequest(BaseModel):
     server_name: str = Field(..., min_length=1, alias="serverName")
     server_url: str = Field(..., min_length=1, alias="serverUrl")
-    transport: str = Field(default="stdio")
+    transport: str = Field(default="streamable_http")
     auth_type: str = Field(default="none", alias="authType")
     auth_config: dict[str, Any] = Field(default_factory=dict, alias="authConfig")
     enabled: bool = True
@@ -78,7 +81,7 @@ def list_mcp_servers(
 
 
 @router.post("/servers")
-def create_mcp_server(
+async def create_mcp_server(
     body: MCPServerCreateRequest,
     org_id: Annotated[str, Depends(get_org_context)],
     admin: Annotated[tuple, Depends(require_admin)],
@@ -98,11 +101,25 @@ def create_mcp_server(
         auth_config = encrypt_auth_config(auth_config, str(key))
     try:
         transport = _normalize_mcp_transport(body.transport)
+        assert_mcp_transport_allowed(transport, settings)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+    if transport != "stdio":
+        try:
+            await _validate_mcp_runtime_endpoint(
+                {"server_url": body.server_url.strip(), "source_capability_package_id": None},
+                allow_private_network=bool(
+                    getattr(settings, "mcp_allow_private_network_servers", False)
+                ),
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(exc),
+            ) from exc
     row = {
         "org_id": org_id,
         "server_name": body.server_name.strip(),
@@ -156,7 +173,7 @@ def patch_mcp_server(
     client = get_supabase_client(settings)
     rows = (
         client.table("mcp_servers")
-        .select("id,source_capability_package_id,activation_state")
+        .select("id,source_capability_package_id,activation_state,transport")
         .eq("id", server_id)
         .eq("org_id", org_id)
         .limit(1)
@@ -167,6 +184,14 @@ def patch_mcp_server(
     if not rows:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MCP server not found")
     current = rows[0]
+    if body.enabled:
+        try:
+            assert_mcp_transport_allowed(current.get("transport"), settings)
+        except MCPTransportNotAllowedError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(exc),
+            ) from exc
     if body.enabled and current.get("source_capability_package_id"):
         tool_rows = (
             client.table("mcp_tools")
@@ -318,6 +343,11 @@ async def discover_mcp_tools(
             org_id,
             allow_disabled_server=imported_pending,
         )
+    except MCPTransportNotAllowedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     return {"tools": tools, "count": len(tools)}
