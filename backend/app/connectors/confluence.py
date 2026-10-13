@@ -155,12 +155,18 @@ def list_space_pages(
     space_id: str,
     *,
     limit: int = 250,
+    status: str | None = None,
 ) -> list[dict[str, Any]]:
+    """Pages in a space. Without ``status`` the API returns current and archived pages;
+    ``status="trashed"`` lists the pages in the space's trash instead."""
+    params: dict[str, Any] = {"limit": min(max(1, limit), 250)}
+    if status:
+        params["status"] = status
     pages = _paginate(
         cloud_id,
         access_token,
         f"/spaces/{space_id}/pages",
-        params={"limit": min(max(1, limit), 250)},
+        params=params,
     )
     normalized: list[dict[str, Any]] = []
     for page in pages:
@@ -171,7 +177,9 @@ def list_space_pages(
             {
                 "id": str(page_id),
                 "title": str(page.get("title") or page_id),
-                "status": str(page.get("status") or "current"),
+                # A row without a status keeps the status it was listed under, so a page
+                # from the trashed listing is never read as current.
+                "status": str(page.get("status") or status or "current"),
                 "space_id": str(space_id),
             }
         )
@@ -199,6 +207,31 @@ def get_page(access_token: str, cloud_id: str, page_id: str) -> dict[str, Any]:
         f"/pages/{page_id}",
         params={"body-format": "view"},
     )
+
+
+# Statuses requested on a by-id read (Confluence Cloud REST v2 GET /pages/{id} ``status``).
+PAGE_STATUSES_BY_ID = ("current", "archived", "trashed", "deleted")
+
+
+def get_page_status(access_token: str, cloud_id: str, page_id: str) -> str | None:
+    """The page's status (current/archived/trashed/...), or None when Confluence answers 404.
+
+    The read asks for every status explicitly (``PAGE_STATUSES_BY_ID``) so an archived or
+    trashed page answers 200 with its status instead of a 404 that would look like a
+    permanent deletion. A page purged from the trash is in no listing; 404 on that read
+    is the only signal left. Any other error raises, so it is never read as a deletion.
+    """
+    try:
+        data = _request(
+            "GET", cloud_id, access_token, f"/pages/{page_id}", params={"status": list(PAGE_STATUSES_BY_ID)}
+        )
+    except ConfluenceAPIError as exc:
+        if exc.status_code == 404:
+            return None
+        raise
+    if not isinstance(data, dict) or not data.get("id"):
+        raise ConfluenceAPIError(f"Confluence page {page_id}: malformed response")
+    return str(data.get("status") or "current").lower()
 
 
 def search_pages(

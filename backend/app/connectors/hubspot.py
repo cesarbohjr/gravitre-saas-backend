@@ -887,6 +887,86 @@ def search_crm_objects_page(
     )
 
 
+def list_archived_objects(
+    access_token: str,
+    object_type: str,
+    *,
+    after: str | None = None,
+    max_records: int = 100,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Archived records — GET /crm/v3/objects/{type}?archived=true, following ``paging.next.after``.
+
+    The search API never returns archived records, so this listing is the only place the
+    archive shows up. Returns ``(records, next_after)``; ``next_after`` is None once the
+    listing is exhausted.
+    """
+    if not object_type:
+        raise HubSpotAPIError("object_type is required")
+    cap = max(int(max_records), 1)
+    results: list[dict[str, Any]] = []
+    cursor = str(after) if after else None
+    while len(results) < cap:
+        params: dict[str, Any] = {"archived": "true", "limit": min(100, cap - len(results))}
+        if cursor:
+            params["after"] = cursor
+        page = _request("GET", f"/crm/v3/objects/{_object_plural(object_type)}", access_token, params=params)
+        for row in page.get("results") or []:
+            if isinstance(row, dict):
+                results.append(dict(row))
+        nxt = ((page.get("paging") or {}).get("next") or {}).get("after")
+        cursor = str(nxt) if nxt else None
+        if not cursor:
+            break
+    return results, cursor
+
+
+CRM_OBJECT_PRESENT = "present"
+CRM_OBJECT_ARCHIVED = "archived"
+CRM_OBJECT_DELETED = "deleted"
+
+
+def _read_crm_object(access_token: str, object_type: str, object_id: str, *, archived: bool) -> dict[str, Any] | None:
+    params: dict[str, Any] = {"properties": "hs_object_id"}
+    if archived:
+        params["archived"] = "true"
+    try:
+        data = _request(
+            "GET", f"/crm/v3/objects/{_object_plural(object_type)}/{object_id}", access_token, params=params
+        )
+    except HubSpotAPIError as exc:
+        if exc.status_code == 404:
+            return None
+        raise
+    if not isinstance(data, dict) or not data.get("id"):
+        raise HubSpotAPIError(f"HubSpot {object_type} {object_id}: malformed response")
+    return data
+
+
+def crm_object_state(access_token: str, object_type: str, object_id: str) -> str:
+    """``present``, ``archived`` (in the recycle bin, restorable) or ``deleted`` (gone for good).
+
+    GET /crm/v3/objects/{type}/{id} answers 404 for an archived record as well as for a
+    permanently (or GDPR) deleted one, so a 404 alone cannot tell them apart. The record
+    is read again with ``archived=true``: found there means archived (still restorable,
+    excluded from retrieval only); 404 on both reads means deleted. Any other error
+    raises, so an auth, scope or rate-limit failure is never read as a deletion.
+    """
+    if not object_type or not object_id:
+        raise HubSpotAPIError("object_type and object_id are required")
+    live = _read_crm_object(access_token, object_type, object_id, archived=False)
+    if live is not None:
+        return CRM_OBJECT_ARCHIVED if live.get("archived") is True else CRM_OBJECT_PRESENT
+    archived = _read_crm_object(access_token, object_type, object_id, archived=True)
+    if archived is not None:
+        return CRM_OBJECT_ARCHIVED
+    return CRM_OBJECT_DELETED
+
+
+def crm_object_is_gone(access_token: str, object_type: str, object_id: str) -> bool:
+    """True only when HubSpot confirms the record is permanently deleted (not archived)."""
+    return crm_object_state(access_token, object_type, object_id) == CRM_OBJECT_DELETED
+
+
 def search_crm_objects_all(
     access_token: str,
     object_type: str,

@@ -6,7 +6,15 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.config import Settings
-from app.connectors.hubspot import HubSpotAPIError, list_emails_since, list_notes_since
+from app.connectors.hubspot import (
+    HubSpotAPIError,
+    CRM_OBJECT_ARCHIVED,
+    CRM_OBJECT_DELETED,
+    crm_object_state,
+    list_archived_objects,
+    list_emails_since,
+    list_notes_since,
+)
 from app.connectors.hubspot_oauth import ensure_hubspot_access_token
 from app.rag.ingest import create_ingest_job, create_source, get_source
 from app.core.safe_dict import safe_normalize_stored_dict
@@ -19,6 +27,18 @@ DEFAULT_LOOKBACK_HOURS = 24
 # continues from there (nothing beyond the cap is skipped).
 MAX_OBJECTS_PER_SYNC = 100  # same per-run volume as before Phase 1
 CURSORS_CONFIG_KEY = "hubspot_sync_cursors"
+# Deletion propagation (SOURCE_DELETION_PROPAGATION_ENABLED). Archived records sit in
+# HubSpot's recycle bin and can be restored, so they are excluded from retrieval, never
+# deleted; only a record HubSpot confirms is gone for good (404 on a plain read AND on an
+# ``archived=true`` read) has its documents removed. The archived listing is paged
+# by record id, not by archive time, so each run reads the next slice and the position wraps
+# to the start once the listing is exhausted. Every archived record is seen within a cycle.
+ARCHIVED_CURSORS_CONFIG_KEY = "hubspot_archived_cursors"
+MAX_ARCHIVED_PER_SYNC = 500
+# Check-by-id of indexed notes/emails, for permanent deletes no listing reports.
+VERIFY_POSITION_CONFIG_KEY = "hubspot_verify_position"
+VERIFY_BATCH_PER_SYNC = 25
+_ARCHIVE_OBJECT_TYPES = (("note", "notes"), ("email", "emails"))
 
 
 def _now_iso() -> str:
@@ -275,6 +295,10 @@ def run_hubspot_knowledge_sync(
         if cursor_ms is not None:
             cursors[kind] = {"since_ms": cursor_ms, "ids_at_since": sorted(ids_at_cursor)}
 
+    propagation = _propagate_upstream_removals(
+        client, settings, org_id=org_id, source_id=source_id, token=token, config=config, errors=errors
+    )
+
     entities = _write_company_entities(client, settings, org_id=org_id, token=token)
 
     # ``hubspot_last_synced_at`` is the run time used for scheduling; the data cursor lives
@@ -295,6 +319,8 @@ def run_hubspot_knowledge_sync(
         "source_id": source_id,
         "pages_synced": records_synced,
         "jobs_queued": len(job_ids),
+        "documents_removed": propagation["removed"],
+        "documents_excluded": propagation["excluded"],
         "job_ids": job_ids[:20],
         "errors": errors,
         "last_synced_at": config["hubspot_last_synced_at"],
@@ -302,6 +328,137 @@ def run_hubspot_knowledge_sync(
         "has_more": any(has_more.values()),
         "entities": entities,
     }
+
+
+def _propagate_upstream_removals(
+    client: Any,
+    settings: Settings,
+    *,
+    org_id: str,
+    source_id: str,
+    token: str,
+    config: dict[str, Any],
+    errors: list[str],
+) -> dict[str, int]:
+    """Exclude archived notes/emails, remove confirmed-deleted ones (off unless the flag is on).
+
+    Only records the archived listing returns with ``archived: true`` are excluded from
+    retrieval (reversible: HubSpot can restore them); a record missing from an incremental
+    page is never treated as deleted. Permanent removal happens only in the check-by-id
+    pass, on HubSpot's confirmation. ``config`` is updated in place with the next listing
+    position; on a listing error the position stays put.
+    """
+    from app.services.source_lifecycle import (
+        deletion_propagation_enabled,
+        exclude_source_documents,
+    )
+
+    if not deletion_propagation_enabled(settings):
+        return {"removed": 0, "excluded": 0}
+    positions = config.get(ARCHIVED_CURSORS_CONFIG_KEY)
+    positions = dict(positions) if isinstance(positions, dict) else {}
+    excluded = 0
+    for kind, object_type in _ARCHIVE_OBJECT_TYPES:
+        after = positions.get(kind)
+        try:
+            records, next_after = list_archived_objects(
+                token, object_type, after=str(after) if after else None, max_records=MAX_ARCHIVED_PER_SYNC
+            )
+        except Exception as exc:  # noqa: BLE001
+            # Any listing failure (API error, undecodable body) keeps the position and
+            # never fails the sync after its ingest jobs were queued.
+            errors.append(f"{kind} archived: {type(exc).__name__}: {exc}")
+            continue
+        external_ids = {
+            f"hubspot:{kind}:{r.get('id')}"
+            for r in records
+            if isinstance(r, dict) and r.get("id") and r.get("archived") is True
+        }
+        try:
+            excluded += exclude_source_documents(
+                client,
+                settings,
+                org_id=org_id,
+                source_id=source_id,
+                external_ids=external_ids,
+                signal="hubspot_archived",
+            )
+        except Exception as exc:  # noqa: BLE001
+            # Keep the listing position so the same slice is read again next run.
+            errors.append(f"{kind} archived exclusion: {exc}")
+            continue
+        if next_after:
+            positions[kind] = next_after
+        else:
+            positions.pop(kind, None)
+    config[ARCHIVED_CURSORS_CONFIG_KEY] = positions
+    removed = _verify_record_documents(
+        client, settings, org_id=org_id, source_id=source_id, token=token, config=config, errors=errors
+    )
+    return {"removed": removed, "excluded": excluded}
+
+
+def _record_gone_checker(token: str):
+    """``is_gone`` for the check-by-id pass over ``hubspot:{note|email}:{id}`` documents.
+
+    True (purge) only when HubSpot confirms permanent deletion; ``EXCLUDE`` for an
+    archived record; False when present (which also restores an excluded record).
+    """
+    from app.services.source_lifecycle import EXCLUDE
+
+    def is_gone(external_id: str) -> bool | str:
+        parts = external_id.split(":", 2)
+        if len(parts) != 3 or parts[1] not in {"note", "email"} or not parts[2]:
+            return False  # not a record this sync indexes: never removed here
+        state = crm_object_state(token, f"{parts[1]}s", parts[2])
+        if state == CRM_OBJECT_DELETED:
+            return True
+        if state == CRM_OBJECT_ARCHIVED:
+            return EXCLUDE
+        return False
+
+    return is_gone
+
+
+def _verify_record_documents(
+    client: Any,
+    settings: Settings,
+    *,
+    org_id: str,
+    source_id: str,
+    token: str,
+    config: dict[str, Any],
+    errors: list[str],
+) -> int:
+    """Check a batch of indexed notes/emails by id each run.
+
+    The archived listing only holds soft-deleted records (the recycle bin); records
+    deleted permanently (GDPR delete, or purged from the bin) appear in no listing, and a
+    404 on a direct read is the only signal left. Every document is checked once per
+    rotation of ``hubspot_verify_position``.
+    """
+    from app.services.source_lifecycle import verify_source_documents
+
+    position = config.get(VERIFY_POSITION_CONFIG_KEY)
+    position = dict(position) if isinstance(position, dict) else {}
+    try:
+        removed = verify_source_documents(
+            client,
+            settings,
+            org_id=org_id,
+            source_id=source_id,
+            external_id_prefix="hubspot:",
+            is_gone=_record_gone_checker(token),
+            position=position,
+            batch_size=VERIFY_BATCH_PER_SYNC,
+            errors=errors,
+            signal="hubspot_record_by_id",
+        )
+    except Exception as exc:  # noqa: BLE001
+        errors.append(f"verify records: {type(exc).__name__}: {exc}")
+        return 0
+    config[VERIFY_POSITION_CONFIG_KEY] = position
+    return removed
 
 
 def _queue_customer_message(

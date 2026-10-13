@@ -1,0 +1,95 @@
+{
+  "_source": "Notion API reference, version 2022-06-28 (developers.notion.com/reference): POST /v1/databases/{id}/query, GET /v1/pages/{id}, GET /v1/blocks/{id}/children, and the error object. Response shapes follow the published schema; ids and text are synthetic.",
+  "database_query": {
+    "status": 200,
+    "body": {
+      "object": "list",
+      "results": [
+        {
+          "object": "page",
+          "id": "401",
+          "created_time": "2026-09-01T10:00:00.000Z",
+          "last_edited_time": "2026-10-01T10:00:00.000Z",
+          "archived": false,
+          "in_trash": false,
+          "parent": {"type": "database_id", "database_id": "db1"},
+          "properties": {"Name": {"id": "title", "type": "title", "title": [{"type": "text", "plain_text": "Pricing FAQ"}]}},
+          "url": "https://www.notion.so/Pricing-FAQ-401"
+        }
+      ],
+      "next_cursor": null,
+      "has_more": false,
+      "type": "page_or_database",
+      "page_or_database": {}
+    }
+  },
+  "page_401": {
+    "status": 200,
+    "body": {
+      "object": "page",
+      "id": "401",
+      "created_time": "2026-09-01T10:00:00.000Z",
+      "last_edited_time": "2026-10-01T10:00:00.000Z",
+      "archived": false,
+      "in_trash": false,
+      "parent": {"type": "database_id", "database_id": "db1"},
+      "properties": {"Name": {"id": "title", "type": "title", "title": [{"type": "text", "plain_text": "Pricing FAQ"}]}},
+      "url": "https://www.notion.so/Pricing-FAQ-401"
+    }
+  },
+  "page_402_in_trash": {
+    "status": 200,
+    "body": {
+      "object": "page",
+      "id": "402",
+      "created_time": "2026-08-01T10:00:00.000Z",
+      "last_edited_time": "2026-10-04T10:00:00.000Z",
+      "archived": true,
+      "in_trash": true,
+      "parent": {"type": "database_id", "database_id": "db1"},
+      "properties": {"Name": {"id": "title", "type": "title", "title": [{"type": "text", "plain_text": "Old pricing"}]}},
+      "url": "https://www.notion.so/Old-pricing-402"
+    }
+  },
+  "object_not_found": {
+    "status": 404,
+    "body": {
+      "object": "error",
+      "status": 404,
+      "code": "object_not_found",
+      "message": "Could not find page with ID: 403. Make sure the relevant pages and databases are shared with your integration.",
+      "request_id": "00000000-0000-4000-8000-000000000403"
+    }
+  },
+  "rate_limited": {
+    "status": 429,
+    "body": {
+      "object": "error",
+      "status": 429,
+      "code": "rate_limited",
+      "message": "You have been rate limited. Please try again in a few minutes.",
+      "request_id": "00000000-0000-4000-8000-000000000429"
+    }
+  },
+  "blocks_401": {
+    "status": 200,
+    "body": {
+      "object": "list",
+      "results": [
+        {
+          "object": "block",
+          "id": "b1",
+          "type": "paragraph",
+          "has_children": false,
+          "archived": false,
+          "in_trash": false,
+          "paragraph": {"rich_text": [{"type": "text", "plain_text": "Annual plans are billed upfront."}], "color": "default"}
+        }
+      ],
+      "next_cursor": null,
+      "has_more": false,
+      "type": "block",
+      "block": {}
+    }
+  }
+}
