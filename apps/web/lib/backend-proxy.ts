@@ -113,6 +113,39 @@ export async function proxyToFastApi(request: NextRequest, backendPath: string) 
   }
 }
 
+/**
+ * Server-side call to FastAPI as the caller (their bearer token and org header),
+ * with a JSON body built by the route rather than the caller's raw body.
+ */
+export async function callFastApiAsCaller(
+  request: NextRequest,
+  backendPath: string,
+  method: "POST" | "PATCH" | "PUT" | "DELETE",
+  body: unknown,
+  orgId?: string,
+): Promise<{ ok: boolean; status: number; payload: unknown }> {
+  const baseUrl = getFastApiBaseUrl()
+  const normalizedPath = backendPath.startsWith("/") ? backendPath : `/${backendPath}`
+  const headers = forwardHeaders(request)
+  headers.set("content-type", "application/json")
+  if (orgId) headers.set("x-org-id", orgId)
+  try {
+    const upstream = await fetch(`${baseUrl}${normalizedPath}`, {
+      method,
+      headers,
+      body: JSON.stringify(body ?? {}),
+      cache: "no-store",
+    })
+    return { ok: upstream.ok, status: upstream.status, payload: await safeReadPayload(upstream) }
+  } catch (error) {
+    return {
+      ok: false,
+      status: 502,
+      payload: { error: "Backend request failed", detail: error instanceof Error ? error.message : "Unknown" },
+    }
+  }
+}
+
 /** STA-271 C.2: best-effort mirror of contract workflow row into legacy workflow_defs. */
 export async function syncWorkflowSchemaFromContract(request: NextRequest, workflowId: string) {
   if (!process.env.FASTAPI_BASE_URL?.trim()) {
