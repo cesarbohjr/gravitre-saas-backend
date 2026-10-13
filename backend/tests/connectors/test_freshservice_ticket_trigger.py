@@ -162,6 +162,8 @@ MEMBERS = [
 
 @pytest.mark.asyncio
 async def test_status_change_event_opens_pending_approval_for_ticket_write():
+    import app.main  # noqa: F401  (loads app.routers.workflows in app order; direct import is circular)
+
     client = _Client(
         {"id": "wf-fs", "org_id": "org-1", "status": "active", "definition": UPDATE_STATUS_WORKFLOW,
          "created_by": "member-1"},
