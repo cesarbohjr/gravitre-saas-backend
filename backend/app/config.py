@@ -572,6 +572,12 @@ class Settings(BaseSettings):
     # Phase 2A durable domain events: in-process relay for domain_event_outbox.
     # Off by default; events written by the outbox triggers wait as 'pending' until on.
     domain_event_relay_enabled: bool = False
+    # Stale run recovery: marks runs left "running"/"verifying" by a dead worker as
+    # failed / flagged_for_review / verification_inconclusive. Never re-runs work.
+    stale_run_recovery_enabled: bool = False
+    stale_run_recovery_interval_seconds: int = 600
+    stale_run_recovery_threshold_minutes: int = 60
+    stale_run_recovery_verifying_threshold_minutes: int = 1440
     domain_event_relay_interval_seconds: int = 15
     domain_event_relay_batch_size: int = 50
     domain_event_relay_lease_seconds: int = 120
