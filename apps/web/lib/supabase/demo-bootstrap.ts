@@ -326,13 +326,9 @@ export async function ensureDemoDataForOrg(supabase: SupabaseClient, orgId: stri
     await supabase.from("agents").upsert(rows.agents, { onConflict: "id" })
     await supabase.from("workflows").upsert(rows.workflows, { onConflict: "id" })
     await supabase.from("runs").upsert(rows.runs, { onConflict: "id" })
-    await supabase.from("approvals").upsert(rows.approvals, { onConflict: "id" })
+    // approvals and connectors are backend-written governance tables (members
+    // can read them, not write them); demo views fall back to getDemoRowsForOrg.
     await supabase.from("connected_systems").upsert(rows.connectedSystems, { onConflict: "id" })
-    const { error: connectorsError } = await supabase.from("connectors").upsert(rows.connectors, { onConflict: "id" })
-    if (connectorsError) {
-      // Connectors table may not exist yet in older environments.
-      console.warn("Skipping connectors demo bootstrap", { orgId, message: connectorsError.message })
-    }
     await supabase.from("api_keys").upsert(rows.apiKeys, { onConflict: "id" })
     await supabase.from("webhooks").upsert(rows.webhooks, { onConflict: "id" })
     await supabase.from("model_settings").upsert(
