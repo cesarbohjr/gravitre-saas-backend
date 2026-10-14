@@ -153,7 +153,7 @@
     "infra:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-temporal-clickhouse-activation.ps1",
     "clickhouse:push-railway-env": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fill-clickhouse-railway-env.ps1",
     "vercel:link": "vercel link --yes --project gravitre-saas-backend",
-    "vercel-build": "pnpm --dir apps/web install --frozen-lockfile && pnpm --dir apps/web run build",
+    "vercel-build": "pnpm --dir apps/web install --frozen-lockfile && pnpm --dir apps/web run build && cp -a apps/web/.next .next",
     "security:audit-backend": "python scripts/pip-audit-backend.py",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
