@@ -253,7 +253,8 @@ async def test_billing_uses_each_measured_model_round(async_client, monkeypatch,
     assert [row[2].model_call_id for row in args] == ["call-0", "call-1"]
     assert [row[2].input_tokens for row in args] == [100, 101]
     assert [row[2].output_tokens for row in args] == [20, 21]
-    assert seen_turns[0] and seen_turns == [seen_turns[0]] * 2
+    assert seen_turns[0] and seen_turns[0].startswith("assistant:")
+    assert seen_turns == [seen_turns[0]] * 2
 
 
 async def test_unmetered_stream_is_not_charged_from_text_length(async_client, monkeypatch, capture_background_tasks):

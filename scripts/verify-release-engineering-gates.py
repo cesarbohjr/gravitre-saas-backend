@@ -25,6 +25,10 @@ TESTS = [
     "tests/services/test_write_authority_spine.py",
     "tests/services/test_msp_org_context.py",
     "tests/services/test_automation_actor.py",
+    "tests/billing/test_idempotency.py",
+    "tests/billing/test_assistant_billing_per_turn.py",
+    "tests/billing/test_deterministic_roster_billing.py",
+    "tests/services/test_streamed_model_call_capture.py",
 ]
 
 

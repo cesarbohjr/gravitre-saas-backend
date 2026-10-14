@@ -741,7 +741,9 @@ def _build_stream(
         from app.services.cost_attribution import ModelCallCapture, attribution, capture_model_calls
 
         measured_calls = ModelCallCapture(org_id=org_id)
-        stream_turn_id = str(uuid.uuid4())
+        # Namespaced so a read-only reconciler can distinguish assistant
+        # streams from workflows and legacy cognitive traces without guessing.
+        stream_turn_id = f"assistant:{uuid.uuid4()}"
         source = _unified_stream_body(measured_calls)
         try:
             while True:
