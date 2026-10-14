@@ -1861,6 +1861,9 @@ async def execute_workflow(
                 )
             raise
         run_id = str(run["id"])
+        from app.services.workflow_approval_scope import persist_run_approval_scope
+
+        persist_run_approval_scope(client, run_id, definition)
         _record_workflow_run_usage(client, org_id, environment_name, plan)
         if approval_floor_applied:
             write_audit_event(
@@ -2177,6 +2180,9 @@ def _open_pending_approval_run(
             )
         raise
     run_id = str(run["id"])
+    from app.services.workflow_approval_scope import persist_run_approval_scope
+
+    persist_run_approval_scope(client, run_id, definition)
     _record_workflow_run_usage(client, org_id, environment_name, plan)
     if approval_floor_applied:
         write_audit_event(

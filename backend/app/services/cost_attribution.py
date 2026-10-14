@@ -46,6 +46,18 @@ def attribution_fields() -> dict[str, str]:
     return out
 
 
+def bind_turn_attribution(turn_id: str | None) -> contextvars.Token | None:
+    """Set turn_id for model_calls attribution for the rest of this async task."""
+    if not turn_id:
+        return None
+    return _turn_id.set(str(turn_id))
+
+
+def reset_turn_attribution(token: contextvars.Token | None) -> None:
+    if token is not None:
+        _turn_id.reset(token)
+
+
 def _missing_column(exc: Exception) -> bool:
     text = str(exc)
     return "PGRST204" in text or "42703" in text or ("column" in text and any(k in text for k in ATTRIBUTION_KEYS))

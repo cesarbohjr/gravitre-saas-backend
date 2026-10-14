@@ -1868,6 +1868,10 @@ class AgentIntelligence:
         _canonical_task_state: dict[str, Any] = (
             dict(gateway_state) if isinstance(gateway_state, dict) else {}
         )
+        from app.services.cognitive_trace_engine import unify_turn_id
+        from app.services.cost_attribution import bind_turn_attribution
+
+        bind_turn_attribution(unify_turn_id(_canonical_task_state))
         task_state: dict[str, Any] | None = (
             dict(gateway_state) if isinstance(gateway_state, dict) else None
         )
@@ -5860,6 +5864,7 @@ class AgentIntelligence:
         generation_started = time.monotonic()
 
         _mark("react_entry")
+        bind_turn_attribution(unify_turn_id(_canonical_task_state))
         # From here tools can run, so nothing is served from the turn memo.
         end_turn_memo()
         from app.services.canonical_cognitive_resolution import try_compiled_operational_read_turn

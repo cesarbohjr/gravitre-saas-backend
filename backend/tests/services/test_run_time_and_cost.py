@@ -85,6 +85,16 @@ def test_insert_model_call_adds_run_id():
     assert db.inserted == [{"org_id": "o", "cost_usd": 0.1, "run_id": RUN}]
 
 
+def test_insert_model_call_adds_turn_id_via_bind():
+    db = _DB()
+    token = ca.bind_turn_attribution("turn-abc")
+    try:
+        ca.insert_model_call(db, {"org_id": "o", "cost_usd": 0.1})
+    finally:
+        ca.reset_turn_attribution(token)
+    assert db.inserted == [{"org_id": "o", "cost_usd": 0.1, "turn_id": "turn-abc"}]
+
+
 def test_insert_model_call_keeps_cost_when_columns_missing():
     db = _DB(missing_columns=True)
     with ca.attribution(run_id=RUN):
