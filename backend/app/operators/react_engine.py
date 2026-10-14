@@ -356,29 +356,38 @@ class ReActEngine:
     ) -> ReActResult:
         """Execute a ReAct loop for a single agent task."""
         from app.services.ai_tracing import trace_span
+        from app.services.cost_attribution import attribution, bind_turn_attribution, reset_turn_attribution
 
-        with trace_span("react_engine.run", org_id=ctx.org_id, agent_id=ctx.agent_id):
-            result: ReActResult | None = None
-            async for event in self._react_loop(
-                ctx=ctx,
-                task=task,
-                system_prompt=system_prompt,
-                permitted_tools=permitted_tools,
-                connected_integrations=connected_integrations,
-                max_iterations=max_iterations,
-                model=model,
-                agent=agent,
-                audit_resource_type=audit_resource_type,
-                audit_resource_id=audit_resource_id,
-                emit_text_deltas=False,
-                plan_runtime=plan_runtime,
-                conversation_history=conversation_history,
-            ):
-                if event.kind == "done":
-                    result = event.react_result
-            if result is None:
-                return ReActResult(status=ReActStatus.ERROR, answer="", error="ReAct loop produced no result")
-            return result
+        turn_token = bind_turn_attribution(
+            str(ctx.turn_id).strip() if getattr(ctx, "turn_id", None) else None
+        )
+        run_id = str(ctx.run_id).strip() if getattr(ctx, "run_id", None) else None
+        try:
+            with trace_span("react_engine.run", org_id=ctx.org_id, agent_id=ctx.agent_id):
+                with attribution(run_id=run_id):
+                    result: ReActResult | None = None
+                    async for event in self._react_loop(
+                        ctx=ctx,
+                        task=task,
+                        system_prompt=system_prompt,
+                        permitted_tools=permitted_tools,
+                        connected_integrations=connected_integrations,
+                        max_iterations=max_iterations,
+                        model=model,
+                        agent=agent,
+                        audit_resource_type=audit_resource_type,
+                        audit_resource_id=audit_resource_id,
+                        emit_text_deltas=False,
+                        plan_runtime=plan_runtime,
+                        conversation_history=conversation_history,
+                    ):
+                        if event.kind == "done":
+                            result = event.react_result
+                    if result is None:
+                        return ReActResult(status=ReActStatus.ERROR, answer="", error="ReAct loop produced no result")
+                    return result
+        finally:
+            reset_turn_attribution(turn_token)
 
     async def run_streaming(
         self,
@@ -408,28 +417,38 @@ class ReActEngine:
         before the first tool runs and yields the answer sentence by sentence
         while it is generated, instead of after the whole call returns.
         """
-        async for event in self._react_loop(
-            ctx=ctx,
-            task=task,
-            system_prompt=system_prompt,
-            permitted_tools=permitted_tools,
-            connected_integrations=connected_integrations,
-            max_iterations=max_iterations,
-            model=model,
-            agent=agent,
-            audit_resource_type=audit_resource_type,
-            audit_resource_id=audit_resource_id,
-            emit_text_deltas=True,
-            routing_control=routing_control,
-            tool_query=tool_query,
-            tool_classification=tool_classification,
-            connector_focus=connector_focus,
-            plan_runtime=plan_runtime,
-            conversation_history=conversation_history,
-            interrupt=interrupt,
-            stream_answer=stream_answer,
-        ):
-            yield event
+        from app.services.cost_attribution import attribution, bind_turn_attribution, reset_turn_attribution
+
+        turn_token = bind_turn_attribution(
+            str(ctx.turn_id).strip() if getattr(ctx, "turn_id", None) else None
+        )
+        run_id = str(ctx.run_id).strip() if getattr(ctx, "run_id", None) else None
+        try:
+            with attribution(run_id=run_id):
+                async for event in self._react_loop(
+                    ctx=ctx,
+                    task=task,
+                    system_prompt=system_prompt,
+                    permitted_tools=permitted_tools,
+                    connected_integrations=connected_integrations,
+                    max_iterations=max_iterations,
+                    model=model,
+                    agent=agent,
+                    audit_resource_type=audit_resource_type,
+                    audit_resource_id=audit_resource_id,
+                    emit_text_deltas=True,
+                    routing_control=routing_control,
+                    tool_query=tool_query,
+                    tool_classification=tool_classification,
+                    connector_focus=connector_focus,
+                    plan_runtime=plan_runtime,
+                    conversation_history=conversation_history,
+                    interrupt=interrupt,
+                    stream_answer=stream_answer,
+                ):
+                    yield event
+        finally:
+            reset_turn_attribution(turn_token)
 
     async def _react_loop(
         self,

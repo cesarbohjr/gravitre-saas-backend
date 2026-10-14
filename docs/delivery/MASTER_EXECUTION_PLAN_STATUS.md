@@ -1,5 +1,7 @@
 # Master execution plan — cross-reference (2026-10-14, reconciled)
 
+**Authoritative per-item matrix (implementation vs production acceptance):** [`MASTER_PLAN_COMPLETION_MATRIX.md`](./MASTER_PLAN_COMPLETION_MATRIX.md)
+
 **Authoritative code:** `origin/main` @ `ce9c53b36`.  
 **Merged implementation train:** PRs **#401–#421** (21 branches); **#422** adds migration `20261013081000` (same merge window as #421).
 
