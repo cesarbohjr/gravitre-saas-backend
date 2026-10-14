@@ -69,7 +69,8 @@ Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · 
 | Event → workflow queue | CODE COMPLETE | #429 | `test_event_trigger_queue.py` | — | `EVENT_TRIGGER_USE_WORKFLOW_QUEUE=false` | NOT RUN | Flag off |
 | `model_calls.turn_id` chat streaming | CODE COMPLETE | #429 branch | Unit | `080000` applied | — | NOT RUN | DB verify |
 | ReAct / unified-turn tool metering | PARTIAL | Codex branch | Canonical writer, cache tokens, turn/run context tests pass | Existing attribution migration | — | NOT RUN | Failure/cancel usage; billing reconciliation; production row proof |
-| Metering reconciliation / ROI caps / PSA | NOT STARTED | — | — | — | — | NOT RUN | Product |
+| Streamed-turn charge from persisted model calls | PARTIAL (per-call measured credits in next draft) | #431 follow-on | Focused mocked route and ledger tests | Existing `model_calls`/usage schema | — | NOT RUN | Durable crash reconciliation; historical backfill; DB concurrency |
+| Metering reconciliation / ROI caps / PSA | PARTIAL (streamed charge only) | #431 follow-on | Focused unit | — | — | NOT RUN | Durable sweep, ROI/PSA baselines, production evidence |
 
 ---
 

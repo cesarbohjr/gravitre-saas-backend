@@ -536,10 +536,9 @@ def _idempotent_insert(
 ) -> bool:
     """INSERT ... ON CONFLICT (org_id, idempotency_key) DO NOTHING.
 
-    Returns True if a row was inserted, False if it was a duplicate. Falls back
-    to a plain insert (still records usage, without dedupe) if the idempotency
-    column/index is not present yet — so billing keeps working if the migration
-    has not been applied. Returns True for the fallback insert.
+    Returns True if a row was inserted, False if it was a duplicate. A failed
+    upsert must never fall back to a plain insert: a timeout after commit or
+    a missing uniqueness constraint would otherwise double-charge a retry.
     """
     try:
         resp = (
@@ -553,12 +552,9 @@ def _idempotent_insert(
         )
         # With ignore-duplicates, a conflicting row is skipped and not returned.
         return bool(resp.data)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "idempotent insert fallback table=%s org_id=%s error=%s", table, org_id, str(exc)
-        )
-        client.table(table).insert(payload).execute()
-        return True
+    except Exception:
+        logger.exception("idempotent usage insert failed table=%s org_id=%s", table, org_id)
+        raise
 
 
 def record_usage(

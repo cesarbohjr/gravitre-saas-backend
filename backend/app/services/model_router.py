@@ -261,9 +261,11 @@ class ModelRouter:
             await self._log_guardrail_event(org_id, task_type, code, [], str(exc))
             raise
 
-        cache_key = self._cache_key(task_type, prompt, system_prompt, temperature, max_tokens, model, context)
+        cache_key = self._cache_key(task_type, prompt, system_prompt, temperature, max_tokens, model, context, org_id)
         if use_cache and not model_override and cache_key in self._cache:
-            cached = self._cache[cache_key].model_copy(update={"cache_hit": True})
+            cached = self._cache[cache_key].model_copy(update={
+                "cache_hit": True, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0,
+            })
             cached.model_call_id = await self._log_model_call(
                 org_id=org_id,
                 task_type=task_type,
@@ -272,6 +274,7 @@ class ModelRouter:
                 trained_model_id=trained_model_id,
                 trained_model_version=trained_model_version,
                 used_fallback=used_fallback,
+                billable=False,
             )
             if autonomous_run and operator_id and org_id:
                 await self._record_autonomous_llm(org_id, operator_id, cached)
@@ -698,6 +701,7 @@ class ModelRouter:
         max_tokens: int | None,
         model: str,
         context: list[dict] | None,
+        org_id: str | None,
     ) -> str:
         payload = json.dumps(
             {
@@ -708,6 +712,7 @@ class ModelRouter:
                 "max_tokens": max_tokens,
                 "model": model,
                 "context": context or [],
+                "org_id": org_id,
             },
             sort_keys=True,
             default=str,
@@ -816,6 +821,7 @@ class ModelRouter:
         trained_model_id: str | None = None,
         trained_model_version: int | None = None,
         used_fallback: bool = False,
+        billable: bool = True,
     ) -> str | None:
         """Write the model_calls row and return its id (billing idempotency anchor)."""
         if not org_id:
@@ -843,7 +849,18 @@ class ModelRouter:
 
             resp = await asyncio.to_thread(insert_model_call, client, row)
             if resp.data:
-                return str(resp.data[0].get("id"))
+                model_call_id = str(resp.data[0].get("id") or "")
+                if model_call_id and billable:
+                    from app.services.cost_attribution import MeasuredModelCall, record_measured_model_call
+
+                    record_measured_model_call(MeasuredModelCall(
+                        id=model_call_id, org_id=org_id, provider=response.provider,
+                        model=response.model, input_tokens=response.input_tokens,
+                        output_tokens=response.output_tokens, latency_ms=response.latency_ms,
+                        cost_usd=response.cost_usd,
+                    ))
+                if model_call_id:
+                    return model_call_id
             return None
         except Exception as exc:  # noqa: BLE001
             logger.warning("model_calls insert failed: %s", str(exc))

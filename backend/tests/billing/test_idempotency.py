@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import date
 from unittest.mock import MagicMock
+import pytest
 
 import app.billing.service as billing
 from app.billing.service import (
@@ -101,3 +102,13 @@ def test_apply_usage_with_overage_is_idempotent(monkeypatch):
     overage_rows = [k for k in client.store if k[0] == "overage_usage"]
     assert len(usage_rows) == 1, "usage double-counted on retry"
     assert len(overage_rows) == 1, "overage double-counted on retry"
+
+
+def test_failed_upsert_cannot_fall_back_to_non_idempotent_insert():
+    client = MagicMock()
+    client.table.return_value.upsert.return_value.execute.side_effect = TimeoutError("commit unknown")
+    with pytest.raises(TimeoutError, match="commit unknown"):
+        record_usage(client, "org-1", "production", "ai_credits", 3,
+                     PERIOD_START, PERIOD_END,
+                     metadata={"source": "assistant", "source_id": "mc-1"})
+    client.table.return_value.insert.assert_not_called()

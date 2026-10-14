@@ -253,7 +253,7 @@ async def _record_assistant_billing(
     result: ModelResponse,
     *,
     turn_id: str | None = None,
-) -> None:
+) -> bool:
     """Record assistant AI credits to usage_tracking after a successful completion.
 
     Idempotent per turn (model_calls row id, else the assistant message id). On
@@ -261,31 +261,25 @@ async def _record_assistant_billing(
     """
     model_call_id = result.model_call_id
     try:
-        client = get_supabase_client(settings)
-        plan = get_plan_for_org(client, org_id)
-        period_start, period_end = get_current_period()
-        source_id = assistant_billing_source_id(model_call_id, turn_id)
-        ai_meta = build_ai_usage_metadata_from_tokens(
-            result.input_tokens,
-            result.output_tokens,
-            result.model,
-            "assistant",
-            source_id,
-        )
-        # Token counts are estimated from text length when no model call row backs
-        # the turn; say so instead of presenting them as measured.
-        ai_meta["usage_estimated"] = not bool(model_call_id)
-        apply_usage_with_overage(
-            client=client,
-            org_id=org_id,
-            environment="production",
-            metric_type="ai_credits",
-            quantity=int(ai_meta["credits"]),
-            plan=plan,
-            period_start=period_start,
-            period_end=period_end,
-            metadata=ai_meta,
-        )
+        def _write() -> None:
+            client = get_supabase_client(settings)
+            plan = get_plan_for_org(client, org_id)
+            period_start, period_end = get_current_period()
+            source_id = assistant_billing_source_id(model_call_id, turn_id)
+            ai_meta = build_ai_usage_metadata_from_tokens(
+                result.input_tokens, result.output_tokens, result.model,
+                "assistant", source_id,
+            )
+            ai_meta["usage_estimated"] = not bool(model_call_id)
+            apply_usage_with_overage(
+                client=client, org_id=org_id, environment="production",
+                metric_type="ai_credits", quantity=int(ai_meta["credits"]),
+                plan=plan, period_start=period_start, period_end=period_end,
+                metadata=ai_meta,
+            )
+
+        await asyncio.to_thread(_write)
+        return True
     except Exception as exc:  # noqa: BLE001
         logger.exception(
             "assistant billing write failed org_id=%s model_call_id=%s error=%s",
@@ -303,6 +297,7 @@ async def _record_assistant_billing(
                 "error": str(exc),
             },
         )
+        return False
 
 
 # Re-export tool helpers at module level so tests can monkeypatch them.
@@ -719,17 +714,58 @@ def _build_stream(
     this conversation (it was read again here, blocking the event loop).
     """
 
+    billed_model_call_ids: set[str] = set()
+
+    async def _bill_measured_calls(measured_calls, turn_id: str | None = None) -> None:
+        for call in measured_calls.calls:
+            if call.id in billed_model_call_ids:
+                continue
+            result = await _record_assistant_billing(
+                settings, org_id,
+                ModelResponse(
+                    provider=call.provider, model=call.model, content="",
+                    input_tokens=call.input_tokens, output_tokens=call.output_tokens,
+                    latency_ms=call.latency_ms, cost_usd=call.cost_usd,
+                    model_call_id=call.id,
+                ), turn_id=turn_id,
+            )
+            if result is not False:
+                billed_model_call_ids.add(call.id)
+
     async def generator():
         from app.operators.react_engine import force_serial_react_tools, reset_serial_react_tools
+        from app.services.cost_attribution import ModelCallCapture, capture_model_calls
 
-        serial_token = force_serial_react_tools(force_serial_tools)
+        measured_calls = ModelCallCapture(org_id=org_id)
+        source = _unified_stream_body(measured_calls)
         try:
-            async for line in _unified_stream_body():
+            while True:
+                # Voice may resume this iterator from another task after a
+                # silence tick. Bind/reset ContextVars in that same task.
+                serial_token = force_serial_react_tools(force_serial_tools)
+                try:
+                    with capture_model_calls(measured_calls):
+                        try:
+                            line = await anext(source)
+                        except StopAsyncIteration:
+                            break
+                finally:
+                    reset_serial_react_tools(serial_token)
                 yield line
         finally:
-            reset_serial_react_tools(serial_token)
+            serial_token = force_serial_react_tools(force_serial_tools)
+            try:
+                with capture_model_calls(measured_calls):
+                    try:
+                        await source.aclose()
+                    finally:
+                        # Covers cancellation, an error after a provider reply,
+                        # or a client closing after partial output.
+                        await _bill_measured_calls(measured_calls)
+            finally:
+                reset_serial_react_tools(serial_token)
 
-    async def _unified_stream_body():
+    async def _unified_stream_body(measured_calls):
         perf = ChatPerfTimer()
         perf.start("total_response")
         start_ms = time.monotonic()
@@ -921,6 +957,7 @@ def _build_stream(
                 str(exc)[:500],
             )
             if not streamed_text_parts:
+                await _bill_measured_calls(measured_calls)
                 yield assistant_event_to_sse_line(emit_stream_error("request_failed"))
                 yield sse_done()
                 return
@@ -1024,6 +1061,7 @@ def _build_stream(
                     ),
                 },
             )
+            await _bill_measured_calls(measured_calls, complete.message_id if complete else None)
             yield sse_done()
             return
 
@@ -1032,6 +1070,7 @@ def _build_stream(
             assistant_text = "".join(streamed_text_parts).strip()
 
         if not assistant_text:
+            await _bill_measured_calls(measured_calls)
             yield assistant_event_to_sse_line(emit_stream_error("request_failed"))
             yield sse_done()
             return
@@ -1039,6 +1078,7 @@ def _build_stream(
         if complete is not None and complete.react_result is not None and getattr(complete.react_result, "error", None):
             err = str(complete.react_result.error or "")
             if err and not assistant_text:
+                await _bill_measured_calls(measured_calls)
                 yield assistant_event_to_sse_line(emit_stream_error("error", detail=err))
                 yield sse_done()
                 return
@@ -1119,26 +1159,14 @@ def _build_stream(
 
             response_cache_put(org_id, conversation_id, user_text, assistant_text, suggestions)
 
-        yield sse_done()
-
         elapsed_ms = int((time.monotonic() - start_ms) * 1000)
         perf.stop("total_response")
         perf.mark("final_response", elapsed_ms)
         perf.log_summary(org_id=org_id, conversation_id=conversation_id, mode=mode)
-        billing_result = _estimate_model_response(
-            content=assistant_text,
-            user_text=user_text,
-            model=complete.model if complete else "stream",
-            latency_ms=elapsed_ms,
-        )
-        asyncio.create_task(
-            _record_assistant_billing(
-                settings,
-                org_id,
-                billing_result,
-                turn_id=(complete.message_id if complete else None),
-            )
-        )
+        await _bill_measured_calls(measured_calls, complete.message_id if complete else None)
+        if not measured_calls.calls and complete is not None:
+            logger.warning("assistant_model_usage_unmetered org_id=%s message_id=%s", org_id, complete.message_id)
+        yield sse_done()
         asyncio.create_task(
             get_user_intelligence_service().record_query(
                 settings,

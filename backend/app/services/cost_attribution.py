@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import contextvars
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 from typing import Any, Iterator
 
 from app.core.logging import get_logger
@@ -22,6 +23,53 @@ _org_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("model_call
 _run_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("cost_run_id", default=None)
 _turn_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("cost_turn_id", default=None)
 ATTRIBUTION_KEYS = ("run_id", "turn_id")
+
+
+@dataclass(frozen=True)
+class MeasuredModelCall:
+    id: str
+    org_id: str
+    provider: str
+    model: str
+    input_tokens: int
+    output_tokens: int
+    latency_ms: int
+    cost_usd: float
+
+
+@dataclass
+class ModelCallCapture:
+    """Request-local evidence for billing, shared across streaming child tasks."""
+
+    org_id: str
+    calls: list[MeasuredModelCall] = field(default_factory=list)
+    _seen: set[str] = field(default_factory=set)
+
+    def add(self, call: MeasuredModelCall) -> None:
+        if call.org_id != self.org_id or call.id in self._seen:
+            return
+        self._seen.add(call.id)
+        self.calls.append(call)
+
+
+_model_call_capture: contextvars.ContextVar[ModelCallCapture | None] = contextvars.ContextVar(
+    "model_call_capture", default=None,
+)
+
+
+@contextmanager
+def capture_model_calls(capture: ModelCallCapture) -> Iterator[None]:
+    token = _model_call_capture.set(capture)
+    try:
+        yield
+    finally:
+        _model_call_capture.reset(token)
+
+
+def record_measured_model_call(call: MeasuredModelCall) -> None:
+    capture = _model_call_capture.get()
+    if capture is not None:
+        capture.add(call)
 
 
 @contextmanager

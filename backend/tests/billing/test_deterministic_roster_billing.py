@@ -24,12 +24,20 @@ async def test_deterministic_roster_is_not_billed_as_a_model_call(monkeypatch):
     monkeypatch.setattr(composer, "compose_reply_events", AsyncMock(
         return_value=composer.ComposerPacked(text="Three active agents", text_id="reply")))
 
-    lines = [line async for line in assistant._build_stream(
+    stream = assistant._build_stream(
         None, {}, settings=Settings(), org_id="org-1", user_id="user-1",
         conversation_id="conversation-1", user_text="How many agents?", agent_id=None,
         history_messages=[], existing_summary=None, mode="fast",
         intelligence_hub_deterministic_answer="Three active agents",
-    )]
+    )
+    lines = []
+    while True:
+        try:
+            # Mirrors voice silence ticks, which pull successive events from
+            # different tasks rather than one long-lived request task.
+            lines.append(await asyncio.create_task(anext(stream)))
+        except StopAsyncIteration:
+            break
     await asyncio.sleep(0)
 
     assert lines
