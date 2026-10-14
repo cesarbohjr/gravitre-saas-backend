@@ -814,15 +814,8 @@ def _build_stream(
             perf.stop("total_response")
             perf.mark("final_response", elapsed_ms)
             perf.log_summary(org_id=org_id, conversation_id=conversation_id, mode=mode)
-            billing_result = _estimate_model_response(
-                content=assistant_text,
-                user_text=user_text,
-                model="intelligence_hub:canonical_agent_roster",
-                latency_ms=elapsed_ms,
-            )
-            asyncio.create_task(
-                _record_assistant_billing(settings, org_id, billing_result, turn_id=message_id)
-            )
+            # This response is assembled from the existing roster without an
+            # LLM call. There are no provider tokens to bill or estimate.
             asyncio.create_task(
                 get_user_intelligence_service().record_query(
                     settings,
