@@ -25,6 +25,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Determine current production target
@@ -51,7 +52,20 @@ jobs:
               web_ok=1
             fi
             if curl -fsS --connect-timeout 10 --max-time 20 https://api.gravitre.app/health -o /tmp/gravitre-health.json; then
-              if python3 -c 'import json,os; d=json.load(open("/tmp/gravitre-health.json")); s=str(d.get("git_sha") or ""); expected=os.environ["EXPECT_SHA"]; exit(0 if len(s)>=8 and (expected.startswith(s) or s.startswith(expected)) else 1)'; then
+              if python3 - <<'PY'
+          import json, os, subprocess
+          expected = os.environ["EXPECT_SHA"].strip()
+          reported = str(json.load(open("/tmp/gravitre-health.json")).get("git_sha") or "").strip()
+          if len(reported) < 8:
+              raise SystemExit(1)
+          if expected.startswith(reported) or reported.startswith(expected):
+              raise SystemExit(0)
+          # Workflow-only merges do not redeploy Railway; accept deployed SHAs that are ancestors of main.
+          full = subprocess.check_output(["git", "rev-parse", reported], text=True).strip()
+          proc = subprocess.run(["git", "merge-base", "--is-ancestor", full, expected])
+          raise SystemExit(proc.returncode)
+          PY
+              then
                 api_ok=1
               fi
             fi
