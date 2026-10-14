@@ -692,17 +692,24 @@ class Settings(BaseSettings):
     )
     # Route auto-approved event-triggered runs through the durable workflow queue.
     event_trigger_use_workflow_queue: bool = Field(
-        default=True,
+        default=False,
         validation_alias=AliasChoices(
             "EVENT_TRIGGER_USE_WORKFLOW_QUEUE",
             "event_trigger_use_workflow_queue",
         ),
     )
     write_invoke_idempotency_enabled: bool = Field(
-        default=True,
+        default=False,
         validation_alias=AliasChoices(
             "WRITE_INVOKE_IDEMPOTENCY_ENABLED",
             "write_invoke_idempotency_enabled",
+        ),
+    )
+    workflow_queue_fail_closed: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "WORKFLOW_QUEUE_FAIL_CLOSED",
+            "workflow_queue_fail_closed",
         ),
     )
     # Memory promotion evaluation (v4). 0 disables; default 8 hours.

@@ -8,7 +8,12 @@ from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.workflows.execute import execute_workflow_steps
 from app.workflows.repository import get_run_with_steps, get_supabase_client
-from app.workers.workflow_queue import dequeue_workflow_run, parse_workflow_run_job
+from app.workers.workflow_queue import (
+    acknowledge_workflow_run,
+    dequeue_workflow_run,
+    parse_workflow_run_job,
+    requeue_workflow_run,
+)
 
 logger = get_logger(__name__)
 
@@ -91,6 +96,7 @@ def process_workflow_run_job(settings: Settings, job_raw: str) -> bool:
                 job.run_id,
                 finalize_exc,
             )
+        return False
     return True
 
 
@@ -99,7 +105,11 @@ async def _worker_loop(poll_seconds: int, settings: Settings) -> None:
         try:
             raw = await dequeue_workflow_run(timeout_seconds=poll_seconds)
             if raw:
-                await asyncio.to_thread(process_workflow_run_job, settings, raw)
+                ok = await asyncio.to_thread(process_workflow_run_job, settings, raw)
+                if ok:
+                    await acknowledge_workflow_run(raw)
+                else:
+                    await requeue_workflow_run(raw)
                 continue
         except Exception as exc:  # noqa: BLE001
             logger.warning("workflow_worker_tick error=%s", str(exc))

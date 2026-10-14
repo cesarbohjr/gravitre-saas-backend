@@ -98,7 +98,12 @@ def block_canvas_write_step(
     run_parameters: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Return a failure payload when this write step must not execute."""
-    from app.services.workflow_approval_scope import scope_from_run_parameters, step_allowed_by_scope
+    from app.services.workflow_approval_scope import (
+        approval_scope_required,
+        definition_digest_matches,
+        scope_from_run_parameters,
+        step_allowed_by_scope,
+    )
 
     stype = str(step_type or "").strip()
     action: str | None = None
@@ -114,6 +119,39 @@ def block_canvas_write_step(
         raw = run_row.get("parameters")
         params = raw if isinstance(raw, dict) else None
     scope = scope_from_run_parameters(params)
+    if approval_scope_required(run_row) and not scope:
+        from app.services.gravitre_voice import format_operator_message
+
+        return {
+            "success": False,
+            "error_code": CANVAS_WRITE_AUTHORITY_BLOCKED,
+            "error": format_operator_message(
+                "canvas_write_blocked",
+                confidence_register="blocked",
+                allow_humor=False,
+            ),
+            "action": action,
+            "pending_approval": False,
+            "reason": "approval_scope_missing",
+        }
+    definition = None
+    if isinstance(run_row, dict):
+        definition = run_row.get("definition_snapshot") or run_row.get("definition")
+    if scope and not definition_digest_matches(scope, definition if isinstance(definition, dict) else None):
+        from app.services.gravitre_voice import format_operator_message
+
+        return {
+            "success": False,
+            "error_code": CANVAS_WRITE_AUTHORITY_BLOCKED,
+            "error": format_operator_message(
+                "canvas_write_blocked",
+                confidence_register="blocked",
+                allow_humor=False,
+            ),
+            "action": action,
+            "pending_approval": False,
+            "reason": "approval_scope_digest_mismatch",
+        }
     if scope and not step_allowed_by_scope(step_type=stype, config=config, scope=scope):
         from app.services.gravitre_voice import format_operator_message
 

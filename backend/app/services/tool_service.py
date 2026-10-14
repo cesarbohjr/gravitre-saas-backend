@@ -5258,17 +5258,26 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
 
     write_idempotency_key: str | None = None
     write_logical_action_id: str | None = None
-    if _is_write_invoke(action) and bool(getattr(ctx.settings, "write_invoke_idempotency_enabled", True)):
+    idempotency_enabled = _is_write_invoke(action) and bool(
+        getattr(ctx.settings, "write_invoke_idempotency_enabled", False)
+    )
+    if idempotency_enabled:
         from app.services.write_invoke_idempotency import (
+            WriteIdempotencyUnavailable,
             build_write_idempotency_key,
+            claim_write_invoke,
             inject_provider_idempotency,
-            lookup_completed_write,
-            record_completed_write,
         )
 
         write_idempotency_key, write_logical_action_id = build_write_idempotency_key(ctx, action, params)
-        cached = lookup_completed_write(ctx.client, org_id=ctx.org_id, idempotency_key=write_idempotency_key)
-        if cached is not None:
+        claim = claim_write_invoke(
+            ctx.client,
+            org_id=ctx.org_id,
+            idempotency_key=write_idempotency_key,
+            invoke_action=action,
+            logical_action_id_value=write_logical_action_id,
+        )
+        if claim.outcome == "replay" and claim.replay is not None:
             _write_tool_audit(
                 ctx,
                 action,
@@ -5276,7 +5285,17 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                 "tool.invoke.completed",
                 {"idempotency_replay": True, "idempotency_key": write_idempotency_key[:16]},
             )
-            return cached
+            return claim.replay
+        if claim.outcome == "blocked":
+            raise WriteIdempotencyUnavailable(
+                f"Write already in progress or requires reconciliation ({claim.status or claim.reason})",
+                code="write_idempotency_blocked",
+            )
+        if claim.outcome == "error":
+            raise WriteIdempotencyUnavailable(
+                "Write idempotency ledger unavailable; refusing duplicate-risk invoke",
+                code="write_idempotency_unavailable",
+            )
         params = inject_provider_idempotency(params, write_idempotency_key)
 
     # Last stop check before the provider call, and the record a cancelled
@@ -5354,20 +5373,14 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                         connector_id=result.connector_id or cid,
                         snapshot=compensation_snapshot,
                     )
-            if (
-                result.success
-                and write_idempotency_key
-                and _is_write_invoke(action)
-                and bool(getattr(ctx.settings, "write_invoke_idempotency_enabled", True))
-            ):
-                from app.services.write_invoke_idempotency import record_completed_write
+            if result.success and write_idempotency_key and idempotency_enabled:
+                from app.services.write_invoke_idempotency import finalize_write_invoke
 
-                record_completed_write(
+                finalize_write_invoke(
                     ctx.client,
                     org_id=ctx.org_id,
                     idempotency_key=write_idempotency_key,
-                    invoke_action=action,
-                    logical_action_id_value=write_logical_action_id,
+                    status="completed",
                     result=result,
                 )
             try:
@@ -5446,6 +5459,16 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                 break
             if attempt < len(_RETRY_BACKOFF_SEC):
                 time.sleep(_RETRY_BACKOFF_SEC[attempt])
+
+    if write_idempotency_key and idempotency_enabled and last_error is not None:
+        from app.services.write_invoke_idempotency import finalize_write_invoke
+
+        finalize_write_invoke(
+            ctx.client,
+            org_id=ctx.org_id,
+            idempotency_key=write_idempotency_key,
+            status="uncertain" if isinstance(last_error, ToolOutcomeUncertainError) else "failed",
+        )
 
     finish_write_effect(
         write_effect,

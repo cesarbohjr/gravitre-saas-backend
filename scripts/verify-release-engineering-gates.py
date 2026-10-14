@@ -15,6 +15,7 @@ TESTS = [
     "tests/services/test_workflow_approval_scope.py",
     "tests/services/test_canvas_write_approval_scope.py",
     "tests/services/test_write_invoke_idempotency.py",
+    "tests/services/test_workflow_approval_scope_audit.py",
     "tests/services/test_lifecycle_envelope.py",
     "tests/services/test_event_trigger_queue.py",
     "tests/services/test_event_triggered_runs.py",

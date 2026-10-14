@@ -61,6 +61,73 @@ def scope_from_run_parameters(parameters: dict[str, Any] | None) -> dict[str, An
     return scope if isinstance(scope, dict) else None
 
 
+def definition_digest_matches(scope: dict[str, Any] | None, definition: dict[str, Any] | None) -> bool:
+    if not scope:
+        return True
+    expected = str(scope.get("definition_digest") or "").strip()
+    if not expected:
+        return True
+    current = definition_write_surface(definition if isinstance(definition, dict) else {}).get("definition_digest")
+    return str(current or "") == expected
+
+
+def approval_scope_required(run_row: dict[str, Any] | None) -> bool:
+    if not isinstance(run_row, dict):
+        return False
+    try:
+        required = int(run_row.get("required_approvals") or 0)
+    except (TypeError, ValueError):
+        required = 0
+    return required > 0
+
+
+def block_invoke_by_approval_scope(
+    *,
+    invoke_action: str,
+    run_row: dict[str, Any] | None,
+    run_parameters: dict[str, Any] | None,
+    definition: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Return a block payload when a catalog write is outside the sealed approval scope."""
+    from app.services.catalog_write_authority import invoke_action_requires_write_approval
+
+    if not invoke_action_requires_write_approval(invoke_action):
+        return None
+    if not approval_scope_required(run_row):
+        return None
+    params = run_parameters
+    if params is None and isinstance(run_row, dict):
+        raw = run_row.get("parameters")
+        params = raw if isinstance(raw, dict) else None
+    scope = scope_from_run_parameters(params)
+    if not scope:
+        return {
+            "success": False,
+            "error_code": "approval_scope_missing",
+            "reason": "approval_scope_missing",
+            "action": invoke_action,
+        }
+    if not definition_digest_matches(scope, definition):
+        return {
+            "success": False,
+            "error_code": "approval_scope_digest_mismatch",
+            "reason": "approval_scope_digest_mismatch",
+            "action": invoke_action,
+        }
+    if not step_allowed_by_scope(
+        step_type="invoke_tool",
+        config={"action": invoke_action},
+        scope=scope,
+    ):
+        return {
+            "success": False,
+            "error_code": "approval_scope_mismatch",
+            "reason": "approval_scope_mismatch",
+            "action": invoke_action,
+        }
+    return None
+
+
 def step_allowed_by_scope(
     *,
     step_type: str,

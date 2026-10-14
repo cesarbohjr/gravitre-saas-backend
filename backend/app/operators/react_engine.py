@@ -1108,6 +1108,30 @@ class ReActEngine:
                         "observation_status": "write_commit_interrupted",
                     }
                 if run_allows_catalog_write_execution(run_row):
+                    from app.services.workflow_approval_scope import block_invoke_by_approval_scope
+
+                    params_raw = run_row.get("parameters") if isinstance(run_row.get("parameters"), dict) else {}
+                    definition = run_row.get("definition_snapshot") or run_row.get("definition")
+                    scope_block = block_invoke_by_approval_scope(
+                        invoke_action=invoke_action or tool_name,
+                        run_row=run_row,
+                        run_parameters=params_raw,
+                        definition=definition if isinstance(definition, dict) else None,
+                    )
+                    if scope_block is not None:
+                        return {
+                            "success": False,
+                            "tool": tool_name,
+                            "action": invoke_action,
+                            "error_code": scope_block.get("error_code") or CANVAS_WRITE_AUTHORITY_BLOCKED,
+                            "error": format_operator_message(
+                                "canvas_write_blocked",
+                                confidence_register="blocked",
+                                allow_humor=False,
+                            ),
+                            "provider_invoked": False,
+                            "reason": scope_block.get("reason"),
+                        }
                     from app.connectors.action_catalog.f1_write_slice import is_f1_write_action
                     from app.services.write_preflight import compile_write_for_context
 

@@ -275,19 +275,38 @@ async def _start_event_triggered_run(
         trigger_type=trigger_type,
     )
     run_id = str(created_run["id"])
-    use_queue = bool(getattr(settings, "event_trigger_use_workflow_queue", True))
+    use_queue = bool(getattr(settings, "event_trigger_use_workflow_queue", False))
     if use_queue:
         from app.workers.workflow_dispatch import try_enqueue_workflow_run
 
-        if await try_enqueue_workflow_run(
-            settings,
-            client,
-            org_id=org_id,
-            workflow_id=workflow_id,
-            run_id=run_id,
-        ):
+        try:
+            queued = await try_enqueue_workflow_run(
+                settings,
+                client,
+                org_id=org_id,
+                workflow_id=workflow_id,
+                run_id=run_id,
+            )
+        except RuntimeError as exc:
+            logger.error("%s_queue_enqueue_failed workflow_id=%s run_id=%s error=%s", source, workflow_id, run_id, exc)
+            return {
+                "workflow_id": workflow_id,
+                "run_id": run_id,
+                "status": "failed",
+                "reason": "workflow_queue_unavailable",
+                "retryable": True,
+            }
+        if queued:
             logger.info("%s_run_queued workflow_id=%s run_id=%s", source, workflow_id, run_id)
             return {"workflow_id": workflow_id, "run_id": run_id, "status": "queued"}
+        if bool(getattr(settings, "workflow_queue_fail_closed", False)):
+            return {
+                "workflow_id": workflow_id,
+                "run_id": run_id,
+                "status": "failed",
+                "reason": "workflow_queue_unavailable",
+                "retryable": True,
+            }
     svc = execution_service or get_execution_service()
     try:
         result = await svc.execute_workflow(

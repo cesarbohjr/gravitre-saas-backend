@@ -7,7 +7,7 @@ This document separates **code complete** from **production capable** (acceptanc
 | Release | Delivered in code | Still partial / not started |
 |---------|-------------------|-----------------------------|
 | **R1** | Six-pack + follow-ups on `main` | Full authenticated acceptance matrix; Vercel key audit; incident review |
-| **R2** | Approval scope, write idempotency table + invoke replay, lifecycle envelope persist, write authority config alias | `WRITE_AUTHORITY_MODE=enforce` in prod; stale-run enable + cleanup; relay enable + staging dry-run |
+| **R2** | Approval scope (+ audit fixes), atomic idempotency **claim** (flag default off), lifecycle persist only, write authority config | Enforce mode; pg concurrency tests; lifecycle UI/voice consumers; relay dry-run |
 | **R3** | Event-trigger queue, turn_id attribution, Freshservice trigger UI, automation actor | HubSpot test delivery; Freshservice prod E2E; metering reconciliation / ROI |
 | **R4** | Option A scaffold: `parent_org_id`, app resolver, RLS parent path | Client switcher, external MCP API, R4 acceptance |
 | **Parallel track** | — | Turn tracing, latency proof, memory disposition, resurfacing routes |

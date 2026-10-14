@@ -3,69 +3,72 @@ from unittest.mock import MagicMock
 
 from app.services.tool_types import NormalizedResult, ToolContext
 from app.services.write_invoke_idempotency import (
+    WriteClaimResult,
     build_write_idempotency_key,
-    lookup_completed_write,
-    record_completed_write,
+    claim_write_invoke,
+    finalize_write_invoke,
 )
 
 
-def test_build_key_stable_for_same_chat_write():
-    ctx = ToolContext(
+def test_build_key_differs_by_turn_id():
+    base = dict(
         settings=SimpleNamespace(),
         client=MagicMock(),
         org_id="org-1",
         actor_id="u1",
         conversation_id="conv-1",
     )
+    ctx_a = ToolContext(**base, turn_id="turn-1")
+    ctx_b = ToolContext(**{**base, "turn_id": "turn-2"})
     params = {"pending_action_id": "pa-1", "email": "a@example.com"}
-    k1, lid1 = build_write_idempotency_key(ctx, "gmail.messages.send", params)
-    k2, lid2 = build_write_idempotency_key(ctx, "gmail.messages.send", params)
-    assert k1 == k2 and lid1 == lid2
-    assert k1.startswith("chat:")
+    ka, _ = build_write_idempotency_key(ctx_a, "gmail.messages.send", params)
+    kb, _ = build_write_idempotency_key(ctx_b, "gmail.messages.send", params)
+    assert ka != kb
 
 
-def test_build_key_differs_for_workflow_lineage():
-    base = dict(
+def test_build_key_nonce_allows_intentional_repeat():
+    ctx = ToolContext(
         settings=SimpleNamespace(),
         client=MagicMock(),
         org_id="org-1",
         actor_id="u1",
-        run_id="run-1",
-        step_id="step-1",
+        conversation_id="conv-1",
+        turn_id="turn-1",
     )
-    ctx_a = ToolContext(**base)
-    ctx_b = ToolContext(**{**base, "step_id": "step-2"})
-    ka, _ = build_write_idempotency_key(ctx_a, "slack.messages.post", {"channel": "C1"})
-    kb, _ = build_write_idempotency_key(ctx_b, "slack.messages.post", {"channel": "C1"})
-    assert ka != kb
-    assert ka.startswith("invoke:")
+    params = {"pending_action_id": "pa-1", "_write_idempotency_nonce": "second-send"}
+    k1, _ = build_write_idempotency_key(ctx, "gmail.messages.send", params)
+    k2, _ = build_write_idempotency_key(
+        ctx, "gmail.messages.send", {**params, "_write_idempotency_nonce": "third-send"}
+    )
+    assert k1 != k2
 
 
-def test_lookup_returns_cached_success():
+def test_claim_replay_from_rpc():
     client = MagicMock()
-    client.table.return_value.select.return_value.eq.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
-        {
-            "status": "completed",
-            "result": {
-                "success": True,
-                "action": "hubspot.contacts.update",
-                "data": {"id": "1"},
-            },
-        }
-    ]
-    out = lookup_completed_write(client, org_id="org-1", idempotency_key="invoke:abc")
-    assert out is not None and out.success and out.data["id"] == "1"
-
-
-def test_record_completed_write_upserts():
-    client = MagicMock()
-    record_completed_write(
+    client.rpc.return_value.execute.return_value.data = {
+        "outcome": "replay",
+        "status": "completed",
+        "result": {"success": True, "action": "hubspot.contacts.update", "data": {"id": "1"}},
+    }
+    out = claim_write_invoke(
         client,
         org_id="org-1",
         idempotency_key="invoke:abc",
         invoke_action="hubspot.contacts.update",
         logical_action_id_value=None,
+    )
+    assert isinstance(out, WriteClaimResult)
+    assert out.outcome == "replay" and out.replay is not None and out.replay.success
+
+
+def test_finalize_updates_row():
+    client = MagicMock()
+    finalize_write_invoke(
+        client,
+        org_id="org-1",
+        idempotency_key="invoke:abc",
+        status="completed",
         result=NormalizedResult(success=True, action="hubspot.contacts.update", data={"id": "1"}),
     )
     client.table.assert_called_with("write_invoke_idempotency")
-    client.table.return_value.upsert.assert_called_once()
+    client.table.return_value.update.assert_called_once()
