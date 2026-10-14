@@ -5256,6 +5256,29 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
 
     from app.services.voice_barge_in_write import begin_write_effect, finish_write_effect
 
+    write_idempotency_key: str | None = None
+    write_logical_action_id: str | None = None
+    if _is_write_invoke(action) and bool(getattr(ctx.settings, "write_invoke_idempotency_enabled", True)):
+        from app.services.write_invoke_idempotency import (
+            build_write_idempotency_key,
+            inject_provider_idempotency,
+            lookup_completed_write,
+            record_completed_write,
+        )
+
+        write_idempotency_key, write_logical_action_id = build_write_idempotency_key(ctx, action, params)
+        cached = lookup_completed_write(ctx.client, org_id=ctx.org_id, idempotency_key=write_idempotency_key)
+        if cached is not None:
+            _write_tool_audit(
+                ctx,
+                action,
+                cid,
+                "tool.invoke.completed",
+                {"idempotency_replay": True, "idempotency_key": write_idempotency_key[:16]},
+            )
+            return cached
+        params = inject_provider_idempotency(params, write_idempotency_key)
+
     # Last stop check before the provider call, and the record a cancelled
     # voice turn reads to say what had already been done.
     write_effect = begin_write_effect(ctx, action)
@@ -5331,6 +5354,22 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                         connector_id=result.connector_id or cid,
                         snapshot=compensation_snapshot,
                     )
+            if (
+                result.success
+                and write_idempotency_key
+                and _is_write_invoke(action)
+                and bool(getattr(ctx.settings, "write_invoke_idempotency_enabled", True))
+            ):
+                from app.services.write_invoke_idempotency import record_completed_write
+
+                record_completed_write(
+                    ctx.client,
+                    org_id=ctx.org_id,
+                    idempotency_key=write_idempotency_key,
+                    invoke_action=action,
+                    logical_action_id_value=write_logical_action_id,
+                    result=result,
+                )
             try:
                 from app.services.post_publish_marketing_metrics_service import (
                     maybe_record_post_publish_marketing_baseline,

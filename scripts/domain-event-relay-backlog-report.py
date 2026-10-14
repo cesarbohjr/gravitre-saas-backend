@@ -31,9 +31,21 @@ def main() -> int:
         .data
         or []
     )
+    by_type: dict[str, int] = {}
+    for row in pending:
+        et = str(row.get("event_type") or "")
+        by_type[et] = by_type.get(et, 0) + 1
+    handled = set(handled_event_types())
+    unhandled_pending = {k: v for k, v in by_type.items() if k not in handled}
     report = {
         "handled_event_types": handled_event_types(),
         "stats": stats,
+        "pending_by_event_type": by_type,
+        "unhandled_pending_types": unhandled_pending,
+        "dry_run_note": (
+            "Handlers are not invoked; enable DOMAIN_EVENT_RELAY_ENABLED only after "
+            "idempotency review and operator dry-run on staging."
+        ),
         "pending_sample": pending,
         "pending_count_listed": len(pending),
     }

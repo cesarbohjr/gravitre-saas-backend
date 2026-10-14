@@ -698,6 +698,13 @@ class Settings(BaseSettings):
             "event_trigger_use_workflow_queue",
         ),
     )
+    write_invoke_idempotency_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "WRITE_INVOKE_IDEMPOTENCY_ENABLED",
+            "write_invoke_idempotency_enabled",
+        ),
+    )
     # Memory promotion evaluation (v4). 0 disables; default 8 hours.
     memory_promotion_eval_interval_seconds: int = 28800
     # Memory expiration/decay checks (v4). 0 disables; default daily.
