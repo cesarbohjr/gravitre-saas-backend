@@ -275,6 +275,19 @@ async def _start_event_triggered_run(
         trigger_type=trigger_type,
     )
     run_id = str(created_run["id"])
+    use_queue = bool(getattr(settings, "event_trigger_use_workflow_queue", True))
+    if use_queue:
+        from app.workers.workflow_dispatch import try_enqueue_workflow_run
+
+        if await try_enqueue_workflow_run(
+            settings,
+            client,
+            org_id=org_id,
+            workflow_id=workflow_id,
+            run_id=run_id,
+        ):
+            logger.info("%s_run_queued workflow_id=%s run_id=%s", source, workflow_id, run_id)
+            return {"workflow_id": workflow_id, "run_id": run_id, "status": "queued"}
     svc = execution_service or get_execution_service()
     try:
         result = await svc.execute_workflow(

@@ -13,10 +13,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import app.operators  # noqa: F401
+import app.routers.workflows  # noqa: F401
+
 from app.services.event_triggered_runs import start_event_triggered_run
 
 SETTINGS = SimpleNamespace(
-    policy_allowed_envs="", policy_max_steps=0, policy_max_runtime_seconds=0, disable_connectors=False
+    policy_allowed_envs="",
+    policy_max_steps=0,
+    policy_max_runtime_seconds=0,
+    disable_connectors=False,
+    event_trigger_use_workflow_queue=False,
 )
 READ_ONLY = {"schema_version": "v1", "steps": [{"id": "s1", "name": "Note", "type": "noop"}]}
 WRITES = {"schema_version": "v1", "steps": [{"id": "s1", "name": "Tell the team", "type": "slack_post_message"}]}
