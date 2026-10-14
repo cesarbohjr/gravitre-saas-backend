@@ -1,0 +1,40 @@
+{
+  "started_at": "2026-10-14T05:24:14.476091+00:00",
+  "finished_at": "2026-10-14T05:24:15.223942+00:00",
+  "web_base": "https://gravitre.app",
+  "api_health": "https://api.gravitre.app/health",
+  "checks": [
+    {
+      "id": "web_root",
+      "pass": true,
+      "http_status": 200
+    },
+    {
+      "id": "hero_plays_svg",
+      "pass": true,
+      "http_status": 200
+    },
+    {
+      "id": "plays_auth_gate",
+      "pass": true,
+      "http_status": 307
+    },
+    {
+      "id": "api_health",
+      "pass": true,
+      "http_status": 200,
+      "git_sha": "b642dd1560476e5977fc74629d291b8c5ae2bcee",
+      "expect_sha": "b642dd156",
+      "sha_match": true
+    },
+    {
+      "id": "anonymous_sessions_no_leak",
+      "pass": true,
+      "http_status": 500,
+      "body_snippet": "{\"error\":\"permission denied for table organization_members\"}",
+      "data_leak": false
+    }
+  ],
+  "failed_count": 0,
+  "verdict": "PASS"
+}
