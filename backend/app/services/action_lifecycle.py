@@ -124,24 +124,6 @@ def provider_record_id(structured: dict[str, Any] | None) -> str | None:
     )
 
 
-def composer_envelope_from_turn(
-    *,
-    task_state: dict[str, Any] | None,
-    execution: Any | None = None,
-) -> dict[str, Any]:
-    """Composer-facing slice of lifecycle truth (shared with lifecycle_envelope)."""
-    state = task_state if isinstance(task_state, dict) else {}
-    obs = _latest_observation(state)
-    verified = _observation_verified(obs)
-    stage = semantic_stage_from_state(state)
-    uncertain = stage in {"OUTCOME_UNCERTAIN", "AWAITING_RECONCILIATION"}
-    return {
-        "execution_verified": verified,
-        "provider_result_evidence": bool(isinstance(obs, dict) and obs.get("success")),
-        "data": {"uncertain": uncertain, "semantic_stage": stage},
-    }
-
-
 def logical_action_id(
     *,
     org_id: str,
