@@ -2,7 +2,7 @@
 
 **Branch / draft:** [`cursor/full-release-implementation-6b92`](https://github.com/cesarbohjr/gravitre-saas-backend/pull/429)  
 **Cohesion rules:** [`PLATFORM_COHESION.md`](./PLATFORM_COHESION.md) · **Split plan:** [`PR429_DEPENDENT_SPLIT.md`](./PR429_DEPENDENT_SPLIT.md)  
-**Last updated:** 2026-10-14 (post-`617c0a10d` CI review)  
+**Last updated:** 2026-10-14 (CI fixes pushed `8d990d685`; prior evidence `617c0a10d`)  
 **Legend — implementation:** `NOT STARTED` · `PARTIAL` · `CODE COMPLETE` · `MERGED` · `DEPLOYED`  
 **Legend — acceptance:** `NOT RUN` · `PARTIAL` · `PASS` (evidence-linked only)
 
