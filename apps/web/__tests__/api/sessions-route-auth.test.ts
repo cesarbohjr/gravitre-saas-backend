@@ -45,7 +45,7 @@ function queryBuilder() {
   b.insert = () => b
   b.single = async () =>
     authState.dbError
-      ? { data: null, error: { message: "relation sessions does not exist" } }
+      ? { data: null, error: { message: "permission denied for table sessions" } }
       : {
           data: {
             id: "sess-1",

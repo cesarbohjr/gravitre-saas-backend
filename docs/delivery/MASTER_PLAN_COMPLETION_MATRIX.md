@@ -1,7 +1,8 @@
 # Master plan completion matrix (authoritative)
 
 **Branch / draft:** [`cursor/full-release-implementation-6b92`](https://github.com/cesarbohjr/gravitre-saas-backend/pull/429)  
-**Last updated:** 2026-10-14  
+**Cohesion rules:** [`PLATFORM_COHESION.md`](./PLATFORM_COHESION.md) · **Split plan:** [`PR429_DEPENDENT_SPLIT.md`](./PR429_DEPENDENT_SPLIT.md)  
+**Last updated:** 2026-10-14 (post-`617c0a10d` CI review)  
 **Legend — implementation:** `NOT STARTED` · `PARTIAL` · `CODE COMPLETE` · `MERGED` · `DEPLOYED`  
 **Legend — acceptance:** `NOT RUN` · `PARTIAL` · `PASS` (evidence-linked only)
 
@@ -33,7 +34,8 @@ Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · 
 | Claim token + stale finalize fence | CODE COMPLETE | `eb4b16c93` | PG `test_write_invoke_idempotency_pg.py` (CI gate; local skip) | `20261014100000` + `100001` grants | `WRITE_INVOKE_IDEMPOTENCY_ENABLED=false` | NOT RUN | Migration not applied prod |
 | Expired lease → uncertain / reconcile | CODE COMPLETE | `eb4b16c93` | PG tests | Same | Same | NOT RUN | — |
 | Redis queue ack / requeue / poison | PARTIAL | `eb4b16c93` | Unit + `test_workflow_queue_redis_integration.py` (CI) | — | `EVENT_TRIGGER_USE_WORKFLOW_QUEUE=false` | NOT RUN | Multi-replica visibility |
-| Lifecycle envelope backend | PARTIAL | `8b1dc4534` | `test_lifecycle_envelope.py` | — | — | NOT RUN | Web/voice/ROI consumers |
+| Lifecycle envelope backend | CODE COMPLETE | `617c0a10d` | `test_lifecycle_envelope.py` | — | — | NOT RUN | — |
+| Lifecycle consumers (web) | PARTIAL | *this train* | `lifecycle-envelope.test.ts` | — | — | NOT RUN | Voice + ROI panels |
 | Write authority enforce (not shadow) | PARTIAL (main) | #414 shadow | — | — | — | NOT RUN | Product flip |
 | Stale run recovery (#421) | PARTIAL | main, flag off | — | — | — | NOT RUN | ~19 stuck runs disposition |
 
@@ -108,13 +110,19 @@ Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · 
 
 ## CI / evidence checklist (#429)
 
-| Gate | Status | Evidence pointer |
-|------|--------|------------------|
-| `validate-migrations` | **FAIL → fix in flight** | Scanner false positive; fix `supabase-migration-safety.yml` per-statement GRANT |
-| Backend pytest + PG idempotency | PENDING | Actions run on `c85058e94+` |
-| Redis queue integration | PENDING | Same |
-| Web lint/test/build | PENDING | Same |
-| Engineering gates script | PASS (local) | `docs/delivery/release-engineering-gates.json` @ branch tip |
+Commit **`617c0a10d`** — run [38538270578](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/38538270578) @ `617c0a10df1dac8de82ed50e68d2a551f352c19c`
+
+| Gate | Status | Evidence (counts) | Next action |
+|------|--------|-------------------|-------------|
+| `validate-migrations` | **PASS** | Job `115766653265` @ `617c0a10d` | — |
+| PG idempotency acceptance | **PASS (0 skip)** | **9 passed** in job step (log ~08:57:11Z) | — |
+| Redis queue integration | **PASS (0 skip)** | **5 passed** in job step (log ~08:57:18Z) | — |
+| Full Backend pytest | **FAIL** | **10946 passed, 7 skipped, 1 failed** — `test_react_canvas_write_gate.py::test_canvas_run_approved_allows_write` (`approval_scope_missing`) | Fixed in working tree; re-run CI |
+| Web unit tests | **FAIL** | **1726 passed, 1 failed** — `sessions-route-auth.test.ts` POST 503 vs 201 | Fixed in working tree |
+| Shared runtime text/voice gate | **PASS** | Same run | — |
+| Engineering gates script | **PASS (local)** | 52 passed — `release-engineering-gates.json` | Refresh on push |
+
+**Migration apply order (not prod):** `20261014100000` → `20261014100001` (grants). Flags remain **off**.
 
 ---
 

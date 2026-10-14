@@ -41,6 +41,7 @@ import {
 } from "@/lib/department-context"
 import { resolveOperatorActiveContext } from "@/lib/operator-context"
 import { parseChatError } from "@/lib/chat-errors"
+import { mergeTaskStateMonotonic } from "@/lib/lifecycle-envelope"
 import { isUserChatAbort, recoverCompletedChatTurn, writeLastEventId } from "@/lib/chat-replay"
 import { stopChatTurn } from "@/lib/chat-stop"
 import { CONTINUE_AFTER_STOP_TEXT } from "@/lib/chat-continue"
@@ -707,7 +708,11 @@ export function AiWorkspace({
       // never ran. They are reset when the next prompt is sent instead.
       if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
       if (payload.pendingTask) setPendingTask(payload.pendingTask)
-      if (payload.taskState) setTaskState(payload.taskState)
+      if (payload.taskState) {
+        setTaskState((prev) =>
+          mergeTaskStateMonotonic(prev as Record<string, unknown> | null, payload.taskState as Record<string, unknown>) as typeof prev,
+        )
+      }
       if (payload.strategicPlan) setStrategicPlan(payload.strategicPlan)
       if (payload.advisorBrief) setAdvisorBrief(payload.advisorBrief)
       if (payload.explainability) setExplainability(payload.explainability)
@@ -806,7 +811,9 @@ export function AiWorkspace({
       revalidateOnFocus: false,
       onSuccess: (data) => {
         if (data?.task_state) {
-          setTaskState(data.task_state as typeof taskState)
+          setTaskState((prev) =>
+            mergeTaskStateMonotonic(prev as Record<string, unknown> | null, data.task_state as Record<string, unknown>) as typeof prev,
+          )
         }
         const stored = data?.execution_result as ChatExecutionResult | null | undefined
         if (stored && (stored.artifacts?.length || stored.body || stored.title)) {
