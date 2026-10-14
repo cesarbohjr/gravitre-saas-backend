@@ -479,6 +479,9 @@ async def complete_with_tools(
     from app.services.narrowed_tools import assert_tools_narrowed
 
     assert_tools_narrowed(tools, where="provider_tool_router.complete_with_tools")
+    from app.services.tool_model_metering import authorize_tool_model_call
+
+    await authorize_tool_model_call(router, model=model)
     provider = resolve_provider_for_model(model)
     settings = getattr(router, "settings", None)
     start = time.perf_counter()

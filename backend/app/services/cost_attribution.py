@@ -18,14 +18,17 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
+_org_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("model_call_org_id", default=None)
 _run_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("cost_run_id", default=None)
 _turn_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("cost_turn_id", default=None)
 ATTRIBUTION_KEYS = ("run_id", "turn_id")
 
 
 @contextmanager
-def attribution(*, run_id: str | None = None, turn_id: str | None = None) -> Iterator[None]:
+def attribution(*, run_id: str | None = None, turn_id: str | None = None, org_id: str | None = None) -> Iterator[None]:
     tokens = []
+    if org_id:
+        tokens.append((_org_id, _org_id.set(str(org_id))))
     if run_id:
         tokens.append((_run_id, _run_id.set(str(run_id))))
     if turn_id:
@@ -35,6 +38,10 @@ def attribution(*, run_id: str | None = None, turn_id: str | None = None) -> Ite
     finally:
         for var, token in reversed(tokens):
             var.reset(token)
+
+
+def current_model_org_id() -> str | None:
+    return _org_id.get()
 
 
 def attribution_fields() -> dict[str, str]:

@@ -50,3 +50,18 @@ async def record_tool_response(router: Any, *, org_id: str | None, model: str, e
         cached_tokens=int(getattr(details, "cached_tokens", 0) or 0), agent_id=agent_id,
         cache_write_tokens=int(getattr(details, "cache_write_tokens", 0) or 0),
     )
+
+
+async def authorize_tool_model_call(router: Any, *, model: str) -> None:
+    """Apply the existing org model policy and budget before provider dispatch."""
+    import asyncio
+    from app.services.ai_guardrails import AIServiceDisabledError
+    from app.services.cost_attribution import current_model_org_id
+
+    if bool(getattr(getattr(router, "settings", None), "disable_ai", False)):
+        raise AIServiceDisabledError()
+    org_id = current_model_org_id()
+    if org_id is None:
+        return
+    await asyncio.to_thread(router._assert_model_policy, org_id, model)
+    await asyncio.to_thread(router._enforce_rate_and_budget, org_id)

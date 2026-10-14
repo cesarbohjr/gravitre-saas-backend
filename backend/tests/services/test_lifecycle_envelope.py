@@ -13,7 +13,7 @@ def test_customer_stage_maps_completed():
             "execution_observations": [
                 {
                     "success": True,
-                    "structured": {"verification_status": "verified"},
+                    "structured": {"verification": {"verified": True, "method": "entity_get", "read_action": "x.y.get"}},
                     "capability_id": "x.y.z",
                 }
             ],
@@ -34,3 +34,14 @@ def test_enrich_writes_envelope_keys():
     state = enrich_task_state_with_lifecycle_envelope({"pending_task": None})
     assert "lifecycle_envelope" in state
     assert state["action_lifecycle"] == state["lifecycle_envelope"]["semantic_stage"]
+
+
+def test_provider_verified_label_is_not_read_back_proof():
+    env = build_lifecycle_envelope({
+        "pending_task": {"status": "executed", "params": {"invoke_action": "x.y.z"}},
+        "execution_observations": [{"success": True, "capability_id": "x.y.z",
+            "verification_status": "verified", "structured": {"id": "provider-1",
+                "verification_status": "verified", "verification": {"verified": True}}}],
+    })
+    assert env["customer_stage"] == "verifying"
+    assert env["execution_verified"] is False

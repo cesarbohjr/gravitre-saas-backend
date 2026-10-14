@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
+import asyncio
 
 import pytest
 
 from app.config import Settings
 from app.operators.react_engine import ReActEngine
-from app.services.cost_attribution import attribution_fields
+from app.services.cost_attribution import attribution_fields, current_model_org_id
 from app.services.tool_types import ToolContext
 
 
@@ -66,3 +67,28 @@ async def test_run_clears_turn_attribution_after_completion():
         await engine.run(ctx=ctx, task="hello")
 
     assert attribution_fields() == {}
+
+
+@pytest.mark.asyncio
+async def test_stream_can_resume_in_another_task_without_leaking_attribution():
+    engine = ReActEngine(settings=Settings())
+    ctx = ToolContext(settings=Settings(), client=MagicMock(), org_id="org-1",
+                      actor_id="user-1", turn_id="turn-voice", run_id="run-voice")
+    seen = []
+
+    async def fake_loop(**_kwargs):
+        from app.operators.stream_events import ReActStreamEvent
+
+        for _ in range(2):
+            seen.append((dict(attribution_fields()), current_model_org_id()))
+            yield ReActStreamEvent(kind="text_delta", content="ok")
+
+    with patch.object(engine, "_react_loop", fake_loop):
+        stream = engine.run_streaming(ctx=ctx, task="hello")
+        assert (await asyncio.create_task(anext(stream))).content == "ok"
+        assert (await asyncio.create_task(anext(stream))).content == "ok"
+        await asyncio.create_task(stream.aclose())
+
+    assert seen == [({"run_id": "run-voice", "turn_id": "turn-voice"}, "org-1")] * 2
+    assert attribution_fields() == {}
+    assert current_model_org_id() is None

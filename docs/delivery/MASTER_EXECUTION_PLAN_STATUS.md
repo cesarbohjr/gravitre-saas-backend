@@ -105,7 +105,7 @@ Automated anonymous smoke: `scripts/verify-release1-production-smoke.py` → `do
 
 ## 7. Release 4 — MSP / external MCP
 
-**PARTIAL (Option A scaffold)** — `parent_org_id` migration, `msp_org_context` + `MSP_PARENT_ORG_ENABLED`, RLS `auth_org_accessible` parent path (`20261014110000`). External MCP API, client switcher, acceptance **NOT STARTED**. See `docs/design/RELEASE_4_MSP_CLIENT_MODEL_OPTIONS.md`.
+**PARTIAL (Option A scaffold)** — `parent_org_id` migration and `msp_org_context` + `MSP_PARENT_ORG_ENABLED`, with explicit child membership still required. The parent RLS path (`20261014110000`) was **withdrawn** and must not be applied. External MCP API, client switcher, acceptance **NOT STARTED**. See `docs/design/RELEASE_4_MSP_CLIENT_MODEL_OPTIONS.md`.
 
 ---
 

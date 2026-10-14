@@ -357,6 +357,9 @@ async def _complete_unified_turn(
 
     provider = resolve_provider_for_model(model)
     if provider == "openai":
+        from app.services.tool_model_metering import authorize_tool_model_call
+
+        await authorize_tool_model_call(router, model=model)
         return await _complete_unified_turn_stream(
             openai_client,
             kwargs=kwargs,
@@ -1361,17 +1364,20 @@ async def run_unified_turn_shadow(
                 breakdown["conversational_no_tools"] = True
                 breakdown["voice_conversational_model"] = model
             round_start = time.perf_counter()
-            completion = await _complete_unified_turn(
-                router,
-                openai_client,
-                model=model,
-                kwargs=kwargs,
-                wall_start=wall_start,
-                model_start=model_start if prog_round == 0 else time.perf_counter(),
-                timeout_s=stream_timeout_s,
-                on_text_delta=on_text_delta if prog_round == 0 else None,
-                on_tool_call_delta=on_tool_call_delta if prog_round == 0 else None,
-            )
+            from app.services.cost_attribution import attribution
+
+            with attribution(org_id=org_id):
+                completion = await _complete_unified_turn(
+                    router,
+                    openai_client,
+                    model=model,
+                    kwargs=kwargs,
+                    wall_start=wall_start,
+                    model_start=model_start if prog_round == 0 else time.perf_counter(),
+                    timeout_s=stream_timeout_s,
+                    on_text_delta=on_text_delta if prog_round == 0 else None,
+                    on_tool_call_delta=on_tool_call_delta if prog_round == 0 else None,
+                )
             from app.services.tool_model_metering import record_tool_model_call
 
             await record_tool_model_call(
@@ -1623,16 +1629,26 @@ async def run_unified_turn_shadow(
                     if _supports_custom_temperature(model):
                         retry_kwargs["temperature"] = 0.2
                     retry_start = time.perf_counter()
-                    completion = await _complete_unified_turn(
-                        router,
-                        openai_client,
-                        model=model,
-                        kwargs=retry_kwargs,
-                        wall_start=wall_start,
-                        model_start=time.perf_counter(),
-                        timeout_s=stream_timeout_s,
-                        on_text_delta=on_text_delta,
-                        on_tool_call_delta=on_tool_call_delta,
+                    from app.services.cost_attribution import attribution
+
+                    with attribution(org_id=org_id):
+                        completion = await _complete_unified_turn(
+                            router,
+                            openai_client,
+                            model=model,
+                            kwargs=retry_kwargs,
+                            wall_start=wall_start,
+                            model_start=time.perf_counter(),
+                            timeout_s=stream_timeout_s,
+                            on_text_delta=on_text_delta,
+                            on_tool_call_delta=on_tool_call_delta,
+                        )
+                    from app.services.tool_model_metering import record_tool_model_call
+
+                    await record_tool_model_call(
+                        router, org_id=org_id, model=model, elapsed_ms=completion.model_total_ms,
+                        input_tokens=completion.prompt_tokens, output_tokens=completion.completion_tokens,
+                        cached_tokens=completion.cached_tokens, cache_write_tokens=completion.cache_write_tokens,
                     )
                     breakdown["auto_schema_retry_ms"] = int(
                         (time.perf_counter() - retry_start) * 1000

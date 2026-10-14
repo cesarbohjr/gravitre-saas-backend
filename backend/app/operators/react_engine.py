@@ -364,7 +364,7 @@ class ReActEngine:
         run_id = str(ctx.run_id).strip() if getattr(ctx, "run_id", None) else None
         try:
             with trace_span("react_engine.run", org_id=ctx.org_id, agent_id=ctx.agent_id):
-                with attribution(run_id=run_id):
+                with attribution(run_id=run_id, org_id=ctx.org_id):
                     result: ReActResult | None = None
                     async for event in self._react_loop(
                         ctx=ctx,
@@ -417,38 +417,34 @@ class ReActEngine:
         before the first tool runs and yields the answer sentence by sentence
         while it is generated, instead of after the whole call returns.
         """
-        from app.services.cost_attribution import attribution, bind_turn_attribution, reset_turn_attribution
+        from app.services.cost_attribution import attribution, attribution_fields
 
-        turn_token = bind_turn_attribution(
-            str(ctx.turn_id).strip() if getattr(ctx, "turn_id", None) else None
-        )
+        # Voice silence ticks resume this iterator from different asyncio tasks.
+        # ContextVar tokens must be reset in the same task that created them.
+        turn_id = (str(ctx.turn_id).strip() if getattr(ctx, "turn_id", None)
+                   else attribution_fields().get("turn_id"))
         run_id = str(ctx.run_id).strip() if getattr(ctx, "run_id", None) else None
+        source = self._react_loop(
+            ctx=ctx, task=task, system_prompt=system_prompt,
+            permitted_tools=permitted_tools, connected_integrations=connected_integrations,
+            max_iterations=max_iterations, model=model, agent=agent,
+            audit_resource_type=audit_resource_type, audit_resource_id=audit_resource_id,
+            emit_text_deltas=True, routing_control=routing_control, tool_query=tool_query,
+            tool_classification=tool_classification, connector_focus=connector_focus,
+            plan_runtime=plan_runtime, conversation_history=conversation_history,
+            interrupt=interrupt, stream_answer=stream_answer,
+        )
         try:
-            with attribution(run_id=run_id):
-                async for event in self._react_loop(
-                    ctx=ctx,
-                    task=task,
-                    system_prompt=system_prompt,
-                    permitted_tools=permitted_tools,
-                    connected_integrations=connected_integrations,
-                    max_iterations=max_iterations,
-                    model=model,
-                    agent=agent,
-                    audit_resource_type=audit_resource_type,
-                    audit_resource_id=audit_resource_id,
-                    emit_text_deltas=True,
-                    routing_control=routing_control,
-                    tool_query=tool_query,
-                    tool_classification=tool_classification,
-                    connector_focus=connector_focus,
-                    plan_runtime=plan_runtime,
-                    conversation_history=conversation_history,
-                    interrupt=interrupt,
-                    stream_answer=stream_answer,
-                ):
-                    yield event
+            while True:
+                with attribution(run_id=run_id, turn_id=turn_id, org_id=ctx.org_id):
+                    try:
+                        event = await anext(source)
+                    except StopAsyncIteration:
+                        break
+                yield event
         finally:
-            reset_turn_attribution(turn_token)
+            with attribution(run_id=run_id, turn_id=turn_id, org_id=ctx.org_id):
+                await source.aclose()
 
     async def _react_loop(
         self,
@@ -1390,6 +1386,9 @@ class ReActEngine:
             kwargs["temperature"] = 0.2
         started = time.perf_counter()
         try:
+            from app.services.tool_model_metering import authorize_tool_model_call
+
+            await authorize_tool_model_call(self.router, model=model)
             completion = await _complete_unified_turn_stream(
                 client,
                 kwargs=kwargs,

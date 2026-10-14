@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.services.cost_attribution import attribution, attribution_fields
-from app.services.tool_model_metering import record_tool_response
+from app.services.tool_model_metering import authorize_tool_model_call, record_tool_response
 
 
 @pytest.mark.asyncio
@@ -40,3 +40,22 @@ def test_anthropic_cache_usage_is_not_lost_in_normalization():
     assert normalized.usage.prompt_tokens == 160
     assert normalized.usage.prompt_tokens_details.cached_tokens == 50
     assert normalized.usage.prompt_tokens_details.cache_write_tokens == 10
+
+
+@pytest.mark.asyncio
+async def test_direct_provider_gate_checks_existing_org_policy_and_budget():
+    router = SimpleNamespace(settings=SimpleNamespace(disable_ai=False),
+        _assert_model_policy=MagicMock(), _enforce_rate_and_budget=MagicMock())
+    with attribution(org_id="client-org", turn_id="turn-1"):
+        await authorize_tool_model_call(router, model="claude-haiku-5-5")
+    router._assert_model_policy.assert_called_once_with("client-org", "claude-haiku-5-5")
+    router._enforce_rate_and_budget.assert_called_once_with("client-org")
+
+
+@pytest.mark.asyncio
+async def test_direct_provider_gate_stops_when_budget_refuses():
+    router = SimpleNamespace(settings=SimpleNamespace(disable_ai=False),
+        _assert_model_policy=MagicMock(), _enforce_rate_and_budget=MagicMock(side_effect=RuntimeError("budget exceeded")))
+    with attribution(org_id="client-org"):
+        with pytest.raises(RuntimeError, match="budget exceeded"):
+            await authorize_tool_model_call(router, model="claude-haiku-5-5")

@@ -11,6 +11,7 @@ Implementation continues on `codex/master-plan-completion-20261014`, based on dr
 - ReAct and unified LIVE/shadow tool-calling rounds use the existing ModelRouter model_calls writer and attribution context. Synthetic handoffs are not charged as model calls. This does not close all failure/cancellation metering or historical billing reconciliation.
 - Haiku 5.5 joins the existing catalog/selector/registry; its 100,000-token price threshold and cache rates are accounted for. Sonnet 5.5 cache reads use the vendor's October 7 price. No routing defaults or customer credit multipliers change.
 - MSP parent links cannot grant child access by themselves. Explicit child membership remains required until client-specific delegation, role enforcement and RLS are delivered.
+- A follow-on draft increment fixes the scenario fake database's PostgREST revision comparison, carries model attribution across voice task resumption, uses verifier evidence before lifecycle completion, and requires a runtime-equivalent backend SHA at deployment. Its direct provider model gate reuses existing policy and budget checks, which are not yet fail-closed or atomic.
 
 ## Gates and configuration
 
@@ -23,6 +24,10 @@ The new claim hash/lease/owner keys coexist with the old processing list. Before
 ## Remaining master-plan work
 
 The completion matrix remains open for authenticated Release 1 acceptance, staging migration application, durable verification recovery and production activation; full argument-approval flows for resolved dynamic tasks; complete billing/failure attribution and PSA baselines/ROI; Freshservice/HubSpot live proofs; intelligence latency and complete document-memory lineage/resurfacing; client-scoped MSP delegation and switching; external MCP/API-key/OAuth distribution; model quality evaluations and adaptive routing; and third-party verification and marketplace reviews.
+
+Draft #431 CI has green focused Postgres, Redis and web gates, but its full backend run was red on scenario fake-database behavior and approval fixture expectations. The historical migration `20250220000006` also blocks a clean staging replay through a function return-type change. These are acceptance blockers until the corrected backend suite and clean replay pass; they do not justify activation of any production flags.
+
+The restored increment passed 83 focused lifecycle, approval, voice, model metering and attribution tests and a local Git-history deploy-revision test. Automatic approval review blocked its broader scenario run after detecting attempted external provider storage traffic; the suite has no completed verdict in this environment. CI must prove provider calls are intercepted before replaying it. The draft branch has not been merged or deployed.
 
 These remain implementation or external acceptance work. Passing local tests does not close those rows or authorize a production flag flip. Source privacy and Memory Option B retain the existing owner/consent requirements.
 

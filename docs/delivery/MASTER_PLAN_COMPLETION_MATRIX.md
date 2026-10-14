@@ -10,6 +10,8 @@
 
 Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · **Config / flags** · **Production acceptance** · **Blocker**
 
+**Latest draft evidence:** [#431](https://github.com/cesarbohjr/gravitre-saas-backend/pull/431) at `f7585d8a`. CI [38600879096](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/38600879096) passed web tests, typecheck/build, 9 real-Postgres claim tests and 9 real-Redis queue tests; full backend had **83 failures, 10,886 passes, 7 skips**. Scenario fake-PostgREST revision handling and approval test fixtures caused most new failures and are corrected in the next draft increment pending CI. The [migration replay run 38600880008](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/38600880008) passed validation but clean `supabase db reset` failed at the older `20250220000006` migration attempting to change a function's return type via CREATE OR REPLACE. Production acceptance and migration application remain open.
+
 ---
 
 ## 1. Release 1 — security and authenticated acceptance
@@ -76,7 +78,7 @@ Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · 
 | Item | Impl | PR / commit | Tests executed | Migrations | Config | Prod acceptance | Blocker |
 |------|------|-------------|----------------|------------|--------|-----------------|---------|
 | Catalog / pricing | CODE COMPLETE for Haiku/Sonnet slice | Codex branch | Haiku 100k threshold and cache-write pricing; selector/catalog parity | — | Existing routing defaults | NOT RUN | Model quality evaluations and complete pricing refresh |
-| Budget caps + adaptive routing | NOT STARTED | — | — | — | — | NOT RUN | Release 7 scope |
+| Budget caps + adaptive routing | PARTIAL (existing non-atomic policy/budget checks; new direct-provider gate in draft) | #431 next increment | Targeted regressions pending | — | No production activation | NOT RUN | Policy lookup is best effort; no atomic budget reservations or quality evidence |
 | Briefing evals (Haiku / Argon / etc.) | NOT STARTED | — | — | — | — | NOT RUN | Third-party deps |
 
 ---

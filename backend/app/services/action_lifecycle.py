@@ -50,11 +50,9 @@ def _observation_verified(obs: dict[str, Any] | None) -> bool:
     if not isinstance(obs, dict):
         return False
     structured = obs.get("structured") if isinstance(obs.get("structured"), dict) else {}
-    return bool(
-        obs.get("verification_status") == "verified"
-        or structured.get("verification_status") == "verified"
-        or (isinstance(structured.get("verification"), dict) and structured["verification"].get("verified"))
-    )
+    from app.services.outcome_verification import evidence_is_verified
+
+    return evidence_is_verified(obs) or evidence_is_verified(structured)
 
 
 def semantic_stage_from_state(task_state: dict[str, Any] | None) -> SemanticStage:

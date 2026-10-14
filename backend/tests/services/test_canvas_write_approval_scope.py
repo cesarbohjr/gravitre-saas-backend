@@ -1,12 +1,11 @@
 from app.services.canvas_write_gate import block_canvas_write_step
+from app.services.workflow_approval_scope import seal_approval_scope
 
 
 def test_block_step_outside_approval_scope():
-    run_row = {"approval_status": "approved", "required_approvals": 1}
-    scope = {
-        "allowed_invoke_actions": ["hubspot.contacts.create"],
-        "allowed_external_step_types": [],
-    }
+    definition = {"steps": [{"type": "invoke_tool", "config": {"action": "hubspot.contacts.create"}}]}
+    run_row = {"approval_status": "approved", "required_approvals": 1, "definition_snapshot": definition}
+    scope = seal_approval_scope(definition)
     blocked = block_canvas_write_step(
         step_type="invoke_tool",
         config={"action": "hubspot.deals.create"},
