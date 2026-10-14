@@ -7,9 +7,9 @@ const webRoot = resolve(__dirname, "../..")
 describe("UX Reset Phase 6 — remaining hub IA flatten", () => {
   it("workflows default to a table, not a card grid", () => {
     const src = readFileSync(resolve(webRoot, "app/(app)/workflows/page.tsx"), "utf8")
-    expect(src).toMatch(/useState<"grid" \| "table">\("table"\)/)
-    expect(src).toMatch(/<PhaseBand/)
-    expect(src).not.toMatch(/workflow\{runningCount > 1/)
+    expect(src).toMatch(/useState<WorkflowView>\("table"\)/)
+    // Status counts filter the list from the hero and the window band.
+    expect(src).toMatch(/summarizeFleet\(/)
     expect(src).not.toMatch(/isMobile \? "grid"/)
   })
 

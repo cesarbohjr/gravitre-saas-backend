@@ -194,3 +194,47 @@ def test_act_within_policy_run_fails_closed():
         )
     assert response.status_code == 409
     assert "effective runtime action authorization" in response.json()["detail"]
+
+
+def test_plays_list_carries_department_and_switched_on_authority():
+    """The Plays page groups by department and shows the authority an org turned on."""
+    from tests.services.fake_supabase_db import FakeSupabaseDB
+
+    _auth("org-1")
+    db = FakeSupabaseDB()
+    db.tables["play_installations"] = [
+        {
+            "id": "inst-1",
+            "org_id": "org-1",
+            "environment_name": "production",
+            "play_key": "stalled-deal-recovery",
+            "play_version": "1",
+            "operating_mode": "RECOMMEND",
+            "status": "ready",
+        },
+        {
+            "id": "inst-other-org",
+            "org_id": "org-2",
+            "environment_name": "production",
+            "play_key": "churn-risk-intervention",
+            "play_version": "1",
+            "operating_mode": "OBSERVE",
+            "status": "ready",
+        },
+    ]
+    with patch("app.routers.plays.get_supabase_client", return_value=db), \
+         patch("app.routers.plays.connected_vendors", return_value=set()), \
+         patch("app.routers.plays.list_all_play_workflow_bindings", return_value={}), \
+         patch("app.routers.plays.org_metric_keys", return_value=set()):
+        response = client.get("/api/plays")
+    assert response.status_code == 200, response.text
+    items = {item["play"]["key"]: item for item in response.json()["plays"]}
+    stalled = items["stalled-deal-recovery"]
+    assert stalled["play"]["department"] == "sales"
+    assert stalled["installation"]["operatingMode"] == "RECOMMEND"
+    assert stalled["installation"]["id"] == "inst-1"
+    # Another org's installation never leaks into this org's list.
+    assert items["churn-risk-intervention"]["installation"] is None
+    assert items["churn-risk-intervention"]["play"]["department"] == "customer_success"
+    # Cross-department platform Plays carry no department.
+    assert items["customer-rescue"]["play"]["department"] == ""

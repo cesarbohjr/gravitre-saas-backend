@@ -21,6 +21,13 @@ export interface UseSchedulesResult {
   error: unknown
   /** Always false — sample fallback removed; empty state shown instead. */
   isSample: boolean
+  /**
+   * How much of the window's run history is present:
+   * "complete"  the unified endpoint read every run in the window;
+   * "truncated" it hit its read ceiling, so the oldest runs are missing;
+   * "unknown"   the legacy fan-out served the data, which only reads the latest 100 runs.
+   */
+  coverage: ScheduleCoverage
   refresh: () => void
 }
 
@@ -44,10 +51,20 @@ function mapApiItem(item: ApiScheduledItem): ScheduledItem {
     runAt: item.runAt,
     endsAt: item.endsAt,
     name: item.name,
+    durationMs: item.durationMs,
+    error: item.error,
+    workflowName: item.workflowName,
+    triggerType: item.triggerType,
   }
 }
 
-async function loadSchedules(options: UseSchedulesOptions): Promise<ScheduledItem[]> {
+const EMPTY_ITEMS: ScheduledItem[] = []
+
+export type ScheduleCoverage = "complete" | "truncated" | "unknown"
+
+type LoadedSchedules = { items: ScheduledItem[]; coverage: ScheduleCoverage }
+
+async function loadSchedules(options: UseSchedulesOptions): Promise<LoadedSchedules> {
   const preferUnified = options.preferUnifiedEndpoint !== false
   if (preferUnified) {
     try {
@@ -57,7 +74,7 @@ async function loadSchedules(options: UseSchedulesOptions): Promise<ScheduledIte
         to: options.to,
         kinds: options.kinds,
       })
-      return response.items.map(mapApiItem)
+      return { items: response.items.map(mapApiItem), coverage: response.runsTruncated === true ? "truncated" : "complete" }
     } catch (error) {
       const status = error instanceof ApiError ? error.status : undefined
       if (status && status !== 404 && status !== 501) {
@@ -66,13 +83,15 @@ async function loadSchedules(options: UseSchedulesOptions): Promise<ScheduledIte
     }
   }
 
-  return aggregateSchedulesClientSide({
+  const items = await aggregateSchedulesClientSide({
     listWorkflows: workflowsApi.list,
     listSchedules: workflowsApi.listSchedules,
     listRuns: runsApi.list,
     listJobs: trainingApi.listJobs,
     workflowId: options.workflowId,
   })
+  // The fan-out reads at most 100 runs, so it cannot vouch for a whole month.
+  return { items, coverage: "unknown" }
 }
 
 /**
@@ -96,19 +115,20 @@ export function useSchedules(optionsOrWorkflowId?: string | UseSchedulesOptions)
       ]
     : null
 
-  const { data, error, isLoading, mutate } = useSWR<ScheduledItem[]>(
+  const { data, error, isLoading, mutate } = useSWR<LoadedSchedules>(
     key,
     () => loadSchedules(options),
     { revalidateOnFocus: false, keepPreviousData: true },
   )
 
-  const liveItems = data ?? []
+  const liveItems = data?.items ?? EMPTY_ITEMS
 
   return {
     items: liveItems,
     isLoading,
     error,
     isSample: false,
+    coverage: data?.coverage ?? "unknown",
     refresh: () => {
       void mutate()
     },
