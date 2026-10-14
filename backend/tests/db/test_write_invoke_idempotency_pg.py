@@ -10,6 +10,7 @@ import pytest
 from tests.db.pg_harness import MIGRATIONS, PG_BIN, pg_cluster, requires_pg
 
 MIGRATION = MIGRATIONS / "20261014100000_write_invoke_idempotency.sql"
+MIGRATION_GRANTS = MIGRATIONS / "20261014100001_write_invoke_idempotency_grants.sql"
 
 ORG_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 ORG_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
@@ -77,7 +78,7 @@ SELECT public.reconcile_write_invoke_idempotency(
 
 @pytest.fixture(scope="module")
 def pg():
-    with pg_cluster(BOOTSTRAP_SQL, MIGRATION.read_text()) as server:
+    with pg_cluster(BOOTSTRAP_SQL, MIGRATION.read_text(), MIGRATION_GRANTS.read_text()) as server:
         yield server
 
 

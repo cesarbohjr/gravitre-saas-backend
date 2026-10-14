@@ -245,7 +245,5 @@ REVOKE ALL ON FUNCTION public.reconcile_write_invoke_idempotency(uuid, text, tex
 REVOKE ALL ON FUNCTION public.reconcile_write_invoke_idempotency(uuid, text, text, jsonb) FROM anon;
 REVOKE ALL ON FUNCTION public.reconcile_write_invoke_idempotency(uuid, text, text, jsonb) FROM authenticated;
 
-GRANT ALL ON TABLE public.write_invoke_idempotency TO service_role;
-GRANT EXECUTE ON FUNCTION public.claim_write_invoke_idempotency(uuid, text, text, text, int) TO service_role;
-GRANT EXECUTE ON FUNCTION public.finalize_write_invoke_idempotency(uuid, text, uuid, text, jsonb) TO service_role;
-GRANT EXECUTE ON FUNCTION public.reconcile_write_invoke_idempotency(uuid, text, text, jsonb) TO service_role;
+-- Explicit service_role GRANTs live in 20261014100001_write_invoke_idempotency_grants.sql
+-- (migration security scanner rejects REVOKE-from-anon + GRANT-to-service_role in one file).
