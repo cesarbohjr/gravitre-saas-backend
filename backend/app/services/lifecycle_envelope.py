@@ -70,6 +70,8 @@ def build_lifecycle_envelope(
         )
     record_id = provider_record_id(structured) or params.get("provider_record_id")
     customer = CUSTOMER_STAGE.get(stage, "accepted")
+    if stage == "COMPLETED" and not compose.get("execution_verified"):
+        customer = "verifying"
     return {
         "semantic_stage": stage,
         "customer_stage": customer,

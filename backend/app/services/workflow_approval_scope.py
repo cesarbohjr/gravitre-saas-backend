@@ -12,6 +12,11 @@ from typing import Any
 from app.services.canvas_write_gate import EXTERNAL_WRITE_STEP_TYPES, _invoke_action_from_step, _iter_definition_steps
 from app.services.catalog_write_authority import invoke_action_requires_write_approval
 from app.services.tool_service import STEP_TYPE_TO_ACTION
+from app.services.write_approval_fingerprints import (
+    allowed_write_targets_from_definition,
+    invoke_target_allowed,
+    write_target_fingerprint,
+)
 
 APPROVAL_SCOPE_KEY = "approval_scope"
 
@@ -33,10 +38,12 @@ def definition_write_surface(definition: dict[str, Any] | None) -> dict[str, Any
             invoke_actions.add(action)
     payload = json.dumps(definition or {}, sort_keys=True, default=str)
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    targets = allowed_write_targets_from_definition(definition)
     return {
         "definition_digest": digest,
         "allowed_invoke_actions": sorted(invoke_actions),
         "allowed_external_step_types": sorted(external_types),
+        "allowed_write_targets": targets,
     }
 
 
@@ -87,6 +94,7 @@ def block_invoke_by_approval_scope(
     run_row: dict[str, Any] | None,
     run_parameters: dict[str, Any] | None,
     definition: dict[str, Any] | None,
+    invoke_params: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Return a block payload when a catalog write is outside the sealed approval scope."""
     from app.services.catalog_write_authority import invoke_action_requires_write_approval
@@ -124,6 +132,23 @@ def block_invoke_by_approval_scope(
             "error_code": "approval_scope_mismatch",
             "reason": "approval_scope_mismatch",
             "action": invoke_action,
+        }
+    allowed_targets = scope.get("allowed_write_targets") if isinstance(scope.get("allowed_write_targets"), list) else []
+    runtime_params = invoke_params if isinstance(invoke_params, dict) else {}
+    if allowed_targets and not invoke_target_allowed(
+        invoke_action=invoke_action,
+        params=runtime_params,
+        allowed_targets=allowed_targets,
+    ):
+        return {
+            "success": False,
+            "error_code": "approval_scope_args_mismatch",
+            "reason": "approval_scope_args_mismatch",
+            "action": invoke_action,
+            "fingerprint": write_target_fingerprint(
+                invoke_action=invoke_action,
+                payload=runtime_params,
+            ),
         }
     return None
 

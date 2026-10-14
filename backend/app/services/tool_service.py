@@ -5247,6 +5247,27 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
             )
     _write_tool_audit(ctx, action, cid, "tool.invoke.requested")
 
+    if _is_write_invoke(action) and ctx.run_id and ctx.client:
+        from app.services.canvas_write_gate import load_run_for_write_gate
+        from app.services.workflow_approval_scope import block_invoke_by_approval_scope
+
+        run_row = load_run_for_write_gate(ctx.client, ctx.org_id, str(ctx.run_id))
+        if run_row is not None:
+            definition = run_row.get("definition_snapshot") or run_row.get("definition")
+            params_raw = run_row.get("parameters") if isinstance(run_row.get("parameters"), dict) else {}
+            scope_block = block_invoke_by_approval_scope(
+                invoke_action=action,
+                run_row=run_row,
+                run_parameters=params_raw,
+                definition=definition if isinstance(definition, dict) else None,
+                invoke_params=params if isinstance(params, dict) else {},
+            )
+            if scope_block is not None:
+                raise ToolValidationError(
+                    str(scope_block.get("reason") or scope_block.get("error_code") or "approval_scope_blocked"),
+                    code=str(scope_block.get("error_code") or "APPROVAL_SCOPE_BLOCKED"),
+                )
+
     compensation_snapshot = None
     if ctx.run_id:
         from app.services.compensation_service import prepare_forward_snapshot, record_compensatable_action, should_track_compensation

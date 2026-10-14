@@ -1117,6 +1117,7 @@ class ReActEngine:
                         run_row=run_row,
                         run_parameters=params_raw,
                         definition=definition if isinstance(definition, dict) else None,
+                        invoke_params=args if isinstance(args, dict) else {},
                     )
                     if scope_block is not None:
                         return {

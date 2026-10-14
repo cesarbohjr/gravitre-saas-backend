@@ -112,3 +112,6 @@ $$;
 REVOKE ALL ON FUNCTION public.claim_write_invoke_idempotency(uuid, text, text, text, int) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.claim_write_invoke_idempotency(uuid, text, text, text, int) FROM anon;
 REVOKE ALL ON FUNCTION public.claim_write_invoke_idempotency(uuid, text, text, text, int) FROM authenticated;
+
+GRANT ALL ON TABLE public.write_invoke_idempotency TO service_role;
+GRANT EXECUTE ON FUNCTION public.claim_write_invoke_idempotency(uuid, text, text, text, int) TO service_role;

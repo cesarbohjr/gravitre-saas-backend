@@ -1,51 +1,51 @@
-# PR #429 audit remediation (2026-10-14)
+# PR #429 audit remediation tracker
 
-Tracks engineering fixes from `Gravitre_Shipping_Audit_2026-10-14.md` (user audit). Production was not changed.
+**Draft PR — not approved for merge, migrations, deploy, or flag activation.**
 
-## Addressed in this branch (engineering)
+## Implemented (code on branch)
 
-| Finding | Remediation |
-|---------|-------------|
-| Idempotency cache-only | Atomic `claim_write_invoke_idempotency` RPC + in_progress/uncertain states; claim before invoke |
-| Ledger member tampering | REVOKE authenticated/anon; no RLS member policies; SECURITY DEFINER claim only |
-| Repeat-suppression key | Chat key includes `turn_id`, connector, optional `_write_idempotency_nonce` |
-| Default-on unsafe flags | `WRITE_INVOKE_IDEMPOTENCY_ENABLED` and `EVENT_TRIGGER_USE_WORKFLOW_QUEUE` default **false** |
-| Approval scope gaps | Digest verification, missing scope for approved runs, ReAct canvas path uses `block_invoke_by_approval_scope` |
-| MSP RLS broader than flag | **Removed** migration `20261014110000`; see `MSP_RLS_PARENT_ACCESS_DEFERRED.md` |
-| Queue crash loss | `BRPOPLPUSH` to processing list + ack/requeue in worker; optional `WORKFLOW_QUEUE_FAIL_CLOSED` |
-| Event trigger queue fallback | Fail-closed path when queue required but unavailable |
+| Area | Change |
+|------|--------|
+| Idempotency | `claim_write_invoke_idempotency` RPC; claim-before-invoke; uncertain/failed finalize; service_role GRANTs |
+| Ledger security | REVOKE PUBLIC/anon/authenticated on table + RPC; no member RLS policies |
+| Approval scope | Digest + missing scope; ReAct + **tool_service run** boundary; **write target fingerprints** |
+| MSP | Parent RLS migration **withdrawn** (`MSP_RLS_PARENT_ACCESS_DEFERRED.md`) |
+| Queue | Processing list + ack/requeue; `WORKFLOW_QUEUE_FAIL_CLOSED`; event-trigger fail when queue required |
+| Lifecycle | `composer_envelope_from_turn`; COMPLETED → customer `verifying` when unverified |
+| Defaults | `WRITE_INVOKE_IDEMPOTENCY_ENABLED=false`, `EVENT_TRIGGER_USE_WORKFLOW_QUEUE=false` |
 
-## Local test evidence (2026-10-14, pre-merge review)
+## Tested (local)
 
-Remediation slice (not production / not pg concurrency):
+| Suite | Command | Result |
+|-------|---------|--------|
+| Helper / unit | `pytest backend/tests/services/test_write_invoke_idempotency.py backend/tests/services/test_write_approval_fingerprints.py backend/tests/services/test_write_invoke_provider_harness.py backend/tests/workers/test_workflow_queue_recovery.py -q` | Run in CI / dev (see commit message) |
+| Real Postgres idempotency | `pytest backend/tests/db/test_write_invoke_idempotency_pg.py -q` | **PASS when `GRAVITRE_PG_BIN` / PostgreSQL installed**; **SKIPPED** otherwise |
+| Engineering gates | `python scripts/verify-release-engineering-gates.py` | Updates `release-engineering-gates.json` |
 
-```
-pytest tests/services/test_write_invoke_idempotency.py \
-  tests/services/test_workflow_approval_scope_audit.py \
-  tests/services/test_workflow_approval_scope.py \
-  tests/services/test_canvas_write_approval_scope.py -q
-→ 10 passed, 1 warning in ~8s
-```
+## Production-verified
 
-Full engineering gate bundle: `python scripts/verify-release-engineering-gates.py` → `docs/delivery/release-engineering-gates.json`.
+| Item | Status |
+|------|--------|
+| Idempotency ledger in prod | **NOT APPLIED** — migration `20261014100000` absent in prod |
+| Release 1 authenticated matrix | **NOT RUN** — see `RELEASE1_ACCEPTANCE_STATUS.md` |
+| Freshservice / HubSpot E2E | **NOT RUN** |
+| Flag activation | **NOT DONE** — keep defaults off in Railway until gates pass |
 
-**NOT RUN:** Postgres concurrent claim races, worker crash after dequeue, authenticated Release 1 matrix.
+## Still open
 
-## Still open (requires follow-up PRs / acceptance)
+- Full provider-path argument sealing for **dynamic** chat/voice/MCP (constraint contract or fresh approval)
+- Lifecycle consumers in **web/voice/ROI** surfaces (backend envelope only)
+- **All** model-call attribution paths (ReAct `complete_with_tools`, etc.)
+- Redis integration tests: worker death after dequeue, poison DLQ, multi-replica
+- Release 1 `/api/sessions` **401/403** (route not in worktree; prod 500 on probe)
+- Briefing items (Haiku/Argon, PSA, external MCP) — separate tracks
 
-| Finding | Status |
-|---------|--------|
-| Lifecycle envelope consumers (UI/voice/ROI) | Persist only; wire composers/projectors |
-| Full argument binding per approved step | Action-name scope only; parameter fingerprints not sealed |
-| Provider-specific idempotency support matrix | Generic header only |
-| Cost capture for all model iterations | Not in #429 scope on this branch |
-| Real-DB concurrency / crash tests | Add pg integration tests before enablement |
-| Authenticated Release 1 acceptance | Operator runbook |
+## Migrations
 
-## Migration disposition
-
-| Migration | Action |
-|-----------|--------|
-| `20261014100000` | Apply only after staging claim/replay tests with service role |
+| File | Disposition |
+|------|-------------|
+| `20261014100000` | Staging first; service-role claim tests required |
 | `20261014110000` | **Withdrawn** |
-| `20261014060000` | Review link-management before apply |
+| `20261014060000` | Authorization review before apply |
+
+See also `provider_idempotency_support_matrix.md`.
