@@ -2,6 +2,7 @@
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from datetime import datetime, timezone
 
 import pytest
 
@@ -41,7 +42,7 @@ async def test_model_call_capture_preserves_provider_tokens_and_id():
     with (
         patch("app.services.model_router.get_supabase_client", return_value=MagicMock()),
         patch("app.services.cost_attribution.insert_model_call",
-              return_value=SimpleNamespace(data=[{"id": "call-321"}])),
+              return_value=SimpleNamespace(data=[{"id": "call-321", "created_at": "2026-10-31T23:59:59Z"}])),
         capture_model_calls(capture),
     ):
         assert await router._log_model_call("org-a", TaskType.DECISION_REASONING, response) == "call-321"
@@ -49,6 +50,7 @@ async def test_model_call_capture_preserves_provider_tokens_and_id():
     assert [(c.id, c.model, c.input_tokens, c.output_tokens) for c in capture.calls] == [
         ("call-321", "claude-haiku-5-5", 321, 47),
     ]
+    assert capture.calls[0].created_at == datetime(2026, 10, 31, 23, 59, 59, tzinfo=timezone.utc)
 
 
 @pytest.mark.asyncio

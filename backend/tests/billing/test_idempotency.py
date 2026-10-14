@@ -112,3 +112,27 @@ def test_failed_upsert_cannot_fall_back_to_non_idempotent_insert():
                      PERIOD_START, PERIOD_END,
                      metadata={"source": "assistant", "source_id": "mc-1"})
     client.table.return_value.insert.assert_not_called()
+
+
+def test_usage_total_reads_all_pages_beyond_postgrest_row_limit():
+    class Page:
+        def __init__(self, entries):
+            self.entries = entries
+            self.start = 0
+            self.end = 0
+
+        def select(self, _columns): return self
+        def eq(self, *_args): return self
+        def order(self, _column): return self
+
+        def range(self, start, end):
+            self.start, self.end = start, end
+            return self
+
+        def execute(self):
+            return MagicMock(data=self.entries[self.start:self.end + 1])
+
+    entries = [{"id": str(i), "quantity": 2} for i in range(1201)]
+    client = MagicMock()
+    client.table.side_effect = lambda _name: Page(entries)
+    assert billing._sum_usage(client, "org-1", "ai_credits", PERIOD_START, PERIOD_END) == 2402

@@ -219,11 +219,13 @@ async def test_billing_uses_each_measured_model_round(async_client, monkeypatch,
     _mock_prepare_stream_guardrails(monkeypatch)
     intelligence = _mock_agent_intelligence_stream(monkeypatch, content="hello billing text")
     original = intelligence.execute_task_streaming
+    seen_turns = []
 
     async def metered_stream(**kwargs):
-        from app.services.cost_attribution import MeasuredModelCall, record_measured_model_call
+        from app.services.cost_attribution import MeasuredModelCall, attribution_fields, record_measured_model_call
 
         for number in range(2):
+            seen_turns.append(attribution_fields().get("turn_id"))
             record_measured_model_call(MeasuredModelCall(
                 id=f"call-{number}", org_id="org-1", provider="openai",
                 model="gpt-5.5", input_tokens=100 + number,
@@ -251,6 +253,7 @@ async def test_billing_uses_each_measured_model_round(async_client, monkeypatch,
     assert [row[2].model_call_id for row in args] == ["call-0", "call-1"]
     assert [row[2].input_tokens for row in args] == [100, 101]
     assert [row[2].output_tokens for row in args] == [20, 21]
+    assert seen_turns[0] and seen_turns == [seen_turns[0]] * 2
 
 
 async def test_unmetered_stream_is_not_charged_from_text_length(async_client, monkeypatch, capture_background_tasks):

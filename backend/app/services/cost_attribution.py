@@ -13,6 +13,7 @@ from __future__ import annotations
 import contextvars
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, Iterator
 
 from app.core.logging import get_logger
@@ -35,6 +36,7 @@ class MeasuredModelCall:
     output_tokens: int
     latency_ms: int
     cost_usd: float
+    created_at: datetime | None = None
 
 
 @dataclass

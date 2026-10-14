@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import time
+from datetime import datetime, timezone
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from enum import StrEnum
@@ -853,11 +854,18 @@ class ModelRouter:
                 if model_call_id and billable:
                     from app.services.cost_attribution import MeasuredModelCall, record_measured_model_call
 
+                    raw_created_at = resp.data[0].get("created_at")
+                    try:
+                        created_at = (datetime.fromisoformat(raw_created_at.replace("Z", "+00:00"))
+                                      if isinstance(raw_created_at, str) else datetime.now(timezone.utc))
+                    except ValueError:
+                        created_at = datetime.now(timezone.utc)
                     record_measured_model_call(MeasuredModelCall(
                         id=model_call_id, org_id=org_id, provider=response.provider,
                         model=response.model, input_tokens=response.input_tokens,
                         output_tokens=response.output_tokens, latency_ms=response.latency_ms,
                         cost_usd=response.cost_usd,
+                        created_at=created_at,
                     ))
                 if model_call_id:
                     return model_call_id

@@ -477,18 +477,25 @@ def _sum_usage(
     period_end: date,
     environment: str | None = None,
 ) -> int:
-    q = (
-        client.table("usage_tracking")
-        .select("quantity")
-        .eq("org_id", org_id)
-        .eq("metric_type", metric_type)
-        .eq("period_start", period_start.isoformat())
-        .eq("period_end", period_end.isoformat())
-    )
-    if environment:
-        q = q.eq("environment", environment)
-    rows = q.execute().data or []
-    return sum(int(row.get("quantity") or 0) for row in rows)
+    total = 0
+    offset = 0
+    page_size = 500  # below the common PostgREST max_rows limit
+    while True:
+        q = (
+            client.table("usage_tracking")
+            .select("id,quantity")
+            .eq("org_id", org_id)
+            .eq("metric_type", metric_type)
+            .eq("period_start", period_start.isoformat())
+            .eq("period_end", period_end.isoformat())
+        )
+        if environment:
+            q = q.eq("environment", environment)
+        rows = q.order("id").range(offset, offset + page_size - 1).execute().data or []
+        total += sum(int(row.get("quantity") or 0) for row in rows)
+        if len(rows) < page_size:
+            return total
+        offset += page_size
 
 
 def get_usage_totals(

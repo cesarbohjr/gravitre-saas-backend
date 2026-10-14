@@ -1869,9 +1869,9 @@ class AgentIntelligence:
             dict(gateway_state) if isinstance(gateway_state, dict) else {}
         )
         from app.services.cognitive_trace_engine import unify_turn_id
-        from app.services.cost_attribution import bind_turn_attribution
+        from app.services.cost_attribution import attribution_fields, bind_turn_attribution
 
-        bind_turn_attribution(unify_turn_id(_canonical_task_state))
+        bind_turn_attribution(attribution_fields().get("turn_id") or unify_turn_id(_canonical_task_state))
         task_state: dict[str, Any] | None = (
             dict(gateway_state) if isinstance(gateway_state, dict) else None
         )
@@ -1990,7 +1990,9 @@ class AgentIntelligence:
             if _cognitive_trace_builder is not None:
                 return
             st = state if isinstance(state, dict) else {}
-            turn_id = unify_turn_id(st)
+            from app.services.cost_attribution import attribution_fields
+
+            turn_id = attribution_fields().get("turn_id") or unify_turn_id(st)
             _cognitive_trace_builder = CognitiveTraceBuilder(
                 turn_id=turn_id,
                 conversation_id=conversation_id,
@@ -5864,7 +5866,9 @@ class AgentIntelligence:
         generation_started = time.monotonic()
 
         _mark("react_entry")
-        bind_turn_attribution(unify_turn_id(_canonical_task_state))
+        from app.services.cost_attribution import attribution_fields
+
+        bind_turn_attribution(attribution_fields().get("turn_id") or unify_turn_id(_canonical_task_state))
         # From here tools can run, so nothing is served from the turn memo.
         end_turn_memo()
         from app.services.canonical_cognitive_resolution import try_compiled_operational_read_turn

@@ -61,3 +61,30 @@ async def test_record_uses_the_turn_and_labels_estimates():
         await assistant._record_assistant_billing(SimpleNamespace(), "org-1", _response(), turn_id="msg-b")
     assert [c["metadata"]["source_id"] for c in calls] == ["turn:msg-a", "turn:msg-b"]
     assert all(c["metadata"]["usage_estimated"] is True for c in calls)
+
+
+@pytest.mark.asyncio
+async def test_zero_provider_usage_does_not_trigger_minimum_credit_charge():
+    measured = ModelResponse(provider="openai", model="gpt-5.5", content="",
+                             input_tokens=0, output_tokens=0, latency_ms=0,
+                             cost_usd=0, model_call_id="call-zero")
+    with patch.object(assistant, "get_supabase_client") as client:
+        assert await assistant._record_assistant_billing(SimpleNamespace(), "org-1", measured) is True
+    client.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_measured_call_uses_provider_period_at_month_boundary():
+    measured = ModelResponse(provider="openai", model="gpt-5.5", content="",
+                             input_tokens=100, output_tokens=20, latency_ms=10,
+                             cost_usd=.01, model_call_id="call-october")
+    with (
+        patch.object(assistant, "get_supabase_client", return_value=MagicMock()),
+        patch.object(assistant, "get_plan_for_org", return_value={}),
+        patch.object(assistant, "apply_usage_with_overage") as apply,
+    ):
+        assert await assistant._record_assistant_billing(
+            SimpleNamespace(), "org-1", measured,
+            period_at=datetime(2026, 10, 31, 23, 59, 59, tzinfo=timezone.utc),
+        ) is True
+    assert apply.call_args.kwargs["period_start"].isoformat() == "2026-10-01"

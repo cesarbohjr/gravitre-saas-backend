@@ -253,6 +253,7 @@ async def _record_assistant_billing(
     result: ModelResponse,
     *,
     turn_id: str | None = None,
+    period_at: datetime | None = None,
 ) -> bool:
     """Record assistant AI credits to usage_tracking after a successful completion.
 
@@ -260,11 +261,14 @@ async def _record_assistant_billing(
     failure, logs billing_write_failed to guardrail_events; never raises.
     """
     model_call_id = result.model_call_id
+    if model_call_id and result.input_tokens <= 0 and result.output_tokens <= 0:
+        logger.warning("assistant_model_usage_zero org_id=%s model_call_id=%s", org_id, model_call_id)
+        return True
     try:
         def _write() -> None:
             client = get_supabase_client(settings)
             plan = get_plan_for_org(client, org_id)
-            period_start, period_end = get_current_period()
+            period_start, period_end = get_current_period(period_at) if period_at else get_current_period()
             source_id = assistant_billing_source_id(model_call_id, turn_id)
             ai_meta = build_ai_usage_metadata_from_tokens(
                 result.input_tokens, result.output_tokens, result.model,
@@ -727,16 +731,17 @@ def _build_stream(
                     input_tokens=call.input_tokens, output_tokens=call.output_tokens,
                     latency_ms=call.latency_ms, cost_usd=call.cost_usd,
                     model_call_id=call.id,
-                ), turn_id=turn_id,
+                ), turn_id=turn_id, period_at=call.created_at,
             )
             if result is not False:
                 billed_model_call_ids.add(call.id)
 
     async def generator():
         from app.operators.react_engine import force_serial_react_tools, reset_serial_react_tools
-        from app.services.cost_attribution import ModelCallCapture, capture_model_calls
+        from app.services.cost_attribution import ModelCallCapture, attribution, capture_model_calls
 
         measured_calls = ModelCallCapture(org_id=org_id)
+        stream_turn_id = str(uuid.uuid4())
         source = _unified_stream_body(measured_calls)
         try:
             while True:
@@ -744,7 +749,7 @@ def _build_stream(
                 # silence tick. Bind/reset ContextVars in that same task.
                 serial_token = force_serial_react_tools(force_serial_tools)
                 try:
-                    with capture_model_calls(measured_calls):
+                    with attribution(turn_id=stream_turn_id, org_id=org_id), capture_model_calls(measured_calls):
                         try:
                             line = await anext(source)
                         except StopAsyncIteration:
@@ -755,7 +760,7 @@ def _build_stream(
         finally:
             serial_token = force_serial_react_tools(force_serial_tools)
             try:
-                with capture_model_calls(measured_calls):
+                with attribution(turn_id=stream_turn_id, org_id=org_id), capture_model_calls(measured_calls):
                     try:
                         await source.aclose()
                     finally:
