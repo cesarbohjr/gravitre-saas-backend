@@ -20,6 +20,7 @@ class _Query:
         self._op = "select"
         self._payload: Any = None
         self._filters: list[tuple[str, Any]] = []
+        self._null_filters: set[str] = set()
         self._ranges: list[tuple[str, str, Any]] = []
         self._order: tuple[str, bool] | None = None
         self._limit: int | None = None
@@ -50,6 +51,20 @@ class _Query:
         self._filters.append((column, value))
         return self
 
+    def filter(self, column: str, operator: str, value: Any) -> "_Query":
+        if operator == "is" and value == "null":
+            self._null_filters.add(column)
+        elif operator == "eq":
+            self._filters.append((column, value))
+        return self
+
+    @staticmethod
+    def _value(row: dict[str, Any], column: str) -> Any:
+        value: Any = row
+        for part in column.replace("->>", "->").split("->"):
+            value = value.get(part) if isinstance(value, dict) else None
+        return value
+
     def limit(self, n: int, *_a: Any, **_k: Any) -> "_Query":
         self._limit = n
         return self
@@ -72,7 +87,9 @@ class _Query:
         return lambda *_a, **_k: self
 
     def _matches(self, row: dict[str, Any]) -> bool:
-        if not all(str(row.get(col)) == str(val) for col, val in self._filters):
+        if not all(str(self._value(row, col)) == str(val) for col, val in self._filters):
+            return False
+        if any(self._value(row, column) is not None for column in self._null_filters):
             return False
         for op, col, val in self._ranges:
             have, want = str(row.get(col)), str(val)

@@ -13,6 +13,9 @@ from app.workers.workflow_queue import (
     dequeue_workflow_run,
     parse_workflow_run_job,
     requeue_workflow_run,
+    renew_workflow_run_claim,
+    workflow_queue_lease_seconds,
+    workflow_run_claim,
 )
 
 logger = get_logger(__name__)
@@ -33,6 +36,10 @@ def process_workflow_run_job(settings: Settings, job_raw: str) -> bool:
             job.org_id,
             job.run_id,
         )
+        return True
+
+    # Redelivered terminal runs must never repeat provider effects.
+    if str(run.get("status") or "").lower() in {"completed", "failed", "cancelled", "rejected"}:
         return True
 
     definition = run.get("definition_snapshot") or {}
@@ -100,12 +107,29 @@ def process_workflow_run_job(settings: Settings, job_raw: str) -> bool:
     return True
 
 
+async def _renew_claim_until_done(raw: str) -> None:
+    while True:
+        await asyncio.sleep(workflow_queue_lease_seconds() / 3)
+        if not await renew_workflow_run_claim(raw):
+            logger.error("workflow_worker_claim_lost")
+            return
+
+
 async def _worker_loop(poll_seconds: int, settings: Settings) -> None:
     while True:
         try:
             raw = await dequeue_workflow_run(timeout_seconds=poll_seconds)
             if raw:
-                ok = await asyncio.to_thread(process_workflow_run_job, settings, raw)
+                heartbeat = asyncio.create_task(_renew_claim_until_done(raw))
+                try:
+                    with workflow_run_claim(raw):
+                        ok = await asyncio.to_thread(process_workflow_run_job, settings, raw)
+                finally:
+                    heartbeat.cancel()
+                    try:
+                        await heartbeat
+                    except asyncio.CancelledError:
+                        pass
                 if ok:
                     await acknowledge_workflow_run(raw)
                 else:

@@ -11,6 +11,8 @@
  * clearly-labelled fixture previews only.
  */
 
+import { parseLifecycleEnvelope } from "@/lib/lifecycle-envelope"
+
 import type { ChatExecutionResult, ChatPendingTask } from "@/components/gravitre/assistant/chat-execution-panel"
 
 export const AI_RUNTIME_STATES = [
@@ -18,6 +20,9 @@ export const AI_RUNTIME_STATES = [
   "streaming",
   "generating",
   "completed",
+  "verifying",
+  "uncertain",
+  "cancelled",
   "needs_approval",
   "blocked",
   "failed",
@@ -80,6 +85,14 @@ export function deriveAiRuntimeState(input: AiRuntimeStateInput): AiRuntimeState
   if (input.status === "submitted" || input.isBusy) return "generating"
 
   const result = input.executionResult
+  const lifecycle = parseLifecycleEnvelope({ lifecycle_envelope: result?.lifecycle_envelope })
+  if (lifecycle) {
+    if (lifecycle.customerStage === "uncertain") return "uncertain"
+    if (lifecycle.customerStage === "verifying") return "verifying"
+    if (lifecycle.customerStage === "cancelled") return "cancelled"
+    if (lifecycle.customerStage === "failed") return "failed"
+    if (lifecycle.customerStage === "verified" && lifecycle.executionVerified) return "completed"
+  }
   if (result && result.success === false) return "failed"
 
   if (input.canContinueAfterStop) return "partial"
@@ -95,6 +108,9 @@ export const AI_RUNTIME_STATE_COPY: Record<AiRuntimeState, { label: string; deta
   idle: { label: "Ready", detail: "Waiting for your next instruction." },
   streaming: { label: "Responding", detail: "The reply is streaming in." },
   generating: { label: "Working", detail: "Gravitre is working on this turn." },
+  verifying: { label: "Checking result", detail: "The provider has not yet confirmed the outcome." },
+  uncertain: { label: "Outcome unconfirmed", detail: "Review the evidence before retrying this action." },
+  cancelled: { label: "Cancelled", detail: "The action was cancelled." },
   completed: { label: "Completed", detail: "The last action finished." },
   needs_approval: { label: "Needs your approval", detail: "Review the action below before it runs." },
   blocked: { label: "Waiting on an approver", detail: "Sent for approval. Nothing runs until it is approved." },

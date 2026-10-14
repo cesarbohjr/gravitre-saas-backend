@@ -722,6 +722,7 @@ class Settings(BaseSettings):
     # Durable workflow run queue consumer (STA-94). Requires REDIS_URL.
     workflow_queue_enabled: bool = True
     workflow_queue_poll_seconds: int = 5
+    workflow_queue_lease_seconds: int = 60
     workflow_queue_max_delivery_attempts: int = Field(
         default=5,
         validation_alias=AliasChoices(

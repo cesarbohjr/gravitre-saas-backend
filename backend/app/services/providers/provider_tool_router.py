@@ -173,12 +173,17 @@ def _parse_anthropic_response(resp: Any) -> ToolCompletionResult:
     usage = getattr(resp, "usage", None)
     pt = int(getattr(usage, "input_tokens", 0) or 0) if usage else 0
     ct = int(getattr(usage, "output_tokens", 0) or 0) if usage else 0
+    cache_read = int(getattr(usage, "cache_read_input_tokens", 0) or 0) if usage else 0
+    cache_write = int(getattr(usage, "cache_creation_input_tokens", 0) or 0) if usage else 0
+    pt += cache_read + cache_write
     text = "\n".join(content_parts).strip() or None
     return ToolCompletionResult(
         content=text,
         tool_calls=tool_calls,
         prompt_tokens=pt,
         completion_tokens=ct,
+        cached_tokens=cache_read,
+        cache_write_tokens=cache_write,
         raw_response=resp,
     )
 

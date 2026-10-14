@@ -412,7 +412,7 @@ def test_verified_write_still_reaches_the_verified_lifecycle_state():
             "structured": {
                 "outcome_effect": "created",
                 "id": "42",
-                "verification": {"verified": True, "detail": "entity_found"},
+                "verification": {"verified": True, "method": "entity_get", "detail": "entity_found"},
             },
         },
         invoke_action="hubspot.contacts.create",
@@ -448,3 +448,4 @@ def test_provider_id_without_read_back_is_accepted_not_verified():
     section = outcome.to_dict()["sections"]["verification"]
     assert section["confidence"] == "accepted_unproven"
     assert section["method"] == "provider_accepted_not_read_back"
+    assert section["verified"] is False

@@ -1,8 +1,8 @@
 """MSP parent-org access (Release 4 Option A scaffold).
 
-When ``msp_parent_org_enabled`` is true, a user who is a member of a parent MSP
-organization may resolve context to a child org linked via ``parent_org_id``.
-Sibling client orgs remain isolated.
+Parent links describe the organizational hierarchy; they do not delegate access.
+Until explicit client-scoped delegation ships, the user's existing child-org
+membership remains the authority in both application checks and database RLS.
 """
 from __future__ import annotations
 
@@ -45,7 +45,13 @@ def msp_parent_grants_access(
     requested_org_id: str,
     member_org_ids: list[str],
 ) -> bool:
-    """True when the user belongs to the MSP parent of ``requested_org_id``."""
+    """Recognize a parent relationship only with explicit child membership.
+
+    A parent member (including an admin) cannot inherit all customer data or
+    write permissions merely because an organization has a parent link.
+    """
+    if requested_org_id not in member_org_ids:
+        return False
     parent = parent_org_id_for(client, requested_org_id)
     if not parent:
         return False

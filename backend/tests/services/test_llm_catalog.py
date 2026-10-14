@@ -226,3 +226,11 @@ def test_llm_catalog_endpoint_requires_auth():
     app.dependency_overrides.clear()
     resp = TestClient(app).get("/api/models/llm-catalog")
     assert resp.status_code in (401, 403)
+
+
+def test_haiku_55_context_threshold_and_cache_write_costs():
+    router = ModelRouter(Settings(openai_api_key=""))
+    assert router._estimate_cost("claude-haiku-5-5", 100_000, 1000) == pytest.approx(.0105)
+    assert router._estimate_cost("claude-haiku-5-5", 100_001, 1000) == pytest.approx(.052501)
+    assert router._estimate_cost("claude-haiku-5-5", 100_000, 0, 50_000, cache_write_tokens=10_000) == pytest.approx(.00575)
+    assert router._estimate_cost("claude-sonnet-5-5", 1_000_000, 0, 1_000_000) == pytest.approx(.10)

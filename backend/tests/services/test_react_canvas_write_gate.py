@@ -84,3 +84,25 @@ async def test_canvas_run_approved_allows_write(monkeypatch):
     )
     assert result.get("success") is True
     engine.registry.execute_tool.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("change", [
+    {"connector_id": "other"}, {"path": "/execute"}, {"headers": {"X-Action": "execute"}},
+])
+async def test_changed_webhook_effect_never_reaches_provider(monkeypatch, change):
+    engine = ReActEngine.__new__(ReActEngine)
+    engine.registry = MagicMock()
+    engine.registry.execute_tool = AsyncMock(return_value={"success": True})
+    approved = {"connector_id": "reviewed", "path": "/preview", "headers": {"X-Action": "preview"}, "payload": {"amount": 10}}
+    definition = {"steps": [{"type": "invoke_tool", "config": {"action": "webhook.post", "params": approved}}]}
+    monkeypatch.setattr("app.services.react_write_gate.tool_requires_user_write_approval", lambda *_a, **_k: (True, "webhook.post", "webhook", "Send webhook"))
+    monkeypatch.setattr("app.services.canvas_write_gate.load_run_for_write_gate", lambda *_a, **_k: {
+        "required_approvals": 1, "approval_status": "approved", "definition_snapshot": definition,
+        "parameters": {"approval_scope": seal_approval_scope(definition)},
+    })
+    ctx = ToolContext(settings=Settings(), client=MagicMock(), org_id="org", actor_id="user", run_id="run")
+    result = await engine._execute_tool_call(ctx, "webhook_post", {**approved, **change})
+    assert result["success"] is False
+    assert result["reason"] == "approval_scope_args_mismatch"
+    engine.registry.execute_tool.assert_not_awaited()

@@ -697,6 +697,13 @@ class ReActEngine:
                         streamed_answer = answer_stream.released
                     else:
                         response = await self._chat_with_tools(messages, tools, resolved_model)
+                    from app.services.tool_model_metering import record_tool_response
+
+                    await record_tool_response(
+                        self.router, org_id=ctx.org_id, model=resolved_model,
+                        elapsed_ms=int((time.perf_counter() - _llm_started) * 1000),
+                        response=response, agent_id=ctx.agent_id,
+                    )
                     _log_react_llm_round(
                         org_id=getattr(ctx, "org_id", None),
                         iteration=iteration,
@@ -1097,6 +1104,17 @@ class ReActEngine:
             self.registry,
             connected_integrations=connected,
         )
+        if requires_write:
+            from app.workers.workflow_queue import assert_current_workflow_claim_live
+
+            try:
+                await asyncio.to_thread(assert_current_workflow_claim_live)
+            except Exception:
+                return {
+                    "success": False, "tool": tool_name, "action": invoke_action,
+                    "error_code": "workflow_claim_lost", "provider_invoked": False,
+                    "error": "Workflow execution ownership was lost. The action was not started.",
+                }
         # Canvas agent steps: when ToolContext.run_id is a workflow_runs row,
         # honor run-level catalog write authority (same SoT) instead of the
         # chat turn-level pending gate — closes the agent/council canvas gap.

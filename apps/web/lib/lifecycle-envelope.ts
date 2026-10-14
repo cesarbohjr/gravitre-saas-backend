@@ -54,9 +54,9 @@ export function actionStatusFromLifecycle(envelope: LifecycleEnvelopeView | null
   if (!envelope) return null
   switch (envelope.customerStage) {
     case "accepted":
-      return "pending_approval"
+      return envelope.semanticStage === "AWAITING_APPROVAL" ? "pending_approval" : "requested"
     case "verifying":
-      return "verifying"
+      return envelope.semanticStage === "EXECUTING" ? "running" : "verifying"
     case "verified":
       return "completed"
     case "uncertain":
@@ -96,13 +96,23 @@ export function mergeTaskStateMonotonic(
 ): Record<string, unknown> | null {
   if (!incoming || typeof incoming !== "object") return current ?? null
   if (!current || typeof current !== "object") return incoming
-  const curTurn = String(current.turn_id || current.turnId || "")
-  const nextTurn = String(incoming.turn_id || incoming.turnId || "")
-  if (curTurn && nextTurn && curTurn !== nextTurn) {
-    // Same conversation, different turn — keep newer turn only when incoming is explicitly newer seq.
-    const curSeq = Number(current.task_revision ?? current.taskRevision ?? 0)
-    const nextSeq = Number(incoming.task_revision ?? incoming.taskRevision ?? 0)
-    if (nextSeq > 0 && curSeq > 0 && nextSeq < curSeq) return current
-  }
+  // Revisions are conversation-wide, not turn-local. Compare them even for
+  // the same turn; equal revisions cannot contain a newer persisted state.
+  const curSeq = Number(current.task_revision ?? current.taskRevision ?? 0)
+  const nextSeq = Number(incoming.task_revision ?? incoming.taskRevision ?? 0)
+  if (Number.isFinite(curSeq) && curSeq > 0 && (!Number.isFinite(nextSeq) || nextSeq <= curSeq)) return current
   return { ...current, ...incoming }
+}
+
+export function lifecycleStatusLabel(taskState: Record<string, unknown> | null | undefined): string | null {
+  const envelope = parseLifecycleEnvelope(taskState)
+  if (!envelope) return null
+  switch (envelope.customerStage) {
+    case "accepted": return envelope.semanticStage === "AWAITING_APPROVAL" ? "Awaiting approval" : "Ready to execute"
+    case "verifying": return envelope.semanticStage === "EXECUTING" ? "Executing" : "Checking the result"
+    case "verified": return envelope.executionVerified ? "Result verified" : "Checking the result"
+    case "uncertain": return "Outcome unconfirmed — review before retrying"
+    case "failed": return "Action failed"
+    case "cancelled": return "Action cancelled"
+  }
 }

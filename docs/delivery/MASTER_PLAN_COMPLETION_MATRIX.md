@@ -2,6 +2,8 @@
 
 **Branch / draft:** [`cursor/full-release-implementation-6b92`](https://github.com/cesarbohjr/gravitre-saas-backend/pull/429)  
 **Cohesion rules:** [`PLATFORM_COHESION.md`](./PLATFORM_COHESION.md) · **Split plan:** [`PR429_DEPENDENT_SPLIT.md`](./PR429_DEPENDENT_SPLIT.md)  
+**Current implementation:** `codex/master-plan-completion-20261014` (based on #429 at `7fd10c4a`); see [Codex implementation evidence](./CODEX_IMPLEMENTATION_2026-10-14.md). Earlier row statuses below require reconciliation against that increment.
+
 **Last updated:** 2026-10-14 (CI fixes pushed `8d990d685`; prior evidence `617c0a10d`)  
 **Legend — implementation:** `NOT STARTED` · `PARTIAL` · `CODE COMPLETE` · `MERGED` · `DEPLOYED`  
 **Legend — acceptance:** `NOT RUN` · `PARTIAL` · `PASS` (evidence-linked only)
@@ -33,9 +35,9 @@ Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · 
 | Action-specific argument sealing | CODE COMPLETE | `eb4b16c93` | `test_write_approval_fingerprints.py` | — | — | NOT RUN | Dynamic chat/voice still OPEN |
 | Claim token + stale finalize fence | CODE COMPLETE | `eb4b16c93` | PG `test_write_invoke_idempotency_pg.py` (CI gate; local skip) | `20261014100000` + `100001` grants | `WRITE_INVOKE_IDEMPOTENCY_ENABLED=false` | NOT RUN | Migration not applied prod |
 | Expired lease → uncertain / reconcile | CODE COMPLETE | `eb4b16c93` | PG tests | Same | Same | NOT RUN | — |
-| Redis queue ack / requeue / poison | PARTIAL | `eb4b16c93` | Unit + `test_workflow_queue_redis_integration.py` (CI) | — | `EVENT_TRIGGER_USE_WORKFLOW_QUEUE=false` | NOT RUN | Multi-replica visibility |
+| Redis queue ownership / ack / recovery | CODE COMPLETE (single Redis) | Codex branch | Real Redis: atomic movement, process kill, stale owner, competing consumers, poisoned job | — | Queue off; queued writes require idempotency enabled | NOT RUN | Staging rollout; legacy processing reconciliation; Redis Cluster not supported |
 | Lifecycle envelope backend | CODE COMPLETE | `617c0a10d` | `test_lifecycle_envelope.py` | — | — | NOT RUN | — |
-| Lifecycle consumers (web) | PARTIAL | *this train* | `lifecycle-envelope.test.ts` | — | — | NOT RUN | Voice + ROI panels |
+| Lifecycle consumers (web) | CODE COMPLETE | Codex branch | Full web suite 1,735 passed; typecheck/build pass | — | — | NOT RUN | Authenticated UI and late verification proof |
 | Write authority enforce (not shadow) | PARTIAL (main) | #414 shadow | — | — | — | NOT RUN | Product flip |
 | Stale run recovery (#421) | PARTIAL | main, flag off | — | — | — | NOT RUN | ~19 stuck runs disposition |
 
@@ -64,7 +66,7 @@ Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · 
 | Freshservice trigger → run → approval | CODE COMPLETE (main) | #419 + UI panel | Unit | — | — | NOT RUN | No prod Freshservice connector |
 | Event → workflow queue | CODE COMPLETE | #429 | `test_event_trigger_queue.py` | — | `EVENT_TRIGGER_USE_WORKFLOW_QUEUE=false` | NOT RUN | Flag off |
 | `model_calls.turn_id` chat streaming | CODE COMPLETE | #429 branch | Unit | `080000` applied | — | NOT RUN | DB verify |
-| ReAct `complete_with_tools` attribution | CODE COMPLETE | #429 (this train) | Gates script; dedicated test TBD | — | — | NOT RUN | Merge |
+| ReAct / unified-turn tool metering | PARTIAL | Codex branch | Canonical writer, cache tokens, turn/run context tests pass | Existing attribution migration | — | NOT RUN | Failure/cancel usage; billing reconciliation; production row proof |
 | Metering reconciliation / ROI caps / PSA | NOT STARTED | — | — | — | — | NOT RUN | Product |
 
 ---
@@ -73,7 +75,7 @@ Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · 
 
 | Item | Impl | PR / commit | Tests executed | Migrations | Config | Prod acceptance | Blocker |
 |------|------|-------------|----------------|------------|--------|-----------------|---------|
-| Catalog / tier unit tests | PARTIAL | main | pytest catalog | — | — | NOT RUN | — |
+| Catalog / pricing | CODE COMPLETE for Haiku/Sonnet slice | Codex branch | Haiku 100k threshold and cache-write pricing; selector/catalog parity | — | Existing routing defaults | NOT RUN | Model quality evaluations and complete pricing refresh |
 | Budget caps + adaptive routing | NOT STARTED | — | — | — | — | NOT RUN | Release 7 scope |
 | Briefing evals (Haiku / Argon / etc.) | NOT STARTED | — | — | — | — | NOT RUN | Third-party deps |
 
@@ -83,7 +85,7 @@ Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · 
 
 | Item | Impl | PR / commit | Tests executed | Migrations | Config | Prod acceptance | Blocker |
 |------|------|-------------|----------------|------------|--------|-----------------|---------|
-| `parent_org_id` scaffold | PARTIAL | main | `test_msp_org_context.py` | `20261014060000` (review) | `MSP_PARENT_ORG_ENABLED=false` | NOT RUN | Apply authorization |
+| `parent_org_id` scaffold | PARTIAL (relationship only; explicit client membership required) | #429 + Codex branch | `test_msp_org_context.py` denies parent-only access | `20261014060000` (review) | `MSP_PARENT_ORG_ENABLED=false` | NOT RUN | Apply authorization |
 | Parent RLS path | WITHDRAWN | `MSP_RLS_PARENT_ACCESS_DEFERRED.md` | — | `20261014110000` removed | — | N/A | Product Option A/B |
 | Client switcher / external MCP product | NOT STARTED | — | — | — | — | NOT RUN | UX + auth design |
 
@@ -94,7 +96,7 @@ Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · 
 | Item | Impl | PR / commit | Tests executed | Migrations | Config | Prod acceptance | Blocker |
 |------|------|-------------|----------------|------------|--------|-----------------|---------|
 | MCP tool bridge (backend) | PARTIAL | main | `test_react_mcp_tools.py` | — | — | NOT RUN | Distribution |
-| API keys / OAuth surfaces | PARTIAL | main | Route tests scattered | — | — | NOT RUN | — |
+| API keys / OAuth surfaces | NOT STARTED for backend authorization | Frontend scaffolds only | No external-auth acceptance | — | — | NOT RUN | Secure backend key/token lifecycle and OAuth implementation |
 | Marketplace / plugins distribution | NOT STARTED | — | — | — | — | NOT RUN | — |
 
 ---

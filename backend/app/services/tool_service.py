@@ -5260,7 +5260,7 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                 run_row=run_row,
                 run_parameters=params_raw,
                 definition=definition if isinstance(definition, dict) else None,
-                invoke_params=params if isinstance(params, dict) else {},
+                invoke_params={**(params if isinstance(params, dict) else {}), **({"connector_id": cid} if cid else {})},
             )
             if scope_block is not None:
                 raise ToolValidationError(
@@ -5329,6 +5329,13 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     for attempt in range(attempts):
         started = time.perf_counter()
         try:
+            if _is_write_invoke(action):
+                from app.workers.workflow_queue import assert_current_workflow_claim_live
+
+                try:
+                    assert_current_workflow_claim_live()
+                except Exception as exc:
+                    raise ToolValidationError("Workflow execution ownership was lost; write refused", code="workflow_claim_lost") from exc
             result = executor(ctx, params)
             finish_write_effect(write_effect, "completed" if result.success else "failed")
             result.latency_ms = result.latency_ms or int((time.perf_counter() - started) * 1000)

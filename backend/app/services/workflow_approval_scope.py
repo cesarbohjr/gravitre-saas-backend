@@ -73,7 +73,7 @@ def definition_digest_matches(scope: dict[str, Any] | None, definition: dict[str
         return True
     expected = str(scope.get("definition_digest") or "").strip()
     if not expected:
-        return True
+        return False
     current = definition_write_surface(definition if isinstance(definition, dict) else {}).get("definition_digest")
     return str(current or "") == expected
 

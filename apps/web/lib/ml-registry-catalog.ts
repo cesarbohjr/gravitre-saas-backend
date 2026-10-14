@@ -252,6 +252,16 @@ const LLM_BASE_MODELS: BaseModelOption[] = [
     fineTunable: false,
   },
   {
+    id: "claude-haiku-5-5",
+    label: "Claude Haiku 5.5",
+    versionTag: "5.5",
+    description: "Small Claude for classification, summaries, and narrow agent tasks.",
+    provider: "Anthropic",
+    layer: "generative",
+    availability: "platform",
+    fineTunable: false,
+  },
+  {
     id: "claude-haiku-4-5",
     label: "Claude Haiku 4.5",
     versionTag: "fast",

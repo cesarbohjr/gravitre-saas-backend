@@ -44,12 +44,12 @@ export function FreshserviceTriggersPanel({ connectorId }: { connectorId: string
     return (
       <div className="flex items-center gap-2 py-4 text-muted-foreground">
         <Spinner className="h-4 w-4" />
-        <span className={TYPE.bodySm}>Loading event triggers…</span>
+        <span className={TYPE.body}>Loading event triggers…</span>
       </div>
     )
   }
   if (error) {
-    return <p className={TYPE.bodySm}>Event triggers could not be loaded.</p>
+    return <p className={TYPE.body}>Event triggers could not be loaded.</p>
   }
   if (!data?.setup) return null
 
@@ -83,7 +83,7 @@ export function FreshserviceTriggersPanel({ connectorId }: { connectorId: string
     <section className="space-y-4 rounded-lg border border-border/60 p-4">
       <div>
         <h3 className={TYPE.sectionTitle}>Freshservice event triggers</h3>
-        <p className={`${TYPE.bodySm} text-muted-foreground mt-1`}>
+        <p className={`${TYPE.body} text-muted-foreground mt-1`}>
           Inbound URL and secret for Freshservice webhooks. Test delivery status is shown after Freshservice posts an event.
         </p>
       </div>

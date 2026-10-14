@@ -779,14 +779,29 @@ class ModelRouter:
         input_tokens: int,
         output_tokens: int,
         cached_tokens: int = 0,
+        cache_write_tokens: int = 0,
     ) -> float:
         in_cost, cached_cost, out_cost = _MODEL_PRICING_PER_1K.get(model, (0.002, 0.002, 0.008))
+        from app.services.llm_catalog import get_llm_model
+
+        entry = get_llm_model(model)
+        write_cost = in_cost
+        if entry is not None:
+            if entry.cache_write_per_1m is not None:
+                write_cost = entry.cache_write_per_1m / 1000
+            if entry.input_price_threshold is not None and input_tokens > entry.input_price_threshold:
+                in_cost = (entry.long_input_per_1m or entry.input_per_1m or 0) / 1000
+                out_cost = (entry.long_output_per_1m or entry.output_per_1m or 0) / 1000
+                cached_cost = (entry.long_cached_input_per_1m or entry.cached_input_per_1m or 0) / 1000
+                write_cost = (entry.long_cache_write_per_1m or entry.cache_write_per_1m or entry.long_input_per_1m or 0) / 1000
         # cached_tokens is a subset of input_tokens; bill it at the cache rate.
         cached = max(0, min(cached_tokens, input_tokens))
-        uncached_input = input_tokens - cached
+        writes = max(0, min(cache_write_tokens, input_tokens - cached))
+        uncached_input = input_tokens - cached - writes
         return round(
             (uncached_input / 1000 * in_cost)
             + (cached / 1000 * cached_cost)
+            + (writes / 1000 * write_cost)
             + (output_tokens / 1000 * out_cost),
             6,
         )

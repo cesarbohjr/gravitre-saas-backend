@@ -191,6 +191,7 @@ class _StreamedCompletion:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     cached_tokens: int = 0
+    cache_write_tokens: int = 0
 
 
 async def _complete_unified_turn_stream(
@@ -392,6 +393,10 @@ async def _complete_unified_turn(
             latency_ms=latency_ms,
             model_total_ms=model_total_ms,
             streamed=False,
+            prompt_tokens=int(getattr(getattr(resp, "usage", None), "prompt_tokens", 0) or 0),
+            completion_tokens=int(getattr(getattr(resp, "usage", None), "completion_tokens", 0) or 0),
+            cached_tokens=int(getattr(getattr(getattr(resp, "usage", None), "prompt_tokens_details", None), "cached_tokens", 0) or 0),
+            cache_write_tokens=int(getattr(getattr(getattr(resp, "usage", None), "prompt_tokens_details", None), "cache_write_tokens", 0) or 0),
         )
 
     try:
@@ -1366,6 +1371,14 @@ async def run_unified_turn_shadow(
                 timeout_s=stream_timeout_s,
                 on_text_delta=on_text_delta if prog_round == 0 else None,
                 on_tool_call_delta=on_tool_call_delta if prog_round == 0 else None,
+            )
+            from app.services.tool_model_metering import record_tool_model_call
+
+            await record_tool_model_call(
+                router, org_id=org_id, model=model,
+                elapsed_ms=completion.model_total_ms,
+                input_tokens=completion.prompt_tokens, output_tokens=completion.completion_tokens,
+                cached_tokens=completion.cached_tokens, cache_write_tokens=completion.cache_write_tokens,
             )
             progressive_round_ms.append(int((time.perf_counter() - round_start) * 1000))
             breakdown["progressive_round_ms"] = list(progressive_round_ms)

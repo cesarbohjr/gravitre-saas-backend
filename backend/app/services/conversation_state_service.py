@@ -24,10 +24,10 @@ logger = get_logger(__name__)
 
 # Striped locks: task_state read-merge-write for one conversation never
 # interleaves with another in this process (writers run on the I/O pool).
-_TASK_STATE_LOCKS = [threading.Lock() for _ in range(64)]
+_TASK_STATE_LOCKS = [threading.RLock() for _ in range(64)]
 
 
-def _task_state_lock(conversation_id: str, org_id: str) -> threading.Lock:
+def _task_state_lock(conversation_id: str, org_id: str) -> threading.RLock:
     return _TASK_STATE_LOCKS[hash((conversation_id, org_id)) % len(_TASK_STATE_LOCKS)]
 
 
@@ -338,6 +338,7 @@ class ConversationStateService:
         updates: TaskStatePatch,
         client: Any | None,
         effect_record: bool = False,
+        _attempt: int = 0,
     ) -> None:
         original_updates = updates
         try:
@@ -376,6 +377,13 @@ class ConversationStateService:
 
                 updates = enrich_task_state_patch(updates, current_state=current)
                 merged = self._merge_task_state(current, updates)
+                # Server-owned revision: ignore a revision supplied in the patch.
+                # This orders persisted snapshots for clients within this writer.
+                previous_revision = current.get("task_revision")
+                try:
+                    merged["task_revision"] = int(previous_revision or 0) + 1
+                except (TypeError, ValueError):
+                    merged["task_revision"] = 1
                 from app.services.lifecycle_envelope import (
                     enrich_task_state_with_lifecycle_envelope,
                     patch_needs_lifecycle_refresh,
@@ -408,9 +416,23 @@ class ConversationStateService:
                             _patch_keys(original_updates),
                         )
                         return
-                    self._client(client).table("conversations").update(
+                    query = self._client(client).table("conversations").update(
                         {"task_state": merged}
-                    ).eq("id", conversation_id).eq("org_id", org_id).execute()
+                    ).eq("id", conversation_id).eq("org_id", org_id)
+                    # Fence competing replicas as well as the in-process lock.
+                    if previous_revision is None:
+                        query = query.filter("task_state->>task_revision", "is", "null")
+                    else:
+                        query = query.eq("task_state->>task_revision", str(previous_revision))
+                    response = query.execute()
+                    if getattr(response, "data", None):
+                        return
+                    if _attempt < 4:
+                        return self._persist_state_sync(
+                            conversation_id, org_id, original_updates, client,
+                            effect_record=effect_record, _attempt=_attempt + 1,
+                        )
+                    logger.error("persist_task_state_revision_conflict conversation_id=%s", conversation_id)
                     return
                 # Speculative (unconfirmed) run: keep the result for its own reads
                 # and replay the original patch only if the run is adopted. The

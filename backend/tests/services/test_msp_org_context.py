@@ -30,9 +30,9 @@ class _Client:
         return _Table(self._parent)
 
 
-def test_parent_member_can_access_child():
+def test_parent_membership_alone_does_not_grant_client_access():
     client = _Client("parent-org")
-    assert msp_parent_grants_access(
+    assert not msp_parent_grants_access(
         client,
         user_id="u1",
         requested_org_id="child-org",
@@ -48,3 +48,7 @@ def test_sibling_member_denied():
         requested_org_id="child-b",
         member_org_ids=["child-a"],
     )
+
+
+def test_explicit_client_and_parent_memberships_recognize_relationship():
+    assert msp_parent_grants_access(_Client("parent-org"), user_id="u1", requested_org_id="child-org", member_org_ids=["parent-org", "child-org"])

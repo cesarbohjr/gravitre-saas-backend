@@ -10,6 +10,9 @@ const TONE: Record<AiRuntimeState, string> = {
   streaming: "text-[color:var(--g-intelligence)]",
   generating: "text-[color:var(--g-intelligence)]",
   completed: "text-[color:var(--g-success)]",
+  verifying: "text-[color:var(--g-intelligence)]",
+  uncertain: "text-[color:var(--g-warning)]",
+  cancelled: "text-[color:var(--g-text-muted)]",
   needs_approval: "text-[color:var(--g-warning)]",
   blocked: "text-[color:var(--g-warning)]",
   failed: "text-[color:var(--g-danger)]",
@@ -27,6 +30,8 @@ function StateIcon({ state }: { state: AiRuntimeState }) {
     case "needs_approval":
     case "blocked":
       return <NucleoApproval className={cls} aria-hidden />
+    case "uncertain":
+    case "cancelled":
     case "partial":
     case "resumed":
       return <NucleoHistory className={cls} aria-hidden />

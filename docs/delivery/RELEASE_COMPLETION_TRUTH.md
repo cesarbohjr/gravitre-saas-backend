@@ -1,25 +1,31 @@
-# Master plan — what “fully built” means (2026-10-14)
+# Master plan implementation and shipping truth — 2026-10-14
 
-This document separates **code complete** from **production capable** (acceptance + operator gates).
+Implementation continues on `codex/master-plan-completion-20261014`, based on draft #429 at `7fd10c4a`. This branch is reviewable engineering; no merge, production migration, deployment, or flag activation has been performed here.
 
-## Code complete on `cursor/full-release-implementation-6b92`
+## Current implementation increment
 
-| Release | Delivered in code | Still partial / not started |
-|---------|-------------------|-----------------------------|
-| **R1** | Six-pack + follow-ups on `main` | Full authenticated acceptance matrix; Vercel key audit; incident review |
-| **R2** | Approval scope (+ audit fixes), atomic idempotency **claim** (flag default off), lifecycle persist only, write authority config | Enforce mode; pg concurrency tests; lifecycle UI/voice consumers; relay dry-run |
-| **R3** | Event-trigger queue, turn_id attribution, Freshservice trigger UI, automation actor | HubSpot test delivery; Freshservice prod E2E; metering reconciliation / ROI |
-| **R4** | Option A scaffold: `parent_org_id`, app resolver, RLS parent path | Client switcher, external MCP API, R4 acceptance |
-| **Parallel track** | — | Turn tracing, latency proof, memory disposition, resurfacing routes |
-| **R7** | — | Budget caps, adaptive routing |
+- Redis workflow claims move atomically from queued to owned processing. Ownership tokens, leases, heartbeat, bounded recovery and dead-letter transitions prevent lost jobs and fence stale acknowledgements. Concurrent deliveries for the same org/run share a single owner. Subsequent provider writes require a live claim and enabled write idempotency.
+- Workflow approval fingerprints seal the full JSON provider payload, including connector, webhook path/headers, CC/BCC, attachments and extension arguments. Dynamic parameter templates remain unsealed and require review after resolution. Existing narrower approvals may require renewed approval.
+- Conversation persistence adds server-owned revisions and compare-and-set retries. UI rejects stale revisions, presents uncertainty without a completion claim, and carries the existing lifecycle envelope through desktop/mobile runtime and mission status.
+- Provider acceptance without verifier evidence is unverified in the existing business-outcome projection. Its accepted confidence remains visible.
+- ReAct and unified LIVE/shadow tool-calling rounds use the existing ModelRouter model_calls writer and attribution context. Synthetic handoffs are not charged as model calls. This does not close all failure/cancellation metering or historical billing reconciliation.
+- Haiku 5.5 joins the existing catalog/selector/registry; its 100,000-token price threshold and cache rates are accounted for. Sonnet 5.5 cache reads use the vendor's October 7 price. No routing defaults or customer credit multipliers change.
+- MSP parent links cannot grant child access by themselves. Explicit child membership remains required until client-specific delegation, role enforcement and RLS are delivered.
 
-## Production gates (cannot be closed by code alone)
+## Gates and configuration
 
-1. `docs/delivery/release1-production-acceptance.md` — **NOT RUN** without test-org credentials.
-2. `DOMAIN_EVENT_RELAY_ENABLED` — stay **false** until backlog dry-run approved on staging.
-3. Migrations `20261014060000`, `20261014100000`, `20261014110000` — batch apply per runbook; not applied in this agent session.
-4. Deploy pair — reconcile Vercel web SHA vs Railway `git_sha` before sign-off.
+Existing #429 migrations remain separate from this increment: `20261014100000` then `20261014100001`; `20261014060000` requires link-management review. **`20261014110000` is withdrawn and must not be applied.** No new migration is added here.
 
-## Local engineering evidence
+Keep `WRITE_INVOKE_IDEMPOTENCY_ENABLED`, `EVENT_TRIGGER_USE_WORKFLOW_QUEUE`, `MSP_PARENT_ORG_ENABLED` and the domain relay off in production until their staging and authenticated acceptance gates pass. Queued writes require the idempotency ledger to be active. `WORKFLOW_QUEUE_LEASE_SECONDS` defaults to 60; leases renew every third of that interval. The existing fail-closed queue setting remains part of the production runbook.
 
-Run: `python3 scripts/verify-release-engineering-gates.py` → `docs/delivery/release-engineering-gates.json`.
+The new claim hash/lease/owner keys coexist with the old processing list. Before rollout, inspect old `gravitre:workflow-runs:processing` entries and reconcile their run/provider evidence; do not blindly replay them. Atomic scripts currently target Gravitre's single Redis deployment, not Redis Cluster.
+
+## Remaining master-plan work
+
+The completion matrix remains open for authenticated Release 1 acceptance, staging migration application, durable verification recovery and production activation; full argument-approval flows for resolved dynamic tasks; complete billing/failure attribution and PSA baselines/ROI; Freshservice/HubSpot live proofs; intelligence latency and complete document-memory lineage/resurfacing; client-scoped MSP delegation and switching; external MCP/API-key/OAuth distribution; model quality evaluations and adaptive routing; and third-party verification and marketplace reviews.
+
+These remain implementation or external acceptance work. Passing local tests does not close those rows or authorize a production flag flip. Source privacy and Memory Option B retain the existing owner/consent requirements.
+
+## Evidence
+
+See `CODEX_IMPLEMENTATION_2026-10-14.md` for executed checks and limitations, and `MASTER_PLAN_COMPLETION_MATRIX.md` for the full scope.
