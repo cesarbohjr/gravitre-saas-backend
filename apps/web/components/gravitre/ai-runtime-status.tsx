@@ -9,6 +9,7 @@ const TONE: Record<AiRuntimeState, string> = {
   idle: "text-[color:var(--g-text-muted)]",
   streaming: "text-[color:var(--g-intelligence)]",
   generating: "text-[color:var(--g-intelligence)]",
+  verifying: "text-[color:var(--g-intelligence)]",
   completed: "text-[color:var(--g-success)]",
   needs_approval: "text-[color:var(--g-warning)]",
   blocked: "text-[color:var(--g-warning)]",
@@ -55,7 +56,7 @@ export function GravitreAIRuntimeStatus({
 }) {
   if (state === "idle") return null
   const copy = AI_RUNTIME_STATE_COPY[state]
-  const live = state === "streaming" || state === "generating"
+  const live = state === "streaming" || state === "generating" || state === "verifying"
   return (
     <div
       role="status"

@@ -17,6 +17,7 @@ export const AI_RUNTIME_STATES = [
   "idle",
   "streaming",
   "generating",
+  "verifying",
   "completed",
   "needs_approval",
   "blocked",
@@ -85,6 +86,10 @@ export function deriveAiRuntimeState(input: AiRuntimeStateInput): AiRuntimeState
   if (input.canContinueAfterStop) return "partial"
 
   if (result && result.success === true) {
+    const verification = result.structured?.verification as
+      | { required?: boolean; verified?: boolean; state?: string }
+      | undefined
+    if (verification?.required && verification.verified !== true) return "verifying"
     return hasFailedStep(result) ? "partial" : "completed"
   }
 
@@ -95,6 +100,7 @@ export const AI_RUNTIME_STATE_COPY: Record<AiRuntimeState, { label: string; deta
   idle: { label: "Ready", detail: "Waiting for your next instruction." },
   streaming: { label: "Responding", detail: "The reply is streaming in." },
   generating: { label: "Working", detail: "Gravitre is working on this turn." },
+  verifying: { label: "Verifying", detail: "The action ran. Gravitre is confirming the result in the connected system." },
   completed: { label: "Completed", detail: "The last action finished." },
   needs_approval: { label: "Needs your approval", detail: "Review the action below before it runs." },
   blocked: { label: "Waiting on an approver", detail: "Sent for approval. Nothing runs until it is approved." },
