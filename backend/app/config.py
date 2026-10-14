@@ -722,6 +722,13 @@ class Settings(BaseSettings):
     # Durable workflow run queue consumer (STA-94). Requires REDIS_URL.
     workflow_queue_enabled: bool = True
     workflow_queue_poll_seconds: int = 5
+    workflow_queue_max_delivery_attempts: int = Field(
+        default=5,
+        validation_alias=AliasChoices(
+            "workflow_queue_max_delivery_attempts",
+            "WORKFLOW_QUEUE_MAX_DELIVERY_ATTEMPTS",
+        ),
+    )
     # White-label custom domain CNAME target (STA-84)
     enterprise_custom_domain_cname_target: str = "cname.gravitre.app"
     # Deployment region for RLS enforcement (us|eu). Set per regional Supabase/API deployment.

@@ -135,20 +135,26 @@ def block_invoke_by_approval_scope(
         }
     allowed_targets = scope.get("allowed_write_targets") if isinstance(scope.get("allowed_write_targets"), list) else []
     runtime_params = invoke_params if isinstance(invoke_params, dict) else {}
-    if allowed_targets and not invoke_target_allowed(
+    scoped_targets = [row for row in allowed_targets if row.get("invoke_action") == invoke_action]
+    if not scoped_targets:
+        return {
+            "success": False,
+            "error_code": "approval_scope_args_unsealed",
+            "reason": "approval_scope_args_unsealed",
+            "action": invoke_action,
+        }
+    if not invoke_target_allowed(
         invoke_action=invoke_action,
         params=runtime_params,
         allowed_targets=allowed_targets,
     ):
+        fp = write_target_fingerprint(invoke_action=invoke_action, payload=runtime_params)
         return {
             "success": False,
             "error_code": "approval_scope_args_mismatch",
             "reason": "approval_scope_args_mismatch",
             "action": invoke_action,
-            "fingerprint": write_target_fingerprint(
-                invoke_action=invoke_action,
-                payload=runtime_params,
-            ),
+            "fingerprint": fp,
         }
     return None
 

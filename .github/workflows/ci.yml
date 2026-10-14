@@ -236,6 +236,31 @@ jobs:
           SUPABASE_JWT_SECRET: jwt-secret-test
           OPENAI_API_KEY: sk-test-openai
 
+      - name: Install PostgreSQL server (write invoke idempotency gate)
+        run: |
+          sudo apt-get update -y -q
+          sudo apt-get install -y -q postgresql postgresql-client
+          PGVER="$(ls /usr/lib/postgresql | sort -V | tail -1)"
+          echo "GRAVITRE_PG_BIN=/usr/lib/postgresql/${PGVER}/bin" >> "$GITHUB_ENV"
+
+      - name: Write invoke idempotency Postgres acceptance (must not skip)
+        run: python -m pytest tests/db/test_write_invoke_idempotency_pg.py -q --no-header
+        env:
+          APP_ENV: dev
+          GRAVITRE_REQUIRE_PG: "1"
+
+      - name: Install and start Redis (workflow queue integration)
+        run: |
+          sudo apt-get install -y -q redis-server
+          sudo systemctl start redis-server
+
+      - name: Workflow queue Redis integration
+        run: python -m pytest tests/workers/test_workflow_queue_redis_integration.py -q --no-header
+        env:
+          APP_ENV: dev
+          REDIS_URL: redis://127.0.0.1:6379/15
+          GRAVITRE_REQUIRE_REDIS: "1"
+
       - name: Run tests
         run: python -m pytest -q
         env:

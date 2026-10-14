@@ -61,14 +61,30 @@ def test_claim_replay_from_rpc():
     assert out.outcome == "replay" and out.replay is not None and out.replay.success
 
 
-def test_finalize_updates_row():
+def test_finalize_uses_fenced_rpc():
     client = MagicMock()
-    finalize_write_invoke(
+    client.rpc.return_value.execute.return_value.data = {"outcome": "finalized"}
+    out = finalize_write_invoke(
         client,
         org_id="org-1",
         idempotency_key="invoke:abc",
+        claim_token="11111111-1111-4111-8111-111111111111",
         status="completed",
         result=NormalizedResult(success=True, action="hubspot.contacts.update", data={"id": "1"}),
     )
-    client.table.assert_called_with("write_invoke_idempotency")
-    client.table.return_value.update.assert_called_once()
+    assert out.outcome == "finalized"
+    client.rpc.assert_called_once()
+    assert client.rpc.call_args[0][0] == "finalize_write_invoke_idempotency"
+
+
+def test_finalize_rejects_missing_token():
+    client = MagicMock()
+    out = finalize_write_invoke(
+        client,
+        org_id="org-1",
+        idempotency_key="invoke:abc",
+        claim_token=None,
+        status="failed",
+    )
+    assert out.outcome == "rejected"
+    client.rpc.assert_not_called()

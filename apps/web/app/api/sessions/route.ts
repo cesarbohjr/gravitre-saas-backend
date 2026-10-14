@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
+import { createSupabaseRouteClient, requireAuthenticatedOrg } from "@/lib/supabase/server"
 import { ensureDemoDataForOrg } from "@/lib/supabase/demo-bootstrap"
 
 type RecentActivityItem = {
@@ -21,13 +21,18 @@ function isMissingRelationError(message: string | undefined) {
   return value.includes("does not exist") || value.includes("relation")
 }
 
+function jsonError(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status })
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = createSupabaseRouteClient(request)
-    const orgId = await resolveOrgId(supabase, request)
-    if (!orgId) {
-      return NextResponse.json({ error: "Organization context required" }, { status: 403 })
+    const auth = await requireAuthenticatedOrg(supabase, request)
+    if (!auth.ok) {
+      return auth.response
     }
+    const { orgId } = auth.context
 
     await ensureDemoDataForOrg(supabase, orgId)
 
@@ -54,8 +59,13 @@ export async function GET(request: NextRequest) {
       ])
 
     if (activeRunsError || recentRunsError || recentApprovalsError) {
-      const message = activeRunsError?.message ?? recentRunsError?.message ?? recentApprovalsError?.message
-      return NextResponse.json({ error: message ?? "Failed to load sessions" }, { status: 500 })
+      console.warn("sessions GET query failed", {
+        orgId,
+        activeRunsError: activeRunsError?.message,
+        recentRunsError: recentRunsError?.message,
+        recentApprovalsError: recentApprovalsError?.message,
+      })
+      return jsonError("Failed to load sessions", 503)
     }
 
     const runActivities: RecentActivityItem[] = (recentRuns ?? []).map((run) => {
@@ -84,26 +94,24 @@ export async function GET(request: NextRequest) {
     const payload = {
       activeSessions: (activeRuns ?? []).length,
       recentActivity,
-      // Backward-compatible fields for clients that still expect a list.
       sessions: recentActivity,
     }
 
     return NextResponse.json(payload)
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    )
+    console.warn("sessions GET unexpected error", error)
+    return jsonError("Failed to load sessions", 500)
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = createSupabaseRouteClient(request)
-    const orgId = await resolveOrgId(supabase, request)
-    if (!orgId) {
-      return NextResponse.json({ error: "Organization context required" }, { status: 403 })
+    const auth = await requireAuthenticatedOrg(supabase, request)
+    if (!auth.ok) {
+      return auth.response
     }
+    const { orgId } = auth.context
 
     const body = await request.json().catch(() => ({}))
     const title = String(body?.title ?? "Operator Session").trim() || "Operator Session"
@@ -138,7 +146,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ session: fallbackSession, persisted: false }, { status: 201 })
       }
 
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.warn("sessions POST insert failed", { orgId, message: error.message })
+      return jsonError("Failed to create session", 503)
     }
 
     return NextResponse.json(
@@ -157,9 +166,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    )
+    console.warn("sessions POST unexpected error", error)
+    return jsonError("Failed to create session", 500)
   }
 }

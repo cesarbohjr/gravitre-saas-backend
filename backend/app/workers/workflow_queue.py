@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 WORKFLOW_RUN_QUEUE = "gravitre:workflow-runs"
 WORKFLOW_RUN_PROCESSING = "gravitre:workflow-runs:processing"
+WORKFLOW_RUN_DEAD = "gravitre:workflow-runs:dead"
 _local_queue: asyncio.Queue[str] = asyncio.Queue()
 
 
@@ -25,6 +26,7 @@ class WorkflowRunJob:
     workflow_id: str
     region: str = "us"
     idempotency_key: str | None = None
+    delivery_attempt: int = 0
     enqueued_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
@@ -97,18 +99,38 @@ async def acknowledge_workflow_run(raw: str) -> None:
         logger.warning("workflow_queue_ack_failed error=%s", str(exc))
 
 
+def _bump_delivery_attempt(raw: str, *, max_attempts: int) -> tuple[str, bool]:
+    """Increment delivery_attempt; return (payload, poisoned)."""
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return raw, False
+    if not isinstance(data, dict):
+        return raw, False
+    attempt = int(data.get("delivery_attempt") or 0) + 1
+    data["delivery_attempt"] = attempt
+    payload = json.dumps(data)
+    return payload, attempt >= max(1, max_attempts)
+
+
 async def requeue_workflow_run(raw: str) -> None:
-    """Return a failed/incomplete job to the main queue."""
+    """Return a failed/incomplete job to the main queue (bounded retries)."""
     settings = get_settings()
     redis_url = (getattr(settings, "redis_url", "") or "").strip()
     if not redis_url or not is_queue_available():
         return
+    max_attempts = int(getattr(settings, "workflow_queue_max_delivery_attempts", 5) or 5)
+    next_raw, poisoned = _bump_delivery_attempt(raw, max_attempts=max_attempts)
     try:
         from redis.asyncio import from_url
 
         client = from_url(redis_url, decode_responses=True)
         await client.lrem(WORKFLOW_RUN_PROCESSING, 1, raw)
-        await client.rpush(WORKFLOW_RUN_QUEUE, raw)
+        if poisoned:
+            await client.rpush(WORKFLOW_RUN_DEAD, next_raw)
+            logger.warning("workflow_queue_poison_job payload=%s", next_raw[:200])
+        else:
+            await client.rpush(WORKFLOW_RUN_QUEUE, next_raw)
         await client.aclose()
     except Exception as exc:  # noqa: BLE001
         logger.warning("workflow_queue_requeue_failed error=%s", str(exc))

@@ -20,6 +20,7 @@ logger = get_logger(__name__)
 
 TABLE = "write_invoke_idempotency"
 ClaimOutcome = Literal["claimed", "replay", "blocked", "error"]
+FinalizeOutcome = Literal["finalized", "rejected", "error"]
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,14 @@ class WriteClaimResult:
     outcome: ClaimOutcome
     status: str | None = None
     replay: NormalizedResult | None = None
+    reason: str | None = None
+    claim_token: str | None = None
+    claim_generation: int | None = None
+
+
+@dataclass(frozen=True)
+class WriteFinalizeResult:
+    outcome: FinalizeOutcome
     reason: str | None = None
 
 
@@ -126,7 +135,15 @@ def claim_write_invoke(
             return WriteClaimResult(outcome="replay", status="completed", replay=replay)
         return WriteClaimResult(outcome="blocked", status="completed", reason="invalid_replay_payload")
     if outcome == "claimed":
-        return WriteClaimResult(outcome="claimed", status="in_progress")
+        token = str(body.get("claim_token") or "") or None
+        generation_raw = body.get("claim_generation")
+        generation = int(generation_raw) if generation_raw is not None else None
+        return WriteClaimResult(
+            outcome="claimed",
+            status="in_progress",
+            claim_token=token,
+            claim_generation=generation,
+        )
     return WriteClaimResult(
         outcome="blocked",
         status=str(body.get("status") or ""),
@@ -139,15 +156,21 @@ def finalize_write_invoke(
     *,
     org_id: str,
     idempotency_key: str,
+    claim_token: str | None,
     status: Literal["completed", "failed", "uncertain"],
     result: NormalizedResult | None = None,
-) -> None:
-    row: dict[str, Any] = {
-        "status": status,
-        "lease_expires_at": None,
-    }
+) -> WriteFinalizeResult:
+    if not claim_token:
+        logger.warning(
+            "write_idempotency_finalize_missing_token org_id=%s key=%s status=%s",
+            org_id,
+            idempotency_key[:16],
+            status,
+        )
+        return WriteFinalizeResult(outcome="rejected", reason="missing_claim_token")
+    payload: dict[str, Any] = {}
     if result is not None:
-        row["result"] = {
+        payload = {
             "success": result.success,
             "action": result.action,
             "data": result.data,
@@ -157,16 +180,19 @@ def finalize_write_invoke(
             "latency_ms": result.latency_ms,
         }
     try:
-        (
-            client.table(TABLE)
-            .update(row)
-            .eq("org_id", org_id)
-            .eq("idempotency_key", idempotency_key)
-            .execute()
-        )
+        res = client.rpc(
+            "finalize_write_invoke_idempotency",
+            {
+                "p_org_id": org_id,
+                "p_key": idempotency_key,
+                "p_claim_token": claim_token,
+                "p_status": status,
+                "p_result": payload,
+            },
+        ).execute()
     except Exception as exc:  # noqa: BLE001
         if _missing_table(exc):
-            return
+            return WriteFinalizeResult(outcome="error", reason="ledger_missing")
         logger.warning(
             "write_idempotency_finalize_failed org_id=%s key=%s status=%s error=%s",
             org_id,
@@ -174,6 +200,12 @@ def finalize_write_invoke(
             status,
             exc,
         )
+        return WriteFinalizeResult(outcome="error", reason="finalize_failed")
+    body = res.data if isinstance(res.data, dict) else {}
+    outcome = str(body.get("outcome") or "error")
+    if outcome == "finalized":
+        return WriteFinalizeResult(outcome="finalized")
+    return WriteFinalizeResult(outcome="rejected", reason=str(body.get("reason") or outcome))
 
 
 def inject_provider_idempotency(params: dict[str, Any], idempotency_key: str) -> dict[str, Any]:

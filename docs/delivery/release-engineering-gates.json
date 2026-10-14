@@ -1,7 +1,7 @@
 {
   "verdict": "PASS",
   "exit_code": 0,
-  "stdout_tail": "...............................................                          [100%]\n============================== warnings summary ===============================\napp\\billing\\service.py:14\n  C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\.cursor-tmp\\wt-marketing-seo\\backend\\app\\billing\\service.py:14: DeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.\n    from app.core.errors import error_detail\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n47 passed, 1 warning in 8.94s\n",
+  "stdout_tail": "....................................................                     [100%]\n============================== warnings summary ===============================\napp\\billing\\service.py:14\n  C:\\Users\\Cesar\\Downloads\\Gravitre Operator AI\\.cursor-tmp\\wt-marketing-seo\\backend\\app\\billing\\service.py:14: DeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.\n    from app.core.errors import error_detail\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n52 passed, 1 warning in 9.56s\n",
   "stderr_tail": "",
   "tests": [
     "tests/services/test_workflow_approval_scope.py",

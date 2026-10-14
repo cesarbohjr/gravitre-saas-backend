@@ -5279,6 +5279,7 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
 
     write_idempotency_key: str | None = None
     write_logical_action_id: str | None = None
+    write_claim_token: str | None = None
     idempotency_enabled = _is_write_invoke(action) and bool(
         getattr(ctx.settings, "write_invoke_idempotency_enabled", False)
     )
@@ -5317,6 +5318,7 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                 "Write idempotency ledger unavailable; refusing duplicate-risk invoke",
                 code="write_idempotency_unavailable",
             )
+        write_claim_token = claim.claim_token
         params = inject_provider_idempotency(params, write_idempotency_key)
 
     # Last stop check before the provider call, and the record a cancelled
@@ -5401,6 +5403,7 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                     ctx.client,
                     org_id=ctx.org_id,
                     idempotency_key=write_idempotency_key,
+                    claim_token=write_claim_token,
                     status="completed",
                     result=result,
                 )
@@ -5488,6 +5491,7 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
             ctx.client,
             org_id=ctx.org_id,
             idempotency_key=write_idempotency_key,
+            claim_token=write_claim_token,
             status="uncertain" if isinstance(last_error, ToolOutcomeUncertainError) else "failed",
         )
 

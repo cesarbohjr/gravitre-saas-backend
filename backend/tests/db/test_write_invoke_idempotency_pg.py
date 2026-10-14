@@ -3,15 +3,19 @@ from __future__ import annotations
 
 import concurrent.futures
 import json
+import os
 
 import pytest
 
-from tests.db.pg_harness import MIGRATIONS, pg_cluster, requires_pg
+from tests.db.pg_harness import MIGRATIONS, PG_BIN, pg_cluster, requires_pg
 
 MIGRATION = MIGRATIONS / "20261014100000_write_invoke_idempotency.sql"
 
 ORG_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 ORG_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+
+if os.environ.get("GRAVITRE_REQUIRE_PG") == "1" and PG_BIN is None:
+    pytest.fail("GRAVITRE_REQUIRE_PG=1 but PostgreSQL server binaries are not installed")
 
 pytestmark = requires_pg
 
@@ -42,6 +46,33 @@ SELECT public.claim_write_invoke_idempotency(
 """
     raw = pg.psql(sql).stdout.strip()
     return json.loads(raw)
+
+
+def _finalize(pg, org: str, key: str, token: str, status: str = "completed") -> dict:
+    sql = f"""
+SET ROLE service_role;
+SELECT public.finalize_write_invoke_idempotency(
+  '{org}'::uuid,
+  '{key}',
+  '{token}'::uuid,
+  '{status}',
+  '{{"success": true, "action": "hubspot.contacts.update", "data": {{"id": "1"}}}}'::jsonb
+)::text;
+"""
+    return json.loads(pg.psql(sql).stdout.strip())
+
+
+def _reconcile(pg, org: str, key: str, status: str = "failed") -> dict:
+    sql = f"""
+SET ROLE service_role;
+SELECT public.reconcile_write_invoke_idempotency(
+  '{org}'::uuid,
+  '{key}',
+  '{status}',
+  '{{}}'::jsonb
+)::text;
+"""
+    return json.loads(pg.psql(sql).stdout.strip())
 
 
 @pytest.fixture(scope="module")
@@ -79,17 +110,11 @@ def test_org_boundary_same_key(pg):
 
 def test_completed_replay(pg):
     key = "invoke:replay-1"
-    assert _claim(pg, ORG_A, key)["outcome"] == "claimed"
-    pg.psql(
-        f"""
-SET ROLE service_role;
-UPDATE public.write_invoke_idempotency
-SET status = 'completed',
-    result = '{{"success": true, "action": "hubspot.contacts.update", "data": {{"id": "1"}}}}'::jsonb,
-    lease_expires_at = NULL
-WHERE org_id = '{ORG_A}' AND idempotency_key = '{key}';
-"""
-    )
+    first = _claim(pg, ORG_A, key)
+    assert first["outcome"] == "claimed"
+    assert first.get("claim_token")
+    fin = _finalize(pg, ORG_A, key, first["claim_token"])
+    assert fin["outcome"] == "finalized"
     replay = _claim(pg, ORG_A, key)
     assert replay["outcome"] == "replay"
     assert replay["result"]["success"] is True
@@ -110,9 +135,10 @@ WHERE org_id = '{ORG_A}' AND idempotency_key = '{key}';
     assert blocked["status"] == "uncertain"
 
 
-def test_expired_lease_reclaimed(pg):
+def test_expired_lease_requires_reconciliation_not_reclaim(pg):
     key = "invoke:lease-1"
-    assert _claim(pg, ORG_A, key)["outcome"] == "claimed"
+    first = _claim(pg, ORG_A, key)
+    assert first["outcome"] == "claimed"
     pg.psql(
         f"""
 SET ROLE service_role;
@@ -122,7 +148,48 @@ WHERE org_id = '{ORG_A}' AND idempotency_key = '{key}';
 """
     )
     again = _claim(pg, ORG_A, key)
-    assert again["outcome"] == "claimed"
+    assert again["outcome"] == "blocked"
+    assert again["status"] == "uncertain"
+    assert again.get("reason") == "reconciliation_required"
+    row_status = pg.value(
+        f"SELECT status FROM public.write_invoke_idempotency WHERE org_id = '{ORG_A}' AND idempotency_key = '{key}';"
+    )
+    assert row_status == "uncertain"
+
+
+def test_stale_claim_token_rejected_on_finalize(pg):
+    key = "invoke:stale-token"
+    first = _claim(pg, ORG_A, key)
+    token = first["claim_token"]
+    pg.psql(
+        f"""
+SET ROLE service_role;
+UPDATE public.write_invoke_idempotency
+SET claim_token = gen_random_uuid()
+WHERE org_id = '{ORG_A}' AND idempotency_key = '{key}';
+"""
+    )
+    fin = _finalize(pg, ORG_A, key, token)
+    assert fin["outcome"] == "rejected"
+
+
+def test_reconcile_after_expired_lease_allows_failed_retry(pg):
+    key = "invoke:reconcile-1"
+    first = _claim(pg, ORG_A, key)
+    pg.psql(
+        f"""
+SET ROLE service_role;
+UPDATE public.write_invoke_idempotency
+SET lease_expires_at = now() - interval '1 minute'
+WHERE org_id = '{ORG_A}' AND idempotency_key = '{key}';
+"""
+    )
+    assert _claim(pg, ORG_A, key)["outcome"] == "blocked"
+    rec = _reconcile(pg, ORG_A, key, "failed")
+    assert rec["outcome"] == "reconciled"
+    retry = _claim(pg, ORG_A, key)
+    assert retry["outcome"] == "claimed"
+    assert int(retry.get("claim_generation") or 0) >= 2
 
 
 def test_authenticated_cannot_insert(pg):
