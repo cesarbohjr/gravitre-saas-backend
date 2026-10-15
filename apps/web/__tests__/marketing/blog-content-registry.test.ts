@@ -31,3 +31,26 @@ describe("marketing blog content registry", () => {
     expect(getFeaturedBlogPost().slug).toBe(MSP_BLOG_SLUG)
   })
 })
+
+describe("blog publishing metadata invariants", () => {
+  it("keeps canonical slugs and article titles unique", () => {
+    const slugs = blogPosts.map((post) => post.slug)
+    const titles = blogPosts.map((post) => post.title.trim().toLocaleLowerCase("en-US"))
+    expect(new Set(slugs).size).toBe(slugs.length)
+    expect(new Set(titles).size).toBe(titles.length)
+  })
+
+  it("keeps real author attribution, descriptions, and publication dates", () => {
+    for (const post of blogPosts) {
+      expect(post.slug, "slug").toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      expect(post.title.length, post.slug).toBeGreaterThan(10)
+      expect(post.description.trim(), post.slug).not.toBe("")
+      expect(post.author.name.trim(), post.slug).not.toBe("")
+      expect(post.author.role.trim(), post.slug).not.toBe("")
+      expect(Number.isNaN(Date.parse(post.datePublished)), post.slug).toBe(false)
+      expect(Number.isNaN(Date.parse(post.dateModified)), post.slug).toBe(false)
+      expect(new Date(post.dateModified).getTime(), post.slug).toBeGreaterThanOrEqual(new Date(post.datePublished).getTime())
+      expect(post.heroAlt.trim(), post.slug).not.toBe("")
+    }
+  })
+})
