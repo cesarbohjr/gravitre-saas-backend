@@ -216,6 +216,8 @@ def test_incomplete_model_pages_do_not_report_an_understated_cost(monkeypatch):
     summary = run_cost_summary(_summary_db(), "org-1", RUN)
     assert summary["model"]["attributed"] is False
     assert summary["model"]["cost_usd"] is None
+    assert summary["steps"]["coverage_complete"] is False
+    assert summary["time"]["waiting_ms"] is None
 
 
 def test_summary_says_cost_unknown_not_zero_before_migration():

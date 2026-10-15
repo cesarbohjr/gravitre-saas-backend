@@ -113,7 +113,7 @@ def run_cost_summary(client: Any, org_id: str, run_id: str) -> dict[str, Any] | 
         "approval_status": run.get("approval_status"),
         "time": {
             "execution_ms": run.get("duration_ms"),
-            "waiting_ms": _ms(created, first_start),
+            "waiting_ms": _ms(created, first_start) if steps_complete else None,
             "elapsed_ms": _ms(created, _ts(run.get("completed_at"))),
         },
         "model": model,
