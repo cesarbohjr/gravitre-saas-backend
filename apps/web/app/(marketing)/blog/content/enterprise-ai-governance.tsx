@@ -11,8 +11,9 @@ function Cite({ children }: { children: ReactNode }) {
 export const enterpriseAiGovernancePost: BlogPost = {
   slug: "enterprise-ai-governance",
   title: "The Complete Guide to Enterprise AI Governance",
+  seoTitle: "Enterprise AI Governance Guide",
   description:
-    "Most organizations have adopted AI. Fewer than 30% have a governance plan. Here is what enterprise AI governance actually controls — and how reference-based architecture changes the CISO conversation.",
+    "Enterprise AI governance covers access, approvals, audit evidence, and responsibility for AI actions. Learn what to verify before deployment.",
   excerpt:
     "Most organizations have adopted AI. Fewer than 30% have a plan for governing it. That gap is where the real risk lives — not in AI making a mistake, but in deploying it without knowing what it was doing.",
   category: "Engineering",
