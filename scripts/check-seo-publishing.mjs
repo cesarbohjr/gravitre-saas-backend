@@ -79,7 +79,7 @@ for (const p of allDocs) {
 }
 for (const [title, paths] of titlesByName) {
   if (paths.length < 2) continue
-  warnings.push(`Duplicate public-doc title "${title}": ${paths.join(", ")}. Review intent before merging or redirecting.`)
+  errors.push(`Duplicate public-doc title "${title}": ${paths.join(", ")}. Give each page a distinct search intent or plan a reviewed 301 redirect.`)
   for (const p of paths) {
     if (added.includes(p)) errors.push(`${p}: new doc duplicates an existing public title "${title}"`)
   }
