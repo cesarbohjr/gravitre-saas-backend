@@ -115,7 +115,7 @@ export const workflowTemplatesPost: BlogPost = {
 
       <p>
         A useful template needs a way to test its connections before anything changes in a live system.
-        <a href="https://learn.microsoft.com/en-us/power-automate/get-started-with-cloud-flows" target="_blank" rel="noopener noreferrer"> Microsoft's Power Automate tutorial</a>
+        <a href="https://learn.microsoft.com/en-us/power-automate/get-started-with-cloud-flows" target="_blank" rel="noopener noreferrer"> Microsoft&apos;s Power Automate tutorial</a>
         demonstrates creating, testing, and running a cloud flow. The
         <a href="https://developers.hubspot.com/docs/api/overview" target="_blank" rel="noopener noreferrer"> HubSpot CRM API reference</a>
         describes the records and authenticated operations behind CRM integration. Both show why a template
