@@ -4,7 +4,7 @@ import { MARKETING_COPY } from "@/lib/marketing-copy"
 export const metadata = marketingMetadata({
   canonical: "/changelog",
   title: "Changelog",
-  description: "Product updates, new features, improvements, and security releases for the Gravitre platform.",
+  description: "Read Gravitre product updates, security fixes, and new capabilities across agents, workflows, integrations, approvals, and business intelligence.",
   ogDescription: MARKETING_COPY.changelog.subtitle,
 })
 
