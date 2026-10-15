@@ -47,12 +47,13 @@ for (const p of added) {
 for (const p of added.filter(p => /^apps\/web\/app\/\(marketing\)\/blog\/content\/[^/]+\.tsx$/.test(p))) {
   const body = read(p)
   for (const field of ["slug:", "title:", "description:", "author:", "datePublished:", "dateModified:", "heroAlt:"]) {
-    if (!body.includes(field)) errors.push(`${p}: new blog post missing ${field}`)
+    if (!body.includes(field) && !(["datePublished:", "dateModified:"].includes(field) && body.includes("createBlogDates("))) errors.push(`${p}: new blog post missing ${field}`)
   }
   // A new article should include at least one reader-question H2 with an
   // answer-led opening paragraph, not merely a list of generic headings.
   const questionSections = [...body.matchAll(/<h2[^>]*>([^<]*\?)<\/h2>\s*<p[^>]*>([\s\S]*?)<\/p>/g)]
-  if (!questionSections.length) {
+  const markdownQuestion = /## (?:What|Which|When|Where|Why|How|Can|Do|Does|Should|Is|Are)[^?]{5,120}\?/.test(body)
+  if (!questionSections.length && !markdownQuestion) {
     errors.push(`${p}: include a question-form H2 followed immediately by a direct-answer paragraph`)
   } else if (questionSections.every(([, , para]) => plain(para).split(/\s+/).filter(Boolean).length < 8)) {
     errors.push(`${p}: question H2 needs a substantive first-sentence answer`)
