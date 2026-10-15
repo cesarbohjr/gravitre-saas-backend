@@ -66,12 +66,21 @@ def upload_raw_rag_file(
         job_id=job_id,
         filename=filename,
     )
-    file_options: dict[str, Any] = {"upsert": "true"}
-    if content_type:
-        file_options["content-type"] = content_type
+    from app.services.byo_storage import put_org_file
 
     try:
-        client.storage.from_(bucket).upload(path, data, file_options=file_options)
+        # Supabase Storage as before; the org's own bucket only with BYO_STORAGE_ENABLED,
+        # the enterprise entitlement and a verified target (services/byo_storage.py).
+        return put_org_file(
+            client,
+            settings,
+            org_id=org_id,
+            logical_bucket=bucket,
+            path=path,
+            data=data,
+            content_type=content_type,
+            purpose="rag_upload",
+        )
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "rag_raw_upload_failed org_id=%s job_id=%s path=%s error=%s",
@@ -81,9 +90,3 @@ def upload_raw_rag_file(
             str(exc),
         )
         return None
-
-    return {
-        "storage_bucket": bucket,
-        "storage_path": path,
-        "storage_bytes": len(data),
-    }

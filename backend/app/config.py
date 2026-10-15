@@ -678,6 +678,33 @@ class Settings(BaseSettings):
     # (never a run or a customer message). Also needs WORK_OBJECT_PROPOSALS_ENABLED
     # and ACCOUNT_HEALTH_ENABLED.
     account_play_proposals_enabled: bool = False
+    # Storage: audit-log retention, per-org storage meter and plan quota, bring-your-own
+    # file storage. All need migration 20261013090000_storage_retention_metering.sql.
+    # Audit-log retention (services/data_retention.py). 0 keeps audit_logs/audit_events
+    # forever; any value is raised to the 365-day compliance floor. Orgs under a legal
+    # hold (org_legal_holds) and approval/rejection rows are never deleted. Dry run only
+    # counts and writes a receipt; set AUDIT_RETENTION_DRY_RUN=false to delete.
+    audit_retention_days: int = 0
+    audit_retention_dry_run: bool = True
+    # Gzipped JSONL copy of each batch in a private Supabase Storage bucket, per org,
+    # uploaded before the batch is deleted.
+    audit_retention_archive_enabled: bool = False
+    audit_retention_archive_bucket: str = "audit-archive"
+    # Telemetry (model_calls, ai_pipeline_latency, cognitive_turn_traces); separate
+    # switch, per-table floors. guardrail_events is never pruned here. Same dry run.
+    telemetry_retention_days: int = 0
+    audit_retention_batch_size: int = 2000
+    audit_retention_max_batches_per_run: int = 500
+    audit_retention_interval_seconds: int = 86400
+    # Daily per-org storage snapshot (compute_org_storage_usage) and its API.
+    storage_meter_enabled: bool = False
+    storage_meter_interval_seconds: int = 86400
+    # Plan storage quota: warn at 80%, refuse new connector syncs and uploads at 100%
+    # (HTTP 402 STORAGE_QUOTA_EXCEEDED). Never deletes data. Needs a snapshot to act.
+    storage_quota_enforcement_enabled: bool = False
+    # Enterprise bring-your-own S3-compatible file storage. Only files move; database rows
+    # (memories, chunks, embeddings) stay in Supabase.
+    byo_storage_enabled: bool = False
     # Shared secret for /api/watchers/agent/signal HMAC or X-Watcher-Secret header.
     watcher_agent_webhook_secret: str | None = None
     # Write authority on the invoke spine: shadow (log missing authority), enforce, off.

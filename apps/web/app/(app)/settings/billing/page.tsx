@@ -5,6 +5,7 @@ import useSWR from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { SettingsShell } from "@/components/settings/settings-shell"
+import { StorageUsageCard } from "@/components/settings/storage-usage-card"
 import { StatusBeacon } from "@/components/gravitre/premium-effects"
 import { 
   ComposedChart,
@@ -926,6 +927,9 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
                   )
                 })}
               </div>
+
+              {/* Hidden unless the storage meter is switched on. */}
+              <StorageUsageCard className="mt-4" />
 
               {showVoiceBilling ? (
                 <div className="mt-4 rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-4">

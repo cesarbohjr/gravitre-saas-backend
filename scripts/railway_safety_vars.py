@@ -79,6 +79,13 @@ DEFAULT_OFF: tuple[str, ...] = (
     # and the memory/observation purge (PR #374). Needs migration 20261012070000
     # first: before it, recall returns no memories (the filter fails closed).
     "MEMORY_SOURCE_LINEAGE_ENABLED",
+    # Storage PR (needs migration 20261013090000): archive audit batches before delete,
+    # daily per-org storage snapshot, plan storage quota (402 on new syncs/uploads at
+    # 100%), enterprise bring-your-own file storage.
+    "AUDIT_RETENTION_ARCHIVE_ENABLED",
+    "STORAGE_METER_ENABLED",
+    "STORAGE_QUOTA_ENFORCEMENT_ENABLED",
+    "BYO_STORAGE_ENABLED",
 )
 
 # A str setting; absent and empty both mean "no pilot orgs".
@@ -99,6 +106,16 @@ OPTIONAL_REPORTED: tuple[str, ...] = ("TEMPORAL_HOST",)
 # value, never pinned: true is a deliberate stop, not a misconfiguration, but it
 # pauses every knowledge sync, so it must be visible.
 KILL_SWITCH = "DISABLE_INGESTION"
+
+# Data retention settings: reported with their values, never pinned and never a
+# problem (the age is an owner decision; 0 keeps rows forever and any other value is
+# raised to the compliance floor in code). Only a value that would stop startup is a
+# problem. AUDIT_RETENTION_DRY_RUN defaults to true (count only).
+RETENTION_REPORTED: dict[str, str] = {
+    "AUDIT_RETENTION_DAYS": "0 (keep forever)",
+    "TELEMETRY_RETENTION_DAYS": "0 (keep forever)",
+    "AUDIT_RETENTION_DRY_RUN": "true (count only)",
+}
 
 # Context delivery settings (pre-3.0 Plus): reported with their values, never
 # pinned and never a problem. Absent means the code default applies.
@@ -174,6 +191,27 @@ def audit(env: dict[str, str]) -> tuple[list[str], list[str], list[str]]:
             problems.append(f"{KILL_SWITCH}={kill!r} is not a boolean; startup would fail")
         state = "ON: all ingestion and knowledge syncs are stopped" if parsed else "off (ingestion runs)"
         lines.append(f"{KILL_SWITCH}={kill!r} {state}")
+
+    for key, default in RETENTION_REPORTED.items():
+        value = env.get(key)
+        if value is None:
+            lines.append(f"{key}: absent (code default {default})")
+            continue
+        if key.endswith("_DAYS"):
+            try:
+                days = int(value.strip())
+            except ValueError:
+                problems.append(f"{key}={value!r} is not a whole number of days; startup would fail")
+                lines.append(f"{key}={value!r}")
+                continue
+            if days <= 0:
+                lines.append(f"{key}={value!r} (keep forever)")
+            else:
+                lines.append(f"{key}={value!r} (rows older than this are removed; floor applies)")
+            continue
+        elif _bool(value) is None:
+            problems.append(f"{key}={value!r} is not a boolean; startup would fail")
+        lines.append(f"{key}={value!r}")
 
     for key, default in CONTEXT_REPORTED.items():
         value = env.get(key, env.get(key.lower()))

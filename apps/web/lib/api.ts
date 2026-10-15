@@ -4149,6 +4149,73 @@ export const enterpriseApi = {
     ),
 }
 
+// ============ Storage (usage meter, bring-your-own file storage) ============
+export type StorageCategory = "knowledge" | "memories" | "conversations" | "audit" | "files"
+
+export interface StorageUsage {
+  meterEnabled: boolean
+  enforcementEnabled: boolean
+  limitBytes: number | null
+  warnRatio: number
+  state: "unknown" | "unlimited" | "ok" | "warn" | "over"
+  percentUsed: number | null
+  categories: StorageCategory[]
+  snapshot: {
+    capturedAt: string
+    snapshotDate: string
+    totalBytes: number
+    categories: Partial<Record<StorageCategory, { bytes: number; rows: number }>>
+    method?: string | null
+  } | null
+}
+
+export interface ByoStorageTarget {
+  provider: "s3"
+  endpointUrl: string | null
+  region: string
+  bucket: string
+  pathPrefix: string
+  accessKeyHint: string | null
+  status: "untested" | "verified" | "failed"
+  lastTestedAt: string | null
+  lastTestError: string | null
+  updatedAt: string | null
+}
+
+export interface ByoStorageStatus {
+  flagEnabled: boolean
+  entitled: boolean
+  available: boolean
+  target: ByoStorageTarget | null
+  scope: string
+}
+
+export interface ByoStorageInput {
+  endpointUrl?: string
+  region: string
+  bucket: string
+  pathPrefix?: string
+  accessKeyId?: string
+  secretAccessKey?: string
+}
+
+export interface ByoStorageTestResult {
+  ok: boolean
+  steps: { put: boolean; head: boolean; delete: boolean }
+  error: string | null
+  testedAt: string
+  target: ByoStorageTarget | null
+}
+
+export const storageApi = {
+  getUsage: () => fetcher<StorageUsage>(apiUrl("/api/settings/storage/usage")),
+  getByo: () => fetcher<ByoStorageStatus>(apiUrl("/api/settings/storage/byo")),
+  saveByo: (data: ByoStorageInput) =>
+    putJson<{ target: ByoStorageTarget; scope: string }>(apiUrl("/api/settings/storage/byo"), data),
+  testByo: () => postJson<ByoStorageTestResult>(apiUrl("/api/settings/storage/byo/test"), {}),
+  removeByo: () => deleteRequest(apiUrl("/api/settings/storage/byo")),
+}
+
 // ============ Knowledge sync (STA-45, org-admin) ============
 export const knowledgeSyncApi = {
   listSyncJobs: (params?: { connectorId?: string; limit?: number }) => {

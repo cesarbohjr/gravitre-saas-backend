@@ -105,3 +105,42 @@ def test_owner_approved_context_flags_on_are_reported_not_problems():
 def test_approved_on_flags_are_default_off_and_carry_no_customer_data():
     assert rsv.APPROVED_ON <= set(rsv.DEFAULT_OFF)
     assert not any("OBSERVATIONS" in k or "SIGNALS" in k or "ENTITY" in k for k in rsv.APPROVED_ON)
+
+
+def test_storage_flags_are_default_off_and_reported():
+    for key in (
+        "AUDIT_RETENTION_ARCHIVE_ENABLED",
+        "STORAGE_METER_ENABLED",
+        "STORAGE_QUOTA_ENFORCEMENT_ENABLED",
+        "BYO_STORAGE_ENABLED",
+    ):
+        assert key in rsv.DEFAULT_OFF
+        assert _default(key) is False
+    lines, problems, _pins = rsv.audit({})
+    assert problems == []
+    assert "STORAGE_METER_ENABLED: absent (off)" in lines
+    _lines, problems, _pins = rsv.audit({"BYO_STORAGE_ENABLED": "true"})
+    assert any("BYO_STORAGE_ENABLED" in p for p in problems)
+
+
+def test_retention_settings_are_reported_never_pinned():
+    assert _default("AUDIT_RETENTION_DAYS") == 0
+    assert _default("TELEMETRY_RETENTION_DAYS") == 0
+    assert _default("AUDIT_RETENTION_DRY_RUN") is True
+    lines, problems, pins = rsv.audit({})
+    assert "AUDIT_RETENTION_DAYS: absent (code default 0 (keep forever))" in lines
+    assert not any(p.startswith(("AUDIT_RETENTION", "TELEMETRY_RETENTION")) for p in pins)
+    lines, problems, pins = rsv.audit(
+        {"AUDIT_RETENTION_DAYS": "365", "AUDIT_RETENTION_DRY_RUN": "false", "TELEMETRY_RETENTION_DAYS": "0"}
+    )
+    assert problems == []
+    assert "AUDIT_RETENTION_DAYS='365' (rows older than this are removed; floor applies)" in lines
+    assert "AUDIT_RETENTION_DRY_RUN='false'" in lines
+    assert "TELEMETRY_RETENTION_DAYS='0' (keep forever)" in lines
+    assert not any(p.startswith(("AUDIT_RETENTION", "TELEMETRY_RETENTION")) for p in pins)
+
+
+def test_retention_values_that_break_startup_are_problems():
+    _lines, problems, _pins = rsv.audit({"AUDIT_RETENTION_DAYS": "a year", "AUDIT_RETENTION_DRY_RUN": "maybe"})
+    assert any("AUDIT_RETENTION_DAYS" in p and "startup" in p for p in problems)
+    assert any("AUDIT_RETENTION_DRY_RUN" in p and "startup" in p for p in problems)
