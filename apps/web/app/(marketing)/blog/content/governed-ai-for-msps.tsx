@@ -123,8 +123,7 @@ export const governedAiForMspsPost: BlogPost = {
 
       <h2>What is a Managed Intelligence Provider?</h2>
       <p>
-        A <strong>Managed Intelligence Provider</strong> is an MSP that manages and bills for the AI services its clients rely on. It is the
-        MSP that owns, brands, and bills the AI layer its clients depend on, the same way it already owns the
+        A <strong>Managed Intelligence Provider</strong> is an MSP that manages, brands, and bills for the AI services its clients rely on, much like it already manages the
         infrastructure layer underneath their business. That shift is a genuine new line of recurring revenue, not
         a project fee, but it only works if the AI layer underneath it is as accountable as everything else the MSP
         already sells.
