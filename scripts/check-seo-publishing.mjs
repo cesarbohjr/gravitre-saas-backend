@@ -3,7 +3,6 @@
 import fs from "node:fs"
 import { execFileSync } from "node:child_process"
 
-const root = process.cwd()
 const read = (p) => fs.readFileSync(p, "utf8")
 const errors = []
 const warnings = []
@@ -25,6 +24,24 @@ function plain(s) { return s.replace(/<[^>]+>/g, " ").replace(/\[[^\]]+\]\([^)]*
 const allDocs = collect("apps/web/content/docs/public").filter(p => /\.mdx?$/.test(p))
 const diff = changedFiles()
 const docFiles = diff.length ? diff.filter(p => p.startsWith("apps/web/content/docs/public/") && /\.mdx?$/.test(p)) : allDocs
+
+// New public routes must declare their own canonical metadata in a page or layout.
+// Avoid applying this rule to previously published routes with unrelated edits.
+let added = []
+try {
+  const base = process.env.SEO_BASE_REF || (process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : "HEAD~1")
+  added = execFileSync("git", ["diff", "--name-only", "--diff-filter=A", `${base}...HEAD`], {encoding:"utf8"}).trim().split("\n").filter(Boolean)
+} catch { warnings.push("Cannot identify new routes for canonical enforcement.") }
+for (const p of added) {
+  if (!p.startsWith("apps/web/app/(marketing)/") || !p.endsWith("/page.tsx")) continue
+  if (p.includes("[...") || p.includes("[slug]")) continue
+  const layout = p.replace(/page\.tsx$/, "layout.tsx")
+  const page = read(p)
+  const layoutText = fs.existsSync(layout) ? read(layout) : ""
+  if (!/canonical\s*:|canonical\s*=/.test(page + "\n" + layoutText)) {
+    errors.push(`${p}: new public route must define a self-referencing canonical in page/layout metadata`)
+  }
+}
 for(const p of docFiles){
   if (!fs.existsSync(p)) continue
   const raw = read(p)
