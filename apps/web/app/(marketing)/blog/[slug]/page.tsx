@@ -187,6 +187,11 @@ export default async function BlogPostPage({
                   <Calendar className="h-3.5 w-3.5" />
                   <time dateTime={post.datePublished}>{post.displayDate}</time>
                 </span>
+                {post.dateModified !== post.datePublished ? (
+                  <span className="flex items-center gap-1.5">
+                    Updated <time dateTime={post.dateModified}>{new Date(post.dateModified + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}</time>
+                  </span>
+                ) : null}
                 <span className="flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
                   {post.readTime}
