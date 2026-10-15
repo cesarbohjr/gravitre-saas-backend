@@ -55,6 +55,6 @@ export const aiDecisionMakingPost: BlogPost = {
       "question": "How long does it take to see results from AI decision making?",
       "answer": "A 30–60–90-day pilot can establish early evidence, provided the team measures a reliable baseline and tracks error rates, cycle time, and human overrides."
     }
-  ]
+  ],
   Content: () => <div className="prose max-w-none"><ReactMarkdown remarkPlugins={[remarkGfm]}>{article}</ReactMarkdown></div>
 }
