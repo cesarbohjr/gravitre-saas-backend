@@ -73,7 +73,7 @@ export const measuringAiRoiPost: BlogPost = {
       </aside>
 
       <p>
-        External adoption statistics are not evidence of a particular customer's return. The
+        External adoption statistics are not evidence of a particular customer&apos;s return. The
         <a href="https://hai.stanford.edu/ai-index/2026-ai-index-report" target="_blank" rel="noopener noreferrer"> Stanford AI Index 2026</a>
         tracks adoption and economic trends across the wider market, while the
         <a href="https://airc.nist.gov/airmf-resources/airmf/" target="_blank" rel="noopener noreferrer"> NIST AI Risk Management Framework</a>
