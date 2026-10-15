@@ -99,7 +99,7 @@ const aiWontTakeYourJob: BlogPost = {
 
       <h2>The fear is real, and it&apos;s growing fast</h2>
       <p>
-        This isn&apos;t a fringe anxiety. According to <Cite>Mercer&apos;s Global Talent Trends 2026</Cite> report, a
+        Fear of AI-related job loss is widespread. According to <Cite>Mercer&apos;s Global Talent Trends 2026</Cite> report, a
         survey of 12,000 workers and HR leaders, 40% of workers worldwide now fear AI will make their job obsolete, up
         from 28% just two years ago. That&apos;s a 12-point jump in two years, and the trend line is accelerating, not
         leveling off.
@@ -111,7 +111,7 @@ const aiWontTakeYourJob: BlogPost = {
         spread, either: workers in data entry, customer service, and administrative support report the highest levels of
         concern, while those in healthcare, skilled trades, and creative leadership feel more insulated.
       </p>
-      <p>That distinction matters, and it&apos;s really the heart of my argument.</p>
+      <p>The different levels of AI exposure across occupations are central to this argument.</p>
 
       <p>
         The <a href="https://hai.stanford.edu/ai-index/2026-ai-index-report/economy" target="_blank" rel="noopener noreferrer">Stanford AI Index 2026</a>
@@ -136,7 +136,7 @@ const aiWontTakeYourJob: BlogPost = {
         well.
       </p>
       <p>
-        This is the same arc I watched with social media. The tools changed. The skill required to use them well
+        AI adoption resembles the earlier shift toward social media in business. The tools changed. The skill required to use them well
         didn&apos;t disappear. It shifted.
       </p>
 
@@ -148,7 +148,7 @@ const aiWontTakeYourJob: BlogPost = {
         more: nearly 27% of regular AI users report saving over 9 hours a week.
       </p>
       <p>
-        That reclaimed time is the entire point. It&apos;s time that can go back into strategy, creative ideation, and the
+        Time reclaimed through AI-assisted tasks can support strategy, creative work, and human judgment. It&apos;s time that can go back into strategy, creative ideation, and the
         human judgment calls that AI still can&apos;t make, instead of being swallowed by administrative drag.
       </p>
       <p>
@@ -173,7 +173,7 @@ const aiWontTakeYourJob: BlogPost = {
         of that human judgment, not because AI has become &quot;smarter&quot; than people in any meaningful sense.
       </p>
       <p>
-        This is also where AI hallucination still matters. Models get things confidently wrong. Human talent has to be in
+        AI hallucinations make human review essential for consequential outputs. Models get things confidently wrong. Human talent has to be in
         the loop to catch what AI can&apos;t catch about itself.
       </p>
 
@@ -185,7 +185,7 @@ const aiWontTakeYourJob: BlogPost = {
         while still keeping a human in the loop to catch what the model gets wrong.
       </p>
       <p>
-        It also means being honest about the gap that&apos;s currently undermining a lot of AI investment: more than half
+        Responsible AI adoption must also address the workforce training gap: more than half
         the global workforce reports receiving no recent AI training, according to{" "}
         <Cite>ManpowerGroup&apos;s 2026 Global Talent Barometer</Cite>. You can&apos;t expect a team to feel empowered by a
         tool nobody taught them to use. That training gap, not the technology itself, is where I think most of the real
@@ -200,7 +200,7 @@ const aiWontTakeYourJob: BlogPost = {
         outpace the ones who either ignore it or use it purely to cut headcount.
       </p>
       <p>
-        It sounds easier than it is. But when AI is used properly, it doesn&apos;t make your team smaller. It makes the
+        Putting AI to effective use requires more than installing tools. But when AI is used properly, it doesn&apos;t make your team smaller. It makes the
         work your team was always meant to do finally possible to get to. That&apos;s exactly the problem we built{" "}
         <a href="/get-started">Gravitre</a> to solve, giving teams AI agents that absorb the administrative drag so the
         humans can get back to the work only they can do. If that&apos;s the kind of adoption you&apos;re after, you can{" "}
