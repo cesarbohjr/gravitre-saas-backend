@@ -136,6 +136,9 @@ function TierMeta({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean }) 
         $<SlidingNumber value={price} />
         <span className="ml-2 text-sm font-normal text-gray-600">/month</span>
       </span>
+      {tier.planCode === "control" ? (
+        <p className="mt-2 text-xs leading-relaxed text-gray-600">One Control plan replaces the point AI tools and glue scripts an ops hire would juggle.</p>
+      ) : null}
       {isAnnual ? (
         <p className="mt-1 text-xs text-brand">
           Billed annually (save ${(tier.price.monthly - tier.price.annual) * 12}/year)
@@ -156,6 +159,7 @@ function TierMeta({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean }) 
       >
         {tier.cta}
       </Button>
+      <p className="mt-2 text-center text-xs text-gray-600">7-day free trial, no card required. 30-day money-back guarantee.</p>
     </div>
   )
 }
