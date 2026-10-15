@@ -140,3 +140,32 @@ test.describe("HeyCatch SEO and page structure regression", () => {
     expect(await robots.text()).toContain("Sitemap: https://gravitre.app/sitemap.xml")
   })
 })
+
+test.describe("Public SEO publishing contract", () => {
+  test("missing public paths return real 404 responses", async ({ request }) => {
+    for (const path of ["/this-page-does-not-exist-seo-20261014", "/blog/no-such-article-seo-20261014", "/docs/no-such-document-seo-20261014"]) {
+      const response = await request.get(path, { maxRedirects: 0 })
+      expect(response.status(), path).toBe(404)
+    }
+  })
+
+  test("public hub routes have a canonical, matching title and one H1", async ({ page }) => {
+    for (const path of ["/", "/about", "/pricing", "/features"]) {
+      await page.goto(path, { waitUntil: "domcontentloaded" })
+      const canonical = await page.locator('link[rel="canonical"]').getAttribute("href")
+      expect(canonical, path).toBe(`https://gravitre.app${path === "/" ? "/" : path}`)
+      const title = await page.title()
+      expect(title.length, path).toBeGreaterThanOrEqual(30)
+      expect(title.length, path).toBeLessThanOrEqual(80)
+      await expect(page.locator("h1")).toHaveCount(1)
+    }
+  })
+
+  test("blog posts and docs are present in sitemap", async ({ request }) => {
+    const response = await request.get("/sitemap.xml")
+    expect(response.status()).toBe(200)
+    const xml = await response.text()
+    expect(xml).toContain("https://gravitre.app/blog/")
+    expect(xml).toContain("https://gravitre.app/docs/")
+  })
+})
