@@ -94,7 +94,7 @@ export const aiTransparencyApprovalPost: BlogPost = {
         happened?</strong>
       </p>
       <p>
-        That is the standard we hold Gravitre to. Not a promise. A mechanism you can go check yourself.
+        Gravitre&apos;s standard for AI transparency is a verifiable approval mechanism, not simply a promise.
       </p>
 
       <h2>Does every AI action need approval?</h2>
@@ -105,7 +105,7 @@ export const aiTransparencyApprovalPost: BlogPost = {
         would follow.
       </p>
       <p>
-        That is the bar we hold ourselves to. It should not matter which path a request comes through. If it needs
+        Gravitre&apos;s approval standard applies regardless of which request path initiates an action. If it needs
         approval, it waits for approval, every time.
       </p>
 
@@ -160,7 +160,7 @@ export const aiTransparencyApprovalPost: BlogPost = {
         in on its own.
       </p>
       <p>
-        This is still expanding to cover more situations over time, and we would rather be upfront that it is not
+        Gravitre&apos;s assumption-labeling coverage is still expanding to more situations over time, and we would rather be upfront that it is not
         everywhere yet than pretend every judgment call the AI makes is spelled out today.
       </p>
 
@@ -190,7 +190,7 @@ export const aiTransparencyApprovalPost: BlogPost = {
         a change you did not expect or confirming a policy was followed, the record is there.
       </p>
       <p>
-        We will be upfront that this is an area we are continuing to strengthen. Some advanced audit features are tied
+        Gravitre&apos;s audit experience is an area we are continuing to strengthen. Some advanced audit features are tied
         to specific plans today, and we are working toward an even more unified view. But the core principle holds:
         nothing important happens without a trace you can go find.
       </p>
