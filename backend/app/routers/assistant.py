@@ -727,6 +727,9 @@ def _build_stream(
     """
 
     billed_model_call_ids: set[str] = set()
+    # One namespaced id spans the stream, persisted model calls and latency
+    # summary; recovery can distinguish it from other model-call sources.
+    stream_turn_id = f"assistant:{uuid.uuid4()}"
 
     async def _bill_measured_calls(measured_calls, turn_id: str | None = None) -> None:
         for call in measured_calls.calls:
@@ -749,9 +752,6 @@ def _build_stream(
         from app.services.cost_attribution import ModelCallCapture, attribution, capture_model_calls
 
         measured_calls = ModelCallCapture(org_id=org_id)
-        # Namespaced so a read-only reconciler can distinguish assistant
-        # streams from workflows and legacy cognitive traces without guessing.
-        stream_turn_id = f"assistant:{uuid.uuid4()}"
         source = _unified_stream_body(measured_calls)
         try:
             while True:
