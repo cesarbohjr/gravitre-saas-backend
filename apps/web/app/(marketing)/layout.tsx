@@ -12,7 +12,6 @@ export const metadata: Metadata = {
   },
   description: MARKETING_COPY.meta.description,
   keywords: [...MARKETING_COPY.meta.keywords],
-  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     siteName: "Gravitre",
