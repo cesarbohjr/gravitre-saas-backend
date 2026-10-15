@@ -4,6 +4,13 @@
 **Cohesion rules:** [`PLATFORM_COHESION.md`](./PLATFORM_COHESION.md) · **Split plan:** [`PR429_DEPENDENT_SPLIT.md`](./PR429_DEPENDENT_SPLIT.md)  
 **Current implementation:** `codex/master-plan-completion-20261014` (based on #429 at `7fd10c4a`); see [Codex implementation evidence](./CODEX_IMPLEMENTATION_2026-10-14.md). Earlier row statuses below require reconciliation against that increment.
 
+**2026-10-15 draft extension:** atomic assistant usage + overage RPC migration
+`20261015032117` and default-off `ASSISTANT_BILLING_ATOMIC_ENABLED`; real-Postgres
+acceptance added to CI, not yet passed or applied. All other usage sources still
+use the legacy nontransactional path. A crash-gap report exists, but automated
+recovery, historical backfill, plan changes within a period and production
+acceptance remain open. Do not count this as fully reconciled billing.
+
 **Last updated:** 2026-10-14 (CI fixes pushed `8d990d685`; prior evidence `617c0a10d`)  
 **Legend — implementation:** `NOT STARTED` · `PARTIAL` · `CODE COMPLETE` · `MERGED` · `DEPLOYED`  
 **Legend — acceptance:** `NOT RUN` · `PARTIAL` · `PASS` (evidence-linked only)

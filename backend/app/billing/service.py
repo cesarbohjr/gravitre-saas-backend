@@ -667,6 +667,26 @@ def apply_usage_with_overage(
         )
 
 
+def record_assistant_model_usage_atomic(
+    client: Client, org_id: str, model_call_id: str, quantity: int,
+    included: int, environment: str = "production",
+) -> str:
+    """Record one persisted assistant model call and its overage atomically.
+
+    The database derives the UTC billing period and token/model identity from
+    model_calls. No fallback to a separate usage insert is safe after an RPC
+    timeout: the transaction may already have committed.
+    """
+    response = client.rpc("record_assistant_model_usage", {
+        "p_org_id": org_id, "p_model_call_id": model_call_id,
+        "p_quantity": quantity, "p_included": included,
+        "p_environment": environment,
+    }).execute()
+    if response.data not in {"inserted", "duplicate", "zero_tokens"}:
+        raise ValueError(f"Unexpected assistant billing RPC result: {response.data!r}")
+    return str(response.data)
+
+
 def require_feature(plan: dict[str, Any], feature: str) -> None:
     features = plan.get("features") or {}
     value = features.get(feature)

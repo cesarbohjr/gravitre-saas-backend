@@ -9,6 +9,7 @@ import app.billing.service as billing
 from app.billing.service import (
     apply_usage_with_overage,
     derive_idempotency_key,
+    record_assistant_model_usage_atomic,
     record_usage,
 )
 
@@ -57,6 +58,24 @@ def test_derive_key_stable_with_source_id():
     k2 = derive_idempotency_key("org-1", "ai_credits", PERIOD_START, meta)
     assert k1 == k2
     assert k1 == "org-1:model_call:mc-1:2026-05-01"
+
+
+def test_atomic_assistant_usage_does_not_fall_back_after_rpc_timeout():
+    client = MagicMock()
+    client.rpc.return_value.execute.side_effect = TimeoutError("commit result lost")
+    with pytest.raises(TimeoutError):
+        record_assistant_model_usage_atomic(client, "org-1", "call-1", 7, 100)
+    client.table.assert_not_called()
+
+
+def test_atomic_assistant_usage_replays_are_reported():
+    client = MagicMock()
+    client.rpc.return_value.execute.return_value.data = "duplicate"
+    assert record_assistant_model_usage_atomic(client, "org-1", "call-1", 7, 100) == "duplicate"
+    client.rpc.assert_called_once_with("record_assistant_model_usage", {
+        "p_org_id": "org-1", "p_model_call_id": "call-1", "p_quantity": 7,
+        "p_included": 100, "p_environment": "production",
+    })
 
 
 def test_derive_key_unique_without_source_id():

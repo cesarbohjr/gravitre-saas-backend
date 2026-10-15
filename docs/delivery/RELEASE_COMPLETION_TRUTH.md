@@ -47,3 +47,15 @@ These remain implementation or external acceptance work. Passing local tests doe
 ## Evidence
 
 See `CODEX_IMPLEMENTATION_2026-10-14.md` for executed checks and limitations, and `MASTER_PLAN_COMPLETION_MATRIX.md` for the full scope.
+## Assistant billing transaction (draft #431, 2026-10-15)
+
+The new `20261015032117_assistant_usage_atomic.sql` is **unapplied**. With
+`ASSISTANT_BILLING_ATOMIC_ENABLED=true` and that exact migration reviewed and
+applied, a namespaced assistant model call can record its usage and overage in
+one transaction, serialized with other calls using this RPC for the same org,
+period and environment. The flag defaults off. The real-Postgres test in CI
+checks concurrent allowance use, replay, tenant boundary, grants and rollback
+on overage failure; its result must be checked before a rollout. The legacy
+writer and other usage sources do not share the advisory lock, so mixed-source
+concurrency and historical billing still require separate reconciliation.
+The read-only gap report does not charge customers.

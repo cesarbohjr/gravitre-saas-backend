@@ -705,6 +705,14 @@ class Settings(BaseSettings):
             "write_invoke_idempotency_enabled",
         ),
     )
+    # Requires the reviewed record_assistant_model_usage migration. The legacy
+    # writer remains in place until the real-Postgres concurrency gate passes.
+    assistant_billing_atomic_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "ASSISTANT_BILLING_ATOMIC_ENABLED", "assistant_billing_atomic_enabled",
+        ),
+    )
     workflow_queue_fail_closed: bool = Field(
         default=False,
         validation_alias=AliasChoices(

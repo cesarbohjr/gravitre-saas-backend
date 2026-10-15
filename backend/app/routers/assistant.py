@@ -275,12 +275,20 @@ async def _record_assistant_billing(
                 "assistant", source_id,
             )
             ai_meta["usage_estimated"] = not bool(model_call_id)
-            apply_usage_with_overage(
-                client=client, org_id=org_id, environment="production",
-                metric_type="ai_credits", quantity=int(ai_meta["credits"]),
-                plan=plan, period_start=period_start, period_end=period_end,
-                metadata=ai_meta,
-            )
+            if model_call_id and getattr(settings, "assistant_billing_atomic_enabled", False) is True:
+                from app.billing.service import record_assistant_model_usage_atomic
+
+                record_assistant_model_usage_atomic(
+                    client, org_id, model_call_id, int(ai_meta["credits"]),
+                    int(plan.get("ai_credits_included") or 0),
+                )
+            else:
+                apply_usage_with_overage(
+                    client=client, org_id=org_id, environment="production",
+                    metric_type="ai_credits", quantity=int(ai_meta["credits"]),
+                    plan=plan, period_start=period_start, period_end=period_end,
+                    metadata=ai_meta,
+                )
 
         await asyncio.to_thread(_write)
         return True
