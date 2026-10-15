@@ -14,6 +14,7 @@ function Cite({ children }: { children: ReactNode }) {
 export const governedAiForMspsPost: BlogPost = {
   slug: "governed-ai-for-msps",
   title: "Why Most MSPs Can't Monetize AI Yet (And What Closes the 35-Point Gap)",
+  seoTitle: "How MSPs Can Monetize AI",
   description:
     "48% of MSPs say clients want AI most, but only 13% make real money from it. Here's why the gap exists and what a governed, auditable AI layer actually fixes.",
   excerpt:
