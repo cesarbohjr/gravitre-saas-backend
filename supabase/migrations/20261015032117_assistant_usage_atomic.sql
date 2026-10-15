@@ -22,7 +22,7 @@ DECLARE
   v_end date;
   v_key text;
   v_before bigint;
-  v_existing int;
+  v_existing public.usage_tracking%ROWTYPE;
   v_overage int;
   v_inserted uuid;
 BEGIN
@@ -51,11 +51,20 @@ BEGIN
   PERFORM pg_catalog.pg_advisory_xact_lock(
     pg_catalog.hashtextextended(p_org_id::text || ':ai_credits:' || p_environment || ':' || v_start::text, 0)
   );
-  SELECT quantity INTO v_existing FROM public.usage_tracking
+  SELECT * INTO v_existing FROM public.usage_tracking
     WHERE org_id = p_org_id AND idempotency_key = v_key;
   IF FOUND THEN
-    IF v_existing <> p_quantity THEN
-      RAISE EXCEPTION 'Assistant usage quantity mismatch on replay' USING ERRCODE = '22023';
+    IF v_existing.quantity IS DISTINCT FROM p_quantity
+       OR v_existing.environment IS DISTINCT FROM p_environment
+       OR v_existing.metric_type IS DISTINCT FROM 'ai_credits'
+       OR v_existing.period_start IS DISTINCT FROM v_start
+       OR v_existing.period_end IS DISTINCT FROM v_end
+       OR v_existing.source IS DISTINCT FROM 'assistant'
+       OR v_existing.source_id IS DISTINCT FROM p_model_call_id::text
+       OR v_existing.model_name IS DISTINCT FROM v_call.model_name
+       OR v_existing.input_tokens IS DISTINCT FROM v_call.input_tokens
+       OR v_existing.output_tokens IS DISTINCT FROM v_call.output_tokens THEN
+      RAISE EXCEPTION 'Assistant usage mismatch on replay' USING ERRCODE = '22023';
     END IF;
     RETURN 'duplicate';
   END IF;

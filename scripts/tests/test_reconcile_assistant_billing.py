@@ -67,3 +67,63 @@ def test_recovery_rejects_historical_month(monkeypatch):
     with pytest.raises(ValueError, match="current UTC billing month"):
         recovery.reconcile(client, before - timedelta(days=40), before, apply=True)
     client.table.assert_not_called()
+
+
+def _ledger_client(calls, usage):
+    client = MagicMock()
+    model = MagicMock()
+    model.select.return_value = model
+    model.like.return_value = model
+    model.gte.return_value = model
+    model.lt.return_value = model
+    model.order.return_value = model
+    model.range.return_value = model
+    model.execute.return_value.data = calls
+    ledger = MagicMock()
+    ledger.select.return_value = ledger
+    ledger.eq.return_value = ledger
+    ledger.in_.return_value = ledger
+    ledger.range.return_value = ledger
+    ledger.execute.return_value.data = usage
+    client.table.side_effect = lambda table: model if table == "model_calls" else ledger
+    return client
+
+
+def test_recovery_counts_only_missing_calls(monkeypatch):
+    monkeypatch.setattr(recovery, "datetime", _Clock)
+    since, before = _window()
+    call = {"id": "call-1", "org_id": "org-1", "model_name": "test",
+            "input_tokens": 100, "output_tokens": 10}
+    key = "org-1:assistant:call-1:2026-10-01"
+    usage = {"id": "usage-1", "org_id": "org-1", "idempotency_key": key,
+             "source": "assistant", "source_id": "call-1", "model_name": "test",
+             "input_tokens": 100, "output_tokens": 10, "quantity": 1}
+    summary = recovery.reconcile(_ledger_client([call], [usage]), since, before, apply=False)
+    assert summary["scanned"] == 1
+    assert summary["already_billed"] == 1
+    assert summary["candidates"] == 0
+
+
+def test_recovery_preflight_refuses_mismatched_existing_usage(monkeypatch):
+    monkeypatch.setattr(recovery, "datetime", _Clock)
+    since, before = _window()
+    call = {"id": "call-1", "org_id": "org-1", "model_name": "test",
+            "input_tokens": 100, "output_tokens": 10}
+    usage = {"idempotency_key": "org-1:assistant:call-1:2026-10-01",
+             "source": "assistant", "source_id": "call-1", "model_name": "test",
+             "input_tokens": 100, "output_tokens": 10, "quantity": 9}
+    client = _ledger_client([call], [usage])
+    monkeypatch.setattr(recovery, "record_assistant_model_usage_atomic", lambda *a: pytest.fail("write"))
+    with pytest.raises(ValueError, match="preflight"):
+        recovery.reconcile(client, since, before, apply=True)
+
+
+def test_recovery_preflight_refuses_truncated_window(monkeypatch):
+    monkeypatch.setattr(recovery, "datetime", _Clock)
+    since, before = _window()
+    calls = [{"id": f"call-{i}", "org_id": "org-1", "model_name": "test",
+              "input_tokens": 100, "output_tokens": 10} for i in range(2)]
+    client = _ledger_client(calls, [])
+    monkeypatch.setattr(recovery, "record_assistant_model_usage_atomic", lambda *a: pytest.fail("write"))
+    with pytest.raises(ValueError, match="preflight"):
+        recovery.reconcile(client, since, before, apply=True, max_calls=1)

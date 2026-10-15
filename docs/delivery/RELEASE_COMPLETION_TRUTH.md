@@ -62,7 +62,12 @@ The read-only gap report does not charge customers.
 `scripts/reconcile_assistant_billing.py` is a separate bounded recovery command:
 it defaults to read-only, requires an explicit window in the current UTC month
 ending at least ten minutes ago, and requires `--apply` plus the enabled atomic
-flag to write. It replays through the same RPC. It is not an automatic sweep;
+flag to write. It compares existing assistant usage against persisted model
+identity and token counts, reports missing versus already billed calls, and
+refuses a truncated or mismatched preflight before writing. The RPC also
+rejects a duplicate with changed model identity. It replays through the same
+RPC. This does not verify that historical overage rows were correctly written,
+and plan changes within a billing period still need manual review. It is not an automatic sweep;
 an operator must review plan changes and the window before running it. No
 production recovery has been run.
 

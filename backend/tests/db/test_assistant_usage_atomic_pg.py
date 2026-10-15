@@ -101,6 +101,16 @@ def test_duplicate_with_changed_quantity_is_rejected(pg):
     assert pg.value("SELECT count(*) FROM public.usage_tracking;") == "1"
 
 
+def test_duplicate_with_changed_model_identity_is_rejected(pg):
+    assert _record(pg, CALL_1) == "inserted"
+    pg.psql(f"UPDATE public.usage_tracking SET model_name = 'wrong' WHERE source_id = '{CALL_1}';")
+    assert pg.psql(
+        f"SET ROLE service_role; SELECT public.record_assistant_model_usage("
+        f"'{ORG_A}', '{CALL_1}', 8, 10, 'production');", check=False,
+    ).returncode != 0
+    assert pg.value("SELECT count(*) FROM public.usage_tracking;") == "1"
+
+
 def test_overage_failure_rolls_back_usage(pg):
     pg.psql("""
 CREATE FUNCTION public.reject_overage() RETURNS trigger LANGUAGE plpgsql AS $$
