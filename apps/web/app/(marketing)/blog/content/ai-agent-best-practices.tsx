@@ -10,8 +10,9 @@ function Cite({ children }: { children: ReactNode }) {
 export const aiAgentBestPracticesPost: BlogPost = {
   slug: "ai-agent-best-practices",
   title: "10 Best Practices for Building Reliable AI Agents",
+  seoTitle: "AI Agent Best Practices",
   description:
-    "Most agent pilots never reach production. The ones that do return strong ROI — because of scope, connector checks, approvals, and honest evaluation, not a better model.",
+    "Learn ten practical steps for dependable AI agents, from narrow scope and connector readiness to approvals, audit trails, and production tests.",
   excerpt:
     "Reliable agents are boring on purpose. Clear scope, verified connections, visible activity, and a human in the loop wherever judgment actually matters.",
   category: "Engineering",
