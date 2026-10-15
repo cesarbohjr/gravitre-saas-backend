@@ -59,6 +59,15 @@ on overage failure; its result must be checked before a rollout. The legacy
 writer and other usage sources do not share the advisory lock, so mixed-source
 concurrency and historical billing still require separate reconciliation.
 The read-only gap report does not charge customers.
+The default-off `20261015222156_atomic_usage_all_sources.sql` adds a
+service-role-only RPC for other allowance-bearing app writers. With
+`USAGE_ATOMIC_ENABLED=true`, they share the assistant RPC's advisory lock and
+commit usage and overage in one transaction. Assistant-specific atomic billing
+requires this generic flag; misconfiguration fails closed with a billing
+guardrail event. The mixed-source real-Postgres gate covers concurrency,
+replay, tenant separation, grants and rollback. Both migrations and flags need
+staging acceptance before production rollout. Historical partial rows, plan
+changes within a period, and writers outside this app still need audit.
 `scripts/reconcile_assistant_billing.py` is a separate bounded recovery command:
 it defaults to read-only, requires an explicit window in the current UTC month
 ending at least ten minutes ago, and requires `--apply` plus the enabled atomic

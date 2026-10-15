@@ -88,3 +88,20 @@ async def test_measured_call_uses_provider_period_at_month_boundary():
             period_at=datetime(2026, 10, 31, 23, 59, 59, tzinfo=timezone.utc),
         ) is True
     assert apply.call_args.kwargs["period_start"].isoformat() == "2026-10-01"
+
+
+@pytest.mark.asyncio
+async def test_assistant_atomic_requires_generic_lock_even_without_model_call():
+    with (
+        patch.object(assistant, "get_supabase_client", return_value=MagicMock()),
+        patch.object(assistant, "get_plan_for_org", return_value={}),
+        patch.object(assistant, "apply_usage_with_overage") as apply,
+        patch.object(assistant, "_log_assistant_guardrail_event") as guardrail,
+    ):
+        ok = await assistant._record_assistant_billing(
+            SimpleNamespace(assistant_billing_atomic_enabled=True, usage_atomic_enabled=False),
+            "org-1", _response(), turn_id="msg-a",
+        )
+    assert ok is False
+    apply.assert_not_called()
+    guardrail.assert_called_once()

@@ -11,6 +11,11 @@ use the legacy nontransactional path. A crash-gap report exists, but automated
 recovery (manual bounded command only), historical backfill, plan changes within a period and production
 acceptance remain open. Do not count this as fully reconciled billing.
 
+`20261015222156` and default-off `USAGE_ATOMIC_ENABLED` extend the transaction
+lock to other app writers. The mixed-source Postgres gate, historical overage
+audit and production acceptance remain open. The generic flag must be enabled
+before assistant-specific atomic billing, after both migrations pass staging.
+
 The bounded recovery command on #431 now compares assistant usage rows with
 measured calls, refuses mismatched or truncated preflight windows, and flags
 zero-token charges. Workflow ROI reads paginate, and mark costs, counts and

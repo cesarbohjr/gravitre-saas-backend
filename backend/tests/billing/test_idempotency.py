@@ -78,6 +78,33 @@ def test_atomic_assistant_usage_replays_are_reported():
     })
 
 
+def test_generic_atomic_usage_routes_to_rpc_and_never_falls_back(monkeypatch):
+    monkeypatch.setattr(billing, "get_settings", lambda: MagicMock(usage_atomic_enabled=True))
+    client = MagicMock()
+    client.rpc.return_value.execute.side_effect = TimeoutError("commit result lost")
+    with pytest.raises(TimeoutError):
+        apply_usage_with_overage(
+            client, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "production",
+            "workflow_runs", 2, {"workflow_runs_included": 3},
+            PERIOD_START, PERIOD_END, {"source": "workflow", "source_id": "run-1"},
+        )
+    client.rpc.assert_called_once()
+    args = client.rpc.call_args.args
+    assert args[0] == "record_usage_with_overage_atomic"
+    assert args[1]["p_included"] == 3
+    client.table.assert_not_called()
+
+
+def test_generic_atomic_rejects_unrecognized_rpc_result():
+    client = MagicMock()
+    client.rpc.return_value.execute.return_value.data = None
+    with pytest.raises(ValueError, match="Unexpected usage billing RPC result"):
+        billing.record_usage_with_overage_atomic(
+            client, "org-1", "production", "ai_credits", 1,
+            PERIOD_START, PERIOD_END, 3, "key-1",
+        )
+
+
 def test_derive_key_unique_without_source_id():
     k1 = derive_idempotency_key("org-1", "ai_credits", PERIOD_START, {"source": "x"})
     k2 = derive_idempotency_key("org-1", "ai_credits", PERIOD_START, {"source": "x"})

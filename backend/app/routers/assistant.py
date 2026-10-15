@@ -275,6 +275,9 @@ async def _record_assistant_billing(
                 "assistant", source_id,
             )
             ai_meta["usage_estimated"] = not bool(model_call_id)
+            if getattr(settings, "assistant_billing_atomic_enabled", False) is True \
+                    and not getattr(settings, "usage_atomic_enabled", False):
+                raise RuntimeError("Assistant atomic billing requires USAGE_ATOMIC_ENABLED")
             if model_call_id and getattr(settings, "assistant_billing_atomic_enabled", False) is True:
                 from app.billing.service import record_assistant_model_usage_atomic
 

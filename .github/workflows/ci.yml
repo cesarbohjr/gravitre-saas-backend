@@ -255,6 +255,12 @@ jobs:
           APP_ENV: dev
           GRAVITRE_REQUIRE_PG: "1"
 
+      - name: Mixed-source atomic usage Postgres acceptance (must not skip)
+        run: python -m pytest tests/db/test_atomic_usage_all_sources_pg.py -q --no-header
+        env:
+          APP_ENV: dev
+          GRAVITRE_REQUIRE_PG: "1"
+
       - name: Assistant crash-gap recovery contract
         working-directory: .
         run: python -m pytest scripts/tests/test_reconcile_assistant_billing.py -q --no-header

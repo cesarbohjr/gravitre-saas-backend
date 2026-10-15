@@ -10,7 +10,7 @@ from typing import Any
 from fastapi import HTTPException, status
 from supabase import Client, create_client
 
-from app.config import Settings
+from app.config import Settings, get_settings
 from app.core.errors import error_detail
 from app.core.logging import get_logger
 from app.core.safe_dict import safe_normalize_stored_dict
@@ -639,6 +639,17 @@ def apply_usage_with_overage(
     # duplicate (retry / re-processed event), record_usage is a no-op and we
     # skip the overage entirely to avoid double-counting.
     base_key = derive_idempotency_key(org_id, metric_type, period_start, metadata)
+    included = 0
+    if metric_type == "ai_credits":
+        included = int(plan.get("ai_credits_included") or 0)
+    if metric_type == "workflow_runs":
+        included = int(plan.get("workflow_runs_included") or 0)
+    if get_settings().usage_atomic_enabled:
+        record_usage_with_overage_atomic(
+            client, org_id, environment, metric_type, quantity, period_start,
+            period_end, included, base_key, metadata,
+        )
+        return
     total_before = _sum_usage(client, org_id, metric_type, period_start, period_end, environment)
     inserted = record_usage(
         client, org_id, environment, metric_type, quantity, period_start, period_end,
@@ -647,11 +658,6 @@ def apply_usage_with_overage(
     if not inserted:
         return
     total_after = total_before + quantity
-    included = 0
-    if metric_type == "ai_credits":
-        included = int(plan.get("ai_credits_included") or 0)
-    if metric_type == "workflow_runs":
-        included = int(plan.get("workflow_runs_included") or 0)
     if included <= 0:
         return
     overage_key = f"{base_key}:overage"
@@ -665,6 +671,30 @@ def apply_usage_with_overage(
             client, org_id, environment, metric_type, total_after - included, period_start, period_end,
             idempotency_key=overage_key,
         )
+
+
+def record_usage_with_overage_atomic(
+    client: Client, org_id: str, environment: str, metric_type: str,
+    quantity: int, period_start: date, period_end: date, included: int,
+    idempotency_key: str, metadata: dict[str, Any] | None = None,
+) -> str:
+    """Commit usage and overage together; a timeout must never fall back."""
+    meta = metadata or {}
+    response = client.rpc("record_usage_with_overage_atomic", {
+        "p_org_id": org_id, "p_environment": environment,
+        "p_metric_type": metric_type, "p_quantity": quantity,
+        "p_period_start": period_start.isoformat(),
+        "p_period_end": period_end.isoformat(), "p_included": included,
+        "p_idempotency_key": idempotency_key,
+        "p_model_name": meta.get("model_name"),
+        "p_input_tokens": meta.get("input_tokens"),
+        "p_output_tokens": meta.get("output_tokens"),
+        "p_credits": meta.get("credits"), "p_source": meta.get("source"),
+        "p_source_id": meta.get("source_id"),
+    }).execute()
+    if response.data not in {"inserted", "duplicate"}:
+        raise ValueError(f"Unexpected usage billing RPC result: {response.data!r}")
+    return str(response.data)
 
 
 def record_assistant_model_usage_atomic(

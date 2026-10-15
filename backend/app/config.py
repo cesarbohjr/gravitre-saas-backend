@@ -713,6 +713,12 @@ class Settings(BaseSettings):
             "ASSISTANT_BILLING_ATOMIC_ENABLED", "assistant_billing_atomic_enabled",
         ),
     )
+    # Route all allowance-bearing writers through the same database lock as
+    # assistant model calls. Requires 20261015222156; default off until gates.
+    usage_atomic_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("USAGE_ATOMIC_ENABLED", "usage_atomic_enabled"),
+    )
     workflow_queue_fail_closed: bool = Field(
         default=False,
         validation_alias=AliasChoices(
