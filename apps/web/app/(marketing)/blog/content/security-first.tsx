@@ -92,7 +92,7 @@ export const securityFirstPost: BlogPost = {
         system needed to guarantee.
       </p>
       <p>
-        We found it by auditing our own internal action surface with the same scrutiny we&apos;d apply to a
+        Gravitre&apos;s engineering team found the approval exception by auditing the platform&apos;s internal action surface with the same scrutiny we&apos;d apply to a
         customer&apos;s connector, closed it the same day, and added a permanent automated test that fails the build if
         any write-capable action is ever registered without going through the approval path again. We&apos;re telling
         you this not because it makes us look good — it&apos;s a gap we should have caught sooner — but because
@@ -107,7 +107,7 @@ export const securityFirstPost: BlogPost = {
         because you didn&apos;t specify one, we say so in the approval card. We don&apos;t present a guess as a fact.
       </p>
       <p>
-        We derive <strong>which</strong> actions require this gate from a single schema catalog — not from checking
+        Gravitre derives <strong>which</strong> actions require human approval from a single schema catalog — not from checking
         whether an action&apos;s name contains a word like &ldquo;create&rdquo; or &ldquo;delete.&rdquo; That
         distinction sounds pedantic until you&apos;ve watched a pattern-based check silently miss an action because it
         was named a way nobody anticipated. We rebuilt this to read authority from the same structured catalog every
@@ -124,7 +124,7 @@ export const securityFirstPost: BlogPost = {
         for one.
       </p>
       <p>
-        We built a standing test for this: a write can&apos;t be marked complete unless it satisfies that bar. Where a
+        Gravitre built a standing test for verified write outcomes: a write can&apos;t be marked complete unless it satisfies that bar. Where a
         vendor genuinely doesn&apos;t expose a way to verify the result, we say so plainly instead of guessing at a link
         that might be wrong.
       </p>
