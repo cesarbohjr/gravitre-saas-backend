@@ -29,7 +29,7 @@ export async function generateMetadata({
     : `${SITE_URL}/images/gravitre-logo-black.png`
   return {
     metadataBase: new URL(SITE_URL),
-    title: `${post.title} | Gravitre Blog`,
+    title: { absolute: `${post.title} | Gravitre Blog` },
     description: post.description,
     keywords: post.keywords,
     authors: [{ name: post.author.name, url: `${SITE_URL}/about` }],
