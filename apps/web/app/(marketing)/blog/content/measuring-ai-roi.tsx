@@ -12,7 +12,7 @@ export const measuringAiRoiPost: BlogPost = {
     "Every AI vendor shows you a slick ROI chart. Here is what we show you instead: the real thing.",
   category: "Product",
   author: GRAVITRE_BLOG_AUTHOR,
-  ...createBlogDates("2026-07-17", "2026-07-18"),
+  ...createBlogDates("2026-07-17", "2026-10-14"),
   readTime: "6 min read",
   heroImage: "",
   heroGradient: "from-[color:var(--g-marketing-surface)] via-primary/5/40 to-muted",
@@ -72,6 +72,14 @@ export const measuringAiRoiPost: BlogPost = {
         </p>
       </aside>
 
+      <p>
+        External adoption statistics are not evidence of a particular customer's return. The
+        <a href="https://hai.stanford.edu/ai-index/2026-ai-index-report" target="_blank" rel="noopener noreferrer"> Stanford AI Index 2026</a>
+        tracks adoption and economic trends across the wider market, while the
+        <a href="https://airc.nist.gov/airmf-resources/airmf/" target="_blank" rel="noopener noreferrer"> NIST AI Risk Management Framework</a>
+        emphasizes ongoing measurement and risk oversight. A Gravitre ROI claim still needs a documented
+        baseline, a measured result, and an explanation of its limitations.
+      </p>
       <h2>Does Gravitre publish before and after ROI numbers?</h2>
       <p>
         You have seen the slide. Some case study with a big arrow going from &ldquo;40 hours&rdquo; to &ldquo;10 hours
