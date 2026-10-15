@@ -45,6 +45,11 @@ describe("blog publishing metadata invariants", () => {
       expect(post.slug, "slug").toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
       expect(post.title.length, post.slug).toBeGreaterThan(10)
       expect(post.description.trim(), post.slug).not.toBe("")
+      expect(post.description.length, `${post.slug}: meta description`).toBeGreaterThanOrEqual(110)
+      expect(post.description.length, `${post.slug}: meta description`).toBeLessThanOrEqual(160)
+      const renderedTitle = `${post.seoTitle ?? post.title} | Gravitre Blog`
+      expect(renderedTitle.length, `${post.slug}: rendered title`).toBeGreaterThanOrEqual(30)
+      expect(renderedTitle.length, `${post.slug}: rendered title`).toBeLessThanOrEqual(60)
       expect(post.author.name.trim(), post.slug).not.toBe("")
       expect(post.author.role.trim(), post.slug).not.toBe("")
       expect(Number.isNaN(Date.parse(post.datePublished)), post.slug).toBe(false)
