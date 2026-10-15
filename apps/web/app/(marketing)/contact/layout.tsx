@@ -1,6 +1,7 @@
 import { marketingMetadata } from "@/lib/seo"
 
 export const metadata = marketingMetadata({
+  canonical: "/contact",
   title: "Contact",
   description:
     "Get in touch with the Gravitre team. Talk to sales, request a demo, or ask about enterprise deployment, security, and federation.",

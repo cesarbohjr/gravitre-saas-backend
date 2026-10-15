@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { clickupRootOAuthRedirect } from "@/lib/clickup-oauth-callback"
 import { usesMarketingProviderTree } from "@/lib/is-marketing-route"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { classifyTopLevelRoute } from "@/lib/route-root-access"
 import { redirectToLogin, updateSession } from "@/lib/supabase/middleware"
 
 function withRouteKind(
@@ -112,7 +113,14 @@ export async function proxy(request: NextRequest) {
       (p !== "/" && pathname.startsWith(p))
   )
 
-  if (isPublicPath) {
+  const routeKind = classifyTopLevelRoute(pathname)
+  if (isPublicPath || routeKind === "marketing") {
+    return withRouteKind(supabaseResponse, request, pathname)
+  }
+
+  // Unknown URLs must reach the Next.js router and receive its real HTTP 404.
+  // Only registered private route roots should trigger a login redirect.
+  if (routeKind === "unknown") {
     return withRouteKind(supabaseResponse, request, pathname)
   }
 

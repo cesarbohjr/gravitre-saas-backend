@@ -25,6 +25,7 @@ function Cite({ children }: { children: ReactNode }) {
 const aiWontTakeYourJob: BlogPost = {
   slug: "ai-wont-take-your-job-your-resistance-might",
   title: "AI Won't Take Your Job. Your Resistance to It Might.",
+  seoTitle: "Will AI Take Your Job? Risks and Adoption",
   description:
     "40% of workers now fear AI will make their job obsolete, but adoption data shows AI replaces tasks, not people. Here is how to adopt AI as a force multiplier.",
   excerpt:
@@ -32,7 +33,7 @@ const aiWontTakeYourJob: BlogPost = {
   category: "Perspective",
   author: cesar,
   datePublished: "2026-06-22",
-  dateModified: "2026-06-22",
+  dateModified: "2026-10-14",
   displayDate: "June 22, 2026",
   readTime: "7 min read",
   heroImage: "/images/blog/ai-wont-take-your-job.png",
@@ -52,7 +53,7 @@ const aiWontTakeYourJob: BlogPost = {
   takeaways: [
     "40% of workers worldwide now fear AI will make their job obsolete, up from 28% two years ago (Mercer Global Talent Trends 2026).",
     "88% of organizations already use AI in at least one business function, yet only 17% of those seeing productivity gains reduced headcount.",
-    "Generative AI saves workers an average of 2.2 hours per week, and frequent users save over 9 hours.",
+    "Surveyed generative AI users reported average time savings of 5.4% of working hours, or about 2.2 hours in a 40-hour week.",
     "AI replaces tasks, not people. The most exposed roles involve the least human judgment.",
     "The biggest barrier is not the technology. Over half the global workforce reports no recent AI training.",
   ],
@@ -70,7 +71,7 @@ const aiWontTakeYourJob: BlogPost = {
     {
       question: "How much time does AI actually save workers?",
       answer:
-        "Federal Reserve research found generative AI saves workers an average of 5.4% of work hours, about 2.2 hours per week, or roughly a full workday reclaimed each month. Frequent users report saving over 9 hours per week.",
+        "Federal Reserve research found generative AI saves workers an average of 5.4% of work hours, about 2.2 hours per week, or roughly a full workday reclaimed each month. Time saved varies substantially by frequency and job.",
     },
     {
       question: "What does it mean to adopt AI properly?",
@@ -111,6 +112,14 @@ const aiWontTakeYourJob: BlogPost = {
         concern, while those in healthcare, skilled trades, and creative leadership feel more insulated.
       </p>
       <p>That distinction matters, and it&apos;s really the heart of my argument.</p>
+
+      <p>
+        The <a href="https://hai.stanford.edu/ai-index/2026-ai-index-report/economy" target="_blank" rel="noopener noreferrer">Stanford AI Index 2026</a>
+        reports that 88% of surveyed organizations used AI in 2025. In a separate survey, the
+        <a href="https://www.stlouisfed.org/on-the-economy/2025/feb/impact-generative-ai-work-productivity" target="_blank" rel="noopener noreferrer">Federal Reserve Bank of St. Louis</a>
+        estimated that generative AI users saved an average of 5.4% of their working hours.
+        Neither finding guarantees a particular outcome for one worker or business.
+      </p>
 
       <h2>Adoption is already the baseline, not the edge case</h2>
       <p>

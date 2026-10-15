@@ -38,8 +38,9 @@ export async function generateMetadata({
   const ogImage = { url: "/og-docs.png", width: 1200, height: 630, alt: "Gravitre Docs" }
 
   return {
-    title,
+    title: { absolute: title },
     description,
+    alternates: { canonical: `https://gravitre.app/docs/${doc.slug}` },
     openGraph: {
       title,
       description,

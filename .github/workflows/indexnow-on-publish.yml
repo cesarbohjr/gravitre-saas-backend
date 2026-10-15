@@ -1,0 +1,24 @@
+name: IndexNow on publication
+
+on:
+  workflow_dispatch:
+    inputs:
+      published_url:
+        description: "Published, canonical https://gravitre.app URL"
+        required: true
+        type: string
+
+jobs:
+  ping-indexnow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Submit verified published page
+        env:
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+          PUBLISHED_URL: ${{ inputs.published_url }}
+        run: node scripts/ping-indexnow.mjs "$PUBLISHED_URL"

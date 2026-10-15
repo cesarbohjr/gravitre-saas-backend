@@ -14,6 +14,7 @@ function Cite({ children }: { children: ReactNode }) {
 export const governedAiForMspsPost: BlogPost = {
   slug: "governed-ai-for-msps",
   title: "Why Most MSPs Can't Monetize AI Yet (And What Closes the 35-Point Gap)",
+  seoTitle: "How MSPs Can Monetize AI",
   description:
     "48% of MSPs say clients want AI most, but only 13% make real money from it. Here's why the gap exists and what a governed, auditable AI layer actually fixes.",
   excerpt:
@@ -21,7 +22,7 @@ export const governedAiForMspsPost: BlogPost = {
   category: "Perspective",
   author: GRAVITRE_BLOG_AUTHOR,
   datePublished: "2026-10-03",
-  dateModified: "2026-10-03",
+  dateModified: "2026-10-14",
   displayDate: "October 3, 2026",
   readTime: "7 min read",
   heroImage: "/images/blog/governed-ai-for-msps-hero.jpg",
@@ -40,7 +41,7 @@ export const governedAiForMspsPost: BlogPost = {
   takeaways: [
     "48% of MSPs rank AI and automation as their clients' top need for the year, ahead of security and backup, yet only 13% are currently generating meaningful revenue from AI services.",
     "That 35-point gap is the real opportunity, and the real risk, in the MSP market right now.",
-    "Leading providers see 15% to 25% technician productivity gains and 40% to 70% reductions in ticket resolution time from AI, but only when it's deployed internally first and proven before being resold to clients.",
+    "MSPs can test ticket triage and knowledge workflows internally, measure real results, and establish approval and audit controls before selling them to customers.",
     "MSPs that skip straight to client-facing AI without proving it internally are the ones most exposed to the governance failures eroding trust across the industry.",
     "The AI-era MSP looks like the Managed Intelligence Provider: owning, branding, and billing the AI layer the same way MSPs already own the infrastructure layer, which requires AI that's genuinely auditable client by client.",
   ],
@@ -53,7 +54,7 @@ export const governedAiForMspsPost: BlogPost = {
     {
       question: "How can MSPs resell AI agents to clients?",
       answer:
-        "The providers seeing the strongest results deploy AI internally first (service desk automation, knowledge management, security operations) and prove real productivity gains (15 to 25% in leading providers) before reselling it to clients under their own brand with an auditable record of what the AI did.",
+        "The providers seeing the strongest results deploy AI internally first (service desk automation, knowledge management, security operations) and measure actual outcomes before reselling it to clients under their own brand with an auditable record of what the AI did.",
     },
     {
       question: "What is a Managed Intelligence Provider?",
@@ -74,16 +75,15 @@ export const governedAiForMspsPost: BlogPost = {
   Content: () => (
     <>
       <p>
-        Search interest in <Cite>&ldquo;AI agents for business&rdquo; is up 210% year over year</Cite>, and{" "}
-        <Cite>&ldquo;autonomous AI agents&rdquo; is up 770%</Cite>. For managed service providers, that demand has
-        already arrived at the client relationship: <Cite>Kaseya&apos;s 2026 State of the MSP Report</Cite> found
-        that <Cite>48% of MSPs rank AI and automation as their clients&apos; top need for the year</Cite>, ahead of
-        security and backup, the two categories that have anchored MSP revenue for a decade.
+        <a href="https://www.kaseya.com/press-release/ai-emerges-as-the-key-to-scaling-msp-operations-as-growth-gets-harder/" target="_blank" rel="noopener noreferrer">
+          Kaseya&apos;s 2026 State of the MSP Report
+        </a>{" "}
+        surveyed more than 1,000 managed service providers. It found that 48% ranked AI and automation as
+        their clients&apos; top need, but only 13% were generating meaningful revenue from those services.
       </p>
       <p>
-        And yet <Cite>only 13% of MSPs are currently generating meaningful revenue from AI services</Cite>. That
-        35-point gap between what clients are asking for and what MSPs are actually billing for is the single
-        biggest opportunity in the MSP market right now. Left unaddressed, it is also the single biggest exposure.
+        That 35-percentage-point difference shows how far demand is ahead of MSP monetization. It also raises a
+        practical question: how can a provider sell AI work it can explain, control, and verify for each client?
       </p>
 
       <h2>The gap isn&apos;t a technology problem</h2>
@@ -102,18 +102,23 @@ export const governedAiForMspsPost: BlogPost = {
 
       <h2>What the providers closing the gap are doing differently</h2>
       <p>
-        <Cite>Omdia&apos;s 2026 MSP research</Cite> found that leading providers see{" "}
-        <Cite>15% to 25% technician productivity gains and 40% to 70% reductions in ticket resolution time</Cite>{" "}
-        from AI adoption, but only when AI is deployed internally first: service desk automation, knowledge
-        management, security operations, before it is ever resold to a client. The sequence matters. An MSP that
-        proves AI against its own service desk builds a real track record and a real understanding of where the
-        technology is reliable and where it isn&apos;t, before asking a client to trust it with their systems.
+        MSPs can begin with their own service desk, knowledge management, or security workflows. Measure actual
+        ticket accuracy, time saved, and the number of actions requiring human review before offering the same
+        workflows to clients. This establishes evidence for the specific service instead of promising a universal
+        productivity percentage.
       </p>
       <p>
         MSPs that skip that step and go straight to client-facing AI are the ones most exposed to the governance
         failures eroding trust across the industry right now. An AI agent that touches a client&apos;s
         ticketing system, inventory, or billing without a real approval step and a verifiable record of what it did
         is exactly the kind of incident that undoes years of an MSP&apos;s reputation in a single afternoon.
+      </p>
+
+      <p>
+        For governance, the <a href="https://airc.nist.gov/airmf-resources/airmf/" target="_blank" rel="noopener noreferrer">NIST AI Risk Management Framework</a>{" "}
+        describes ongoing risk oversight, while the <a href="https://genai.owasp.org/resource/owasp-top-10-for-llm-applications-2025/" target="_blank" rel="noopener noreferrer">OWASP Top 10 for LLM Applications</a>{" "}
+        documents security risks such as excessive agency. These are useful starting points for deciding which
+        AI actions need permissions, review, and an auditable record.
       </p>
 
       <h2>Becoming the Managed Intelligence Provider</h2>

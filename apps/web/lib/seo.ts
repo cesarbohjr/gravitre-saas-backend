@@ -22,12 +22,15 @@ export function marketingMetadata(opts: {
   description: string
   /** Optional shorter description for social cards; falls back to `description`. */
   ogDescription?: string
+  /** Explicit canonical path for this marketing page. */
+  canonical?: `/${string}`
 }): Metadata {
-  const { title, description, ogDescription } = opts
+  const { title, description, ogDescription, canonical } = opts
   const social = ogDescription ?? description
   return {
     title,
     description,
+    ...(canonical ? { alternates: { canonical: `https://gravitre.app${canonical}` } } : {}),
     openGraph: {
       type: "website",
       siteName: "Gravitre",

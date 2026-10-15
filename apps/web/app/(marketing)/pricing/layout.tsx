@@ -2,7 +2,8 @@ import { marketingMetadata } from "@/lib/seo"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 
 export const metadata = marketingMetadata({
-  title: "Pricing",
+  title: "Pricing for AI Operations Teams",
+  canonical: "/pricing",
   description:
     "Plans with GIBE included — connector executability, Insights, Learning, built-in ML, and governed execution. Start free, scale to Command.",
   ogDescription: MARKETING_COPY.pricing.subhead,

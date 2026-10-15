@@ -10,14 +10,15 @@ function Cite({ children }: { children: ReactNode }) {
 export const aiAgentBestPracticesPost: BlogPost = {
   slug: "ai-agent-best-practices",
   title: "10 Best Practices for Building Reliable AI Agents",
+  seoTitle: "AI Agent Best Practices",
   description:
-    "Most agent pilots never reach production. The ones that do return strong ROI — because of scope, connector checks, approvals, and honest evaluation, not a better model.",
+    "Learn ten practical steps for dependable AI agents, from narrow scope and connector readiness to approvals, audit trails, and production tests.",
   excerpt:
     "Reliable agents are boring on purpose. Clear scope, verified connections, visible activity, and a human in the loop wherever judgment actually matters.",
   category: "Engineering",
   author: GRAVITRE_BLOG_AUTHOR,
   datePublished: "2026-02-20",
-  dateModified: "2026-07-25",
+  dateModified: "2026-10-14",
   displayDate: "February 20, 2026",
   readTime: "11 min read",
   heroImage: "/images/blog/ai-agent-best-practices-hero.png",
@@ -91,6 +92,14 @@ export const aiAgentBestPracticesPost: BlogPost = {
         separate teams who trust their automation from teams who&apos;ve learned to ignore it.
       </p>
 
+      <p>
+        Agent reliability includes more than model quality. The
+        <a href="https://airc.nist.gov/airmf-resources/airmf/" target="_blank" rel="noopener noreferrer"> NIST AI Risk Management Framework</a>
+        describes the need to measure and manage risk through the AI lifecycle. The
+        <a href="https://genai.owasp.org/resource/owasp-top-10-for-llm-applications-2025/" target="_blank" rel="noopener noreferrer"> OWASP LLM Top 10</a>
+        identifies risks such as prompt injection and excessive agency. Together, these provide useful external
+        checks for deciding where a workflow needs testing, access limits, and approval.
+      </p>
       <h2>1. One agent, one job</h2>
       <p>
         An agent built to handle renewals, or triage incidents, or clean up pipeline data, will consistently outperform

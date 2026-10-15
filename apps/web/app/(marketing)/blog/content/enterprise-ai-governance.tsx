@@ -11,14 +11,15 @@ function Cite({ children }: { children: ReactNode }) {
 export const enterpriseAiGovernancePost: BlogPost = {
   slug: "enterprise-ai-governance",
   title: "The Complete Guide to Enterprise AI Governance",
+  seoTitle: "Enterprise AI Governance Guide",
   description:
-    "Most organizations have adopted AI. Fewer than 30% have a governance plan. Here is what enterprise AI governance actually controls — and how reference-based architecture changes the CISO conversation.",
+    "Enterprise AI governance covers access, approvals, audit evidence, and responsibility for AI actions. Learn what to verify before deployment.",
   excerpt:
     "Most organizations have adopted AI. Fewer than 30% have a plan for governing it. That gap is where the real risk lives — not in AI making a mistake, but in deploying it without knowing what it was doing.",
   category: "Engineering",
   author: GRAVITRE_BLOG_AUTHOR,
   datePublished: "2026-03-08",
-  dateModified: "2026-07-05",
+  dateModified: "2026-10-14",
   displayDate: "March 8, 2026",
   readTime: "12 min read",
   heroImage: "",
@@ -74,6 +75,14 @@ export const enterpriseAiGovernancePost: BlogPost = {
         that are building with confidence from the ones accumulating quiet exposure.
       </p>
 
+      <p>
+        Enterprise AI governance has two distinct reference points. The
+        <a href="https://airc.nist.gov/airmf-resources/airmf/" target="_blank" rel="noopener noreferrer"> NIST AI Risk Management Framework</a>
+        organizes the work around govern, map, measure, and manage.
+        <a href="https://webstore.iec.ch/en/publication/90574" target="_blank" rel="noopener noreferrer"> ISO/IEC 42001:2023</a>
+        sets requirements for an organizational AI management system. Neither standard substitutes for evidence
+        that access rules and review procedures work in the deployed environment.
+      </p>
       <h2>The State of Enterprise AI in 2026</h2>
       <p>
         78% of organizations are using AI in at least one business function. That number is from{" "}

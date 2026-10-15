@@ -12,7 +12,7 @@ export const securityFirstPost: BlogPost = {
   category: "Security",
   author: GRAVITRE_BLOG_AUTHOR,
   datePublished: "2026-03-28",
-  dateModified: "2026-07-13",
+  dateModified: "2026-10-14",
   displayDate: "March 28, 2026",
   readTime: "6 min read",
   heroImage: "/images/blog/security-first-hero.jpg",
@@ -69,6 +69,13 @@ export const securityFirstPost: BlogPost = {
         know because we&apos;ve run that review on ourselves.
       </p>
 
+      <p>
+        The <a href="https://airc.nist.gov/airmf-resources/airmf/" target="_blank" rel="noopener noreferrer">NIST AI Risk Management Framework</a>
+        treats AI risk management as an ongoing process across the system lifecycle.
+        The <a href="https://genai.owasp.org/resource/owasp-top-10-for-llm-applications-2025/" target="_blank" rel="noopener noreferrer">OWASP Top 10 for LLM Applications</a>
+        documents application-level risks, including giving an agent more authority than it needs.
+        Both are useful references when reviewing connector permissions and approval gates.
+      </p>
       <h2>Least privilege for agents and connectors</h2>
       <p>
         Every connector uses OAuth or scoped API keys stored server-side — never embedded in prompts. Agents receive

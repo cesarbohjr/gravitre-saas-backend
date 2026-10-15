@@ -12,7 +12,7 @@ export const aiTransparencyApprovalPost: BlogPost = {
     "Transparency is not a values slide. It is whether you can always answer three questions: who approved this, what did the AI assume, and where is the record?",
   category: "Product",
   author: GRAVITRE_BLOG_AUTHOR,
-  ...createBlogDates("2026-07-17", "2026-07-18"),
+  ...createBlogDates("2026-07-17", "2026-10-14"),
   readTime: "6 min read",
   heroImage: "/images/blog/ai-transparency-governance-hero.jpg",
   heroGradient: "from-primary/10 via-[color:var(--g-marketing-canvas)] to-muted",
@@ -78,6 +78,14 @@ export const aiTransparencyApprovalPost: BlogPost = {
         </p>
       </aside>
 
+      <p>
+        A practical approval policy should reflect the risk of each action. The
+        <a href="https://airc.nist.gov/airmf-resources/airmf/" target="_blank" rel="noopener noreferrer"> NIST AI Risk Management Framework</a>
+        describes governance and risk monitoring across AI systems, while
+        <a href="https://genai.owasp.org/resource/owasp-top-10-for-llm-applications-2025/" target="_blank" rel="noopener noreferrer"> OWASP&apos;s LLM application risk guidance</a>
+        highlights the dangers of excessive agency. This is why an audit trail and a clear approval authority
+        matter more than a generic promise that AI is safe.
+      </p>
       <h2>Trust is not a feeling. It is something you can check.</h2>
       <p>
         A lot of AI products talk about &ldquo;trust&rdquo; and &ldquo;transparency&rdquo; as a tone: reassuring
