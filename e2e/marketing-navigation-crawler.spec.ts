@@ -108,3 +108,35 @@ test.describe("Marketing navigation — crawl and click", () => {
     expect(results.filter((row) => !row.pass), report).toHaveLength(0)
   })
 })
+
+
+test.describe("HeyCatch SEO and page structure regression", () => {
+  test("homepage and about have exact rendered titles and one h1", async ({ page }) => {
+    for (const [path, title] of [
+      ["/", "Gravitre - One AI brain for your entire business"],
+      ["/about", "About · Gravitre - One AI brain for your business"],
+    ] as const) {
+      await page.goto(path, { waitUntil: "networkidle" })
+      await expect(page).toHaveTitle(title)
+      await expect(page.locator("h1")).toHaveCount(1)
+    }
+  })
+
+  test("features and pricing have one primary heading", async ({ page }) => {
+    for (const path of ["/features", "/pricing"]) {
+      await page.goto(path, { waitUntil: "domcontentloaded" })
+      await expect(page.locator("h1")).toHaveCount(1)
+    }
+  })
+
+  test("marketing sitemap and robots pointer are correct", async ({ request }) => {
+    const sitemap = await request.get("/sitemap.xml")
+    expect(sitemap.ok()).toBeTruthy()
+    const xml = await sitemap.text()
+    expect(xml).toContain("https://gravitre.app/pricing")
+    expect(xml).toContain("https://gravitre.app/about")
+    const robots = await request.get("/robots.txt")
+    expect(robots.ok()).toBeTruthy()
+    expect(await robots.text()).toContain("Sitemap: https://gravitre.app/sitemap.xml")
+  })
+})

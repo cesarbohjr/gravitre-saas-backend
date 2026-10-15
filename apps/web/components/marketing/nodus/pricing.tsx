@@ -32,10 +32,10 @@ export function Pricing() {
     <section>
       <Container className="border-divide flex flex-col items-center justify-center md:border-x px-4 pt-10 pb-10 md:px-8">
         <Badge text="Pricing" />
-        <SectionHeading className="mt-4">
+        <h1 className="mt-4 text-center text-2xl font-medium tracking-tight text-charcoal-700 md:text-3xl lg:text-4xl">
           {MARKETING_COPY.pricing.headline[0]}{" "}
           <span className="text-brand">{MARKETING_COPY.pricing.headline[1]}</span>
-        </SectionHeading>
+        </h1>
         <p className="mt-4 max-w-2xl text-center text-base font-medium tracking-tight text-gray-600 md:text-lg">
           {MARKETING_COPY.pricing.subhead}
         </p>
@@ -136,6 +136,9 @@ function TierMeta({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean }) 
         $<SlidingNumber value={price} />
         <span className="ml-2 text-sm font-normal text-gray-600">/month</span>
       </span>
+      {tier.planCode === "control" ? (
+        <p className="mt-2 text-xs leading-relaxed text-gray-600">One Control plan replaces the point AI tools and glue scripts an ops hire would juggle.</p>
+      ) : null}
       {isAnnual ? (
         <p className="mt-1 text-xs text-brand">
           Billed annually (save ${(tier.price.monthly - tier.price.annual) * 12}/year)
@@ -156,6 +159,7 @@ function TierMeta({ tier, isAnnual }: { tier: PricingTier; isAnnual: boolean }) 
       >
         {tier.cta}
       </Button>
+      <p className="mt-2 text-center text-xs text-gray-600">7-day free trial, no card required. 30-day money-back guarantee.</p>
     </div>
   )
 }
