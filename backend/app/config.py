@@ -814,6 +814,44 @@ class Settings(BaseSettings):
             "voice_deep_ack_seconds",
         ),
     )
+    # HTTP Talk early plan-hold acknowledgement ("I'll show the plan first.
+    # Nothing has run yet.", cached audio). Off by default. When on, it applies
+    # only to the comma-separated org ids listed (``*`` = every org), and the
+    # sentence is spoken only after the shared safety gate (guard_spoken_turn,
+    # the same guardrails text chat runs) has allowed the turn.
+    voice_early_plan_ack_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_EARLY_PLAN_ACK_ENABLED",
+            "voice_early_plan_ack_enabled",
+        ),
+    )
+    voice_early_plan_ack_org_ids: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "VOICE_EARLY_PLAN_ACK_ORG_IDS",
+            "voice_early_plan_ack_org_ids",
+        ),
+    )
+    # HTTP Talk: synthesize speech for finished sentences in the background
+    # while the shared engine keeps working, instead of pausing the engine on
+    # each sentence's TTS round trip. Same allowlist rules as above; off by
+    # default. Presentation only: the engine, its inputs and its policy are
+    # unchanged.
+    voice_tts_overlap_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_TTS_OVERLAP_ENABLED",
+            "voice_tts_overlap_enabled",
+        ),
+    )
+    voice_tts_overlap_org_ids: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "VOICE_TTS_OVERLAP_ORG_IDS",
+            "voice_tts_overlap_org_ids",
+        ),
+    )
     # Per-tier voice delivery: light turns a little livelier, deep turns
     # steadier (ElevenLabs stability only; no latency cost). False keeps one
     # fixed delivery for every turn.

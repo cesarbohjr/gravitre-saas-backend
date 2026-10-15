@@ -34,6 +34,17 @@ def test_early_perceive_draft_matches_loop_controller():
     )
 
 
+def test_early_plan_hold_draft_matches_loop_controller():
+    from app.services.cognitive_loop_controller import speakable_loop_stage
+    from app.services.voice_slo import EARLY_PLAN_HOLD_DRAFT, standing_spoken_drafts
+
+    assert EARLY_PLAN_HOLD_DRAFT == speakable_loop_stage(
+        "PLAN", extras={"plan_without_execute": True}
+    )
+    assert "nothing has run" in EARLY_PLAN_HOLD_DRAFT.lower()
+    assert EARLY_PLAN_HOLD_DRAFT in standing_spoken_drafts()
+
+
 def test_successful_mutating_tool_blocks():
     tools = [
         {
