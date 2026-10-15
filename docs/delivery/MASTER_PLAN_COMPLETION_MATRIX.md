@@ -6,10 +6,20 @@
 
 **2026-10-15 draft extension:** atomic assistant usage + overage RPC migration
 `20261015032117` and default-off `ASSISTANT_BILLING_ATOMIC_ENABLED`; real-Postgres
-acceptance added to CI, not yet passed or applied. All other usage sources still
+acceptance passed in CI [38678073767](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/38678073767), not applied. All other usage sources still
 use the legacy nontransactional path. A crash-gap report exists, but automated
 recovery (manual bounded command only), historical backfill, plan changes within a period and production
 acceptance remain open. Do not count this as fully reconciled billing.
+
+The bounded recovery command on #431 now compares assistant usage rows with
+measured calls, refuses mismatched or truncated preflight windows, and flags
+zero-token charges. Workflow ROI reads paginate, and mark costs, counts and
+wait time unknown when coverage is incomplete. CI [38678073767](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/38678073767)
+had **10,994 backend passes, 7 skips and one row-cap boundary failure**;
+that boundary fix is on #431 pending a complete rerun. None of this is
+production acceptance. The old `20250220000006` migration still blocks a
+clean `supabase db reset` replay; the new SQL passed migration validation and
+its dedicated disposable-Postgres test.
 
 **Last updated:** 2026-10-14 (CI fixes pushed `8d990d685`; prior evidence `617c0a10d`)  
 **Legend — implementation:** `NOT STARTED` · `PARTIAL` · `CODE COMPLETE` · `MERGED` · `DEPLOYED`  
@@ -58,7 +68,7 @@ Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · 
 
 | Item | Impl | PR / commit | Tests executed | Migrations | Config | Prod acceptance | Blocker |
 |------|------|-------------|----------------|------------|--------|-----------------|---------|
-| Turn tracing + shared context artifact | NOT STARTED | — | — | — | — | NOT RUN | — |
+| Turn tracing + shared context artifact | PARTIAL | #431 correlates assistant latency log id with measured model-call turn id; shared context artifact still absent | Syntax check only | — | — | NOT RUN | Structured spans and P50/P95 proof |
 | P50/P95 latency proof | NOT STARTED | — | — | — | Railway LIVE flags | NOT RUN | — |
 | Connector lineage enablement | NOT STARTED | — | — | — | — | NOT RUN | — |
 | Memory / document lineage / resurfacing | NOT STARTED | — | — | — | — | NOT RUN | STA-312 / Memory Option B |

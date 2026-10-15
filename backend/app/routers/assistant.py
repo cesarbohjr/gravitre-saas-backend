@@ -781,7 +781,9 @@ def _build_stream(
                 reset_serial_react_tools(serial_token)
 
     async def _unified_stream_body(measured_calls):
-        perf = ChatPerfTimer()
+        # Share the measured model-call turn id with latency logs so a slow
+        # chat/voice turn can be traced back to its billed provider rounds.
+        perf = ChatPerfTimer(run_id=stream_turn_id)
         perf.start("total_response")
         start_ms = time.monotonic()
         yield assistant_event_to_sse_line(sse_start())

@@ -86,9 +86,10 @@ the new code is deployed. `DOMAIN_EVENT_RELAY_ENABLED`,
 Temporal and the Supabase service key were present by name. **Presence does not
 establish a flag's value or a feature's live status.** Nothing was changed.
 
-CI on draft commit `a461aed4` (run `38676119986`) passed the dedicated
-real-PostgreSQL assistant usage gate and the web suite. Full backend pytest was
-still running at this checkpoint. Migration safety validated the changed SQL
+CI on draft commit `dbbbfc2a` (run `38678073767`) passed the dedicated
+real-PostgreSQL assistant usage gate and the web suite. Full backend pytest
+reported 10,994 passes, 7 skips and one row-cap boundary failure; #431
+contains its fix, pending a complete CI rerun. Migration safety validated the changed SQL
 but clean local replay still failed at the old `20250220000006` function return
 type mismatch; that historical replay requires a separate baseline repair.
 The run-cost summary now reads model and step rows in bounded pages; if it
