@@ -848,7 +848,7 @@ class ModelRouter:
             # classification calls in front of a spoken reply: off the event loop.
             from app.services.cost_attribution import insert_model_call
 
-            resp = await asyncio.to_thread(insert_model_call, client, row)
+            resp = await asyncio.to_thread(insert_model_call, client, row, billable=billable)
             if resp.data:
                 model_call_id = str(resp.data[0].get("id") or "")
                 if model_call_id and billable:

@@ -59,6 +59,27 @@ _model_call_capture: contextvars.ContextVar[ModelCallCapture | None] = contextva
 )
 
 
+@dataclass(frozen=True)
+class AssistantBillingContract:
+    org_id: str
+    included: int
+    environment: str = "production"
+
+
+_assistant_billing_contract: contextvars.ContextVar[AssistantBillingContract | None] = contextvars.ContextVar(
+    "assistant_billing_contract", default=None,
+)
+
+
+@contextmanager
+def assistant_billing_contract(contract: AssistantBillingContract | None) -> Iterator[None]:
+    token = _assistant_billing_contract.set(contract)
+    try:
+        yield
+    finally:
+        _assistant_billing_contract.reset(token)
+
+
 @contextmanager
 def capture_model_calls(capture: ModelCallCapture) -> Iterator[None]:
     token = _model_call_capture.set(capture)
@@ -120,12 +141,33 @@ def _missing_column(exc: Exception) -> bool:
     return "PGRST204" in text or "42703" in text or ("column" in text and any(k in text for k in ATTRIBUTION_KEYS))
 
 
-def insert_model_call(client: Any, row: dict[str, Any]) -> Any:
+def insert_model_call(client: Any, row: dict[str, Any], *, billable: bool = True) -> Any:
     """Insert a model_calls row with attribution; fall back to the bare row."""
     full = {**row, **{k: v for k, v in attribution_fields().items() if k not in row}}
+    contract = _assistant_billing_contract.get()
+    recoverable = contract is not None and billable and row.get("task_type") != "embedding"
+    if recoverable:
+        if str(row.get("org_id")) != contract.org_id:
+            raise ValueError("Assistant billing contract org mismatch")
+        if not str(full.get("turn_id") or "").startswith("assistant:"):
+            raise ValueError("Assistant billing contract turn mismatch")
+        from app.billing.service import compute_ai_credits
+
+        full.update({
+            "billing_credits": compute_ai_credits(
+                int(row.get("input_tokens") or 0), int(row.get("output_tokens") or 0),
+                row.get("model_name"),
+            ),
+            "billing_included": contract.included,
+            "billing_environment": contract.environment,
+        })
     try:
         return client.table("model_calls").insert(full).execute()
     except Exception as exc:  # noqa: BLE001
+        # A missing recovery column is a deployment error. Never strip the
+        # billing contract and turn a recoverable call into an untracked one.
+        if recoverable:
+            raise
         if full == row or not _missing_column(exc):
             raise
         logger.info("model_calls_attribution_columns_missing; writing row without run/turn id")

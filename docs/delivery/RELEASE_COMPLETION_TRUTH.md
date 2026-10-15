@@ -2,6 +2,20 @@
 
 Implementation continues on `codex/master-plan-completion-20261014`, based on draft #429 at `7fd10c4a`. This branch is reviewable engineering; no merge, production migration, deployment, or flag activation has been performed here.
 
+**Current evidence (2026-10-15):** #431 at `7ad397d` passed the full backend
+suite (11,006 passed, 7 skipped), web suite/lint/typecheck/build, shared text/voice,
+integration smoke and required real PostgreSQL/Redis gates in run 38817159040.
+Historical failed-run notes below are superseded by that run. The clean migration
+reset still fails at historical `20250220000006`; Billing Playwright skipped.
+
+**Current recovery draft:** migration `20261015232327` adds durable assistant
+billing evidence and bounded scheduler settlement, default off behind
+`ASSISTANT_BILLING_RECOVERY_ENABLED`. It requires both atomic billing flags and
+the prior atomic migrations. New PostgreSQL and context/scheduler tests are
+added but not yet run in CI. See `MASTER_PLAN_CLOSEOUT_2026-10-15.md` for the
+remaining engineering queue, rollout order and limitations. No production
+charge, backfill, migration or flag change has been performed.
+
 ## Current implementation increment
 
 - Redis workflow claims move atomically from queued to owned processing. Ownership tokens, leases, heartbeat, bounded recovery and dead-letter transitions prevent lost jobs and fence stale acknowledgements. Concurrent deliveries for the same org/run share a single owner. Subsequent provider writes require a live claim and enabled write idempotency.

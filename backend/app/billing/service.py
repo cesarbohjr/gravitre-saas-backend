@@ -635,6 +635,9 @@ def apply_usage_with_overage(
 ) -> None:
     if quantity <= 0:
         return
+    settings = get_settings()
+    if settings.assistant_billing_recovery_enabled is True and not settings.usage_atomic_enabled:
+        raise RuntimeError("Recovery billing requires USAGE_ATOMIC_ENABLED")
     # Shared idempotency anchor so usage + its overage dedupe together. On a
     # duplicate (retry / re-processed event), record_usage is a no-op and we
     # skip the overage entirely to avoid double-counting.
@@ -644,7 +647,7 @@ def apply_usage_with_overage(
         included = int(plan.get("ai_credits_included") or 0)
     if metric_type == "workflow_runs":
         included = int(plan.get("workflow_runs_included") or 0)
-    if get_settings().usage_atomic_enabled:
+    if settings.usage_atomic_enabled:
         record_usage_with_overage_atomic(
             client, org_id, environment, metric_type, quantity, period_start,
             period_end, included, base_key, metadata,
@@ -680,7 +683,10 @@ def record_usage_with_overage_atomic(
 ) -> str:
     """Commit usage and overage together; a timeout must never fall back."""
     meta = metadata or {}
-    response = client.rpc("record_usage_with_overage_atomic", {
+    rpc_name = ("record_usage_with_allowance_contract"
+                if get_settings().assistant_billing_recovery_enabled is True
+                else "record_usage_with_overage_atomic")
+    response = client.rpc(rpc_name, {
         "p_org_id": org_id, "p_environment": environment,
         "p_metric_type": metric_type, "p_quantity": quantity,
         "p_period_start": period_start.isoformat(),
@@ -697,6 +703,24 @@ def record_usage_with_overage_atomic(
     return str(response.data)
 
 
+def settle_assistant_model_usage(client: Client, org_id: str, model_call_id: str) -> str:
+    """Settle using the immutable evidence on model_calls, never today's plan."""
+    response = client.rpc("settle_assistant_model_usage", {
+        "p_org_id": org_id, "p_model_call_id": model_call_id,
+    }).execute()
+    if response.data not in {"inserted", "duplicate", "zero_tokens"}:
+        raise ValueError("Unexpected assistant settlement RPC result")
+    return str(response.data)
+
+
+def recover_assistant_model_usage(client: Client) -> dict[str, Any]:
+    response = client.rpc("recover_assistant_model_usage", {"p_limit": 100}).execute()
+    result = safe_normalize_stored_dict(response.data)
+    if not {"scanned", "settled", "errors"}.issubset(result):
+        raise ValueError("Unexpected assistant recovery RPC result")
+    return result
+
+
 def record_assistant_model_usage_atomic(
     client: Client, org_id: str, model_call_id: str, quantity: int,
     included: int, environment: str = "production",
@@ -707,6 +731,8 @@ def record_assistant_model_usage_atomic(
     model_calls. No fallback to a separate usage insert is safe after an RPC
     timeout: the transaction may already have committed.
     """
+    if get_settings().assistant_billing_recovery_enabled is True:
+        return settle_assistant_model_usage(client, org_id, model_call_id)
     response = client.rpc("record_assistant_model_usage", {
         "p_org_id": org_id, "p_model_call_id": model_call_id,
         "p_quantity": quantity, "p_included": included,

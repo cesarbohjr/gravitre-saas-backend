@@ -105,3 +105,18 @@ async def test_assistant_atomic_requires_generic_lock_even_without_model_call():
     assert ok is False
     apply.assert_not_called()
     guardrail.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_recovery_settlement_never_recomputes_current_plan():
+    measured = _response().model_copy(update={"model_call_id": "call-1"})
+    with (
+        patch.object(assistant, "get_supabase_client", return_value=MagicMock()),
+        patch.object(assistant, "get_plan_for_org", side_effect=AssertionError("current plan read")),
+        patch("app.billing.service.settle_assistant_model_usage", return_value="inserted") as settle,
+    ):
+        assert await assistant._record_assistant_billing(
+            SimpleNamespace(assistant_billing_recovery_enabled=True, usage_atomic_enabled=True,
+                            assistant_billing_atomic_enabled=True), "org-1", measured,
+        ) is True
+    assert settle.call_args.args[1:] == ("org-1", "call-1")

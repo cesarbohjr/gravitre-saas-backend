@@ -4,6 +4,22 @@
 **Cohesion rules:** [`PLATFORM_COHESION.md`](./PLATFORM_COHESION.md) · **Split plan:** [`PR429_DEPENDENT_SPLIT.md`](./PR429_DEPENDENT_SPLIT.md)  
 **Current implementation:** `codex/master-plan-completion-20261014` (based on #429 at `7fd10c4a`); see [Codex implementation evidence](./CODEX_IMPLEMENTATION_2026-10-14.md). Earlier row statuses below require reconciliation against that increment.
 
+**Current closeout evidence (2026-10-15):** #431 at `7ad397d` passed full backend
+CI (**11,006 passed, 7 skipped**), web lint/typecheck/build/tests, shared text/voice,
+integration smoke, required PostgreSQL billing/idempotency gates and Redis gates
+in [38817159040](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/38817159040).
+Billing Playwright was skipped. Migration validation passed; the clean reset
+remains blocked at historical `20250220000006`. Earlier red CI entries below
+are historical evidence, superseded by this run, not current blockers.
+
+**Next draft increment:** durable assistant recovery snapshots credits and
+allowance on `model_calls`; the existing usage scheduler invokes a bounded,
+replica-safe recovery RPC. Migration `20261015232327` and default-off
+`ASSISTANT_BILLING_RECOVERY_ENABLED` are not applied/activated. Its tests still
+require CI. A changed period allowance blocks settlement for review; old calls,
+closed-month recovery, historical overage and plan-change economics remain open.
+See [closeout queue](./MASTER_PLAN_CLOSEOUT_2026-10-15.md).
+
 **2026-10-15 draft extension:** atomic assistant usage + overage RPC migration
 `20261015032117` and default-off `ASSISTANT_BILLING_ATOMIC_ENABLED`; real-Postgres
 acceptance passed in CI [38678073767](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/38678073767), not applied. All other usage sources still

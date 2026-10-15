@@ -719,6 +719,12 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("USAGE_ATOMIC_ENABLED", "usage_atomic_enabled"),
     )
+    assistant_billing_recovery_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "ASSISTANT_BILLING_RECOVERY_ENABLED", "assistant_billing_recovery_enabled",
+        ),
+    )
     workflow_queue_fail_closed: bool = Field(
         default=False,
         validation_alias=AliasChoices(

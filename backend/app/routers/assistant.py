@@ -267,6 +267,14 @@ async def _record_assistant_billing(
     try:
         def _write() -> None:
             client = get_supabase_client(settings)
+            if getattr(settings, "assistant_billing_recovery_enabled", False) is True:
+                if (not model_call_id or not settings.usage_atomic_enabled
+                        or not settings.assistant_billing_atomic_enabled):
+                    raise RuntimeError("Recovery billing requires atomic flags and persisted model call")
+                from app.billing.service import settle_assistant_model_usage
+
+                settle_assistant_model_usage(client, org_id, model_call_id)
+                return
             plan = get_plan_for_org(client, org_id)
             period_start, period_end = get_current_period(period_at) if period_at else get_current_period()
             source_id = assistant_billing_source_id(model_call_id, turn_id)
@@ -752,9 +760,23 @@ def _build_stream(
 
     async def generator():
         from app.operators.react_engine import force_serial_react_tools, reset_serial_react_tools
-        from app.services.cost_attribution import ModelCallCapture, attribution, capture_model_calls
+        from app.services.cost_attribution import (
+            AssistantBillingContract, ModelCallCapture, assistant_billing_contract,
+            attribution, capture_model_calls,
+        )
 
         measured_calls = ModelCallCapture(org_id=org_id)
+        billing_contract = None
+        if getattr(settings, "assistant_billing_recovery_enabled", False) is True:
+            if not settings.usage_atomic_enabled or not settings.assistant_billing_atomic_enabled:
+                raise RuntimeError("Recovery billing requires both atomic billing flags")
+            plan = await asyncio.to_thread(
+                lambda: get_plan_for_org(get_supabase_client(settings), org_id)
+            )
+            billing_contract = AssistantBillingContract(
+                org_id=org_id, included=int(plan.get("ai_credits_included") or 0),
+                environment="production",
+            )
         source = _unified_stream_body(measured_calls)
         try:
             while True:
@@ -762,7 +784,8 @@ def _build_stream(
                 # silence tick. Bind/reset ContextVars in that same task.
                 serial_token = force_serial_react_tools(force_serial_tools)
                 try:
-                    with attribution(turn_id=stream_turn_id, org_id=org_id), capture_model_calls(measured_calls):
+                    with (attribution(turn_id=stream_turn_id, org_id=org_id),
+                          capture_model_calls(measured_calls), assistant_billing_contract(billing_contract)):
                         try:
                             line = await anext(source)
                         except StopAsyncIteration:
@@ -773,7 +796,8 @@ def _build_stream(
         finally:
             serial_token = force_serial_react_tools(force_serial_tools)
             try:
-                with attribution(turn_id=stream_turn_id, org_id=org_id), capture_model_calls(measured_calls):
+                with (attribution(turn_id=stream_turn_id, org_id=org_id),
+                      capture_model_calls(measured_calls), assistant_billing_contract(billing_contract)):
                     try:
                         await source.aclose()
                     finally:

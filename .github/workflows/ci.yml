@@ -261,6 +261,12 @@ jobs:
           APP_ENV: dev
           GRAVITRE_REQUIRE_PG: "1"
 
+      - name: Durable assistant recovery Postgres acceptance (must not skip)
+        run: python -m pytest tests/db/test_assistant_billing_recovery_pg.py -q --no-header
+        env:
+          APP_ENV: dev
+          GRAVITRE_REQUIRE_PG: "1"
+
       - name: Assistant crash-gap recovery contract
         working-directory: .
         run: python -m pytest scripts/tests/test_reconcile_assistant_billing.py -q --no-header
