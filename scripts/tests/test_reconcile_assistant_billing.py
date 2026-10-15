@@ -127,3 +127,13 @@ def test_recovery_preflight_refuses_truncated_window(monkeypatch):
     monkeypatch.setattr(recovery, "record_assistant_model_usage_atomic", lambda *a: pytest.fail("write"))
     with pytest.raises(ValueError, match="preflight"):
         recovery.reconcile(client, since, before, apply=True, max_calls=1)
+
+
+def test_zero_token_charge_is_reported_as_mismatch(monkeypatch):
+    monkeypatch.setattr(recovery, "datetime", _Clock)
+    since, before = _window()
+    calls = [{"id": "call-1", "org_id": "org-1", "input_tokens": 0, "output_tokens": 0}]
+    usage = [{"idempotency_key": "org-1:assistant:call-1:2026-10-01", "quantity": 1}]
+    summary = recovery.reconcile(_ledger_client(calls, usage), since, before, apply=False)
+    assert summary["zero_tokens"] == 1
+    assert summary["mismatched"] == 1 and summary["errors"] == 1

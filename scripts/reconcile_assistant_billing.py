@@ -98,13 +98,18 @@ def reconcile(client, since: datetime, before: datetime, *, apply: bool,
             result["scanned"] += 1
             input_tokens = int(row.get("input_tokens") or 0)
             output_tokens = int(row.get("output_tokens") or 0)
-            if input_tokens + output_tokens <= 0:
-                result["zero_tokens"] += 1
-                continue
             org_id = str(row["org_id"])
             call_id = str(row["id"])
             key = f"{org_id}:assistant:{call_id}:{since.date().replace(day=1).isoformat()}"
             existing = usage.get((org_id, key))
+            if input_tokens + output_tokens <= 0:
+                result["zero_tokens"] += 1
+                if existing:
+                    result["mismatched"] += 1
+                    result["errors"] += 1
+                    if apply:
+                        raise ValueError("Assistant usage changed after preflight; stop recovery")
+                continue
             if existing:
                 credits = compute_ai_credits(input_tokens, output_tokens, row.get("model_name"))
                 if (existing.get("source") != "assistant"
