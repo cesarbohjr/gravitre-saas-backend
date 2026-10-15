@@ -1,6 +1,6 @@
 import { type ReactNode } from "react"
 import { Container } from "@/components/marketing/nodus/container"
-import { Heading } from "@/components/marketing/nodus/heading"
+import { SectionHeading } from "@/components/marketing/nodus/seciton-heading"
 import { SubHeading } from "@/components/marketing/nodus/subheading"
 import { Badge } from "@/components/marketing/nodus/badge"
 import { cn } from "@/lib/utils"
@@ -56,7 +56,7 @@ export function GravitreSectionHeader({
           <Badge text={badge} />
         </div>
       ) : null}
-      <Heading className={cn("mt-3", centered ? "" : "text-left")}>{title}</Heading>
+      <SectionHeading className={cn("mt-3", centered ? "" : "text-left")}>{title}</SectionHeading>
       {description ? (
         <SubHeading
           as="p"
