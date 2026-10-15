@@ -1,6 +1,7 @@
 import { marketingMetadata } from "@/lib/seo"
 
 export const metadata = marketingMetadata({
+  canonical: "/api",
   title: "API",
   description:
     "Build with the Gravitre REST API — execute workflows, query intelligence endpoints, manage connectors, and wire approval gates into your stack.",
