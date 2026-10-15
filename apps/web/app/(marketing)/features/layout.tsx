@@ -1,7 +1,7 @@
 import { marketingMetadata } from "@/lib/seo"
 
 export const metadata = marketingMetadata({
-  title: "Features",
+  title: "AI Operations Platform Features",
   canonical: "/features",
   description:
     "One AI brain across Gravitre AI, agents, workflows, connectors, approvals, and GIBE — governed execution for your entire business.",
