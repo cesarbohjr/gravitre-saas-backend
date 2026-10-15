@@ -1,4 +1,4 @@
-import { BlogMarkdownContent } from "./blog-markdown-content"
+import { BlogMarkdownContent } from "../blog-markdown-content"
 import type { BlogPost } from "../types"
 import { GRAVITRE_BLOG_AUTHOR } from "../authors"
 import { createBlogDates } from "../blog-dates"
