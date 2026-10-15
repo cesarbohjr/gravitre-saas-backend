@@ -76,7 +76,7 @@ export const securityFirstPost: BlogPost = {
         documents application-level risks, including giving an agent more authority than it needs.
         Both are useful references when reviewing connector permissions and approval gates.
       </p>
-      <h2>Least privilege for agents and connectors</h2>
+      <h2>How does Gravitre limit agent and connector access?</h2>
       <p>
         Every connector uses OAuth or scoped API keys stored server-side — never embedded in prompts. Agents receive
         only the actions your policy allows for the active environment. We show{" "}
@@ -99,9 +99,9 @@ export const securityFirstPost: BlogPost = {
         &ldquo;we audit ourselves this hard&rdquo; is a claim that only means something if we show our work.
       </p>
 
-      <h2>Human approval on high-impact actions</h2>
+      <h2>Which AI actions need human approval?</h2>
       <p>
-        Autonomy without accountability is how teams lose trust in AI. Every write — a CRM update, a workflow execution,
+        High-impact AI writes require human approval before execution. Every write — a CRM update, a workflow execution,
         a list created in a connected tool — shows you exactly what&apos;s about to happen before it happens: the
         action, the target, and anything Gravitre inferred rather than was explicitly told. If we filled in a default
         because you didn&apos;t specify one, we say so in the approval card. We don&apos;t present a guess as a fact.
@@ -129,7 +129,7 @@ export const securityFirstPost: BlogPost = {
         that might be wrong.
       </p>
 
-      <h2>Auditability that auditors actually use</h2>
+      <h2>What can an auditor see after an AI workflow runs?</h2>
       <p>
         History captures administrative and security-relevant events — who triggered it, what executed, what was
         skipped, and why. Enterprise customers can export to SIEM. Run detail shows step-level status with connector
