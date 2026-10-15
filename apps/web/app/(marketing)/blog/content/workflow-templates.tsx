@@ -40,8 +40,9 @@ function BlogFigure({
 export const workflowTemplatesPost: BlogPost = {
   slug: "workflow-templates-library",
   title: "Introducing 60+ Marketplace templates and department packs",
+  seoTitle: "AI Workflow Templates and Packs",
   description:
-    "Gravitre Marketplace ships 60+ starter assets — workflow templates, department packs, agents, and knowledge — with connector checks before install and human approval on writes.",
+    "Explore Gravitre Marketplace workflow templates, department packs, agents, and knowledge assets, with connector checks and governed execution.",
   excerpt:
     "Most automation projects die before they ship. Not because the tech is wrong. Because the starting point is. Gravitre's Marketplace template library fixes that.",
   category: "Product",
