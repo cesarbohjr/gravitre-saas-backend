@@ -32,10 +32,10 @@ export function Pricing() {
     <section>
       <Container className="border-divide flex flex-col items-center justify-center md:border-x px-4 pt-10 pb-10 md:px-8">
         <Badge text="Pricing" />
-        <SectionHeading className="mt-4">
+        <h1 className="mt-4 text-center text-2xl font-medium tracking-tight text-charcoal-700 md:text-3xl lg:text-4xl">
           {MARKETING_COPY.pricing.headline[0]}{" "}
           <span className="text-brand">{MARKETING_COPY.pricing.headline[1]}</span>
-        </SectionHeading>
+        </h1>
         <p className="mt-4 max-w-2xl text-center text-base font-medium tracking-tight text-gray-600 md:text-lg">
           {MARKETING_COPY.pricing.subhead}
         </p>
