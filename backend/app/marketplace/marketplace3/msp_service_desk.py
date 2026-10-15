@@ -741,7 +741,7 @@ def build_msp_service_desk_outcome_pack_config() -> dict[str, Any]:
         "runtime_profiles": [
             {
                 "provider": "freshservice",
-                "status": "production_verified",
+                "status": "tested",
                 "actions": [
                     "freshservice.tickets.list",
                     "freshservice.tickets.get",
@@ -843,8 +843,8 @@ def msp_service_desk_marketplace3_assets() -> list[Any]:
         "required": True,
         "connectPath": "/connectors?type=freshservice",
         "requirementNote": (
-            "Production Verified Marketplace 3.0 runtime for v1. "
-            "Writes require approval and source-of-record verification."
+            "Tested/governed Marketplace 3.0 runtime for v1. "
+            "Production verification is granted only after evidence-linked live source-of-record proof."
         ),
     }
 
@@ -856,6 +856,8 @@ def msp_service_desk_marketplace3_assets() -> list[Any]:
             asset_type="ai_agent",
             category="ai_agent",
             department="MSP Service Desk",
+            visibility="internal",
+            status="draft",
             tags=["msp", "service-desk", "agent", "marketplace-3"],
             config=agent,
             required_connectors=[freshservice],
@@ -871,6 +873,8 @@ def msp_service_desk_marketplace3_assets() -> list[Any]:
             asset_type="play",
             category="play",
             department="MSP Service Desk",
+            visibility="internal",
+            status="draft",
             tags=["msp", "service-desk", "play", "marketplace-3"],
             config=play,
             required_connectors=[freshservice],
@@ -887,6 +891,8 @@ def msp_service_desk_marketplace3_assets() -> list[Any]:
         asset_type="capability_package",
         category="capability_package",
         department="MSP Service Desk",
+        visibility="internal",
+        status="draft",
         tags=["msp", "service-desk", "skills", "marketplace-3", "gravitre"],
         config=build_msp_service_desk_skill_package_config(),
     )
@@ -898,6 +904,8 @@ def msp_service_desk_marketplace3_assets() -> list[Any]:
         asset_type="knowledge_pack",
         category="knowledge_pack",
         department="MSP Service Desk",
+        visibility="internal",
+        status="draft",
         tags=["msp", "service-desk", "knowledge", "marketplace-3"],
         config={"documents": outcome_config["knowledge"]},
     )
@@ -909,6 +917,8 @@ def msp_service_desk_marketplace3_assets() -> list[Any]:
         asset_type="dataset_pack",
         category="dataset_pack",
         department="MSP Service Desk",
+        visibility="internal",
+        status="draft",
         tags=["msp", "service-desk", "dataset", "marketplace-3"],
         config=outcome_config["dataset"],
         required_connectors=[freshservice],
@@ -921,6 +931,8 @@ def msp_service_desk_marketplace3_assets() -> list[Any]:
         asset_type="dashboard_pack",
         category="dashboard_pack",
         department="MSP Service Desk",
+        visibility="internal",
+        status="draft",
         tags=["msp", "service-desk", "dashboard", "kpi", "marketplace-3"],
         config=outcome_config["dashboard"],
     )
@@ -941,7 +953,9 @@ def msp_service_desk_marketplace3_assets() -> list[Any]:
         asset_type="outcome_pack",
         category="outcome_pack",
         department="MSP Service Desk",
-        tags=["msp", "service-desk", "outcome-pack", "marketplace-3", "production-verified"],
+        visibility="internal",
+        status="draft",
+        tags=["msp", "service-desk", "outcome-pack", "marketplace-3", "governed"],
         pricing_type="paid",
         price_cents=19900,
         pack_tier=3,
