@@ -156,8 +156,14 @@ def main() -> int:
         since = datetime.fromisoformat(args.since.replace("Z", "+00:00"))
         before = datetime.fromisoformat(args.before.replace("Z", "+00:00"))
         settings = get_settings()
-        if args.apply and settings.assistant_billing_atomic_enabled is not True:
-            parser.error("Apply requires ASSISTANT_BILLING_ATOMIC_ENABLED=true and reviewed migration")
+        if args.apply and (
+            settings.assistant_billing_atomic_enabled is not True
+            or settings.usage_atomic_enabled is not True
+        ):
+            parser.error(
+                "Apply requires ASSISTANT_BILLING_ATOMIC_ENABLED=true, "
+                "USAGE_ATOMIC_ENABLED=true and both reviewed migrations"
+            )
         client = get_supabase_client(settings)
         summary = reconcile(client, since, before, apply=args.apply, max_calls=args.max_calls)
     except ValueError as exc:

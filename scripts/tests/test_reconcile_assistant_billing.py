@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -39,6 +40,21 @@ def test_recovery_is_read_only_by_default(monkeypatch):
     summary = recovery.reconcile(client, since, before, apply=False)
     assert summary["candidates"] == 1 and summary["inserted"] == 0
     assert summary["dry_run"] is True
+
+
+def test_apply_requires_both_atomic_writers(monkeypatch):
+    since, before = _window()
+    monkeypatch.setattr(recovery, "get_settings", lambda: type("Flags", (), {
+        "assistant_billing_atomic_enabled": True, "usage_atomic_enabled": False,
+    })())
+    monkeypatch.setattr(recovery, "get_supabase_client", lambda *_: pytest.fail("client opened"))
+    monkeypatch.setattr(sys, "argv", [
+        "reconcile_assistant_billing.py", "--since", since.isoformat(),
+        "--before", before.isoformat(), "--apply",
+    ])
+    with pytest.raises(SystemExit) as error:
+        recovery.main()
+    assert error.value.code == 2
 
 
 def test_apply_replays_duplicates_and_uses_persisted_tokens(monkeypatch):
