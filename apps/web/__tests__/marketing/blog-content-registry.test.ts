@@ -26,9 +26,14 @@ describe("marketing blog content registry", () => {
     expect(existsSync(join(process.cwd(), "public", MSP_HERO_PUBLIC_PATH))).toBe(true)
   })
 
-  it("surfaces the MSP post on the blog index as the newest featured article", () => {
+  it("keeps the MSP article registered and features the newest published article", () => {
     expect(blogPosts.some((p) => p.slug === MSP_BLOG_SLUG)).toBe(true)
-    expect(getFeaturedBlogPost().slug).toBe(MSP_BLOG_SLUG)
+    const latestPublishedDate = blogPosts.reduce(
+      (latest, post) => post.datePublished > latest ? post.datePublished : latest,
+      "",
+    )
+    expect(getFeaturedBlogPost().datePublished).toBe(latestPublishedDate)
+    expect(getAllBlogSlugs()).toContain(getFeaturedBlogPost().slug)
   })
 })
 
