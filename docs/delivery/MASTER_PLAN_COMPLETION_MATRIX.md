@@ -8,7 +8,7 @@
 `20261015032117` and default-off `ASSISTANT_BILLING_ATOMIC_ENABLED`; real-Postgres
 acceptance added to CI, not yet passed or applied. All other usage sources still
 use the legacy nontransactional path. A crash-gap report exists, but automated
-recovery, historical backfill, plan changes within a period and production
+recovery (manual bounded command only), historical backfill, plan changes within a period and production
 acceptance remain open. Do not count this as fully reconciled billing.
 
 **Last updated:** 2026-10-14 (CI fixes pushed `8d990d685`; prior evidence `617c0a10d`)  

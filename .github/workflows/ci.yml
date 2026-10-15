@@ -255,6 +255,12 @@ jobs:
           APP_ENV: dev
           GRAVITRE_REQUIRE_PG: "1"
 
+      - name: Assistant crash-gap recovery contract
+        working-directory: .
+        run: python -m pytest scripts/tests/test_reconcile_assistant_billing.py -q --no-header
+        env:
+          APP_ENV: dev
+
       - name: Install and start Redis (workflow queue integration)
         run: |
           sudo apt-get install -y -q redis-server

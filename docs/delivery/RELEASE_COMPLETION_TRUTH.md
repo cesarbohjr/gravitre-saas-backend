@@ -59,3 +59,30 @@ on overage failure; its result must be checked before a rollout. The legacy
 writer and other usage sources do not share the advisory lock, so mixed-source
 concurrency and historical billing still require separate reconciliation.
 The read-only gap report does not charge customers.
+`scripts/reconcile_assistant_billing.py` is a separate bounded recovery command:
+it defaults to read-only, requires an explicit window in the current UTC month
+ending at least ten minutes ago, and requires `--apply` plus the enabled atomic
+flag to write. It replays through the same RPC. It is not an automatic sweep;
+an operator must review plan changes and the window before running it. No
+production recovery has been run.
+
+## Read-only Railway snapshot (2026-10-15 UTC)
+
+The last successful backend deployment in Railway is `b642dd156`, created
+2026-10-14. More recent `main` deployments were marked SKIPPED. The connected
+Railway API returned variable **names only**, so values of existing flags have
+not been verified. `ASSISTANT_BILLING_ATOMIC_ENABLED`,
+`WRITE_INVOKE_IDEMPOTENCY_ENABLED`, `WRITE_AUTHORITY_MODE`,
+`EVENT_TRIGGER_USE_WORKFLOW_QUEUE`, `WORKFLOW_QUEUE_FAIL_CLOSED` and
+`MSP_PARENT_ORG_ENABLED` were absent by name. Their code defaults apply if/when
+the new code is deployed. `DOMAIN_EVENT_RELAY_ENABLED`,
+`OUTCOME_LEARNING_HANDLER_ENABLED`, `MEMORY_SOURCE_LINEAGE_ENABLED`,
+`UNIFIED_TURN_LIVE_ENABLED`, `CROSS_SOURCE_CONTEXT_ENGINE_ENABLED`, Redis,
+Temporal and the Supabase service key were present by name. **Presence does not
+establish a flag's value or a feature's live status.** Nothing was changed.
+
+CI on draft commit `a461aed4` (run `38676119986`) passed the dedicated
+real-PostgreSQL assistant usage gate and the web suite. Full backend pytest was
+still running at this checkpoint. Migration safety validated the changed SQL
+but clean local replay still failed at the old `20250220000006` function return
+type mismatch; that historical replay requires a separate baseline repair.
