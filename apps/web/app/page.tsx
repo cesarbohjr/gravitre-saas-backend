@@ -6,6 +6,7 @@ import { backendBaseUrl } from "@/lib/public-urls"
 
 import MarketingLayout from "./(marketing)/layout"
 import MarketingHomePage from "./(marketing)/page"
+import { GRAVITRE_SOCIAL_PROFILES } from "@/lib/company-social-profiles"
 
 export const metadata: Metadata = {
   title: "Gravitre - One AI brain for your entire business",
@@ -49,6 +50,7 @@ export default async function RootPage({ searchParams }: RootPageProps) {
     name: "Gravitre",
     url: "https://gravitre.app",
     logo: "https://gravitre.app/images/gravitre-logo-black.png",
+    sameAs: GRAVITRE_SOCIAL_PROFILES.map((profile) => profile.url),
   }
 
   return (
