@@ -25,6 +25,7 @@ function Cite({ children }: { children: ReactNode }) {
 const aiWontTakeYourJob: BlogPost = {
   slug: "ai-wont-take-your-job-your-resistance-might",
   title: "AI Won't Take Your Job. Your Resistance to It Might.",
+  seoTitle: "Will AI Take Your Job? Risks and Adoption",
   description:
     "40% of workers now fear AI will make their job obsolete, but adoption data shows AI replaces tasks, not people. Here is how to adopt AI as a force multiplier.",
   excerpt:
