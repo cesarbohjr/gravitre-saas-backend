@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 
 export const metadata: Metadata = {
   title: "Get Started Free — Gravitre",
+  alternates: { canonical: "https://gravitre.app/get-started" },
   description:
     "Put one AI brain to work. Connect your stack, run agents and workflows, approve what matters. No credit card required.",
   openGraph: {
