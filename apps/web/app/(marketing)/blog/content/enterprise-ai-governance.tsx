@@ -198,9 +198,9 @@ export const enterpriseAiGovernancePost: BlogPost = {
         the system is performing as intended.
       </p>
 
-      <h2>The Security Case for Reference-Based AI</h2>
+      <h2>Why does reference-based AI reduce data exposure?</h2>
       <p>
-        Every piece of data copied into a third-party AI system is data that now exists in two places. Every additional
+        Reference-based AI can reduce data exposure by keeping source data in its original systems rather than copying every record to another provider. Every additional
         location where sensitive data resides is an additional surface to secure, monitor, audit, and eventually purge.
       </p>
       <p>
@@ -244,8 +244,8 @@ export const enterpriseAiGovernancePost: BlogPost = {
         That question is much easier to answer. And the governance path is already established.
       </p>
 
-      <h2>What Good AI Governance Looks Like</h2>
-      <p>Less abstract. More operational.</p>
+      <h2>What does effective AI governance include?</h2>
+      <p>Effective AI governance includes written policies, accountable owners, access controls, vendor reviews, and evidence of how AI actions are monitored.</p>
       <ul>
         <li>
           A written AI policy that names permitted use cases, prohibited uses, data handling requirements, and
