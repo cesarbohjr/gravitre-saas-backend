@@ -85,8 +85,8 @@ export function PricingTable() {
         </p>
       </Container>
 
-      <Container className="border-divide md:border-x">
-        <div className="overflow-x-auto">
+      <Container className="border-divide hidden md:block md:border-x">
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[720px] text-left">
             <thead>
               <tr className="border-divide divide-divide divide-x border-b">
