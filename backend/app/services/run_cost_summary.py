@@ -36,6 +36,8 @@ def _read_pages(query: Any, *, page_size: int = 500, max_rows: int = 10_000) -> 
                 return rows, False
             seen.add(row_id)
         rows.extend(batch)
+        if len(rows) >= max_rows:
+            return rows, False
         if len(batch) < page_size:
             return rows, True
     return rows, False
