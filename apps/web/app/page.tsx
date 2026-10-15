@@ -43,8 +43,17 @@ export default async function RootPage({ searchParams }: RootPageProps) {
     redirect(target.toString())
   }
 
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Gravitre",
+    url: "https://gravitre.app",
+    logo: "https://gravitre.app/images/gravitre-logo-black.png",
+  }
+
   return (
     <MarketingLayout>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
       <MarketingHomePage />
     </MarketingLayout>
   )
