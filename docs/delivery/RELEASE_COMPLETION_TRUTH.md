@@ -86,3 +86,7 @@ real-PostgreSQL assistant usage gate and the web suite. Full backend pytest was
 still running at this checkpoint. Migration safety validated the changed SQL
 but clean local replay still failed at the old `20250220000006` function return
 type mismatch; that historical replay requires a separate baseline repair.
+The run-cost summary now reads model and step rows in bounded pages; if it
+cannot cover the whole run, it returns unknown cost/counts instead of a low
+but apparently precise total. This is a draft code change, not production
+evidence of MSP ROI.

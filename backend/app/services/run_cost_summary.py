@@ -22,6 +22,25 @@ from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
+def _read_pages(query: Any, *, page_size: int = 500, max_rows: int = 10_000) -> tuple[list[dict[str, Any]], bool]:
+    """Bound report reads and distinguish an incomplete denominator from zero."""
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    while len(rows) < max_rows:
+        batch = (query.order("id")
+                 .range(len(rows), min(len(rows) + page_size, max_rows) - 1)
+                 .execute().data or [])
+        for item in batch:
+            row_id = str(item.get("id") or "")
+            if not row_id or row_id in seen:
+                return rows, False
+            seen.add(row_id)
+        rows.extend(batch)
+        if len(batch) < page_size:
+            return rows, True
+    return rows, False
+
+
 def _ts(value: Any) -> datetime | None:
     if not value:
         return None
@@ -49,23 +68,21 @@ def run_cost_summary(client: Any, org_id: str, run_id: str) -> dict[str, Any] | 
     if not run_rows:
         return None
     run = run_rows[0]
-    steps = (
+    steps, steps_complete = _read_pages(
         client.table("workflow_steps")
-        .select("step_type,status,started_at,completed_at,output_snapshot")
+        .select("id,step_type,status,started_at,completed_at,output_snapshot")
         .eq("run_id", run_id)
         .eq("org_id", org_id)
-        .execute()
-    ).data or []
+    )
 
     model: dict[str, Any] = {"attributed": True, "calls": 0, "input_tokens": 0, "output_tokens": 0, "cost_usd": "0"}
     try:
-        calls = (
+        calls, models_complete = _read_pages(
             client.table("model_calls")
-            .select("input_tokens,output_tokens,cost_usd")
+            .select("id,input_tokens,output_tokens,cost_usd")
             .eq("org_id", org_id)
             .eq("run_id", run_id)
-            .execute()
-        ).data or []
+        )
         total = Decimal("0")
         for c in calls:
             model["calls"] += 1
@@ -73,6 +90,9 @@ def run_cost_summary(client: Any, org_id: str, run_id: str) -> dict[str, Any] | 
             model["output_tokens"] += int(c.get("output_tokens") or 0)
             total += Decimal(str(c.get("cost_usd") or 0))
         model["cost_usd"] = str(total.quantize(Decimal("0.000001")))
+        model["attributed"] = models_complete
+        if not models_complete:
+            model.update(calls=None, input_tokens=None, output_tokens=None, cost_usd=None)
     except Exception as exc:  # noqa: BLE001  (columns not migrated yet)
         logger.info("run_cost_model_calls_unavailable run_id=%s error=%s", run_id, str(exc)[:120])
         model = {"attributed": False, "calls": None, "input_tokens": None, "output_tokens": None, "cost_usd": None}
@@ -96,9 +116,11 @@ def run_cost_summary(client: Any, org_id: str, run_id: str) -> dict[str, Any] | 
         },
         "model": model,
         "steps": {
-            "total": len(steps),
-            "tool_calls": len(tool_steps),
-            "verified_writes": verified,
-            "failed": sum(1 for s in steps if str(s.get("status") or "") == "failed"),
+            "total": len(steps) if steps_complete else None,
+            "tool_calls": len(tool_steps) if steps_complete else None,
+            "verified_writes": verified if steps_complete else None,
+            "failed": (sum(1 for s in steps if str(s.get("status") or "") == "failed")
+                       if steps_complete else None),
+            "coverage_complete": steps_complete,
         },
     }

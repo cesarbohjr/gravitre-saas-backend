@@ -17,6 +17,7 @@ RUN = "11111111-1111-1111-1111-111111111111"
 class _Table:
     def __init__(self, db, name):
         self.db, self.name, self.op, self.payload, self.filters = db, name, "select", None, {}
+        self.start, self.end = 0, None
 
     def select(self, *_a):
         return self
@@ -26,6 +27,13 @@ class _Table:
         return self
 
     def limit(self, *_a):
+        return self
+
+    def order(self, *_a):
+        return self
+
+    def range(self, start, end):
+        self.start, self.end = start, end
         return self
 
     def insert(self, payload):
@@ -48,7 +56,7 @@ class _Table:
         if self.name == "model_calls" and self.db.missing_columns and "run_id" in self.filters:
             raise Exception("42703 column model_calls.run_id does not exist")
         rows = [r for r in self.db.rows.get(self.name, []) if all(r.get(k, v) == v for k, v in self.filters.items())]
-        return SimpleNamespace(data=rows)
+        return SimpleNamespace(data=rows[self.start:self.end + 1 if self.end is not None else None])
 
 
 class _DB:
@@ -163,15 +171,15 @@ def _summary_db(missing_columns=False):
                  "completed_at": "2026-10-13T10:05:00+00:00", "duration_ms": 4200}
             ],
             "workflow_steps": [
-                {"run_id": RUN, "org_id": "org-1", "step_type": "invoke_tool", "status": "completed",
+                {"id": "step-1", "run_id": RUN, "org_id": "org-1", "step_type": "invoke_tool", "status": "completed",
                  "started_at": "2026-10-13T10:04:50+00:00", "output_snapshot": {"outcome_verified": True}},
-                {"run_id": RUN, "org_id": "org-1", "step_type": "noop", "status": "completed",
+                {"id": "step-2", "run_id": RUN, "org_id": "org-1", "step_type": "noop", "status": "completed",
                  "started_at": "2026-10-13T10:04:55+00:00"},
             ],
             "model_calls": [
-                {"org_id": "org-1", "run_id": RUN, "input_tokens": 100, "output_tokens": 20, "cost_usd": 0.0012},
-                {"org_id": "org-1", "run_id": RUN, "input_tokens": 50, "output_tokens": 10, "cost_usd": "0.0003"},
-                {"org_id": "org-1", "run_id": "other", "input_tokens": 999, "output_tokens": 0, "cost_usd": 9},
+                {"id": "model-1", "org_id": "org-1", "run_id": RUN, "input_tokens": 100, "output_tokens": 20, "cost_usd": 0.0012},
+                {"id": "model-2", "org_id": "org-1", "run_id": RUN, "input_tokens": 50, "output_tokens": 10, "cost_usd": "0.0003"},
+                {"id": "model-3", "org_id": "org-1", "run_id": "other", "input_tokens": 999, "output_tokens": 0, "cost_usd": 9},
             ],
         },
         missing_columns=missing_columns,
@@ -182,8 +190,32 @@ def test_summary_reports_time_cost_and_verified_writes():
     s = run_cost_summary(_summary_db(), "org-1", RUN)
     assert s["time"] == {"execution_ms": 4200, "waiting_ms": 290000, "elapsed_ms": 300000}
     assert s["model"] == {"attributed": True, "calls": 2, "input_tokens": 150, "output_tokens": 30, "cost_usd": "0.001500"}
-    assert s["steps"] == {"total": 2, "tool_calls": 1, "verified_writes": 1, "failed": 0}
+    assert s["steps"] == {"total": 2, "tool_calls": 1, "verified_writes": 1, "failed": 0, "coverage_complete": True}
     assert s["trigger_type"] == "freshservice"
+
+
+def test_summary_pages_past_postgrest_row_limit():
+    db = _summary_db()
+    db.rows["model_calls"] = [
+        {"id": f"call-{i}", "org_id": "org-1", "run_id": RUN,
+         "input_tokens": 1, "output_tokens": 0, "cost_usd": "0.000001"}
+        for i in range(1001)
+    ]
+    summary = run_cost_summary(db, "org-1", RUN)
+    assert summary["model"] == {
+        "attributed": True, "calls": 1001, "input_tokens": 1001,
+        "output_tokens": 0, "cost_usd": "0.001001",
+    }
+
+
+def test_incomplete_model_pages_do_not_report_an_understated_cost(monkeypatch):
+    from app.services import run_cost_summary as service
+
+    original = service._read_pages
+    monkeypatch.setattr(service, "_read_pages", lambda query: original(query, max_rows=1))
+    summary = run_cost_summary(_summary_db(), "org-1", RUN)
+    assert summary["model"]["attributed"] is False
+    assert summary["model"]["cost_usd"] is None
 
 
 def test_summary_says_cost_unknown_not_zero_before_migration():
