@@ -15,8 +15,8 @@ export const aiAgentsForBusinessPost: BlogPost = {
   author: GRAVITRE_BLOG_AUTHOR,
   ...createBlogDates("2026-10-15"),
   readTime: "12 min read",
-  heroImage: "/og-get-started.png",
-  heroAlt: "Gravitre AI operations platform brand illustration",
+  heroImage: "/images/blog/ai-agents-for-business.jpg",
+  heroAlt: "White humanoid robot representing AI agents for business workflows",
   keywords: ["AI agents for business", "business AI automation", "voice AI agents", "custom AI agents", "AI workflow agents", "AI agent ROI", "CRM automation"],
   takeaways: [
     "Start with repetitive, read-heavy, and reversible tasks before automating consequential actions.",

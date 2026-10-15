@@ -14,8 +14,8 @@ export const aiDecisionMakingPost: BlogPost = {
   category: "Guides",
   readTime: "11 min read",
   ...createBlogDates("2026-10-15"),
-  heroImage: "/og-get-started.png",
-  heroAlt: "Gravitre AI platform brand illustration for governed business decisions",
+  heroImage: "/images/blog/ai-in-decision-making.jpg",
+  heroAlt: "Professional using an AI assistant on a laptop to support business decisions",
   keywords: [
     "AI in decision making",
     "AI business strategy",
