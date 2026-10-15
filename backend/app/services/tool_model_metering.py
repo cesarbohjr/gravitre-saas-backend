@@ -58,7 +58,9 @@ async def authorize_tool_model_call(router: Any, *, model: str) -> None:
     from app.services.ai_guardrails import AIServiceDisabledError
     from app.services.cost_attribution import current_model_org_id
 
-    if bool(getattr(getattr(router, "settings", None), "disable_ai", False)):
+    # Settings is a typed bool in production. Mock routers often expose an
+    # unspecified MagicMock here; its truthiness must not invent a kill switch.
+    if getattr(getattr(router, "settings", None), "disable_ai", False) is True:
         raise AIServiceDisabledError()
     org_id = current_model_org_id()
     if org_id is None:

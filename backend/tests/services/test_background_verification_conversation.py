@@ -29,10 +29,20 @@ def test_verified_read_back_completes_the_conversation():
     assert semantic_stage_from_state(state) == "VERIFYING"
     p = background_verification_patch(
         state, invoke_action="hubspot.contacts.create", provider_record="101", terminal="completed",
-        verification={"detail": "entity_found"},
+        verification={"verified": True, "method": "entity_get", "detail": "entity_found"},
     )
     assert p is not None and p["action_lifecycle"] == "COMPLETED"
     assert semantic_stage_from_state(_apply(state, p)) == "COMPLETED"
+
+
+def test_completed_terminal_without_verifier_evidence_does_not_claim_completion():
+    state = _verifying_state()
+    patch_ = background_verification_patch(
+        state, invoke_action="hubspot.contacts.create", provider_record="101",
+        terminal="completed", verification={"verified": True},
+    )
+    assert patch_ is not None
+    assert semantic_stage_from_state(_apply(state, patch_)) == "EXECUTED_UNVERIFIED"
 
 
 def test_failed_read_back_fails_the_conversation():

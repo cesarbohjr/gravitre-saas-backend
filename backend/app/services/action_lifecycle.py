@@ -231,7 +231,9 @@ def observation_from_write(
     step_id = step.step_id if step else "connector_primary"
     record_id = provider_record_id(structured)
     verify_status = "unverified"
-    if verification and verification.get("verified"):
+    from app.services.outcome_verification import evidence_is_verified
+
+    if evidence_is_verified(verification):
         verify_status = "verified"
     elif verification and verification.get("follow_up_attempted"):
         verify_status = "verification_pending"
@@ -444,14 +446,16 @@ def persist_write_outcome_patch(
     if pending_superseded_by_newer_task(state, connector_plan, pending_at_start=pending_at_start):
         return _outcome_only_patch(state, obs)
     exec_plan = apply_observations_to_plan(exec_plan, [obs])
-    if success and verification and verification.get("verified"):
+    from app.services.outcome_verification import evidence_is_verified
+
+    if success and evidence_is_verified(verification):
         exec_plan.terminal_status = "completed"
     elif success:
         exec_plan.terminal_status = "partial"
     pending = pending_task if isinstance(pending_task, dict) else safe_normalize_stored_dict(state, key="pending_task")
     pending = dict(pending)
     pending["type"] = "connector_action"
-    if success and verification and verification.get("verified"):
+    if success and evidence_is_verified(verification):
         pending["status"] = "executed"
         pending["lifecycle"] = "COMPLETED"
     elif success and verification and verification.get("terminal_inconclusive"):
@@ -882,7 +886,9 @@ def background_verification_patch(
     if provider_record and stored_record and stored_record != str(provider_record).strip():
         return None
 
-    verified = terminal == "completed"
+    from app.services.outcome_verification import evidence_is_verified
+
+    verified = terminal == "completed" and evidence_is_verified(verification)
     new_pending = dict(pending)
     if verified:
         new_pending["status"] = "executed"

@@ -37,6 +37,8 @@ class _Query:
         self._op = "select"
         self._payload: Any = None
         self._on_conflict: str | None = None
+        self._start = 0
+        self._end: int | None = None
 
     # read builders
     def select(self, *_a, **_k):
@@ -61,6 +63,10 @@ class _Query:
         return self
 
     def limit(self, *_a):
+        return self
+
+    def range(self, start: int, end: int):
+        self._start, self._end = start, end
         return self
 
     # writes
@@ -113,7 +119,7 @@ class _Query:
             for r in matches:
                 rows.remove(r)
             return _Resp(matches)
-        return _Resp([dict(r) for r in matches])
+        return _Resp([dict(r) for r in matches[self._start:self._end + 1 if self._end is not None else None]])
 
 
 class _FakeClient:
