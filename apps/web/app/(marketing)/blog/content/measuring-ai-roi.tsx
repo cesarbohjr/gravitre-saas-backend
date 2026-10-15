@@ -137,7 +137,7 @@ export const measuringAiRoiPost: BlogPost = {
         ourselves. The two numbers live side by side, but they never get confused with each other.
       </p>
       <p>
-        This same pattern shows up across the teams using Gravitre. Marketing teams get live signal on what is
+        Gravitre&apos;s approach to reporting estimates alongside observed outcomes applies across different teams. Marketing teams get live signal on what is
         happening with their connected tools alongside estimated savings on pre-built campaign workflows. Sales teams get
         clear visibility into what their connected tools are actually returning, without any guesswork about plan limits
         or data gaps. IT and security teams get a steady, current feed of real threat intelligence. Support and success
@@ -156,13 +156,13 @@ export const measuringAiRoiPost: BlogPost = {
         another to hand off real tasks and need to know, with certainty, what was actually done and what it produced.
       </p>
       <p>
-        That is really what this is about. Not a reporting feature bolted onto the side of the product, but the same
+        Gravitre&apos;s approach to AI ROI is about evidence behind business outcomes. Not a reporting feature bolted onto the side of the product, but the same
         principle that shapes how Gravitre approaches automation generally: visibility first, so trust can follow.
       </p>
 
       <h2>What is next</h2>
       <p>
-        We are building toward fully verified, real-dollar ROI: the kind backed by actual measured outcomes rather than
+        Gravitre is building toward fully verified, real-dollar ROI: the kind backed by actual measured outcomes rather than
         estimates. As that rolls out, it will sit right alongside the activity data you already see today, following
         the same rule: nothing gets shown until it means what it says.
       </p>
