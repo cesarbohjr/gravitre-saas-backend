@@ -57,6 +57,35 @@ for (const p of added.filter(p => /^apps\/web\/app\/\(marketing\)\/blog\/content
     errors.push(`${p}: add at least two independently verified external primary-source links before publication`)
   }
 }
+// Inventory duplicate public-doc titles so new docs cannot cannibalize existing pages.
+const titlesByName = new Map()
+for (const p of allDocs) {
+  const raw = read(p)
+  const fm = raw.match(/^---\s*\n([\s\S]*?)\n---/)
+  if (!fm || !/^audience:\s*public\s*$/m.test(fm[1]) || /^status:\s*draft\s*$/m.test(fm[1])) continue
+  const title = fm[1].match(/^title:\s*["']?(.+?)["']?\s*$/m)?.[1]?.trim().toLowerCase()
+  if (!title) continue
+  const paths = titlesByName.get(title) || []
+  paths.push(p)
+  titlesByName.set(title, paths)
+}
+for (const [title, paths] of titlesByName) {
+  if (paths.length < 2) continue
+  warnings.push(`Duplicate public-doc title "${title}": ${paths.join(", ")}. Review intent before merging or redirecting.`)
+  for (const p of paths) {
+    if (added.includes(p)) errors.push(`${p}: new doc duplicates an existing public title "${title}"`)
+  }
+}
+// Intrinsic image size avoids CLS. Enforce for newly created marketing/blog JSX.
+for (const p of added.filter(p => p.startsWith("apps/web/") && /\.(tsx|jsx)$/.test(p) && (p.includes("/(marketing)/") || p.includes("/marketing/")))) {
+  const jsx = read(p)
+  const imgTags = jsx.match(/<img\b[\s\S]*?>/g) || []
+  for (const tag of imgTags) {
+    if (!/\bwidth=/.test(tag) || !/\bheight=/.test(tag)) {
+      errors.push(`${p}: img element needs intrinsic width and height, or use next/image`)
+    }
+  }
+}
 for(const p of docFiles){
   if (!fs.existsSync(p)) continue
   const raw = read(p)
