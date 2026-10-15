@@ -51,10 +51,10 @@ for (const p of added.filter(p => /^apps\/web\/app\/\(marketing\)\/blog\/content
   }
   // A new article should include at least one reader-question H2 with an
   // answer-led opening paragraph, not merely a list of generic headings.
-  const questionSections = [...body.matchAll(/<h2[^>]*>([^<]*\\?)<\\/h2>\\s*<p[^>]*>([\\s\\S]*?)<\\/p>/g)]
+  const questionSections = [...body.matchAll(/<h2[^>]*>([^<]*\?)<\/h2>\s*<p[^>]*>([\s\S]*?)<\/p>/g)]
   if (!questionSections.length) {
     errors.push(`${p}: include a question-form H2 followed immediately by a direct-answer paragraph`)
-  } else if (questionSections.every(([, , para]) => plain(para).split(/\\s+/).filter(Boolean).length < 8)) {
+  } else if (questionSections.every(([, , para]) => plain(para).split(/\s+/).filter(Boolean).length < 8)) {
     errors.push(`${p}: question H2 needs a substantive first-sentence answer`)
   }
   const external = [...body.matchAll(/https?:\/\/[^\s"'\x60<>)]+/g)].map(m => {
