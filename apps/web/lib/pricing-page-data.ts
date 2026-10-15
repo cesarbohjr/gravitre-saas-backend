@@ -201,6 +201,14 @@ export const faqs = [
       ]
     : []),
   {
+    question: "Can I export my data and leave?",
+    answer: "You can export supported outputs and records. Some connector settings, agent configurations, and workflow definitions may need to be recreated elsewhere. Contact support before migration to confirm which workspace data can be exported.",
+  },
+  {
+    question: "Do I need an engineer to set this up?",
+    answer: "Not for straightforward tasks. Describe what you want in plain language, build a workflow, and use sandbox test runs before enabling live actions. More complex integrations may require technical assistance.",
+  },
+  {
     question: "Is voice included, or is it an add-on?",
     answer:
       "Voice is included on every plan — switch Text | Voice in chat for spoken replies. Comparable automation platforms often sell voice or AI agents as paid add-ons; we include the capability in Node, Control, and Command.",
