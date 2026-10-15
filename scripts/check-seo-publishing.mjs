@@ -42,6 +42,21 @@ for (const p of added) {
     errors.push(`${p}: new public route must define a self-referencing canonical in page/layout metadata`)
   }
 }
+// Gate newly authored blog modules before publication. Link ownership/source quality
+// still needs human review; distinct source domains are only a minimum signal.
+for (const p of added.filter(p => /^apps\/web\/app\/\(marketing\)\/blog\/content\/[^/]+\.tsx$/.test(p))) {
+  const body = read(p)
+  for (const field of ["slug:", "title:", "description:", "author:", "datePublished:", "dateModified:", "heroAlt:"]) {
+    if (!body.includes(field)) errors.push(`${p}: new blog post missing ${field}`)
+  }
+  const external = [...body.matchAll(/https?:\/\/[^\s"'\x60<>)]+/g)].map(m => {
+    try { return new URL(m[0]).hostname } catch { return "" }
+  }).filter(Boolean)
+  const independentDomains = new Set(external.filter(h => !h.endsWith("gravitre.app")))
+  if (independentDomains.size < 2) {
+    errors.push(`${p}: add at least two independently verified external primary-source links before publication`)
+  }
+}
 for(const p of docFiles){
   if (!fs.existsSync(p)) continue
   const raw = read(p)
