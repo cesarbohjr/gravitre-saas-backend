@@ -55,7 +55,7 @@ for (const p of added.filter(p => /^apps\/web\/app\/\(marketing\)\/blog\/content
   const markdownQuestion = /## (?:What|Which|When|Where|Why|How|Can|Do|Does|Should|Is|Are)[^?]{5,120}\?/.test(body)
   if (!questionSections.length && !markdownQuestion) {
     errors.push(`${p}: include a question-form H2 followed immediately by a direct-answer paragraph`)
-  } else if (questionSections.every(([, , para]) => plain(para).split(/\s+/).filter(Boolean).length < 8)) {
+  } else if (questionSections.length && questionSections.every(([, , para]) => plain(para).split(/\s+/).filter(Boolean).length < 8)) {
     errors.push(`${p}: question H2 needs a substantive first-sentence answer`)
   }
   // Advisory: extractable prose should name its subject without surrounding context.
