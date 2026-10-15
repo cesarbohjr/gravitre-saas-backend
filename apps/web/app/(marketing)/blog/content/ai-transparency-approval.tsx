@@ -82,7 +82,7 @@ export const aiTransparencyApprovalPost: BlogPost = {
         A practical approval policy should reflect the risk of each action. The
         <a href="https://airc.nist.gov/airmf-resources/airmf/" target="_blank" rel="noopener noreferrer"> NIST AI Risk Management Framework</a>
         describes governance and risk monitoring across AI systems, while
-        <a href="https://genai.owasp.org/resource/owasp-top-10-for-llm-applications-2025/" target="_blank" rel="noopener noreferrer"> OWASP's LLM application risk guidance</a>
+        <a href="https://genai.owasp.org/resource/owasp-top-10-for-llm-applications-2025/" target="_blank" rel="noopener noreferrer"> OWASP&apos;s LLM application risk guidance</a>
         highlights the dangers of excessive agency. This is why an audit trail and a clear approval authority
         matter more than a generic promise that AI is safe.
       </p>
