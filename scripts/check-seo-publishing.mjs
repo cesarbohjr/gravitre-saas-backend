@@ -58,9 +58,9 @@ for (const p of added.filter(p => /^apps\/web\/app\/\(marketing\)\/blog\/content
     errors.push(`${p}: question H2 needs a substantive first-sentence answer`)
   }
   // Advisory: extractable prose should name its subject without surrounding context.
-  const openingParagraphs = [...body.matchAll(/<p(?:\\s[^>]*)?>\\s*([\\s\\S]*?)<\\/p>/g)]
-  const contextOpenings = openingParagraphs.filter(([, content]) => /^(this|these|those|they|it|such an approach)\\b/i.test(plain(content)))
-  if (contextOpenings.length) warnings.push(`${p}: ${contextOpenings.length} paragraph(s) open with ambiguous pronouns; name the subject in the first sentence`)
+  const openingParagraphs = [...body.matchAll(/<p(?:\s[^>]*)?>\s*([\s\S]*?)<\/p>/g)]
+  const contextOpenings = openingParagraphs.filter(([, content]) => /^(this|these|those|they|it|such an approach)\b/i.test(plain(content)))
+  if (contextOpenings.length) warnings.push("Ambiguous paragraph openings in " + p + ": " + contextOpenings.length + "; name the subject in the first sentence")
   const external = [...body.matchAll(/https?:\/\/[^\s"'\x60<>)]+/g)].map(m => {
     try { return new URL(m[0]).hostname } catch { return "" }
   }).filter(Boolean)
