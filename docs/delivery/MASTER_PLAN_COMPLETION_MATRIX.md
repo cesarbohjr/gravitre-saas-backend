@@ -15,8 +15,9 @@ are historical evidence, superseded by this run, not current blockers.
 **Next draft increment:** durable assistant recovery snapshots credits and
 allowance on `model_calls`; the existing usage scheduler invokes a bounded,
 replica-safe recovery RPC. Migration `20261015232327` and default-off
-`ASSISTANT_BILLING_RECOVERY_ENABLED` are not applied/activated. Its tests still
-require CI. A changed period allowance blocks settlement for review; old calls,
+`ASSISTANT_BILLING_RECOVERY_ENABLED` are not applied/activated. Its required
+PostgreSQL gate passed in CI run 38823949550 at `8038f11b`; full regression
+acceptance is separate. A changed period allowance blocks settlement for review; old calls,
 closed-month recovery, historical overage and plan-change economics remain open.
 See [closeout queue](./MASTER_PLAN_CLOSEOUT_2026-10-15.md).
 
@@ -89,10 +90,10 @@ Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · 
 
 | Item | Impl | PR / commit | Tests executed | Migrations | Config | Prod acceptance | Blocker |
 |------|------|-------------|----------------|------------|--------|-----------------|---------|
-| Turn tracing + shared context artifact | PARTIAL | #431 correlates assistant latency log id with measured model-call turn id; shared context artifact still absent | Syntax check only | — | — | NOT RUN | Structured spans and P50/P95 proof |
-| P50/P95 latency proof | NOT STARTED | — | — | — | Railway LIVE flags | NOT RUN | — |
+| Turn tracing + shared context artifact | PARTIAL | Existing cognitive trace/critical-path audits + #431 model-call correlation; no separate context artifact | Existing trace tests; context manifest still open | — | — | PARTIAL | Root-to-provider spans and context coverage |
+| P50/P95 latency proof | PARTIAL | Existing baseline reporter; read-only 30-day production aggregate in latency-production-baseline-2026-10-15.json | 1,059 text / 364 voice correlated turns | — | No flags changed | PARTIAL | Compose timing only; browser/first-audio and same-revision SLO proof open |
 | Connector lineage enablement | NOT STARTED | — | — | — | — | NOT RUN | — |
-| Memory / document lineage / resurfacing | NOT STARTED | — | — | — | — | NOT RUN | STA-312 / Memory Option B |
+| Memory / document lineage / resurfacing | PARTIAL | Existing recall liveness; draft company snapshot fingerprint/liveness recheck | New snapshot revoke/edit/retire tests pending CI | Existing lineage migration | MEMORY_SOURCE_LINEAGE_ENABLED unchanged | NOT RUN | Document lineage, historical summaries, other cache paths; STA-312 / Memory Option B |
 | Source revocation complete | PARTIAL | main | Partial unit | — | — | NOT RUN | Audit paths |
 
 ---

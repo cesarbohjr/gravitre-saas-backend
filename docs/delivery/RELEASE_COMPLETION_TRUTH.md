@@ -11,10 +11,21 @@ reset still fails at historical `20250220000006`; Billing Playwright skipped.
 **Current recovery draft:** migration `20261015232327` adds durable assistant
 billing evidence and bounded scheduler settlement, default off behind
 `ASSISTANT_BILLING_RECOVERY_ENABLED`. It requires both atomic billing flags and
-the prior atomic migrations. New PostgreSQL and context/scheduler tests are
-added but not yet run in CI. See `MASTER_PLAN_CLOSEOUT_2026-10-15.md` for the
+the prior atomic migrations. Its required PostgreSQL recovery gate passed on
+`8038f11b` in CI run 38823949550; context/scheduler and full regression acceptance
+remain separate. See `MASTER_PLAN_CLOSEOUT_2026-10-15.md` for the
 remaining engineering queue, rollout order and limitations. No production
 charge, backfill, migration or flag change has been performed.
+
+**Intelligence follow-on:** existing critical-path audit/latency reporting already
+exists. Read-only production aggregates are recorded in
+`latency-production-baseline-2026-10-15.json`; these compose checkpoints are not
+browser/first-audio SLO acceptance. The new company-memory snapshot guard filters
+revoked memories before synthesis and revalidates their exact fingerprints,
+active state and connector liveness at the shared prompt reader. With lineage
+enabled, legacy snapshots containing unprovenanced memory text are suppressed
+until regeneration. No lineage flag was enabled. This closes that snapshot route
+only; document-derived memories, summaries and other caches still need review.
 
 ## Current implementation increment
 

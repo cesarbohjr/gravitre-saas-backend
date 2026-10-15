@@ -1,0 +1,30 @@
+{
+  "observed_at_utc_date": "2026-10-15",
+  "project_id": "smyeexlrqdpymwjmgzqu",
+  "method": "read-only aggregate SQL over audit_events",
+  "action": "runtime.turn_latency.critical_path",
+  "window": "rolling 30 days at query time",
+  "raw_rows": {
+    "text": {"rows": 1102, "with_turn_id": 1102, "with_duration": 1102},
+    "voice": {"rows": 458, "with_turn_id": 409, "with_duration": 458}
+  },
+  "deduplicated_compose_checkpoints": {
+    "method": "group by org_id, turn_id, spoken_mode; maximum nonnegative numeric total_ms per turn",
+    "text": {"turns": 1059, "zero_duration_turns": 0, "p50_ms": 9860.0, "p95_ms": 27156.1},
+    "voice": {"turns": 364, "zero_duration_turns": 0, "p50_ms": 6483.5, "p95_ms": 31173.2}
+  },
+  "diagnostic": {
+    "text_largest_dominant_bucket": "UNIFIED_LIVE_RESOLVED",
+    "text_bucket_turns": 437,
+    "text_bucket_p50_dominant_ms": 10161.0
+  },
+  "slo_verdict": "NOT_ASSESSED",
+  "limitations": [
+    "These are existing compose checkpoints, not complete browser-ready or first-audio timings.",
+    "The window spans deployment revisions and conversational tiers; it is not an A/B comparison.",
+    "49 raw voice rows have no turn_id and are excluded from deduplicated metrics.",
+    "Maximum duration per turn reduces duplicate compose records but cannot prove a terminal lifecycle event.",
+    "The largest text bucket covers a broad unified-turn interval and does not identify an individual provider/context operation.",
+    "No production data or configuration was changed."
+  ]
+}

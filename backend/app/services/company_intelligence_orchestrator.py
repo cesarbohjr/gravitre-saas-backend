@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import asyncio
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -28,8 +29,11 @@ from app.services.company_intelligence_collectors import (
     collect_org_memory_digest,
     collect_query_corpus,
     fetch_active_workflow_definitions,
+    memory_digest_provenance,
+    snapshot_memory_digest_is_live,
 )
 from app.services.company_intelligence_synthesis import synthesize_company_intelligence
+from app.services.memory_source_liveness import liveness_enabled
 from app.ml.learning_to_rank import (
     RetrievalRanker,
     count_training_examples,
@@ -248,6 +252,7 @@ class CompanyIntelligenceOrchestrator:
                     "memory_rows": len(memories),
                 },
                 signals={
+                    "memory_digest_provenance": memory_digest_provenance(memories),
                     "category_distribution": category_distribution,
                     "anomaly_count": sum(1 for a in recent_anomalies if a.get("is_anomaly")),
                     "cluster_count": len(cluster_results or []),
@@ -291,6 +296,11 @@ class CompanyIntelligenceOrchestrator:
         try:
             row = await self._load_latest_snapshot(org_id)
             if not row or self._is_stale(row):
+                return ""
+            if liveness_enabled(self.settings) and not await asyncio.to_thread(
+                snapshot_memory_digest_is_live, self._client(), org_id, row, self.settings,
+            ):
+                logger.info("company_intelligence_snapshot_suppressed reason=memory_source_invalid org_id=%s", org_id)
                 return ""
             markdown = str(row.get("context_markdown") or "").strip()
             if not markdown:
