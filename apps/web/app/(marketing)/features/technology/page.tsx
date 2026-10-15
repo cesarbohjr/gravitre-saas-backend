@@ -2,6 +2,7 @@ import { marketingMetadata } from "@/lib/seo"
 import { TechnologyPage } from "@/components/marketing/features/technology-page"
 
 export const metadata = marketingMetadata({
+  canonical: "/features/technology",
   title: "Technology — GIBE & Governance",
   description:
     "GIBE (Gravitre Intelligent Business Engine): org-scoped learning, a built-in ML catalog, and predictive ops — paired with human-in-the-loop approval, audit trails, and RBAC.",
