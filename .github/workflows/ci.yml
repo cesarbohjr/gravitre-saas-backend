@@ -281,6 +281,12 @@ jobs:
         env:
           APP_ENV: dev
 
+      - name: Workflow approval projection contract
+        run: >-
+          python -m pytest -q tests/services/test_react_canvas_write_gate.py
+          tests/services/test_workflow_approval_scope_audit.py
+          tests/services/test_write_approval_fingerprints.py
+
       - name: Connector credential tenant-scope contract
         run: >-
           python -m pytest

@@ -206,7 +206,7 @@ def load_run_for_write_gate(client: Any, org_id: str, run_id: str | None) -> dic
     try:
         rows = (
             client.table("workflow_runs")
-            .select("id, status, approval_status, required_approvals, parameters")
+            .select("id, status, approval_status, required_approvals, parameters, definition_snapshot")
             .eq("id", run_id)
             .eq("org_id", org_id)
             .limit(1)

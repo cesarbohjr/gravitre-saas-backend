@@ -18,6 +18,15 @@ shared text/voice and integration smoke. Dedicated recovery (6 PG + 11 context/
 scheduler tests) and company source revocation (15 focused tests) passed.
 Billing Playwright remains skipped; production acceptance remains open.
 
+**2026-10-16 approval loader correction:** the canonical run loader now selects
+`definition_snapshot`, which canvas/ReAct/tool invocation use to verify the
+reviewed definition digest. Projection-aware ReAct tests exercise the real loader:
+reviewed arguments reach the registry once; changed arguments or definitions
+never reach it; a foreign-org run is not returned. No schema or flag change.
+CI run 38841395865 at `004d0118` passed the PG gates and 54 credential-focused
+tests, but failed one old disconnect mock lacking the new required `org_id`.
+The mock now asserts tenant scope explicitly; the full suite still needs rerun.
+
 **Next draft increment:** durable assistant recovery snapshots credits and
 allowance on `model_calls`; the existing usage scheduler invokes a bounded,
 replica-safe recovery RPC. Migration `20261015232327` and default-off
