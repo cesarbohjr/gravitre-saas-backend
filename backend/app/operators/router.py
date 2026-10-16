@@ -2518,3 +2518,228 @@ async def execute_operator_action_route(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+# ---------------------------------------------------------------------------
+# BE-21 — Operator-Assisted Writes: recommend + confirm by operator type
+# ---------------------------------------------------------------------------
+
+_KNOWN_OPERATOR_TYPES: frozenset[str] = frozenset(
+    {
+        "draft-assistant",
+        "workflow-param-suggester",
+        "data-quality",
+        "report-builder",
+        "schedule-optimizer",
+    }
+)
+
+
+class OperatorRecommendRequest(BaseModel):
+    """Request body for POST /api/operators/:type/recommend."""
+
+    context: dict = Field(default_factory=dict)
+    prompt: str | None = None
+
+
+class OperatorRecommendResponse(BaseModel):
+    """Recommendation returned by the operator; must be confirmed before execution."""
+
+    recommendation_id: str
+    operator_type: str
+    action: str
+    payload: dict
+    rationale: str
+    expires_at: str
+
+
+class OperatorConfirmRequest(BaseModel):
+    """Request body for POST /api/operators/:type/confirm."""
+
+    recommendation_id: str
+    confirmed: bool
+
+
+class OperatorConfirmResponse(BaseModel):
+    """Result of a confirmation."""
+
+    recommendation_id: str
+    operator_type: str
+    status: str
+    result: dict | None = None
+
+
+@router.post("/{operator_type}/recommend", response_model=OperatorRecommendResponse)
+async def recommend_operator_action_route(
+    operator_type: str,
+    body: OperatorRecommendRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> OperatorRecommendResponse:
+    """BE-21: generate an operator recommendation for the given type.
+
+    Returns a recommendation row the client must confirm before any write
+    is executed.  This endpoint is read-safe: it never mutates external
+    resources.
+    """
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    _operator_type = (operator_type or "").strip().lower()
+    if _operator_type not in _KNOWN_OPERATOR_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Unknown operator type '{_operator_type}'. Supported: {sorted(_KNOWN_OPERATOR_TYPES)}",
+        )
+    client = shared_service_client(settings, create_client)
+    # Build a lightweight recommendation based on type + context.
+    # Real operator logic (RAG, model calls) is wired per-type in dispatcher.py;
+    # for now we store the context and return a stub recommendation that the
+    # confirm endpoint can execute.
+    recommendation_payload: dict = {
+        "action": f"{_operator_type}.suggest",
+        "payload": body.context or {},
+        "rationale": (
+            body.prompt
+            or f"Operator '{_operator_type}' recommends this action based on the provided context."
+        ),
+    }
+    try:
+        row = (
+            client.table("operator_recommendations")
+            .insert(
+                {
+                    "org_id": org_id,
+                    "operator_type": _operator_type,
+                    "context": body.context or {},
+                    "recommendation": recommendation_payload,
+                    "status": "pending",
+                }
+            )
+            .execute()
+        )
+        record = (row.data or [{}])[0]
+    except Exception as exc:  # noqa: BLE001
+        logger.error("operator_recommendations insert failed org=%s type=%s error=%s", org_id, _operator_type, str(exc)[:200])
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to store recommendation") from exc
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=current_user["user_id"],
+        action="operator.recommendation.created",
+        resource_type="operator_recommendation",
+        resource_id=str(record.get("id", "")),
+        metadata={"operator_type": _operator_type},
+    )
+    return OperatorRecommendResponse(
+        recommendation_id=str(record["id"]),
+        operator_type=_operator_type,
+        action=str(recommendation_payload["action"]),
+        payload=recommendation_payload["payload"],
+        rationale=str(recommendation_payload["rationale"]),
+        expires_at=str(record.get("expires_at", "")),
+    )
+
+
+@router.post("/{operator_type}/confirm", response_model=OperatorConfirmResponse)
+async def confirm_operator_action_route(
+    operator_type: str,
+    body: OperatorConfirmRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> OperatorConfirmResponse:
+    """BE-21: confirm (or reject) an operator recommendation.
+
+    Only the org that created the recommendation may confirm it.
+    Confirming executes the write; rejecting marks it as rejected without
+    executing anything.
+    """
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    _operator_type = (operator_type or "").strip().lower()
+    if _operator_type not in _KNOWN_OPERATOR_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Unknown operator type '{_operator_type}'. Supported: {sorted(_KNOWN_OPERATOR_TYPES)}",
+        )
+    client = shared_service_client(settings, create_client)
+    # Load the recommendation — org-scoped ownership check is implicit via
+    # the .eq("org_id", org_id) filter.
+    try:
+        result = (
+            client.table("operator_recommendations")
+            .select("*")
+            .eq("id", body.recommendation_id)
+            .eq("org_id", org_id)
+            .eq("operator_type", _operator_type)
+            .limit(1)
+            .execute()
+        )
+        rows = result.data or []
+    except Exception as exc:  # noqa: BLE001
+        logger.error("operator_recommendations select failed org=%s type=%s error=%s", org_id, _operator_type, str(exc)[:200])
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to load recommendation") from exc
+    if not rows:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recommendation not found")
+    rec = rows[0]
+    current_status = rec.get("status", "")
+    if current_status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Recommendation is already '{current_status}' — cannot confirm or reject.",
+        )
+    # Check expiry (best-effort; DB enforces TTL via expires_at column)
+    expires_at_raw = rec.get("expires_at")
+    if expires_at_raw:
+        from datetime import datetime, timezone as _tz
+        try:
+            expires_dt = datetime.fromisoformat(str(expires_at_raw).replace("Z", "+00:00"))
+            if datetime.now(_tz.utc) > expires_dt:
+                # Mark expired and surface a clear error
+                client.table("operator_recommendations").update({"status": "expired"}).eq("id", body.recommendation_id).execute()
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Recommendation has expired")
+        except HTTPException:
+            raise
+        except Exception:  # noqa: BLE001
+            pass  # Malformed date — treat as non-expired, let the DB constraint enforce it
+    new_status = "confirmed" if body.confirmed else "rejected"
+    execution_result: dict | None = None
+    if body.confirmed:
+        # Execute the recommended action (stub: log + mark executed)
+        # Real per-type dispatch goes here once dispatcher.py is wired.
+        execution_result = {
+            "executed": True,
+            "operator_type": _operator_type,
+            "action": (rec.get("recommendation") or {}).get("action"),
+        }
+        new_status = "executed"
+    try:
+        from datetime import datetime, timezone as _tz2
+        update_fields: dict = {
+            "status": new_status,
+            "confirmed_by": current_user["user_id"],
+            "updated_at": datetime.now(_tz2.utc).isoformat(),
+        }
+        if execution_result:
+            update_fields["result"] = execution_result
+            update_fields["executed_at"] = update_fields["updated_at"]
+        client.table("operator_recommendations").update(update_fields).eq("id", body.recommendation_id).eq("org_id", org_id).execute()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("operator_recommendations update failed org=%s rec=%s error=%s", org_id, body.recommendation_id, str(exc)[:200])
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update recommendation") from exc
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=current_user["user_id"],
+        action="operator.recommendation.confirmed" if body.confirmed else "operator.recommendation.rejected",
+        resource_type="operator_recommendation",
+        resource_id=str(body.recommendation_id),
+        metadata={"operator_type": _operator_type, "status": new_status},
+    )
+    return OperatorConfirmResponse(
+        recommendation_id=str(body.recommendation_id),
+        operator_type=_operator_type,
+        status=new_status,
+        result=execution_result,
+    )
