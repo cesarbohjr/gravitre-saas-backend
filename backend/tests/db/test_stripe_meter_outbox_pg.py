@@ -94,7 +94,7 @@ def test_parallel_claims_disjoint_and_cannot_reclaim(pg):
     def claim():
         return pg.psql(
             f"SET ROLE service_role; SELECT id FROM public.claim_stripe_meter_intents("
-            f"'{A}','ai_credits',1);"
+            f"'{A}','ai_credits','2026-10-01',1);"
         ).stdout
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
@@ -104,14 +104,14 @@ def test_parallel_claims_disjoint_and_cannot_reclaim(pg):
         "SELECT count(*) FROM public.stripe_meter_outbox WHERE status='sending';"
     ) == "2"
     assert pg.value(
-        f"SET ROLE service_role; SELECT count(*) FROM public.claim_stripe_meter_intents('{A}','ai_credits',100);"
+        f"SET ROLE service_role; SELECT count(*) FROM public.claim_stripe_meter_intents('{A}','ai_credits','2026-10-01',100);"
     ) == "0"
 
 
 def test_ack_fences_claim_and_marks_source_atomically(pg):
     assert _stage(pg, "ai_credits") == "2"
     pg.psql(
-        f"SET ROLE service_role; SELECT id FROM public.claim_stripe_meter_intents('{A}','ai_credits',1);"
+        f"SET ROLE service_role; SELECT id FROM public.claim_stripe_meter_intents('{A}','ai_credits','2026-10-01',1);"
     )
     assert pg.value(
         "SET ROLE service_role; SELECT public.ack_stripe_meter_intent("
@@ -129,11 +129,11 @@ def test_ack_fences_claim_and_marks_source_atomically(pg):
 def test_public_execute_denied_and_org_scope_guard(pg):
     assert _stage(pg, "ai_credits") == "2"
     resp = pg.psql(
-        f"SET ROLE authenticated; SELECT * FROM public.claim_stripe_meter_intents('{A}','ai_credits',1);",
+        f"SET ROLE authenticated; SELECT * FROM public.claim_stripe_meter_intents('{A}','ai_credits','2026-10-01',1);",
         check=False,
     )
     assert resp.returncode != 0
     assert "permission denied" in (resp.stdout + resp.stderr).lower()
     assert pg.value(
-        f"SET ROLE service_role; SELECT count(*) FROM public.claim_stripe_meter_intents('{B}','ai_credits',10);"
+        f"SET ROLE service_role; SELECT count(*) FROM public.claim_stripe_meter_intents('{B}','ai_credits','2026-10-01',10);"
     ) == "0"
