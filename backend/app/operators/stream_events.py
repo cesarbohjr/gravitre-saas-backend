@@ -47,3 +47,4 @@ class AssistantStreamComplete:
     task_state: dict[str, Any] | None = None
     execution_result: dict[str, Any] | None = None
     pending_task: dict[str, Any] | None = None
+    pending_mcp_approval: dict[str, Any] | None = None

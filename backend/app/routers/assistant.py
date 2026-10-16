@@ -1103,6 +1103,11 @@ def _build_stream(
                         ((complete.task_state or {}).get("parameter_ledger") if complete else None)
                         or ((last_task_state or {}).get("parameter_ledger") if last_task_state else None)
                     ),
+                    **(
+                        {"pending_mcp_approval": complete.pending_mcp_approval}
+                        if complete and complete.pending_mcp_approval
+                        else {}
+                    ),
                 },
             )
             await _bill_measured_calls(measured_calls, complete.message_id if complete else None)
@@ -2199,4 +2204,114 @@ async def execute_conversation_task(
         "persisted_user_text": "Approved",
         "persisted_assistant_text": assistant_text,
         "history_persisted": history_persisted,
+    }
+
+
+class ApproveMcpWriteRequest(BaseModel):
+    approval_id: str
+    confirm: bool = True
+
+
+@router.post("/conversation/{conversation_id}/approve-mcp-write")
+async def approve_mcp_write(
+    conversation_id: str,
+    body: ApproveMcpWriteRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Grant a pending MCP write approval stored in the interrupt state.
+
+    The ReAct engine paused at a write-approval gate and stored
+    `pending_mcp_approval` in the conversation's interrupt state.  The
+    client calls this endpoint when the user approves the action.  We
+    flip the `approvals` row to status='approved' so the engine can
+    proceed on the next turn submission.
+    """
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    if not body.confirm:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Confirmation required")
+
+    client = get_supabase_client(settings)
+    user_id = str(current_user.get("user_id") or "")
+
+    # Ownership check
+    owned = (
+        client.table("conversations")
+        .select("id")
+        .eq("id", conversation_id)
+        .eq("org_id", org_id)
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    if not owned.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+
+    # Load interrupt state to retrieve stored pending_mcp_approval
+    interrupt = load_interrupted_turn(org_id, conversation_id, settings=settings)
+    stored_approval = (
+        (interrupt.get("extra") or {}).get("pending_mcp_approval")
+        if isinstance(interrupt, dict)
+        else None
+    )
+    if not isinstance(stored_approval, dict) or not stored_approval.get("approval_id"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No pending MCP write approval found for this conversation",
+        )
+
+    stored_approval_id = str(stored_approval["approval_id"])
+    if stored_approval_id != body.approval_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="approval_id does not match the pending approval for this conversation",
+        )
+
+    # Flip the approvals row from 'pending' to 'approved'
+    try:
+        updated = (
+            client.table("approvals")
+            .update({"status": "approved"})
+            .eq("id", stored_approval_id)
+            .eq("org_id", org_id)
+            .eq("status", "pending")
+            .execute()
+            .data
+            or []
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "approve_mcp_write db update failed org_id=%s approval_id=%s error=%s",
+            org_id,
+            stored_approval_id,
+            str(exc)[:300],
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to record MCP write approval",
+        ) from exc
+
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Approval row not found or already processed",
+        )
+
+    logger.info(
+        "approve_mcp_write granted org_id=%s conversation_id=%s approval_id=%s user_id=%s",
+        org_id,
+        conversation_id,
+        stored_approval_id,
+        user_id,
+    )
+    return {
+        "approved": True,
+        "approval_id": stored_approval_id,
+        "tool_name": stored_approval.get("tool_name"),
+        "resume_hint": (
+            "Send the original message again (or any message) to resume the action "
+            "with the granted approval."
+        ),
     }

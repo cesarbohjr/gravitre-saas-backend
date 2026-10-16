@@ -64,6 +64,18 @@ def sanitize_interrupt_extra(extra: dict[str, Any] | None) -> dict[str, Any]:
             slim["arg_keys"] = [str(k)[:40] for k in list(args.keys())[:20]]
         if slim:
             out["pending_task"] = slim
+    mcp_approval = extra.get("pending_mcp_approval")
+    if isinstance(mcp_approval, dict) and mcp_approval:
+        slim_approval: dict[str, Any] = {}
+        for key in ("tool_name", "tool_id", "approval_id", "execution_id"):
+            if mcp_approval.get(key) not in (None, ""):
+                slim_approval[key] = str(mcp_approval[key])[:200]
+        # Store arg keys only — not values — so logs never leak sensitive args
+        args = mcp_approval.get("tool_args")
+        if isinstance(args, dict):
+            slim_approval["tool_arg_keys"] = [str(k)[:40] for k in list(args.keys())[:20]]
+        if slim_approval:
+            out["pending_mcp_approval"] = slim_approval
     ledger = extra.get("parameter_ledger") or extra.get("ledger")
     if isinstance(ledger, dict):
         slots = ledger.get("slots") if isinstance(ledger.get("slots"), dict) else ledger

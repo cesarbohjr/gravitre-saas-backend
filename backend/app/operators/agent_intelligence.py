@@ -6165,6 +6165,7 @@ class AgentIntelligence:
                     task_state=task_state,
                     execution_result=None,
                     pending_task=approval_turn.get("pending_task"),
+                    pending_mcp_approval=getattr(react_result, "pending_mcp_approval", None),
                 )
                 return
 
@@ -6775,6 +6776,7 @@ class AgentIntelligence:
             if dialogue_mode == "guide"
             or (isinstance(task_state, dict) and task_state.get("current_plan"))
             else None,
+            pending_mcp_approval=getattr(react_result, "pending_mcp_approval", None) if react_result else None,
         )
 
         if tier0_enabled(engine_settings) and full_content.strip():

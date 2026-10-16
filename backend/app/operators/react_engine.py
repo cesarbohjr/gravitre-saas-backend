@@ -145,9 +145,11 @@ class ReActResult:
     iterations: int = 0
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
     error: str | None = None
+    # MCP write approval pending: approval_id, tool_name, tool_id to resume with.
+    pending_mcp_approval: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        d: dict[str, Any] = {
             "status": self.status.value,
             "answer": self.answer,
             "iterations": self.iterations,
@@ -165,6 +167,9 @@ class ReActResult:
             "toolCalls": self.tool_calls,
             "error": self.error,
         }
+        if self.pending_mcp_approval:
+            d["pendingMcpApproval"] = self.pending_mcp_approval
+        return d
 
 
 def resolve_permitted_tools(
@@ -1005,6 +1010,13 @@ class ReActEngine:
                             trace=trace,
                             iterations=iteration,
                             tool_calls=tool_calls_log,
+                            pending_mcp_approval={
+                                "tool_name": tool_name,
+                                "tool_id": str(observation.get("tool_id") or ""),
+                                "approval_id": str(observation.get("approval_id") or ""),
+                                "execution_id": str(observation.get("execution_id") or ""),
+                                "tool_args": tool_args if isinstance(tool_args, dict) else {},
+                            },
                         )
                         break
 
@@ -1225,6 +1237,20 @@ class ReActEngine:
         if blocked is not None:
             return blocked
         execute_args = dict(args or {})
+
+        # MCP write approval resume: if the interrupt state carries a granted
+        # approval for this exact tool, inject approval_id so the MCP client
+        # can claim and execute it without creating a second pending row.
+        if isinstance(interrupt, dict):
+            _mcp_approval = (interrupt.get("extra") or {}).get("pending_mcp_approval") if isinstance(interrupt.get("extra"), dict) else interrupt.get("pending_mcp_approval")
+            if (
+                isinstance(_mcp_approval, dict)
+                and str(_mcp_approval.get("tool_name") or "") == tool_name
+                and _mcp_approval.get("approval_id")
+                and "approval_id" not in execute_args
+                and "approvalId" not in execute_args
+            ):
+                execute_args["approval_id"] = str(_mcp_approval["approval_id"])
         from dataclasses import replace as dc_replace
 
         from app.connectors.action_catalog.f1_read_slice import is_f1_read_action
