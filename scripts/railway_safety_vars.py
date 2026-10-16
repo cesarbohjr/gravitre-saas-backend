@@ -39,15 +39,15 @@ APPROVED_VALUES: dict[str, str] = {
 }
 
 # Default-off flags the owner approved switching on (2026-10-13, "safe subset"):
-# read-path context ranking only, no customer data and no writes; plus memory
-# lineage once its migration was verified. On is reported, not a problem; absent
-# is still fine.
+# read-path context ranking only, no customer data and no writes.
+# MEMORY_SOURCE_LINEAGE_ENABLED graduated to default-on in config.py (PR #444)
+# so it no longer belongs in DEFAULT_OFF or APPROVED_ON — Railway sees the code
+# default (True) without any pin, and the audit does not need to track it here.
 APPROVED_ON: frozenset[str] = frozenset(
     {
         "CROSS_SOURCE_CONTEXT_LIVENESS_V1",
         "CROSS_SOURCE_CONTEXT_FRESHNESS_V1",
         "CONTEXT_ENGINE_WORK_STATE_V1",
-        "MEMORY_SOURCE_LINEAGE_ENABLED",  # owner-approved 2026-10-13 after migration 20261012070000 was verified
     }
 )
 
