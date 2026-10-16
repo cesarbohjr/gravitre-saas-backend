@@ -5,6 +5,16 @@ implementation on draft #431 without asking which track to implement next.
 Keep production evidence separate from code/test completion. Existing release
 instructions still govern exact migration approval and production activation.
 
+## Production schema checkpoint — 2026-10-16 UTC
+
+The owner explicitly instructed running the six pending migrations. All six are
+applied. The [apply receipt](./supabase-migrations-applied-2026-10-16.json) maps
+original review versions to Supabase-assigned versions; SQL bytes are unchanged.
+Never reapply the original filenames or repair/delete the new remote history.
+Flag activation and application acceptance remain separate, uncompleted steps.
+No account links, idempotency entries, allowance records or historical charges
+were created by this schema release. All nine new RPCs are backend-only.
+
 ## Current evidence
 
 At `7ad397d`, CI run 38817159040 passed 11,006 backend tests (7 unrelated skips),

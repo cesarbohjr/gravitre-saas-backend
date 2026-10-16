@@ -9,8 +9,8 @@ import pytest
 
 from tests.db.pg_harness import MIGRATIONS, PG_BIN, pg_cluster, requires_pg
 
-MIGRATION = MIGRATIONS / "20261014100000_write_invoke_idempotency.sql"
-MIGRATION_GRANTS = MIGRATIONS / "20261014100001_write_invoke_idempotency_grants.sql"
+MIGRATION = MIGRATIONS / "20261016032018_write_invoke_idempotency.sql"
+MIGRATION_GRANTS = MIGRATIONS / "20261016032029_write_invoke_idempotency_grants.sql"
 
 ORG_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 ORG_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"

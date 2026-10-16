@@ -8,7 +8,7 @@ import pytest
 
 from tests.db.pg_harness import MIGRATIONS, PG_BIN, pg_cluster, requires_pg
 
-MIGRATION = MIGRATIONS / "20261015032117_assistant_usage_atomic.sql"
+MIGRATION = MIGRATIONS / "20261016032039_assistant_usage_atomic.sql"
 ORG_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 ORG_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
 CALL_1 = "11111111-1111-4111-8111-111111111111"

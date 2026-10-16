@@ -1,3 +1,9 @@
+> Production schema update: all six approved migrations were applied on
+> 2026-10-16 UTC. Exact old/new filename mapping and schema/permission verification:
+> [apply receipt](./supabase-migrations-applied-2026-10-16.json). Older unapplied
+> labels below are superseded for those six files only. Production flags were
+> unchanged. Application acceptance, full CI and remaining engineering stay open.
+
 # Master plan implementation and shipping truth — 2026-10-14
 
 Implementation continues on `codex/master-plan-completion-20261014`, based on draft #429 at `7fd10c4a`. This branch is reviewable engineering; no merge, production migration, deployment, or flag activation has been performed here.

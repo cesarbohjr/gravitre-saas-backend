@@ -17,9 +17,9 @@ def pg():
         f"CREATE TABLE public.organizations(id uuid PRIMARY KEY); "
         f"INSERT INTO public.organizations VALUES ('{ORG_A}'), ('{ORG_B}'); "
         "GRANT INSERT, UPDATE, DELETE ON public.model_calls TO authenticated;",
-        (MIGRATIONS / "20261015032117_assistant_usage_atomic.sql").read_text(),
-        (MIGRATIONS / "20261015222156_atomic_usage_all_sources.sql").read_text(),
-        (MIGRATIONS / "20261015232327_assistant_billing_recovery_contract.sql").read_text(),
+        (MIGRATIONS / "20261016032039_assistant_usage_atomic.sql").read_text(),
+        (MIGRATIONS / "20261016032048_atomic_usage_all_sources.sql").read_text(),
+        (MIGRATIONS / "20261016032109_assistant_billing_recovery_contract.sql").read_text(),
     ) as server:
         yield server
 

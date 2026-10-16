@@ -4,6 +4,19 @@
 **Cohesion rules:** [`PLATFORM_COHESION.md`](./PLATFORM_COHESION.md) · **Split plan:** [`PR429_DEPENDENT_SPLIT.md`](./PR429_DEPENDENT_SPLIT.md)  
 **Current implementation:** `codex/master-plan-completion-20261014` (based on #429 at `7fd10c4a`); see [Codex implementation evidence](./CODEX_IMPLEMENTATION_2026-10-14.md). Earlier row statuses below require reconciliation against that increment.
 
+**Production migration update (2026-10-16 UTC):** all six approved migrations
+are applied and schema/role grants verified in `smyeexlrqdpymwjmgzqu`. Supabase
+assigned versions `20261016032007`, `032018`, `032029`, `032039`, `032048`, and
+`032109` (same date prefix). Repository files are renamed to those exact versions
+without SQL changes; DB test paths follow them. Earlier pending-migration labels
+below are historical and superseded by this update. No activation flags were
+changed and no historical billing recovery was run. This is schema acceptance,
+not full application acceptance. See [apply receipt](./supabase-migrations-applied-2026-10-16.json).
+Current CI at `eacb3d57` passed all dedicated PG/Redis and focused gates, but the
+full backend finished **11,066 passed, 7 skipped, 1 failure**: missing warning
+logging in the model evaluation harness. Clean reset still fails at the older
+`20250220000006` function return-type change. Both release gates remain open.
+
 **Current closeout evidence (2026-10-15):** #431 at `7ad397d` passed full backend
 CI (**11,006 passed, 7 skipped**), web lint/typecheck/build/tests, shared text/voice,
 integration smoke, required PostgreSQL billing/idempotency gates and Redis gates

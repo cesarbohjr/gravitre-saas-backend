@@ -15,8 +15,8 @@ pytestmark = requires_pg
 def pg():
     with pg_cluster(
         BOOTSTRAP,
-        (MIGRATIONS / "20261015032117_assistant_usage_atomic.sql").read_text(),
-        (MIGRATIONS / "20261015222156_atomic_usage_all_sources.sql").read_text(),
+        (MIGRATIONS / "20261016032039_assistant_usage_atomic.sql").read_text(),
+        (MIGRATIONS / "20261016032048_atomic_usage_all_sources.sql").read_text(),
     ) as server:
         yield server
 
