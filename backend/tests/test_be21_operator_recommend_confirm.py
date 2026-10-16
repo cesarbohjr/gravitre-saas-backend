@@ -92,7 +92,7 @@ def _make_supabase_client(
 
 def _make_app() -> FastAPI:
     from app.operators.router import router
-    from app.auth.context import get_current_user, get_org_context
+    from app.auth.dependencies import get_current_user, get_org_context
     from app.config import get_settings
 
     app = FastAPI()
