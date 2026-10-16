@@ -269,6 +269,14 @@ jobs:
           APP_ENV: dev
           GRAVITRE_REQUIRE_PG: "1"
 
+      - name: Stripe outbox PostgreSQL acceptance (must not skip)
+        run: |
+          python -m pytest tests/db/test_stripe_meter_outbox_pg.py -q --no-header
+          python -m pytest tests/billing/test_stripe_meter_outbox.py tests/billing/test_stripe_meter_intents.py -q --no-header
+        env:
+          APP_ENV: dev
+          GRAVITRE_REQUIRE_PG: "1"
+
       - name: Company intelligence source revocation contract
         run: python -m pytest tests/services/test_company_intelligence_memory_lineage.py tests/test_company_intelligence_prompt_injection.py -q --no-header
         env:
