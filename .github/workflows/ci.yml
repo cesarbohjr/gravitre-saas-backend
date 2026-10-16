@@ -304,6 +304,7 @@ jobs:
           tests/routers/test_connectors_list_secrets_batch.py
           tests/connectors/test_twilio_api_key_auth.py
           tests/connectors/test_semrush_api.py
+          tests/connectors/test_segment_api.py
           tests/services/test_source_lifecycle.py
           -q --no-header
         env:

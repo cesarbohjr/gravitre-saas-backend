@@ -42,5 +42,14 @@
   ],
   "withdrawn_migration_do_not_apply": "20261014110000",
   "acceptance": "NOT RUN: authenticated production matrix, staging migration acceptance and deployment alignment. No production flags changed.",
-  "remaining_plan": "See MASTER_PLAN_COMPLETION_MATRIX.md and MASTER_PLAN_CLOSEOUT_2026-10-15.md; this evidence does not close remaining engineering."
+  "remaining_plan": "See MASTER_PLAN_COMPLETION_MATRIX.md and MASTER_PLAN_CLOSEOUT_2026-10-15.md; this evidence does not close remaining engineering.",
+  "segment_mocked_regression": {
+    "result": "PASS",
+    "passed": 10,
+    "provider_requests": "_request mocked; invalid identity asserts not called; synthetic keys and payloads only"
+  },
+  "broader_local_regression": {
+    "result": "INCOMPLETE",
+    "reason": "Automatic approval review blocked an unverified external Segment request. The run was stopped; no broad PASS claimed. Segment identity validation and explicitly mocked tests are fixed separately."
+  }
 }

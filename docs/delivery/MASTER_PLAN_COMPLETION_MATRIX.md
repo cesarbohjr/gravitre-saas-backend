@@ -18,6 +18,12 @@ shared text/voice and integration smoke. Dedicated recovery (6 PG + 11 context/
 scheduler tests) and company source revocation (15 focused tests) passed.
 Billing Playwright remains skipped; production acceptance remains open.
 
+**Segment regression integrity:** invalid identify/group user/group IDs are
+refused before HTTP dispatch. Ten synthetic tests passed with `_request` mocked
+and invalid requests asserting no call. The broad local connector run was
+stopped after automatic approval review blocked an unverified Segment request;
+no broad-suite PASS is claimed. Full CI remains required.
+
 **2026-10-16 focused acceptance:** 178 local tests passed across credential
 scope/disconnect, memory lineage/liveness, approval projection/fingerprints and
 run authority. The writer inventory decreases by exactly four removed untagged
