@@ -21,7 +21,6 @@ from app.services.memory_contamination_guard import (
     lineage_required,
     memory_source_lineage,
     validate_memory_write,
-    without_lineage,
 )
 from app.services.memory_extraction_service import extract_typed_memories_structured
 from app.services.memory_source_liveness import drop_memories_from_revoked_sources
@@ -76,15 +75,10 @@ def _insert_memory_row(client: Any, payload: dict[str, Any]) -> dict[str, Any] |
         return payload
     except Exception as first_exc:  # noqa: BLE001
         if any(k in payload for k in LINEAGE_COLUMNS):
-            # Lineage columns arrive with 20261012070000; keep the hardened shape.
-            try:
-                inserted = client.table("agent_memories").insert(without_lineage(payload)).execute().data or []
-                logger.warning("workspace_memory_insert_without_lineage reason=%s", first_exc)
-                if inserted and isinstance(inserted[0], dict):
-                    return inserted[0]
-                return without_lineage(payload)
-            except Exception as exc:  # noqa: BLE001
-                logger.debug("workspace_memory_insert_without_lineage_failed error=%s", exc)
+            # Lineage is emitted only after its flag is enabled. Never silently
+            # create an unrevocable memory when its required schema/write fails.
+            logger.warning("workspace_memory_lineage_write_refused error=%s", type(first_exc).__name__)
+            return None
         legacy = {
             k: v for k, v in payload.items() if k not in _HARDENING_COLUMNS and k not in LINEAGE_COLUMNS
         }

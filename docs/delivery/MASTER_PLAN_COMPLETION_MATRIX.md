@@ -18,6 +18,15 @@ shared text/voice and integration smoke. Dedicated recovery (6 PG + 11 context/
 scheduler tests) and company source revocation (15 focused tests) passed.
 Billing Playwright remains skipped; production acceptance remains open.
 
+**2026-10-16 lineage integrity correction:** tagged agent/workspace/temporal
+memories and entity observations no longer retry failed writes with their source
+columns removed. This preserves future disconnect/revocation filtering when
+`MEMORY_SOURCE_LINEAGE_ENABLED` is enabled. Untagged legacy writes retain their
+existing compatibility behavior. Missing-schema and commit/timeout tests enforce
+one tagged attempt and no untagged fallback. No migration or flag change; focused
+and full CI acceptance pending. Document lineage and legacy classification remain
+open and are not claimed closed by this correction.
+
 **2026-10-16 approval loader correction:** the canonical run loader now selects
 `definition_snapshot`, which canvas/ReAct/tool invocation use to verify the
 reviewed definition digest. Projection-aware ReAct tests exercise the real loader:

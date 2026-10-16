@@ -306,10 +306,11 @@ def test_observations_flag_off_unchanged():
     assert "source_connector_id" not in store.rows[0]
 
 
-def test_observations_written_without_the_column_before_the_migration():
+def test_observations_never_strip_lineage_when_the_schema_is_missing():
     store = _ObsStore(missing_column=True)
-    assert eo.record_observations(store, org_id=ORG, entity_row_id="e1", message=_message(), observations=_OBS, settings=ON) == 1
-    assert store.attempts == 2 and "source_connector_id" not in store.rows[0]
+    with pytest.raises(RuntimeError):
+        eo.record_observations(store, org_id=ORG, entity_row_id="e1", message=_message(), observations=_OBS, settings=ON)
+    assert store.attempts == 1 and store.rows == []
 
 
 @pytest.mark.usefixtures("lifecycle_runtime_ready")

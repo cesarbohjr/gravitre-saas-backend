@@ -281,6 +281,15 @@ jobs:
         env:
           APP_ENV: dev
 
+      - name: Memory lineage write integrity contract
+        run: >-
+          python -m pytest -q --no-header
+          tests/services/test_memory_source_lineage.py
+          tests/services/test_memory_lineage_coverage.py
+          tests/services/test_memory_source_liveness.py
+        env:
+          APP_ENV: dev
+
       - name: Workflow approval projection contract
         run: >-
           python -m pytest -q tests/services/test_react_canvas_write_gate.py

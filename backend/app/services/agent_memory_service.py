@@ -18,7 +18,7 @@ from app.services.memory_contamination_guard import (
     classify_memory_source,
     memory_source_lineage,
     validate_memory_write,
-    without_lineage,
+    LINEAGE_COLUMNS,
 )
 from app.services.memory_source_liveness import drop_memories_from_revoked_sources
 
@@ -286,17 +286,13 @@ def create_agent_memory(
     try:
         r = client.table("agent_memories").insert(payload).execute()
     except Exception:  # noqa: BLE001
-        # source_class column arrives with 20260903120000 and the lineage columns
-        # with 20261012070000; keep creating on a database that lacks them.
-        r = None
-        if "source_connector_id" in payload:
-            try:
-                r = client.table("agent_memories").insert(without_lineage(payload)).execute()
-            except Exception:  # noqa: BLE001
-                r = None
-        if r is None:
-            legacy = {k: v for k, v in without_lineage(payload).items() if k != "source_class"}
-            r = client.table("agent_memories").insert(legacy).execute()
+        # A tagged write must remain revocable. Preserve the original failure
+        # rather than retrying without its source identity (including timeouts).
+        if any(key in payload for key in LINEAGE_COLUMNS):
+            raise
+        # Legacy untagged databases may still lack source_class.
+        legacy = {key: value for key, value in payload.items() if key != "source_class"}
+        r = client.table("agent_memories").insert(legacy).execute()
     if not r.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create memory")
     return _serialize_row(r.data[0])

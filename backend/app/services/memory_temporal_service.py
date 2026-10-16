@@ -97,21 +97,12 @@ def _copy_to_history(
 
 
 def _insert_memory(client: Any, payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """Insert one memory row; retry without lineage columns if they are missing.
+    """Preserve source lineage on every insert; callers handle failures.
 
-    ``source_connector_id`` / ``source_record_ref`` arrive with 20261012070000 and
-    are only set when MEMORY_SOURCE_LINEAGE_ENABLED is on; a database that has not
-    applied the migration must still take the write.
+    A tagged write must never be retried as untagged: recall keeps legacy rows,
+    which would defeat revocation. Flag-off payloads still use the same schema.
     """
-    from app.services.memory_contamination_guard import LINEAGE_COLUMNS, without_lineage
-
-    try:
-        return client.table("agent_memories").insert(payload).execute().data or []
-    except Exception as exc:
-        if not any(k in payload for k in LINEAGE_COLUMNS):
-            raise
-        logger.warning("memory_temporal_insert_without_lineage error=%s", _format_exc(exc))
-        return client.table("agent_memories").insert(without_lineage(payload)).execute().data or []
+    return client.table("agent_memories").insert(payload).execute().data or []
 
 
 def get_current_by_key(client: Any, org_id: str, memory_key: str) -> dict[str, Any] | None:
