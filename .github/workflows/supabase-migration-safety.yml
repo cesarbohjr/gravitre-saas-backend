@@ -203,6 +203,21 @@ jobs:
               raise SystemExit("Unexpected onboarding migration content")
           onboarding.write_text("-- CI-only dependency prelude from active May 31 billing DDL.\n" + bootstrap_ddl + "\n" + original_onboarding)
           print("CI-only billing table dependency ordering; tracked migration bytes unchanged.")
+          # July 3 references notifications, defined by the active July 8 migration.
+          notifications_sql = pathlib.Path("supabase/migrations/20260708150000_notifications.sql").read_text()
+          first = notifications_sql.index("CREATE TABLE IF NOT EXISTS public.notifications (")
+          last = notifications_sql.index("ALTER TABLE public.notifications", first)
+          notifications_table_ddl = notifications_sql[first:last]
+          notifications_early = path.parent / "20260703170000_chat_execution_notifications.sql"
+          notifications_original = notifications_early.read_text()
+          if not notifications_original.startswith("-- Extend notification types"):
+              raise SystemExit("Unexpected early notifications migration")
+          notifications_early.write_text(
+              "-- CI-only historical dependency prelude from July 8 migration.\n"
+              + notifications_table_ddl + "\n" + notifications_original
+          )
+          print("CI-only notifications dependency ordering; original files untouched.")
+
           PY
           cd "$replay_dir"
           supabase start -x studio,imgproxy,edge-runtime,logflare,vector
