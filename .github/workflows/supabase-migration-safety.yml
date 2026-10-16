@@ -286,6 +286,17 @@ jobs:
               raise SystemExit(f"Unexpected historical advisor index count: {index_count}")
           perf.write_text(perf_sql)
           print("CI-only guarded advisor indexes; original migration unchanged.")
+          # CI-local replay: metadata ALTER predates the knowledge table CREATE.
+          fabric_sql = pathlib.Path("supabase/migrations/20260811180000_platform_knowledge_fabric.sql").read_text()
+          begin = fabric_sql.index("CREATE TABLE IF NOT EXISTS public.knowledge_sources (")
+          finish = fabric_sql.index("CREATE TABLE IF NOT EXISTS public.knowledge_documents", begin)
+          source_ddl = fabric_sql[begin:finish]
+          license_migration = path.parent / "20260811175745_knowledge_sources_license_metadata.sql"
+          license_sql = license_migration.read_text()
+          if not license_sql.startswith("-- Extend knowledge_sources"):
+              raise SystemExit("Unexpected license-metadata migration")
+          license_migration.write_text(source_ddl + "\n" + license_sql)
+          print("CI replay: knowledge_sources DDL ordered before license metadata.")
 
 
 
