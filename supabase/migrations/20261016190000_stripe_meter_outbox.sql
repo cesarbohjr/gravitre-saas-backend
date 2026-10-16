@@ -127,6 +127,35 @@ BEGIN
     ON CONFLICT (org_id,environment,metric_type,source_id) DO NOTHING;
     GET DIAGNOSTICS v_rows = ROW_COUNT;
   END IF;
+  -- A late insert with an earlier recorded_at can shift which source row
+  -- consumes the included allowance. Never silently mutate a staged or
+  -- delivered financial intent; demand operator reconciliation instead.
+  IF p_metric='ai_credits' AND EXISTS (
+    SELECT 1 FROM public.stripe_meter_outbox o
+    JOIN public.usage_tracking u ON u.id=o.source_id AND u.org_id=o.org_id
+    WHERE o.org_id=p_org_id AND o.metric_type=p_metric
+      AND o.period_start=p_period_start AND o.quantity<>u.quantity
+  ) THEN
+    RAISE EXCEPTION 'stripe_meter_source_quantity_changed';
+  END IF;
+  IF p_metric<>'ai_credits' AND EXISTS (
+    WITH ordered AS (
+      SELECT r.id,r.org_id,r.quantity,
+             SUM(r.quantity) OVER (ORDER BY r.recorded_at,r.id
+                 ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative
+      FROM public.usage_records r
+      WHERE r.org_id=p_org_id AND r.metric_type=p_metric
+        AND r.recorded_at >= p_period_start::timestamp AT TIME ZONE 'UTC'
+        AND r.recorded_at < (p_period_end+1)::timestamp AT TIME ZONE 'UTC'
+    )
+    SELECT 1 FROM ordered r
+    JOIN public.stripe_meter_outbox o
+      ON o.org_id=r.org_id AND o.metric_type=p_metric AND o.source_id=r.id
+    WHERE o.quantity<>GREATEST(r.cumulative-p_included,0)
+                      +GREATEST(r.cumulative-r.quantity-p_included,0) * -1
+  ) THEN
+    RAISE EXCEPTION 'stripe_meter_late_event_reorders_allowance';
+  END IF;
   -- Zero-charge sources need no Stripe event and can be marked as processed.
   UPDATE public.usage_tracking u SET stripe_reported_at=now()
     FROM public.stripe_meter_outbox o
