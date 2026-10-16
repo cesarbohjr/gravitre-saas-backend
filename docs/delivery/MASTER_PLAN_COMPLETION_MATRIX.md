@@ -20,7 +20,9 @@ Billing Playwright remains skipped; production acceptance remains open.
 
 **2026-10-16 lineage integrity correction:** tagged agent/workspace/temporal
 memories and entity observations no longer retry failed writes with their source
-columns removed. This preserves future disconnect/revocation filtering when
+columns removed. External agent-memory creation also requires valid lineage
+before embedding when the flag is on, matching workspace promotion; user-direct
+memories keep their existing behavior. This preserves future disconnect/revocation filtering when
 `MEMORY_SOURCE_LINEAGE_ENABLED` is enabled. Untagged legacy writes retain their
 existing compatibility behavior. Missing-schema and commit/timeout tests enforce
 one tagged attempt and no untagged fallback. No migration or flag change; focused

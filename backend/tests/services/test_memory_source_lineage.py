@@ -336,3 +336,33 @@ def test_timeout_after_tagged_insert_never_retries_without_source(writer, monkey
                 create_agent_memory(ON, client, ORG, None, user_id=None, content="external fact", source_connector_id=CONN)
     assert len(attempts) == 1
     assert attempts[0]["source_connector_id"] == CONN_LOWER
+
+
+@pytest.mark.parametrize("connector_id", [None, "hubspot", "not-a-uuid"])
+def test_external_agent_memory_without_lineage_is_refused_before_embedding(connector_id, monkeypatch):
+    from fastapi import HTTPException
+    from unittest.mock import Mock
+    from app.services.agent_memory_service import create_agent_memory
+
+    embedding = Mock()
+    monkeypatch.setattr("app.services.agent_memory_service.get_embedding", embedding)
+    client = _Client()
+    with pytest.raises(HTTPException) as error:
+        create_agent_memory(
+            ON, client, ORG, None, user_id=None, content="external fact",
+            provenance="connector:hubspot", source_connector_id=connector_id,
+        )
+    assert error.value.status_code == 400
+    embedding.assert_not_called()
+    assert client.attempts == []
+
+
+def test_user_direct_agent_memory_stays_untagged_with_lineage_on():
+    from app.services.agent_memory_service import create_agent_memory
+    from app.services.memory_contamination_guard import SOURCE_USER_DIRECT
+
+    client = _Client()
+    with patch("app.services.agent_memory_service.get_embedding", return_value=None):
+        create_agent_memory(ON, client, ORG, None, user_id="user", content="My standing preference")
+    assert client.inserted[0]["source_class"] == SOURCE_USER_DIRECT
+    assert "source_connector_id" not in client.inserted[0]

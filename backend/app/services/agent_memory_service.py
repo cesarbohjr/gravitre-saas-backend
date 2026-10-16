@@ -14,9 +14,11 @@ from app.rag.retrieval import search_chunks
 from app.services.memory_contamination_guard import (
     SOURCE_MODEL_INFERENCE,
     SOURCE_USER_DIRECT,
+    SOURCE_UNTRUSTED_EXTERNAL,
     SOURCE_WORKFLOW_OUTCOME,
     classify_memory_source,
     memory_source_lineage,
+    lineage_required,
     validate_memory_write,
     LINEAGE_COLUMNS,
 )
@@ -260,6 +262,18 @@ def create_agent_memory(
         # A signed-in person typing a memory through the CRUD API.
         candidate["user_direct"] = True
     guarded = validate_memory_write(candidate, provenance=prov or "")
+    lineage = memory_source_lineage(
+        {"source_connector_id": source_connector_id, "source_record_ref": source_record_ref},
+        settings=settings,
+    )
+    if (
+        guarded["source_class"] == SOURCE_UNTRUSTED_EXTERNAL
+        and lineage_required(settings)
+        and not lineage
+    ):
+        # Same rule as workspace promotion: external content must be revocable.
+        # Do this before embedding so refused content is never sent to a model.
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="External memory requires source lineage")
     embedding = get_embedding(text, settings, org_id=org_id)
     payload: dict[str, Any] = {
         "org_id": org_id,
@@ -273,12 +287,7 @@ def create_agent_memory(
         "embedding": embedding,
         "created_by": user_id,
     }
-    payload.update(
-        memory_source_lineage(
-            {"source_connector_id": source_connector_id, "source_record_ref": source_record_ref},
-            settings=settings,
-        )
-    )
+    payload.update(lineage)
     if share_with_department and agent_id:
         dept_id, _ = resolve_department_id_for_agent(client, org_id, agent_id)
         if dept_id:
