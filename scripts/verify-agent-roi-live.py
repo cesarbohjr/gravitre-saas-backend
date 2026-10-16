@@ -114,17 +114,33 @@ def main() -> int:
         # Cross-check measured cost against model_calls for this org (last 30d window from response).
         start = body.get("periodStart")
         end = body.get("periodEnd")
-        mc = (
-            sb.table("model_calls")
-            .select("cost_usd,agent_id")
-            .eq("org_id", org_id)
-            .gte("created_at", start)
-            .lt("created_at", end)
-            .limit(5000)
-            .execute()
-            .data
-            or []
-        )
+        # Match the API's paginated evidence window; a single .limit(5000)
+        # silently omitted calls and produced a false cost mismatch.
+        mc: list[dict] = []
+        offset = 0
+        page_size = 500
+        while offset < 10_000:
+            batch = (
+                sb.table("model_calls")
+                .select("id,cost_usd,agent_id")
+                .eq("org_id", org_id)
+                .gte("created_at", start)
+                .lt("created_at", end)
+                .order("id")
+                .range(offset, offset + page_size - 1)
+                .execute()
+                .data
+                or []
+            )
+            mc.extend(batch)
+            offset += len(batch)
+            if len(batch) < page_size:
+                break
+        if len(mc) >= 10_000:
+            report["verdict"] = "FAIL — cost evidence exceeds verified pagination boundary"
+            report["model_call_count"] = len(mc)
+            OUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
+            return 1
         measured_sum = round(sum(float(r.get("cost_usd") or 0) for r in mc), 6)
         api_cost = float((totals.get("agentCostUsd") or {}).get("value") or 0)
         report["model_calls_sum_usd"] = measured_sum
