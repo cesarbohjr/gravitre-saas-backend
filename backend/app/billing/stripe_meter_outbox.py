@@ -9,7 +9,7 @@ window expires.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 import stripe
@@ -19,6 +19,64 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 SUPPORTED_METRICS = frozenset({"ai_credits", "research_lookups", "voice_minutes"})
+
+
+def preview_meter_intents(
+    org_id: str, metric_type: str, period_start: date, period_end: date, *, client: Any,
+) -> dict[str, Any]:
+    """Non-mutating estimate; exact accepted charges require an outbox snapshot."""
+    if metric_type not in SUPPORTED_METRICS:
+        raise ValueError("Unsupported meter metric")
+    result: dict[str, Any] = {
+        "org_id": org_id, "metric": metric_type, "dry_run": True,
+        "preview_only": True, "reported": False, "reported_rows": 0,
+        "estimated_quantity": 0, "would_stage": 0,
+    }
+    try:
+        if metric_type == "ai_credits":
+            rows = (
+                client.table("usage_tracking")
+                .select("id,quantity")
+                .eq("org_id", org_id).eq("environment", "production")
+                .eq("metric_type", "ai_credits")
+                .eq("period_start", period_start.isoformat())
+                .eq("period_end", period_end.isoformat())
+                .is_("stripe_reported_at", "null")
+                .execute().data or []
+            )
+            result["would_stage"] = len(rows)
+            result["estimated_quantity"] = sum(int(r.get("quantity") or 0) for r in rows)
+            return result
+        from app.billing.service import get_plan_for_org
+        plan = get_plan_for_org(client, org_id)
+        if metric_type == "research_lookups":
+            from app.billing.research_lookup_plan_rates import included_research_lookups_for_plan
+            included = included_research_lookups_for_plan(plan)
+        else:
+            from app.billing.voice_minutes_plan_rates import included_voice_minutes_for_plan
+            included = included_voice_minutes_for_plan(plan)
+        start_iso = datetime.combine(period_start, datetime.min.time(), tzinfo=timezone.utc).isoformat()
+        end_iso = datetime.combine(period_end + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc).isoformat()
+        rows = (
+            client.table("usage_records")
+            .select("id,quantity,recorded_at,stripe_reported_at")
+            .eq("org_id", org_id).eq("metric_type", metric_type)
+            .gte("recorded_at", start_iso).lt("recorded_at", end_iso)
+            .order("recorded_at").execute().data or []
+        )
+        from app.billing.stripe_meter_intents import ordered_event_deltas
+        ordered = sorted(rows, key=lambda r: (str(r["recorded_at"]), str(r["id"])))
+        deltas = ordered_event_deltas(
+            ((str(r["id"]), int(r.get("quantity") or 0)) for r in ordered),
+            included=included,
+        )
+        result["would_stage"] = len(rows)
+        result["estimated_quantity"] = sum(q for _, q in deltas)
+        result["included_snapshot_estimate"] = included
+    except Exception:
+        logger.exception("meter_preview_failed metric=%s", metric_type)
+        result["error"] = "read_only_preview_failed"
+    return result
 
 
 def report_meter_intents(
@@ -42,8 +100,9 @@ def report_meter_intents(
     if not getattr(settings, "stripe_meter_outbox_enabled", False):
         raise RuntimeError("Stripe meter outbox path must be explicitly enabled")
     if dry_run:
-        result["error"] = "outbox_dry_run_requires_read_only_preview"
-        return result
+        return preview_meter_intents(
+            org_id, metric_type, period_start, period_end, client=client,
+        )
     if not (settings.stripe_secret_key or "").strip():
         result["error"] = "stripe_not_configured"
         return result
