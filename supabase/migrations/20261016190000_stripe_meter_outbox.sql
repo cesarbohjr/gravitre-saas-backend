@@ -225,7 +225,7 @@ BEGIN
   END IF;
   RETURN true;
 END;
-$;
+$$;
 
 -- Ambiguous network failures must not be automatically replayed, even when
 -- Stripe's server-side deduplication window expires.
@@ -249,7 +249,7 @@ CREATE OR REPLACE FUNCTION public.resolve_stripe_meter_intent(
   p_id uuid,p_resolution text,p_evidence text,p_operator text
 ) RETURNS boolean
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
-AS $
+AS $$
 DECLARE v public.stripe_meter_outbox%ROWTYPE;
         v_rows integer;
 BEGIN
@@ -281,7 +281,7 @@ BEGIN
   END IF;
   RETURN true;
 END;
-$;
+$$;
 
 REVOKE ALL ON FUNCTION public.stage_stripe_meter_intents(uuid,text,date,date,integer,text,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.claim_stripe_meter_intents(uuid,text,date,integer) FROM PUBLIC, anon, authenticated;
