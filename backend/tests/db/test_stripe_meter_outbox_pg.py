@@ -137,3 +137,53 @@ def test_public_execute_denied_and_org_scope_guard(pg):
     assert pg.value(
         f"SET ROLE service_role; SELECT count(*) FROM public.claim_stripe_meter_intents('{B}','ai_credits','2026-10-01',10);"
     ) == "0"
+
+
+def test_ambiguous_charge_requires_operator_evidence_before_retry(pg):
+    assert _stage(pg, "ai_credits") == "2"
+    pg.psql(
+        f"SET ROLE service_role; SELECT id FROM public.claim_stripe_meter_intents("
+        f"'{A}','ai_credits','2026-10-01',1);"
+    )
+    assert pg.value(
+        "SET ROLE service_role; SELECT public.mark_stripe_meter_ambiguous(id,claim_token) "
+        "FROM public.stripe_meter_outbox WHERE status='sending';"
+    ) == "t"
+    assert pg.value(
+        f"SET ROLE service_role; SELECT count(*) FROM public.claim_stripe_meter_intents("
+        f"'{A}','ai_credits','2026-10-01',100);"
+    ) == "1"  # Only the unrelated second charge may still be claimed.
+    assert pg.psql(
+        "SET ROLE service_role; SELECT public.resolve_stripe_meter_intent("
+        "(SELECT id FROM public.stripe_meter_outbox WHERE status='ambiguous'),"
+        "'retry_confirmed_not_received','','operator-a');",
+        check=False,
+    ).returncode != 0
+    assert pg.value(
+        "SET ROLE service_role; SELECT public.resolve_stripe_meter_intent("
+        "(SELECT id FROM public.stripe_meter_outbox WHERE status='ambiguous'),"
+        "'retry_confirmed_not_received','verified absent in Stripe event search','operator-a');"
+    ) == "t"
+    assert pg.value(
+        "SELECT count(*) FROM public.stripe_meter_outbox "
+        "WHERE resolution_evidence IS NOT NULL AND status='pending';"
+    ) == "1"
+
+
+def test_operator_verified_delivered_marks_source_atomically(pg):
+    assert _stage(pg, "ai_credits") == "2"
+    pg.psql(
+        f"SET ROLE service_role; SELECT id FROM public.claim_stripe_meter_intents("
+        f"'{A}','ai_credits','2026-10-01',1);"
+    )
+    assert pg.value(
+        "SET ROLE service_role; SELECT public.resolve_stripe_meter_intent("
+        "(SELECT id FROM public.stripe_meter_outbox WHERE status='sending'),"
+        "'delivered','Stripe event gv_123 verified','oncall-b');"
+    ) == "t"
+    assert pg.value(
+        "SELECT count(*) FROM public.usage_tracking WHERE stripe_reported_at IS NOT NULL;"
+    ) == "1"
+    assert pg.value(
+        "SELECT count(*) FROM public.stripe_meter_outbox WHERE status='delivered';"
+    ) == "1"
