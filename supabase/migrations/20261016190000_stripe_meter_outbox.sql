@@ -151,8 +151,10 @@ BEGIN
     SELECT 1 FROM ordered r
     JOIN public.stripe_meter_outbox o
       ON o.org_id=r.org_id AND o.metric_type=p_metric AND o.source_id=r.id
-    WHERE o.quantity<>GREATEST(r.cumulative-p_included,0)
-                      +GREATEST(r.cumulative-r.quantity-p_included,0) * -1
+    WHERE o.quantity <> (
+      GREATEST(r.cumulative-p_included,0)
+      - GREATEST(r.cumulative-r.quantity-p_included,0)
+    )
   ) THEN
     RAISE EXCEPTION 'stripe_meter_late_event_reorders_allowance';
   END IF;
