@@ -22,7 +22,7 @@ for path in sorted((WEB/"app").rglob("*"))+sorted((WEB/"components").rglob("*"))
     content=path.read_text(encoding="utf-8",errors="replace")
     if not secret.search(content) and not public.search(content): continue
     # Client components are browser compiled; a service-role reference here is forbidden.
-    client=bool(re.search(r'^\\s*["\\\']use client["\\\']',content[:700],re.M))
+    client=bool(re.search(r"^\\s*['\"]use client['\"]",content[:700],re.M))
     checks.append({"file":str(path.relative_to(ROOT)),"client_component":client,
                    "passed":not client and not public.search(content)})
 for path in sorted(WEB.rglob(".env*")):
@@ -35,6 +35,6 @@ report={"checked_at":datetime.now(timezone.utc).isoformat(),
         "checks":checks,"verdict":"PASS" if all(x["passed"] for x in checks) else "FAIL",
         "limits":["not a compiled-browser-bundle inspection","not a runtime DevTools/network verification"]}
 OUT.parent.mkdir(parents=True,exist_ok=True)
-OUT.write_text(json.dumps(report,indent=2)+"\\n")
+OUT.write_text(json.dumps(report,indent=2)+"\n")
 print(json.dumps({"verdict":report["verdict"],"reviewed_matches":len(checks),"failures":sum(not x["passed"] for x in checks)}))
 raise SystemExit(0 if report["verdict"]=="PASS" else 1)
