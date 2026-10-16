@@ -95,7 +95,8 @@ def report_meter_intents(
     }).execute()
     result["staged_rows"] = int(stage.data or 0)
     claims = client.rpc("claim_stripe_meter_intents", {
-        "p_org_id": org_id, "p_metric": metric_type, "p_limit": 100,
+        "p_org_id": org_id, "p_metric": metric_type,
+        "p_period_start": period_start.isoformat(), "p_limit": 100,
     }).execute().data or []
 
     stripe.api_key = settings.stripe_secret_key
