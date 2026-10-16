@@ -10,7 +10,7 @@ import argparse
 import json
 import sys
 from collections import Counter
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -34,7 +34,7 @@ def _pages(query: Any):
 
 def report(client: Any, *, period_start: date) -> dict[str, Any]:
     counts: Counter[str] = Counter()
-    outbox: dict[tuple[str, str], dict[str, Any]] = {}
+    outbox: dict[tuple[str, str, str], dict[str, Any]] = {}
     rows = _pages(client.table("stripe_meter_outbox").select(
         "org_id,source_id,metric_type,status,quantity,included_snapshot,period_start"
     ).eq("period_start", period_start.isoformat()).order("id"))
@@ -47,7 +47,7 @@ def report(client: Any, *, period_start: date) -> dict[str, Any]:
         counts[f"{metric}_{status}"] += 1
         if status not in STATUSES:
             counts["invalid_status"] += 1
-        outbox[(str(row["org_id"]), str(row["source_id"]))] = row
+        outbox[(str(row["org_id"]), metric, str(row["source_id"]))] = row
         if status in ("sending", "ambiguous"):
             counts["requires_stripe_reconciliation"] += 1
 
@@ -60,17 +60,40 @@ def report(client: Any, *, period_start: date) -> dict[str, Any]:
         .eq("period_start", period_start.isoformat()).order("id"))
     for row in ledger:
         counts["ai_credits_ledger_rows"] += 1
-        match = outbox.get((str(row["org_id"]), str(row["id"])))
+        match = outbox.get((str(row["org_id"]), "ai_credits", str(row["id"])))
         if match is None:
             counts["ai_credits_missing_intents"] += 1
         elif match["status"] in ("delivered", "zero") and not row.get("stripe_reported_at"):
             counts["delivered_missing_source_ack"] += 1
         elif match["status"] in ("pending", "sending", "ambiguous") and row.get("stripe_reported_at"):
             counts["source_reported_without_intent_ack"] += 1
+    # Research and voice share usage_records but are different meter/allowance
+    # buckets. Include the final UTC day by querying up to next-month midnight.
+    next_month = date(period_start.year + (period_start.month == 12),
+                      period_start.month % 12 + 1, 1)
+    lower = datetime(period_start.year, period_start.month, period_start.day,
+                     tzinfo=timezone.utc).isoformat()
+    upper = datetime(next_month.year, next_month.month, 1,
+                     tzinfo=timezone.utc).isoformat()
+    for metric in ("research_lookups", "voice_minutes"):
+        source_rows = _pages(client.table("usage_records").select(
+            "id,org_id,stripe_reported_at"
+        ).eq("metric_type", metric).gte("recorded_at", lower)
+            .lt("recorded_at", upper).order("id"))
+        for row in source_rows:
+            counts[f"{metric}_ledger_rows"] += 1
+            match = outbox.get((str(row["org_id"]), metric, str(row["id"])))
+            if match is None:
+                counts[f"{metric}_missing_intents"] += 1
+            elif match["status"] in ("delivered", "zero") and not row.get("stripe_reported_at"):
+                counts["delivered_missing_source_ack"] += 1
+            elif match["status"] in ("pending", "sending", "ambiguous") and row.get("stripe_reported_at"):
+                counts["source_reported_without_intent_ack"] += 1
     counts["outbox_total_rows"] = len(outbox)
     counts["unresolved_errors"] = sum(counts[key] for key in (
         "unknown_metric", "invalid_status", "requires_stripe_reconciliation",
-        "ai_credits_missing_intents", "delivered_missing_source_ack",
+        "ai_credits_missing_intents", "research_lookups_missing_intents",
+        "voice_minutes_missing_intents", "delivered_missing_source_ack",
         "source_reported_without_intent_ack",
     ))
     return {"period_start": period_start.isoformat(), **dict(sorted(counts.items()))}
