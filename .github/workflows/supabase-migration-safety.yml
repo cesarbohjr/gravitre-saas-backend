@@ -236,20 +236,24 @@ jobs:
           # fixture row in this disposable replay.
           guard = path.parent / "20260719180000_test_credential_isolated_org_guard.sql"
           guard_sql = guard.read_text()
-          old_seed = """INSERT INTO public.test_credential_org_allowlist (org_id, note)
-VALUES (
-  'f07e57c0-1501-4000-8000-c04e57a00001',
-  'gravitre-isolated-conversation-smoke'
-)
-ON CONFLICT (org_id) DO NOTHING;"""
-          new_seed = """INSERT INTO public.test_credential_org_allowlist (org_id, note)
-SELECT 'f07e57c0-1501-4000-8000-c04e57a00001'::uuid,
-       'gravitre-isolated-conversation-smoke'
-WHERE EXISTS (
-    SELECT 1 FROM public.organizations
-    WHERE id='f07e57c0-1501-4000-8000-c04e57a00001'::uuid
-)
-ON CONFLICT (org_id) DO NOTHING;"""
+          old_seed = "\n".join([
+              "INSERT INTO public.test_credential_org_allowlist (org_id, note)",
+              "VALUES (",
+              "  'f07e57c0-1501-4000-8000-c04e57a00001',",
+              "  'gravitre-isolated-conversation-smoke'",
+              ")",
+              "ON CONFLICT (org_id) DO NOTHING;",
+          ])
+          new_seed = "\n".join([
+              "INSERT INTO public.test_credential_org_allowlist (org_id, note)",
+              "SELECT 'f07e57c0-1501-4000-8000-c04e57a00001'::uuid,",
+              "       'gravitre-isolated-conversation-smoke'",
+              "WHERE EXISTS (",
+              "    SELECT 1 FROM public.organizations",
+              "    WHERE id='f07e57c0-1501-4000-8000-c04e57a00001'::uuid",
+              ")",
+              "ON CONFLICT (org_id) DO NOTHING;",
+          ])
           if guard_sql.count(old_seed) != 1:
               raise SystemExit("Unexpected isolated-org seed shape")
           guard.write_text(guard_sql.replace(old_seed, new_seed))
