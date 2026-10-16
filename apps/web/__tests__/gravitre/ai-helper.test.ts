@@ -65,6 +65,12 @@ beforeEach(() => {
   authState.userId = "user-1"
   authState.loading = false
   routerPush.mockClear()
+  // In singleFork mode the same jsdom instance is reused across test files.
+  // Other files (window-manager tests, etc.) may have written a window-manager
+  // preference to localStorage. Clear it so resolvePreferredWindowMode falls
+  // back to the contextual default ("floating" on /dashboard) rather than a
+  // stale stored value ("expanded") from a prior test file.
+  window.localStorage.removeItem("gravitre.wm.preferred-mode.v1")
   container = document.createElement("div")
   document.body.appendChild(container)
 })
