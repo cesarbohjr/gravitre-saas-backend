@@ -548,7 +548,7 @@ def fetch_agent_roi(
     try:
         out_q = (
             client.table("intelligence_outcome_events")
-            .select("id,agent_id,outcome_event,event_type,metadata,payload,created_at")
+            .select("id,agent_id,outcome_event,metadata,created_at")
             .eq("org_id", org_id)
             .gte("created_at", start_iso)
             .lt("created_at", end_iso)
