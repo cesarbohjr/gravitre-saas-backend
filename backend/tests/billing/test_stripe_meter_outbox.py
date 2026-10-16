@@ -87,6 +87,7 @@ def test_dry_run_never_mutates_database_or_calls_stripe(monkeypatch):
     monkeypatch.setattr(stripe.billing.MeterEvent, "create", create)
     client = _client()
     result = report_meter_intents("org-1", "ai_credits", START, END, _settings(), client=client, dry_run=True)
-    assert result["error"] == "outbox_dry_run_requires_read_only_preview"
+    assert result["dry_run"] is True and result["preview_only"] is True
+    assert result["estimated_quantity"] == 0
     client.rpc.assert_not_called()
     create.assert_not_called()
