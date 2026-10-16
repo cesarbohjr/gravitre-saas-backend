@@ -297,6 +297,17 @@ jobs:
           tests/services/test_write_authority_spine.py
           tests/services/test_write_approval_fingerprints.py
 
+      - name: Resolved MCP approval and verification contract
+        run: >-
+          python -m pytest -q --no-header
+          tests/services/test_mcp_approval_decision.py
+          tests/services/test_mcp_approval_binding.py
+          tests/routers/test_admin_queue_approval_binding.py
+          tests/test_mcp_tool_layer.py
+          tests/capabilities/test_portable_mcp_write_verification.py
+        env:
+          APP_ENV: dev
+
       - name: Connector credential tenant-scope contract
         run: >-
           python -m pytest

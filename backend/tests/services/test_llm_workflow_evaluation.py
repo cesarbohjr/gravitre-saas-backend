@@ -63,11 +63,14 @@ def test_partial_cost_never_appears_as_cheap_success():
 
 
 @pytest.mark.asyncio
-async def test_provider_errors_do_not_leak_secrets_and_bounded_validation_runs_first():
+async def test_provider_errors_do_not_leak_secrets_and_bounded_validation_runs_first(caplog):
     router = SimpleNamespace(complete=AsyncMock(side_effect=RuntimeError("secret-provider-payload")))
     report = await evaluate_models(router, org_id="test-org", models=[MODEL], cases=(CASE,))
     assert report["results"][0]["failure"] == "RuntimeError"
     assert "secret-provider-payload" not in str(report)
+    assert "workflow_model_evaluation_failed" in caplog.text
+    assert "RuntimeError" in caplog.text
+    assert "secret-provider-payload" not in caplog.text
     router.complete.reset_mock()
     with pytest.raises(ValueError):
         await evaluate_models(router, org_id="test-org", models=[MODEL], repetitions=999)

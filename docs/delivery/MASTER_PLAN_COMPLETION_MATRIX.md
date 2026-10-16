@@ -4,6 +4,16 @@
 **Cohesion rules:** [`PLATFORM_COHESION.md`](./PLATFORM_COHESION.md) · **Split plan:** [`PR429_DEPENDENT_SPLIT.md`](./PR429_DEPENDENT_SPLIT.md)  
 **Current implementation:** `codex/master-plan-completion-20261014` (based on #429 at `7fd10c4a`); see [Codex implementation evidence](./CODEX_IMPLEMENTATION_2026-10-14.md). Earlier row statuses below require reconciliation against that increment.
 
+**2026-10-16 resolved MCP approvals (draft):** the existing shared approval
+queue now reviews the exact persisted MCP arguments and dispatches through the
+existing single-use consume path. Tool schema/name, server endpoint/transport and
+credential version are bound to consent; changes require fresh review. An approved
+but unconsumed proposal can resume; a consumed proposal cannot be sent twice.
+Agent permission is revalidated. MCP write acceptance never claims independent
+verification. Local focused tests pass; real-DB race and production acceptance
+remain open. Dynamic workflow argument pause/review/resume is still open.
+The model-evaluation warning-log defect is corrected locally; full CI must rerun.
+
 **Railway configuration setup (2026-10-16 UTC):** nine previously absent
 production backend variables are now explicitly set, with deployments skipped.
 New feature activation is pinned off, write authority is `shadow`, and queue

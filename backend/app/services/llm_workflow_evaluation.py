@@ -11,9 +11,13 @@ import math
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from app.core.logging import get_logger
 from app.services.llm_catalog import get_llm_model
 from app.services.model_router import ModelRouter, TaskType
 from app.services.turn_latency_trace import aggregate_stage_percentiles
+
+
+logger = get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -162,6 +166,8 @@ async def evaluate_models(router: ModelRouter, *, org_id: str, models: list[str]
                     else:
                         row["failure"] = "structured_answer_mismatch"
                 except Exception as exc:  # noqa: BLE001 - retain category, never provider secrets/content
+                    logger.warning("workflow_model_evaluation_failed model=%s task_type=%s error=%s",
+                                   model, case.task_type, type(exc).__name__)
                     row["failure"] = type(exc).__name__
                 rows.append(row)
     return {

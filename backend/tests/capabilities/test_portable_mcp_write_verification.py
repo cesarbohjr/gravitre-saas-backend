@@ -55,7 +55,7 @@ async def test_portable_mcp_write_never_completes_from_provider_acceptance_alone
 
 
 @pytest.mark.asyncio
-async def test_manual_mcp_write_preserves_legacy_completed_behavior() -> None:
+async def test_manual_mcp_write_requires_independent_verification_too() -> None:
     service = MCPClientService.__new__(MCPClientService)
     service.settings = MagicMock()
     service._load_tool = AsyncMock(
@@ -92,6 +92,6 @@ async def test_manual_mcp_write_preserves_legacy_completed_behavior() -> None:
         approval_id="approval-1",
     )
 
-    assert result["status"] == "completed"
+    assert result["status"] == "verification_inconclusive"
     service._log_execution.assert_awaited_once()
-    assert service._log_execution.await_args.kwargs["status"] == "completed"
+    assert service._log_execution.await_args.kwargs["status"] == "verification_inconclusive"
