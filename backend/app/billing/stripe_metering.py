@@ -153,6 +153,7 @@ def report_usage_to_stripe(
             .select("id,quantity,credits")
             .eq("org_id", org_id)
             .eq("metric_type", "ai_credits")
+            .eq("environment", "production")
             .eq("period_start", period_start.isoformat())
             .eq("period_end", period_end.isoformat())
             .is_("stripe_reported_at", "null")
