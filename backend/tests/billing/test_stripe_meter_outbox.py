@@ -19,6 +19,7 @@ def _client(*, acknowledgement=True):
     claims = [{
         "id": "intent-1", "claim_token": "claim-token-1",
         "event_identifier": "gv_event_one", "quantity": 4,
+        "stripe_customer_id": "cus_test", "meter_event_name": "ai_credits_used",
     }]
 
     def rpc(name, payload):
