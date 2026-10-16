@@ -136,6 +136,9 @@ def claim_write_invoke(
         return WriteClaimResult(outcome="blocked", status="completed", reason="invalid_replay_payload")
     if outcome == "claimed":
         token = str(body.get("claim_token") or "") or None
+        if not token:
+            logger.warning("write_idempotency_claim_missing_token org_id=%s key=%s", org_id, idempotency_key[:16])
+            return WriteClaimResult(outcome="error", reason="missing_claim_token")
         generation_raw = body.get("claim_generation")
         generation = int(generation_raw) if generation_raw is not None else None
         return WriteClaimResult(
