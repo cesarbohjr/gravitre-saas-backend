@@ -188,6 +188,21 @@ jobs:
               sql = sql.replace(before, after, 1)
           path.write_text(sql)
           print("CI-only historical return-type compatibility replay; tracked migration bytes unchanged.")
+          # A May 29 signup migration references billing tables only created
+          # by the May 31 active migration. Stage those exact table DDL
+          # statements earlier in this disposable replay, never in production.
+          billing_source = pathlib.Path("supabase/migrations/20260531000400_activate_billing_core.sql")
+          # The runner is at the repository root before cd into replay_dir.
+          source_sql = billing_source.read_text()
+          table_start = source_sql.index("CREATE TABLE IF NOT EXISTS public.billing_plans")
+          table_end = source_sql.index("-- billing_events", table_start)
+          bootstrap_ddl = source_sql[table_start:table_end]
+          onboarding = path.parent / "20260529120000_auth_onboarding_bootstrap.sql"
+          original_onboarding = onboarding.read_text()
+          if not original_onboarding.startswith("-- Phase A: Auto-provision"):
+              raise SystemExit("Unexpected onboarding migration content")
+          onboarding.write_text("-- CI-only dependency prelude from active May 31 billing DDL.\n" + bootstrap_ddl + "\n" + original_onboarding)
+          print("CI-only billing table dependency ordering; tracked migration bytes unchanged.")
           PY
           cd "$replay_dir"
           supabase start -x studio,imgproxy,edge-runtime,logflare,vector
