@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import time
-from datetime import date, datetime, timezone
+from datetime import timedelta, date, datetime, timezone
 from typing import Any
 
 import stripe
@@ -47,7 +47,8 @@ def _get_customer_id(client: Any, org_id: str) -> str | None:
 
 def _month_bounds(period_start: date, period_end: date) -> tuple[str, str]:
     start_iso = datetime(period_start.year, period_start.month, period_start.day, tzinfo=timezone.utc).isoformat()
-    end_iso = datetime(period_end.year, period_end.month, period_end.day, tzinfo=timezone.utc).isoformat()
+    end_exclusive = period_end + timedelta(days=1)
+    end_iso = datetime(end_exclusive.year, end_exclusive.month, end_exclusive.day, tzinfo=timezone.utc).isoformat()
     return start_iso, end_iso
 
 
