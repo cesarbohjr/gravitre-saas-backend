@@ -88,3 +88,21 @@ def test_finalize_rejects_missing_token():
     )
     assert out.outcome == "rejected"
     client.rpc.assert_not_called()
+
+
+def test_claim_fails_closed_without_fencing_token():
+    client = MagicMock()
+    client.rpc.return_value.execute.return_value.data = {
+        "outcome": "claimed", "status": "in_progress", "claim_generation": 1,
+    }
+    out = claim_write_invoke(
+        client,
+        org_id="org-1",
+        idempotency_key="invoke:abc",
+        invoke_action="hubspot.contacts.update",
+        logical_action_id_value=None,
+    )
+    assert out.outcome == "error"
+    assert out.reason == "missing_claim_token"
+    assert out.claim_token is None
+    client.rpc.assert_called_once()
