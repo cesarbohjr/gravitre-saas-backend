@@ -266,7 +266,7 @@ jobs:
           perf = path.parent / "20260805221000_perf_advisor_fk_indexes.sql"
           perf_sql = perf.read_text()
           index_pat = re.compile(
-              r"^CREATE INDEX IF NOT EXISTS (\\w+) ON public\\.(\\w+) \\((\\w+)\\);$",
+              r"^CREATE INDEX IF NOT EXISTS ([A-Za-z0-9_]+) ON public[.]([A-Za-z0-9_]+) [(]([A-Za-z0-9_]+)[)];$",
               re.MULTILINE,
           )
           def guarded_index(match):
@@ -282,7 +282,7 @@ jobs:
               )
               return sql
           perf_sql, index_count = index_pat.subn(guarded_index, perf_sql)
-          if index_count != 10:
+          if index_count != 11:
               raise SystemExit(f"Unexpected historical advisor index count: {index_count}")
           perf.write_text(perf_sql)
           print("CI-only guarded advisor indexes; original migration unchanged.")
