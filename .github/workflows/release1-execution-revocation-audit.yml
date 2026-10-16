@@ -47,15 +47,15 @@ jobs:
       - name: Test approval bypass, source revocation, and MCP safety contracts
         working-directory: backend
         run: |
-          python -m pytest -q \\
-            tests/operators/test_agent_intelligence.py::test_shared_runtime_write_approval_does_not_invoke_provider \\
-            tests/services/test_company_intelligence_memory_lineage.py \\
-            tests/services/test_memory_source_lineage.py \\
-            tests/services/test_memory_lineage_coverage.py \\
-            tests/services/test_memory_source_liveness.py \\
-            tests/services/test_mcp_stdio_and_network_policy.py \\
-            tests/services/test_mcp_approval_binding.py \\
-            tests/services/test_write_approval_fingerprints.py \\
+          python -m pytest -q \
+            tests/operators/test_agent_intelligence.py::test_shared_runtime_write_approval_does_not_invoke_provider \
+            tests/services/test_company_intelligence_memory_lineage.py \
+            tests/services/test_memory_source_lineage.py \
+            tests/services/test_memory_lineage_coverage.py \
+            tests/services/test_memory_source_liveness.py \
+            tests/services/test_mcp_stdio_and_network_policy.py \
+            tests/services/test_mcp_approval_binding.py \
+            tests/services/test_write_approval_fingerprints.py \
             --junitxml=../docs/delivery/release1-execution-revocation.xml
       - uses: actions/upload-artifact@v4
         if: always()
