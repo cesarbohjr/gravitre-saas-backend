@@ -100,6 +100,7 @@ from app.routers import (
     environments,
     enterprise,
     federation,
+    msp,
     settings,
     slack_commands,
     verticals_healthcare,
@@ -771,6 +772,7 @@ app.include_router(recommendation_feed.router)
 app.include_router(enterprise.router)
 app.include_router(platform.router)
 app.include_router(federation.router)
+app.include_router(msp.router)
 app.include_router(verticals_healthcare.router)
 app.include_router(verticals_legal.router)
 app.include_router(verticals_real_estate.router)
