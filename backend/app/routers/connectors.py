@@ -1496,7 +1496,7 @@ async def _delete_connector_impl(
     try:
         from app.connectors.platform import clear_connector_oauth_tokens
 
-        clear_connector_oauth_tokens(client, str(connector_id))
+        clear_connector_oauth_tokens(client, str(connector_id), org_id=org_id)
     except Exception:  # noqa: BLE001
         pass
     write_audit_event(

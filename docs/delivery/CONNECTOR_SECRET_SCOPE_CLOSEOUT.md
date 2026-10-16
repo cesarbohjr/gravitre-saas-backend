@@ -12,6 +12,11 @@ OAuth-token loader requires scope too, so refresh, revoke and connection-health
 paths retain the caller's tenant. Masked/preloaded and legacy encrypted row
 fallbacks require both the connector id and row org to match before use.
 
+Adjacent direct paths are scoped too: webhook secret-header reads, OAuth token
+deletion, and secret updates. A secret write requires the connector to exist in
+the caller's org before encryption, then scopes both the existing-row lookup
+and update. A foreign connector id cannot overwrite another org's stored key.
+
 The isolated operator scripts were updated to pass their already declared
 source/test org. They were not executed. This change does not authorize copying
 credentials, sending messages, running provider actions or altering production.

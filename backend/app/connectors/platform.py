@@ -171,12 +171,15 @@ def find_existing_oauth_connector(
     return None
 
 
-def clear_connector_oauth_tokens(client, connector_id: str) -> None:
+def clear_connector_oauth_tokens(client, connector_id: str, *, org_id: str) -> None:
     """Drop stored OAuth tokens so auth status cannot stay 'connected' after delete/re-auth."""
+    if not org_id:
+        return
     try:
         (
             client.table("connector_secrets")
             .delete()
+            .eq("org_id", org_id)
             .eq("connector_id", connector_id)
             .eq("key_name", "oauth_tokens")
             .execute()
@@ -196,7 +199,7 @@ def mark_connector_pending_oauth(
 ) -> None:
     # Clear prior tokens before OAuth so a failed HubSpot authorize (or soft-delete
     # resurrection) cannot leave the UI showing "connected" from stale secrets.
-    clear_connector_oauth_tokens(client, connector_id)
+    clear_connector_oauth_tokens(client, connector_id, org_id=org_id)
     client.table("connectors").update(
         {
             "status": "pending_auth",

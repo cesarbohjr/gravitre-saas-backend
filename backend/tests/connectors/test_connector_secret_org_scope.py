@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.connectors.crypto import encrypt_secret
-from app.connectors.repository import get_decrypted_secret, get_decrypted_secrets_bulk
+from app.connectors.repository import get_decrypted_secret, get_decrypted_secrets_bulk, set_secret
 from app.connectors.platform import read_masked_api_key
 from tests.routers.test_connectors_list_secrets_batch import _Client, _KEY
 
@@ -54,10 +54,18 @@ def test_masked_legacy_or_preloaded_keys_still_require_matching_row_scope():
     assert client.executions == []
 
 
+def test_secret_write_rejects_a_connector_outside_the_org_before_encryption():
+    client = _client()
+    with pytest.raises(ValueError, match="does not belong"):
+        set_secret(client, "org-a", "conn-b", "api_key", "replacement", _settings())
+    assert "connector_secrets" not in client.executions
+
+
 def test_every_app_secret_and_oauth_reader_passes_explicit_scope():
     root = Path(__file__).resolve().parents[2] / "app"
     names = {"get_decrypted_secret", "get_decrypted_secrets_bulk", "load_oauth_tokens",
-             "load_linkedin_access_token", "read_masked_api_key", "masked_api_key_for_response"}
+             "load_linkedin_access_token", "read_masked_api_key", "masked_api_key_for_response",
+             "clear_connector_oauth_tokens"}
     missing = []
     for path in root.rglob("*.py"):
         for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):

@@ -40,7 +40,7 @@ def _connector_data_region(client: Client, org_id: str, connector_id: str) -> st
         .execute()
     )
     if not row.data:
-        return None
+        raise ValueError("Connector does not belong to the requested organization")
     config = row.data[0].get("config") or {}
     if not isinstance(config, dict):
         return None
@@ -238,13 +238,15 @@ def set_secret(
     existing = (
         client.table("connector_secrets")
         .select("id")
+        .eq("org_id", org_id)
         .eq("connector_id", connector_id)
         .eq("key_name", key_name)
         .limit(1)
         .execute()
     )
     if existing.data and len(existing.data) > 0:
-        client.table("connector_secrets").update({"encrypted_value": enc}).eq("id", existing.data[0]["id"]).execute()
+        (client.table("connector_secrets").update({"encrypted_value": enc})
+         .eq("id", existing.data[0]["id"]).eq("org_id", org_id).execute())
     else:
         client.table("connector_secrets").insert({
             "org_id": org_id,

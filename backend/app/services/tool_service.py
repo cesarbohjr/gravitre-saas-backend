@@ -3297,6 +3297,7 @@ def _exec_webhook_post(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRe
     rows = (
         ctx.client.table("connector_secrets")
         .select("key_name, encrypted_value")
+        .eq("org_id", ctx.org_id)
         .eq("connector_id", cid)
         .execute()
     )
