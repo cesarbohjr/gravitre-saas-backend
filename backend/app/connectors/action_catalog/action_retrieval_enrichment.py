@@ -61,6 +61,14 @@ ACTION_RETRIEVAL_ENRICHMENT: dict[str, dict[str, Any]] = {
         ],
         "tags": ["freshservice", "tickets", "status", "update", "service-desk", "itsm"],
     },
+    "freshservice.tickets.time_entries": {
+        "examples": [
+            "Get time entries for Freshservice ticket 42",
+            "Show how many technician hours were logged on this Freshservice ticket",
+            "List time spent on service desk tickets for PSA baseline comparison",
+        ],
+        "tags": ["freshservice", "tickets", "time-entries", "time-tracking", "mttr", "psa", "baseline", "itsm"],
+    },
     "github.issues.list": {
         "examples": [
             "search GitHub issues mentioning billing",

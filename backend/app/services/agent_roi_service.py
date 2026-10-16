@@ -40,6 +40,23 @@ METHODOLOGY = (
     "otherwise not_configured. ROI multiple = estimated labor value ÷ measured cost."
 )
 
+# PSA baseline fields expected in org_settings.psa_baseline (all optional).
+# These capture pre-Gravitre manual service-desk performance for delta comparison.
+PSA_BASELINE_FIELDS = {
+    "avg_mttr_minutes": "Average minutes to resolve a ticket before automation (from PSA/Freshservice).",
+    "avg_technician_hours_per_ticket": "Average technician hours logged per ticket in the PSA system.",
+    "avg_tickets_per_day": "Average ticket volume per day in the reporting period before automation.",
+    "baseline_period_label": "Human-readable label for the baseline period (e.g. 'Q3 2024 pre-automation').",
+}
+
+# Outcome event kinds that carry measured resolution time in metadata.
+_RESOLUTION_TIME_EVENTS = frozenset({
+    "ticket_resolved",
+    "ticket_closed",
+    "resolution_path_prepared",
+    "ticket_sla_saved",
+})
+
 
 def _parse_dt(value: Any) -> datetime | None:
     if value is None:
@@ -74,6 +91,172 @@ def resolve_labor_usd_per_hour(org_settings: dict[str, Any] | None) -> tuple[flo
     if rate is not None and rate > 0:
         return round(rate, 4), "org_settings"
     return DEFAULT_LABOR_USD_PER_HOUR, "default_estimate"
+
+
+def resolve_psa_baseline(org_settings: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Read org-configured pre-Gravitre PSA baseline metrics from org_settings.
+
+    Returns None when no baseline is configured (no org_settings.psa_baseline key).
+    Returns a dict with whichever fields the org has configured; missing fields
+    are omitted (not set to zero) to avoid fabricating evidence.
+
+    The baseline is set by the org admin in org_settings.psa_baseline and is
+    NOT pulled live from Freshservice — it represents org-declared historical
+    metrics captured before automation was introduced.
+    """
+    settings = org_settings if isinstance(org_settings, dict) else {}
+    raw = settings.get("psa_baseline")
+    if not isinstance(raw, dict) or not raw:
+        return None
+
+    baseline: dict[str, Any] = {}
+    for field in PSA_BASELINE_FIELDS:
+        val = raw.get(field)
+        if val is not None:
+            baseline[field] = val
+
+    return baseline if baseline else None
+
+
+def compute_psa_comparison(
+    psa_baseline: dict[str, Any] | None,
+    outcome_rows: list[dict[str, Any]],
+    labor_rate: float,
+) -> dict[str, Any]:
+    """Compare measured outcome event resolution times against the PSA baseline.
+
+    Returns a structured dict with:
+    - baseline: org-declared pre-automation metrics (provenance: org_settings)
+    - measured: resolution time extracted from outcome event metadata (provenance: measured)
+    - delta: signed improvement values where both sides are present (provenance: estimate)
+    - provenance label and honesty notes throughout
+
+    When no baseline is configured, returns {"configured": False, ...}.
+    When baseline is configured but no measured resolution events exist, returns
+    baseline only with measured=None.
+    """
+    if psa_baseline is None:
+        return {
+            "configured": False,
+            "note": (
+                "No PSA baseline configured. "
+                "Set org_settings.psa_baseline with avg_mttr_minutes, "
+                "avg_technician_hours_per_ticket, and avg_tickets_per_day "
+                "to enable before/after comparison."
+            ),
+        }
+
+    # Extract measured resolution times from outcome events.
+    resolution_minutes: list[float] = []
+    for row in outcome_rows:
+        event = row.get("outcome_event") or row.get("event_type") or ""
+        if event not in _RESOLUTION_TIME_EVENTS:
+            continue
+        meta = row.get("metadata") or {}
+        if not isinstance(meta, dict):
+            try:
+                import json as _json
+                meta = _json.loads(meta) if isinstance(meta, str) else {}
+            except Exception:
+                meta = {}
+        for key in ("resolution_time_minutes", "time_to_resolve_minutes", "mttr_minutes"):
+            val = meta.get(key)
+            if val is not None:
+                try:
+                    minutes = float(val)
+                    if minutes > 0:
+                        resolution_minutes.append(minutes)
+                        break
+                except (TypeError, ValueError):
+                    pass
+
+    # Build measured section.
+    measured: dict[str, Any] | None = None
+    if resolution_minutes:
+        avg_measured = sum(resolution_minutes) / len(resolution_minutes)
+        measured = {
+            "avg_mttr_minutes": _metric(
+                value=round(avg_measured, 2),
+                provenance="measured",
+                label="Average MTTR (measured from outcome events)",
+                unit="minutes",
+                note=f"Mean of {len(resolution_minutes)} resolution_time_minutes values from outcome events.",
+            ),
+            "resolution_event_count": len(resolution_minutes),
+        }
+
+    # Build delta section when both sides present.
+    delta: dict[str, Any] | None = None
+    baseline_mttr = None
+    try:
+        raw_b = psa_baseline.get("avg_mttr_minutes")
+        baseline_mttr = float(raw_b) if raw_b is not None else None
+    except (TypeError, ValueError):
+        baseline_mttr = None
+
+    if measured is not None and baseline_mttr is not None and baseline_mttr > 0:
+        avg_measured = sum(resolution_minutes) / len(resolution_minutes)
+        mttr_delta = baseline_mttr - avg_measured  # positive = improvement
+        labor_saved_per_ticket = max(mttr_delta / 60.0, 0.0) * labor_rate
+        delta = {
+            "mttrDeltaMinutes": _metric(
+                value=round(mttr_delta, 2),
+                provenance="estimate",
+                label="MTTR improvement (baseline − measured)",
+                unit="minutes",
+                note=(
+                    "Positive = faster resolution vs. pre-automation baseline. "
+                    "Baseline is org-declared; measured is from outcome event metadata."
+                ),
+            ),
+            "laborSavedPerTicketUsd": _metric(
+                value=round(labor_saved_per_ticket, 4),
+                provenance="estimate",
+                label="Estimated labor saved per ticket",
+                unit="usd",
+                note=f"(MTTR delta ÷ 60) × ${labor_rate}/hr labor rate. Estimate — not a billed amount.",
+            ),
+        }
+
+    # Build baseline section with honest provenance labeling.
+    baseline_out: dict[str, Any] = {}
+    label_map = {
+        "avg_mttr_minutes": ("Average MTTR (org-declared baseline)", "minutes"),
+        "avg_technician_hours_per_ticket": ("Avg technician hours per ticket (org-declared)", "hours"),
+        "avg_tickets_per_day": ("Average tickets per day (org-declared)", "count"),
+        "baseline_period_label": ("Baseline period label", "label"),
+    }
+    for field, (label, unit) in label_map.items():
+        val = psa_baseline.get(field)
+        if val is not None:
+            if unit == "label":
+                baseline_out[field] = val
+            else:
+                try:
+                    baseline_out[field] = _metric(
+                        value=float(val),
+                        provenance="org_settings",
+                        label=label,
+                        unit=unit,
+                        note="Org-declared pre-automation baseline. Set via org_settings.psa_baseline.",
+                    )
+                except (TypeError, ValueError):
+                    pass
+
+    return {
+        "configured": True,
+        "baseline": baseline_out,
+        "measured": measured,
+        "delta": delta,
+        "provenance": "org_settings_vs_outcome_events",
+        "note": (
+            "Baseline metrics are org-declared (pre-automation averages). "
+            "Measured metrics are derived from outcome event metadata. "
+            "Delta is an estimate: baseline accuracy depends on org-entered values. "
+            "For ground-truth PSA time-entry data, configure Freshservice time_entries "
+            "connector and see freshservice.tickets.time_entries action."
+        ),
+    }
 
 
 def _agent_id_from_job(row: dict[str, Any]) -> str:
@@ -425,6 +608,11 @@ def build_agent_roi_report(
             "moduleC": True,
             "sta286": True,
         },
+        "psaBaseline": compute_psa_comparison(
+            psa_baseline=resolve_psa_baseline(org_settings),
+            outcome_rows=outcome_rows,
+            labor_rate=labor_rate,
+        ),
     }
 
 
