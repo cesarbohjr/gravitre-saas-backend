@@ -138,7 +138,7 @@ def main() -> int:
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"verdict": report["verdict"], "failed_count": failed, "out": str(args.out)}, indent=2))
+    print(json.dumps({"verdict": report["verdict"], "failed_count": failed, "failed_checks": [{"id": row["id"], "http_status": row["http_status"], "sha_match": row.get("sha_match")} for row in checks if not row["pass"]], "out": str(args.out)}, indent=2))
     return 0 if failed == 0 else 1
 
 
