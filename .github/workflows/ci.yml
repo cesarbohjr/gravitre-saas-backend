@@ -274,6 +274,13 @@ jobs:
         env:
           APP_ENV: dev
 
+      - name: Workflow model comparison contract (no provider requests)
+        run: |
+          python -m pytest tests/services/test_llm_workflow_evaluation.py -q --no-header
+          python ../scripts/evaluate_llm_workflows.py --models gpt-5.4-mini
+        env:
+          APP_ENV: dev
+
       - name: Assistant crash-gap recovery contract
         working-directory: .
         run: python -m pytest scripts/tests/test_reconcile_assistant_billing.py -q --no-header

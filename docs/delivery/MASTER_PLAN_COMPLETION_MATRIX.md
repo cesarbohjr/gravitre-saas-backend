@@ -12,6 +12,12 @@ Billing Playwright was skipped. Migration validation passed; the clean reset
 remains blocked at historical `20250220000006`. Earlier red CI entries below
 are historical evidence, superseded by this run, not current blockers.
 
+**Latest full regression:** #431 at `312fe812` passed CI run 38824440821 with
+**11,027 backend tests passed, 7 skipped**, web tests/lint/typecheck/build,
+shared text/voice and integration smoke. Dedicated recovery (6 PG + 11 context/
+scheduler tests) and company source revocation (15 focused tests) passed.
+Billing Playwright remains skipped; production acceptance remains open.
+
 **Next draft increment:** durable assistant recovery snapshots credits and
 allowance on `model_calls`; the existing usage scheduler invokes a bounded,
 replica-safe recovery RPC. Migration `20261015232327` and default-off
@@ -119,7 +125,7 @@ Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · 
 |------|------|-------------|----------------|------------|--------|-----------------|---------|
 | Catalog / pricing | CODE COMPLETE for Haiku/Sonnet slice | Codex branch | Haiku 100k threshold and cache-write pricing; selector/catalog parity | — | Existing routing defaults | NOT RUN | Model quality evaluations and complete pricing refresh |
 | Budget caps + adaptive routing | PARTIAL (existing non-atomic policy/budget checks; new direct-provider gate in draft) | #431 next increment | Targeted regressions pending | — | No production activation | NOT RUN | Policy lookup is best effort; no atomic budget reservations or quality evidence |
-| Briefing evals (Haiku / Argon / etc.) | NOT STARTED | — | — | — | — | NOT RUN | Third-party deps |
+| Briefing evals (Haiku / Argon / etc.) | PARTIAL | Draft bounded synthetic workflow comparison using existing ModelRouter/model_calls | Focused evaluation tests pending CI; no live model requests | — | Explicit CLI --run only | NOT RUN | Representative task corpus, live provider evidence, routing thresholds; no routing change |
 
 ---
 
