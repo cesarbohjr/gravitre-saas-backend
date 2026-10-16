@@ -78,11 +78,11 @@ def main() -> int:
             health = json.loads(body)
         except json.JSONDecodeError:
             health = {"parse_error": True}
-    if args.expect_sha and health.get("git_sha"):
-        got = str(health["git_sha"])
+    if args.expect_sha:
+        got = str(health.get("git_sha") or "")
         exp = args.expect_sha.strip()
-        sha_match = got.startswith(exp) or exp.startswith(got)
-    ok = code == 200 and (sha_match is not False)
+        sha_match = bool(got) and (got.startswith(exp) or exp.startswith(got))
+    ok = code == 200 and isinstance(health, dict) and bool(health) and (sha_match is not False)
     checks.append(
         {
             "id": "api_health",
@@ -99,16 +99,23 @@ def main() -> int:
     probe_org = str(uuid4())
     code, body = _get(args.web_base.rstrip("/") + f"/api/sessions?org_id={probe_org}")
     leak = False
+    valid_empty_payload = False
     if code == 200:
         try:
             data = json.loads(body)
-            runs = data.get("activeRuns") or data.get("recentActivity") or []
-            leak = bool(runs)
-        except json.JSONDecodeError:
-            leak = False
-    # Only an explicit auth rejection, or a validated empty response, passes.
-    # A 5xx is an application failure, not proof of a safe authorization gate.
-    ok = (code in (401, 403)) or (code == 200 and not leak)
+            if isinstance(data, dict):
+                runs = data.get("activeRuns") or data.get("recentActivity") or []
+                leak = bool(runs)
+                # An unexpected or malformed 200 is not a security PASS.
+                valid_empty_payload = (
+                    isinstance(data.get("activeRuns", []), list)
+                    and isinstance(data.get("recentActivity", []), list)
+                    and not leak
+                    and not any(k in data for k in ("access_token", "service_role", "secret"))
+                )
+        except (json.JSONDecodeError, TypeError):
+            valid_empty_payload = False
+    ok = (code in (401, 403)) or (code == 200 and valid_empty_payload)
     checks.append(
         {
             "id": "anonymous_sessions_no_leak",
