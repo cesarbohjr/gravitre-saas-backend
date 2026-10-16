@@ -106,16 +106,14 @@ def main() -> int:
             leak = bool(runs)
         except json.JSONDecodeError:
             leak = False
-    ok = not leak and code != 200 or (code in (401, 403, 500) and not leak)
-    # Accept 500 permission denied as fail-closed without data leak
-    if code == 200 and not leak:
-        ok = True  # empty payload
+    # Only an explicit auth rejection, or a validated empty response, passes.
+    # A 5xx is an application failure, not proof of a safe authorization gate.
+    ok = (code in (401, 403)) or (code == 200 and not leak)
     checks.append(
         {
             "id": "anonymous_sessions_no_leak",
             "pass": ok and not leak,
             "http_status": code,
-            "body_snippet": body[:200] if body else "",
             "data_leak": leak,
         }
     )
