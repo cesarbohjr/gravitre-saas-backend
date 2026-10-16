@@ -102,6 +102,7 @@ from app.routers import (
     federation,
     msp,
     model_evaluation,
+    org_api_keys,
     settings,
     slack_commands,
     verticals_healthcare,
@@ -775,6 +776,7 @@ app.include_router(platform.router)
 app.include_router(federation.router)
 app.include_router(msp.router)
 app.include_router(model_evaluation.router)
+app.include_router(org_api_keys.router)
 app.include_router(verticals_healthcare.router)
 app.include_router(verticals_legal.router)
 app.include_router(verticals_real_estate.router)
