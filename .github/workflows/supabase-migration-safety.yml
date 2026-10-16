@@ -258,6 +258,35 @@ jobs:
               raise SystemExit("Unexpected isolated-org seed shape")
           guard.write_text(guard_sql.replace(old_seed, new_seed))
           print("CI-only conditional test-org seed; production guard unchanged.")
+          # PostgreSQL advisor indexes were created against a live schema
+          # that had out-of-band columns. Retain each index where its real
+          # target column exists; an absent column must not abort the
+          # remaining functional migrations in a disposable fresh database.
+          import re
+          perf = path.parent / "20260805221000_perf_advisor_fk_indexes.sql"
+          perf_sql = perf.read_text()
+          index_pat = re.compile(
+              r"^CREATE INDEX IF NOT EXISTS (\\w+) ON public\\.(\\w+) \\((\\w+)\\);$",
+              re.MULTILINE,
+          )
+          def guarded_index(match):
+              name, table, column = match.groups()
+              sql = (
+                  "DO $ci_index$ BEGIN "
+                  "IF EXISTS (SELECT 1 FROM information_schema.columns "
+                  "WHERE table_schema='public' AND table_name='" + table + "' "
+                  "AND column_name='" + column + "') THEN "
+                  "EXECUTE 'CREATE INDEX IF NOT EXISTS " + name + " ON public."
+                  + table + " (" + column + ")'; "
+                  "END IF; END $ci_index$;"
+              )
+              return sql
+          perf_sql, index_count = index_pat.subn(guarded_index, perf_sql)
+          if index_count != 10:
+              raise SystemExit(f"Unexpected historical advisor index count: {index_count}")
+          perf.write_text(perf_sql)
+          print("CI-only guarded advisor indexes; original migration unchanged.")
+
 
 
 
