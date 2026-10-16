@@ -136,6 +136,12 @@ def report_usage_to_stripe(
     Returns a summary dict including how many rows were reported.
     """
     client = client or get_supabase_client(settings)
+    if getattr(settings, "stripe_meter_outbox_enabled", False):
+        from app.billing.stripe_meter_outbox import report_meter_intents
+        return report_meter_intents(
+            org_id, "ai_credits", period_start, period_end, settings,
+            client=client, dry_run=dry_run,
+        )
     result: dict[str, Any] = {
         "org_id": org_id,
         "period_start": period_start.isoformat(),
