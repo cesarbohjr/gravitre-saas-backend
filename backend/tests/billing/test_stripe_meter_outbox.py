@@ -26,7 +26,7 @@ def _client(*, acknowledgement=True):
         if name == "stage_stripe_meter_intents":
             data = 1
         elif name == "claim_stripe_meter_intents":
-            data = claims
+            data = list(claims)
             claims.clear()  # The second worker cannot claim an in-flight event.
         elif name == "ack_stripe_meter_intent":
             data = acknowledgement
