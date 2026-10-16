@@ -54,12 +54,15 @@ def report(client: Any, *, period_start: date) -> dict[str, Any]:
     # Ledger is canonical: every production AI-credit row in the period needs
     # a corresponding outbox intent. The report does not infer acceptance from
     # a missing Stripe event; reconciliation must inspect the persisted intent.
+    settled_source_ids: set[tuple[str, str]] = set()
     ledger = _pages(client.table("usage_tracking").select(
-        "id,org_id,quantity,stripe_reported_at"
+        "id,org_id,quantity,source_id,stripe_reported_at"
     ).eq("metric_type", "ai_credits").eq("environment", "production")
         .eq("period_start", period_start.isoformat()).order("id"))
     for row in ledger:
         counts["ai_credits_ledger_rows"] += 1
+        if row.get("source_id"):
+            settled_source_ids.add((str(row["org_id"]), str(row["source_id"])))
         match = outbox.get((str(row["org_id"]), "ai_credits", str(row["id"])))
         if match is None:
             counts["ai_credits_missing_intents"] += 1
@@ -89,11 +92,32 @@ def report(client: Any, *, period_start: date) -> dict[str, Any]:
                 counts["delivered_missing_source_ack"] += 1
             elif match["status"] in ("pending", "sending", "ambiguous") and row.get("stripe_reported_at"):
                 counts["source_reported_without_intent_ack"] += 1
+    # Model-call evidence joins to the canonical AI ledger through source_id.
+    # This distinguishes assistant turns, attributed workflow/agent runs and
+    # other metered model calls without exposing tenant or call identifiers.
+    calls = _pages(client.table("model_calls").select(
+        "id,org_id,run_id,turn_id,billing_credits,billing_settled_at"
+    ).gte("created_at", lower).lt("created_at", upper).order("id"))
+    for row in calls:
+        credits = row.get("billing_credits")
+        if credits is None or int(credits) <= 0:
+            continue
+        turn_id = str(row.get("turn_id") or "")
+        source = ("workflow_agent" if row.get("run_id")
+                  else "assistant" if turn_id.startswith("assistant:")
+                  else "other_model")
+        counts[f"{source}_billable_model_calls"] += 1
+        if not row.get("billing_settled_at"):
+            counts[f"{source}_model_calls_unsettled"] += 1
+        elif (str(row["org_id"]), str(row["id"])) not in settled_source_ids:
+            counts["settled_model_calls_missing_ledger"] += 1
     counts["outbox_total_rows"] = len(outbox)
     counts["unresolved_errors"] = sum(counts[key] for key in (
         "unknown_metric", "invalid_status", "requires_stripe_reconciliation",
         "ai_credits_missing_intents", "research_lookups_missing_intents",
         "voice_minutes_missing_intents", "delivered_missing_source_ack",
+        "assistant_model_calls_unsettled", "workflow_agent_model_calls_unsettled",
+        "other_model_model_calls_unsettled", "settled_model_calls_missing_ledger",
         "source_reported_without_intent_ack",
     ))
     return {"period_start": period_start.isoformat(), **dict(sorted(counts.items()))}
