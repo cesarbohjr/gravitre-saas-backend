@@ -132,8 +132,10 @@ def report_research_lookup_overage_to_stripe(
             or []
         )
         period_total = sum(int(r.get("quantity") or 0) for r in all_rows)
-    except Exception:  # noqa: BLE001
-        period_total = total_lookups
+    except Exception as exc:  # noqa: BLE001
+        logger.error("meter period total query failed org_id=%s metric=%s error=%s", org_id, "research_lookups", type(exc).__name__)
+        result["error"] = "period_total_query_failed"
+        return result
 
     overage_total = max(period_total - included, 0)
     result["overage_lookups"] = overage_total
