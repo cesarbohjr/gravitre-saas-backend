@@ -1371,8 +1371,9 @@ function AddConnectorModal({
       return
     }
     if (!isShippedConnector(connector)) {
-      toast.message(`${connector.type} is coming soon`, {
-        description: "This integration is listed for planning; connect shipped apps marked Available.",
+      const categoryHint = connector.category ? ` (${connector.category})` : ""
+      toast.message(`${connector.type} is not yet available`, {
+        description: `${connector.type}${categoryHint} is on the roadmap. Connect an available integration now, or email integrations@gravitre.app to request early access.`,
       })
       return
     }
