@@ -228,7 +228,7 @@ def test_approve_mcp_write_happy_path() -> None:
         app.include_router(router)
 
         # Override auth deps
-        from app.auth.context import get_current_user, get_org_context
+        from app.auth.dependencies import get_current_user, get_org_context
         from app.config import get_settings
 
         app.dependency_overrides[get_current_user] = lambda: {"user_id": "user-1"}
@@ -237,7 +237,7 @@ def test_approve_mcp_write_happy_path() -> None:
 
         client = TestClient(app, raise_server_exceptions=True)
         resp = client.post(
-            "/conversation/conv-1/approve-mcp-write",
+            "/api/assistant/conversation/conv-1/approve-mcp-write",
             json={"approval_id": "appr-1", "confirm": True},
         )
         assert resp.status_code == 200
@@ -261,7 +261,7 @@ def test_approve_mcp_write_no_interrupt_returns_422() -> None:
         from fastapi import FastAPI
 
         from app.routers.assistant import router
-        from app.auth.context import get_current_user, get_org_context
+        from app.auth.dependencies import get_current_user, get_org_context
         from app.config import get_settings
 
         app = FastAPI()
@@ -272,7 +272,7 @@ def test_approve_mcp_write_no_interrupt_returns_422() -> None:
 
         client = TestClient(app)
         resp = client.post(
-            "/conversation/conv-1/approve-mcp-write",
+            "/api/assistant/conversation/conv-1/approve-mcp-write",
             json={"approval_id": "appr-1", "confirm": True},
         )
         assert resp.status_code == 422
@@ -292,7 +292,7 @@ def test_approve_mcp_write_id_mismatch_returns_409() -> None:
         from fastapi import FastAPI
 
         from app.routers.assistant import router
-        from app.auth.context import get_current_user, get_org_context
+        from app.auth.dependencies import get_current_user, get_org_context
         from app.config import get_settings
 
         app = FastAPI()
@@ -303,7 +303,177 @@ def test_approve_mcp_write_id_mismatch_returns_409() -> None:
 
         client = TestClient(app)
         resp = client.post(
-            "/conversation/conv-1/approve-mcp-write",
+            "/api/assistant/conversation/conv-1/approve-mcp-write",
             json={"approval_id": "appr-WRONG", "confirm": True},
         )
         assert resp.status_code == 409
+
+
+
+# ---------------------------------------------------------------------------
+# reject-mcp-write endpoint (Release 2 gap fix)
+# ---------------------------------------------------------------------------
+
+
+def _make_reject_client(conversation_found: bool = True, approval_updated: list | None = None):
+    """Inline FastAPI TestClient wired to the reject endpoint."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from app.routers.assistant import router
+    from app.auth.dependencies import get_current_user, get_org_context
+    from app.config import get_settings
+
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_current_user] = lambda: {"user_id": "user-1"}
+    app.dependency_overrides[get_org_context] = lambda: "org-1"
+    app.dependency_overrides[get_settings] = lambda: MagicMock()
+    stub = _make_client_stub(
+        conversation_found=conversation_found,
+        approval_updated=approval_updated,
+    )
+    return TestClient(app, raise_server_exceptions=False), stub
+
+
+def test_reject_mcp_write_happy_path() -> None:
+    """reject-mcp-write flips approval to rejected, clears interrupt, returns rejected=True."""
+    clear_mock = MagicMock()
+
+    with (
+        patch("app.routers.assistant.get_supabase_client") as mk_client,
+        patch("app.routers.assistant.load_interrupted_turn") as mk_load,
+        patch("app.routers.assistant.clear_interrupted_turn", clear_mock),
+    ):
+        tc, stub = _make_reject_client()
+        mk_client.return_value = stub
+        mk_load.return_value = _make_interrupt()
+
+        resp = tc.post(
+            "/api/assistant/conversation/conv-1/reject-mcp-write",
+            json={"approval_id": "appr-1"},
+        )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["rejected"] is True
+    assert data["approval_id"] == "appr-1"
+    assert data["tool_name"] == "create_ticket"
+    # CRITICAL: interrupt must be cleared to prevent stale re-trigger
+    clear_mock.assert_called_once()
+
+
+def test_reject_mcp_write_with_reason() -> None:
+    """reason field is accepted; endpoint still returns rejected=True."""
+    with (
+        patch("app.routers.assistant.get_supabase_client") as mk_client,
+        patch("app.routers.assistant.load_interrupted_turn") as mk_load,
+        patch("app.routers.assistant.clear_interrupted_turn"),
+    ):
+        tc, stub = _make_reject_client()
+        mk_client.return_value = stub
+        mk_load.return_value = _make_interrupt()
+
+        resp = tc.post(
+            "/api/assistant/conversation/conv-1/reject-mcp-write",
+            json={"approval_id": "appr-1", "reason": "looks risky"},
+        )
+
+    assert resp.status_code == 200
+    assert resp.json()["rejected"] is True
+
+
+def test_reject_mcp_write_no_interrupt_returns_422() -> None:
+    """Returns 422 when no pending MCP approval in interrupt state."""
+    with (
+        patch("app.routers.assistant.get_supabase_client") as mk_client,
+        patch("app.routers.assistant.load_interrupted_turn") as mk_load,
+    ):
+        tc, stub = _make_reject_client()
+        mk_client.return_value = stub
+        mk_load.return_value = None
+
+        resp = tc.post(
+            "/api/assistant/conversation/conv-1/reject-mcp-write",
+            json={"approval_id": "appr-1"},
+        )
+
+    assert resp.status_code == 422
+
+
+def test_reject_mcp_write_id_mismatch_returns_409() -> None:
+    """Returns 409 when approval_id in request doesn't match stored state."""
+    with (
+        patch("app.routers.assistant.get_supabase_client") as mk_client,
+        patch("app.routers.assistant.load_interrupted_turn") as mk_load,
+    ):
+        tc, stub = _make_reject_client()
+        mk_client.return_value = stub
+        mk_load.return_value = _make_interrupt(approval_id="appr-correct")
+
+        resp = tc.post(
+            "/api/assistant/conversation/conv-1/reject-mcp-write",
+            json={"approval_id": "appr-WRONG"},
+        )
+
+    assert resp.status_code == 409
+
+
+def test_reject_mcp_write_already_processed_returns_409() -> None:
+    """Returns 409 when the approvals row is not found / already processed (empty update)."""
+    with (
+        patch("app.routers.assistant.get_supabase_client") as mk_client,
+        patch("app.routers.assistant.load_interrupted_turn") as mk_load,
+        patch("app.routers.assistant.clear_interrupted_turn"),
+    ):
+        tc, stub = _make_reject_client(approval_updated=[])   # empty → already processed
+        mk_client.return_value = stub
+        mk_load.return_value = _make_interrupt()
+
+        resp = tc.post(
+            "/api/assistant/conversation/conv-1/reject-mcp-write",
+            json={"approval_id": "appr-1"},
+        )
+
+    assert resp.status_code == 409
+
+
+def test_reject_mcp_write_clear_error_non_fatal() -> None:
+    """clear_interrupted_turn failure is non-fatal; endpoint still returns 200.
+
+    The rejection was durably recorded in Supabase. The Redis interrupt will
+    expire on its own TTL. Not surfacing a 500 here avoids confusing the client
+    into thinking the rejection itself failed.
+    """
+    with (
+        patch("app.routers.assistant.get_supabase_client") as mk_client,
+        patch("app.routers.assistant.load_interrupted_turn") as mk_load,
+        patch(
+            "app.routers.assistant.clear_interrupted_turn",
+            side_effect=RuntimeError("redis timeout"),
+        ),
+    ):
+        # raise_server_exceptions=False so we see the HTTP response, not the exc
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from app.routers.assistant import router
+        from app.auth.dependencies import get_current_user, get_org_context
+        from app.config import get_settings
+
+        app = FastAPI()
+        app.include_router(router)
+        app.dependency_overrides[get_current_user] = lambda: {"user_id": "user-1"}
+        app.dependency_overrides[get_org_context] = lambda: "org-1"
+        app.dependency_overrides[get_settings] = lambda: MagicMock()
+
+        stub = _make_client_stub()
+        mk_client.return_value = stub
+        mk_load.return_value = _make_interrupt()
+
+        tc = TestClient(app, raise_server_exceptions=True)
+        resp = tc.post(
+            "/api/assistant/conversation/conv-1/reject-mcp-write",
+            json={"approval_id": "appr-1"},
+        )
+
+    assert resp.status_code == 200
+    assert resp.json()["rejected"] is True

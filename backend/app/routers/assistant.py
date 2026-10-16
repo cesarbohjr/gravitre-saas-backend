@@ -2212,6 +2212,129 @@ class ApproveMcpWriteRequest(BaseModel):
     confirm: bool = True
 
 
+class RejectMcpWriteRequest(BaseModel):
+    approval_id: str
+    reason: str | None = None   # optional human-readable denial reason
+
+
+@router.post("/conversation/{conversation_id}/reject-mcp-write")
+async def reject_mcp_write(
+    conversation_id: str,
+    body: RejectMcpWriteRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Deny a pending MCP write approval stored in the interrupt state.
+
+    Flips the approvals row to status='rejected' and **clears the interrupt
+    so subsequent messages do not re-trigger the stale pending approval**.
+    Without this, every message after a denial would still see the
+    pending_mcp_approval in the interrupt state and the engine could attempt
+    the blocked action again.
+    """
+    if not org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+
+    client = get_supabase_client(settings)
+    user_id = str(current_user.get("user_id") or "")
+
+    # Ownership check
+    owned = (
+        client.table("conversations")
+        .select("id")
+        .eq("id", conversation_id)
+        .eq("org_id", org_id)
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    if not owned.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
+
+    # Load interrupt state to retrieve stored pending_mcp_approval
+    interrupt = load_interrupted_turn(org_id, conversation_id, settings=settings)
+    stored_approval = (
+        (interrupt.get("extra") or {}).get("pending_mcp_approval")
+        if isinstance(interrupt, dict)
+        else None
+    )
+    if not isinstance(stored_approval, dict) or not stored_approval.get("approval_id"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No pending MCP write approval found for this conversation",
+        )
+
+    stored_approval_id = str(stored_approval["approval_id"])
+    if stored_approval_id != body.approval_id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="approval_id does not match the pending approval for this conversation",
+        )
+
+    # Flip the approvals row from 'pending' to 'rejected'
+    update_payload: dict[str, Any] = {"status": "rejected"}
+    if body.reason:
+        update_payload["metadata"] = {"rejection_reason": body.reason[:500]}
+    try:
+        updated = (
+            client.table("approvals")
+            .update(update_payload)
+            .eq("id", stored_approval_id)
+            .eq("org_id", org_id)
+            .eq("status", "pending")
+            .execute()
+            .data
+            or []
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error(
+            "reject_mcp_write db update failed org_id=%s approval_id=%s error=%s",
+            org_id,
+            stored_approval_id,
+            str(exc)[:300],
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to record MCP write rejection",
+        ) from exc
+
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Approval row not found or already processed",
+        )
+
+    # CRITICAL: clear the interrupt so the engine does not re-attempt the
+    # denied action on the next message.  Without this the pending_mcp_approval
+    # would persist in Redis and the next turn would inject a stale approval_id
+    # into the ReAct loop, potentially resuming the denied action.
+    try:
+        clear_interrupted_turn(org_id, conversation_id, settings=settings)
+    except Exception as exc:  # noqa: BLE001
+        # Non-fatal — rejection is recorded; the stale interrupt will expire.
+        logger.warning(
+            "reject_mcp_write failed to clear interrupt org_id=%s conversation_id=%s error=%s",
+            org_id,
+            conversation_id,
+            str(exc)[:200],
+        )
+
+    logger.info(
+        "reject_mcp_write denied org_id=%s conversation_id=%s approval_id=%s user_id=%s",
+        org_id,
+        conversation_id,
+        stored_approval_id,
+        user_id,
+    )
+    return {
+        "rejected": True,
+        "approval_id": stored_approval_id,
+        "tool_name": stored_approval.get("tool_name"),
+        "message": "The MCP write action was denied. Send a new message to continue.",
+    }
+
+
 @router.post("/conversation/{conversation_id}/approve-mcp-write")
 async def approve_mcp_write(
     conversation_id: str,
