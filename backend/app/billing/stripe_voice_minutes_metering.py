@@ -62,6 +62,12 @@ def report_voice_minutes_overage_to_stripe(
     dry_run: bool = False,
 ) -> dict[str, Any]:
     client = client or get_supabase_client(settings)
+    if getattr(settings, "stripe_meter_outbox_enabled", False):
+        from app.billing.stripe_meter_outbox import report_meter_intents
+        return report_meter_intents(
+            org_id, "voice_minutes", period_start, period_end, settings,
+            client=client, dry_run=dry_run,
+        )
     result: dict[str, Any] = {
         "org_id": org_id,
         "period_start": period_start.isoformat(),
