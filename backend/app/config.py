@@ -530,6 +530,12 @@ class Settings(BaseSettings):
     # Stripe usage-based (metered) billing: meter event name configured on the
     # Stripe Billing Meter that the metered price is attached to.
     stripe_meter_event_name: str = "ai_credits_used"
+    # Durable Stripe outbox is opt-in until the migration, billing
+    # reconciliation and production operator acceptance have passed.
+    stripe_meter_outbox_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("STRIPE_METER_OUTBOX_ENABLED", "stripe_meter_outbox_enabled"),
+    )
     # Per-plan metered (usage-based) price IDs tied to the AI-credits meter. When
     # set, they are added as an extra subscription/checkout line item so usage is
     # actually billed. Empty = flat-rate only (no usage billing).
