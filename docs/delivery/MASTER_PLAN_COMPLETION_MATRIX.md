@@ -18,6 +18,14 @@ shared text/voice and integration smoke. Dedicated recovery (6 PG + 11 context/
 scheduler tests) and company source revocation (15 focused tests) passed.
 Billing Playwright remains skipped; production acceptance remains open.
 
+**2026-10-16 focused acceptance:** 178 local tests passed across credential
+scope/disconnect, memory lineage/liveness, approval projection/fingerprints and
+run authority. The writer inventory decreases by exactly four removed untagged
+fallback sites; its exact-count guard is retained. Production schema read-only
+checks show none of the six repository migrations dated October 14 onward
+recorded, no new ledger tables or recovery columns, and existing run/turn IDs.
+See [evidence](./platform-integrity-closeout-2026-10-16.json). Full CI remains pending.
+
 **2026-10-16 run-authority revalidation:** the shared catalog invoke spine
 revalidates declared run authority against an org-scoped, live approved run with
 at least one required approval. A missing/rejected run or mismatched reference
