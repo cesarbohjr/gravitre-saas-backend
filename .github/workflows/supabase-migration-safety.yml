@@ -217,6 +217,20 @@ jobs:
               + notifications_table_ddl + "\n" + notifications_original
           )
           print("CI-only notifications dependency ordering; original files untouched.")
+          # The July 5 conformance ALTER precedes the July 9 inventory CREATE.
+          inventory_source = pathlib.Path("supabase/migrations/20260709200000_extended_intelligence_engine.sql").read_text()
+          inventory_start = inventory_source.index("CREATE TABLE IF NOT EXISTS public.organization_process_inventory (")
+          inventory_end = inventory_source.index("CREATE INDEX IF NOT EXISTS idx_organization_process_inventory_org", inventory_start)
+          inventory_ddl = inventory_source[inventory_start:inventory_end]
+          inventory_early = path.parent / "20260705050000_process_inventory_conformance_columns.sql"
+          if not inventory_early.read_text().startswith("-- Process mining"):
+              raise SystemExit("Unexpected process inventory migration")
+          inventory_early.write_text(
+              "-- CI-only historical inventory dependency prelude.\n"
+              + inventory_ddl + "\n" + inventory_early.read_text()
+          )
+          print("CI-only process inventory table ordering; original files untouched.")
+
 
           PY
           cd "$replay_dir"
