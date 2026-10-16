@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "scripts/verify-release1-authenticated-smoke.py"
+      - "scripts/verify-release1-live-negative-matrix.py"
       - ".github/workflows/release1-authenticated-smoke.yml"
   workflow_dispatch:
 
@@ -33,6 +34,20 @@ jobs:
         run: python3 scripts/mint_smoke_org_session.py --github-env
       - name: Authenticated smoke
         run: python3 scripts/verify-release1-authenticated-smoke.py
+      - name: Isolated member/admin live negative-path matrix
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python3 scripts/verify-release1-live-negative-matrix.py
+      - name: Upload live negative-path evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release1-live-negative-matrix
+          path: docs/delivery/release1-live-negative-matrix.json
+          if-no-files-found: error
       - name: Upload results (no credentials)
         if: always()
         uses: actions/upload-artifact@v4
