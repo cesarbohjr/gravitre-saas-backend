@@ -4,6 +4,14 @@
 **Cohesion rules:** [`PLATFORM_COHESION.md`](./PLATFORM_COHESION.md) · **Split plan:** [`PR429_DEPENDENT_SPLIT.md`](./PR429_DEPENDENT_SPLIT.md)  
 **Current implementation:** `codex/master-plan-completion-20261014` (based on #429 at `7fd10c4a`); see [Codex implementation evidence](./CODEX_IMPLEMENTATION_2026-10-14.md). Earlier row statuses below require reconciliation against that increment.
 
+**Railway configuration setup (2026-10-16 UTC):** nine previously absent
+production backend variables are now explicitly set, with deployments skipped.
+New feature activation is pinned off, write authority is `shadow`, and queue
+fail-closed is `true`. Names were verified after the write; OAuth redacts value
+readback. Existing flags were not overwritten. Running deployment remains
+`b642dd156`; saved values apply on the next deployment. This does not activate
+the new release. See [configuration receipt](./railway-production-flags-2026-10-16.json).
+
 **Production migration update (2026-10-16 UTC):** all six approved migrations
 are applied and schema/role grants verified in `smyeexlrqdpymwjmgzqu`. Supabase
 assigned versions `20261016032007`, `032018`, `032029`, `032039`, `032048`, and
