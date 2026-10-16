@@ -146,29 +146,30 @@ def main() -> int:
             }
 
     totals = report["org_totals"]
-    ok = (
-        report["roi_http"] == 200
-        and report["methodology_present"]
-        and report["cost_match"]
-        and totals["agentCostUsd"]["provenance"] == "measured"
-        and totals["tasksCompleted"]["provenance"] == "operational"
-        and totals["estimatedHoursSaved"]["provenance"] == "estimate"
-        and totals["estimatedLaborValueUsd"]["provenance"] == "estimate"
-        and totals["revenueInfluencedUsd"]["provenance"]
-        in {"not_configured", "measured"}
-        and (
+    checks = {
+        "roi_http": report["roi_http"] == 200,
+        "methodology_present": report["methodology_present"],
+        "model_cost_matches_ledger": report["cost_match"],
+        "agent_cost_measured": totals["agentCostUsd"]["provenance"] == "measured",
+        "tasks_operational": totals["tasksCompleted"]["provenance"] == "operational",
+        "hours_estimated": totals["estimatedHoursSaved"]["provenance"] == "estimate",
+        "labor_estimated": totals["estimatedLaborValueUsd"]["provenance"] == "estimate",
+        "revenue_provenance": totals["revenueInfluencedUsd"]["provenance"] in {"not_configured", "measured"},
+        "unconfigured_revenue_is_null": (
             totals["revenueInfluencedUsd"]["provenance"] != "not_configured"
             or totals["revenueInfluencedUsd"]["value"] is None
-        )
-        and (report.get("honesty") or {}).get("moduleC") is True
-        and (report.get("honesty") or {}).get("sta286") is True
-    )
-    # ROI multiple must be estimate when present
-    roi_p = totals["roiMultiple"]["provenance"]
-    if totals["roiMultiple"]["value"] is not None and roi_p != "estimate":
-        ok = False
-    if totals["roiMultiple"]["value"] is None and roi_p not in {"insufficient_data", "estimate"}:
-        ok = False
+        ),
+        "module_c_honesty": (report.get("honesty") or {}).get("moduleC") is True,
+        "sta286_honesty": (report.get("honesty") or {}).get("sta286") is True,
+        "roi_multiple_provenance": (
+            totals["roiMultiple"]["provenance"] == "estimate"
+            if totals["roiMultiple"]["value"] is not None
+            else totals["roiMultiple"]["provenance"] in {"insufficient_data", "estimate"}
+        ),
+    }
+    report["checks"] = checks
+    report["failed_checks"] = [name for name, passed in checks.items() if not passed]
+    ok = all(checks.values())
 
     report["verdict"] = (
         "PASS — agent ROI honesty + measured cost match"
@@ -177,7 +178,7 @@ def main() -> int:
     )
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    print(json.dumps({"verdict": report["verdict"], "api_git_sha": report.get("api_git_sha"), "out": str(OUT)}, indent=2))
+    print(json.dumps({"verdict": report["verdict"], "api_git_sha": report.get("api_git_sha"), "failed_checks": report["failed_checks"], "out": str(OUT)}, indent=2))
     return 0 if ok else 1
 
 
