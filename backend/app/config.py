@@ -616,9 +616,9 @@ class Settings(BaseSettings):
     # Tag agent_memories and entity_observations written from connector content with
     # source_connector_id (and source_record_ref) so a disconnect can purge them
     # (purge_connector_memories); connector-derived writes that cannot name their
-    # connector are then refused. Turn on only after
-    # 20261012070000_agent_memory_source_lineage.sql is applied.
-    memory_source_lineage_enabled: bool = False
+    # connector are then refused. Migration 20261012070000_agent_memory_source_lineage.sql
+    # is applied; all call sites have defensive getattr fallbacks — safe to enable.
+    memory_source_lineage_enabled: bool = True
     # Phase 2C governance. Retention prune of indexed documents per the org's
     # sourceDataGovernance.retentionDays (daily), and retrieval-side exclusion of
     # excerpts that match prompt-injection patterns.
@@ -637,7 +637,10 @@ class Settings(BaseSettings):
     # for orgs that opted in to customer context. Ambiguous joins become proposals.
     entity_writer_enabled: bool = False
     # Phase 3 customer observations (extractor obs-v1) and their read/correct API.
-    # Turn on only after scripts/eval_observations.py passes its gate.
+    # BLOCKED: requires scripts/eval_observations.py gate to pass (precision/recall
+    # thresholds per dimension) AND all four LIFECYCLE_PREREQUISITES in
+    # ingestion_interlock.py to be enabled. Do not flip until the eval run is
+    # committed and the lifecycle flags are confirmed in the target environment.
     entity_observations_enabled: bool = False
     # Phase 4: account cards (observations, trends, behaviour) in the chat and voice context.
     entity_context_cards_enabled: bool = False

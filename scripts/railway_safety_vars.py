@@ -39,15 +39,15 @@ APPROVED_VALUES: dict[str, str] = {
 }
 
 # Default-off flags the owner approved switching on (2026-10-13, "safe subset"):
-# read-path context ranking only, no customer data and no writes; plus memory
-# lineage once its migration was verified. On is reported, not a problem; absent
-# is still fine.
+# read-path context ranking only, no customer data and no writes.
+# MEMORY_SOURCE_LINEAGE_ENABLED graduated to default-on in config.py (PR #444)
+# so it no longer belongs in DEFAULT_OFF or APPROVED_ON — Railway sees the code
+# default (True) without any pin, and the audit does not need to track it here.
 APPROVED_ON: frozenset[str] = frozenset(
     {
         "CROSS_SOURCE_CONTEXT_LIVENESS_V1",
         "CROSS_SOURCE_CONTEXT_FRESHNESS_V1",
         "CONTEXT_ENGINE_WORK_STATE_V1",
-        "MEMORY_SOURCE_LINEAGE_ENABLED",  # owner-approved 2026-10-13 after migration 20261012070000 was verified
     }
 )
 
@@ -75,10 +75,8 @@ DEFAULT_OFF: tuple[str, ...] = (
     "CONTEXT_ENGINE_OBSERVATIONS_V1",
     "CONTEXT_ENGINE_ACCOUNT_SIGNALS_V1",
     "CONTEXT_ENGINE_WORK_STATE_V1",
-    # Lineage tags, read-time revoked-source filter, cache invalidation on revoke
-    # and the memory/observation purge (PR #374). Needs migration 20261012070000
-    # first: before it, recall returns no memories (the filter fails closed).
-    "MEMORY_SOURCE_LINEAGE_ENABLED",
+    # MEMORY_SOURCE_LINEAGE_ENABLED was here; moved to default-on after migration
+    # 20261012070000 was verified and owner-approved on 2026-10-13 (PR #444).
 )
 
 # A str setting; absent and empty both mean "no pilot orgs".
