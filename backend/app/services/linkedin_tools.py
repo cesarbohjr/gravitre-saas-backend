@@ -35,7 +35,7 @@ def _linkedin_connector(ctx: ToolContext, params: dict[str, Any]) -> str:
 
 def _exec_linkedin_prospect_enrich(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
     cid = _linkedin_connector(ctx, params)
-    token = load_linkedin_access_token(ctx.client, cid, ctx.settings) if cid else None
+    token = load_linkedin_access_token(ctx.client, cid, ctx.settings, org_id=ctx.org_id) if cid else None
     data = enrich_prospect(params=params, access_token=token)
     return NormalizedResult(
         success=True,

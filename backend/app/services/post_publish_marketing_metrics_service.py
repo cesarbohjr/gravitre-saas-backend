@@ -382,7 +382,7 @@ async def fetch_marketing_metric_value(
             return None
         from app.connectors.linkedin import load_linkedin_access_token
 
-        token = load_linkedin_access_token(client, str(conn["id"]), active_settings)
+        token = load_linkedin_access_token(client, str(conn["id"]), active_settings, org_id=org_id)
         if not token:
             return None
         try:

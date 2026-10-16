@@ -231,8 +231,10 @@ def _load_token_expiry_hours(
     client: Any,
     settings: Settings,
     connector_id: str,
+    *,
+    org_id: str,
 ) -> float | None:
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if tokens and tokens.get("expires_at"):
         try:
             expires_at = float(tokens["expires_at"])
@@ -241,7 +243,7 @@ def _load_token_expiry_hours(
             pass
     if not settings.connector_secrets_encryption_key:
         return None
-    raw = get_decrypted_secret(client, connector_id, OAUTH_TOKEN_KEY, settings)
+    raw = get_decrypted_secret(client, connector_id, OAUTH_TOKEN_KEY, settings, org_id=org_id)
     if not raw:
         return None
     try:
@@ -504,10 +506,10 @@ def _build_predictive_alerts(
                         )
                     )
                 else:
-                    hours_left = _load_token_expiry_hours(client, settings, connector_id)
+                    hours_left = _load_token_expiry_hours(client, settings, connector_id, org_id=org_id)
                     if hours_left is not None and hours_left <= AUTH_EXPIRY_HIGH_HOURS:
                         severity = "critical" if hours_left <= AUTH_EXPIRY_CRITICAL_HOURS else "high"
-                        tokens = load_oauth_tokens(client, connector_id, settings) or {}
+                        tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id) or {}
                         alerts.append(
                             _alert_row(
                                 org_id=org_id,

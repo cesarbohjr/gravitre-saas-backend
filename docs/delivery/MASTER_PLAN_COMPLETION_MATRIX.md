@@ -69,6 +69,7 @@ Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · 
 | Role change / MCP stdio / retrieval +6m / watcher | PARTIAL (main) | #401–#411 merged | Various unit; full matrix NOT RUN | Through `20261013081000` applied | Relay off | NOT RUN | `release1-production-acceptance.md` + creds |
 | Vercel `SUPABASE_SERVICE_ROLE_KEY` presence | NOT STARTED | — | — | — | — | NOT RUN | Operator |
 | Deploy pair (web SHA = backend SHA) | PARTIAL | main vs #427 backend | `/health` `b642dd156` | — | — | PARTIAL | Vercel SHA reconcile |
+| Canonical connector-secret tenant scope | CODE COMPLETE (draft) | Required org_id for single/bulk secret, OAuth and masking helpers; 126 app callsites updated | Syntax + scope inventory passed; focused tenant/mixed-bulk tests pending CI | None | Mandatory scoping, no flag | NOT RUN | Full vendor regression and authenticated connector proof |
 
 **Release 1 gate:** OPEN — authenticated prod matrix not evidence-linked.
 
@@ -135,7 +136,8 @@ Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · 
 |------|------|-------------|----------------|------------|--------|-----------------|---------|
 | `parent_org_id` scaffold | PARTIAL (relationship only; explicit client membership required) | #429 + Codex branch | `test_msp_org_context.py` denies parent-only access | `20261014060000` (review) | `MSP_PARENT_ORG_ENABLED=false` | NOT RUN | Apply authorization |
 | Parent RLS path | WITHDRAWN | `MSP_RLS_PARENT_ACCESS_DEFERRED.md` | — | `20261014110000` removed | — | N/A | Product Option A/B |
-| Client switcher / external MCP product | NOT STARTED | — | — | — | — | NOT RUN | UX + auth design |
+| Workspace/client selection for explicit memberships | CODE COMPLETE (existing) | workspace-switcher.tsx + organizations switch route; no implicit parent delegation | Existing suite; authenticated switching acceptance open | None | Existing membership authority | NOT RUN | Cross-org cache/credential acceptance |
+| Explicit MSP delegation / external MCP product | NOT STARTED | — | — | — | — | NOT RUN | Client-specific grant design and external auth |
 
 ---
 

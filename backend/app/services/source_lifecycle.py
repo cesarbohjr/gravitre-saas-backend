@@ -256,7 +256,7 @@ def revoke_on_disconnect(
     try:
         from app.connectors.hubspot_oauth import load_oauth_tokens
 
-        tokens = load_oauth_tokens(client, connector_id, settings)
+        tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
         shared = v in GOOGLE_FAMILY and _other_live_google_connector(client, org_id, connector_id)
         return revoke_provider_tokens(v, tokens, config=config, shares_grant_with_live_connector=shared)
     except Exception as exc:  # noqa: BLE001

@@ -65,7 +65,8 @@ def test_semrush_error_line_raises():
 @patch("app.connectors.semrush_api.get_connector")
 def test_resolve_semrush_connector(mock_get, mock_secret):
     mock_get.return_value = {"id": "c1", "config": {}}
-    mock_secret.side_effect = lambda _c, _id, key, _s: "token" if key == "api_key" else None
+    mock_secret.side_effect = lambda _c, _id, key, _s, *, org_id: "token" if key == "api_key" else None
     cid, key = resolve_semrush_connector(MagicMock(), "org", "c1", MagicMock())
     assert cid == "c1"
     assert key == "token"
+    assert all(call.kwargs["org_id"] == "org" for call in mock_secret.call_args_list)

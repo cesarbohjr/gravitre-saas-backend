@@ -191,9 +191,9 @@ def slack_connection_auth_status(
     env = environment_name or _connector_environment(client, org_id, connector_id)
     if not slack_oauth_configured(settings, env):
         return "misconfigured"
-    token = get_decrypted_secret(client, connector_id, "token", settings)
+    token = get_decrypted_secret(client, connector_id, "token", settings, org_id=org_id)
     if not token:
-        oauth_tokens = load_oauth_tokens(client, connector_id, settings)
+        oauth_tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
         if oauth_tokens and oauth_tokens.get("access_token"):
             token = str(oauth_tokens["access_token"])
     if not token:

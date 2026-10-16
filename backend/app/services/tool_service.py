@@ -480,7 +480,7 @@ def _hubspot_hub_id(ctx: ToolContext, connector_id: str) -> str | None:
     conn = get_connector(ctx.client, ctx.org_id, connector_id, environment_name=ctx.environment_name)
     tokens = None
     try:
-        tokens = load_oauth_tokens(ctx.client, connector_id, ctx.settings)
+        tokens = load_oauth_tokens(ctx.client, connector_id, ctx.settings, org_id=ctx.org_id)
     except Exception:  # noqa: BLE001
         tokens = None
     return extract_hub_id((conn or {}).get("config"), tokens, conn)
@@ -3166,11 +3166,11 @@ def _exec_email_send(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResu
         content_type = "text/plain"
     conn_config = conn.get("config") or {}
     use_tls = conn_config.get("use_tls", True)
-    smtp_host = get_decrypted_secret(ctx.client, cid, "SMTP_HOST", ctx.settings)
-    smtp_port = get_decrypted_secret(ctx.client, cid, "SMTP_PORT", ctx.settings)
-    smtp_user = get_decrypted_secret(ctx.client, cid, "SMTP_USERNAME", ctx.settings)
-    smtp_pass = get_decrypted_secret(ctx.client, cid, "SMTP_PASSWORD", ctx.settings)
-    smtp_from = get_decrypted_secret(ctx.client, cid, "SMTP_FROM", ctx.settings)
+    smtp_host = get_decrypted_secret(ctx.client, cid, "SMTP_HOST", ctx.settings, org_id=ctx.org_id)
+    smtp_port = get_decrypted_secret(ctx.client, cid, "SMTP_PORT", ctx.settings, org_id=ctx.org_id)
+    smtp_user = get_decrypted_secret(ctx.client, cid, "SMTP_USERNAME", ctx.settings, org_id=ctx.org_id)
+    smtp_pass = get_decrypted_secret(ctx.client, cid, "SMTP_PASSWORD", ctx.settings, org_id=ctx.org_id)
+    smtp_from = get_decrypted_secret(ctx.client, cid, "SMTP_FROM", ctx.settings, org_id=ctx.org_id)
     if not smtp_host:
         raise ToolValidationError("Email connector missing SMTP_HOST secret")
     if not smtp_from:
@@ -3291,8 +3291,8 @@ def _exec_webhook_post(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRe
     sanitize_headers(step_headers)
     ips = resolve_and_validate_host(target_host)
     connect_ip = ips[0]
-    bearer_token = get_decrypted_secret(ctx.client, cid, "WEBHOOK_BEARER_TOKEN", ctx.settings)
-    hmac_secret = get_decrypted_secret(ctx.client, cid, "WEBHOOK_HMAC_SECRET", ctx.settings)
+    bearer_token = get_decrypted_secret(ctx.client, cid, "WEBHOOK_BEARER_TOKEN", ctx.settings, org_id=ctx.org_id)
+    hmac_secret = get_decrypted_secret(ctx.client, cid, "WEBHOOK_HMAC_SECRET", ctx.settings, org_id=ctx.org_id)
     secret_headers: dict[str, str] = {}
     rows = (
         ctx.client.table("connector_secrets")
@@ -3431,7 +3431,7 @@ def _google_vendor_token(ctx: ToolContext, vendor: str, params: dict[str, Any]) 
     if oauth_token:
         return cid, oauth_token
     if vendor == "google_calendar":
-        legacy = get_decrypted_secret(ctx.client, cid, "access_token", ctx.settings)
+        legacy = get_decrypted_secret(ctx.client, cid, "access_token", ctx.settings, org_id=ctx.org_id)
         if legacy:
             return cid, legacy
     raise ToolAuthExpiredError(oauth_err or f"{vendor} not connected")

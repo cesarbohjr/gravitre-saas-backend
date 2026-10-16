@@ -270,7 +270,7 @@ def refresh_workday_tokens_if_needed(
     if not tenant_url or not tenant:
         return None, "Workday tenant_url missing; reconnect OAuth"
 
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if not tokens or not tokens.get("access_token"):
         return None, "OAuth not completed"
 
@@ -414,7 +414,7 @@ def workday_connection_auth_status(
     tenant_url, tenant = _connector_tenant_config(client, org_id, connector_id)
     if not tenant_url or not tenant:
         return "pending_auth"
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if not tokens:
         return "pending_auth"
     _, _, _, _, err = ensure_workday_session(

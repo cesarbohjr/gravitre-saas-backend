@@ -198,7 +198,7 @@ def refresh_netsuite_tokens_if_needed(
     if not account_id:
         return None, "NetSuite account_id missing; reconnect OAuth"
 
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if not tokens or not tokens.get("access_token"):
         return None, "OAuth not completed"
 
@@ -325,7 +325,7 @@ def netsuite_connection_auth_status(
     env = environment_name or _connector_environment(client, org_id, connector_id)
     if not netsuite_oauth_configured(settings, env):
         return "misconfigured"
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if not tokens:
         return "pending_auth"
     if token_needs_refresh(tokens, TOKEN_REFRESH_BUFFER_SEC) and not tokens.get("refresh_token"):

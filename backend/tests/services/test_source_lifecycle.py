@@ -344,7 +344,7 @@ def test_google_revoke_skipped_when_another_google_connector_is_live(monkeypatch
         }
     )
     monkeypatch.setattr(
-        "app.connectors.hubspot_oauth.load_oauth_tokens", lambda *a: {"refresh_token": "r", "access_token": "a"}
+        "app.connectors.hubspot_oauth.load_oauth_tokens", lambda *a, org_id: {"refresh_token": "r", "access_token": "a"}
     )
     sent: list[Any] = []
     monkeypatch.setattr(pr, "_post", lambda *a, **k: sent.append(a))
@@ -359,7 +359,7 @@ def test_google_revoke_skipped_when_another_google_connector_is_live(monkeypatch
 
 
 def test_revoke_never_raises(monkeypatch):
-    def boom(*_a):
+    def boom(*_a, org_id):
         raise RuntimeError("secrets table down")
 
     monkeypatch.setattr("app.connectors.hubspot_oauth.load_oauth_tokens", boom)

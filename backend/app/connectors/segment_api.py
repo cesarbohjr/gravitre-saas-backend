@@ -44,7 +44,7 @@ def resolve_segment_write_key(
         raise SegmentAPIError("Not a Segment connector", status_code=400)
 
     for key_name in ("write_key", "api_key", "segment_write_key"):
-        value = get_decrypted_secret(client, connector_id, key_name, settings)
+        value = get_decrypted_secret(client, connector_id, key_name, settings, org_id=org_id)
         if value and value.strip():
             return value.strip()
 

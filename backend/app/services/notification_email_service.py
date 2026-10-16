@@ -278,11 +278,11 @@ def _send_via_org_email_connector(
     connector_id = str(conn["id"])
     conn_config = conn.get("config") or {}
     use_tls = conn_config.get("use_tls", True)
-    smtp_host = get_decrypted_secret(client, connector_id, "SMTP_HOST", settings)
-    smtp_port = get_decrypted_secret(client, connector_id, "SMTP_PORT", settings)
-    smtp_user = get_decrypted_secret(client, connector_id, "SMTP_USERNAME", settings)
-    smtp_pass = get_decrypted_secret(client, connector_id, "SMTP_PASSWORD", settings)
-    smtp_from = get_decrypted_secret(client, connector_id, "SMTP_FROM", settings)
+    smtp_host = get_decrypted_secret(client, connector_id, "SMTP_HOST", settings, org_id=org_id)
+    smtp_port = get_decrypted_secret(client, connector_id, "SMTP_PORT", settings, org_id=org_id)
+    smtp_user = get_decrypted_secret(client, connector_id, "SMTP_USERNAME", settings, org_id=org_id)
+    smtp_pass = get_decrypted_secret(client, connector_id, "SMTP_PASSWORD", settings, org_id=org_id)
+    smtp_from = get_decrypted_secret(client, connector_id, "SMTP_FROM", settings, org_id=org_id)
     if not smtp_host or not smtp_from:
         logger.info("swarm completion email skipped: email connector incomplete org_id=%s", org_id)
         return False

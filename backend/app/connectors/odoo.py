@@ -65,10 +65,11 @@ def resolve_odoo_credentials(
         str(config.get("odoo_url") or config.get("instance_url") or config.get("instanceUrl") or "")
     )
     database = infer_database_name(base_url, str(config.get("database") or config.get("db") or "") or None)
-    username = get_decrypted_secret(client, cid, "username", settings) or get_decrypted_secret(
-        client, cid, "login", settings
+    username = get_decrypted_secret(client, cid, "username", settings, org_id=org_id) or get_decrypted_secret(
+        client, cid, "login", settings,
+        org_id=org_id,
     )
-    api_key = get_decrypted_secret(client, cid, "api_key", settings)
+    api_key = get_decrypted_secret(client, cid, "api_key", settings, org_id=org_id)
     if not username:
         raise OdooAPIError("Odoo username missing on connector", status_code=401)
     if not api_key:

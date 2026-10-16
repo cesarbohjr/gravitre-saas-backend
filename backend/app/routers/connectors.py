@@ -306,9 +306,10 @@ def _connector_response_item(
                 row,
                 settings,
                 preloaded_secret=preloaded_api_key_secrets[connector_id],
+                org_id=org_id,
             )
         else:
-            api_key = masked_api_key_for_response(client, connector_id, row, settings)
+            api_key = masked_api_key_for_response(client, connector_id, row, settings, org_id=org_id)
     except Exception:  # noqa: BLE001
         logger.exception("connector api key mask failed id=%s", connector_id)
         api_key = None
@@ -564,7 +565,7 @@ def list_connectors_route_alias(
         q = (
             client.table("connectors")
             .select(
-                "id, name, vendor, type, description, status, environment, config, sync_frequency, "
+                "id, org_id, name, vendor, type, description, status, environment, config, sync_frequency, "
                 "last_sync_at, records_synced, docs_url, api_key_encrypted, webhook_url"
             )
             .eq("org_id", org_id)
@@ -605,6 +606,7 @@ def list_connectors_route_alias(
             [str(row["id"]) for row in visible_rows if row.get("id") is not None],
             "api_key",
             settings,
+            org_id=org_id,
         )
     except Exception:  # noqa: BLE001
         logger.exception("connector api key bulk read failed org_id=%s", org_id)
@@ -787,7 +789,7 @@ async def get_connector_route_alias(
     row = (
         client.table("connectors")
         .select(
-            "id, name, vendor, type, description, status, environment, config, sync_frequency, "
+                "id, org_id, name, vendor, type, description, status, environment, config, sync_frequency, "
             "last_sync_at, records_synced, docs_url, api_key_encrypted, webhook_url"
         )
         .eq("org_id", org_id)
@@ -930,7 +932,7 @@ def test_connector_route(
                     }
                 return {"success": True, "message": f"{vendor} connection is valid"}
             if vendor == "google_calendar":
-                legacy = get_decrypted_secret(client, str(connector_id), "access_token", settings)
+                legacy = get_decrypted_secret(client, str(connector_id), "access_token", settings, org_id=org_id)
                 if legacy:
                     return {"success": True, "message": "Google Calendar access_token configured (legacy)"}
             return {"success": False, "message": err or f"{vendor} not connected"}

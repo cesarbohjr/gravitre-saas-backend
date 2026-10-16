@@ -35,7 +35,7 @@ def test_resolve_odoo_credentials(mock_get_by_type, mock_secret):
         "id": "conn-1",
         "config": {"odoo_url": "https://acme.odoo.com"},
     }
-    mock_secret.side_effect = lambda _client, _cid, key, _settings: {
+    mock_secret.side_effect = lambda _client, _cid, key, _settings, *, org_id: {
         "username": "admin@acme.com",
         "api_key": "odoo-key",
     }.get(key)

@@ -100,11 +100,11 @@ def _store() -> dict[str, list[dict[str, Any]]]:
             _connector("c5", "ahrefs"),
         ],
         "connector_secrets": [
-            {"connector_id": "c1", "key_name": "api_key", "encrypted_value": encrypt_secret("sk_live_1234", _KEY)},
-            {"connector_id": "c1", "key_name": "oauth_tokens", "encrypted_value": encrypt_secret("{}", _KEY)},
-            {"connector_id": "c3", "key_name": "api_key", "encrypted_value": "not-a-fernet-token"},
-            {"connector_id": "c4", "key_name": "api_key", "encrypted_value": encrypt_secret("hidden9999", _KEY)},
-            {"connector_id": "c5", "key_name": "api_key", "encrypted_value": encrypt_secret("ah_abcd5678", _KEY)},
+            {"org_id": "org-1", "connector_id": "c1", "key_name": "api_key", "encrypted_value": encrypt_secret("sk_live_1234", _KEY)},
+            {"org_id": "org-1", "connector_id": "c1", "key_name": "oauth_tokens", "encrypted_value": encrypt_secret("{}", _KEY)},
+            {"org_id": "org-1", "connector_id": "c3", "key_name": "api_key", "encrypted_value": "not-a-fernet-token"},
+            {"org_id": "org-1", "connector_id": "c4", "key_name": "api_key", "encrypted_value": encrypt_secret("hidden9999", _KEY)},
+            {"org_id": "org-1", "connector_id": "c5", "key_name": "api_key", "encrypted_value": encrypt_secret("ah_abcd5678", _KEY)},
         ],
     }
 
@@ -201,12 +201,12 @@ def test_get_decrypted_secrets_bulk_chunks_and_maps_every_id(settings) -> None:
     ids = [f"c{i}" for i in range(450)]
     store = {
         "connector_secrets": [
-            {"connector_id": cid, "key_name": "api_key", "encrypted_value": encrypt_secret(f"v-{cid}", _KEY)}
+            {"org_id": "org-1", "connector_id": cid, "key_name": "api_key", "encrypted_value": encrypt_secret(f"v-{cid}", _KEY)}
             for cid in ids[::3]
         ]
     }
     client = _Client(store)
-    out = get_decrypted_secrets_bulk(client, ids + ["c0"], "api_key", settings)
+    out = get_decrypted_secrets_bulk(client, ids + ["c0"], "api_key", settings, org_id="org-1")
     assert client.count("connector_secrets") == 3  # 450 ids / 200 per chunk
     assert set(out) == set(ids)
     for i, cid in enumerate(ids):
@@ -215,5 +215,5 @@ def test_get_decrypted_secrets_bulk_chunks_and_maps_every_id(settings) -> None:
 
 def test_get_decrypted_secrets_bulk_no_ids_issues_no_query(settings) -> None:
     client = _Client({})
-    assert get_decrypted_secrets_bulk(client, [], "api_key", settings) == {}
+    assert get_decrypted_secrets_bulk(client, [], "api_key", settings, org_id="org-1") == {}
     assert client.executions == []

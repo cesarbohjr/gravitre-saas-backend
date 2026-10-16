@@ -66,7 +66,7 @@ def test_ahrefs_http_error():
 @patch("app.connectors.ahrefs_api.get_connector")
 def test_resolve_ahrefs_connector(mock_get, mock_secret):
     mock_get.return_value = {"id": "c1", "config": {}}
-    mock_secret.side_effect = lambda _c, _id, key, _s: "token" if key == "api_token" else None
+    mock_secret.side_effect = lambda _c, _id, key, _s, *, org_id: "token" if key == "api_token" else None
     cid, key = resolve_ahrefs_connector(MagicMock(), "org", "c1", MagicMock())
     assert cid == "c1"
     assert key == "token"

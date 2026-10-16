@@ -281,6 +281,18 @@ jobs:
         env:
           APP_ENV: dev
 
+      - name: Connector credential tenant-scope contract
+        run: >-
+          python -m pytest
+          tests/connectors/test_connector_secret_org_scope.py
+          tests/routers/test_connectors_list_secrets_batch.py
+          tests/connectors/test_twilio_api_key_auth.py
+          tests/connectors/test_semrush_api.py
+          tests/services/test_source_lifecycle.py
+          -q --no-header
+        env:
+          APP_ENV: dev
+
       - name: Assistant crash-gap recovery contract
         working-directory: .
         run: python -m pytest scripts/tests/test_reconcile_assistant_billing.py -q --no-header

@@ -78,7 +78,7 @@ def main() -> int:
         vendor = str(row.get("type") or row.get("vendor") or "")
         status = str(row.get("status") or "")
         connector_id = str(row.get("id") or "")
-        tokens = load_oauth_tokens(sb, connector_id, settings) if connector_id else {}
+        tokens = load_oauth_tokens(sb, connector_id, settings, org_id=org_id) if connector_id else {}
         has_refresh = bool((tokens or {}).get("refresh_token"))
         needs_refresh = token_needs_refresh(tokens, 300) if tokens else True
         connected = status in {"connected", "healthy", "active"} or bool(tokens)
@@ -106,7 +106,7 @@ def main() -> int:
                     "ok": refresh_err is None and refreshed is not None,
                     "error": (refresh_err or "")[:180],
                 }
-                tokens = load_oauth_tokens(sb, connector_id, settings) or {}
+                tokens = load_oauth_tokens(sb, connector_id, settings, org_id=org_id) or {}
                 has_refresh = bool(tokens.get("refresh_token"))
                 needs_refresh = token_needs_refresh(tokens, 300) if tokens else True
                 authenticated = bool(tokens.get("access_token") or has_refresh)

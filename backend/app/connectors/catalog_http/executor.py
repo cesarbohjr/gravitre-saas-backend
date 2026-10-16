@@ -137,8 +137,9 @@ def _resolve_auth(
         return headers, cid
 
     if profile.auth == "api_token":
-        token = get_decrypted_secret(ctx.client, cid, "api_token", ctx.settings) or get_decrypted_secret(
-            ctx.client, cid, "token", ctx.settings
+        token = get_decrypted_secret(ctx.client, cid, "api_token", ctx.settings, org_id=ctx.org_id) or get_decrypted_secret(
+            ctx.client, cid, "token", ctx.settings,
+            org_id=ctx.org_id,
         )
         if not token:
             raise ToolAuthExpiredError(f"{profile.vendor} API token not configured")

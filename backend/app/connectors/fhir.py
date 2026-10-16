@@ -37,8 +37,9 @@ def resolve_fhir_session(
     cid = str(conn["id"])
     config = conn.get("config") or {}
     base_url = (config.get("base_url") or config.get("baseUrl") or FHIR_SANDBOX_BASE_URL).strip().rstrip("/")
-    token = get_decrypted_secret(client, cid, "bearer_token", settings) or get_decrypted_secret(
-        client, cid, "api_key", settings
+    token = get_decrypted_secret(client, cid, "bearer_token", settings, org_id=org_id) or get_decrypted_secret(
+        client, cid, "api_key", settings,
+        org_id=org_id,
     )
     return cid, base_url, token.strip() if token else None
 
