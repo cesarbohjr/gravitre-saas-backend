@@ -36,6 +36,11 @@ def load_env() -> dict[str, str]:
                 key, val = key.strip(), val.strip().strip('"').strip("'")
                 if key and val:
                     merged[key] = val
+    # GitHub Actions supplies protected values in the process environment.
+    # Prefer those over local operator files; never include values in reports.
+    merged.update({key: os.environ[key] for key in (
+        "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_JWT_SECRET",
+    ) if os.environ.get(key)})
     return merged
 
 
