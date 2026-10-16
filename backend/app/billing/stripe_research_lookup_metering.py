@@ -90,6 +90,12 @@ def report_research_lookup_overage_to_stripe(
 ) -> dict[str, Any]:
     """Report unreported research lookup OVERAGE units to Stripe Billing Meter."""
     client = client or get_supabase_client(settings)
+    if getattr(settings, "stripe_meter_outbox_enabled", False):
+        from app.billing.stripe_meter_outbox import report_meter_intents
+        return report_meter_intents(
+            org_id, "research_lookups", period_start, period_end, settings,
+            client=client, dry_run=dry_run,
+        )
     result: dict[str, Any] = {
         "org_id": org_id,
         "period_start": period_start.isoformat(),
