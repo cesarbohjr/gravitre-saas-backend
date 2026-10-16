@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS public.stripe_meter_outbox (
   claimed_at timestamptz,
   delivered_at timestamptz,
   attempt_count integer NOT NULL DEFAULT 0,
+  resolution_evidence text,
+  resolved_by text,
+  resolved_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (org_id, environment, metric_type, source_id),
   CHECK (period_end >= period_start)
@@ -239,6 +242,47 @@ AS $$
   ) SELECT EXISTS(SELECT 1 FROM changed);
 $$;
 
+-- Deliberate human-operated recovery only. Never automatically retry uncertain
+-- deliveries; a Stripe event identifier or Stripe absence verification and
+-- a named operator must be recorded for financial audit.
+CREATE OR REPLACE FUNCTION public.resolve_stripe_meter_intent(
+  p_id uuid,p_resolution text,p_evidence text,p_operator text
+) RETURNS boolean
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
+AS $
+DECLARE v public.stripe_meter_outbox%ROWTYPE;
+        v_rows integer;
+BEGIN
+  IF p_id IS NULL OR p_resolution NOT IN ('delivered','retry_confirmed_not_received')
+     OR NULLIF(trim(p_evidence),'') IS NULL
+     OR NULLIF(trim(p_operator),'') IS NULL THEN
+    RAISE EXCEPTION 'meter_resolution_requires_verified_evidence';
+  END IF;
+  UPDATE public.stripe_meter_outbox
+     SET status=CASE WHEN p_resolution='delivered' THEN 'delivered' ELSE 'pending' END,
+         claim_token=NULL,claimed_at=NULL,
+         delivered_at=CASE WHEN p_resolution='delivered' THEN now() ELSE delivered_at END,
+         resolution_evidence=p_evidence,resolved_by=p_operator,resolved_at=now()
+   WHERE id=p_id AND status IN ('ambiguous','sending')
+   RETURNING * INTO v;
+  IF NOT FOUND THEN RETURN false; END IF;
+  IF p_resolution='delivered' THEN
+    IF v.metric_type='ai_credits' THEN
+      UPDATE public.usage_tracking
+         SET stripe_reported_at=COALESCE(stripe_reported_at,now())
+       WHERE id=v.source_id AND org_id=v.org_id;
+    ELSE
+      UPDATE public.usage_records
+         SET stripe_reported_at=COALESCE(stripe_reported_at,now())
+       WHERE id=v.source_id AND org_id=v.org_id;
+    END IF;
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+    IF v_rows<>1 THEN RAISE EXCEPTION 'meter_resolution_source_missing'; END IF;
+  END IF;
+  RETURN true;
+END;
+$;
+
 REVOKE ALL ON FUNCTION public.stage_stripe_meter_intents(uuid,text,date,date,integer,text,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.claim_stripe_meter_intents(uuid,text,date,integer) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.ack_stripe_meter_intent(uuid,uuid) FROM PUBLIC, anon, authenticated;
@@ -247,3 +291,6 @@ GRANT EXECUTE ON FUNCTION public.stage_stripe_meter_intents(uuid,text,date,date,
 GRANT EXECUTE ON FUNCTION public.claim_stripe_meter_intents(uuid,text,date,integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.ack_stripe_meter_intent(uuid,uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.mark_stripe_meter_ambiguous(uuid,uuid) TO service_role;
+
+REVOKE ALL ON FUNCTION public.resolve_stripe_meter_intent(uuid,text,text,text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.resolve_stripe_meter_intent(uuid,text,text,text) TO service_role;
