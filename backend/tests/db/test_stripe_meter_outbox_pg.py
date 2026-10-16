@@ -61,7 +61,7 @@ def clean(pg):
 def _stage(pg, metric, included=0, org=A):
     return pg.value(
         f"SET ROLE service_role; SELECT public.stage_stripe_meter_intents("
-        f"'{org}','{metric}','2026-10-01','2026-10-31',{included});"
+        f"'{org}','{metric}','2026-10-01','2026-10-31',{included}, 'cus_test', 'test_meter');"
     )
 
 
@@ -84,7 +84,7 @@ def test_staging_idempotent_and_allowance_change_fails_closed(pg):
     assert _stage(pg, "research_lookups", 10) == "0"
     assert pg.psql(
         f"SET ROLE service_role; SELECT public.stage_stripe_meter_intents("
-        f"'{A}','research_lookups','2026-10-01','2026-10-31',11);", check=False
+        f"'{A}','research_lookups','2026-10-01','2026-10-31',11, 'cus_test', 'test_meter');", check=False
     ).returncode != 0
 
 
