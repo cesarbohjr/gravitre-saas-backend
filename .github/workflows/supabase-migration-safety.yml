@@ -86,7 +86,10 @@ jobs:
           blocked = [
               (re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"), "embedded private key material"),
               (re.compile(r"\bAKIA[0-9A-Z]{16}\b"), "possible AWS access key id"),
-              (re.compile(r"\bservice_role\b.*\bto\b.*\b(public|anon)\b", re.I | re.S), "service_role grant to public/anon"),
+              (
+                  re.compile(r"\bGRANT\b[^;]*\bTO\s+(PUBLIC|anon)\b", re.I),
+                  "GRANT to PUBLIC/anon (same statement)",
+              ),
               (re.compile(r"\bpg_read_file\s*\(", re.I), "pg_read_file()"),
               (re.compile(r"\\copy\b.*\bprogram\b", re.I), "\\copy PROGRAM"),
               (re.compile(r"\blo_import\s*\(", re.I), "lo_import()"),

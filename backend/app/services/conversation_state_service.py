@@ -120,6 +120,9 @@ DEFAULT_TASK_STATE: dict[str, Any] = {
     # every surface (text, voice, agents) so "actually, make that Canadian MSPs"
     # revises the same objective instead of starting over.
     "active_objective": None,
+    # Unified lifecycle envelope (chat / voice / UI / ROI projector).
+    "action_lifecycle": None,
+    "lifecycle_envelope": None,
 }
 
 
@@ -373,6 +376,17 @@ class ConversationStateService:
 
                 updates = enrich_task_state_patch(updates, current_state=current)
                 merged = self._merge_task_state(current, updates)
+                from app.services.lifecycle_envelope import (
+                    enrich_task_state_with_lifecycle_envelope,
+                    patch_needs_lifecycle_refresh,
+                )
+
+                if patch_needs_lifecycle_refresh(updates) or merged.get("lifecycle_envelope") is None:
+                    merged = enrich_task_state_with_lifecycle_envelope(
+                        merged,
+                        org_id=org_id,
+                        conversation_id=conversation_id,
+                    )
                 from app.services.speculative_execution import current_scope
 
                 scope = current_scope()

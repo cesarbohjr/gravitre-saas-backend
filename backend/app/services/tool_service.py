@@ -5247,6 +5247,27 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
             )
     _write_tool_audit(ctx, action, cid, "tool.invoke.requested")
 
+    if _is_write_invoke(action) and ctx.run_id and ctx.client:
+        from app.services.canvas_write_gate import load_run_for_write_gate
+        from app.services.workflow_approval_scope import block_invoke_by_approval_scope
+
+        run_row = load_run_for_write_gate(ctx.client, ctx.org_id, str(ctx.run_id))
+        if run_row is not None:
+            definition = run_row.get("definition_snapshot") or run_row.get("definition")
+            params_raw = run_row.get("parameters") if isinstance(run_row.get("parameters"), dict) else {}
+            scope_block = block_invoke_by_approval_scope(
+                invoke_action=action,
+                run_row=run_row,
+                run_parameters=params_raw,
+                definition=definition if isinstance(definition, dict) else None,
+                invoke_params=params if isinstance(params, dict) else {},
+            )
+            if scope_block is not None:
+                raise ToolValidationError(
+                    str(scope_block.get("reason") or scope_block.get("error_code") or "approval_scope_blocked"),
+                    code=str(scope_block.get("error_code") or "APPROVAL_SCOPE_BLOCKED"),
+                )
+
     compensation_snapshot = None
     if ctx.run_id:
         from app.services.compensation_service import prepare_forward_snapshot, record_compensatable_action, should_track_compensation
@@ -5255,6 +5276,50 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
             compensation_snapshot = prepare_forward_snapshot(ctx, action, params)
 
     from app.services.voice_barge_in_write import begin_write_effect, finish_write_effect
+
+    write_idempotency_key: str | None = None
+    write_logical_action_id: str | None = None
+    write_claim_token: str | None = None
+    idempotency_enabled = _is_write_invoke(action) and bool(
+        getattr(ctx.settings, "write_invoke_idempotency_enabled", False)
+    )
+    if idempotency_enabled:
+        from app.services.write_invoke_idempotency import (
+            WriteIdempotencyUnavailable,
+            build_write_idempotency_key,
+            claim_write_invoke,
+            inject_provider_idempotency,
+        )
+
+        write_idempotency_key, write_logical_action_id = build_write_idempotency_key(ctx, action, params)
+        claim = claim_write_invoke(
+            ctx.client,
+            org_id=ctx.org_id,
+            idempotency_key=write_idempotency_key,
+            invoke_action=action,
+            logical_action_id_value=write_logical_action_id,
+        )
+        if claim.outcome == "replay" and claim.replay is not None:
+            _write_tool_audit(
+                ctx,
+                action,
+                cid,
+                "tool.invoke.completed",
+                {"idempotency_replay": True, "idempotency_key": write_idempotency_key[:16]},
+            )
+            return claim.replay
+        if claim.outcome == "blocked":
+            raise WriteIdempotencyUnavailable(
+                f"Write already in progress or requires reconciliation ({claim.status or claim.reason})",
+                code="write_idempotency_blocked",
+            )
+        if claim.outcome == "error":
+            raise WriteIdempotencyUnavailable(
+                "Write idempotency ledger unavailable; refusing duplicate-risk invoke",
+                code="write_idempotency_unavailable",
+            )
+        write_claim_token = claim.claim_token
+        params = inject_provider_idempotency(params, write_idempotency_key)
 
     # Last stop check before the provider call, and the record a cancelled
     # voice turn reads to say what had already been done.
@@ -5331,6 +5396,17 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                         connector_id=result.connector_id or cid,
                         snapshot=compensation_snapshot,
                     )
+            if result.success and write_idempotency_key and idempotency_enabled:
+                from app.services.write_invoke_idempotency import finalize_write_invoke
+
+                finalize_write_invoke(
+                    ctx.client,
+                    org_id=ctx.org_id,
+                    idempotency_key=write_idempotency_key,
+                    claim_token=write_claim_token,
+                    status="completed",
+                    result=result,
+                )
             try:
                 from app.services.post_publish_marketing_metrics_service import (
                     maybe_record_post_publish_marketing_baseline,
@@ -5407,6 +5483,17 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                 break
             if attempt < len(_RETRY_BACKOFF_SEC):
                 time.sleep(_RETRY_BACKOFF_SEC[attempt])
+
+    if write_idempotency_key and idempotency_enabled and last_error is not None:
+        from app.services.write_invoke_idempotency import finalize_write_invoke
+
+        finalize_write_invoke(
+            ctx.client,
+            org_id=ctx.org_id,
+            idempotency_key=write_idempotency_key,
+            claim_token=write_claim_token,
+            status="uncertain" if isinstance(last_error, ToolOutcomeUncertainError) else "failed",
+        )
 
     finish_write_effect(
         write_effect,

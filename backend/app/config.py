@@ -681,7 +681,37 @@ class Settings(BaseSettings):
     # Shared secret for /api/watchers/agent/signal HMAC or X-Watcher-Secret header.
     watcher_agent_webhook_secret: str | None = None
     # Write authority on the invoke spine: shadow (log missing authority), enforce, off.
-    write_authority_mode: str = "shadow"
+    write_authority_mode: str = Field(
+        default="shadow",
+        validation_alias=AliasChoices("WRITE_AUTHORITY_MODE", "write_authority_mode"),
+    )
+    # Release 4: allow MSP parent-org members to resolve child org context (needs migration).
+    msp_parent_org_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("MSP_PARENT_ORG_ENABLED", "msp_parent_org_enabled"),
+    )
+    # Route auto-approved event-triggered runs through the durable workflow queue.
+    event_trigger_use_workflow_queue: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "EVENT_TRIGGER_USE_WORKFLOW_QUEUE",
+            "event_trigger_use_workflow_queue",
+        ),
+    )
+    write_invoke_idempotency_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "WRITE_INVOKE_IDEMPOTENCY_ENABLED",
+            "write_invoke_idempotency_enabled",
+        ),
+    )
+    workflow_queue_fail_closed: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "WORKFLOW_QUEUE_FAIL_CLOSED",
+            "workflow_queue_fail_closed",
+        ),
+    )
     # Memory promotion evaluation (v4). 0 disables; default 8 hours.
     memory_promotion_eval_interval_seconds: int = 28800
     # Memory expiration/decay checks (v4). 0 disables; default daily.
@@ -692,6 +722,13 @@ class Settings(BaseSettings):
     # Durable workflow run queue consumer (STA-94). Requires REDIS_URL.
     workflow_queue_enabled: bool = True
     workflow_queue_poll_seconds: int = 5
+    workflow_queue_max_delivery_attempts: int = Field(
+        default=5,
+        validation_alias=AliasChoices(
+            "workflow_queue_max_delivery_attempts",
+            "WORKFLOW_QUEUE_MAX_DELIVERY_ATTEMPTS",
+        ),
+    )
     # White-label custom domain CNAME target (STA-84)
     enterprise_custom_domain_cname_target: str = "cname.gravitre.app"
     # Deployment region for RLS enforcement (us|eu). Set per regional Supabase/API deployment.
@@ -1282,6 +1319,12 @@ class Settings(BaseSettings):
     @classmethod
     def _validate_connector_secrets_key_format(cls, value: str) -> str:
         return validate_connector_secrets_encryption_key(value)
+
+    @field_validator("write_authority_mode")
+    @classmethod
+    def _normalize_write_authority_mode(cls, value: str) -> str:
+        normalized = str(value or "shadow").strip().lower()
+        return normalized if normalized in {"shadow", "enforce", "off"} else "shadow"
 
     @model_validator(mode="after")
     def _validate_required_secrets(self) -> "Settings":

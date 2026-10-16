@@ -41,6 +41,15 @@ vi.mock("@/lib/auth-context", () => ({
   }),
 }))
 
+// framer-motion's useReducedMotion reads matchMedia at the module level and caches the
+// result in a singleton. In singleFork mode a prior test file that stubs matchMedia with
+// matches:true can poison that singleton even after vi.unstubAllGlobals() runs. Mocking
+// the hook directly prevents any cross-file global state from affecting these tests.
+vi.mock("framer-motion", async () => {
+  const actual = await vi.importActual<typeof import("framer-motion")>("framer-motion")
+  return { ...actual, useReducedMotion: () => false }
+})
+
 // Static import is safe — this is a pure function, independent of the flag.
 import { shouldShowGravitreAIHelper } from "@/components/gravitre/ai-helper"
 import type { GravitreAIWorkspaceContextValue } from "@/components/gravitre/ai-workspace-provider"
@@ -56,6 +65,12 @@ beforeEach(() => {
   authState.userId = "user-1"
   authState.loading = false
   routerPush.mockClear()
+  // In singleFork mode the same jsdom instance is reused across test files.
+  // Other files (window-manager tests, etc.) may have written a window-manager
+  // preference to localStorage. Clear it so resolvePreferredWindowMode falls
+  // back to the contextual default ("floating" on /dashboard) rather than a
+  // stale stored value ("expanded") from a prior test file.
+  window.localStorage.removeItem("gravitre.wm.preferred-mode.v1")
   container = document.createElement("div")
   document.body.appendChild(container)
 })

@@ -8,6 +8,7 @@ import pytest
 from app.config import Settings
 from app.operators.react_engine import ReActEngine
 from app.services.tool_types import ToolContext
+from app.services.workflow_approval_scope import seal_approval_scope
 
 
 @pytest.mark.asyncio
@@ -48,9 +49,25 @@ async def test_canvas_run_approved_allows_write(monkeypatch):
         "app.services.react_write_gate.tool_requires_user_write_approval",
         lambda *_a, **_k: (True, "apollo.lists.create", "apollo", "Create list"),
     )
+    definition = {
+        "steps": [
+            {
+                "id": "s1",
+                "type": "invoke_tool",
+                "config": {"action": "apollo.lists.create", "name": "Outreach", "id": "list-1"},
+            }
+        ]
+    }
+    scope = seal_approval_scope(definition)
     monkeypatch.setattr(
         "app.services.canvas_write_gate.load_run_for_write_gate",
-        lambda *_a, **_k: {"id": "run1", "required_approvals": 1, "approval_status": "approved"},
+        lambda *_a, **_k: {
+            "id": "run1",
+            "required_approvals": 1,
+            "approval_status": "approved",
+            "parameters": {"approval_scope": scope},
+            "definition_snapshot": definition,
+        },
     )
 
     ctx = ToolContext(
@@ -60,6 +77,10 @@ async def test_canvas_run_approved_allows_write(monkeypatch):
         actor_id="user",
         run_id="run1",
     )
-    result = await engine._execute_tool_call(ctx, "apollo_lists_create", {})
+    result = await engine._execute_tool_call(
+        ctx,
+        "apollo_lists_create",
+        {"name": "Outreach", "id": "list-1"},
+    )
     assert result.get("success") is True
     engine.registry.execute_tool.assert_awaited_once()

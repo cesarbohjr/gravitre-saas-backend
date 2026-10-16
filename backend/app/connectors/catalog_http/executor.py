@@ -194,13 +194,20 @@ def make_catalog_http_executor(action: str) -> Any:
         cid = str(conn["id"])
         enforce_rate_limit(ctx.client, ctx.org_id, profile.vendor, profile.connector_type, cid)
         headers, _ = _resolve_auth(ctx, profile, conn)
+        idem = params.get("_gravitre_idempotency_key")
+        if idem:
+            headers["Idempotency-Key"] = str(idem)
         base = _format_base_url(profile, conn)
         path = profile.path_prefix + _build_path(path_template, params, path_params)
         url = f"{base}{path}"
 
         query_keys = ("limit", "top", "page", "page_size", "per_page", "cursor", "offset", "query", "q", "filter", "status")
         query = {k: params[k] for k in query_keys if params.get(k) is not None}
-        body_keys = set(params.keys()) - set(query.keys()) - {"connector_id", "path_prefix"}
+        body_keys = set(params.keys()) - set(query.keys()) - {
+            "connector_id",
+            "path_prefix",
+            "_gravitre_idempotency_key",
+        }
         json_body = {k: v for k, v in params.items() if k in body_keys and v is not None} or None
         if method in {"GET", "DELETE"}:
             json_body = None

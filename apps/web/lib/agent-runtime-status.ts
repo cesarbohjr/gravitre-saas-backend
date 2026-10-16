@@ -127,6 +127,14 @@ export function taskRuntimeLabel(status: string): string {
     case "awaiting_approval":
     case "pending_approval":
       return "Pending approval"
+    case "verifying":
+      return "Verifying"
+    case "verified":
+      return "Verified"
+    case "uncertain":
+      return "Needs reconciliation"
+    case "accepted":
+      return "Accepted"
     default:
       return status || "Unknown"
   }

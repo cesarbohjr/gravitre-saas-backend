@@ -53,6 +53,7 @@ def test_default_mode_is_shadow():
     from app.config import Settings
 
     assert Settings.model_fields["write_authority_mode"].default == "shadow"
+    assert Settings.model_fields["write_authority_mode"].validation_alias is not None
     assert wa._mode(SimpleNamespace()) == "shadow"
     assert wa._mode(SimpleNamespace(write_authority_mode="bogus")) == "shadow"
 
