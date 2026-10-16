@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS public.stripe_meter_outbox (
   org_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   environment text NOT NULL CHECK (environment = 'production'),
   metric_type text NOT NULL CHECK (metric_type IN ('ai_credits', 'research_lookups', 'voice_minutes')),
+  stripe_customer_id text NOT NULL,
+  meter_event_name text NOT NULL,
   source_id uuid NOT NULL,
   period_start date NOT NULL,
   period_end date NOT NULL,
@@ -30,7 +32,7 @@ GRANT SELECT, INSERT, UPDATE ON public.stripe_meter_outbox TO service_role;
 -- The global period allowance is snapshotted and inconsistent later plan changes are rejected.
 CREATE OR REPLACE FUNCTION public.stage_stripe_meter_intents(
   p_org_id uuid, p_metric text, p_period_start date, p_period_end date,
-  p_included integer DEFAULT 0
+  p_included integer DEFAULT 0, p_customer_id text DEFAULT '', p_event_name text DEFAULT ''
 ) RETURNS integer
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
 AS $$
@@ -38,7 +40,8 @@ DECLARE
   v_rows integer := 0;
 BEGIN
   IF p_org_id IS NULL OR p_metric NOT IN ('ai_credits','research_lookups','voice_minutes')
-     OR p_period_end < p_period_start OR p_included < 0 THEN
+     OR p_period_end < p_period_start OR p_included < 0
+     OR NULLIF(trim(p_customer_id),'') IS NULL OR NULLIF(trim(p_event_name),'') IS NULL THEN
     RAISE EXCEPTION 'invalid_meter_intent_request';
   END IF;
   PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
@@ -46,7 +49,8 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM public.stripe_meter_outbox
     WHERE org_id=p_org_id AND metric_type=p_metric AND period_start=p_period_start
-      AND period_end=p_period_end AND included_snapshot<>p_included
+      AND period_end=p_period_end AND (included_snapshot<>p_included
+        OR stripe_customer_id<>p_customer_id OR meter_event_name<>p_event_name)
   ) THEN
     RAISE EXCEPTION 'stripe_meter_allowance_changed_requires_reconciliation';
   END IF;
@@ -81,11 +85,11 @@ BEGIN
   IF p_metric = 'ai_credits' THEN
     INSERT INTO public.stripe_meter_outbox(
        org_id,environment,metric_type,source_id,period_start,period_end,
-       included_snapshot,quantity,event_identifier,status)
+       included_snapshot,quantity,event_identifier,status,stripe_customer_id,meter_event_name)
     SELECT u.org_id,'production','ai_credits',u.id,p_period_start,p_period_end,
            p_included,u.quantity,
            'gv_'||md5(p_org_id::text||':ai_credits:'||u.id::text),
-           CASE WHEN u.quantity = 0 THEN 'zero' ELSE 'pending' END
+           CASE WHEN u.quantity = 0 THEN 'zero' ELSE 'pending' END,p_customer_id,p_event_name
       FROM public.usage_tracking u
      WHERE u.org_id=p_org_id AND u.metric_type='ai_credits'
        AND u.environment='production' AND u.period_start=p_period_start
@@ -110,11 +114,11 @@ BEGIN
     )
     INSERT INTO public.stripe_meter_outbox(
       org_id,environment,metric_type,source_id,period_start,period_end,
-      included_snapshot,quantity,event_identifier,status)
+      included_snapshot,quantity,event_identifier,status,stripe_customer_id,meter_event_name)
     SELECT d.org_id,'production',p_metric,d.id,p_period_start,p_period_end,
            p_included,d.billable,
            'gv_'||md5(p_org_id::text||':'||p_metric||':'||d.id::text),
-           CASE WHEN d.billable=0 THEN 'zero' ELSE 'pending' END
+           CASE WHEN d.billable=0 THEN 'zero' ELSE 'pending' END,p_customer_id,p_event_name
     FROM deltas d
     WHERE NOT EXISTS (
       SELECT 1 FROM public.stripe_meter_outbox o
@@ -197,11 +201,11 @@ AS $$
   ) SELECT EXISTS(SELECT 1 FROM changed);
 $$;
 
-REVOKE ALL ON FUNCTION public.stage_stripe_meter_intents(uuid,text,date,date,integer) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.stage_stripe_meter_intents(uuid,text,date,date,integer,text,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.claim_stripe_meter_intents(uuid,text,integer) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.ack_stripe_meter_intent(uuid,uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.mark_stripe_meter_ambiguous(uuid,uuid) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.stage_stripe_meter_intents(uuid,text,date,date,integer) TO service_role;
+GRANT EXECUTE ON FUNCTION public.stage_stripe_meter_intents(uuid,text,date,date,integer,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.claim_stripe_meter_intents(uuid,text,integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.ack_stripe_meter_intent(uuid,uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.mark_stripe_meter_ambiguous(uuid,uuid) TO service_role;
