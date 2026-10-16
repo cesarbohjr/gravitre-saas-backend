@@ -12,7 +12,7 @@ mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 
-def _client(outbox, ai, research, voice):
+def _client(outbox, ai, research, voice, model_calls=None):
     class Query:
         def __init__(self, table):
             self.table = table
@@ -34,6 +34,8 @@ def _client(outbox, ai, research, voice):
                 rows = outbox
             elif self.table == "usage_tracking":
                 rows = ai
+            elif self.table == "model_calls":
+                rows = model_calls or []
             else:
                 rows = research if ("metric_type", "research_lookups") in self.filters else voice
             return type("Response", (), {"data": rows[self.lo:self.hi+1]})()
@@ -60,3 +62,21 @@ def test_outbox_reconciliation_detects_cross_surface_gaps_without_sensitive_fiel
     assert report["unresolved_errors"] == 2
     assert "org-1" not in str(report)
     assert "same-id" not in str(report)
+
+
+def test_model_call_reconciliation_reveals_missing_workflow_settlement():
+    calls = [
+        {"id": "call-a", "org_id": "org-a", "run_id": "run-1", "turn_id": "assistant:1",
+         "billing_credits": 6, "billing_settled_at": None},
+        {"id": "call-b", "org_id": "org-a", "run_id": None, "turn_id": "assistant:2",
+         "billing_credits": 4, "billing_settled_at": "2026-10-10T00:00:00Z"},
+    ]
+    ledger = [{"id": "usage-1", "org_id": "org-a", "source_id": "call-b",
+               "stripe_reported_at": "2026-10-10T00:00:00Z"}]
+    intent = [{"source_id": "usage-1", "org_id": "org-a", "metric_type": "ai_credits",
+               "status": "delivered", "quantity": 4}]
+    result = mod.report(_client(intent, ledger, [], [], calls), period_start=date(2026, 10, 1))
+    assert result["workflow_agent_model_calls_unsettled"] == 1
+    assert result["assistant_billable_model_calls"] == 1
+    assert result["settled_model_calls_missing_ledger"] == 0
+    assert result["unresolved_errors"] == 1
