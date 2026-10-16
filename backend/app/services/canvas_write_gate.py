@@ -219,6 +219,24 @@ def load_run_for_write_gate(client: Any, org_id: str, run_id: str | None) -> dic
     return None
 
 
+def require_approved_authority_run(
+    *, client: Any, org_id: str, run_id: str | None, authority_ref: str,
+) -> dict[str, Any]:
+    """Revalidate declared workflow authority against this tenant's live run.
+
+    A ContextVar describes a caller's intent; it is not durable approval evidence.
+    Never fall back to another authority if the run cannot be read or was revoked.
+    """
+    from app.services.tool_types import ToolValidationError
+
+    if not org_id or not run_id or not authority_ref or str(run_id) != str(authority_ref):
+        raise ToolValidationError("Workflow approval does not match this execution", code="workflow_approval_invalid")
+    run = load_run_for_write_gate(client, org_id, str(run_id))
+    if not run_allows_catalog_write_execution(run):
+        raise ToolValidationError("Workflow approval is unavailable or no longer approved", code="workflow_approval_invalid")
+    return run
+
+
 def bind_f1_write_hmac_context(
     *,
     tool_ctx: ToolContext,

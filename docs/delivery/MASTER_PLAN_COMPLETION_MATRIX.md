@@ -18,6 +18,13 @@ shared text/voice and integration smoke. Dedicated recovery (6 PG + 11 context/
 scheduler tests) and company source revocation (15 focused tests) passed.
 Billing Playwright remains skipped; production acceptance remains open.
 
+**2026-10-16 run-authority revalidation:** the shared catalog invoke spine
+revalidates declared run authority against an org-scoped, live approved run with
+at least one required approval. A missing/rejected run or mismatched reference
+cannot bypass scope validation; the loaded row is reused for argument checks.
+Unit and invoke-spine tests added; CI pending. Human/policy/compensation authority
+semantics are unchanged. No schema or runtime flag changes.
+
 **2026-10-16 lineage integrity correction:** tagged agent/workspace/temporal
 memories and entity observations no longer retry failed writes with their source
 columns removed. External agent-memory creation also requires valid lineage

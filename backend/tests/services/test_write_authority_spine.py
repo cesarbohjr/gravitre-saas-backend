@@ -150,3 +150,50 @@ def test_callers_without_a_gate_are_declared():
 
     for fn in (push_job_deliverable, execute_compensations, notify_compensation_webhook, _run_confirmed_extension_action):
         assert hasattr(fn, "__wrapped__"), fn.__name__
+
+
+@pytest.mark.parametrize("row", [None, {}, {"required_approvals": 0, "approval_status": "approved"}, {"required_approvals": 1, "approval_status": "rejected"}, {"required_approvals": 1, "approval_status": "pending_approval"}])
+def test_declared_run_cannot_replace_live_approval(row):
+    from app.services.canvas_write_gate import require_approved_authority_run
+
+    with patch("app.services.canvas_write_gate.load_run_for_write_gate", return_value=row):
+        with pytest.raises(ToolValidationError) as error:
+            require_approved_authority_run(client=MagicMock(), org_id="org", run_id="run", authority_ref="run")
+    assert error.value.code == "workflow_approval_invalid"
+
+
+@pytest.mark.parametrize("run_id,ref", [(None, "run"), ("run", ""), ("run", "different")])
+def test_declared_run_reference_is_bound_to_execution_before_read(run_id, ref):
+    from app.services.canvas_write_gate import require_approved_authority_run
+
+    with patch("app.services.canvas_write_gate.load_run_for_write_gate") as read:
+        with pytest.raises(ToolValidationError):
+            require_approved_authority_run(client=MagicMock(), org_id="org", run_id=run_id, authority_ref=ref)
+    read.assert_not_called()
+
+
+def test_matching_live_approved_authority_returns_row_for_scope_validation():
+    from app.services.canvas_write_gate import require_approved_authority_run
+
+    row = {"required_approvals": 1, "approval_status": "approved", "definition_snapshot": {"steps": []}}
+    client = MagicMock()
+    with patch("app.services.canvas_write_gate.load_run_for_write_gate", return_value=row) as read:
+        assert require_approved_authority_run(client=client, org_id="org", run_id="run", authority_ref="run") is row
+    read.assert_called_once_with(client, "org", "run")
+
+
+def test_invoke_tool_declared_run_refuses_unavailable_approval_before_provider():
+    from app.services import tool_service
+
+    ctx = ToolContext(settings=ENFORCE, client=None, org_id="o1", actor_id="u1", run_id="run")
+    with (
+        wa.write_authority("run", "run"),
+        patch("app.services.canvas_write_gate.load_run_for_write_gate", return_value=None),
+        patch("app.services.capability_availability.is_capability_action", return_value=False),
+        patch("app.capability_ontology.resolver.resolve_capability_invoke_action", return_value=None),
+        patch.object(tool_service, "_resolve_tool_executor", create=True) as provider,
+    ):
+        with pytest.raises(ToolValidationError) as error:
+            tool_service.invoke_tool(ctx, NORMAL_WRITE, {"id": "1"})
+    assert error.value.code == "workflow_approval_invalid"
+    provider.assert_not_called()

@@ -5090,7 +5090,7 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     from app.services.write_authority import WriteAuthorityError, check_write_authority
 
     try:
-        check_write_authority(
+        declared_authority = check_write_authority(
             action,
             settings=getattr(ctx, "settings", None),
             org_id=ctx.org_id,
@@ -5098,6 +5098,15 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
         )
     except WriteAuthorityError as exc:
         raise ToolValidationError(str(exc), code=WriteAuthorityError.code) from exc
+
+    approved_authority_run = None
+    if declared_authority is not None and declared_authority.kind == "run":
+        from app.services.canvas_write_gate import require_approved_authority_run
+
+        approved_authority_run = require_approved_authority_run(
+            client=ctx.client, org_id=ctx.org_id, run_id=ctx.run_id,
+            authority_ref=declared_authority.ref,
+        )
 
     # Module 0 — credential/isolation guard on the shared write spine (chat/ReAct/canvas).
     from app.services.conversation_write_guard import (
@@ -5252,7 +5261,7 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
         from app.services.canvas_write_gate import load_run_for_write_gate
         from app.services.workflow_approval_scope import block_invoke_by_approval_scope
 
-        run_row = load_run_for_write_gate(ctx.client, ctx.org_id, str(ctx.run_id))
+        run_row = approved_authority_run if approved_authority_run is not None else load_run_for_write_gate(ctx.client, ctx.org_id, str(ctx.run_id))
         if run_row is not None:
             definition = run_row.get("definition_snapshot") or run_row.get("definition")
             params_raw = run_row.get("parameters") if isinstance(run_row.get("parameters"), dict) else {}
