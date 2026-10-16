@@ -70,8 +70,12 @@ def preview_meter_intents(
             ((str(r["id"]), int(r.get("quantity") or 0)) for r in ordered),
             included=included,
         )
-        result["would_stage"] = len(rows)
-        result["estimated_quantity"] = sum(q for _, q in deltas)
+        deltas_by_id = dict(deltas)
+        pending_rows = [r for r in ordered if not r.get("stripe_reported_at")]
+        result["would_stage"] = len(pending_rows)
+        result["estimated_quantity"] = sum(
+            deltas_by_id[str(r["id"])] for r in pending_rows
+        )
         result["included_snapshot_estimate"] = included
     except Exception:
         logger.exception("meter_preview_failed metric=%s", metric_type)
