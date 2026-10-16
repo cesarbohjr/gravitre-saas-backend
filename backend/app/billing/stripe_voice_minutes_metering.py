@@ -114,8 +114,10 @@ def report_voice_minutes_overage_to_stripe(
             or []
         )
         period_total = sum(int(r.get("quantity") or 0) for r in all_rows)
-    except Exception:  # noqa: BLE001
-        period_total = total_minutes
+    except Exception as exc:  # noqa: BLE001
+        logger.error("meter period total query failed org_id=%s metric=%s error=%s", org_id, "voice_minutes", type(exc).__name__)
+        result["error"] = "period_total_query_failed"
+        return result
     overage_total = max(period_total - included, 0)
     result["overage_minutes"] = overage_total
     if overage_total <= 0:
