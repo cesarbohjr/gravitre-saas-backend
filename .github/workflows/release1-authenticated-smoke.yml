@@ -1,0 +1,42 @@
+name: Release 1 authenticated production smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/verify-release1-authenticated-smoke.py"
+      - ".github/workflows/release1-authenticated-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  authenticated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install auth client
+        run: pip install "PyJWT>=2.8,<3" "supabase>=2,<3"
+      - name: Mint isolated smoke session
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python3 scripts/mint_smoke_org_session.py --github-env
+      - name: Authenticated smoke
+        run: python3 scripts/verify-release1-authenticated-smoke.py
+      - name: Upload results (no credentials)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release1-authenticated-smoke
+          path: docs/delivery/release1-authenticated-smoke.json
+          if-no-files-found: ignore
