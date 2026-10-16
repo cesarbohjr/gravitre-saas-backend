@@ -143,18 +143,20 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.claim_stripe_meter_intents(
-  p_org_id uuid,p_metric text,p_limit integer DEFAULT 100
+  p_org_id uuid,p_metric text,p_period_start date,p_limit integer DEFAULT 100
 ) RETURNS SETOF public.stripe_meter_outbox
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
 AS $$
 BEGIN
-  IF p_org_id IS NULL OR p_metric NOT IN ('ai_credits','research_lookups','voice_minutes')
+  IF p_org_id IS NULL OR p_metric IS NULL OR p_period_start IS NULL
+     OR p_metric NOT IN ('ai_credits','research_lookups','voice_minutes')
      OR p_limit NOT BETWEEN 1 AND 100 THEN
     RAISE EXCEPTION 'invalid_meter_claim_request';
   END IF;
   RETURN QUERY WITH claimed AS (
     SELECT id FROM public.stripe_meter_outbox
-    WHERE org_id=p_org_id AND metric_type=p_metric AND status='pending'
+    WHERE org_id=p_org_id AND metric_type=p_metric AND period_start=p_period_start
+      AND status='pending'
     ORDER BY created_at,id LIMIT p_limit FOR UPDATE SKIP LOCKED
   )
   UPDATE public.stripe_meter_outbox o
@@ -171,6 +173,7 @@ CREATE OR REPLACE FUNCTION public.ack_stripe_meter_intent(
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
 AS $$
 DECLARE v public.stripe_meter_outbox%ROWTYPE;
+        v_updated integer;
 BEGIN
   UPDATE public.stripe_meter_outbox o
      SET status='delivered',delivered_at=now(),claim_token=NULL
@@ -182,9 +185,13 @@ BEGIN
   ELSE
     UPDATE public.usage_records SET stripe_reported_at=now() WHERE id=v.source_id AND org_id=v.org_id;
   END IF;
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  IF v_updated <> 1 THEN
+    RAISE EXCEPTION 'stripe_meter_source_ack_missing';
+  END IF;
   RETURN true;
 END;
-$$;
+$;
 
 -- Ambiguous network failures must not be automatically replayed, even when
 -- Stripe's server-side deduplication window expires.
@@ -202,10 +209,10 @@ AS $$
 $$;
 
 REVOKE ALL ON FUNCTION public.stage_stripe_meter_intents(uuid,text,date,date,integer,text,text) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.claim_stripe_meter_intents(uuid,text,integer) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.claim_stripe_meter_intents(uuid,text,date,integer) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.ack_stripe_meter_intent(uuid,uuid) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.mark_stripe_meter_ambiguous(uuid,uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.stage_stripe_meter_intents(uuid,text,date,date,integer,text,text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.claim_stripe_meter_intents(uuid,text,integer) TO service_role;
+GRANT EXECUTE ON FUNCTION public.claim_stripe_meter_intents(uuid,text,date,integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.ack_stripe_meter_intent(uuid,uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.mark_stripe_meter_ambiguous(uuid,uuid) TO service_role;
