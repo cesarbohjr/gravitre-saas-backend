@@ -50,6 +50,34 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'stripe_meter_allowance_changed_requires_reconciliation';
   END IF;
+  -- Never rebill rows already sent by the legacy batch reporter. The
+  -- cutover must start from an empty/unreported period or be reconciled by
+  -- an explicit operator-approved migration of Stripe acceptance evidence.
+  IF p_metric='ai_credits' AND EXISTS (
+    SELECT 1 FROM public.usage_tracking u
+    WHERE u.org_id=p_org_id AND u.environment='production'
+      AND u.metric_type='ai_credits' AND u.period_start=p_period_start
+      AND u.period_end=p_period_end AND u.stripe_reported_at IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM public.stripe_meter_outbox o
+        WHERE o.org_id=u.org_id AND o.metric_type='ai_credits' AND o.source_id=u.id
+      )
+  ) THEN
+    RAISE EXCEPTION 'stripe_meter_legacy_crossover_requires_reconciliation';
+  END IF;
+  IF p_metric<>'ai_credits' AND EXISTS (
+    SELECT 1 FROM public.usage_records r
+    WHERE r.org_id=p_org_id AND r.metric_type=p_metric
+      AND r.recorded_at >= p_period_start::timestamp AT TIME ZONE 'UTC'
+      AND r.recorded_at < (p_period_end+1)::timestamp AT TIME ZONE 'UTC'
+      AND r.stripe_reported_at IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM public.stripe_meter_outbox o
+        WHERE o.org_id=r.org_id AND o.metric_type=p_metric AND o.source_id=r.id
+      )
+  ) THEN
+    RAISE EXCEPTION 'stripe_meter_legacy_crossover_requires_reconciliation';
+  END IF;
   IF p_metric = 'ai_credits' THEN
     INSERT INTO public.stripe_meter_outbox(
        org_id,environment,metric_type,source_id,period_start,period_end,
