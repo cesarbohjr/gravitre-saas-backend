@@ -75,10 +75,8 @@ DEFAULT_OFF: tuple[str, ...] = (
     "CONTEXT_ENGINE_OBSERVATIONS_V1",
     "CONTEXT_ENGINE_ACCOUNT_SIGNALS_V1",
     "CONTEXT_ENGINE_WORK_STATE_V1",
-    # Lineage tags, read-time revoked-source filter, cache invalidation on revoke
-    # and the memory/observation purge (PR #374). Needs migration 20261012070000
-    # first: before it, recall returns no memories (the filter fails closed).
-    "MEMORY_SOURCE_LINEAGE_ENABLED",
+    # MEMORY_SOURCE_LINEAGE_ENABLED was here; moved to default-on after migration
+    # 20261012070000 was verified and owner-approved on 2026-10-13 (PR #444).
 )
 
 # A str setting; absent and empty both mean "no pilot orgs".
