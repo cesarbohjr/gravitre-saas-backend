@@ -83,6 +83,10 @@ it("renders the live overview from real records and drills into a node", () => {
 })
 
 it("switches to badged example data on request", () => {
+  // Ensure matchMedia reports no reduced-motion preference so the component starts
+  // unpaused and renders the "Pause" button. In singleFork mode a previous test
+  // could leave a different matchMedia stub on globalThis.
+  vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false, addEventListener() {}, removeEventListener() {} })))
   act(() => root.render(<IntelligenceBrain pageContext={pageContext} />))
   act(() => button("Example data").click())
   expect(container.querySelector('[data-example="true"]')).not.toBeNull()

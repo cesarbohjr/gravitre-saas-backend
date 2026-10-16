@@ -96,13 +96,9 @@ export function mergeTaskStateMonotonic(
 ): Record<string, unknown> | null {
   if (!incoming || typeof incoming !== "object") return current ?? null
   if (!current || typeof current !== "object") return incoming
-  const curTurn = String(current.turn_id || current.turnId || "")
-  const nextTurn = String(incoming.turn_id || incoming.turnId || "")
-  if (curTurn && nextTurn && curTurn !== nextTurn) {
-    // Same conversation, different turn — keep newer turn only when incoming is explicitly newer seq.
-    const curSeq = Number(current.task_revision ?? current.taskRevision ?? 0)
-    const nextSeq = Number(incoming.task_revision ?? incoming.taskRevision ?? 0)
-    if (nextSeq > 0 && curSeq > 0 && nextSeq < curSeq) return current
-  }
+  const curSeq = Number(current.task_revision ?? current.taskRevision ?? 0)
+  const nextSeq = Number(incoming.task_revision ?? incoming.taskRevision ?? 0)
+  // Drop stale incoming when its task_revision is lower than current, regardless of turn_id.
+  if (nextSeq > 0 && curSeq > 0 && nextSeq < curSeq) return current
   return { ...current, ...incoming }
 }
