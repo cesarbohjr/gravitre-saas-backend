@@ -61,6 +61,8 @@ CREATE INDEX IF NOT EXISTS idx_rag_ingest_jobs_org_env_created
   ON public.rag_ingest_jobs(org_id, environment, created_at DESC);
 
 -- Update rag_search to filter by environment
+-- DROP required: CREATE OR REPLACE cannot change the function signature (new p_environment param).
+DROP FUNCTION IF EXISTS public.rag_search(uuid, text, int, uuid, uuid);
 CREATE OR REPLACE FUNCTION public.rag_search(
   p_org_id uuid,
   p_query_embedding text,
@@ -108,6 +110,8 @@ AS $$
 $$;
 
 -- Update ingest job claim function to return environment
+-- DROP required: CREATE OR REPLACE cannot change the RETURNS TABLE shape (new environment column).
+DROP FUNCTION IF EXISTS public.claim_rag_ingest_job();
 CREATE OR REPLACE FUNCTION public.claim_rag_ingest_job()
 RETURNS TABLE (
   id uuid,
