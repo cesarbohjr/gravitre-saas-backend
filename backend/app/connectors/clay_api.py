@@ -53,8 +53,9 @@ def resolve_clay_connector(
     if not conn:
         raise ClayAPIError("No active Clay connector found", status_code=404)
     cid = str(conn["id"])
-    api_key = get_decrypted_secret(client, cid, "api_token", settings) or get_decrypted_secret(
-        client, cid, "api_key", settings
+    api_key = get_decrypted_secret(client, cid, "api_token", settings, org_id=org_id) or get_decrypted_secret(
+        client, cid, "api_key", settings,
+        org_id=org_id,
     )
     if not api_key:
         raise ClayAPIError("Clay API key not configured", status_code=401)

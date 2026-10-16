@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import time
+from datetime import datetime, timezone
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from enum import StrEnum
@@ -261,9 +262,11 @@ class ModelRouter:
             await self._log_guardrail_event(org_id, task_type, code, [], str(exc))
             raise
 
-        cache_key = self._cache_key(task_type, prompt, system_prompt, temperature, max_tokens, model, context)
+        cache_key = self._cache_key(task_type, prompt, system_prompt, temperature, max_tokens, model, context, org_id)
         if use_cache and not model_override and cache_key in self._cache:
-            cached = self._cache[cache_key].model_copy(update={"cache_hit": True})
+            cached = self._cache[cache_key].model_copy(update={
+                "cache_hit": True, "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0,
+            })
             cached.model_call_id = await self._log_model_call(
                 org_id=org_id,
                 task_type=task_type,
@@ -272,6 +275,7 @@ class ModelRouter:
                 trained_model_id=trained_model_id,
                 trained_model_version=trained_model_version,
                 used_fallback=used_fallback,
+                billable=False,
             )
             if autonomous_run and operator_id and org_id:
                 await self._record_autonomous_llm(org_id, operator_id, cached)
@@ -698,6 +702,7 @@ class ModelRouter:
         max_tokens: int | None,
         model: str,
         context: list[dict] | None,
+        org_id: str | None,
     ) -> str:
         payload = json.dumps(
             {
@@ -708,6 +713,7 @@ class ModelRouter:
                 "max_tokens": max_tokens,
                 "model": model,
                 "context": context or [],
+                "org_id": org_id,
             },
             sort_keys=True,
             default=str,
@@ -779,14 +785,29 @@ class ModelRouter:
         input_tokens: int,
         output_tokens: int,
         cached_tokens: int = 0,
+        cache_write_tokens: int = 0,
     ) -> float:
         in_cost, cached_cost, out_cost = _MODEL_PRICING_PER_1K.get(model, (0.002, 0.002, 0.008))
+        from app.services.llm_catalog import get_llm_model
+
+        entry = get_llm_model(model)
+        write_cost = in_cost
+        if entry is not None:
+            if entry.cache_write_per_1m is not None:
+                write_cost = entry.cache_write_per_1m / 1000
+            if entry.input_price_threshold is not None and input_tokens > entry.input_price_threshold:
+                in_cost = (entry.long_input_per_1m or entry.input_per_1m or 0) / 1000
+                out_cost = (entry.long_output_per_1m or entry.output_per_1m or 0) / 1000
+                cached_cost = (entry.long_cached_input_per_1m or entry.cached_input_per_1m or 0) / 1000
+                write_cost = (entry.long_cache_write_per_1m or entry.cache_write_per_1m or entry.long_input_per_1m or 0) / 1000
         # cached_tokens is a subset of input_tokens; bill it at the cache rate.
         cached = max(0, min(cached_tokens, input_tokens))
-        uncached_input = input_tokens - cached
+        writes = max(0, min(cache_write_tokens, input_tokens - cached))
+        uncached_input = input_tokens - cached - writes
         return round(
             (uncached_input / 1000 * in_cost)
             + (cached / 1000 * cached_cost)
+            + (writes / 1000 * write_cost)
             + (output_tokens / 1000 * out_cost),
             6,
         )
@@ -801,6 +822,7 @@ class ModelRouter:
         trained_model_id: str | None = None,
         trained_model_version: int | None = None,
         used_fallback: bool = False,
+        billable: bool = True,
     ) -> str | None:
         """Write the model_calls row and return its id (billing idempotency anchor)."""
         if not org_id:
@@ -826,9 +848,27 @@ class ModelRouter:
             # classification calls in front of a spoken reply: off the event loop.
             from app.services.cost_attribution import insert_model_call
 
-            resp = await asyncio.to_thread(insert_model_call, client, row)
+            resp = await asyncio.to_thread(insert_model_call, client, row, billable=billable)
             if resp.data:
-                return str(resp.data[0].get("id"))
+                model_call_id = str(resp.data[0].get("id") or "")
+                if model_call_id and billable:
+                    from app.services.cost_attribution import MeasuredModelCall, record_measured_model_call
+
+                    raw_created_at = resp.data[0].get("created_at")
+                    try:
+                        created_at = (datetime.fromisoformat(raw_created_at.replace("Z", "+00:00"))
+                                      if isinstance(raw_created_at, str) else datetime.now(timezone.utc))
+                    except ValueError:
+                        created_at = datetime.now(timezone.utc)
+                    record_measured_model_call(MeasuredModelCall(
+                        id=model_call_id, org_id=org_id, provider=response.provider,
+                        model=response.model, input_tokens=response.input_tokens,
+                        output_tokens=response.output_tokens, latency_ms=response.latency_ms,
+                        cost_usd=response.cost_usd,
+                        created_at=created_at,
+                    ))
+                if model_call_id:
+                    return model_call_id
             return None
         except Exception as exc:  # noqa: BLE001
             logger.warning("model_calls insert failed: %s", str(exc))

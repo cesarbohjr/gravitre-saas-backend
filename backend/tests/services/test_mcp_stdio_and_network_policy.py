@@ -79,8 +79,8 @@ async def test_operator_opt_in_reaches_stdio_helper():
 
 
 @pytest.mark.asyncio
-async def test_execute_refuses_stdio_before_sending_and_releases_approval():
-    """A transport refusal happens before any request, so the approval stays reusable."""
+async def test_execute_refuses_stdio_before_consuming_approval():
+    """A transport refusal happens before an approval claim or remote request."""
     service = MCPClientService(settings=_settings())
     tool = {
         "id": "tool-1",
@@ -93,7 +93,7 @@ async def test_execute_refuses_stdio_before_sending_and_releases_approval():
     call = AsyncMock()
     with (
         patch.object(service, "_load_tool", new=AsyncMock(return_value=tool)),
-        patch.object(service, "_verify_approval", new=AsyncMock(return_value="claim-1")),
+        patch.object(service, "_verify_approval", new=AsyncMock(return_value="claim-1")) as verify,
         patch.object(service, "_load_server", new=AsyncMock(return_value=server)),
         patch.object(service, "_release_approval", new=AsyncMock()) as release,
         patch.object(service, "_call_mcp_server", new=call),
@@ -102,7 +102,8 @@ async def test_execute_refuses_stdio_before_sending_and_releases_approval():
         with pytest.raises(MCPTransportNotAllowedError):
             await service.execute_tool("tool-1", ORG, {"a": 1}, approval_id="appr-1")
     call.assert_not_awaited()
-    release.assert_awaited_once_with("appr-1", ORG, "claim-1")
+    verify.assert_not_awaited()
+    release.assert_not_awaited()
 
 
 @pytest.mark.asyncio

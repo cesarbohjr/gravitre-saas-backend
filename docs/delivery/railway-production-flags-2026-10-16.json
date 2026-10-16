@@ -1,0 +1,51 @@
+{
+  "captured_at": "2026-10-16T03:27:22Z",
+  "projectId": "6017a555-f639-4b28-b538-031b5119e1e3",
+  "environmentId": "8807955a-b694-407d-938a-c373e68ca3f4",
+  "serviceId": "20c41db0-3e3d-400e-95d5-eef57ba2bc0c",
+  "service": "gravitre-saas-backend",
+  "environment": "production",
+  "request": "Set up production flags",
+  "operation": "set_variables",
+  "configured_values": {
+    "USAGE_ATOMIC_ENABLED": "false",
+    "ASSISTANT_BILLING_ATOMIC_ENABLED": "false",
+    "ASSISTANT_BILLING_RECOVERY_ENABLED": "false",
+    "WRITE_INVOKE_IDEMPOTENCY_ENABLED": "false",
+    "WRITE_AUTHORITY_MODE": "shadow",
+    "EVENT_TRIGGER_USE_WORKFLOW_QUEUE": "false",
+    "WORKFLOW_QUEUE_FAIL_CLOSED": "true",
+    "MSP_PARENT_ORG_ENABLED": "false",
+    "STALE_RUN_RECOVERY_ENABLED": "false"
+  },
+  "previous_state": "All nine variable names were absent. Existing variables were not overwritten.",
+  "deployments_skipped": true,
+  "postflight": {
+    "namesPresent": [
+      "USAGE_ATOMIC_ENABLED",
+      "ASSISTANT_BILLING_ATOMIC_ENABLED",
+      "ASSISTANT_BILLING_RECOVERY_ENABLED",
+      "WRITE_INVOKE_IDEMPOTENCY_ENABLED",
+      "WRITE_AUTHORITY_MODE",
+      "EVENT_TRIGGER_USE_WORKFLOW_QUEUE",
+      "WORKFLOW_QUEUE_FAIL_CLOSED",
+      "MSP_PARENT_ORG_ENABLED",
+      "STALE_RUN_RECOVERY_ENABLED"
+    ],
+    "valuesRedacted": true,
+    "sealedFlags": []
+  },
+  "running_deployment": {
+    "id": "c2f87428-bd46-4091-a456-ec529ef8ea0c",
+    "sha": "b642dd1560476e5977fc74629d291b8c5ae2bcee",
+    "status": "SUCCESS"
+  },
+  "runtime_activation": "NOT PERFORMED; saved values apply at the next deployment. No restart, redeploy, queue drain, recovery sweep or historical billing backfill.",
+  "activation_prerequisites": [
+    "Deploy compatible release code after CI and acceptance gates pass.",
+    "Keep MSP parent delegation disabled pending explicit client authorization engineering.",
+    "Keep domain relay, purge and existing context/lineage controls unchanged; inspect their existing values separately before changing them.",
+    "Enable generic atomic usage before assistant atomic billing and then durable assistant recovery, with ledger acceptance.",
+    "Enable idempotency before new event-queue execution; queue fail-closed is configured true."
+  ]
+}

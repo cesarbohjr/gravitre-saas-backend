@@ -349,13 +349,15 @@ def _zendesk_credentials(
     connector: dict[str, Any],
     connector_id: str,
     settings: Settings,
+    *,
+    org_id: str,
 ) -> tuple[str, str, str]:
     cfg = connector.get("config") or {}
     subdomain = str(cfg.get("subdomain") or cfg.get("zendesk_subdomain") or "").strip()
     if not subdomain:
         raise ValueError("Zendesk connector missing subdomain")
-    email = get_decrypted_secret(client, connector_id, "email", settings)
-    token = get_decrypted_secret(client, connector_id, "api_token", settings)
+    email = get_decrypted_secret(client, connector_id, "email", settings, org_id=org_id)
+    token = get_decrypted_secret(client, connector_id, "api_token", settings, org_id=org_id)
     if not email or not token:
         raise ValueError("Zendesk email/api_token secrets not configured")
     return subdomain, email, token
@@ -432,7 +434,7 @@ def run_zendesk_knowledge_sync(
     if not zendesk_knowledge_sync_enabled(connector):
         raise ValueError("Zendesk knowledge sync is disabled for this connector")
 
-    subdomain, email, api_token = _zendesk_credentials(client, connector, connector_id, settings)
+    subdomain, email, api_token = _zendesk_credentials(client, connector, connector_id, settings, org_id=org_id)
     config = safe_normalize_stored_dict(connector, key='config')
     since_iso, seen_at_since = _cursor(config, full_sync=full_sync)
     source_id = ensure_zendesk_rag_source(client, org_id, connector, settings, created_by=actor_id)

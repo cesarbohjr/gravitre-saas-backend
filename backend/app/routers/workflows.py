@@ -1861,6 +1861,9 @@ async def execute_workflow(
                 )
             raise
         run_id = str(run["id"])
+        from app.services.workflow_approval_scope import persist_run_approval_scope
+
+        persist_run_approval_scope(client, run_id, definition)
         _record_workflow_run_usage(client, org_id, environment_name, plan)
         if approval_floor_applied:
             write_audit_event(
@@ -2177,6 +2180,9 @@ def _open_pending_approval_run(
             )
         raise
     run_id = str(run["id"])
+    from app.services.workflow_approval_scope import persist_run_approval_scope
+
+    persist_run_approval_scope(client, run_id, definition)
     _record_workflow_run_usage(client, org_id, environment_name, plan)
     if approval_floor_applied:
         write_audit_event(
@@ -3623,7 +3629,7 @@ def list_approvals_alias(
             "definition_snapshot": snapshot,
         }
     # Chat connector writes queued for org admins (not workflow_runs).
-    if not type or type in {"connector", "connector_chat"}:
+    if not type or type in {"connector", "connector_chat", "mcp_tool"}:
         try:
             chat_q = (
                 client.table("approvals")
@@ -3632,7 +3638,7 @@ def list_approvals_alias(
                     "requested_at, reviewed_by, reviewed_at, context, run_id"
                 )
                 .eq("org_id", org_id)
-                .eq("type", "connector_chat")
+                .in_("type", ["connector_chat", "mcp_tool"])
                 .order("requested_at", desc=True)
                 .limit(50)
             )
@@ -3738,6 +3744,11 @@ def list_approvals_alias(
                         "entity": ctx.get("entity") or ctx.get("integration") or "Connector",
                         "action": ctx.get("action") or ctx.get("invoke_action") or ctx.get("label") or "Execute write",
                         "approval_id": str(row["id"]),
+                        **({"args": safe_normalize_stored_dict(ctx, key="parameters"),
+                            "tool": ctx.get("tool_name"),
+                            "entity": ctx.get("server_name") or "MCP server",
+                            "action": ctx.get("tool_name") or "MCP write"}
+                           if row.get("type") == "mcp_tool" else {}),
                         "conversation_id": ctx.get("conversation_id"),
                         "run_id": run_link or ctx.get("run_id"),
                     },
@@ -3859,6 +3870,13 @@ async def approve_run_alias(
         )
     except Exception:  # noqa: BLE001 — workflow-run mocks may not expose approvals table
         chat_rows = []
+    if chat_rows and str(chat_rows[0].get("type") or "") == "mcp_tool":
+        from app.services.mcp_approval_service import decide_mcp_approval
+
+        return await decide_mcp_approval(
+            client, settings, org_id=org_id, approval_id=str(run_id),
+            reviewer_id=str(current_user.get("user_id") or ""), approve=True,
+        )
     if chat_rows and str(chat_rows[0].get("type") or "") == "connector_chat":
         from app.auth.platform_admin import is_org_admin_role
         from app.services.chat_connector_execution_service import (
@@ -4025,6 +4043,13 @@ async def reject_run_alias(
         )
     except Exception:  # noqa: BLE001 — workflow-run mocks may not expose approvals table
         chat_rows = []
+    if chat_rows and str(chat_rows[0].get("type") or "") == "mcp_tool":
+        from app.services.mcp_approval_service import decide_mcp_approval
+
+        return await decide_mcp_approval(
+            client, settings, org_id=org_id, approval_id=str(run_id),
+            reviewer_id=str(current_user.get("user_id") or ""), approve=False,
+        )
     if chat_rows and str(chat_rows[0].get("type") or "") == "connector_chat":
         from app.auth.platform_admin import is_org_admin_role
         from app.workflows.policy import PolicyResolutionError, get_user_role

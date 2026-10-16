@@ -438,14 +438,12 @@ def _verification(
             if isinstance(params.get("verification"), dict)
             else {}
         )
-        read_back = bool(
-            verification.get("verified") is True
-            or str(structured.get("verification_status") or params.get("verification_status") or "").lower()
-            == "verified"
-        )
+        from app.services.outcome_verification import evidence_is_verified
+
+        read_back = evidence_is_verified({"verification": verification})
         if not read_back:
             return VerificationSection(
-                verified=True,
+                verified=False,
                 confidence="accepted_unproven",
                 method="provider_accepted_not_read_back",
                 detail=(

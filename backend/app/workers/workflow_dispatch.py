@@ -44,15 +44,20 @@ async def try_enqueue_workflow_run(
     if not _queue_enabled(settings):
         return False
     _org_settings, region = load_org_settings_and_region(client, org_id)
-    await enqueue_workflow_run(
-        WorkflowRunJob(
-            run_id=run_id,
-            org_id=org_id,
-            workflow_id=workflow_id,
-            region=region,
-            idempotency_key=run_id,
+    try:
+        await enqueue_workflow_run(
+            WorkflowRunJob(
+                run_id=run_id,
+                org_id=org_id,
+                workflow_id=workflow_id,
+                region=region,
+                idempotency_key=run_id,
+            )
         )
-    )
+    except RuntimeError:
+        if bool(getattr(settings, "workflow_queue_fail_closed", False)):
+            raise
+        return False
     return True
 
 

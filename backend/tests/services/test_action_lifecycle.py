@@ -227,7 +227,7 @@ def test_h_refresh_resume_maps_lifecycle() -> None:
         summary="created",
         structured={"id": "99"},
         pending_task=_compose_state()["pending_task"],
-        verification={"verified": True},
+        verification={"verified": True, "method": "entity_get", "read_action": "hubspot.contacts.get"},
     )
     assert semantic_stage_from_state(state) == "COMPLETED"
     assert state["execution_plan"]["terminal_status"] == "completed"
@@ -268,7 +268,7 @@ def test_verified_write_follow_up_does_not_reset_terminal() -> None:
         summary="created",
         structured={"id": "278976365530", "email": "ops@alpha.test.gravitre.app"},
         pending_task=_compose_state()["pending_task"],
-        verification={"verified": True},
+        verification={"verified": True, "method": "entity_get", "read_action": "hubspot.contacts.get"},
     )
     from app.services.execution_plan_service import reconcile_execution_plan
 
@@ -295,7 +295,7 @@ def test_recent_write_follow_up_uses_observation() -> None:
         summary="created",
         structured={"id": "99", "email": "placeholder.isolated@gravitre-smoke.example.com"},
         pending_task=_compose_state()["pending_task"],
-        verification={"verified": True},
+        verification={"verified": True, "method": "entity_get", "read_action": "hubspot.contacts.get"},
     )
     turn = recent_write_status_turn("Did that contact already get created?", state)
     assert turn is not None
@@ -322,7 +322,7 @@ def test_stale_pending_does_not_mask_verified_observation() -> None:
         summary="created",
         structured={"id": "279246127081", "email": "gravitrepcmwrite20260924181201@alpha.test.gravitre.app"},
         pending_task=_compose_state()["pending_task"],
-        verification={"verified": True},
+        verification={"verified": True, "method": "entity_get", "read_action": "hubspot.contacts.get"},
     )
     original_obs = list(state["execution_observations"])
     state["pending_task"]["status"] = "awaiting_confirm"
@@ -413,7 +413,7 @@ def test_composer_confirmed_when_verified() -> None:
             integration="hubspot",
             structured={
                 "id": "278948763624",
-                "verification": {"verified": True},
+                "verification": {"verified": True, "method": "entity_get", "read_action": "hubspot.contacts.get"},
                 "verification_status": "verified",
             },
         ),

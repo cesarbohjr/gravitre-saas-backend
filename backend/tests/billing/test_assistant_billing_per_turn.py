@@ -61,3 +61,62 @@ async def test_record_uses_the_turn_and_labels_estimates():
         await assistant._record_assistant_billing(SimpleNamespace(), "org-1", _response(), turn_id="msg-b")
     assert [c["metadata"]["source_id"] for c in calls] == ["turn:msg-a", "turn:msg-b"]
     assert all(c["metadata"]["usage_estimated"] is True for c in calls)
+
+
+@pytest.mark.asyncio
+async def test_zero_provider_usage_does_not_trigger_minimum_credit_charge():
+    measured = ModelResponse(provider="openai", model="gpt-5.5", content="",
+                             input_tokens=0, output_tokens=0, latency_ms=0,
+                             cost_usd=0, model_call_id="call-zero")
+    with patch.object(assistant, "get_supabase_client") as client:
+        assert await assistant._record_assistant_billing(SimpleNamespace(), "org-1", measured) is True
+    client.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_measured_call_uses_provider_period_at_month_boundary():
+    measured = ModelResponse(provider="openai", model="gpt-5.5", content="",
+                             input_tokens=100, output_tokens=20, latency_ms=10,
+                             cost_usd=.01, model_call_id="call-october")
+    with (
+        patch.object(assistant, "get_supabase_client", return_value=MagicMock()),
+        patch.object(assistant, "get_plan_for_org", return_value={}),
+        patch.object(assistant, "apply_usage_with_overage") as apply,
+    ):
+        assert await assistant._record_assistant_billing(
+            SimpleNamespace(), "org-1", measured,
+            period_at=datetime(2026, 10, 31, 23, 59, 59, tzinfo=timezone.utc),
+        ) is True
+    assert apply.call_args.kwargs["period_start"].isoformat() == "2026-10-01"
+
+
+@pytest.mark.asyncio
+async def test_assistant_atomic_requires_generic_lock_even_without_model_call():
+    with (
+        patch.object(assistant, "get_supabase_client", return_value=MagicMock()),
+        patch.object(assistant, "get_plan_for_org", return_value={}),
+        patch.object(assistant, "apply_usage_with_overage") as apply,
+        patch.object(assistant, "_log_assistant_guardrail_event") as guardrail,
+    ):
+        ok = await assistant._record_assistant_billing(
+            SimpleNamespace(assistant_billing_atomic_enabled=True, usage_atomic_enabled=False),
+            "org-1", _response(), turn_id="msg-a",
+        )
+    assert ok is False
+    apply.assert_not_called()
+    guardrail.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_recovery_settlement_never_recomputes_current_plan():
+    measured = _response().model_copy(update={"model_call_id": "call-1"})
+    with (
+        patch.object(assistant, "get_supabase_client", return_value=MagicMock()),
+        patch.object(assistant, "get_plan_for_org", side_effect=AssertionError("current plan read")),
+        patch("app.billing.service.settle_assistant_model_usage", return_value="inserted") as settle,
+    ):
+        assert await assistant._record_assistant_billing(
+            SimpleNamespace(assistant_billing_recovery_enabled=True, usage_atomic_enabled=True,
+                            assistant_billing_atomic_enabled=True), "org-1", measured,
+        ) is True
+    assert settle.call_args.args[1:] == ("org-1", "call-1")

@@ -34,6 +34,7 @@ export const MODEL_OPTIONS = [
   { id: "gpt-6-luna", label: "GPT-6 Luna", shortLabel: "GPT-6 Luna", description: "Fast & cheap", group: "OpenAI" },
   { id: "claude-fable-5-1", label: "Claude Fable 5.1", shortLabel: "Fable", description: "Hardest long tasks", group: "Anthropic" },
   { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5", shortLabel: "Sonnet", description: "Balanced", group: "Anthropic" },
+  { id: "claude-haiku-5-5", label: "Claude Haiku 5.5", shortLabel: "Haiku 5.5", description: "Small tasks", group: "Anthropic" },
   { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", shortLabel: "Haiku", description: "Fastest response", group: "Anthropic" },
   { id: "gemini-3.8-flash", label: "Gemini 3.8 Flash", shortLabel: "Gemini Flash", description: "Fast & capable", group: "Google" },
   { id: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash-Lite", shortLabel: "Flash-Lite", description: "Cheapest", group: "Google" },
@@ -92,7 +93,7 @@ export function getModeConfig(mode: IntelligenceMode) {
 
 export function inferModeFromModel(model: string | null): IntelligenceMode {
   if (!model || model === "auto") return "standard"
-  if (["gpt-5.4-mini", "claude-haiku-4-5-20251001", "gemini-2.5-flash"].includes(model)) return "fast"
+  if (["gpt-5.4-mini", "claude-haiku-5-5", "claude-haiku-4-5-20251001", "gemini-2.5-flash"].includes(model)) return "fast"
   if (["gpt-5.5", "claude-sonnet-4-6", "gemini-2.5-pro"].includes(model)) return "reasoning"
   return "standard"
 }

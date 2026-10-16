@@ -53,7 +53,7 @@ def ensure_pipedrive_session(
     )
     if not token:
         raise PipedriveAPIError(err or "Pipedrive OAuth not connected", status_code=401)
-    tokens = load_oauth_tokens(client, cid, settings)
+    tokens = load_oauth_tokens(client, cid, settings, org_id=org_id)
     return cid, token, _api_base_from_tokens(tokens)
 
 

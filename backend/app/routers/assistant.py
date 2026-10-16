@@ -253,39 +253,56 @@ async def _record_assistant_billing(
     result: ModelResponse,
     *,
     turn_id: str | None = None,
-) -> None:
+    period_at: datetime | None = None,
+) -> bool:
     """Record assistant AI credits to usage_tracking after a successful completion.
 
     Idempotent per turn (model_calls row id, else the assistant message id). On
     failure, logs billing_write_failed to guardrail_events; never raises.
     """
     model_call_id = result.model_call_id
+    if model_call_id and result.input_tokens <= 0 and result.output_tokens <= 0:
+        logger.warning("assistant_model_usage_zero org_id=%s model_call_id=%s", org_id, model_call_id)
+        return True
     try:
-        client = get_supabase_client(settings)
-        plan = get_plan_for_org(client, org_id)
-        period_start, period_end = get_current_period()
-        source_id = assistant_billing_source_id(model_call_id, turn_id)
-        ai_meta = build_ai_usage_metadata_from_tokens(
-            result.input_tokens,
-            result.output_tokens,
-            result.model,
-            "assistant",
-            source_id,
-        )
-        # Token counts are estimated from text length when no model call row backs
-        # the turn; say so instead of presenting them as measured.
-        ai_meta["usage_estimated"] = not bool(model_call_id)
-        apply_usage_with_overage(
-            client=client,
-            org_id=org_id,
-            environment="production",
-            metric_type="ai_credits",
-            quantity=int(ai_meta["credits"]),
-            plan=plan,
-            period_start=period_start,
-            period_end=period_end,
-            metadata=ai_meta,
-        )
+        def _write() -> None:
+            client = get_supabase_client(settings)
+            if getattr(settings, "assistant_billing_recovery_enabled", False) is True:
+                if (not model_call_id or not settings.usage_atomic_enabled
+                        or not settings.assistant_billing_atomic_enabled):
+                    raise RuntimeError("Recovery billing requires atomic flags and persisted model call")
+                from app.billing.service import settle_assistant_model_usage
+
+                settle_assistant_model_usage(client, org_id, model_call_id)
+                return
+            plan = get_plan_for_org(client, org_id)
+            period_start, period_end = get_current_period(period_at) if period_at else get_current_period()
+            source_id = assistant_billing_source_id(model_call_id, turn_id)
+            ai_meta = build_ai_usage_metadata_from_tokens(
+                result.input_tokens, result.output_tokens, result.model,
+                "assistant", source_id,
+            )
+            ai_meta["usage_estimated"] = not bool(model_call_id)
+            if getattr(settings, "assistant_billing_atomic_enabled", False) is True \
+                    and not getattr(settings, "usage_atomic_enabled", False):
+                raise RuntimeError("Assistant atomic billing requires USAGE_ATOMIC_ENABLED")
+            if model_call_id and getattr(settings, "assistant_billing_atomic_enabled", False) is True:
+                from app.billing.service import record_assistant_model_usage_atomic
+
+                record_assistant_model_usage_atomic(
+                    client, org_id, model_call_id, int(ai_meta["credits"]),
+                    int(plan.get("ai_credits_included") or 0),
+                )
+            else:
+                apply_usage_with_overage(
+                    client=client, org_id=org_id, environment="production",
+                    metric_type="ai_credits", quantity=int(ai_meta["credits"]),
+                    plan=plan, period_start=period_start, period_end=period_end,
+                    metadata=ai_meta,
+                )
+
+        await asyncio.to_thread(_write)
+        return True
     except Exception as exc:  # noqa: BLE001
         logger.exception(
             "assistant billing write failed org_id=%s model_call_id=%s error=%s",
@@ -303,6 +320,7 @@ async def _record_assistant_billing(
                 "error": str(exc),
             },
         )
+        return False
 
 
 # Re-export tool helpers at module level so tests can monkeypatch them.
@@ -719,18 +737,80 @@ def _build_stream(
     this conversation (it was read again here, blocking the event loop).
     """
 
+    billed_model_call_ids: set[str] = set()
+    # One namespaced id spans the stream, persisted model calls and latency
+    # summary; recovery can distinguish it from other model-call sources.
+    stream_turn_id = f"assistant:{uuid.uuid4()}"
+
+    async def _bill_measured_calls(measured_calls, turn_id: str | None = None) -> None:
+        for call in measured_calls.calls:
+            if call.id in billed_model_call_ids:
+                continue
+            result = await _record_assistant_billing(
+                settings, org_id,
+                ModelResponse(
+                    provider=call.provider, model=call.model, content="",
+                    input_tokens=call.input_tokens, output_tokens=call.output_tokens,
+                    latency_ms=call.latency_ms, cost_usd=call.cost_usd,
+                    model_call_id=call.id,
+                ), turn_id=turn_id, period_at=call.created_at,
+            )
+            if result is not False:
+                billed_model_call_ids.add(call.id)
+
     async def generator():
         from app.operators.react_engine import force_serial_react_tools, reset_serial_react_tools
+        from app.services.cost_attribution import (
+            AssistantBillingContract, ModelCallCapture, assistant_billing_contract,
+            attribution, capture_model_calls,
+        )
 
-        serial_token = force_serial_react_tools(force_serial_tools)
+        measured_calls = ModelCallCapture(org_id=org_id)
+        billing_contract = None
+        if getattr(settings, "assistant_billing_recovery_enabled", False) is True:
+            if not settings.usage_atomic_enabled or not settings.assistant_billing_atomic_enabled:
+                raise RuntimeError("Recovery billing requires both atomic billing flags")
+            plan = await asyncio.to_thread(
+                lambda: get_plan_for_org(get_supabase_client(settings), org_id)
+            )
+            billing_contract = AssistantBillingContract(
+                org_id=org_id, included=int(plan.get("ai_credits_included") or 0),
+                environment="production",
+            )
+        source = _unified_stream_body(measured_calls)
         try:
-            async for line in _unified_stream_body():
+            while True:
+                # Voice may resume this iterator from another task after a
+                # silence tick. Bind/reset ContextVars in that same task.
+                serial_token = force_serial_react_tools(force_serial_tools)
+                try:
+                    with (attribution(turn_id=stream_turn_id, org_id=org_id),
+                          capture_model_calls(measured_calls), assistant_billing_contract(billing_contract)):
+                        try:
+                            line = await anext(source)
+                        except StopAsyncIteration:
+                            break
+                finally:
+                    reset_serial_react_tools(serial_token)
                 yield line
         finally:
-            reset_serial_react_tools(serial_token)
+            serial_token = force_serial_react_tools(force_serial_tools)
+            try:
+                with (attribution(turn_id=stream_turn_id, org_id=org_id),
+                      capture_model_calls(measured_calls), assistant_billing_contract(billing_contract)):
+                    try:
+                        await source.aclose()
+                    finally:
+                        # Covers cancellation, an error after a provider reply,
+                        # or a client closing after partial output.
+                        await _bill_measured_calls(measured_calls)
+            finally:
+                reset_serial_react_tools(serial_token)
 
-    async def _unified_stream_body():
-        perf = ChatPerfTimer()
+    async def _unified_stream_body(measured_calls):
+        # Share the measured model-call turn id with latency logs so a slow
+        # chat/voice turn can be traced back to its billed provider rounds.
+        perf = ChatPerfTimer(run_id=stream_turn_id)
         perf.start("total_response")
         start_ms = time.monotonic()
         yield assistant_event_to_sse_line(sse_start())
@@ -814,15 +894,8 @@ def _build_stream(
             perf.stop("total_response")
             perf.mark("final_response", elapsed_ms)
             perf.log_summary(org_id=org_id, conversation_id=conversation_id, mode=mode)
-            billing_result = _estimate_model_response(
-                content=assistant_text,
-                user_text=user_text,
-                model="intelligence_hub:canonical_agent_roster",
-                latency_ms=elapsed_ms,
-            )
-            asyncio.create_task(
-                _record_assistant_billing(settings, org_id, billing_result, turn_id=message_id)
-            )
+            # This response is assembled from the existing roster without an
+            # LLM call. There are no provider tokens to bill or estimate.
             asyncio.create_task(
                 get_user_intelligence_service().record_query(
                     settings,
@@ -928,6 +1001,7 @@ def _build_stream(
                 str(exc)[:500],
             )
             if not streamed_text_parts:
+                await _bill_measured_calls(measured_calls)
                 yield assistant_event_to_sse_line(emit_stream_error("request_failed"))
                 yield sse_done()
                 return
@@ -1031,6 +1105,7 @@ def _build_stream(
                     ),
                 },
             )
+            await _bill_measured_calls(measured_calls, complete.message_id if complete else None)
             yield sse_done()
             return
 
@@ -1039,6 +1114,7 @@ def _build_stream(
             assistant_text = "".join(streamed_text_parts).strip()
 
         if not assistant_text:
+            await _bill_measured_calls(measured_calls)
             yield assistant_event_to_sse_line(emit_stream_error("request_failed"))
             yield sse_done()
             return
@@ -1046,6 +1122,7 @@ def _build_stream(
         if complete is not None and complete.react_result is not None and getattr(complete.react_result, "error", None):
             err = str(complete.react_result.error or "")
             if err and not assistant_text:
+                await _bill_measured_calls(measured_calls)
                 yield assistant_event_to_sse_line(emit_stream_error("error", detail=err))
                 yield sse_done()
                 return
@@ -1126,26 +1203,14 @@ def _build_stream(
 
             response_cache_put(org_id, conversation_id, user_text, assistant_text, suggestions)
 
-        yield sse_done()
-
         elapsed_ms = int((time.monotonic() - start_ms) * 1000)
         perf.stop("total_response")
         perf.mark("final_response", elapsed_ms)
         perf.log_summary(org_id=org_id, conversation_id=conversation_id, mode=mode)
-        billing_result = _estimate_model_response(
-            content=assistant_text,
-            user_text=user_text,
-            model=complete.model if complete else "stream",
-            latency_ms=elapsed_ms,
-        )
-        asyncio.create_task(
-            _record_assistant_billing(
-                settings,
-                org_id,
-                billing_result,
-                turn_id=(complete.message_id if complete else None),
-            )
-        )
+        await _bill_measured_calls(measured_calls, complete.message_id if complete else None)
+        if not measured_calls.calls and complete is not None:
+            logger.warning("assistant_model_usage_unmetered org_id=%s message_id=%s", org_id, complete.message_id)
+        yield sse_done()
         asyncio.create_task(
             get_user_intelligence_service().record_query(
                 settings,

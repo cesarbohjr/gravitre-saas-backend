@@ -201,3 +201,18 @@ def test_non_admin_cannot_approve(api):
     resp = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
     assert resp.status_code == 403
     api.execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize("endpoint,approve", [("approve", True), ("reject", False)])
+def test_mcp_decision_uses_shared_queue_route(api, endpoint, approve):
+    row = {**_row(), "type": "mcp_tool"}
+    _use(api, [row])
+    decision = AsyncMock(return_value={"success": True, "status": "approved" if approve else "rejected", "verified": False})
+    api.monkeypatch.setattr("app.services.mcp_approval_service.decide_mcp_approval", decision)
+    response = TestClient(app).post(f"/api/approvals/{row['id']}/{endpoint}", json={})
+    assert response.status_code == 200, response.text
+    assert response.json()["verified"] is False
+    assert decision.call_args.kwargs["approve"] is approve
+    assert decision.call_args.kwargs["org_id"] == ORG
+    assert decision.call_args.kwargs["reviewer_id"] == "admin-1"
+    api.execute.assert_not_awaited()

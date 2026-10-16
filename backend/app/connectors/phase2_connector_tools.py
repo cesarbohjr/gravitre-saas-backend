@@ -81,8 +81,8 @@ def _linear_token(ctx: ToolContext, cid: str) -> str:
         return _oauth_token(ctx, cid, "linear")
     except ToolAuthExpiredError:
         token = (
-            get_decrypted_secret(ctx.client, cid, "api_token", ctx.settings)
-            or get_decrypted_secret(ctx.client, cid, "token", ctx.settings)
+            get_decrypted_secret(ctx.client, cid, "api_token", ctx.settings, org_id=ctx.org_id)
+            or get_decrypted_secret(ctx.client, cid, "token", ctx.settings, org_id=ctx.org_id)
             or ""
         ).strip()
         if not token:
@@ -92,9 +92,9 @@ def _linear_token(ctx: ToolContext, cid: str) -> str:
 
 def _brevo_api_key(ctx: ToolContext, cid: str) -> str:
     token = (
-        get_decrypted_secret(ctx.client, cid, "api_token", ctx.settings)
-        or get_decrypted_secret(ctx.client, cid, "api_key", ctx.settings)
-        or get_decrypted_secret(ctx.client, cid, "token", ctx.settings)
+        get_decrypted_secret(ctx.client, cid, "api_token", ctx.settings, org_id=ctx.org_id)
+        or get_decrypted_secret(ctx.client, cid, "api_key", ctx.settings, org_id=ctx.org_id)
+        or get_decrypted_secret(ctx.client, cid, "token", ctx.settings, org_id=ctx.org_id)
         or ""
     ).strip()
     if not token:

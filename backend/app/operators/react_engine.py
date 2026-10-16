@@ -356,29 +356,38 @@ class ReActEngine:
     ) -> ReActResult:
         """Execute a ReAct loop for a single agent task."""
         from app.services.ai_tracing import trace_span
+        from app.services.cost_attribution import attribution, bind_turn_attribution, reset_turn_attribution
 
-        with trace_span("react_engine.run", org_id=ctx.org_id, agent_id=ctx.agent_id):
-            result: ReActResult | None = None
-            async for event in self._react_loop(
-                ctx=ctx,
-                task=task,
-                system_prompt=system_prompt,
-                permitted_tools=permitted_tools,
-                connected_integrations=connected_integrations,
-                max_iterations=max_iterations,
-                model=model,
-                agent=agent,
-                audit_resource_type=audit_resource_type,
-                audit_resource_id=audit_resource_id,
-                emit_text_deltas=False,
-                plan_runtime=plan_runtime,
-                conversation_history=conversation_history,
-            ):
-                if event.kind == "done":
-                    result = event.react_result
-            if result is None:
-                return ReActResult(status=ReActStatus.ERROR, answer="", error="ReAct loop produced no result")
-            return result
+        turn_token = bind_turn_attribution(
+            str(ctx.turn_id).strip() if getattr(ctx, "turn_id", None) else None
+        )
+        run_id = str(ctx.run_id).strip() if getattr(ctx, "run_id", None) else None
+        try:
+            with trace_span("react_engine.run", org_id=ctx.org_id, agent_id=ctx.agent_id):
+                with attribution(run_id=run_id, org_id=ctx.org_id):
+                    result: ReActResult | None = None
+                    async for event in self._react_loop(
+                        ctx=ctx,
+                        task=task,
+                        system_prompt=system_prompt,
+                        permitted_tools=permitted_tools,
+                        connected_integrations=connected_integrations,
+                        max_iterations=max_iterations,
+                        model=model,
+                        agent=agent,
+                        audit_resource_type=audit_resource_type,
+                        audit_resource_id=audit_resource_id,
+                        emit_text_deltas=False,
+                        plan_runtime=plan_runtime,
+                        conversation_history=conversation_history,
+                    ):
+                        if event.kind == "done":
+                            result = event.react_result
+                    if result is None:
+                        return ReActResult(status=ReActStatus.ERROR, answer="", error="ReAct loop produced no result")
+                    return result
+        finally:
+            reset_turn_attribution(turn_token)
 
     async def run_streaming(
         self,
@@ -408,28 +417,34 @@ class ReActEngine:
         before the first tool runs and yields the answer sentence by sentence
         while it is generated, instead of after the whole call returns.
         """
-        async for event in self._react_loop(
-            ctx=ctx,
-            task=task,
-            system_prompt=system_prompt,
-            permitted_tools=permitted_tools,
-            connected_integrations=connected_integrations,
-            max_iterations=max_iterations,
-            model=model,
-            agent=agent,
-            audit_resource_type=audit_resource_type,
-            audit_resource_id=audit_resource_id,
-            emit_text_deltas=True,
-            routing_control=routing_control,
-            tool_query=tool_query,
-            tool_classification=tool_classification,
-            connector_focus=connector_focus,
-            plan_runtime=plan_runtime,
-            conversation_history=conversation_history,
-            interrupt=interrupt,
-            stream_answer=stream_answer,
-        ):
-            yield event
+        from app.services.cost_attribution import attribution, attribution_fields
+
+        # Voice silence ticks resume this iterator from different asyncio tasks.
+        # ContextVar tokens must be reset in the same task that created them.
+        turn_id = (str(ctx.turn_id).strip() if getattr(ctx, "turn_id", None)
+                   else attribution_fields().get("turn_id"))
+        run_id = str(ctx.run_id).strip() if getattr(ctx, "run_id", None) else None
+        source = self._react_loop(
+            ctx=ctx, task=task, system_prompt=system_prompt,
+            permitted_tools=permitted_tools, connected_integrations=connected_integrations,
+            max_iterations=max_iterations, model=model, agent=agent,
+            audit_resource_type=audit_resource_type, audit_resource_id=audit_resource_id,
+            emit_text_deltas=True, routing_control=routing_control, tool_query=tool_query,
+            tool_classification=tool_classification, connector_focus=connector_focus,
+            plan_runtime=plan_runtime, conversation_history=conversation_history,
+            interrupt=interrupt, stream_answer=stream_answer,
+        )
+        try:
+            while True:
+                with attribution(run_id=run_id, turn_id=turn_id, org_id=ctx.org_id):
+                    try:
+                        event = await anext(source)
+                    except StopAsyncIteration:
+                        break
+                yield event
+        finally:
+            with attribution(run_id=run_id, turn_id=turn_id, org_id=ctx.org_id):
+                await source.aclose()
 
     async def _react_loop(
         self,
@@ -678,6 +693,13 @@ class ReActEngine:
                         streamed_answer = answer_stream.released
                     else:
                         response = await self._chat_with_tools(messages, tools, resolved_model)
+                    from app.services.tool_model_metering import record_tool_response
+
+                    await record_tool_response(
+                        self.router, org_id=ctx.org_id, model=resolved_model,
+                        elapsed_ms=int((time.perf_counter() - _llm_started) * 1000),
+                        response=response, agent_id=ctx.agent_id,
+                    )
                     _log_react_llm_round(
                         org_id=getattr(ctx, "org_id", None),
                         iteration=iteration,
@@ -1078,6 +1100,17 @@ class ReActEngine:
             self.registry,
             connected_integrations=connected,
         )
+        if requires_write:
+            from app.workers.workflow_queue import assert_current_workflow_claim_live
+
+            try:
+                await asyncio.to_thread(assert_current_workflow_claim_live)
+            except Exception:
+                return {
+                    "success": False, "tool": tool_name, "action": invoke_action,
+                    "error_code": "workflow_claim_lost", "provider_invoked": False,
+                    "error": "Workflow execution ownership was lost. The action was not started.",
+                }
         # Canvas agent steps: when ToolContext.run_id is a workflow_runs row,
         # honor run-level catalog write authority (same SoT) instead of the
         # chat turn-level pending gate — closes the agent/council canvas gap.
@@ -1108,6 +1141,31 @@ class ReActEngine:
                         "observation_status": "write_commit_interrupted",
                     }
                 if run_allows_catalog_write_execution(run_row):
+                    from app.services.workflow_approval_scope import block_invoke_by_approval_scope
+
+                    params_raw = run_row.get("parameters") if isinstance(run_row.get("parameters"), dict) else {}
+                    definition = run_row.get("definition_snapshot") or run_row.get("definition")
+                    scope_block = block_invoke_by_approval_scope(
+                        invoke_action=invoke_action or tool_name,
+                        run_row=run_row,
+                        run_parameters=params_raw,
+                        definition=definition if isinstance(definition, dict) else None,
+                        invoke_params=args if isinstance(args, dict) else {},
+                    )
+                    if scope_block is not None:
+                        return {
+                            "success": False,
+                            "tool": tool_name,
+                            "action": invoke_action,
+                            "error_code": scope_block.get("error_code") or CANVAS_WRITE_AUTHORITY_BLOCKED,
+                            "error": format_operator_message(
+                                "canvas_write_blocked",
+                                confidence_register="blocked",
+                                allow_humor=False,
+                            ),
+                            "provider_invoked": False,
+                            "reason": scope_block.get("reason"),
+                        }
                     from app.connectors.action_catalog.f1_write_slice import is_f1_write_action
                     from app.services.write_preflight import compile_write_for_context
 
@@ -1328,6 +1386,9 @@ class ReActEngine:
             kwargs["temperature"] = 0.2
         started = time.perf_counter()
         try:
+            from app.services.tool_model_metering import authorize_tool_model_call
+
+            await authorize_tool_model_call(self.router, model=model)
             completion = await _complete_unified_turn_stream(
                 client,
                 kwargs=kwargs,

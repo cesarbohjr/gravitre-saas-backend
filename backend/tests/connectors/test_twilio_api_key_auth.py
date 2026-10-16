@@ -15,7 +15,7 @@ def test_auth_header_uses_api_key_when_present() -> None:
     )
     conn = {"config": {"api_key_sid": "SK123", "account_sid": "AC123"}}
     with patch("app.connectors.twilio_api.get_decrypted_secret") as gs:
-        gs.side_effect = lambda _c, _cid, key, _s: {
+        gs.side_effect = lambda _c, _cid, key, _s, *, org_id: {
             "api_key_sid": "SK123",
             "api_key_secret": "secret",
         }.get(key, "")

@@ -41,6 +41,7 @@ import {
 } from "@/lib/department-context"
 import { resolveOperatorActiveContext } from "@/lib/operator-context"
 import { parseChatError } from "@/lib/chat-errors"
+import { lifecycleStatusLabel, mergeTaskStateMonotonic } from "@/lib/lifecycle-envelope"
 import { isUserChatAbort, recoverCompletedChatTurn, writeLastEventId } from "@/lib/chat-replay"
 import { stopChatTurn } from "@/lib/chat-stop"
 import { CONTINUE_AFTER_STOP_TEXT } from "@/lib/chat-continue"
@@ -448,10 +449,16 @@ export function AiWorkspace({
     risks?: Array<{ title?: string; summary?: string; severity?: string }>
   } | null>(null)
   const [taskState, setTaskState] = useState<{
+    task_revision?: number
+    lifecycle_envelope?: Record<string, unknown>
     current_plan?: { steps?: Array<{ step_id?: string; description?: string }> }
     completed_steps?: Array<{ step_id?: string; description?: string }>
     pending_steps?: Array<{ step_id?: string; description?: string }>
   } | null>(null)
+  const lifecycleExecutionResult = useMemo(() => executionResult ? {
+    ...executionResult,
+    lifecycle_envelope: taskState?.lifecycle_envelope ?? executionResult.lifecycle_envelope,
+  } : null, [executionResult, taskState?.lifecycle_envelope])
   const [explainability, setExplainability] = useState<{
     summary?: string
     evidence?: Array<{ label?: string; kind?: string; relevance?: number }>
@@ -707,7 +714,11 @@ export function AiWorkspace({
       // never ran. They are reset when the next prompt is sent instead.
       if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
       if (payload.pendingTask) setPendingTask(payload.pendingTask)
-      if (payload.taskState) setTaskState(payload.taskState)
+      if (payload.taskState) {
+        setTaskState((prev) =>
+          mergeTaskStateMonotonic(prev as Record<string, unknown> | null, payload.taskState as Record<string, unknown>) as typeof prev,
+        )
+      }
       if (payload.strategicPlan) setStrategicPlan(payload.strategicPlan)
       if (payload.advisorBrief) setAdvisorBrief(payload.advisorBrief)
       if (payload.explainability) setExplainability(payload.explainability)
@@ -806,7 +817,9 @@ export function AiWorkspace({
       revalidateOnFocus: false,
       onSuccess: (data) => {
         if (data?.task_state) {
-          setTaskState(data.task_state as typeof taskState)
+          setTaskState((prev) =>
+            mergeTaskStateMonotonic(prev as Record<string, unknown> | null, data.task_state as Record<string, unknown>) as typeof prev,
+          )
         }
         const stored = data?.execution_result as ChatExecutionResult | null | undefined
         if (stored && (stored.artifacts?.length || stored.body || stored.title)) {
@@ -2475,7 +2488,7 @@ export function AiWorkspace({
           isBusy={sessionBusy || isChatBusy}
           agentStatusLabel={agentStatusLabel}
           dialogueMode={dialogueMode}
-          executionResult={executionResult}
+          executionResult={lifecycleExecutionResult}
           pendingTask={pendingTask}
           progressSteps={researchProgressSteps}
           confirmExecuting={confirmExecuting}
@@ -2574,7 +2587,7 @@ export function AiWorkspace({
           isBusy={sessionBusy || isChatBusy}
           agentStatusLabel={agentStatusLabel}
           dialogueMode={dialogueMode}
-          executionResult={executionResult}
+          executionResult={lifecycleExecutionResult}
           pendingTask={pendingTask}
           confirmExecuting={confirmExecuting}
           onConfirmExecution={() => void handleConfirmExecution()}
@@ -2623,7 +2636,7 @@ export function AiWorkspace({
         isBusy={sessionBusy || isChatBusy}
         agentStatusLabel={agentStatusLabel}
         dialogueMode={dialogueMode}
-        executionResult={executionResult}
+        executionResult={lifecycleExecutionResult}
         pendingTask={pendingTask}
         confirmExecuting={confirmExecuting}
         onConfirmExecution={() => void handleConfirmExecution()}
@@ -2899,6 +2912,11 @@ export function AiWorkspace({
                     />
                   ) : null}
                   <ResearchCascadePanel cascade={researchCascade} className="mb-4" />
+                  {lifecycleStatusLabel(taskState) ? (
+                    <p role="status" aria-live="polite" className="mb-3 text-sm text-muted-foreground">
+                      {lifecycleStatusLabel(taskState)}
+                    </p>
+                  ) : null}
                   <GravitreAIConversationTranscript
                     routeKey="/ai"
                     messages={messages}
@@ -2910,7 +2928,7 @@ export function AiWorkspace({
                     explainability={explainability}
                     contextExplanation={contextExplanation}
                     dialogueMode={dialogueMode}
-                    executionResult={executionResult}
+                    executionResult={lifecycleExecutionResult}
                     pendingTask={pendingTask}
                     confirmExecuting={confirmExecuting}
                     onConfirmExecution={() => void handleConfirmExecution()}

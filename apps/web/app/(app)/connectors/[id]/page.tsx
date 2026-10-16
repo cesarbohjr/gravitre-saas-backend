@@ -9,6 +9,7 @@ import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Illustration } from "@/components/gravitre/illustration"
 import { ConnectorLinkage } from "@/components/connectors/connector-linkage"
+import { FreshserviceTriggersPanel } from "@/components/connectors/freshservice-triggers-panel"
 import { KnowledgeSyncButton } from "@/components/connectors/knowledge-sync-button"
 import { DATA_REMOVAL_KEY, DisconnectImpact, useDataRemoval } from "@/components/connectors/data-removal"
 import { NucleoConnector } from "@/components/icons/nucleo/semantic"
@@ -392,6 +393,10 @@ export default function ConnectorDetailPage() {
                   </div>
                 </div>
           </section>
+
+          {vendorKey.toLowerCase() === "freshservice" ? (
+            <FreshserviceTriggersPanel connectorId={connectorId} />
+          ) : null}
         </div>
 
         {/* Delete Dialog */}

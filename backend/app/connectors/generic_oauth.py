@@ -468,7 +468,7 @@ def ensure_generic_session(
     environment_name: str | None = None,
 ) -> tuple[str | None, str | None]:
     env = environment_name or _connector_environment(client, org_id, connector_id)
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if not tokens:
         return None, f"{vendor} OAuth not connected"
 
@@ -522,7 +522,7 @@ def generic_connection_auth_status(
     env = environment_name or _connector_environment(client, org_id, connector_id)
     if not generic_oauth_configured(settings, vendor, env):
         return "misconfigured"
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if not tokens or not tokens.get("access_token"):
         return "pending_auth"
     token, err = ensure_generic_session(

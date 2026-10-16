@@ -292,10 +292,10 @@ async def start_voice_session_outbound(
     cfg = conn.get("config") or {}
     account_sid = str(cfg.get("account_sid") or cfg.get("AccountSid") or "").strip()
     if not account_sid:
-        account_sid = (get_decrypted_secret(client, cid, "account_sid", settings) or "").strip()
+        account_sid = (get_decrypted_secret(client, cid, "account_sid", settings, org_id=org_id) or "").strip()
     token = (
-        get_decrypted_secret(client, cid, "auth_token", settings)
-        or get_decrypted_secret(client, cid, "api_token", settings)
+        get_decrypted_secret(client, cid, "auth_token", settings, org_id=org_id)
+        or get_decrypted_secret(client, cid, "api_token", settings, org_id=org_id)
         or ""
     ).strip()
     if not account_sid or not token:

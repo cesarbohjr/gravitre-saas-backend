@@ -45,6 +45,18 @@ def mcp_input_sha256(input_data: dict[str, Any] | None) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def mcp_approval_target_digest(tool: dict[str, Any], server: dict[str, Any]) -> str:
+    """Bind review to tool/schema, endpoint and credential version without exposing secrets."""
+    return mcp_input_sha256({
+        "tool_id": tool.get("id"), "tool_name": tool.get("tool_name"),
+        "server_id": tool.get("server_id"), "schema": tool.get("input_schema"),
+        "capability_tier": tool.get("capability_tier"),
+        "requires_approval": tool.get("requires_approval"),
+        "server_url": server.get("server_url"), "transport": server.get("transport"),
+        "auth_type": server.get("auth_type"), "auth_version": mcp_input_sha256(server.get("auth_config") or {}),
+    })
+
+
 def classify_mcp_tool_capability(tool_name: str, tool_description: str | None = None) -> str:
     """Conservative keyword fallback when MCP annotations are absent (discovery only)."""
     haystack = f"{tool_name} {tool_description or ''}".lower()
@@ -597,6 +609,7 @@ class MCPClientService:
         agent_id: str | None = None,
         workflow_run_id: str | None = None,
         approval_id: str | None = None,
+        actor_id: str | None = None,
     ) -> dict[str, Any]:
         tool = await self._load_tool(tool_id, org_id)
         if not tool.get("enabled", True):
@@ -622,37 +635,27 @@ class MCPClientService:
                 enforce_rate_limit(self._client(), org_id, "mcp", "mcp", str(tool["server_id"]))
             except RateLimitError:
                 return {"status": "rate_limited", "error": "MCP tool rate limit exceeded, try again shortly"}
+        if requires_write and not approval_id:
+            pending = await self._create_pending_execution(
+                tool_id=tool_id, org_id=org_id, agent_id=agent_id,
+                workflow_run_id=workflow_run_id, input_data=input_data, tool=tool, actor_id=actor_id,
+            )
+            return {
+                "status": "pending_approval", "execution_id": pending.get("execution_id"),
+                "approval_id": pending.get("approval_id"),
+                "message": "This write action requires approval. Check the Approvals queue to proceed.",
+            }
+
+        # Check transport before consuming approval, then bind the exact snapshots
+        # used below. Re-loading between review validation and dispatch can change
+        # a tool or endpoint after the approval was checked.
+        server = await self._load_server(str(tool["server_id"]), org_id)
+        await self._preflight_server(server)
         claim_token: str | None = None
         if requires_write:
-            if not approval_id:
-                pending = await self._create_pending_execution(
-                    tool_id=tool_id,
-                    org_id=org_id,
-                    agent_id=agent_id,
-                    workflow_run_id=workflow_run_id,
-                    input_data=input_data,
-                    tool=tool,
-                )
-                return {
-                    "status": "pending_approval",
-                    "execution_id": pending.get("execution_id"),
-                    "approval_id": pending.get("approval_id"),
-                    "message": (
-                        "This write action requires approval. Check the Approvals queue to proceed."
-                    ),
-                }
-            claim_token = await self._verify_approval(approval_id, tool_id, org_id, input_data)
-
-        try:
-            server = await self._load_server(str(tool["server_id"]), org_id)
-            # Transport and network policy are checked before anything is sent, so a
-            # refusal here keeps the approval reusable once the server is fixed.
-            await self._preflight_server(server)
-        except Exception:
-            # Nothing was sent to the MCP server, so the approval can be used again.
-            if claim_token:
-                await self._release_approval(approval_id, org_id, claim_token)
-            raise
+            claim_token = await self._verify_approval(
+                approval_id, tool_id, org_id, input_data, tool=tool, server=server,
+            )
         started = time.perf_counter()
         try:
             # From here the request may reach the server. Any outcome, including an
@@ -663,7 +666,7 @@ class MCPClientService:
             source_package_id = str(server.get("source_capability_package_id") or "").strip()
             execution_status = "completed"
             verification = None
-            if source_package_id and requires_write:
+            if requires_write:
                 # A portable package does not get to define terminal success by
                 # returning a successful MCP response. Until Gravitre has an
                 # independent source-of-record verifier for this dynamic MCP
@@ -674,7 +677,7 @@ class MCPClientService:
                     "verified": False,
                     "providerAccepted": True,
                     "providerAcceptanceIsTerminalSuccess": False,
-                    "reason": "portable_mcp_write_has_no_independent_source_verifier",
+                    "reason": "mcp_write_has_no_independent_source_verifier",
                 }
             await self._log_execution(
                 tool_id=tool_id,
@@ -711,20 +714,22 @@ class MCPClientService:
             return response
         except Exception as exc:  # noqa: BLE001
             latency_ms = int((time.perf_counter() - started) * 1000)
-            await self._log_execution(
-                tool_id=tool_id,
-                org_id=org_id,
-                agent_id=agent_id,
-                workflow_run_id=workflow_run_id,
-                input_data=input_data,
-                output=None,
-                status="failed",
-                approval_id=approval_id,
-                latency_ms=latency_ms,
-                error=str(exc),
-                capability_tier=str(tool.get("capability_tier") or ""),
-            )
-            return {"status": "failed", "error": str(exc), "latency_ms": latency_ms}
+            outcome = "verification_inconclusive" if requires_write else "failed"
+            try:
+                await self._log_execution(
+                    tool_id=tool_id, org_id=org_id, agent_id=agent_id,
+                    workflow_run_id=workflow_run_id, input_data=input_data, output=None,
+                    status=outcome, approval_id=approval_id, latency_ms=latency_ms,
+                    error=type(exc).__name__, capability_tier=str(tool.get("capability_tier") or ""),
+                )
+            except Exception as log_error:  # noqa: BLE001
+                logger.warning("mcp_execution_evidence_failed error=%s", type(log_error).__name__)
+            logger.warning("mcp_tool_dispatch_failed tool_id=%s error=%s", tool_id, type(exc).__name__)
+            response = {"status": outcome, "error": "The MCP request outcome could not be confirmed.", "latency_ms": latency_ms}
+            if requires_write:
+                response["verification"] = {"verified": False, "providerAcceptanceIsTerminalSuccess": False,
+                                             "providerAccepted": False, "reason": "remote_effect_unknown"}
+            return response
 
     async def get_enabled_tools_for_org(self, org_id: str) -> list[dict[str, Any]]:
         # Read up to five times per chat turn before the model runs; one turn
@@ -841,6 +846,7 @@ class MCPClientService:
         tool_id: str,
         org_id: str,
         input_data: dict[str, Any] | None = None,
+        *, tool: dict[str, Any] | None = None, server: dict[str, Any] | None = None,
     ) -> str:
         """Check the approval matches this tool and input, then claim it (single use).
 
@@ -873,6 +879,10 @@ class MCPClientService:
         approved_hash = str(context.get("input_sha256") or "")
         if not approved_hash or approved_hash != mcp_input_sha256(input_data):
             raise ValueError("Approval does not match MCP tool input")
+        reviewed_tool = tool if tool is not None else await self._load_tool(tool_id, org_id)
+        reviewed_server = server if server is not None else await self._load_server(str(reviewed_tool["server_id"]), org_id)
+        if context.get("target_digest") != mcp_approval_target_digest(reviewed_tool, reviewed_server):
+            raise ValueError("Approval does not match current MCP tool, server or credentials; request fresh approval")
         claim_token = datetime.now(timezone.utc).isoformat()
         try:
             claimed = (
@@ -932,7 +942,10 @@ class MCPClientService:
         workflow_run_id: str | None,
         input_data: dict[str, Any],
         tool: dict[str, Any],
+        actor_id: str | None = None,
     ) -> dict[str, Any]:
+        server = await self._load_server(str(tool["server_id"]), org_id)
+        target_digest = mcp_approval_target_digest(tool, server)
         client = self._client()
         inserted = (
             client.table("mcp_tool_executions")
@@ -956,13 +969,18 @@ class MCPClientService:
             title=f"Approve MCP write: {tool.get('tool_name')}",
             description="MCP write tool execution requires human approval.",
             approval_type="mcp_tool",
+            requested_by=actor_id,
             priority="high",
             status="pending",
             context={
                 "mcp_tool_id": tool_id,
                 "mcp_execution_id": execution_id,
                 "tool_name": tool.get("tool_name"),
+                "server_name": server.get("server_name"),
+                "server_id": tool.get("server_id"),
+                "integration": "mcp",
                 "input_sha256": mcp_input_sha256(input_data),
+                "target_digest": target_digest,
             },
             parameters=input_data,
         )

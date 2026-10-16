@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import time
-from datetime import date, datetime, timezone
+from datetime import timedelta, date, datetime, timezone
 from typing import Any
 
 import stripe
@@ -47,7 +47,8 @@ def _get_customer_id(client: Any, org_id: str) -> str | None:
 
 def _month_bounds(period_start: date, period_end: date) -> tuple[str, str]:
     start_iso = datetime(period_start.year, period_start.month, period_start.day, tzinfo=timezone.utc).isoformat()
-    end_iso = datetime(period_end.year, period_end.month, period_end.day, tzinfo=timezone.utc).isoformat()
+    end_exclusive = period_end + timedelta(days=1)
+    end_iso = datetime(end_exclusive.year, end_exclusive.month, end_exclusive.day, tzinfo=timezone.utc).isoformat()
     return start_iso, end_iso
 
 
@@ -61,6 +62,12 @@ def report_voice_minutes_overage_to_stripe(
     dry_run: bool = False,
 ) -> dict[str, Any]:
     client = client or get_supabase_client(settings)
+    if getattr(settings, "stripe_meter_outbox_enabled", False):
+        from app.billing.stripe_meter_outbox import report_meter_intents
+        return report_meter_intents(
+            org_id, "voice_minutes", period_start, period_end, settings,
+            client=client, dry_run=dry_run,
+        )
     result: dict[str, Any] = {
         "org_id": org_id,
         "period_start": period_start.isoformat(),
@@ -113,8 +120,10 @@ def report_voice_minutes_overage_to_stripe(
             or []
         )
         period_total = sum(int(r.get("quantity") or 0) for r in all_rows)
-    except Exception:  # noqa: BLE001
-        period_total = total_minutes
+    except Exception as exc:  # noqa: BLE001
+        logger.error("meter period total query failed org_id=%s metric=%s error=%s", org_id, "voice_minutes", type(exc).__name__)
+        result["error"] = "period_total_query_failed"
+        return result
     overage_total = max(period_total - included, 0)
     result["overage_minutes"] = overage_total
     if overage_total <= 0:

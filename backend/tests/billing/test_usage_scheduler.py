@@ -53,3 +53,21 @@ async def test_start_returns_task_when_enabled(mock_settings, monkeypatch):
 
 async def test_stop_handles_none():
     await stop_usage_sync_scheduler(None)  # no-op, must not raise
+
+
+def test_recovery_runs_before_stripe_reports(mock_settings, monkeypatch):
+    settings = mock_settings.model_copy(update={
+        "assistant_billing_recovery_enabled": True, "usage_atomic_enabled": True,
+        "assistant_billing_atomic_enabled": True,
+    })
+    order = []
+    monkeypatch.setattr(scheduler, "get_supabase_client", lambda _: MagicMock())
+    monkeypatch.setattr(scheduler, "recover_assistant_model_usage", lambda _: (
+        order.append("recovery") or {"scanned": 1, "settled": 1, "errors": 0}
+    ))
+    for name in ("report_usage_for_active_orgs", "report_research_lookup_overage_for_active_orgs",
+                 "report_voice_minutes_overage_for_active_orgs"):
+        monkeypatch.setattr(scheduler, name, lambda *_: order.append("report") or {})
+    result = scheduler._sync_all_usage(None, None, settings)
+    assert order == ["recovery", "report", "report", "report"]
+    assert result["assistant_recovery"]["settled"] == 1

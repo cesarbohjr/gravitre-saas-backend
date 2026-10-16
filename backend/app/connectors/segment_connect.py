@@ -48,8 +48,10 @@ def segment_connection_status(
     connector_id: str,
     row: dict[str, Any],
     settings: Settings,
+    *,
+    org_id: str,
 ) -> str:
-    masked = masked_api_key_for_response(client, connector_id, row, settings)
+    masked = masked_api_key_for_response(client, connector_id, row, settings, org_id=org_id)
     if masked:
         return "connected"
     return "pending_auth"

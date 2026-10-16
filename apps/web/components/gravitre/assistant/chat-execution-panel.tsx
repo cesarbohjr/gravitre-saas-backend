@@ -8,6 +8,7 @@ import {
   ShieldAlert,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { lifecycleStatusLabel, parseLifecycleEnvelope } from "@/lib/lifecycle-envelope"
 import { cn } from "@/lib/utils"
 import { HIGHLIGHT } from "@/lib/design-system"
 import { PlanApprovalChrome } from "@/components/gravitre/agent-ui/plan-approval-chrome"
@@ -92,6 +93,7 @@ export type PostActionStepCard = {
 }
 
 export type ChatExecutionResult = {
+  lifecycle_envelope?: Record<string, unknown> | null
   success?: boolean
   entity_type?: string
   entity_id?: string
@@ -608,6 +610,16 @@ export function ChatExecutionPanel({
   answerText,
   className,
 }: ChatExecutionPanelProps) {
+  const lifecycle = parseLifecycleEnvelope({ lifecycle_envelope: executionResult?.lifecycle_envelope })
+  if (lifecycle && (lifecycle.customerStage === "uncertain" || lifecycle.customerStage === "verifying")) {
+    const label = lifecycleStatusLabel({ lifecycle_envelope: executionResult?.lifecycle_envelope })
+    return (
+      <div role="status" className={cn("mt-3 text-sm text-muted-foreground", className)}>
+        <p>{label}</p>
+        {executionResult?.result_url ? <Link href={executionResult.result_url} className="underline">Review execution evidence</Link> : null}
+      </div>
+    )
+  }
   if (executionResult && executionResult.success === false) {
     const businessOutcome = resolveBusinessOutcome(executionResult)
     if (businessOutcome) {

@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
-import type { NextRequest } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 
 import { getSupabaseDataUrl, getSupabaseServiceUrl } from "@/lib/supabase/url"
 
@@ -79,6 +79,82 @@ export function createSupabaseServiceRoleClient(): SupabaseClient | null {
       autoRefreshToken: false,
     },
   })
+}
+
+export type AuthenticatedOrgContext = {
+  userId: string
+  orgId: string
+  role: string
+}
+
+export type AuthenticatedOrgResult =
+  | { ok: true; context: AuthenticatedOrgContext }
+  | { ok: false; response: NextResponse }
+
+/** Require a signed-in user and org membership before using org-scoped data APIs. */
+export async function requireAuthenticatedOrg(
+  supabase: SupabaseClient,
+  request: NextRequest,
+): Promise<AuthenticatedOrgResult> {
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  const userId = userData.user?.id
+  if (userError || !userId) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    }
+  }
+
+  const queryOrgId = request.nextUrl.searchParams.get("org_id")?.trim() || null
+  const headerOrgId = request.headers.get("x-org-id")?.trim() || null
+  const explicitOrgId = queryOrgId || headerOrgId
+
+  if (explicitOrgId) {
+    const { data: membership, error } = await supabase
+      .from("organization_members")
+      .select("org_id, role")
+      .eq("user_id", userId)
+      .eq("org_id", explicitOrgId)
+      .maybeSingle()
+    if (error || !membership?.org_id) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+      }
+    }
+    return {
+      ok: true,
+      context: {
+        userId,
+        orgId: String(membership.org_id),
+        role: String(membership.role ?? "member"),
+      },
+    }
+  }
+
+  const { data: membership, error } = await supabase
+    .from("organization_members")
+    .select("org_id, role")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !membership?.org_id) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Organization context required" }, { status: 403 }),
+    }
+  }
+
+  return {
+    ok: true,
+    context: {
+      userId,
+      orgId: String(membership.org_id),
+      role: String(membership.role ?? "member"),
+    },
+  }
 }
 
 export async function resolveOrgId(

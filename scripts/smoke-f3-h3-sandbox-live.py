@@ -134,11 +134,12 @@ def main() -> int:
     # --- Plaid Sandbox ---
     if plaid_conn:
         cid = str(plaid_conn["id"])
-        access = get_decrypted_secret(sb, cid, "access_token", settings) or get_decrypted_secret(
-            sb, cid, "plaid_access_token", settings
+        access = get_decrypted_secret(sb, cid, "access_token", settings, org_id=ORG) or get_decrypted_secret(
+            sb, cid, "plaid_access_token", settings,
+            org_id=ORG,
         )
-        client_id = get_decrypted_secret(sb, cid, "client_id", settings) or settings.plaid_client_id
-        secret = get_decrypted_secret(sb, cid, "secret", settings) or settings.plaid_secret
+        client_id = get_decrypted_secret(sb, cid, "client_id", settings, org_id=ORG) or settings.plaid_client_id
+        secret = get_decrypted_secret(sb, cid, "secret", settings, org_id=ORG) or settings.plaid_secret
 
         if not access and client_id and secret:
             # Create a disposable sandbox Item (First Platypus Bank) then exchange.
@@ -225,9 +226,9 @@ def main() -> int:
     if gusto_conn:
         cid = str(gusto_conn["id"])
         token = (
-            get_decrypted_secret(sb, cid, "access_token", settings)
-            or get_decrypted_secret(sb, cid, "oauth_access_token", settings)
-            or get_decrypted_secret(sb, cid, "api_token", settings)
+            get_decrypted_secret(sb, cid, "access_token", settings, org_id=ORG)
+            or get_decrypted_secret(sb, cid, "oauth_access_token", settings, org_id=ORG)
+            or get_decrypted_secret(sb, cid, "api_token", settings, org_id=ORG)
         )
         if token:
             ctx = ToolContext(

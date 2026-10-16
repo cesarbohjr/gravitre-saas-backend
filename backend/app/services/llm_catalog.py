@@ -42,6 +42,12 @@ class LlmModel:
     # Prompt-cache read rate; None = billed at the input rate.
     cached_input_per_1m: float | None = None
     context_window: int | None = None
+    input_price_threshold: int | None = None
+    long_input_per_1m: float | None = None
+    long_output_per_1m: float | None = None
+    long_cached_input_per_1m: float | None = None
+    cache_write_per_1m: float | None = None
+    long_cache_write_per_1m: float | None = None
     # OpenAI fine-tuning API supports this base (SFT/DPO via the training worker).
     fine_tunable: bool = False
     # Hidden from pickers; still accepted for saved agents / explicit overrides.
@@ -61,6 +67,12 @@ class LlmModel:
             "output_per_1m": self.output_per_1m,
             "cached_input_per_1m": self.cached_input_per_1m,
             "context_window": self.context_window,
+            "input_price_threshold": self.input_price_threshold,
+            "long_input_per_1m": self.long_input_per_1m,
+            "long_output_per_1m": self.long_output_per_1m,
+            "long_cached_input_per_1m": self.long_cached_input_per_1m,
+            "cache_write_per_1m": self.cache_write_per_1m,
+            "long_cache_write_per_1m": self.long_cache_write_per_1m,
             "fine_tunable": self.fine_tunable,
             "deprecated": self.deprecated,
             "preview": self.preview,
@@ -101,7 +113,16 @@ LLM_CATALOG: tuple[LlmModel, ...] = (
              accepts_temperature=False),
     LlmModel("claude-sonnet-5-5", "anthropic", "Claude Sonnet 5.5",
              "Balanced Claude for writing, coding, and everyday agent work",
-             "balanced", 2.0, 10.0, cached_input_per_1m=0.20, context_window=1_000_000,
+             "balanced", 2.0, 10.0, cached_input_per_1m=0.10, cache_write_per_1m=2.50, context_window=1_000_000,
+             accepts_temperature=False),
+    # Anthropic launch pricing verified 2026-10-14:
+    # https://www.anthropic.com/claude-haiku-5-5 (100k is inclusive).
+    LlmModel("claude-haiku-5-5", "anthropic", "Claude Haiku 5.5",
+             "Small Claude for classification, summaries, and narrow agent tasks",
+             "fast", 0.10, 0.50, cached_input_per_1m=0.01,
+             input_price_threshold=100_000, long_input_per_1m=0.50,
+             long_output_per_1m=2.50, long_cached_input_per_1m=0.05,
+             cache_write_per_1m=0.125, long_cache_write_per_1m=0.625,
              accepts_temperature=False),
     LlmModel("claude-haiku-4-5", "anthropic", "Claude Haiku 4.5",
              "Fastest Claude for routing, triage, and high-QPS agents",

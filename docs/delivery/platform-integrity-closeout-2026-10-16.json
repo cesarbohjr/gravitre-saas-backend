@@ -1,0 +1,55 @@
+{
+  "captured_at": "2026-10-16T02:54:27.229304+00:00",
+  "code_review_sha": "592ea06fde885fcc8c542d946d03c5ae2f617e3f",
+  "production_changes_made": false,
+  "focused_regression": {
+    "result": "PASS",
+    "passed": 178,
+    "scope": "credential tenant scope, connector list, Twilio/Semrush, disconnect cleanup, memory lineage/liveness, ReAct workflow approval projection, approval fingerprints and run authority",
+    "full_regression": "PENDING"
+  },
+  "supabase_read_only": {
+    "project_id": "smyeexlrqdpymwjmgzqu",
+    "migration_query": "select version, name from supabase_migrations.schema_migrations where version >= '20261014000000' order by version",
+    "recorded_versions_in_window": [],
+    "verified_columns_present": {
+      "model_calls": [
+        "run_id",
+        "turn_id"
+      ]
+    },
+    "verified_columns_absent": {
+      "model_calls": [
+        "billing_credits",
+        "billing_settled_at"
+      ],
+      "organizations": [
+        "parent_org_id"
+      ]
+    },
+    "verified_tables_absent": [
+      "write_invoke_idempotency",
+      "billing_period_allowances"
+    ]
+  },
+  "repository_migrations_pending_review": [
+    "20261014060000_msp_parent_org_scaffold.sql",
+    "20261014100000_write_invoke_idempotency.sql",
+    "20261014100001_write_invoke_idempotency_grants.sql",
+    "20261015032117_assistant_usage_atomic.sql",
+    "20261015222156_atomic_usage_all_sources.sql",
+    "20261015232327_assistant_billing_recovery_contract.sql"
+  ],
+  "withdrawn_migration_do_not_apply": "20261014110000",
+  "acceptance": "NOT RUN: authenticated production matrix, staging migration acceptance and deployment alignment. No production flags changed.",
+  "remaining_plan": "See MASTER_PLAN_COMPLETION_MATRIX.md and MASTER_PLAN_CLOSEOUT_2026-10-15.md; this evidence does not close remaining engineering.",
+  "segment_mocked_regression": {
+    "result": "PASS",
+    "passed": 10,
+    "provider_requests": "_request mocked; invalid identity asserts not called; synthetic keys and payloads only"
+  },
+  "broader_local_regression": {
+    "result": "INCOMPLETE",
+    "reason": "Automatic approval review blocked an unverified external Segment request. The run was stopped; no broad PASS claimed. Segment identity validation and explicitly mocked tests are fixed separately."
+  }
+}

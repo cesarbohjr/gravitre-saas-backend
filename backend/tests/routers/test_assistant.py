@@ -214,10 +214,27 @@ async def test_killswitch_logs_guardrail_event(async_client, monkeypatch, captur
     assert log_mock.call_args[0][2] == "killswitch_blocked"
 
 
-async def test_billing_scheduled_after_success(async_client, monkeypatch, capture_background_tasks):
+async def test_billing_uses_each_measured_model_round(async_client, monkeypatch, capture_background_tasks):
     _authenticate(org_id="org-1")
     _mock_prepare_stream_guardrails(monkeypatch)
-    _mock_agent_intelligence_stream(monkeypatch, content="hello billing text")
+    intelligence = _mock_agent_intelligence_stream(monkeypatch, content="hello billing text")
+    original = intelligence.execute_task_streaming
+    seen_turns = []
+
+    async def metered_stream(**kwargs):
+        from app.services.cost_attribution import MeasuredModelCall, attribution_fields, record_measured_model_call
+
+        for number in range(2):
+            seen_turns.append(attribution_fields().get("turn_id"))
+            record_measured_model_call(MeasuredModelCall(
+                id=f"call-{number}", org_id="org-1", provider="openai",
+                model="gpt-5.5", input_tokens=100 + number,
+                output_tokens=20 + number, latency_ms=12, cost_usd=.01,
+            ))
+        async for event in original(**kwargs):
+            yield event
+
+    intelligence.execute_task_streaming = metered_stream
 
     record_mock = AsyncMock()
     monkeypatch.setattr(assistant_module, "_record_assistant_billing", record_mock)
@@ -231,11 +248,30 @@ async def test_billing_scheduled_after_success(async_client, monkeypatch, captur
     resp.text  # drain stream so billing/background tasks are scheduled
     for coro in capture_background_tasks:
         await coro
-    record_mock.assert_awaited_once()
-    args = record_mock.call_args[0]
-    assert args[1] == "org-1"
-    assert args[2].input_tokens >= 1
-    assert args[2].output_tokens >= 1
+    assert record_mock.await_count == 2
+    args = [call.args for call in record_mock.await_args_list]
+    assert [row[2].model_call_id for row in args] == ["call-0", "call-1"]
+    assert [row[2].input_tokens for row in args] == [100, 101]
+    assert [row[2].output_tokens for row in args] == [20, 21]
+    assert seen_turns[0] and seen_turns[0].startswith("assistant:")
+    assert seen_turns == [seen_turns[0]] * 2
+
+
+async def test_unmetered_stream_is_not_charged_from_text_length(async_client, monkeypatch, capture_background_tasks):
+    _authenticate(org_id="org-1")
+    _mock_prepare_stream_guardrails(monkeypatch)
+    _mock_agent_intelligence_stream(monkeypatch, content="unmetered")
+    record_mock = AsyncMock()
+    monkeypatch.setattr(assistant_module, "_record_assistant_billing", record_mock)
+    resp = await async_client.post(
+        "/api/assistant/chat", headers={"Authorization": "Bearer token"},
+        json={"messages": [{"role": "user", "content": "hello"}], "org_id": "org-1", "tools": []},
+    )
+    assert resp.status_code == 200
+    resp.text
+    for coro in capture_background_tasks:
+        await coro
+    record_mock.assert_not_awaited()
 
 
 async def test_record_assistant_billing_uses_real_tokens(monkeypatch):

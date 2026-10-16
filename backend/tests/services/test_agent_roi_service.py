@@ -111,3 +111,43 @@ def test_revenue_only_when_outcome_has_amount():
     assert agent["revenueInfluencedUsd"]["value"] == 500.0
     assert agent["revenueInfluencedUsd"]["provenance"] == "measured"
     assert agent["actionsExecuted"]["value"] == 1
+
+
+def test_report_pagination_reads_beyond_single_rest_page_without_duplicates():
+    from types import SimpleNamespace
+    from app.services.agent_roi_service import _read_report_pages
+    class Query:
+        rows = [{"id": str(i)} for i in range(1500)]
+        def order(self, *_): return self
+        def range(self, start, end): self.start, self.end = start, end; return self
+        def execute(self): return SimpleNamespace(data=self.rows[self.start:self.end + 1])
+    rows, complete = _read_report_pages(Query())
+    assert len(rows) == 1500 and complete
+
+
+def test_incomplete_cost_evidence_cannot_publish_an_roi_multiple():
+    from app.services.agent_roi_service import _apply_report_coverage
+    report = build_agent_roi_report(
+        org_id="org", agents=[{"id": "a", "name": "A"}],
+        model_call_rows=[{"agent_id": "a", "cost_usd": 1}],
+        job_rows=[{"status": "completed", "kind": "operator_task", "payload": {"agent_id": "a"}}],
+        outcome_rows=[], org_settings={}, period_days=30,
+        period_start=datetime(2026, 9, 1, tzinfo=timezone.utc), period_end=datetime(2026, 9, 30, tzinfo=timezone.utc),
+    )
+    _apply_report_coverage(report, {"model_calls": False, "agent_jobs": True, "outcomes": True})
+    assert report["orgTotals"]["agentCostUsd"]["value"] is None
+    assert report["orgTotals"]["roiMultiple"]["value"] is None
+    assert report["agents"][0]["roiMultiple"]["value"] is None
+    assert report["honesty"]["dataComplete"] is False
+
+
+def test_repeated_page_and_bounded_report_are_labeled_incomplete():
+    from types import SimpleNamespace
+    from app.services.agent_roi_service import _read_report_pages
+    class Query:
+        def order(self, *_): return self
+        def range(self, *_): return self
+        def execute(self): return SimpleNamespace(data=[{"id": "one"}, {"id": "two"}])
+    rows, complete = _read_report_pages(Query(), page_size=2)
+    assert len(rows) == 2 and not complete
+    assert _read_report_pages(Query(), page_size=2, max_rows=2)[1] is False

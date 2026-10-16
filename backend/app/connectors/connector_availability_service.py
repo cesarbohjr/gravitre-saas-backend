@@ -220,7 +220,7 @@ def evaluate_connector_availability(
 
     if normalize_hubspot_vendor(vendor) == "hubspot":
         configured = _hubspot_oauth_configured(settings, env)
-        tokens = load_oauth_tokens(client, connector_id, settings) if configured else None
+        tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id) if configured else None
         if configured and not tokens:
             authenticated = False
             token_valid = False

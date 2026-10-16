@@ -130,7 +130,7 @@ async def _twilio_auth_token(settings: Settings, org_id: str | None = None) -> s
         conn = get_connector_by_type(client, org_id, "twilio")
         if conn:
             return (
-                get_decrypted_secret(client, str(conn["id"]), "auth_token", settings) or ""
+                get_decrypted_secret(client, str(conn["id"]), "auth_token", settings, org_id=org_id) or ""
             ).strip()
     return ""
 

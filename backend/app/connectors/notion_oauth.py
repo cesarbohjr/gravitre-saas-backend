@@ -110,7 +110,7 @@ def ensure_notion_session(
 ) -> tuple[str | None, str | None]:
     """Return (access_token, error_message). Notion tokens do not refresh."""
     env = environment_name or _connector_environment(client, org_id, connector_id)
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if not tokens:
         return None, "Notion OAuth not connected"
     access = str(tokens.get("access_token") or "").strip()
@@ -183,7 +183,7 @@ def notion_connection_auth_status(
     env = environment_name or _connector_environment(client, org_id, connector_id)
     if not notion_oauth_configured(settings, env):
         return "misconfigured"
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if not tokens or not tokens.get("access_token"):
         return "pending_auth"
     if token_needs_refresh(tokens, TOKEN_REFRESH_BUFFER_SEC) and not tokens.get("refresh_token"):

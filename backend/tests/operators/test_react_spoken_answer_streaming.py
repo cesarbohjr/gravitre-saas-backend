@@ -86,7 +86,14 @@ def _engine(fake: _FakeOpenAI) -> ReActEngine:
     engine.registry.execute_tool = AsyncMock(
         return_value={"success": True, "tool": "web_search", "results": [], "totalResults": 0, "query": "q"}
     )
-    engine.router = SimpleNamespace(_openai=fake, settings=_settings())
+    # Real ModelRouter applies policy and budget before dispatch. The scripted
+    # transport supplies those gates explicitly so the voice stream reaches
+    # the fake provider without a network or billing database.
+    engine.router = SimpleNamespace(
+        _openai=fake, settings=_settings(),
+        _assert_model_policy=lambda *_: None,
+        _enforce_rate_and_budget=lambda *_: None,
+    )
     return engine
 
 

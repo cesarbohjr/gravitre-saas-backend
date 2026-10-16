@@ -172,7 +172,7 @@ def _outcome(state: dict[str, Any], *, pending_at_start: dict[str, Any] | None) 
         summary="Sent.",
         structured={"id": "msg-1"},
         pending_task={"type": "connector_action", "status": "executed"},
-        verification={"verified": True},
+        verification={"verified": True, "method": "entity_get", "read_action": "gmail.messages.get"},
         pending_at_start=pending_at_start,
     )
 

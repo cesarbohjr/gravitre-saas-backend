@@ -28,10 +28,10 @@ def resolve_github_access_token(
     )
     if token:
         return token
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if tokens and tokens.get("access_token"):
         return str(tokens["access_token"])
-    pat = get_decrypted_secret(client, connector_id, "token", settings)
+    pat = get_decrypted_secret(client, connector_id, "token", settings, org_id=org_id)
     return (pat or "").strip() or None
 
 
@@ -64,12 +64,12 @@ def resolve_zendesk_auth(
     if oauth_token:
         return subdomain, None, None, oauth_token
 
-    tokens = load_oauth_tokens(client, cid, settings)
+    tokens = load_oauth_tokens(client, cid, settings, org_id=org_id)
     if tokens and tokens.get("access_token"):
         return subdomain, None, None, str(tokens["access_token"])
 
-    email = get_decrypted_secret(client, cid, "email", settings)
-    api_token = get_decrypted_secret(client, cid, "api_token", settings)
+    email = get_decrypted_secret(client, cid, "email", settings, org_id=org_id)
+    api_token = get_decrypted_secret(client, cid, "api_token", settings, org_id=org_id)
     return subdomain, (email or "").strip() or None, (api_token or "").strip() or None, None
 
 
@@ -91,8 +91,8 @@ def resolve_connectwise_auth(
         raise ValueError("ConnectWise connector missing site_url or company_id in config")
     if not client_id:
         raise ValueError("ConnectWise connector missing client_id in config")
-    public_key = get_decrypted_secret(client, cid, "public_key", settings)
-    private_key = get_decrypted_secret(client, cid, "private_key", settings)
+    public_key = get_decrypted_secret(client, cid, "public_key", settings, org_id=org_id)
+    private_key = get_decrypted_secret(client, cid, "private_key", settings, org_id=org_id)
     if not public_key or not private_key:
         raise ValueError("ConnectWise public_key/private_key secrets not configured")
     out = {
@@ -113,10 +113,10 @@ def resolve_slack_bot_token(
     connector_id: str,
     settings: Settings,
 ) -> str | None:
-    token = get_decrypted_secret(client, connector_id, "token", settings)
+    token = get_decrypted_secret(client, connector_id, "token", settings, org_id=org_id)
     if token:
         return token.strip()
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if tokens and tokens.get("access_token"):
         return str(tokens["access_token"]).strip()
     return None
@@ -140,7 +140,7 @@ def resolve_microsoft365_access_token(
     )
     if token:
         return token
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if tokens and tokens.get("access_token"):
         return str(tokens["access_token"]).strip()
     return None

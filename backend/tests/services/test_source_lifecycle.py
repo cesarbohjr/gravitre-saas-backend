@@ -344,7 +344,7 @@ def test_google_revoke_skipped_when_another_google_connector_is_live(monkeypatch
         }
     )
     monkeypatch.setattr(
-        "app.connectors.hubspot_oauth.load_oauth_tokens", lambda *a: {"refresh_token": "r", "access_token": "a"}
+        "app.connectors.hubspot_oauth.load_oauth_tokens", lambda *a, org_id: {"refresh_token": "r", "access_token": "a"}
     )
     sent: list[Any] = []
     monkeypatch.setattr(pr, "_post", lambda *a, **k: sent.append(a))
@@ -359,7 +359,7 @@ def test_google_revoke_skipped_when_another_google_connector_is_live(monkeypatch
 
 
 def test_revoke_never_raises(monkeypatch):
-    def boom(*_a):
+    def boom(*_a, org_id):
         raise RuntimeError("secrets table down")
 
     monkeypatch.setattr("app.connectors.hubspot_oauth.load_oauth_tokens", boom)
@@ -588,9 +588,12 @@ async def test_disconnect_revokes_before_tokens_are_dropped(monkeypatch):
         "revoke_on_disconnect",
         lambda *a, **k: order.append("revoke") or pr.RevokeOutcome("revoked", "hubspot"),
     )
-    monkeypatch.setattr(
-        "app.connectors.platform.clear_connector_oauth_tokens", lambda *a: order.append("clear")
-    )
+    def clear_tokens(_client, connector_id, *, org_id):
+        assert str(connector_id) == str(cid)
+        assert org_id == ORG
+        order.append("clear")
+
+    monkeypatch.setattr("app.connectors.platform.clear_connector_oauth_tokens", clear_tokens)
     settings = SimpleNamespace(supabase_url="https://example.supabase.co", supabase_service_role_key="service")
     out = await _delete_connector_impl(cid, ConnectorDeleteRequest(confirmName="desk"), ({"user_id": "u1"}, ORG), settings)
     assert out == {"success": True}

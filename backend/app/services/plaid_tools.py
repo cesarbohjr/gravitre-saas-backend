@@ -90,18 +90,18 @@ def _resolve_plaid_access(
         )
     cid = str(conn["id"])
     access_token = (
-        get_decrypted_secret(ctx.client, cid, "access_token", ctx.settings)
-        or get_decrypted_secret(ctx.client, cid, "plaid_access_token", ctx.settings)
+        get_decrypted_secret(ctx.client, cid, "access_token", ctx.settings, org_id=ctx.org_id)
+        or get_decrypted_secret(ctx.client, cid, "plaid_access_token", ctx.settings, org_id=ctx.org_id)
     )
     if not access_token:
         raise ToolValidationError(
             "Plaid not connected / exchange public_token first "
             "(no access_token on connector — complete Plaid Link exchange)"
         )
-    client_id = get_decrypted_secret(ctx.client, cid, "client_id", ctx.settings) or getattr(
+    client_id = get_decrypted_secret(ctx.client, cid, "client_id", ctx.settings, org_id=ctx.org_id) or getattr(
         ctx.settings, "plaid_client_id", None
     )
-    secret = get_decrypted_secret(ctx.client, cid, "secret", ctx.settings) or getattr(
+    secret = get_decrypted_secret(ctx.client, cid, "secret", ctx.settings, org_id=ctx.org_id) or getattr(
         ctx.settings, "plaid_secret", None
     )
     conn_cfg = conn.get("config") if isinstance(conn.get("config"), dict) else {}

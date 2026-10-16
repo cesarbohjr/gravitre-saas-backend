@@ -60,8 +60,8 @@ WRITER_INVENTORY: dict[tuple[str, str], tuple[int, str]] = {
     ("services/agent_memory_service.py", "remember_approval_pattern"): (1, NOT_CONNECTOR),
     ("services/agent_memory_service.py", "remember_prediction_outcome"): (1, NOT_CONNECTOR),
     ("services/agent_memory_service.py", "table:agent_memories"): (
-        3,
-        "create_agent_memory insert and its retries; tags when given source_connector_id",
+        2,
+        "tagged insert never retries; source_class-only compatibility for untagged rows",
     ),
     ("workflows/execution_engine_runtime.py", "create_agent_memory"): (
         1,
@@ -74,12 +74,12 @@ WRITER_INVENTORY: dict[tuple[str, str], tuple[int, str]] = {
     ("services/memory_promotion_service.py", "table:agent_memories"): (1, NOT_CONNECTOR),
     ("services/workspace_memory_service.py", "upsert_temporal_memory"): (1, "promote_turn_memories internals"),
     ("services/workspace_memory_service.py", "_insert_memory_row"): (1, "promote_turn_memories internals"),
-    ("services/workspace_memory_service.py", "table:agent_memories"): (3, "promote_turn_memories internals"),
+    ("services/workspace_memory_service.py", "table:agent_memories"): (2, "tagged insert plus untagged-only legacy compatibility"),
     ("services/memory_temporal_service.py", "_insert_memory"): (2, "upsert_temporal_memory internals"),
-    ("services/memory_temporal_service.py", "table:agent_memories"): (2, "upsert_temporal_memory internals"),
+    ("services/memory_temporal_service.py", "table:agent_memories"): (1, "single lineage-preserving insert"),
     # entity_observations (TABLE) / entity_behavior_signals
     ("services/entity_observations.py", "record_observations"): (1, CONNECTOR_TAGGED),
-    ("services/entity_observations.py", "table:TABLE"): (2, "record_observations insert and its retry"),
+    ("services/entity_observations.py", "table:TABLE"): (1, "single lineage-preserving upsert"),
 }
 
 _TABLE_WRITE = re.compile(
@@ -306,10 +306,11 @@ def test_observations_flag_off_unchanged():
     assert "source_connector_id" not in store.rows[0]
 
 
-def test_observations_written_without_the_column_before_the_migration():
+def test_observations_never_strip_lineage_when_the_schema_is_missing():
     store = _ObsStore(missing_column=True)
-    assert eo.record_observations(store, org_id=ORG, entity_row_id="e1", message=_message(), observations=_OBS, settings=ON) == 1
-    assert store.attempts == 2 and "source_connector_id" not in store.rows[0]
+    with pytest.raises(RuntimeError):
+        eo.record_observations(store, org_id=ORG, entity_row_id="e1", message=_message(), observations=_OBS, settings=ON)
+    assert store.attempts == 1 and store.rows == []
 
 
 @pytest.mark.usefixtures("lifecycle_runtime_ready")

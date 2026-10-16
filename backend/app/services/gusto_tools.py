@@ -88,9 +88,9 @@ def _resolve_gusto_session(
     if status in {"needs_connection", "inactive", "disconnected", "pending"}:
         raise ToolConnectorNotConnectedError(GUSTO_PARTNER_MSG)
     token = (
-        get_decrypted_secret(ctx.client, cid, "access_token", ctx.settings)
-        or get_decrypted_secret(ctx.client, cid, "oauth_access_token", ctx.settings)
-        or get_decrypted_secret(ctx.client, cid, "api_token", ctx.settings)
+        get_decrypted_secret(ctx.client, cid, "access_token", ctx.settings, org_id=ctx.org_id)
+        or get_decrypted_secret(ctx.client, cid, "oauth_access_token", ctx.settings, org_id=ctx.org_id)
+        or get_decrypted_secret(ctx.client, cid, "api_token", ctx.settings, org_id=ctx.org_id)
     )
     if not token:
         raise ToolConnectorNotConnectedError(GUSTO_PARTNER_MSG)
