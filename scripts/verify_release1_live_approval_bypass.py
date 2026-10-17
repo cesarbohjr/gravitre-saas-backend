@@ -43,7 +43,7 @@ async def main():
   tools=(db.table("mcp_tools").insert({
    "org_id":org,"server_id":sid,"tool_name":"send_external_record",
    "tool_description":"Write-path fixture that must never reach a provider",
-   "capability_tier":"write","requires_approval":True,
+   "capability_tier":"write",
    "input_schema":{"type":"object","properties":{"value":{"type":"string"}}},
    "enabled":True,"risk_level":"high"
   }).execute().data or [])
