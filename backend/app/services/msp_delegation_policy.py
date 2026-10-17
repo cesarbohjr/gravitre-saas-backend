@@ -41,11 +41,17 @@ def is_allowed(
     user_id: str,
     action: str,
     now: datetime | None = None,
+    customer_approval_verified: bool = False,
+    provider_membership_verified: bool = False,
+    customer_relationship_verified: bool = False,
 ) -> bool:
     """Check scope and expiry; callers MUST also independently enforce RLS.
 
     This function never authorizes a database query by itself.
     """
+    # These checks must be supplied by trusted server-side lookups, never request fields.
+    if not (customer_approval_verified and provider_membership_verified and customer_relationship_verified):
+        return False
     if grant is None or action not in ALL_ACTIONS:
         return False
     if not all((provider_org_id, customer_org_id, user_id, grant.approved_by_customer_user_id)):
@@ -57,6 +63,8 @@ def is_allowed(
     ):
         return False
     if grant.revoked_at is not None or action not in grant.actions:
+        return False
+    if not isinstance(grant.tier, AccessTier):
         return False
     allowed_for_tier = set(OVERVIEW_ACTIONS)
     if grant.tier >= AccessTier.ADMINISTRATION:
