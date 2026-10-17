@@ -147,7 +147,7 @@ function DecisionQueue() {
       mutateHistory(),
       mutateCache((key) => typeof key === "string" && (
         key.startsWith("/api/runs") || key.startsWith("/api/agents") ||
-        key.startsWith("/api/sessions")
+        key.startsWith("/api/sessions") || key.startsWith("agent-identity-")
       )),
     ])
   }, [mutatePending, mutateHistory, mutateCache])
