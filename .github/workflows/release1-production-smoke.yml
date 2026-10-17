@@ -8,7 +8,7 @@ on:
       - "scripts/verify-release1-production-smoke.py"
   workflow_dispatch:
   workflow_run:
-    workflows: ["Production release verification"]
+    workflows: ["Production release verification", "Railway backend production"]
     types: [completed]
     branches: [main]
 
@@ -30,7 +30,7 @@ jobs:
         run: rm -f docs/delivery/release1-production-smoke.json
       - name: Probe production anonymously
         env:
-          EXPECT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
+          EXPECT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
         run: |
           set -euo pipefail
           if [ -n "$EXPECT_SHA" ]; then
