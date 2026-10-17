@@ -42,7 +42,7 @@ jobs:
                   raise SystemExit("Missing or invalid deployed backend SHA")
               print(sha)
           PY
-)"
+          )"
             git cat-file -e "$DEPLOY_SHA^{commit}"
             # Strict: if anything in backend/ changed since the live revision,
             # the service MUST deploy the expected commit before this probe passes.
