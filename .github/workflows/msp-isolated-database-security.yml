@@ -24,6 +24,10 @@ jobs:
         run: |
           supabase start
           supabase db reset --local
+      - name: Seed two disposable customer organizations
+        env:
+          MSP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: python backend/tests/integration/seed_msp_test_organizations.py
       - name: Run real PostgreSQL security tests
         env:
           MSP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
