@@ -136,6 +136,17 @@ def mcp_openai_tool_name(server_name: str, tool_name: str) -> str:
 
 from contextlib import asynccontextmanager
 
+
+def _streamable_http_client():
+    """Retain the SDK factory accessor used by compatibility contract tests."""
+    try:
+        from mcp.client.streamable_http import streamablehttp_client
+        return streamablehttp_client
+    except ImportError:
+        from mcp.client.streamable_http import streamable_http_client
+        return streamable_http_client
+
+
 @asynccontextmanager
 async def _secure_streamable_http_client(url: str, headers: dict[str, str]):
     """Support MCP v1 and v2 without allowing cross-origin redirects.
