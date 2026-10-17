@@ -8,6 +8,7 @@ on:
       - "scripts/verify-release1-live-negative-matrix.py"
       - "scripts/provision_release1_smoke_member.py"
       - "scripts/verify_release1_admin_audit_live.py"
+      - "scripts/verify_release1_live_source_revocation.py"
       - ".github/workflows/release1-authenticated-smoke.yml"
   workflow_dispatch:
 
@@ -67,6 +68,19 @@ jobs:
         with:
           name: release1-admin-role-audit-live
           path: docs/delivery/release1-admin-audit-live.json
+          if-no-files-found: ignore
+      - name: Verify isolated source and document revocation via live API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python3 scripts/verify_release1_live_source_revocation.py
+      - name: Upload live source revocation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release1-live-source-revocation
+          path: docs/delivery/release1-live-source-revocation.json
           if-no-files-found: ignore
       - name: Upload results (no credentials)
         if: always()
