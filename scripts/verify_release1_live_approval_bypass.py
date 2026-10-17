@@ -94,5 +94,5 @@ async def main():
 if __name__=="__main__":
  try:raise SystemExit(asyncio.run(main()))
  except Exception as e:
-  print("FORGED_APPROVAL_PROBE_ERROR: "+type(e).__name__,file=sys.stderr)
+  print("FORGED_APPROVAL_PROBE_ERROR: "+type(e).__name__+" code="+str(getattr(e,"code","unknown")),file=sys.stderr)
   raise SystemExit(2)
