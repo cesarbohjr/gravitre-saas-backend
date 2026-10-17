@@ -15,10 +15,12 @@
 - Authenticated browser network credential audit: https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/38985136024
 - Strict SHA-aligned anonymous production smoke: https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/38994759701
 
-## Open technical acceptance
+## Final chat and voice response revocation acceptance
 
-**NOT VERIFIED:** a separate full live chat-and-voice end-to-end session demonstrating successful canary recall before source revocation and absence after revocation, including cached paths. The shared memory liveness filter passed, but it is not equivalent to that end-to-end test.
+**PASSED:** https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/39002628381
 
-**Release acceptance status: CONDITIONAL — owner signed off; technical gate open.**
+All four isolated production checks returned HTTP 200 and passed: chat and voice-session text ingress both recalled a unique temporary memory canary before connector revocation, and neither response contained it after the connector was disconnected. A fixture cleanup step removed the test memory and connector. Evidence was uploaded without response bodies or tokens.
 
-Do not label the full technical security incident CLOSED or RELEASE_1_FULLY_ACCEPTED until the missing end-to-end proof passes, or the owner explicitly accepts its residual risk as an exception after reviewing that precise outstanding test.
+**Scope limits:** This is full live HTTP response-path verification for chat and the voice-session turn endpoint using *text ingress*. It does not separately exercise microphone/STT/actual audio capture or guarantee every legacy/derived cache under every historical retrieval path.
+
+**Owner sign-off: RECORDED. Listed Release 1 technical acceptance gates: PASSED within their documented scope.** Formal incident closure may proceed under the recorded owner approval with these residual limitations visible; do not represent untested audio or historical cache variants as covered.
