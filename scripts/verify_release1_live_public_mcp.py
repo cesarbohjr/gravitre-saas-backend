@@ -26,6 +26,15 @@ def call(path,token,org,method="GET",body=None):
  try:
   with urllib.request.urlopen(req,timeout=50) as res:return res.status,json.loads(res.read(500000))
  except urllib.error.HTTPError as e:
+  if e.code == 502:
+   try:
+    detail=json.loads(e.read(1500)).get("detail","")
+    message=str(detail)[:220]
+    for key in ("SUPABASE_SERVICE_ROLE_KEY","SUPABASE_JWT_SECRET","PLATFORM_LIVE_BEARER_TOKEN"):
+     if os.environ.get(key):message=message.replace(os.environ[key],"[redacted]")
+    print("PUBLIC_MCP_DISCOVERY_502_CATEGORY: "+message,flush=True)
+   except Exception:
+    print("PUBLIC_MCP_DISCOVERY_502_CATEGORY: unreadable",flush=True)
   return e.code,{}
 
 async def main():
