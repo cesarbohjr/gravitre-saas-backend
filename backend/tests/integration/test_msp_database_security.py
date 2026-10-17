@@ -150,3 +150,26 @@ def test_audit_failure_rolls_back_grant(conn):
         cur.execute("SELECT count(*) FROM public.msp_delegations WHERE id=%s", (grant_id,))
         assert cur.fetchone()[0] == 0
         cur.execute("ROLLBACK TO SAVEPOINT before_audit_failure")
+
+
+def test_two_customer_authenticated_role_cannot_read_delegation(conn):
+    """Two seeded customers must not become visible through JWT-scoped SQL access."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, slug FROM public.organizations WHERE slug IN (%s, %s) ORDER BY slug",
+            ("msp-isolation-ci-customer-a", "msp-isolation-ci-customer-b"),
+        )
+        orgs = cur.fetchall()
+        assert len(orgs) == 2, "Two disposable customer fixtures must be seeded"
+        assert orgs[0][0] != orgs[1][0]
+        for org_id, _ in orgs:
+            cur.execute("SAVEPOINT authenticated_attempt")
+            cur.execute("SET LOCAL ROLE authenticated")
+            cur.execute(
+                "SELECT set_config('request.jwt.claims', %s, true)",
+                (__import__('json').dumps({"sub": str(uuid.uuid4()), "role": "authenticated", "org_id": str(org_id)}),),
+            )
+            with pytest.raises(psycopg.Error) as exc:
+                cur.execute("SELECT * FROM public.msp_delegations")
+            assert exc.value.sqlstate == "42501", "Authenticated role must have no delegation SELECT privilege"
+            cur.execute("ROLLBACK TO SAVEPOINT authenticated_attempt")
