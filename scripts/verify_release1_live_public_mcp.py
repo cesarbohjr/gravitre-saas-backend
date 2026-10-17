@@ -91,6 +91,13 @@ async def main():
      nested=getattr(value,"exceptions",None)
      return [type(value).__name__]+([item for sub in nested for item in classes(sub)] if nested else [])
     print("MCP_DIAGNOSTIC exception_classes="+json.dumps(classes(error)[:10]))
+  # Authenticated list contracts consumed by the existing MCP UI.
+  list_code,server_list=call("/api/admin/mcp/servers",token,org)
+  listed=next((row for row in server_list.get("servers",[]) if row.get("id")==created),None)
+  check("authenticated_server_visible_in_org",list_code==200 and bool(listed),list_code)
+  tool_code,tool_list=call("/api/admin/mcp/tools",token,org)
+  listed_tool=next((row for row in tool_list.get("tools",[]) if chosen and row.get("id")==chosen.get("id")),None)
+  check("authenticated_discovered_tool_visible",tool_code==200 and bool(listed_tool),tool_code)
   if chosen:
    # Run Gravitre's production MCP client service against the registered row.
    sys.path.insert(0,str(Path(__file__).resolve().parent.parent/"backend"))
@@ -105,6 +112,18 @@ async def main():
    # Some versions return a provider-response wrapper; completion and a
    # nonempty provider result are both required.
    check("public_http_mcp_tool_executed",good)
+  # Backend disable cascades to tools; the frontend revalidates both SWR keys.
+  if chosen:
+   disabled_code,disabled=call("/api/admin/mcp/servers/"+created,token,org,
+      method="PATCH",body={"enabled":False})
+   check("authenticated_server_disable_confirmed",
+      disabled_code==200 and (disabled.get("server") or {}).get("enabled") is False,
+      disabled_code)
+   tools_after_code,tools_after=call("/api/admin/mcp/tools",token,org)
+   after=next((row for row in tools_after.get("tools",[]) if row.get("id")==chosen.get("id")),None)
+   check("authenticated_disable_cascades_to_tool",
+      tools_after_code==200 and bool(after) and after.get("enabled") is False,
+      tools_after_code)
  finally:
   if created:
    delstatus,_=call("/api/admin/mcp/servers/"+created,token,org,method="DELETE")
