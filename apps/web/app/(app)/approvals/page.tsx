@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import useSWR from "swr"
+import useSWR, { useSWRConfig } from "swr"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { Check, MoreHorizontal, RefreshCw, Search, Shield } from "lucide-react"
@@ -103,6 +103,7 @@ export default function ApprovalsPage() {
 function DecisionQueue() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { mutate: mutateCache } = useSWRConfig()
   const { user } = useAuth()
   const { isAdmin, loading: adminLoading } = useOrgAdmin()
   const [tab, setTab] = useState<QueueTab>("pending")
@@ -139,8 +140,17 @@ function DecisionQueue() {
   })
   const refreshing = Boolean(pendingValidating || historyValidating)
   const refresh = useCallback(async () => {
-    await Promise.all([mutatePending(), mutateHistory()])
-  }, [mutatePending, mutateHistory])
+    // A decision can resume or cancel a run; invalidate other mounted views
+    // instead of leaving their cached execution status actionable.
+    await Promise.all([
+      mutatePending(),
+      mutateHistory(),
+      mutateCache((key) => typeof key === "string" && (
+        key.startsWith("/api/runs") || key.startsWith("/api/agents") ||
+        key.startsWith("/api/sessions")
+      )),
+    ])
+  }, [mutatePending, mutateHistory, mutateCache])
 
   useEffect(() => {
     if (pendingData) setLastUpdated(Date.now())
