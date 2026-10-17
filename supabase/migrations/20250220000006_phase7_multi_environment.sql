@@ -107,6 +107,10 @@ AS $$
   LIMIT p_top_k;
 $$;
 
+-- PostgreSQL cannot replace a RETURNS TABLE function when its OUT columns change.
+-- Drop the old zero-argument signature before defining the environment-aware result.
+DROP FUNCTION IF EXISTS public.claim_rag_ingest_job();
+
 -- Update ingest job claim function to return environment
 CREATE OR REPLACE FUNCTION public.claim_rag_ingest_job()
 RETURNS TABLE (
