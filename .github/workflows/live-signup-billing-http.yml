@@ -1,0 +1,38 @@
+name: Live Signup and Billing HTTP Acceptance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/verify_live_signup_billing_http.py"
+      - ".github/workflows/live-signup-billing-http.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-billing-boundaries:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "PyJWT>=2.8,<3" "supabase>=2,<3"
+      - name: Mint isolated actor
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python scripts/mint_smoke_org_session.py --github-env
+      - name: Validate live public and tenant billing boundaries
+        run: python scripts/verify_live_signup_billing_http.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-signup-billing-http-evidence
+          path: docs/delivery/live-signup-billing-http-acceptance.json
+          if-no-files-found: ignore
