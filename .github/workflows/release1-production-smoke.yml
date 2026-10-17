@@ -44,9 +44,9 @@ jobs:
           PY
           )"
             git cat-file -e "$DEPLOY_SHA^{commit}"
-            # Strict: if anything in backend/ changed since the live revision,
-            # the service MUST deploy the expected commit before this probe passes.
-            if git diff --quiet "$DEPLOY_SHA" "$EXPECT_SHA" -- backend/; then
+            # Strict: if backend runtime code/config changed since the live revision,
+            # the service MUST deploy the expected commit before this probe passes.\n            # Test-only backend/tests edits do not change the deployed application.
+            if git diff --quiet "$DEPLOY_SHA" "$EXPECT_SHA" -- backend/ ':(exclude)backend/tests/**'; then
               echo "No backend changes since deployed SHA; run anonymous checks against live revision."
               EXPECT_SHA="$DEPLOY_SHA"
             else
