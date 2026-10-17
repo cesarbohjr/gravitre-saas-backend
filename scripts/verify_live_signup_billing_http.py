@@ -36,10 +36,12 @@ def main():
  hook=json.loads(body) if status==200 else {}
  record("live_stripe_webhook_health",status==200 and hook.get("status")=="healthy",status)
  status,body=get(ROOT+"/api/billing/plans")
+ record("anonymous_billing_plans_protected",status in (401,403),status)
+ headers={"Authorization":"Bearer "+token,"x-org-id":org,"Accept":"application/json"}
+ status,body=get(ROOT+"/api/billing/plans",headers)
  try:plans=json.loads(body)
  except ValueError:plans=None
- record("public_billing_plans",status==200 and bool(plans),status)
- headers={"Authorization":"Bearer "+token,"x-org-id":org,"Accept":"application/json"}
+ record("authenticated_billing_plans",status==200 and bool(plans and plans.get("plans")),status)
  status,body=get(ROOT+"/api/billing/status",headers)
  record("isolated_tenant_billing_status",status==200,status)
  status,body=get(ROOT+"/api/billing",headers)
