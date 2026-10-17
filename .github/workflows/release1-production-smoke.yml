@@ -35,13 +35,13 @@ jobs:
           set -euo pipefail
           if [ -n "$EXPECT_SHA" ]; then
             DEPLOY_SHA="$(python3 - <<'PY'
-import json, urllib.request
-with urllib.request.urlopen("https://api.gravitre.app/health", timeout=20) as response:
-    sha = str(json.loads(response.read()).get("git_sha") or "")
-    if len(sha) != 40 or any(c not in "0123456789abcdef" for c in sha.lower()):
-        raise SystemExit("Missing or invalid deployed backend SHA")
-    print(sha)
-PY
+          import json, urllib.request
+          with urllib.request.urlopen("https://api.gravitre.app/health", timeout=20) as response:
+              sha = str(json.loads(response.read()).get("git_sha") or "")
+              if len(sha) != 40 or any(c not in "0123456789abcdef" for c in sha.lower()):
+                  raise SystemExit("Missing or invalid deployed backend SHA")
+              print(sha)
+          PY
 )"
             git cat-file -e "$DEPLOY_SHA^{commit}"
             # Strict: if anything in backend/ changed since the live revision,
