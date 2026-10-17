@@ -692,7 +692,9 @@ export default function CapabilityMarketplacePage() {
       if (result.server?.enabled !== enabled)
         throw new Error("The server did not confirm this MCP server state.")
       toast.success(enabled ? "MCP server approved" : "MCP server disabled")
-      await Promise.allSettled([mcpServers.mutate()])
+      // Disabling a server also disables its tools in the backend. Refresh both
+      // views so stale enabled tools are not presented as executable.
+      await Promise.allSettled([mcpServers.mutate(), mcpTools.mutate()])
     } finally {
       operationLocks.current.mcp = false
       setMcpBusy(null)

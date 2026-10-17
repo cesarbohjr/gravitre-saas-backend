@@ -23,11 +23,18 @@ const state = vi.hoisted(() => ({
   replace: vi.fn(),
   patchServer: vi.fn(),
   patchTool: vi.fn(),
+  mutateMcpServers: vi.fn(),
+  mutateMcpTools: vi.fn(),
 }))
 vi.mock("swr", () => ({
   default: (key: string | string[] | null) => ({
     ...(key ? state.entries[typeof key === "string" ? key : JSON.stringify(key)] : {}),
-    mutate: state.mutate,
+    mutate:
+      key === "portable-capability-mcp-servers"
+        ? state.mutateMcpServers
+        : key === "portable-capability-mcp-tools"
+          ? state.mutateMcpTools
+          : state.mutate,
   }),
 }))
 vi.mock("@/lib/api", () => ({
@@ -91,6 +98,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   state.entries = {}
   state.mutate.mockResolvedValue(undefined)
+  state.mutateMcpServers.mockResolvedValue(undefined)
+  state.mutateMcpTools.mockResolvedValue(undefined)
   host = document.createElement("div")
   document.body.append(host)
   root = createRoot(host)
@@ -226,6 +235,25 @@ it("keeps the MCP approval dialog open when the API returns disabled", async () 
   await click("Approve server")
   expect(state.patchServer).toHaveBeenCalledWith("mcp", true)
   expect(host.querySelector('[role="alert"]')?.textContent).toContain("did not confirm")
+})
+it("refreshes MCP server and tool caches after disabling a server", async () => {
+  state.entries["portable-capability-mcp-servers"] = {
+    data: {
+      servers: [
+        { id: "mcp", server_name: "CRM", source_capability_package_id: "pkg", enabled: true },
+      ],
+    },
+  }
+  state.entries["portable-capability-mcp-tools"] = {
+    data: { tools: [{ id: "tool", server_id: "mcp", tool_name: "Read", enabled: true }] },
+  }
+  state.patchServer.mockResolvedValue({ server: { enabled: false } })
+  await render(<CapabilitiesPage />)
+  await click("Disable server")
+  await click("Disable server")
+  expect(state.patchServer).toHaveBeenCalledWith("mcp", false)
+  expect(state.mutateMcpServers).toHaveBeenCalledOnce()
+  expect(state.mutateMcpTools).toHaveBeenCalledOnce()
 })
 it("does not label missing connector evidence healthy", async () => {
   await render(<ConnectorOpsCard />)
