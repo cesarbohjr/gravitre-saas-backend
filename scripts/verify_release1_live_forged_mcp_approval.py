@@ -29,7 +29,7 @@ async def main():
   server_id=str(server[0]["id"])
   tool=(client.table("mcp_tools").insert({"server_id":server_id,"org_id":org,
     "tool_name":"release1_forged_write_fixture","input_schema":{"type":"object"},
-    "capability_tier":"write","requires_approval":True,"enabled":True,
+    "capability_tier":"write","enabled":True,
     "risk_level":"high"}).execute().data or [])
   if len(tool)!=1:raise RuntimeError("Tool fixture failed")
   tid=str(tool[0]["id"])
