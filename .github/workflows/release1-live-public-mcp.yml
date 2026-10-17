@@ -1,0 +1,44 @@
+name: Release 1 public MCP and SSRF live verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/verify_release1_live_public_mcp.py"
+      - ".github/workflows/release1-live-public-mcp.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-mcp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install real MCP runtime dependencies
+        run: pip install -r backend/requirements-dev.txt
+      - name: Mint isolated actor
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python3 scripts/mint_smoke_org_session.py --github-env
+      - name: Execute authenticated public MCP and SSRF security matrix
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python3 scripts/verify_release1_live_public_mcp.py
+      - name: Upload status-only evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release1-live-public-mcp
+          path: docs/delivery/release1-live-public-mcp.json
+          if-no-files-found: ignore
