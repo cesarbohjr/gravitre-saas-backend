@@ -73,6 +73,24 @@ async def main():
   rows=discovered.get("tools") if isinstance(discovered.get("tools"),list) else []
   chosen=next((t for t in rows if t.get("tool_name")=="read_wiki_structure"),None)
   check("public_http_tool_discovery",code==200 and bool(chosen),code)
+  if code==502:
+   # Diagnose the *same restricted MCP transport* independently. Only exception
+   # class names are emitted, never response bodies, URL credentials or secrets.
+   sys.path.insert(0,str(Path(__file__).resolve().parent.parent/"backend"))
+   from app.services.mcp_client_service import MCPClientService
+   local=MCPClientService(settings=SimpleNamespace(
+     supabase_url=url,supabase_service_role_key=env["SUPABASE_SERVICE_ROLE_KEY"],
+     mcp_stdio_transport_enabled=False,mcp_allow_private_network_servers=False,
+     connector_secrets_encryption_key=""))
+   try:
+    remote=await local._list_tools_streamable_http({
+      "transport":"streamable_http","server_url":PUBLIC,"auth_type":"none"})
+    print("MCP_DIAGNOSTIC local_tool_count="+str(len(remote)))
+   except BaseException as error:
+    def classes(value):
+     nested=getattr(value,"exceptions",None)
+     return [type(value).__name__]+([item for sub in nested for item in classes(sub)] if nested else [])
+    print("MCP_DIAGNOSTIC exception_classes="+json.dumps(classes(error)[:10]))
   if chosen:
    # Run Gravitre's production MCP client service against the registered row.
    sys.path.insert(0,str(Path(__file__).resolve().parent.parent/"backend"))
