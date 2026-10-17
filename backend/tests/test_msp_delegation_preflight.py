@@ -80,3 +80,40 @@ def test_database_lookup_failure_denies():
 
 def test_no_grant_denies():
     assert not delegation_preflight(DB(), None, provider_org_id="provider", customer_org_id="customer", user_id="tech", action="account.health.read")
+
+
+def test_cross_customer_replay_denied_even_with_valid_provider_membership():
+    db = DB()
+    db.records["organization_members"].append(
+        {"org_id": "customer-b", "user_id": "owner-b", "role": "owner"}
+    )
+    db.records["organizations"].append(
+        {"id": "customer-b", "parent_org_id": "provider"}
+    )
+    assert not delegation_preflight(
+        db, delegation(), provider_org_id="provider",
+        customer_org_id="customer-b", user_id="tech",
+        action="account.health.read",
+    )
+
+
+def test_cross_provider_replay_denied_even_when_customer_link_changes():
+    db = DB()
+    db.records["organization_members"].append(
+        {"org_id": "other-provider", "user_id": "tech", "role": "member"}
+    )
+    db.records["organizations"][0]["parent_org_id"] = "other-provider"
+    assert not delegation_preflight(
+        db, delegation(), provider_org_id="other-provider",
+        customer_org_id="customer", user_id="tech",
+        action="account.health.read",
+    )
+
+
+def test_removed_customer_owner_cannot_keep_existing_delegation_active():
+    db = DB()
+    db.records["organization_members"] = [
+        row for row in db.records["organization_members"]
+        if row["user_id"] != "owner"
+    ]
+    assert not allowed(db)
