@@ -30,13 +30,6 @@ def _customer_owner(client, user_id: str, customer_id: str) -> None:
         raise HTTPException(403, "Customer owner required")
 
 
-def _audit(client, *, grant_id: str, provider: str, customer: str, actor: str, action: str) -> None:
-    client.table("msp_delegation_audit").insert({
-        "delegation_id": grant_id, "provider_org_id": provider,
-        "customer_org_id": customer, "actor_user_id": actor, "action": action,
-    }).execute()
-
-
 @router.post("", status_code=201)
 def grant_access(
     body: GrantRequest,
@@ -71,9 +64,6 @@ def grant_access(
     if not row.data:
         raise HTTPException(503, "Grant not persisted")
     grant_id = str(row.data[0]["id"])
-    # Audit failure is explicit; records require reconciliation before use.
-    _audit(client, grant_id=grant_id, provider=provider, customer=customer,
-           actor=user["user_id"], action="grant.created")
     return {"id": grant_id, "status": "stored_not_activated"}
 
 
@@ -94,11 +84,11 @@ def revoke_access(
     row = rows[0]
     if row.get("revoked_at"):
         return {"id": str(delegation_id), "revoked": True}
-    result = client.table("msp_delegations").update(
-        {"revoked_at": datetime.now(timezone.utc).isoformat()}
-    ).eq("id", str(delegation_id)).eq("customer_org_id", customer).is_("revoked_at", "null").execute()
-    if not result.data:
+    result = client.rpc("msp_revoke_delegation_atomic", {
+        "p_delegation_id": str(delegation_id),
+        "p_customer_org_id": customer,
+        "p_actor_user_id": user["user_id"],
+    }).execute()
+    if result.data is not True:
         raise HTTPException(409, "Delegation changed; retry")
-    _audit(client, grant_id=str(delegation_id), provider=str(row["provider_org_id"]),
-           customer=customer, actor=user["user_id"], action="grant.revoked")
     return {"id": str(delegation_id), "revoked": True}
