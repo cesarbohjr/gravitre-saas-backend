@@ -16,6 +16,7 @@ vi.mock("next/navigation", () => {
   return { useSearchParams: () => params, usePathname: () => "/approvals", useRouter: () => ({ push: state.push, replace: state.replace }) }
 })
 vi.mock("swr", () => ({
+  useSWRConfig: () => ({ mutate: vi.fn(async () => undefined) }),
   default: (key: string | null) => ({
     data: key === "/api/approvals" ? SHOT_FIXTURES["/api/approvals"] : { approvals: [] },
     mutate: state.mutate,

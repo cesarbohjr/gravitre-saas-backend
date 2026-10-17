@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useRef, useState } from "react"
-import useSWR from "swr"
+import useSWR, { useSWRConfig } from "swr"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -71,6 +71,7 @@ interface SchemaTable {
 
 export default function SourceDetailPage() {
   const router = useRouter()
+  const { mutate: mutateCache } = useSWRConfig()
   const params = useParams()
   const sourceId = String(params.id ?? "")
   const { user } = useAuth()
@@ -161,7 +162,13 @@ export default function SourceDetailPage() {
     setDeleteError(null)
     try {
       await sourcesApi.delete(sourceId)
-      toast.success("Source removed")
+      // Source deletion invalidates retrieval server-side; revalidate cached source
+      // and intelligence views before showing them elsewhere in this session.
+      await mutateCache((key) => typeof key === "string" && (
+        key.startsWith("/api/sources") || key.startsWith("/api/intelligence") ||
+        key.startsWith("intelligence/")
+      ))
+      toast.success("Source removed from active retrieval")
       router.push("/sources")
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "Delete failed")
@@ -458,7 +465,7 @@ export default function SourceDetailPage() {
           <DialogHeader>
             <DialogTitle>Remove source</DialogTitle>
             <DialogDescription>
-              This will disconnect {name} from Gravitre. This action cannot be undone.
+              This removes {name} from active sources and excludes its documents from retrieval. It does not confirm permanent deletion of all stored or derived data. This action cannot be undone from this page.
             </DialogDescription>
           </DialogHeader>
           {deleteError ? <p role="alert" className="text-sm text-destructive">{deleteError}</p> : null}
