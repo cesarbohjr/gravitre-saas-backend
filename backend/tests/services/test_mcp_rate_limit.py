@@ -1,4 +1,4 @@
-"""MCP tool calls share the connector token bucket, per org and MCP server."""
+"""MCP tool calls use the atomic MCP server token bucket, per org and MCP server."""
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -63,10 +63,10 @@ async def test_call_within_limit_runs_and_uses_org_server_bucket(service) -> Non
     assert result["status"] == "completed"
     call.assert_awaited_once()
     args = client.rpc.call_args.args
-    assert args[0] == "consume_connector_token"
+    assert args[0] == "consume_mcp_server_token"
     assert args[1]["p_org_id"] == "org-1"
-    assert args[1]["p_connector_type"] == "mcp"
-    assert args[1]["p_connector_id"] == "srv-1"
+    assert args[1]["p_step_type"] == "mcp"
+    assert args[1]["p_server_id"] == "srv-1"
 
 
 @pytest.mark.asyncio
