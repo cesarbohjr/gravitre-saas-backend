@@ -40,7 +40,7 @@ CREATE OR REPLACE FUNCTION public.msp_revoke_delegation_atomic(
   p_delegation_id uuid, p_customer_org_id uuid, p_actor_user_id uuid
 ) RETURNS boolean
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public
-AS $
+AS $tag$
 DECLARE v_count integer;
 BEGIN
   IF p_actor_user_id IS NULL THEN RAISE EXCEPTION 'Actor required'; END IF;
@@ -51,7 +51,7 @@ BEGIN
   GET DIAGNOSTICS v_count = ROW_COUNT;
   RETURN v_count = 1;
 END;
-$;
+$tag$;
 REVOKE ALL ON FUNCTION public.msp_revoke_delegation_atomic(uuid,uuid,uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.msp_revoke_delegation_atomic(uuid,uuid,uuid) TO service_role;
 COMMIT;
