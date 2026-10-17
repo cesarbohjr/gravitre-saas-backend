@@ -1,6 +1,10 @@
 name: Release 1 public MCP and SSRF live verification
 
 on:
+  workflow_run:
+    workflows: ["Production release verification"]
+    types: [completed]
+    branches: [main]
   push:
     branches: [main]
     paths:
@@ -14,6 +18,7 @@ permissions:
 
 jobs:
   public-mcp:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 18
     environment: production
