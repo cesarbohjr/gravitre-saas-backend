@@ -10,7 +10,8 @@ const state = vi.hoisted(() => ({
   sync: vi.fn(), remove: vi.fn(), refresh: vi.fn(), selected: vi.fn(),
   success: vi.fn(), error: vi.fn(), message: vi.fn(), push: vi.fn(),
 }))
-vi.mock("swr", () => ({ default: (key: string) => ({ ...state.entries[key], mutate: state.refresh }) }))
+vi.mock("swr", () => ({
+  useSWRConfig: () => ({ mutate: vi.fn(async () => undefined) }), default: (key: string) => ({ ...state.entries[key], mutate: state.refresh }) }))
 vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ user: { id: "owner" } }) }))
 vi.mock("@/lib/api", () => ({ sourcesApi: { sync: state.sync, delete: state.remove, testExisting: vi.fn() } }))
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "source-a" }), useRouter: () => ({ push: state.push }), usePathname: () => "/sources/source-a" }))
