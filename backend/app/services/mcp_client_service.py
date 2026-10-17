@@ -17,7 +17,7 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.connectors.crypto import decrypt_secret, encrypt_secret
-from app.connectors.rate_limit import RateLimitError, enforce_rate_limit
+from app.connectors.rate_limit import RateLimitError, enforce_mcp_rate_limit
 from app.core.logging import get_logger
 from app.services.approval_record_service import create_contract_approval
 from app.workflows.audit import write_audit_event
@@ -646,7 +646,7 @@ class MCPClientService:
         if not (requires_write and not approval_id):
             # Throttle before an approval is consumed, so a refused call keeps it.
             try:
-                enforce_rate_limit(self._client(), org_id, "mcp", "mcp", str(tool["server_id"]))
+                enforce_mcp_rate_limit(self._client(), org_id, str(tool["server_id"]))
             except RateLimitError:
                 return {"status": "rate_limited", "error": "MCP tool rate limit exceeded, try again shortly"}
         if requires_write and not approval_id:
