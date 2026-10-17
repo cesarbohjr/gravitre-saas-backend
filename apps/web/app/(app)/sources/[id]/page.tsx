@@ -165,7 +165,8 @@ export default function SourceDetailPage() {
       // Source deletion invalidates retrieval server-side; revalidate cached source
       // and intelligence views before showing them elsewhere in this session.
       await mutateCache((key) => typeof key === "string" && (
-        key.startsWith("/api/sources") || key.startsWith("/api/intelligence")
+        key.startsWith("/api/sources") || key.startsWith("/api/intelligence") ||
+        key.startsWith("intelligence/")
       ))
       toast.success("Source removed from active retrieval")
       router.push("/sources")
