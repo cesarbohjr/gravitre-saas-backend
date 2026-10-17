@@ -28,7 +28,7 @@ def main():
  cid=mid=None;checks=[]
  def assert_check(name,passed):checks.append({"check":name,"pass":bool(passed)})
  try:
-  con=(db.table("connectors").insert({"org_id":org,"name":marker,"type":"test",
+  con=(db.table("connectors").insert({"org_id":org,"name":marker,"type":"custom",
    "status":"connected","environment":"production"}).execute().data or [])
   if len(con)!=1:raise RuntimeError("Connector fixture creation failed")
   cid=str(con[0]["id"])
