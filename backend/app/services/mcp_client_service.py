@@ -134,22 +134,36 @@ def mcp_openai_tool_name(server_name: str, tool_name: str) -> str:
     return f"mcp_{safe_server}_{safe_tool}"[:128]
 
 
-def _streamable_http_client():
-    """Return the Streamable HTTP client for the installed MCP SDK line.
+from contextlib import asynccontextmanager
 
-    Gravitre currently pins mcp<2. MCP 1.x uses streamablehttp_client;
-    MCP 2.x renamed it to streamable_http_client. Prefer the modern symbol
-    when present so the runtime is migration-ready without changing behavior.
+@asynccontextmanager
+async def _secure_streamable_http_client(url: str, headers: dict[str, str]):
+    """Support MCP v1 and v2 without allowing cross-origin redirects.
+
+    MCP v1 has streamablehttp_client(headers=..., httpx_client_factory=...).
+    MCP v2 accepts only http_client, configured separately using httpx2.
+    In both cases credentials are scoped to the reviewed endpoint.
     """
     try:
-        from mcp.client.streamable_http import streamable_http_client
-
-        return streamable_http_client
-    except ImportError:
         from mcp.client.streamable_http import streamablehttp_client
+    except ImportError:
+        from mcp.client.streamable_http import streamable_http_client
+        import httpx2
 
-        return streamablehttp_client
-
+        async with httpx2.AsyncClient(
+            headers=headers,
+            timeout=httpx2.Timeout(30.0, read=300.0),
+            follow_redirects=False,
+        ) as http_client:
+            async with streamable_http_client(url, http_client=http_client) as streams:
+                yield streams
+    else:
+        async with streamablehttp_client(
+            url,
+            headers=headers,
+            httpx_client_factory=_restricted_mcp_httpx_client_factory,
+        ) as streams:
+            yield streams
 
 class MCPTransportNotAllowedError(ValueError):
     """Raised when a server's transport is switched off for this deployment."""
@@ -1162,12 +1176,7 @@ class MCPClientService:
         url = str(server.get("server_url") or "")
         await self._validate_endpoint(server)
         headers = self._auth_headers(server)
-        client_factory = _streamable_http_client()
-        async with client_factory(
-            url,
-            headers=headers,
-            httpx_client_factory=_restricted_mcp_httpx_client_factory,
-        ) as streams:
+        async with _secure_streamable_http_client(url, headers) as streams:
             read, write = streams[0], streams[1]
             async with ClientSession(read, write) as session:
                 await session.initialize()
@@ -1233,12 +1242,7 @@ class MCPClientService:
         url = str(server.get("server_url") or "")
         await self._validate_endpoint(server)
         headers = self._auth_headers(server)
-        client_factory = _streamable_http_client()
-        async with client_factory(
-            url,
-            headers=headers,
-            httpx_client_factory=_restricted_mcp_httpx_client_factory,
-        ) as streams:
+        async with _secure_streamable_http_client(url, headers) as streams:
             read, write = streams[0], streams[1]
             async with ClientSession(read, write) as session:
                 await session.initialize()
