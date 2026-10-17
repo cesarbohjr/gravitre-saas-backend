@@ -21,7 +21,7 @@ def grant(tier=AccessTier.OVERVIEW, **changes):
 
 
 def check(g, action="account.health.read", **changes):
-    fields = dict(provider_org_id="msp-1", customer_org_id="customer-a", user_id="tech-1", action=action, now=NOW)
+    fields = dict(provider_org_id="msp-1", customer_org_id="customer-a", user_id="tech-1", action=action, now=NOW, customer_approval_verified=True, provider_membership_verified=True, customer_relationship_verified=True)
     fields.update(changes)
     return is_allowed(g, **fields)
 
@@ -56,3 +56,14 @@ def test_expired_revoked_and_missing_customer_consent_deny():
 
 def test_explicit_action_allowlist_required():
     assert not check(grant(AccessTier.SENSITIVE, actions=frozenset()), "document.read")
+
+
+def test_independent_authorization_guards_fail_closed():
+    assert not check(grant(), customer_approval_verified=False)
+    assert not check(grant(), provider_membership_verified=False)
+    assert not check(grant(), customer_relationship_verified=False)
+    assert not is_allowed(grant(), provider_org_id="msp-1", customer_org_id="customer-a", user_id="tech-1", action="account.health.read", now=NOW)
+
+
+def test_invalid_tier_denied():
+    assert not check(grant(tier=99))
