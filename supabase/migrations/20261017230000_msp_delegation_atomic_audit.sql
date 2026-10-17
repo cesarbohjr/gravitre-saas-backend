@@ -34,4 +34,24 @@ DROP TRIGGER IF EXISTS trg_msp_delegation_audit ON public.msp_delegations;
 CREATE TRIGGER trg_msp_delegation_audit
 AFTER INSERT OR UPDATE OF revoked_at ON public.msp_delegations
 FOR EACH ROW EXECUTE FUNCTION public.msp_delegation_audit_mutation();
+
+-- One RPC sets the trusted actor and performs the revocation in the same transaction.
+CREATE OR REPLACE FUNCTION public.msp_revoke_delegation_atomic(
+  p_delegation_id uuid, p_customer_org_id uuid, p_actor_user_id uuid
+) RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public
+AS $
+DECLARE v_count integer;
+BEGIN
+  IF p_actor_user_id IS NULL THEN RAISE EXCEPTION 'Actor required'; END IF;
+  PERFORM set_config('app.msp_actor_user_id', p_actor_user_id::text, true);
+  UPDATE public.msp_delegations
+  SET revoked_at = now()
+  WHERE id = p_delegation_id AND customer_org_id = p_customer_org_id AND revoked_at IS NULL;
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count = 1;
+END;
+$;
+REVOKE ALL ON FUNCTION public.msp_revoke_delegation_atomic(uuid,uuid,uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.msp_revoke_delegation_atomic(uuid,uuid,uuid) TO service_role;
 COMMIT;
