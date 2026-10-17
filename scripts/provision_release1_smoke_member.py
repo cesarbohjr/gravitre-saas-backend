@@ -18,6 +18,15 @@ def main():
          .eq("id", org_id).limit(1).execute().data or [])
     if len(org)!=1 or (org[0].get("settings") or {}).get("isolated_conversation_test_org") is not True:
         raise RuntimeError("Refusing to provision outside verified smoke org")
+    # Prefer the existing isolated membership: Auth list_users is paginated,
+    # and attempting to recreate a user beyond page one raises AuthApiError.
+    members=(client.table("organization_members").select("user_id,role")
+             .eq("org_id",org_id).eq("role","member").execute().data or [])
+    for membership in members:
+        candidate=client.auth.admin.get_user_by_id(str(membership["user_id"])).user
+        if candidate and str(getattr(candidate,"email","")).lower()==EMAIL:
+            print("Verified existing dedicated isolated Release 1 member; role=member")
+            return 0
     users=client.auth.admin.list_users()
     matches=[u for u in (getattr(users,"users",[]) or []) if str(getattr(u,"email","")).lower()==EMAIL]
     if len(matches)>1:
