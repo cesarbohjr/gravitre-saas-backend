@@ -69,7 +69,7 @@ def test_revoke_without_actor_rolls_back_and_preserves_grant(conn):
         cur.execute("SELECT id FROM public.organizations ORDER BY id LIMIT 2")
         orgs = [r[0] for r in cur.fetchall()]
         if len(orgs) < 2:
-            pytest.skip("isolated database requires two fixture organizations")
+            pytest.fail("isolated database must seed two fixture organizations")
         delegation_id = uuid.uuid4()
         actor = uuid.uuid4()
         cur.execute(
@@ -108,3 +108,45 @@ def test_revoke_without_actor_rolls_back_and_preserves_grant(conn):
             "WHERE delegation_id=%s ORDER BY recorded_at, action", (delegation_id,)
         )
         assert cur.fetchall() == [("grant.created", actor), ("grant.revoked", actor)]
+
+
+def test_audit_failure_rolls_back_grant(conn):
+    """A deliberately rejected audit row must abort its parent grant insert."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM public.organizations ORDER BY id LIMIT 2")
+        orgs = [r[0] for r in cur.fetchall()]
+        if len(orgs) < 2:
+            pytest.fail("isolated database must seed two fixture organizations")
+        grant_id = uuid.uuid4()
+        # The trigger records grant.created; a temporary transaction-local
+        # constraint trigger rejects that audit event, forcing atomic rollback.
+        cur.execute("SAVEPOINT before_audit_failure")
+        cur.execute("""
+            CREATE FUNCTION pg_temp.reject_msp_grant_audit() RETURNS trigger
+            LANGUAGE plpgsql AS $body$
+            BEGIN
+              IF NEW.action = 'grant.created' THEN
+                RAISE EXCEPTION 'test-injected audit failure';
+              END IF;
+              RETURN NEW;
+            END;
+            $body$
+        """)
+        cur.execute("""
+            CREATE TRIGGER test_reject_msp_grant_audit
+            BEFORE INSERT ON public.msp_delegation_audit
+            FOR EACH ROW EXECUTE FUNCTION pg_temp.reject_msp_grant_audit()
+        """)
+        cur.execute("SAVEPOINT grant_attempt")
+        with pytest.raises(psycopg.Error):
+            cur.execute(
+                "INSERT INTO public.msp_delegations "
+                "(id, provider_org_id, customer_org_id, grantee_user_id, tier, "
+                "approved_by_customer_user_id, expires_at) "
+                "VALUES (%s,%s,%s,%s,1,%s,now() + interval '1 hour')",
+                (grant_id, orgs[0], orgs[1], uuid.uuid4(), uuid.uuid4()),
+            )
+        cur.execute("ROLLBACK TO SAVEPOINT grant_attempt")
+        cur.execute("SELECT count(*) FROM public.msp_delegations WHERE id=%s", (grant_id,))
+        assert cur.fetchone()[0] == 0
+        cur.execute("ROLLBACK TO SAVEPOINT before_audit_failure")
