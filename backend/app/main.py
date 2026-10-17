@@ -723,6 +723,9 @@ app.include_router(auth.router)
 app.include_router(sso.router)
 app.include_router(org.router)
 app.include_router(org.organizations_router)
+# MSP grants are storage-only until tenant isolation acceptance; no inherited access.
+from app.routers import msp_delegations
+app.include_router(msp_delegations.router)
 app.include_router(billing.router)
 app.include_router(billing_sync.internal_router)
 app.include_router(billing_sync.admin_router)
