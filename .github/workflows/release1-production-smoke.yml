@@ -25,6 +25,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || 'main' }}
           persist-credentials: false
+          fetch-depth: 0
       - name: Clear stale evidence
         run: rm -f docs/delivery/release1-production-smoke.json
       - name: Probe production anonymously
@@ -32,6 +33,26 @@ jobs:
           EXPECT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
         run: |
           set -euo pipefail
+          if [ -n "$EXPECT_SHA" ]; then
+            DEPLOY_SHA="$(python3 - <<'PY'
+import json, urllib.request
+with urllib.request.urlopen("https://api.gravitre.app/health", timeout=20) as response:
+    sha = str(json.loads(response.read()).get("git_sha") or "")
+    if len(sha) != 40 or any(c not in "0123456789abcdef" for c in sha.lower()):
+        raise SystemExit("Missing or invalid deployed backend SHA")
+    print(sha)
+PY
+)"
+            git cat-file -e "$DEPLOY_SHA^{commit}"
+            # Strict: if anything in backend/ changed since the live revision,
+            # the service MUST deploy the expected commit before this probe passes.
+            if git diff --quiet "$DEPLOY_SHA" "$EXPECT_SHA" -- backend/; then
+              echo "No backend changes since deployed SHA; run anonymous checks against live revision."
+              EXPECT_SHA="$DEPLOY_SHA"
+            else
+              echo "Backend changed since deployed SHA; require production to match triggering commit."
+            fi
+          fi
           python3 scripts/verify-release1-production-smoke.py \
             --web-base https://gravitre.app \
             --api-health https://api.gravitre.app/health \
