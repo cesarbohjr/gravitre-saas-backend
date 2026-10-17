@@ -25,3 +25,10 @@ Status: Source-level inspection; live authenticated verification pending.
 5. Preserve Gravitre 3.0 Plus information architecture, existing components and accessibility.
 
 No new frontend UI, backend policy, or production flag is authorized by this audit note.
+
+## Confirmed implementation gap and correction (2026-10-17)
+**Verified source-level bug:** `backend/app/routers/mcp_admin.py::patch_mcp_server` disables all child `mcp_tools` rows when the server is disabled, but `apps/web/app/(app)/marketplace/capabilities/page.tsx::setMcpServerEnabled` previously revalidated only the MCP servers SWR key. Consequently the already-mounted tool list could continue to show `enabled: true` after a successful disable until another refresh.
+
+**Implemented:** Revalidate both `mcpServers` and `mcpTools` after a confirmed server enablement change, using the existing SWR keys and UI. Added a regression to `apps/web/__tests__/gravitre/workflow-governance-evidence.test.tsx` checking both revalidations after server disable.
+
+**Verification boundary:** This is a source-backed integration fix and regression-test addition; test execution and authenticated owner-tenant acceptance are not yet established. The backend already enforces server disablement, so the change corrects stale user-facing status, not backend authorization.
