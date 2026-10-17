@@ -7,6 +7,7 @@ on:
       - "scripts/verify-release1-authenticated-smoke.py"
       - "scripts/verify-release1-live-negative-matrix.py"
       - "scripts/provision_release1_smoke_member.py"
+      - "scripts/verify_release1_admin_audit_live.py"
       - ".github/workflows/release1-authenticated-smoke.yml"
   workflow_dispatch:
 
@@ -54,6 +55,19 @@ jobs:
           name: release1-live-negative-matrix
           path: docs/delivery/release1-live-negative-matrix.json
           if-no-files-found: error
+      - name: Verify authorized admin role change audit and restore member
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python3 scripts/verify_release1_admin_audit_live.py
+      - name: Upload isolated admin audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release1-admin-role-audit-live
+          path: docs/delivery/release1-admin-audit-live.json
+          if-no-files-found: ignore
       - name: Upload results (no credentials)
         if: always()
         uses: actions/upload-artifact@v4
