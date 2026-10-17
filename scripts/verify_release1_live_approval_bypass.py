@@ -89,8 +89,11 @@ async def main():
  finally:
   STAGE="cleanup"
   for aid in approvals:
+   STAGE="cleanup_approval"
    db.table("approvals").delete().eq("id",aid).eq("org_id",org).execute()
+  STAGE="cleanup_tool"
   if tid:db.table("mcp_tools").delete().eq("id",tid).eq("org_id",org).execute()
+  STAGE="cleanup_server"
   if sid:db.table("mcp_servers").delete().eq("id",sid).eq("org_id",org).execute()
  verdict="PASS" if len(checks)==5 and all(row["pass"] for row in checks) else "FAIL"
  report={"at":datetime.now(timezone.utc).isoformat(),"scope":"isolated_smoke_org",
