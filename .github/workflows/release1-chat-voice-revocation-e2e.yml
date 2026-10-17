@@ -1,0 +1,42 @@
+name: Release 1 chat and voice revocation end to end
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/verify_release1_chat_voice_e2e.py"
+      - ".github/workflows/release1-chat-voice-revocation-e2e.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  revocation-e2e:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install isolated proof dependencies
+        run: pip install "PyJWT>=2.8,<3" "supabase>=2,<3"
+      - name: Mint short-lived isolated test session
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python scripts/mint_smoke_org_session.py --github-env
+      - name: Verify live chat and voice responses before and after revocation
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/verify_release1_chat_voice_e2e.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release1-chat-voice-e2e
+          path: docs/delivery/release1-chat-voice-e2e.json
+          if-no-files-found: ignore
