@@ -149,32 +149,21 @@ def _streamable_http_client():
 
 @asynccontextmanager
 async def _secure_streamable_http_client(url: str, headers: dict[str, str]):
-    """Support MCP v1 and v2 without allowing cross-origin redirects.
+    """Inject no-redirect transport through the current MCP SDK API.
 
-    MCP v1 has streamablehttp_client(headers=..., httpx_client_factory=...).
-    MCP v2 accepts only http_client, configured separately using httpx2.
-    In both cases credentials are scoped to the reviewed endpoint.
+    The pinned MCP >=1.27 client uses the modern `http_client` keyword;
+    passing the legacy `headers` keyword fails before reaching the server.
+    Endpoint DNS/SSRF checks still execute before entering this context.
     """
-    try:
-        from mcp.client.streamable_http import streamablehttp_client
-    except ImportError:
-        from mcp.client.streamable_http import streamable_http_client
-        import httpx2
+    from mcp.client.streamable_http import streamable_http_client
 
-        async with httpx2.AsyncClient(
-            headers=headers,
-            timeout=httpx2.Timeout(30.0, read=300.0),
-            follow_redirects=False,
-        ) as http_client:
-            async with streamable_http_client(url, http_client=http_client) as streams:
-                yield streams
-    else:
-        async with streamablehttp_client(
-            url,
-            headers=headers,
-            httpx_client_factory=_restricted_mcp_httpx_client_factory,
-        ) as streams:
+    async with _restricted_mcp_httpx_client_factory(
+        headers=headers,
+        timeout=httpx.Timeout(30.0, read=300.0),
+    ) as restricted_client:
+        async with streamable_http_client(url, http_client=restricted_client) as streams:
             yield streams
+
 
 class MCPTransportNotAllowedError(ValueError):
     """Raised when a server's transport is switched off for this deployment."""
