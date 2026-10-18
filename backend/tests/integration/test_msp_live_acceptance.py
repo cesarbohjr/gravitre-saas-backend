@@ -195,8 +195,20 @@ def test_live_cross_session_revocation(live_environment):
 def test_live_customer_owner_management_and_audit_isolation(live_environment):
     client, db, owner, grantee, owner_token, provider_session, _, provider, a, b = _setup(live_environment)
     management_path = f"/api/msp/delegations/customer/{a}/management"
-    # A provider member cannot enumerate customer grants, provider users or audit.
+    # Neither a provider member nor a separate customer's owner can enumerate A.
     assert client.get(management_path, headers=_headers(provider_session)).status_code == 403
+    _, _, base, anon = live_environment
+    other_owner, other_email, other_password = _new_identity(base, anon)
+    other_owner_token = _login(base, anon, other_email, other_password)
+    with db.cursor() as cur:
+        cur.execute(
+            "INSERT INTO public.organization_members (org_id,user_id,role) VALUES (%s,%s,'owner')",
+            (b, other_owner),
+        )
+    db.commit()
+    assert client.get(management_path, headers=_headers(other_owner_token)).status_code == 403
+    assert client.get(f"/api/msp/delegations/customer/{b}/management",
+                      headers=_headers(other_owner_token)).status_code == 200
     before = client.get(management_path, headers=_headers(owner_token))
     assert before.status_code == 200, before.text
     body = before.json()
