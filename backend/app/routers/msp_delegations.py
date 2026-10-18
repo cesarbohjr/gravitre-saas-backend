@@ -94,6 +94,59 @@ def revoke_access(
     return {"id": str(delegation_id), "revoked": True}
 
 
+@router.get("/customer/{customer_org_id}/management")
+def customer_delegation_management(
+    customer_org_id: UUID,
+    user: Annotated[dict, Depends(get_current_user)],
+    settings: Annotated[Settings, Depends(get_settings)],
+):
+    """Owner-scoped provider discovery, current grants and audit history.
+
+    This management endpoint NEVER grants access to customer resources. It
+    requires current direct customer ownership, not provider membership or
+    hierarchy inheritance. Bounded projections prevent sensitive data leaks.
+    """
+    client = shared_service_client(settings, create_client)
+    customer = str(customer_org_id)
+    _customer_owner(client, user["user_id"], customer)
+    provider = parent_org_id_for(client, customer)
+    provider_info = None
+    members = []
+    if provider:
+        rows = (
+            client.table("organizations").select("id,name")
+            .eq("id", provider).limit(1).execute().data or []
+        )
+        if rows and str(rows[0].get("id")) == provider:
+            provider_info = {"id": provider, "name": rows[0].get("name") or "Provider"}
+            member_rows = (
+                client.table("organization_members").select("user_id,role")
+                .eq("org_id", provider).limit(100).execute().data or []
+            )
+            members = [
+                {"user_id": str(row["user_id"]), "role": row["role"]}
+                for row in member_rows
+                if row.get("user_id") and row.get("role") in {"owner", "admin", "member"}
+            ]
+    grants = (
+        client.table("msp_delegations")
+        .select("id,provider_org_id,customer_org_id,grantee_user_id,tier,actions,approved_at,expires_at,revoked_at")
+        .eq("customer_org_id", customer)
+        .order("created_at", desc=True).limit(100).execute().data or []
+    )
+    audit = (
+        client.table("msp_delegation_audit")
+        .select("id,delegation_id,actor_user_id,action,recorded_at")
+        .eq("customer_org_id", customer)
+        .order("recorded_at", desc=True).limit(100).execute().data or []
+    )
+    # Guard against a mismatched service response: fail closed, not partial data.
+    if any(str(row.get("customer_org_id")) != customer for row in grants):
+        raise HTTPException(403, "Customer scope mismatch")
+    return {"customer_org_id": customer, "provider": provider_info,
+            "provider_members": members, "grants": grants, "audit": audit}
+
+
 @router.get("/customer/{customer_org_id}/health")
 def delegated_customer_health(
     customer_org_id: UUID,
