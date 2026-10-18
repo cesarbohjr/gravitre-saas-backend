@@ -5,6 +5,7 @@ The FastAPI router is exercised through HTTP ASGI TestClient; every database
 operation and both Auth sessions use the running local Supabase services.
 """
 import os
+import subprocess
 import uuid
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
@@ -17,7 +18,7 @@ from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.routers.msp_delegations import router
-from tests.integration.test_msp_rest_isolation import _local_status, _request
+from test_msp_rest_isolation import _local_status, _request
 
 
 @pytest.fixture(scope="module")
@@ -27,8 +28,12 @@ def live_environment():
     if (url.hostname, url.port, url.path) != ("127.0.0.1", 54322, "/postgres"):
         pytest.fail("MSP acceptance tests must run against disposable local PostgreSQL only")
     base, anon = _local_status()
-    service_key = os.environ.get("MSP_TEST_SERVICE_ROLE_KEY", "")
-    jwt_secret = os.environ.get("MSP_TEST_JWT_SECRET", "")
+    status_text = subprocess.run(["supabase", "status", "-o", "env"],
+        cwd=os.environ["MSP_TEST_PROJECT_DIR"], check=True,
+        capture_output=True, text=True).stdout
+    local = dict(line.strip().split("=", 1) for line in status_text.splitlines() if "=" in line)
+    service_key = local.get("SERVICE_ROLE_KEY", "").strip('"')
+    jwt_secret = local.get("JWT_SECRET", "").strip('"')
     if not service_key or not jwt_secret:
         pytest.fail("Local Supabase service role and JWT secret required")
     # Validate key belongs to local instance, never a remote environment.
