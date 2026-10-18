@@ -27,6 +27,7 @@ import { Icon } from "@/lib/icons"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { Building2 } from "lucide-react"
+import { MspDelegationPanel } from "@/components/settings/msp-delegation-panel"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { TYPE } from "@/lib/design-system"
@@ -373,6 +374,10 @@ export default function ManageOrganizationsPage() {
                 <Button variant="ghost" asChild>
                   <Link href="/settings/billing">Billing</Link>
                 </Button>
+                {process.env.NEXT_PUBLIC_MSP_DELEGATION_UI_ENABLED === "true" &&
+                  (inspectOrg.role ?? "").toLowerCase() === "owner" ? (
+                    <MspDelegationPanel key={inspectOrg.id} customerOrgId={inspectOrg.id} />
+                  ) : null}
                 {(inspectOrg.role ?? "").toLowerCase() === "admin" ? (
                   <Button
                     variant="ghost"
