@@ -11,7 +11,6 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from urllib.parse import urlparse
 
-import psycopg
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -28,6 +27,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def live_environment():
+    psycopg = pytest.importorskip("psycopg")
     dsn = os.environ.get("MSP_TEST_DATABASE_URL", "")
     url = urlparse(dsn)
     if (url.hostname, url.port, url.path) != ("127.0.0.1", 54322, "/postgres"):
