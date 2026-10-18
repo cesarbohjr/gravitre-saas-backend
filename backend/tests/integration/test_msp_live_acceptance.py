@@ -45,6 +45,7 @@ def live_environment():
     assert base == "http://127.0.0.1:54321"
     settings = SimpleNamespace(
         supabase_url=base,
+        supabase_url_stripped=base,
         supabase_service_role_key=service_key,
         supabase_jwt_secret=jwt_secret,
         supabase_jwt_issuer="",
