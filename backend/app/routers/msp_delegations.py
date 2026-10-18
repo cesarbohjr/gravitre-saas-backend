@@ -92,3 +92,40 @@ def revoke_access(
     if result.data is not True:
         raise HTTPException(409, "Delegation changed; retry")
     return {"id": str(delegation_id), "revoked": True}
+
+
+@router.get("/customer/{customer_org_id}/health")
+def delegated_customer_health(
+    customer_org_id: UUID,
+    provider_org_id: UUID,
+    user: Annotated[dict, Depends(get_current_user)],
+    settings: Annotated[Settings, Depends(get_settings)],
+):
+    """Allowlisted OVERVIEW action only. No generic tenant read or org switching.
+
+    Deliberately returns a minimal customer organization health projection;
+    conversations, billing details and all other resources remain inaccessible.
+    """
+    from app.services.msp_delegated_access import authorize_live_action
+    if not settings.msp_parent_org_enabled:
+        raise HTTPException(403, "MSP delegation not enabled")
+    client = shared_service_client(settings, create_client)
+    customer, provider = str(customer_org_id), str(provider_org_id)
+    if not authorize_live_action(
+        client, provider_org_id=provider, customer_org_id=customer,
+        grantee_user_id=user["user_id"], action="account.health.read",
+    ):
+        raise HTTPException(403, "Delegation denied")
+    # Explicitly scope the only service-role read to the already-authorized customer.
+    response = (
+        client.table("organizations")
+        .select("id,status")
+        .eq("id", customer)
+        .limit(1).execute()
+    )
+    if not response.data:
+        raise HTTPException(404, "Customer not found")
+    row = response.data[0]
+    if str(row.get("id")) != customer:
+        raise HTTPException(403, "Customer scope mismatch")
+    return {"customer_org_id": customer, "status": row.get("status")}
