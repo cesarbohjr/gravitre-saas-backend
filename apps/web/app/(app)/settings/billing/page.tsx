@@ -233,12 +233,12 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
   const { data: overview, error: overviewError, isLoading: overviewLoading, mutate: mutateOverview } = useSWR(
     user ? "billing-overview" : null,
     () => billingApi.overview(),
-    { revalidateOnFocus: false },
+    { revalidateOnFocus: true, revalidateOnReconnect: true, refreshInterval: 120_000 },
   )
   const { data: voiceAccess, mutate: mutateVoiceAccess } = useSWR(
     user ? "/api/settings/voice-access" : null,
     apiFetcher,
-    { revalidateOnFocus: false },
+    { revalidateOnFocus: true, revalidateOnReconnect: true },
   )
   const voiceSettings = (voiceAccess as {
     voice?: {
