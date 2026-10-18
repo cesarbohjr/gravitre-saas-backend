@@ -45,6 +45,9 @@ jobs:
 
           [inbucket]
           enabled = false
+
+          [auth.email]
+          enable_confirmations = false
           EOF
           cat > "$RUNNER_TEMP/msp-db/supabase/migrations/20261017210000_msp_test_organizations.sql" <<'EOF'
           -- Minimal isolated fixture only; does not replace full-stack migration safety.
@@ -69,7 +72,9 @@ jobs:
       - name: Run real PostgreSQL security tests
         env:
           MSP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
-        run: python -m pytest --confcutdir=backend/tests/integration -q backend/tests/integration/test_msp_database_security.py -rs
+        env:
+          MSP_TEST_PROJECT_DIR: ${{ runner.temp }}/msp-db
+        run: python -m pytest --confcutdir=backend/tests/integration -q backend/tests/integration/test_msp_database_security.py backend/tests/integration/test_msp_rest_isolation.py -rs
       - name: Stop disposable database
         if: always()
         run: |
