@@ -609,11 +609,22 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
   }
 
   const handleUpdateAddress = async () => {
+    if (!user) {
+      toast.error("Sign in required")
+      return
+    }
     setIsProcessing(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setIsProcessing(false)
-    setEditAddressModalOpen(false)
+    try {
+      // Billing address is Stripe-owned; the backend exposes the secure customer
+      // portal, not an address-update API. Never pretend a local edit persisted.
+      const response = await billingApi.createPortalSession()
+      if (!response.portal_url) throw new Error("Billing portal unavailable")
+      window.location.assign(response.portal_url)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not open billing portal")
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const handleExportAll = () => {
@@ -1606,74 +1617,20 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
         </DialogContent>
       </Dialog>
 
-      {/* Edit Address Modal */}
+      {/* Stripe is the source of truth for invoice billing details. */}
       <Dialog open={editAddressModalOpen} onOpenChange={setEditAddressModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit billing address</DialogTitle>
+            <DialogTitle>Update billing address</DialogTitle>
             <DialogDescription>
-              Update your billing address for invoices and receipts.
+              Your billing address is managed securely in the billing portal.
+              Gravitre does not save address changes locally.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="street">Street address</Label>
-              <Input
-                id="street"
-                value={billingAddress.street}
-                onChange={(e) => setBillingAddress({...billingAddress, street: e.target.value})}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  value={billingAddress.city}
-                  onChange={(e) => setBillingAddress({...billingAddress, city: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="state">State</Label>
-                <Input
-                  id="state"
-                  value={billingAddress.state}
-                  onChange={(e) => setBillingAddress({...billingAddress, state: e.target.value})}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="zip">ZIP Code</Label>
-                <Input
-                  id="zip"
-                  value={billingAddress.zip}
-                  onChange={(e) => setBillingAddress({...billingAddress, zip: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
-                <Input
-                  id="country"
-                  value={billingAddress.country}
-                  onChange={(e) => setBillingAddress({...billingAddress, country: e.target.value})}
-                />
-              </div>
-            </div>
-          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditAddressModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateAddress} disabled={isProcessing}>
-              {isProcessing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Address"
-              )}
+            <Button variant="outline" onClick={() => setEditAddressModalOpen(false)}>Cancel</Button>
+            <Button onClick={() => void handleUpdateAddress()} disabled={isProcessing}>
+              {isProcessing ? "Opening…" : "Open secure billing portal"}
             </Button>
           </DialogFooter>
         </DialogContent>
