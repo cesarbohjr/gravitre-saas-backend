@@ -190,3 +190,42 @@ def test_live_cross_session_revocation(live_environment):
         ]
         cur.execute("SELECT revoked_at FROM public.msp_delegations WHERE id=%s", (delegation_id,))
         assert cur.fetchone()[0] is not None
+
+
+def test_live_customer_owner_management_and_audit_isolation(live_environment):
+    client, db, owner, grantee, owner_token, provider_session, _, provider, a, b = _setup(live_environment)
+    management_path = f"/api/msp/delegations/customer/{a}/management"
+    # A provider member cannot enumerate customer grants, provider users or audit.
+    assert client.get(management_path, headers=_headers(provider_session)).status_code == 403
+    before = client.get(management_path, headers=_headers(owner_token))
+    assert before.status_code == 200, before.text
+    body = before.json()
+    assert body["customer_org_id"] == a
+    assert body["provider"] == {"id": provider, "name": "Disposable MSP provider"}
+    assert {"user_id": grantee, "role": "member"} in body["provider_members"]
+    assert body["grants"] == [] and body["audit"] == []
+
+    created = _grant(client, provider, a, grantee, owner_token)
+    assert created.status_code == 201, created.text
+    grant_id = created.json()["id"]
+    # Customer B's history must never contain A's delegation or audit events.
+    other = client.get(f"/api/msp/delegations/customer/{b}/management",
+                       headers=_headers(owner_token))
+    assert other.status_code == 200, other.text
+    assert all(row["id"] != grant_id for row in other.json()["grants"])
+    assert all(row["delegation_id"] != grant_id for row in other.json()["audit"])
+
+    created_view = client.get(management_path, headers=_headers(owner_token))
+    assert created_view.status_code == 200, created_view.text
+    assert any(row["id"] == grant_id for row in created_view.json()["grants"])
+    assert any(row["delegation_id"] == grant_id and row["action"] == "grant.created"
+               for row in created_view.json()["audit"])
+
+    revoked = client.post(f"/api/msp/delegations/{grant_id}/revoke",
+                          params={"customer_org_id": a}, headers=_headers(owner_token))
+    assert revoked.status_code == 200, revoked.text
+    final = client.get(management_path, headers=_headers(owner_token))
+    assert final.status_code == 200, final.text
+    assert next(row for row in final.json()["grants"] if row["id"] == grant_id)["revoked_at"]
+    assert any(row["delegation_id"] == grant_id and row["action"] == "grant.revoked"
+               for row in final.json()["audit"])
