@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const apiFetch = vi.fn()
+const { apiFetch } = vi.hoisted(() => ({ apiFetch: vi.fn() }))
 vi.mock("@/lib/fetcher", () => ({ apiFetch }))
 
 import { mspDelegationsApi } from "@/lib/msp-delegations"
