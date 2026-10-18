@@ -10,9 +10,9 @@ ROUTER = (ROOT / "backend/app/routers/msp_delegations.py").read_text()
 
 
 def test_migration_has_valid_function_delimiters_and_transaction():
-    assert SQL.count("AS $") == 1
+    assert SQL.count("AS $\n") == 1
     assert SQL.count("AS $tag$") == 1
-    assert SQL.count("$;") == 1
+    assert SQL.count("\n$;") == 1
     assert SQL.count("$tag$;") == 1
     assert SQL.startswith("-- Atomic audit:")
     assert "BEGIN;" in SQL and SQL.rstrip().endswith("COMMIT;")
