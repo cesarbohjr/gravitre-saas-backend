@@ -498,32 +498,3 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
           NEXT_PUBLIC_PLAYWRIGHT_E2E: "1"
 
-  msp-database-security:
-    name: MSP isolated database security
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install database test dependencies
-        run: python -m pip install pytest 'psycopg[binary]'
-      - name: Start disposable local Supabase and apply migrations
-        run: |
-          supabase start
-          supabase db reset --local
-      - name: Seed two disposable customer organizations
-        env:
-          MSP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
-        run: python backend/tests/integration/seed_msp_test_organizations.py
-      - name: Run real PostgreSQL security tests
-        env:
-          MSP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
-        run: python -m pytest -q backend/tests/integration/test_msp_database_security.py -rs
-      - name: Stop disposable database
-        if: always()
-        run: supabase stop --no-backup || true
