@@ -13,7 +13,7 @@ const fmt = (value: string | null) =>
 function grantStatus(grant: MspGrant): string {
   if (grant.revoked_at) return "Revoked"
   if (new Date(grant.expires_at).getTime() <= Date.now()) return "Expired"
-  return "Approved"
+  return "Saved · subject to runtime gate"
 }
 
 /** Only rendered to a customer owner, and every API call re-checks ownership. */
