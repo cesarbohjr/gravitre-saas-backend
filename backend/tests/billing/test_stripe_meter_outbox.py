@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import stripe
+import pytest
 
 from app.billing.stripe_meter_outbox import report_meter_intents
 
@@ -14,7 +15,7 @@ END = date(2026, 10, 31)
 def _client(*, acknowledgement=True):
     client = MagicMock()
     client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
-        {"stripe_customer_id": "cus_test"}
+        {"stripe_customer_id": "cus_test", "stripe_subscription_id": "sub_test", "status": "active"}
     ]
     claims = [{
         "id": "intent-1", "claim_token": "claim-token-1",
@@ -44,6 +45,14 @@ def _settings():
         stripe_meter_outbox_enabled=True,
         stripe_secret_key="sk_test_nonlive",
         stripe_meter_event_name="ai_credits_used",
+    )
+
+
+@pytest.fixture(autouse=True)
+def _active_remote_subscription(monkeypatch):
+    monkeypatch.setattr(
+        stripe.Subscription, "retrieve",
+        lambda _id: {"status": "active", "customer": "cus_test"},
     )
 
 
@@ -90,4 +99,60 @@ def test_dry_run_never_mutates_database_or_calls_stripe(monkeypatch):
     assert result["dry_run"] is True and result["preview_only"] is True
     assert result["estimated_quantity"] == 0
     client.rpc.assert_not_called()
+    create.assert_not_called()
+
+
+
+def test_expired_stripe_subscription_never_stages_or_sends(monkeypatch):
+    monkeypatch.setattr(
+        stripe.Subscription, "retrieve",
+        lambda _id: {"status": "incomplete_expired", "customer": "cus_test"},
+    )
+    create = MagicMock()
+    monkeypatch.setattr(stripe.billing.MeterEvent, "create", create)
+    client = _client()
+    result = report_meter_intents("org-1", "ai_credits", START, END, _settings(), client=client)
+    assert result["error"] == "stripe_subscription_not_active"
+    client.rpc.assert_not_called()
+    create.assert_not_called()
+
+
+def test_mismatched_stripe_customer_never_stages_or_sends(monkeypatch):
+    monkeypatch.setattr(
+        stripe.Subscription, "retrieve",
+        lambda _id: {"status": "active", "customer": "cus_different"},
+    )
+    create = MagicMock()
+    monkeypatch.setattr(stripe.billing.MeterEvent, "create", create)
+    client = _client()
+    result = report_meter_intents("org-1", "ai_credits", START, END, _settings(), client=client)
+    assert result["error"] == "stripe_subscription_customer_mismatch"
+    client.rpc.assert_not_called()
+    create.assert_not_called()
+
+
+def test_unavailable_stripe_verification_never_stages_or_sends(monkeypatch):
+    def unavailable(_id):
+        raise TimeoutError("Stripe read unavailable")
+    monkeypatch.setattr(stripe.Subscription, "retrieve", unavailable)
+    create = MagicMock()
+    monkeypatch.setattr(stripe.billing.MeterEvent, "create", create)
+    client = _client()
+    result = report_meter_intents("org-1", "ai_credits", START, END, _settings(), client=client)
+    assert result["error"] == "stripe_subscription_verification_failed"
+    client.rpc.assert_not_called()
+    create.assert_not_called()
+
+
+def test_no_active_local_subscription_never_calls_stripe_or_stages(monkeypatch):
+    retrieve = MagicMock()
+    monkeypatch.setattr(stripe.Subscription, "retrieve", retrieve)
+    create = MagicMock()
+    monkeypatch.setattr(stripe.billing.MeterEvent, "create", create)
+    client = _client()
+    client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = []
+    result = report_meter_intents("org-1", "ai_credits", START, END, _settings(), client=client)
+    assert result["error"] == "active_stripe_subscription_required"
+    client.rpc.assert_not_called()
+    retrieve.assert_not_called()
     create.assert_not_called()
