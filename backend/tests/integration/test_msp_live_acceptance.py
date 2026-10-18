@@ -20,6 +20,11 @@ from app.config import get_settings
 from app.routers.msp_delegations import router
 from test_msp_rest_isolation import _local_status, _request
 
+pytestmark = pytest.mark.skipif(
+    not os.environ.get("MSP_TEST_PROJECT_DIR"),
+    reason="disposable local Supabase environment required",
+)
+
 
 @pytest.fixture(scope="module")
 def live_environment():
