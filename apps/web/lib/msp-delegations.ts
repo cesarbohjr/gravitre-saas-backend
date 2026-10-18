@@ -31,6 +31,44 @@ export interface MspGrantResult {
   status: "stored_not_activated"
 }
 
+export interface MspProvider {
+  id: string
+  name: string
+}
+
+export interface MspProviderMember {
+  user_id: string
+  role: "owner" | "admin" | "member"
+}
+
+export interface MspGrant {
+  id: string
+  provider_org_id: string
+  customer_org_id: string
+  grantee_user_id: string
+  tier: MspAccessTier
+  actions: string[]
+  approved_at: string
+  expires_at: string
+  revoked_at: string | null
+}
+
+export interface MspAuditEvent {
+  id: string
+  delegation_id: string | null
+  actor_user_id: string
+  action: "grant.created" | "grant.revoked" | "grant.denied"
+  recorded_at: string
+}
+
+export interface MspManagement {
+  customer_org_id: string
+  provider: MspProvider | null
+  provider_members: MspProviderMember[]
+  grants: MspGrant[]
+  audit: MspAuditEvent[]
+}
+
 export interface MspRevocationResult {
   id: string
   revoked: boolean
@@ -55,6 +93,10 @@ async function mspRequest<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const mspDelegationsApi = {
+  management: (customerOrgId: string) =>
+    mspRequest<MspManagement>(
+      `/api/msp/delegations/customer/${encodeURIComponent(customerOrgId)}/management`,
+    ),
   create: (grant: MspGrantRequest) =>
     mspRequest<MspGrantResult>("/api/msp/delegations", {
       method: "POST",
