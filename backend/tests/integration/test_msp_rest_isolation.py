@@ -67,6 +67,7 @@ def _session(base, anon):
     return login["access_token"]
 
 
+@pytest.mark.skipif(not os.environ.get("MSP_TEST_PROJECT_DIR"), reason="disposable Supabase project required")
 def test_two_real_authenticated_clients_cannot_reach_msp_grants_or_revoke_rpc():
     base, anon = _local_status()
     tokens = [_session(base, anon), _session(base, anon)]
