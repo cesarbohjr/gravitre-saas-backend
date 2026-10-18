@@ -12,12 +12,17 @@ const session = {
 describe("shared chat/voice duplex capability contract", () => {
   afterEach(() => vi.unstubAllGlobals())
 
+  // Vitest defaults to node, not jsdom; provide only the browser capabilities under test.
+  const stubWindow = () => vi.stubGlobal("window", {})
+
   it("does not show a live voice affordance when mediaDevices exists without getUserMedia", () => {
+    stubWindow()
     vi.stubGlobal("navigator", { mediaDevices: {} })
     expect(buildDuplexControls(session).supported).toBe(false)
   })
 
   it("shows live voice only with actual microphone capture support", () => {
+    stubWindow()
     vi.stubGlobal("navigator", { mediaDevices: { getUserMedia: vi.fn() } })
     expect(buildDuplexControls(session).supported).toBe(true)
   })
