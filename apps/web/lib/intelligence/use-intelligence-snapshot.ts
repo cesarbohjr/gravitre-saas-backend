@@ -52,7 +52,9 @@ export function useIntelligenceSnapshot({
     swrKey,
     () => intelligenceApi.pageContext({ windowHours, activeLens }),
     {
-      revalidateOnFocus: false,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      refreshInterval: 120_000,
       keepPreviousData: true,
     },
   )

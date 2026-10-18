@@ -38,6 +38,7 @@ import { OPERATIONAL_METHODOLOGY_SHORT } from "@/lib/outcome-labels"
 import { responseStyleLabel } from "@/lib/agent-response-style"
 import { voiceProfileIsConfigured } from "@/lib/voice-configure-gate"
 import { AgentIdentityGovernanceCard } from "@/components/gravitre/agent-identity-governance-card"
+import { AgentToolPermissionsPanel } from "@/components/agents/agent-tool-permissions-panel"
 import { AgentAutonomyPanel, AgentStrengthProfile } from "@/components/agents/agent-autonomy-panel"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { useMotionPrefs } from "@/lib/animations"
@@ -494,6 +495,7 @@ export default function AgentProfilePage({
               >
                 <AgentAutonomyPanel agentId={agent.id} />
                 <AgentIdentityGovernanceCard agentId={agent.id} canEdit={isAdmin} />
+                <AgentToolPermissionsPanel agentId={agent.id} canEdit={isAdmin} />
               </motion.div>
             )}
 

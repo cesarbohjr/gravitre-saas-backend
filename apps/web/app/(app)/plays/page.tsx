@@ -129,8 +129,9 @@ function PlaysBoard() {
   const { data, error, isLoading, isValidating, mutate } = useSWR<PlaysResponse>("/api/plays", fetcher, {
     refreshInterval: 30_000,
   })
-  const { data: impact } = useSWR<PlayImpactSummary>("/api/plays/impact", () => playsApi.impact(), {
-    revalidateOnFocus: false,
+  const { data: impact, mutate: mutateImpact } = useSWR<PlayImpactSummary>("/api/plays/impact", () => playsApi.impact(), {
+    revalidateOnFocus: true,
+    refreshInterval: 60_000,
   })
   const plays = useMemo(() => data?.plays ?? [], [data])
   const summary = useMemo(() => summarize(plays), [plays])
@@ -196,7 +197,7 @@ function PlaysBoard() {
       }
       toast.success(`${item.play.name}: ${label.replace(/^Grant |^Turn on /, "")} is on`)
       setGrantTarget(null)
-      await mutate()
+      await Promise.all([mutate(), mutateImpact()])
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not change this play's authority.")
     } finally {

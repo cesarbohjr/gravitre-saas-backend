@@ -2646,7 +2646,7 @@ function ConnectorsPageContent() {
   const { data, error, isLoading, isValidating, mutate } = useSWR<{ connectors: Connector[] }>(
     connectorsKey,
     apiFetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60_000, onError: (err) => console.error("[connectors] fetch error:", err) }
+    { revalidateOnFocus: true, revalidateOnReconnect: true, refreshInterval: 30_000, dedupingInterval: 10_000, onError: (err) => console.error("[connectors] fetch error:", err) }
   )
 
   const refreshLiveStatus = async () => {

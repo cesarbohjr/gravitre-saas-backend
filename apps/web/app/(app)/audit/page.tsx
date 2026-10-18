@@ -94,11 +94,14 @@ export default function AuditPage() {
       fetchedAt: Date.now(),
     }),
     {
-      revalidateOnFocus: false,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      refreshInterval: 60_000,
     },
   )
   const { data: summaryData, error: summaryError, isLoading: summaryLoading, mutate: refreshSummary } = useSWR(summaryKey, () => auditApi.summary(selectedDateRange), {
-    revalidateOnFocus: false,
+    revalidateOnFocus: true,
+    refreshInterval: 120_000,
   })
 
   const logs = data?.logs ?? EMPTY_LOGS
