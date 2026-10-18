@@ -423,18 +423,6 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
     !subscription?.cancel_at_period_end
   const chargedPriceLabel = planKnown && currentPlan ? formatPlanPrice(currentPlan) : "—"
   
-  // Form states
-  const [cardNumber, setCardNumber] = useState("")
-  const [cardExpiry, setCardExpiry] = useState("")
-  const [cardCvc, setCardCvc] = useState("")
-  const [cardName, setCardName] = useState("John Doe")
-  const [billingAddress, setBillingAddress] = useState({
-    street: "123 Market Street",
-    city: "San Francisco",
-    state: "CA",
-    zip: "94102",
-    country: "United States"
-  })
 
   useEffect(() => {
     // Animate usage values.
@@ -602,9 +590,6 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
     } finally {
       setIsProcessing(false)
       setUpdateCardModalOpen(false)
-      setCardNumber("")
-      setCardExpiry("")
-      setCardCvc("")
     }
   }
 
@@ -677,25 +662,6 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
         toast.error("Failed to download invoice")
       }
     })()
-  }
-
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "")
-    const matches = v.match(/\d{4,16}/g)
-    const match = (matches && matches[0]) || ""
-    const parts = []
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4))
-    }
-    return parts.length ? parts.join(" ") : value
-  }
-
-  const formatExpiry = (value: string) => {
-    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "")
-    if (v.length >= 2) {
-      return v.substring(0, 2) + "/" + v.substring(2, 4)
-    }
-    return v
   }
 
   return (
@@ -1185,29 +1151,11 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
                 </h2>
                 
                 <div className="group relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] p-5 transition-all duration-300 hover:shadow-lg hover:shadow-black/5">
-                  {/* Card visual */}
-                  <div className="relative mb-4 aspect-[1.6/1] rounded-xl bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 p-4 overflow-hidden">
-                    {/* Card pattern */}
-                    <div className="absolute inset-0 opacity-30" style={{
-                      backgroundImage: `radial-gradient(circle at 100% 0%, rgba(255,255,255,0.1) 0%, transparent 50%)`,
-                    }} />
-                    <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-black/20 to-transparent" />
-                    
-                    <div className="relative h-full flex flex-col justify-between">
-                      <div className="flex items-center justify-between">
-                        <div className="h-8 w-10 rounded bg-gradient-to-br from-amber-300 to-amber-500 shadow-lg" />
-                        <span className="text-xs text-white/60 font-medium">VISA</span>
-                      </div>
-                      <div>
-                        <p className="text-white/80 font-mono text-sm tracking-widest mb-1">
-                          •••• •••• •••• 4242
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <p className="text-white/60 text-xs">John Doe</p>
-                          <p className="text-white/60 text-xs">12/25</p>
-                        </div>
-                      </div>
-                    </div>
+                  <div className="mb-4 rounded-xl border border-divide bg-[color:var(--g-surface-2)] p-4">
+                    <p className="text-sm font-medium text-foreground">Payment method</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Card details are managed in the secure billing portal. Gravitre does not display unverified card information.
+                    </p>
                   </div>
 
                   <Button 
@@ -1225,8 +1173,9 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
                 {/* Billing address quick link */}
                 <div className="mt-4 p-4 rounded-[var(--np-radius-lg)] border border-dashed border-divide bg-[color:var(--g-surface-2)]">
                   <p className="text-xs text-muted-foreground mb-2">Billing address</p>
-                  <p className="text-sm text-foreground">{billingAddress.street}</p>
-                  <p className="text-sm text-foreground">{billingAddress.city}, {billingAddress.state} {billingAddress.zip}</p>
+                  <p className="text-sm text-muted-foreground">
+                    View or change your invoice address in the secure billing portal.
+                  </p>
                   <Button 
                     variant="link" 
                     size="sm" 
@@ -1544,74 +1493,20 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Update Card Modal */}
+      {/* Stripe handles card entry; never collect card numbers or CVC in a local-only form. */}
       <Dialog open={updateCardModalOpen} onOpenChange={setUpdateCardModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Update payment method</DialogTitle>
             <DialogDescription>
-              Enter your new card details below. Your card will be charged for future billing cycles.
+              Open the secure billing portal to view or change your payment method.
+              Card details are never entered into Gravitre.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="cardName">Name on card</Label>
-              <Input
-                id="cardName"
-                placeholder="John Doe"
-                value={cardName}
-                onChange={(e) => setCardName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cardNumber">Card number</Label>
-              <Input
-                id="cardNumber"
-                placeholder="4242 4242 4242 4242"
-                value={cardNumber}
-                onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                maxLength={19}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="expiry">Expiry date</Label>
-                <Input
-                  id="expiry"
-                  placeholder="MM/YY"
-                  value={cardExpiry}
-                  onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
-                  maxLength={5}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cvc">CVC</Label>
-                <Input
-                  id="cvc"
-                  placeholder="123"
-                  value={cardCvc}
-                  onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                  maxLength={4}
-                />
-              </div>
-            </div>
-          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setUpdateCardModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleUpdateCard}
-              disabled={isProcessing || !cardNumber || !cardExpiry || !cardCvc}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                "Update Card"
-              )}
+            <Button variant="outline" onClick={() => setUpdateCardModalOpen(false)}>Cancel</Button>
+            <Button onClick={() => void handleUpdateCard()} disabled={isProcessing}>
+              {isProcessing ? "Opening…" : "Open secure billing portal"}
             </Button>
           </DialogFooter>
         </DialogContent>
