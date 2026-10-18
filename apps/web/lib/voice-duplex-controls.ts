@@ -76,7 +76,9 @@ export function buildDuplexControls(
     },
     // getUserMedia is absent on insecure origins and in some embedded webviews, so
     // this is a capability check rather than a browser sniff.
-    supported: typeof window !== "undefined" && !!navigator.mediaDevices,
+    supported: typeof window !== "undefined" &&
+      typeof navigator !== "undefined" &&
+      typeof navigator.mediaDevices?.getUserMedia === "function",
     playbackBlocked: Boolean(session.playbackBlocked) || Boolean(extras.alsoPlaybackBlocked),
     resumeBlockedPlayback: () => {
       void session.resumeBlockedPlayback()
