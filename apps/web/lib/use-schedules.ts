@@ -118,7 +118,7 @@ export function useSchedules(optionsOrWorkflowId?: string | UseSchedulesOptions)
   const { data, error, isLoading, mutate } = useSWR<LoadedSchedules>(
     key,
     () => loadSchedules(options),
-    { revalidateOnFocus: false, keepPreviousData: true },
+    { revalidateOnFocus: true, revalidateOnReconnect: true, refreshInterval: 30_000, keepPreviousData: true },
   )
 
   const liveItems = data?.items ?? EMPTY_ITEMS
