@@ -1,0 +1,81 @@
+name: MSP isolated database security
+
+on:
+  push:
+    branches:
+      - feature/msp-tenant-isolation-policy-20261017
+  workflow_dispatch:
+
+jobs:
+  msp-database-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install database test dependencies
+        run: python -m pip install pytest 'psycopg[binary]'
+      - name: Prepare dedicated MSP migration test project
+        run: |
+          mkdir -p "$RUNNER_TEMP/msp-db/supabase/migrations"
+          cat > "$RUNNER_TEMP/msp-db/supabase/config.toml" <<'EOF'
+          project_id = "gravitre-msp-ci"
+
+          [db]
+          port = 54322
+          shadow_port = 54320
+          major_version = 15
+
+          [db.migrations]
+          enabled = true
+
+          [db.seed]
+          enabled = false
+
+          [api]
+          port = 54321
+
+          [studio]
+          enabled = false
+
+          [inbucket]
+          enabled = false
+
+          [auth.email]
+          enable_confirmations = false
+          EOF
+          cat > "$RUNNER_TEMP/msp-db/supabase/migrations/20261017210000_msp_test_organizations.sql" <<'EOF'
+          -- Minimal isolated fixture only; does not replace full-stack migration safety.
+          CREATE TABLE public.organizations (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            name text NOT NULL,
+            slug text NOT NULL UNIQUE,
+            status text NOT NULL DEFAULT 'active'
+          );
+          EOF
+          cp supabase/migrations/20261017220000_msp_delegations_restricted.sql "$RUNNER_TEMP/msp-db/supabase/migrations/"
+          cp supabase/migrations/20261017230000_msp_delegation_atomic_audit.sql "$RUNNER_TEMP/msp-db/supabase/migrations/"
+      - name: Start disposable local Supabase and apply MSP migrations
+        run: |
+          cd "$RUNNER_TEMP/msp-db"
+          supabase start
+          supabase db reset --local
+      - name: Seed two disposable customer organizations
+        env:
+          MSP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: python backend/tests/integration/seed_msp_test_organizations.py
+      - name: Run real PostgreSQL security tests
+        env:
+          MSP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          MSP_TEST_PROJECT_DIR: ${{ runner.temp }}/msp-db
+        run: python -m pytest --confcutdir=backend/tests/integration -q backend/tests/integration/test_msp_database_security.py backend/tests/integration/test_msp_rest_isolation.py -rs
+      - name: Stop disposable database
+        if: always()
+        run: |
+          cd "$RUNNER_TEMP/msp-db"
+          supabase stop --no-backup || true
