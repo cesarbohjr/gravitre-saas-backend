@@ -72,7 +72,6 @@ jobs:
       - name: Run real PostgreSQL security tests
         env:
           MSP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
-        env:
           MSP_TEST_PROJECT_DIR: ${{ runner.temp }}/msp-db
         run: python -m pytest --confcutdir=backend/tests/integration -q backend/tests/integration/test_msp_database_security.py backend/tests/integration/test_msp_rest_isolation.py -rs
       - name: Stop disposable database
