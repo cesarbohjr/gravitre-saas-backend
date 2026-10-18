@@ -14,7 +14,7 @@ END = date(2026, 10, 31)
 
 def _client(*, acknowledgement=True):
     client = MagicMock()
-    client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+    client.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [
         {"stripe_customer_id": "cus_test", "stripe_subscription_id": "sub_test", "status": "active"}
     ]
     claims = [{
