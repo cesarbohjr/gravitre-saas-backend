@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/msp-tenant-isolation-policy-20261017
+      - feature/msp-live-acceptance-and-frontend-map
   workflow_dispatch:
 
 jobs:
