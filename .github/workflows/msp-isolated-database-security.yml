@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install database test dependencies
-        run: python -m pip install pytest 'psycopg[binary]'
+        run: python -m pip install pytest 'psycopg[binary]' fastapi pydantic-settings 'supabase>=2.3,<3' 'PyJWT>=2.8,<3' httpx python-dotenv cryptography redis stripe requests passlib email-validator python-multipart apscheduler
       - name: Prepare dedicated MSP migration test project
         run: |
           mkdir -p "$RUNNER_TEMP/msp-db/supabase/migrations"
@@ -55,7 +55,14 @@ jobs:
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
             name text NOT NULL,
             slug text NOT NULL UNIQUE,
-            status text NOT NULL DEFAULT 'active'
+            status text NOT NULL DEFAULT 'active',
+            parent_org_id uuid REFERENCES public.organizations(id)
+          );
+          CREATE TABLE public.organization_members (
+            org_id uuid NOT NULL REFERENCES public.organizations(id),
+            user_id uuid NOT NULL,
+            role text NOT NULL,
+            PRIMARY KEY (org_id, user_id)
           );
           EOF
           cp supabase/migrations/20261017220000_msp_delegations_restricted.sql "$RUNNER_TEMP/msp-db/supabase/migrations/"
@@ -74,6 +81,12 @@ jobs:
           MSP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
           MSP_TEST_PROJECT_DIR: ${{ runner.temp }}/msp-db
         run: python -m pytest --confcutdir=backend/tests/integration -q backend/tests/integration/test_msp_database_security.py backend/tests/integration/test_msp_rest_isolation.py -rs
+      - name: Run real authorized-access and cross-session revocation acceptance
+        env:
+          MSP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          MSP_TEST_PROJECT_DIR: ${{ runner.temp }}/msp-db
+          PYTHONPATH: backend
+        run: python -m pytest --confcutdir=backend/tests/integration -q backend/tests/integration/test_msp_live_acceptance.py -rs
       - name: Stop disposable database
         if: always()
         run: |
