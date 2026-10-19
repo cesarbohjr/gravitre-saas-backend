@@ -322,7 +322,7 @@ def create_checkout_session(
         checkout_args["payment_method_collection"] = "always"
     if offer.get("stripe_coupon_id"):
         checkout_args["discounts"] = [{"coupon": offer["stripe_coupon_id"]}]
-    else:
+    elif settings.commercial_offers_enabled:
         # Stripe validates codes, redemption limits, expirations and restrictions.
         checkout_args["allow_promotion_codes"] = True
     return stripe.checkout.Session.create(**checkout_args)
