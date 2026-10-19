@@ -41,3 +41,50 @@ Five evidence-backed organizations are seeded as internal (2) or test (3). All o
 7. Turn on `COMMERCIAL_OFFERS_ENABLED=true` in staging only after migration and tests; keep false in production until sign-off. The default is false. Never enable unrelated billing metering flags as part of this release.
 
 **Status:** code staged in GitHub branch; no live promotions created, no migration applied, no production feature flag activated.
+
+
+## PR #505 hardening update — 2026-10-19
+
+This update supersedes the earlier reservation and UI implementation notes above.
+
+- `reserve_founder_checkout` locks the external commercial profile and grant,
+  freezes customer/price/actor, and gives concurrent requests the same attempt.
+  Stripe receives a deterministic idempotency key and fixed one-hour expiration.
+  Ambiguous attempts are never released on a timeout or reclaimed after Stripe's
+  deduplication window. Reserved grants cannot be revoked through the normal UI.
+  Reconcile abandoned sessions in Stripe before any operator-approved repair.
+- Redemption requires the matching reservation token in signed Stripe metadata.
+  One redeemed founder trial per organization is enforced by a partial unique
+  index; existing subscriptions and previous Stripe trials block new checkout.
+- Trial Checkout attaches only the base licensed price, collects a payment
+  method, cancels if the payment method is missing at trial end, and displays
+  automatic renewal/cancellation terms. No metered prices are enabled by this
+  checkout, including after conversion. Activating overages is a separate,
+  explicitly reviewed billing change. Hard per-feature trial usage quotas and
+  auto-top-up behavior still require complete sandbox acceptance.
+- Stripe `trial_end` populates entitlement expiry. Signed webhook integration
+  tests cover trial activation, redemption, duplicate delivery, conversion,
+  cancellation, and invalid signature denial without external Stripe requests.
+- Founder UI reads the actual offer activation flag, disables issuance while
+  gated, displays reserved attempts, and fetches subscription statuses directly
+  from Stripe on selection. The backend verifies Stripe customer ownership.
+- Local validation: 231 billing tests passed, one existing skip; two additional
+  signed lifecycle tests passed; web TypeScript and targeted ESLint passed.
+- Isolated Supabase project `hjkvamjlujevuklholeb`: migration applied successfully;
+  four concurrent service-role claims returned the same attempt; cross-org,
+  changed-price and expired-key-window claims were denied. Both tables have RLS;
+  anon/authenticated cannot read, insert, or call the reservation function.
+  The branch's inherited migration history reports MIGRATIONS_FAILED, so these
+  bounded schema checks do not certify a full staging application deployment.
+- Live Stripe read-only reconciliation: 29 subscriptions, 28 incomplete_expired
+  and one canceled. No active/trialing subscriptions. Five subscription-linked
+  organizations are two internal and three test, consistent with the prior audit.
+  Other customer records remain unreviewed. No new Stripe metadata writes,
+  coupons, charges, cancellations, or invoice/history modifications were made.
+
+Release gate remains closed until full head CI, staging application / Stripe
+sandbox Checkout and invoice tests, trial quotas and production rollout pass.
+The current Stripe connector exposes only the live account; Railway OAuth hides
+secret values. Production migration and offer activation are not yet performed.
+Customer-facing trial controls and terms are explicitly authorized by the user's
+PR #505 request; no placeholder prices or product capabilities were introduced.

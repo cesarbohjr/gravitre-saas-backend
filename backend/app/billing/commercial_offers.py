@@ -40,7 +40,7 @@ def checkout_offer_for_org(client: Any, org_id: str, *, now: datetime | None = N
         return None
     rows = (
         client.table("org_promotional_grants")
-        .select("id,offer_type,trial_days,stripe_coupon_id,status,valid_until")
+        .select("id,offer_type,trial_days,stripe_coupon_id,status,valid_until,checkout_attempt_id")
         .eq("org_id", org_id)
         .eq("status", "available")
         .limit(2)
@@ -53,7 +53,7 @@ def checkout_offer_for_org(client: Any, org_id: str, *, now: datetime | None = N
     expires = _utc_datetime(grant.get("valid_until"))
     if grant.get("valid_until") and not expires:
         return None
-    if expires and expires <= (now or datetime.now(timezone.utc)):
+    if expires and expires <= (now or datetime.now(timezone.utc)) and not grant.get("checkout_attempt_id"):
         return None
     if grant.get("offer_type") == "trial":
         days = grant.get("trial_days")
@@ -68,7 +68,7 @@ def checkout_offer_for_org(client: Any, org_id: str, *, now: datetime | None = N
     return None
 
 
-def redeem_checkout_offer(client: Any, org_id: str, grant_id: str, subscription_id: str) -> bool:
+def redeem_checkout_offer(client: Any, org_id: str, grant_id: str, subscription_id: str, *, attempt_id: str | None = None) -> bool:
     """Mark a trusted Stripe Checkout offer as redeemed, idempotently.
 
     Only a signed checkout.session.completed webhook invokes this function.
@@ -79,7 +79,7 @@ def redeem_checkout_offer(client: Any, org_id: str, grant_id: str, subscription_
         grant_id = str(UUID(str(grant_id)))
     except (TypeError, ValueError):
         return False
-    if not org_id or not subscription_id:
+    if not org_id or not subscription_id or not attempt_id:
         return False
     response = (
         client.table("org_promotional_grants")
@@ -92,6 +92,7 @@ def redeem_checkout_offer(client: Any, org_id: str, grant_id: str, subscription_
         .eq("id", grant_id)
         .eq("org_id", org_id)
         .eq("status", "available")
+        .eq("checkout_attempt_id", attempt_id)
         .execute()
     )
     return bool(response.data)
@@ -133,3 +134,30 @@ def segment_for_org(client: Any, org_id: str, *, now: datetime | None = None) ->
         ),
         "promotional_offer": grant,
     }
+
+
+def reserve_checkout_offer(client: Any, org_id: str, offer: dict[str, Any],
+                           customer_id: str, price_id: str, user_id: str) -> dict[str, Any]:
+    """A database lock + stable Stripe key make concurrent requests one session.
+
+    Never release a claim on an ambiguous Stripe error or after key expiration.
+    The founder must reconcile an abandoned claim before issuing another offer.
+    """
+    from fastapi import HTTPException
+    try:
+        rows = client.rpc("reserve_founder_checkout", {
+            "p_org_id": org_id, "p_grant_id": offer["grant_id"],
+            "p_customer_id": customer_id, "p_price_id": price_id,
+            "p_user_id": user_id,
+        }).execute().data
+        if not isinstance(rows, list) or len(rows) != 1:
+            raise ValueError("Offer reservation unavailable")
+        row = rows[0]
+        attempt = str(row["checkout_attempt_id"])
+        reserved = _utc_datetime(row["checkout_reserved_at"])
+        if not reserved or not attempt:
+            raise ValueError("Invalid reservation")
+        return {**offer, "attempt_id": attempt,
+                "expires_at": int(reserved.timestamp()) + 3600}
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="Offer checkout is reserved or unavailable; review its existing Stripe session") from exc

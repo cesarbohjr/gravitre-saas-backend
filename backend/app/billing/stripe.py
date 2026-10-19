@@ -307,12 +307,14 @@ def create_checkout_session(
         "metadata": {
             **metadata,
             **({"offer_grant_id": offer["grant_id"]} if offer.get("grant_id") else {}),
+            **({"offer_attempt_id": offer["attempt_id"]} if offer.get("attempt_id") else {}),
         },
         "subscription_data": {
             "metadata": {
                 "org_id": str(metadata.get("org_id") or ""),
                 "plan_code": str(metadata.get("plan_code") or ""),
                 **({"offer_grant_id": offer["grant_id"]} if offer.get("grant_id") else {}),
+                **({"offer_attempt_id": offer["attempt_id"]} if offer.get("attempt_id") else {}),
             }
         },
     }
@@ -320,8 +322,23 @@ def create_checkout_session(
         checkout_args["subscription_data"]["trial_period_days"] = offer["trial_days"]
         # Collect a payment method before the trial; no immediate plan charge.
         checkout_args["payment_method_collection"] = "always"
+        checkout_args["subscription_data"]["trial_settings"] = {
+            "end_behavior": {"missing_payment_method": "cancel"}
+        }
+        # Founder trials include the base plan only. No metered subscription
+        # items are attached, including after conversion; paid overages require
+        # a separately reviewed activation. Never back-bill trial usage.
+        checkout_args["line_items"] = [{"price": price_id, "quantity": 1}]
+        checkout_args["custom_text"] = {"submit": {"message": (
+            f"Your {offer['trial_days']}-day trial renews automatically at the recurring "
+            "price shown above unless canceled in Billing before it ends. "
+            "No usage overage charges are enabled by this trial."
+        )}}
     if offer.get("stripe_coupon_id"):
         checkout_args["discounts"] = [{"coupon": offer["stripe_coupon_id"]}]
+    if offer.get("attempt_id"):
+        checkout_args["expires_at"] = offer["expires_at"]
+        checkout_args["idempotency_key"] = f"founder-checkout:{offer['attempt_id']}"
     return stripe.checkout.Session.create(**checkout_args)
 
 

@@ -12,7 +12,7 @@ from supabase import create_client
 from app.core.db import shared_service_client
 
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin, require_org_member, require_platform_admin
-from app.billing.commercial_offers import checkout_offer_for_org, segment_for_org
+from app.billing.commercial_offers import checkout_offer_for_org, reserve_checkout_offer, segment_for_org
 from app.billing.entitlements import compute_app_access, normalize_billing_status
 from app.billing.service import (
     DEFAULT_PLAN_CODE,
@@ -960,12 +960,12 @@ def list_commercial_accounts(
     client = shared_service_client(settings, create_client)
     orgs = client.table("organizations").select("id,name").order("created_at", desc=True).limit(200).execute().data or []
     profiles = client.table("org_commercial_profiles").select("org_id,customer_category,classification_reason").limit(500).execute().data or []
-    grants = client.table("org_promotional_grants").select("id,org_id,offer_type,trial_days,percent_off,discount_months,status,valid_until,redeemed_at").limit(500).execute().data or []
+    grants = client.table("org_promotional_grants").select("id,org_id,offer_type,trial_days,percent_off,discount_months,status,valid_until,redeemed_at,checkout_attempt_id").limit(500).execute().data or []
     by_org = {str(p["org_id"]): p for p in profiles}
     grants_by_org: dict[str, list[dict]] = {}
     for grant in grants:
         grants_by_org.setdefault(str(grant["org_id"]), []).append(grant)
-    return {"accounts": [
+    return {"offers_enabled": settings.commercial_offers_enabled, "accounts": [
         {
             "org_id": str(org["id"]),
             "name": org.get("name"),
@@ -974,6 +974,42 @@ def list_commercial_accounts(
             "offers": grants_by_org.get(str(org["id"]), []),
         } for org in orgs
     ]}
+
+
+@router.get("/admin/commercial-accounts/{org_id}/stripe")
+def inspect_commercial_stripe_account(
+    org_id: str,
+    _founder: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    from uuid import UUID
+    try:
+        org_id = str(UUID(org_id))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="Invalid organization ID") from exc
+    client = shared_service_client(settings, create_client)
+    billing = get_org_billing(client, org_id) or {}
+    customer_id = billing.get("stripe_customer_id")
+    if not customer_id:
+        return {"customer_id": None, "subscriptions": [], "source": "stripe", "verified_at": None}
+    init_stripe(settings)
+    try:
+        customer = stripe.Customer.retrieve(customer_id)
+        if (customer.get("metadata") or {}).get("org_id") != org_id:
+            raise HTTPException(status_code=409, detail="Stripe customer ownership needs reconciliation")
+        subscriptions = stripe.Subscription.list(customer=customer_id, status="all", limit=100)
+        return {
+            "customer_id": customer_id, "source": "stripe",
+            "verified_at": datetime.now(timezone.utc).isoformat(),
+            "has_more": bool(subscriptions.get("has_more")),
+            "subscriptions": [{
+                "id": row["id"], "status": row["status"],
+                "trial_end": row.get("trial_end"),
+                "cancel_at_period_end": row.get("cancel_at_period_end", False),
+            } for row in subscriptions.get("data", [])],
+        }
+    except stripe.error.StripeError as exc:
+        _raise_stripe_http_error(exc)
 
 
 @router.post("/admin/customer-segments")
@@ -1052,7 +1088,9 @@ def create_founder_offer(
             raise HTTPException(status_code=422, detail="Trial offers require trial_days only")
     elif body.percent_off is None or body.discount_months is None or body.trial_days is not None:
         raise HTTPException(status_code=422, detail="Discount offers require percent_off and discount_months")
-    if body.valid_until and body.valid_until <= datetime.now(timezone.utc).astimezone(body.valid_until.tzinfo or timezone.utc):
+    if body.valid_until and body.valid_until.tzinfo is None:
+        raise HTTPException(status_code=422, detail="Offer expiration requires a timezone")
+    if body.valid_until and body.valid_until <= datetime.now(timezone.utc):
         raise HTTPException(status_code=422, detail="Offer expiration must be in the future")
     client = shared_service_client(settings, create_client)
     if not (client.table("organizations").select("id").eq("id", org_id).limit(1).execute().data or []):
@@ -1115,13 +1153,15 @@ def revoke_founder_offer(
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail="Invalid grant ID") from exc
     client = shared_service_client(settings, create_client)
-    rows = client.table("org_promotional_grants").select("id,org_id,status").eq("id", grant_id).limit(1).execute().data or []
+    rows = client.table("org_promotional_grants").select("id,org_id,status,checkout_attempt_id").eq("id", grant_id).limit(1).execute().data or []
     if not rows:
         raise HTTPException(status_code=404, detail="Offer not found")
     grant = rows[0]
-    if grant["status"] != "available":
-        raise HTTPException(status_code=409, detail="Only unused offers may be revoked")
-    client.table("org_promotional_grants").update({"status": "revoked", "updated_at": datetime.now(timezone.utc).isoformat()}).eq("id", grant_id).eq("status", "available").execute()
+    if grant["status"] != "available" or grant.get("checkout_attempt_id"):
+        raise HTTPException(status_code=409, detail="Only unreserved offers may be revoked; reconcile reserved checkout sessions in Stripe first")
+    updated = client.table("org_promotional_grants").update({"status": "revoked", "updated_at": datetime.now(timezone.utc).isoformat()}).eq("id", grant_id).eq("status", "available").is_("checkout_attempt_id", "null").execute().data
+    if not updated:
+        raise HTTPException(status_code=409, detail="Offer was reserved concurrently; review its Stripe checkout")
     write_audit_event(
         client, org_id=grant["org_id"], actor_id=founder["user_id"],
         action="billing.founder_offer.revoked",
@@ -1166,6 +1206,23 @@ def create_checkout(
             )
         except stripe.error.StripeError as exc:
             _raise_stripe_http_error(exc)
+    if offer:
+        verified_plan = plan_code_for_price(settings, price_id)
+        if not verified_plan or (plan_code and verified_plan != plan_code):
+            raise HTTPException(status_code=422, detail="Offer requires a configured base plan price")
+        plan_code = verified_plan
+        init_stripe(settings)
+        customer = stripe.Customer.retrieve(customer_id)
+        if (customer.get("metadata") or {}).get("org_id") != org_id:
+            raise HTTPException(status_code=409, detail="Stripe customer ownership requires reconciliation")
+        subscriptions = stripe.Subscription.list(customer=customer_id, status="all", limit=100)
+        if subscriptions.get("has_more") or any(
+            row.get("status") in {"active", "trialing", "past_due", "unpaid", "incomplete", "paused"}
+            or (offer.get("trial_days") and row.get("trial_start"))
+            for row in subscriptions.get("data", [])
+        ):
+            raise HTTPException(status_code=409, detail="Existing subscription or prior trial requires founder review")
+        offer = reserve_checkout_offer(client, org_id, offer, customer_id, price_id, current_user["user_id"])
     try:
         session = create_checkout_session(
             settings=settings,
@@ -1182,7 +1239,7 @@ def create_checkout(
             },
         )
     except stripe.error.StripeError as exc:
-        if customer_id and _stripe_customer_missing(exc):
+        if customer_id and not offer and _stripe_customer_missing(exc):
             customer_id = _create_stripe_customer(
                 settings, client, org_id, current_user["user_id"], plan_code
             )
@@ -1225,6 +1282,11 @@ def create_subscription_payment(
 ) -> dict:
     """Create an incomplete Stripe subscription and return Payment Element client_secret."""
     current_user, org_id, _role = member
+    if settings.commercial_offers_enabled:
+        offer_client = shared_service_client(settings, create_client)
+        if checkout_offer_for_org(offer_client, org_id):
+            raise HTTPException(status_code=409, detail="Use Stripe Checkout to redeem your founder offer")
+
     plan_code = (body.plan_code or "").strip().lower() or None
     billing_interval = (body.billing_interval or "").strip().lower() or None
     price_id = (body.price_id or "").strip() or None

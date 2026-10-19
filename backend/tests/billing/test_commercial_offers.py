@@ -62,9 +62,9 @@ def test_invalid_or_expired_grants_fail_closed(grants):
 
 def test_signed_checkout_redemption_conditional_update():
     client = MagicMock()
-    client.table.return_value.update.return_value.eq.return_value.eq.return_value.eq.return_value.execute.return_value.data = [{"id": "ok"}]
+    client.table.return_value.update.return_value.eq.return_value.eq.return_value.eq.return_value.eq.return_value.execute.return_value.data = [{"id": "ok"}]
     grant_id = "11111111-1111-4111-8111-111111111111"
-    assert redeem_checkout_offer(client, "org", grant_id, "sub_1") is True
+    assert redeem_checkout_offer(client, "org", grant_id, "sub_1", attempt_id="attempt-1") is True
     assert client.table.call_args.args == ("org_promotional_grants",)
     assert client.table.return_value.update.call_args.args[0]["status"] == "redeemed"
 
@@ -106,3 +106,51 @@ def test_stripe_checkout_discount_is_coupon_not_custom_price(monkeypatch):
     assert args["discounts"] == [{"coupon": "coupon_30"}]
     assert "trial_period_days" not in args["subscription_data"]
     assert "allow_promotion_codes" not in args
+
+
+def test_redemption_without_checkout_claim_fails_closed():
+    client = MagicMock()
+    assert not redeem_checkout_offer(client, "org", "11111111-1111-4111-8111-111111111111", "sub_1")
+    client.table.assert_not_called()
+
+
+def test_reservation_supplies_stable_attempt_and_expiry():
+    from app.billing.commercial_offers import reserve_checkout_offer
+    client = MagicMock()
+    client.rpc.return_value.execute.return_value.data = [{
+        "checkout_attempt_id": "11111111-1111-4111-8111-111111111111",
+        "checkout_reserved_at": "2026-10-19T01:00:00Z",
+    }]
+    offer = reserve_checkout_offer(client, "org", {"grant_id": "grant", "trial_days": 30}, "cus", "price", "user")
+    assert offer["attempt_id"] == "11111111-1111-4111-8111-111111111111"
+    assert offer["expires_at"] == 1792375200
+    assert client.rpc.call_args.args[0] == "reserve_founder_checkout"
+
+
+def test_reservation_failure_never_falls_back_to_unpromoted_checkout():
+    from app.billing.commercial_offers import reserve_checkout_offer
+    from fastapi import HTTPException
+    client = MagicMock()
+    client.rpc.return_value.execute.side_effect = TimeoutError("unknown outcome")
+    with pytest.raises(HTTPException) as exc:
+        reserve_checkout_offer(client, "org", {"grant_id": "grant"}, "cus", "price", "user")
+    assert exc.value.status_code == 409
+
+
+def test_reserved_trial_checkout_is_idempotent_and_has_no_metered_items(monkeypatch):
+    monkeypatch.setattr(stripe_billing, "init_stripe", lambda _: None)
+    monkeypatch.setattr(stripe_billing, "_subscription_line_items", lambda *_a, **_k: [
+        {"price": "base", "quantity": 1}, {"price": "meter"},
+    ])
+    create = MagicMock()
+    monkeypatch.setattr(stripe_billing.stripe.checkout.Session, "create", create)
+    stripe_billing.create_checkout_session(
+        MagicMock(), "cus", "base", "https://app/ok", "https://app/cancel",
+        {"org_id": "org"}, offer={"grant_id": "g", "trial_days": 30, "attempt_id": "a", "expires_at": 1792375200},
+    )
+    args = create.call_args.kwargs
+    assert args["idempotency_key"] == "founder-checkout:a"
+    assert args["line_items"] == [{"price": "base", "quantity": 1}]
+    assert args["subscription_data"]["metadata"]["offer_attempt_id"] == "a"
+    assert args["subscription_data"]["trial_settings"]["end_behavior"]["missing_payment_method"] == "cancel"
+    assert "renews automatically" in args["custom_text"]["submit"]["message"]

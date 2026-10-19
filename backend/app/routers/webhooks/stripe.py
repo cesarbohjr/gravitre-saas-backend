@@ -252,7 +252,7 @@ def _upsert_subscription_from_event(
         "tier": plan_tier,
         "status": _normalize_subscription_status(data.get("status")),
         "current_period_start": _to_iso(data.get("current_period_start")),
-        "current_period_end": _to_iso(data.get("current_period_end")),
+        "current_period_end": _to_iso(data.get("trial_end") if data.get("status") == "trialing" else data.get("current_period_end")),
         "seat_count": quantity,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -374,6 +374,10 @@ def _apply_stripe_event(
                 "billing_status": billing_status,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
+            trial_end = _to_iso(stripe_subscription.get("trial_end")) if remote_status == "trialing" else None
+            if trial_end:
+                subscription_row["current_period_end"] = trial_end
+                org_billing_row["current_period_end"] = trial_end
             if plan_code:
                 subscription_row["tier"] = plan_code
                 org_billing_row["plan_code"] = plan_code
@@ -387,7 +391,7 @@ def _apply_stripe_event(
                 grant_id = str(metadata.get("offer_grant_id") or "").strip()
                 if grant_id:
                     from app.billing.commercial_offers import redeem_checkout_offer
-                    if redeem_checkout_offer(client, org_id, grant_id, str(subscription_id)):
+                    if redeem_checkout_offer(client, org_id, grant_id, str(subscription_id), attempt_id=metadata.get("offer_attempt_id")):
                         _write_event(
                             client, org_id, "billing.founder_offer.redeemed",
                             {"grant_id": grant_id, "subscription_id": str(subscription_id)},
@@ -419,7 +423,7 @@ def _apply_stripe_event(
                 "stripe_customer_id": data.get("customer"),
                 "stripe_subscription_id": data.get("id"),
                 "billing_status": billing_status,
-                "current_period_end": _to_iso(data.get("current_period_end")),
+                "current_period_end": _to_iso(data.get("trial_end") if data.get("status") == "trialing" else data.get("current_period_end")),
                 "cancel_at_period_end": bool(data.get("cancel_at_period_end") or False),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
@@ -441,7 +445,7 @@ def _apply_stripe_event(
         grant_id = str((data.get("metadata") or {}).get("offer_grant_id") or "").strip()
         if grant_id:
             from app.billing.commercial_offers import redeem_checkout_offer
-            if redeem_checkout_offer(client, org_id, grant_id, str(data.get("id") or "")):
+            if redeem_checkout_offer(client, org_id, grant_id, str(data.get("id") or ""), attempt_id=(data.get("metadata") or {}).get("offer_attempt_id")):
                 _write_event(
                     client, org_id, "billing.founder_offer.redeemed",
                     {"grant_id": grant_id, "subscription_id": str(data.get("id"))},

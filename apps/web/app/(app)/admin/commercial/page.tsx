@@ -18,6 +18,7 @@ type Offer = {
   status: string
   valid_until: string | null
   redeemed_at: string | null
+  checkout_attempt_id: string | null
 }
 type Account = {
   org_id: string
@@ -32,7 +33,13 @@ const labels: Record<Category, string> = {
   internal: "Founder / internal",
   test: "Test / QA",
 }
-async function requestJson(url: string, body?: object): Promise<{ accounts?: Account[]; detail?: string | { message?: string } }> {
+type StripeAccount = {
+  customer_id: string | null
+  subscriptions: { id: string; status: string; trial_end: number | null; cancel_at_period_end: boolean }[]
+  verified_at: string | null
+  has_more?: boolean
+}
+async function requestJson(url: string, body?: object): Promise<{ accounts?: Account[]; offers_enabled?: boolean } & Partial<StripeAccount>> {
   const response = await apiFetch(url, body
     ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }
     : { method: "GET" })
@@ -45,6 +52,9 @@ async function requestJson(url: string, body?: object): Promise<{ accounts?: Acc
 
 export default function CommercialAccountsPage() {
   const { user } = useAuth()
+  const [offersEnabled, setOffersEnabled] = useState(false)
+  const [stripeAccount, setStripeAccount] = useState<StripeAccount | null>(null)
+  const [stripeError, setStripeError] = useState("")
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selected, setSelected] = useState("")
   const [search, setSearch] = useState("")
@@ -66,6 +76,7 @@ export default function CommercialAccountsPage() {
     try {
       const data = await requestJson("/api/billing/admin/commercial-accounts")
       setAccounts(data.accounts || [])
+      setOffersEnabled(data.offers_enabled === true)
       setError("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load accounts")
@@ -73,6 +84,19 @@ export default function CommercialAccountsPage() {
   }, [user])
 
   useEffect(() => { void refresh() }, [refresh])
+  useEffect(() => {
+    if (!selected) return
+    let canceled = false
+    setStripeAccount(null)
+    setStripeError("")
+    void requestJson(`/api/billing/admin/commercial-accounts/${selected}/stripe`).then(data => {
+      if (!canceled) setStripeAccount({
+        customer_id: data.customer_id || null, subscriptions: data.subscriptions || [],
+        verified_at: data.verified_at || null, has_more: data.has_more,
+      })
+    }).catch(err => { if (!canceled) setStripeError(err instanceof Error ? err.message : "Stripe verification failed") })
+    return () => { canceled = true }
+  }, [selected])
   const current = accounts.find(a => a.org_id === selected)
   const filtered = useMemo(() => accounts.filter(a =>
     `${a.name} ${a.org_id} ${a.customer_category}`.toLowerCase().includes(search.toLowerCase())
@@ -178,6 +202,20 @@ export default function CommercialAccountsPage() {
             {current && <>
               <section className="space-y-4 rounded-xl border border-border bg-card p-5">
                 <div><h2 className="font-semibold">{current.name}</h2><p className="break-all text-xs text-muted-foreground">{current.org_id}</p></div>
+                <div className="space-y-1 border-b border-border pb-4 text-sm">
+                  <h3 className="font-medium">Stripe subscription status</h3>
+                  {stripeError ? <p role="alert" className="text-destructive">{stripeError}</p> : !stripeAccount ? <p className="text-muted-foreground">Verifying with Stripe…</p> : <>
+                    <p className="break-all text-xs text-muted-foreground">{stripeAccount.customer_id || "No Stripe customer linked"}</p>
+                    {stripeAccount.customer_id && !stripeAccount.subscriptions.length && <p>No subscriptions in Stripe.</p>}
+                    {stripeAccount.subscriptions.map(subscription => <p key={subscription.id}>
+                      <span className="font-medium">{subscription.status}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">{subscription.id}</span>
+                      {subscription.trial_end && subscription.status === "trialing" && <span className="block text-xs">Trial ends {new Date(subscription.trial_end * 1000).toLocaleDateString()}</span>}
+                    </p>)}
+                    {stripeAccount.has_more && <p>More history is available in Stripe.</p>}
+                    <p className="text-xs text-muted-foreground">Trialing subscriptions do not count as paid recurring revenue.</p>
+                  </>}
+                </div>
                 <div>
                   <label htmlFor="category" className="mb-1 block text-sm font-medium">Customer classification</label>
                   <select id="category" value={category} onChange={e => setCategory(e.target.value as Category)} className="w-full rounded-md border border-input bg-background p-2 text-sm">
@@ -204,16 +242,18 @@ export default function CommercialAccountsPage() {
                   </div>
                 }
                 <div><label htmlFor="offer-expiry" className="mb-1 block text-sm">Offer redemption deadline (optional)</label><Input id="offer-expiry" type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)}/></div>
-                <Button onClick={() => void createOffer()} disabled={saving || current.customer_category !== "external" || current.offers.some(o => o.status === "available") || (offerType === "trial" ? trialDays < 1 || trialDays > 90 : percentOff <= 0 || percentOff > 100 || months < 1 || months > 12)}>Issue offer</Button>
+                <Button onClick={() => void createOffer()} disabled={!offersEnabled || saving || current.customer_category !== "external" || current.offers.some(o => o.status === "available") || (offerType === "trial" ? trialDays < 1 || trialDays > 90 : percentOff <= 0 || percentOff > 100 || months < 1 || months > 12)}>Issue offer</Button>
+                {!offersEnabled && <p className="text-xs text-muted-foreground">Offer issuance is disabled until checkout and trial lifecycle verification is complete.</p>}
                 {current.customer_category !== "external" && <p className="text-xs text-muted-foreground">Classify this organization as an external customer before issuing an offer.</p>}
                 <div className="space-y-2 border-t border-border pt-3">
                   <h3 className="text-sm font-medium">Offer history</h3>
                   {!current.offers.length && <p className="text-xs text-muted-foreground">No offers issued.</p>}
                   {current.offers.map(o => <div key={o.id} className="flex items-center justify-between gap-2 rounded-lg border border-border p-3 text-sm">
-                    <span>{o.offer_type === "trial" ? `${o.trial_days} day trial` : `${o.percent_off}% off for ${o.discount_months} month(s)`} <span className="text-xs text-muted-foreground">· {o.status}</span></span>
-                    {o.status === "available" && <Button size="sm" variant="outline" disabled={saving} onClick={() => void revokeOffer(o.id)}>Revoke</Button>}
+                    <span>{o.offer_type === "trial" ? `${o.trial_days} day trial` : `${o.percent_off}% off for ${o.discount_months} month(s)`} <span className="text-xs text-muted-foreground">· {o.checkout_attempt_id && o.status === "available" ? "Checkout reserved" : o.status}</span></span>
+                    {o.status === "available" && !o.checkout_attempt_id && <Button size="sm" variant="outline" disabled={saving} onClick={() => void revokeOffer(o.id)}>Revoke</Button>}
                   </div>)}
                 </div>
+                {current.offers.some(o => o.status === "available" && o.checkout_attempt_id) && <p className="text-xs text-muted-foreground">A checkout is reserved. Reconcile its session in Stripe before changing the grant; ambiguous attempts are never retried as a new subscription.</p>}
               </section>
             </>}
           </div>

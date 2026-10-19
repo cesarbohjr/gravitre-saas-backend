@@ -57,3 +57,54 @@ from (values
 ) as source(org_id, customer_category, classification_reason)
 join public.organizations as org on org.id = source.org_id::uuid
 on conflict (org_id) do nothing;
+-- A grant is reserved before contacting Stripe. No clock-based reclaim: an
+-- ambiguous network failure must not allow a second subscription to be created.
+alter table public.org_promotional_grants
+  add column if not exists checkout_attempt_id uuid,
+  add column if not exists checkout_reserved_at timestamptz,
+  add column if not exists checkout_customer_id text,
+  add column if not exists checkout_price_id text,
+  add column if not exists checkout_user_id uuid;
+create unique index if not exists org_promotional_grants_one_redeemed_trial
+  on public.org_promotional_grants (org_id)
+  where offer_type = 'trial' and status = 'redeemed';
+
+create or replace function public.reserve_founder_checkout(
+  p_org_id uuid, p_grant_id uuid, p_customer_id text, p_price_id text, p_user_id uuid
+) returns setof public.org_promotional_grants
+language plpgsql security invoker set search_path = public, pg_temp as $$
+declare g public.org_promotional_grants;
+begin
+  -- Serialize classification changes, issuance, and all claims for this org.
+  perform 1 from public.org_commercial_profiles
+    where org_id = p_org_id and customer_category = 'external' for update;
+  if not found then raise exception 'Reviewed external organization required'; end if;
+  select * into g from public.org_promotional_grants
+    where id = p_grant_id and org_id = p_org_id for update;
+  if not found or g.status <> 'available'
+    or (g.checkout_attempt_id is null and g.valid_until <= now()) then
+    raise exception 'Offer unavailable';
+  end if;
+  if nullif(p_customer_id, '') is null or nullif(p_price_id, '') is null or p_user_id is null then
+    raise exception 'Checkout identity required';
+  end if;
+  if g.offer_type = 'trial' and exists (
+    select 1 from public.org_promotional_grants
+    where org_id = p_org_id and offer_type = 'trial' and status = 'redeemed'
+  ) then raise exception 'Trial already redeemed'; end if;
+  if g.checkout_attempt_id is not null then
+    if g.checkout_customer_id <> p_customer_id or g.checkout_price_id <> p_price_id
+      or g.checkout_user_id <> p_user_id
+      or g.checkout_reserved_at < now() - interval '23 hours' then
+      raise exception 'Checkout already reserved; reconcile existing session';
+    end if;
+  else
+    update public.org_promotional_grants set checkout_attempt_id = gen_random_uuid(),
+      checkout_reserved_at = now(), checkout_customer_id = p_customer_id,
+      checkout_price_id = p_price_id, checkout_user_id = p_user_id, updated_at = now()
+      where id = p_grant_id returning * into g;
+  end if;
+  return next g;
+end $$;
+revoke all on function public.reserve_founder_checkout(uuid,uuid,text,text,uuid) from public, anon, authenticated;
+grant execute on function public.reserve_founder_checkout(uuid,uuid,text,text,uuid) to service_role;
