@@ -937,6 +937,166 @@ def _compute_billing_status(client, org_id: str, environment: str) -> dict:
     }
 
 
+class CommercialCategoryRequest(BaseModel):
+    org_id: str
+    customer_category: Literal["external", "internal", "test", "unreviewed"]
+    reason: str = Field(min_length=5, max_length=500)
+
+
+class FounderOfferRequest(BaseModel):
+    org_id: str
+    offer_type: Literal["trial", "discount"]
+    trial_days: int | None = Field(default=None, ge=1, le=90)
+    percent_off: float | None = Field(default=None, gt=0, le=100)
+    discount_months: int | None = Field(default=None, ge=1, le=12)
+    valid_until: datetime | None = None
+
+
+@router.get("/admin/commercial-accounts")
+def list_commercial_accounts(
+    _founder: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    client = shared_service_client(settings, create_client)
+    orgs = client.table("organizations").select("id,name").order("created_at", desc=True).limit(200).execute().data or []
+    profiles = client.table("org_commercial_profiles").select("org_id,customer_category,classification_reason").limit(500).execute().data or []
+    grants = client.table("org_promotional_grants").select("id,org_id,offer_type,trial_days,percent_off,discount_months,status,valid_until,redeemed_at").limit(500).execute().data or []
+    by_org = {str(p["org_id"]): p for p in profiles}
+    grants_by_org: dict[str, list[dict]] = {}
+    for grant in grants:
+        grants_by_org.setdefault(str(grant["org_id"]), []).append(grant)
+    return {"accounts": [
+        {
+            "org_id": str(org["id"]),
+            "name": org.get("name"),
+            "customer_category": by_org.get(str(org["id"]), {}).get("customer_category", "unreviewed"),
+            "classification_reason": by_org.get(str(org["id"]), {}).get("classification_reason"),
+            "offers": grants_by_org.get(str(org["id"]), []),
+        } for org in orgs
+    ]}
+
+
+@router.post("/admin/customer-segments")
+def set_customer_category(
+    body: CommercialCategoryRequest,
+    founder: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    from uuid import UUID
+    try:
+        org_id = str(UUID(body.org_id))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="Invalid organization ID") from exc
+    client = shared_service_client(settings, create_client)
+    if not (client.table("organizations").select("id").eq("id", org_id).limit(1).execute().data or []):
+        raise HTTPException(status_code=404, detail="Organization not found")
+    client.table("org_commercial_profiles").upsert({
+        "org_id": org_id,
+        "customer_category": body.customer_category,
+        "classification_reason": body.reason,
+        "classified_by": founder["user_id"],
+        "classified_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }, on_conflict="org_id").execute()
+    write_audit_event(
+        client, org_id=org_id, actor_id=founder["user_id"],
+        action="billing.customer_category.changed",
+        resource_type="org_commercial_profiles", resource_id=org_id,
+        metadata={"category": body.customer_category, "reason": body.reason},
+    )
+    return {"org_id": org_id, "customer_category": body.customer_category}
+
+
+@router.post("/admin/promotional-offers")
+def create_founder_offer(
+    body: FounderOfferRequest,
+    founder: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    from uuid import UUID
+    try:
+        org_id = str(UUID(body.org_id))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="Invalid organization ID") from exc
+    if not settings.commercial_offers_enabled:
+        raise HTTPException(status_code=503, detail="Founder promotions are not yet activated")
+    if body.offer_type == "trial":
+        if body.trial_days is None or body.percent_off is not None or body.discount_months is not None:
+            raise HTTPException(status_code=422, detail="Trial offers require trial_days only")
+    elif body.percent_off is None or body.discount_months is None or body.trial_days is not None:
+        raise HTTPException(status_code=422, detail="Discount offers require percent_off and discount_months")
+    if body.valid_until and body.valid_until <= datetime.now(timezone.utc).astimezone(body.valid_until.tzinfo or timezone.utc):
+        raise HTTPException(status_code=422, detail="Offer expiration must be in the future")
+    client = shared_service_client(settings, create_client)
+    if not (client.table("organizations").select("id").eq("id", org_id).limit(1).execute().data or []):
+        raise HTTPException(status_code=404, detail="Organization not found")
+    existing = client.table("org_promotional_grants").select("id").eq("org_id", org_id).eq("status", "available").limit(1).execute().data or []
+    if existing:
+        raise HTTPException(status_code=409, detail="Revoke the existing available offer first")
+    coupon_id = None
+    if body.offer_type == "discount":
+        if not settings.stripe_secret_key:
+            raise HTTPException(status_code=503, detail="Stripe not configured")
+        init_stripe(settings)
+        try:
+            coupon = stripe.Coupon.create(
+                percent_off=body.percent_off,
+                duration="repeating",
+                duration_in_months=body.discount_months,
+                name=f"Gravitre founder offer {body.percent_off:g}% for {body.discount_months} month(s)",
+                metadata={"org_id": org_id, "issued_by": str(founder["user_id"])},
+            )
+            coupon_id = coupon["id"]
+        except stripe.error.StripeError as exc:
+            _raise_stripe_http_error(exc)
+    payload = {
+        "org_id": org_id, "offer_type": body.offer_type,
+        "trial_days": body.trial_days, "stripe_coupon_id": coupon_id,
+        "percent_off": body.percent_off, "discount_months": body.discount_months,
+        "status": "available", "created_by": founder["user_id"],
+        "valid_until": body.valid_until.isoformat() if body.valid_until else None,
+    }
+    inserted = client.table("org_promotional_grants").insert(payload).execute().data or []
+    if not inserted:
+        raise HTTPException(status_code=502, detail="Could not persist promotional offer")
+    grant = inserted[0]
+    write_audit_event(
+        client, org_id=org_id, actor_id=founder["user_id"],
+        action="billing.founder_offer.created",
+        resource_type="org_promotional_grants", resource_id=str(grant["id"]),
+        metadata={"type": body.offer_type, "trial_days": body.trial_days,
+                  "percent_off": body.percent_off, "discount_months": body.discount_months},
+    )
+    return {"grant_id": grant["id"], "org_id": org_id, "status": "available", "offer_type": body.offer_type}
+
+
+@router.post("/admin/promotional-offers/{grant_id}/revoke")
+def revoke_founder_offer(
+    grant_id: str,
+    founder: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    from uuid import UUID
+    try:
+        grant_id = str(UUID(grant_id))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail="Invalid grant ID") from exc
+    client = shared_service_client(settings, create_client)
+    rows = client.table("org_promotional_grants").select("id,org_id,status").eq("id", grant_id).limit(1).execute().data or []
+    if not rows:
+        raise HTTPException(status_code=404, detail="Offer not found")
+    grant = rows[0]
+    if grant["status"] != "available":
+        raise HTTPException(status_code=409, detail="Only unused offers may be revoked")
+    client.table("org_promotional_grants").update({"status": "revoked", "updated_at": datetime.now(timezone.utc).isoformat()}).eq("id", grant_id).eq("status", "available").execute()
+    write_audit_event(
+        client, org_id=grant["org_id"], actor_id=founder["user_id"],
+        action="billing.founder_offer.revoked",
+        resource_type="org_promotional_grants", resource_id=grant_id, metadata={},
+    )
+    return {"grant_id": grant_id, "status": "revoked"}
+
+
 @router.post("/checkout")
 def create_checkout(
     body: CheckoutRequest,
