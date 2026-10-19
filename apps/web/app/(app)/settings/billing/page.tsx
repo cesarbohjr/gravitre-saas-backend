@@ -61,6 +61,10 @@ import {
   type InvoiceRow,
 } from "@/lib/settings-api/billing"
 import { toast } from "sonner"
+import { PromotionNotices } from "@/components/billing/promotion-notices"
+import { UpgradePromoField } from "@/components/billing/upgrade-promo-field"
+import type { AppliedPromo } from "@/components/billing/promo-code-field"
+import { withPromoParam } from "@/lib/promotions"
 
 export default function BillingPage() {
   const { isAdmin, showAdmin, pending: adminPending } = useOrgAdmin()
@@ -108,6 +112,7 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
   const [topUpModalOpen, setTopUpModalOpen] = useState(false)
   const [selectedTopUpMinutes, setSelectedTopUpMinutes] = useState<60 | 300 | 1200>(60)
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [autoTopupSaving, setAutoTopupSaving] = useState(false)
   // Set when Stripe returns with ?topup=success. The query param is stripped
@@ -264,7 +269,7 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
     }
     setSelectedPlan(planCode)
     setUpgradeModalOpen(false)
-    router.push(`/settings/billing/checkout?plan=${planCode}&interval=monthly`)
+    router.push(withPromoParam(`/settings/billing/checkout?plan=${planCode}&interval=monthly`, appliedPromo?.code))
   }
 
   const handleCancelSubscription = async () => {
@@ -448,6 +453,8 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
         canCancel={planKnown && autoRenewEnabled && isAdmin}
         onCancel={() => setCancelModalOpen(true)}
       />
+
+      <PromotionNotices enabled={Boolean(user)} />
 
       <BillingUsageCard
         loading={loadingOverview}
@@ -699,6 +706,7 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
               )
             })}
           </div>
+          {upgradeModalOpen ? <UpgradePromoField plan={selectedPlan} onApplied={setAppliedPromo} /> : null}
           <DialogFooter>
             <Button variant="outline" onClick={() => setUpgradeModalOpen(false)}>
               Cancel

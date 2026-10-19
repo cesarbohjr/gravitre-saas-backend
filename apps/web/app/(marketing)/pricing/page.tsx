@@ -11,6 +11,7 @@ import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { addOns, howItWorks, roles } from "@/lib/pricing-page-data"
 import { PricingAnnualProvider } from "@/components/marketing/pricing/pricing-annual-context"
 import { PricingFaqAccordion } from "@/components/marketing/pricing/pricing-faq-accordion"
+import { PricingPromoBanner, PricingPromoProvider } from "@/components/marketing/pricing/pricing-promo"
 import { Pricing } from "@/components/marketing/nodus/pricing"
 import { PricingTable } from "@/components/marketing/nodus/pricing-table"
 import { Container } from "@/components/marketing/nodus/container"
@@ -37,7 +38,9 @@ import { OutcomesPositioningField } from "@/components/marketing/creative"
 export default function PricingPage() {
   return (
     <PricingAnnualProvider>
+      <PricingPromoProvider>
       <div className="relative overflow-hidden bg-[color:var(--g-marketing-canvas)]">
+        <PricingPromoBanner />
         <Pricing />
 
         <DivideX />
@@ -313,6 +316,7 @@ export default function PricingPage() {
 
         <MarketingPageEndCta />
       </div>
+      </PricingPromoProvider>
     </PricingAnnualProvider>
   )
 }
