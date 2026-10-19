@@ -1,7 +1,8 @@
 /** Customer-consented MSP delegation API.
  *
  * This is not an organization switch. Every request is checked by FastAPI.
- * Keep UI disabled until live security acceptance and rollout approval.
+ * Used by the partner program's "health only" access option: the client owner
+ * gives named people on the MSP's team time-boxed health access.
  */
 import { apiFetch } from "@/lib/fetcher"
 
@@ -39,6 +40,8 @@ export interface MspProvider {
 export interface MspProviderMember {
   user_id: string
   role: "owner" | "admin" | "member"
+  name?: string | null
+  email?: string | null
 }
 
 export interface MspGrant {
@@ -51,6 +54,8 @@ export interface MspGrant {
   approved_at: string
   expires_at: string
   revoked_at: string | null
+  grantee_name?: string | null
+  grantee_email?: string | null
 }
 
 export interface MspAuditEvent {
@@ -59,6 +64,8 @@ export interface MspAuditEvent {
   actor_user_id: string
   action: "grant.created" | "grant.revoked" | "grant.denied"
   recorded_at: string
+  actor_name?: string | null
+  actor_email?: string | null
 }
 
 export interface MspManagement {

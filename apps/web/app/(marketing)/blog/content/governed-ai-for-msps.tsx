@@ -157,8 +157,9 @@ export const governedAiForMspsPost: BlogPost = {
         platform isn&apos;t &ldquo;can it do the work.&rdquo; It&apos;s &ldquo;what happens the one time it&apos;s
         wrong on a client&apos;s system, and can I prove to that client exactly what happened.&rdquo; See how
         Gravitre&apos;s <Link href="/features/technology">governed AI agent architecture</Link> answers that
-        question, or review <Link href="/pricing">current plans</Link> to see what a department-scoped, verified AI
-        layer actually costs to run and resell.
+        question, or see <Link href="/pricing#msp">how the Gravitre partner program works for MSPs</Link>: you pay
+        Gravitre a wholesale price for each client workspace, bill the client your own price under your own brand,
+        and keep the difference as margin.
       </p>
     </>
   ),

@@ -1,0 +1,97 @@
+---
+title: Resell Gravitre as an MSP
+description: Join the partner program, add client workspaces, pay Gravitre wholesale and bill your clients your own price.
+audience: public
+depth: mid
+tier: all
+status: published
+category: How-to Guides
+readTime: 7 min
+prev:
+  title: Plans and checkout
+  href: /docs/billing/plans-and-checkout
+next:
+  title: Configure Enterprise
+  href: /docs/guides/how-to/enterprise
+---
+
+The partner program is for managed service providers (MSPs), agencies and consultants who run Gravitre for their clients.
+
+**How you earn:** you pay Gravitre the wholesale price for each client and bill them your own price. The difference is your margin.
+
+Gravitre never invoices a client you bill. You invoice them from your own system, at whatever price and terms you agree with them.
+
+## 1. Join the partner program
+
+Use the workspace you run your business from (not a client's).
+
+1. Open **Settings → Clients** (`/settings/clients`).
+2. Select **Join the partner program**. Only the workspace **owner** can do this.
+
+Your workspace keeps its own plan for your own team. The partner program adds a separate wholesale account for your clients.
+
+<Callout title="One role per workspace">
+A workspace that is managed by a partner can't become a partner itself. Use a separate workspace for your MSP.
+</Callout>
+
+## 2. Add a client
+
+Select **Add client** and choose one of two ways:
+
+| Option | When to use it | What happens |
+|--------|----------------|--------------|
+| **Create a client workspace** | The client is new to Gravitre | A new workspace is created and you are its owner. It is active immediately. Invite the client's people from **Settings → Organizations → Manage members**. |
+| **Link an existing workspace** | The client already uses Gravitre | Enter their **Workspace ID** (their owner finds it in **Settings → Organizations**). Their owner gets a request to approve. |
+
+For each client choose the **plan** (Node, Control or Command) and, optionally, **your price** to them, monthly or yearly. The dialog shows the wholesale price you will pay for that plan.
+
+### What the client's owner decides
+
+When a client approves a link they choose what your team can see:
+
+- **Health only**: the people they pick from your team can see whether the workspace is healthy, its member count and its usage totals. Nothing else: no conversations, documents, agents or settings.
+- **Full access**: the people they pick join the workspace as admins so you can set it up and run it for them.
+
+Without either, you still see the client's plan and billing status, because you pay for it.
+
+A workspace that still pays Gravitre directly must cancel that subscription and let it end before it can move to your bill, so nobody is charged twice.
+
+## 3. Start wholesale billing
+
+With your first active client, the Clients page shows **Start wholesale billing**. It opens Stripe Checkout for one subscription that covers all your clients.
+
+- Each active client adds one unit of its plan's wholesale price.
+- Adding, detaching or changing a client's plan updates the subscription right away, prorated.
+- Until you start billing, clients run on a normal 7-day trial.
+- If your payment fails, your clients are paused until it goes through. If you cancel, they lose access.
+
+If the page says **Wholesale billing isn't set up yet**, you can still add clients; billing starts once wholesale prices are available.
+
+## 4. Bill your clients
+
+The Clients page lists every client with its plan, status, members, AI credits this month, health, what you pay Gravitre, your price and your margin, plus a total row.
+
+- Select **Edit** on a client to change its plan or your price.
+- Pick a month and select **Download CSV** for a rebilling statement: client, plan, wholesale, your price, margin and usage. Use it to invoice from your own billing system.
+- Select **Open** to switch into a client you are a member of.
+
+The client's **Settings → Billing** page shows **Billed through** your company and hides Gravitre checkout.
+
+## Your brand
+
+A client workspace with no white label of its own uses yours: logo, colour, email sender name and the "powered by" setting. Set yours in **Settings → Enterprise → White label**. Custom domains stay per workspace.
+
+## Detaching
+
+Either side can detach at any time:
+
+- **You**: select **Detach** on the Clients page.
+- **The client's owner**: **Settings → Organizations → Detach**.
+
+Detaching stops your wholesale charge for that client (prorated), removes the people a full-access approval added, ends health access, and moves the workspace to a 7-day trial so its owner can pick their own plan.
+
+## Related
+
+- [Plans and checkout](/docs/billing/plans-and-checkout)
+- [Configure Enterprise (white label)](/docs/guides/how-to/enterprise)
+- [Pricing for MSPs](/pricing#msp)

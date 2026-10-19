@@ -191,6 +191,9 @@ def load_org_email_branding(client: Any, org_id: str, settings: Settings) -> Ema
         logger.warning("load_org_email_branding failed org_id=%s: %s", org_id, exc)
 
     branding = get_org_branding(org_settings)
+    from app.services.msp_branding import apply_inherited_branding
+
+    branding = apply_inherited_branding(client, org_id, org_settings, branding)
     brand_name = str(branding.get("emailFromName") or defaults.brand_name).strip() or defaults.brand_name
     logo_url = _absolute_asset_url(defaults.app_base_url, branding.get("logoUrl")) or defaults.logo_url
 

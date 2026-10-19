@@ -14,6 +14,7 @@ import { PricingFaqAccordion } from "@/components/marketing/pricing/pricing-faq-
 import { PricingPromoBanner, PricingPromoProvider } from "@/components/marketing/pricing/pricing-promo"
 import { Pricing } from "@/components/marketing/nodus/pricing"
 import { PricingTable } from "@/components/marketing/nodus/pricing-table"
+import { MspPricingSection } from "@/components/marketing/pricing/msp-pricing-section"
 import { Container } from "@/components/marketing/nodus/container"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { Badge } from "@/components/marketing/nodus/badge"
@@ -259,6 +260,11 @@ export default function PricingPage() {
         <DivideX />
 
         <PricingTable />
+
+        <DivideX />
+
+        {/* For MSPs — wholesale partner program (anchor #msp) */}
+        <MspPricingSection />
 
         <DivideX />
 

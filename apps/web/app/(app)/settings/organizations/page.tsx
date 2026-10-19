@@ -7,7 +7,7 @@ import { Check, LayoutGrid, List, Loader2, Plus, Search } from "lucide-react"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
-import { MspDelegationPanel } from "@/components/settings/msp-delegation-panel"
+import { MspClientRelationship } from "@/components/settings/msp-client-relationship"
 import { SettingsShell } from "@/components/settings/settings-shell"
 import {
   SetArt,
@@ -268,6 +268,9 @@ function OrganizationsContent({
 
   return (
     <>
+      {/* A partner's request to manage the current workspace, or who manages it. */}
+      <MspClientRelationship />
+
       <section className="gs-card clip" data-review-surface="settings-orgs">
         <div className="gs-toolbar">
           <label className="gs-input">
@@ -392,6 +395,12 @@ function OrganizationsContent({
                     <span>Created</span>
                     <strong>{createdLabel(inspectOrg.created_at) ?? "Not recorded"}</strong>
                   </div>
+                  <div>
+                    <span title="Share it with your IT partner so they can ask to manage this workspace">Workspace ID</span>
+                    <strong className="gs-mono" style={{ fontSize: 12, wordBreak: "break-all" }}>
+                      {inspectOrg.id}
+                    </strong>
+                  </div>
                 </div>
                 <div className="orgs-actions">
                   {inspectIsCurrent ? (
@@ -443,9 +452,6 @@ function OrganizationsContent({
                     </button>
                   ) : null}
                 </div>
-                {process.env.NEXT_PUBLIC_MSP_DELEGATION_UI_ENABLED === "true" && inspectRole === "owner" ? (
-                  <MspDelegationPanel key={inspectOrg.id} customerOrgId={inspectOrg.id} />
-                ) : null}
               </aside>
             ) : null}
           </div>

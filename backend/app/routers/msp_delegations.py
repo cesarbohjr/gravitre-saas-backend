@@ -143,6 +143,23 @@ def customer_delegation_management(
     # Guard against a mismatched service response: fail closed, not partial data.
     if any(str(row.get("customer_org_id")) != customer for row in grants):
         raise HTTPException(403, "Customer scope mismatch")
+    # People are shown by name and email, never as raw ids.
+    from app.services.msp_program import user_labels
+
+    labels = user_labels(
+        client,
+        [m["user_id"] for m in members]
+        + [str(g.get("grantee_user_id")) for g in grants]
+        + [str(a.get("actor_user_id")) for a in audit],
+    )
+    for row, key, prefix in (
+        [(m, "user_id", "") for m in members]
+        + [(g, "grantee_user_id", "grantee_") for g in grants]
+        + [(a, "actor_user_id", "actor_") for a in audit]
+    ):
+        label = labels.get(str(row.get(key)), {})
+        row[f"{prefix}name"] = label.get("name")
+        row[f"{prefix}email"] = label.get("email")
     return {"customer_org_id": customer, "provider": provider_info,
             "provider_members": members, "grants": grants, "audit": audit}
 

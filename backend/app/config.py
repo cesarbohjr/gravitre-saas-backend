@@ -410,6 +410,11 @@ class Settings(BaseSettings):
     stripe_price_id_control_annual: str = ""
     stripe_price_id_command_monthly: str = ""
     stripe_price_id_command_annual: str = ""
+    # MSP partner program: wholesale Prices the MSP pays per active client
+    # (env STRIPE_PRICE_ID_MSP_{NODE,CONTROL,COMMAND}_WHOLESALE). Empty = not set up.
+    stripe_price_id_msp_node_wholesale: str = ""
+    stripe_price_id_msp_control_wholesale: str = ""
+    stripe_price_id_msp_command_wholesale: str = ""
     public_app_url: str = Field(
         default="",
         validation_alias=AliasChoices("NEXT_PUBLIC_APP_URL", "PUBLIC_APP_URL"),

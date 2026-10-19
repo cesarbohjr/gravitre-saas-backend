@@ -32,6 +32,7 @@ import { TOUCH_ICON_BUTTON } from "@/lib/design-system"
 import { Icon } from "@/lib/icons"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { OrgMonogram } from "@/components/gravitre/organization-logo"
+import { useMspOverview } from "@/lib/use-msp-overview"
 import { useViewMode } from "@/lib/view-mode-context"
 import { useAuth } from "@/lib/auth-context"
 import {
@@ -144,6 +145,8 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
     { revalidateOnFocus: false },
   )
   const memberOrgs = (orgsData?.organizations as Organization[] | undefined) ?? []
+  // Partner (MSP) workspaces get a direct way to their clients from the switcher.
+  const { data: mspOverview } = useMspOverview(Boolean(user))
 
   const planCodeKnown = Boolean(
     billingStatus?.planCode && billingStatus.billingKnown !== false && !billingStatus._auth_degraded,
@@ -312,6 +315,14 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
+              {mspOverview?.is_msp ? (
+                <DropdownMenuItem className="gap-2 text-muted-foreground cursor-pointer" asChild>
+                  <Link href="/settings/clients">
+                    <Icon name="company" size="sm" />
+                    Clients
+                  </Link>
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem className="gap-2 text-muted-foreground cursor-pointer" asChild>
                 <Link href="/settings/organizations">
                   <Icon name="settings" size="sm" />

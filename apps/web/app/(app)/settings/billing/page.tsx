@@ -20,6 +20,7 @@ import {
   BillingUsageCard,
 } from "@/components/settings/billing-cards"
 import { SetNote, SetSwitch } from "@/components/settings/settings-kit"
+import { MspBilledGate } from "@/components/settings/msp-billed-gate"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -91,7 +92,9 @@ export default function BillingPage() {
           >
             {/* Plan and usage render straight away; admin-only billing controls
                 stay disabled until the server confirms the role. */}
-            <BillingPageInner isAdmin={isAdmin} adminChecking={!isAdmin && (adminPending || showAdmin)} />
+            <MspBilledGate>
+              <BillingPageInner isAdmin={isAdmin} adminChecking={!isAdmin && (adminPending || showAdmin)} />
+            </MspBilledGate>
           </SettingsShell>
         </Suspense>
       </div>
