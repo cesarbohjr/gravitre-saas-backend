@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Literal
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -11,7 +11,8 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from supabase import create_client
 from app.core.db import shared_service_client
 
-from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin, require_org_member
+from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin, require_org_member, require_platform_admin
+from app.billing.commercial_offers import checkout_offer_for_org, segment_for_org
 from app.billing.entitlements import compute_app_access, normalize_billing_status
 from app.billing.service import (
     DEFAULT_PLAN_CODE,
@@ -963,6 +964,7 @@ def create_checkout(
     cancel_url = f"{app_url}/settings/billing?status=cancelled"
     client = shared_service_client(settings, create_client)
     billing = get_org_billing(client, org_id)
+    offer = checkout_offer_for_org(client, org_id)
     customer_id = billing.get("stripe_customer_id") if billing else None
     if not customer_id:
         try:
@@ -978,6 +980,7 @@ def create_checkout(
             price_id=price_id,
             success_url=success_url,
             cancel_url=cancel_url,
+            offer=offer,
             metadata={
                 "org_id": org_id,
                 "plan_code": plan_code,
@@ -997,7 +1000,8 @@ def create_checkout(
                     price_id=price_id,
                     success_url=success_url,
                     cancel_url=cancel_url,
-                    metadata={
+                    offer=offer,
+            metadata={
                         "org_id": org_id,
                         "plan_code": plan_code,
                         "billing_interval": billing_interval or "monthly",
