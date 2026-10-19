@@ -95,6 +95,26 @@ test("customer completes real sandbox checkout and signed webhook persists subsc
   expect(persisted.trial_has_only_licensed_items).toBe(true)
   evidence.checkout = persisted
   await expect.poll(async () => (await api(page, "/api/billing/status")).body.billingStatus, { timeout: 45_000 }).toBe("trialing")
+  await page.reload()
+  const invoices = await api(page, "/api/billing/invoices")
+  expect(invoices.status).toBe(200)
+  expect(invoices.body.invoices).toEqual(expect.arrayContaining([expect.objectContaining({ id: persisted.invoice_id, status: "paid", amount_cents: 0 })]))
+  expect(persisted.invoice_number).toBeTruthy()
+  await expect(page.getByRole("region", { name: "Invoices", exact: true }).getByText(persisted.invoice_number, { exact: true })).toBeVisible()
+  await page.screenshot({ path: "test-results/customer-billing-invoice.png", fullPage: true })
+  const pdfStatus = () => page.evaluate(async (invoiceId) => {
+    if (!window.__gravitreApiFetch) throw new Error("Authenticated E2E helper required")
+    const response = await window.__gravitreApiFetch(`/api/billing/invoices/${invoiceId}/pdf`)
+    return response.status
+  }, persisted.invoice_id)
+  expect(await pdfStatus()).toBe(200)
+  await context.clearCookies()
+  await page.evaluate(() => window.localStorage.clear())
+  await loginWithPassword(page, fixtures.activeTrial.email, fixtures.activeTrial.password)
+  await setSelectedOrg(page, fixtures.activeTrial.orgId)
+  await page.waitForFunction(() => Boolean(window.__gravitreApiFetch))
+  expect(await pdfStatus()).toBe(404)
+  evidence.invoice = { rendered: true, ownerPdfStatus: 200, otherOrganizationPdfStatus: 404 }
 })
 
 test("sandbox recurring invoice is genuinely paid and subscription cleaned up", async () => {
