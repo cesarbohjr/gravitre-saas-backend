@@ -28,6 +28,16 @@ def checkout_offer_for_org(client: Any, org_id: str, *, now: datetime | None = N
     Missing/malformed data fails closed. Checkout cannot accept a client-supplied
     trial length or coupon ID.
     """
+    profile = (
+        client.table("org_commercial_profiles")
+        .select("customer_category")
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+        .data or []
+    )
+    if not profile or profile[0].get("customer_category") != "external":
+        return None
     rows = (
         client.table("org_promotional_grants")
         .select("id,offer_type,trial_days,stripe_coupon_id,status,valid_until")
