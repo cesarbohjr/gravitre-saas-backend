@@ -314,6 +314,25 @@ def _apply_stripe_event(
         subscription_id = data.get("subscription")
         customer_id = data.get("customer")
         if org_id and subscription_id:
+            # Stripe is authoritative: a completed Checkout session does not
+            # imply an active subscription (especially for trials or failed
+            # first invoices). Verify live subscription status and customer.
+            from app.billing.stripe import init_stripe
+            init_stripe(settings)
+            stripe_subscription = stripe.Subscription.retrieve(str(subscription_id))
+            stripe_customer = stripe_subscription.get("customer")
+            if isinstance(stripe_customer, dict):
+                stripe_customer = stripe_customer.get("id")
+            if str(stripe_customer or "") != str(customer_id or ""):
+                raise ValueError("Stripe checkout customer does not match subscription")
+            remote_status = str(stripe_subscription.get("status") or "").lower()
+            if remote_status not in {
+                "active", "trialing", "incomplete", "incomplete_expired",
+                "past_due", "unpaid", "canceled", "paused",
+            }:
+                raise ValueError("Stripe checkout subscription status unavailable")
+            local_status = _normalize_subscription_status(remote_status)
+            billing_status = "pending" if remote_status == "incomplete" else remote_status
             from app.services.org_membership import (
                 promote_user_to_org_owner,
                 resolve_user_id_by_email,
@@ -345,14 +364,14 @@ def _apply_stripe_event(
                 "org_id": org_id,
                 "stripe_customer_id": customer_id,
                 "stripe_subscription_id": subscription_id,
-                "status": "active",
+                "status": local_status,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
             org_billing_row: dict[str, Any] = {
                 "org_id": org_id,
                 "stripe_customer_id": customer_id,
                 "stripe_subscription_id": subscription_id,
-                "billing_status": "active",
+                "billing_status": billing_status,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
             if plan_code:
