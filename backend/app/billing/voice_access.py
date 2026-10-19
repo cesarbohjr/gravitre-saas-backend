@@ -1,4 +1,5 @@
 """Plan-included voice access + org ON/OFF (replaces Meson voice_interface purchase gate)."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -39,7 +40,9 @@ def load_voice_org_settings(client, *, org_id: str) -> dict[str, Any]:
         "voice_enabled": bool(enabled),
         "voice_minutes_prepaid": prepaid,
         "voice_auto_topup_enabled": bool(row.get("voice_auto_topup_enabled")),
-        "voice_auto_topup_minutes": max(int(row.get("voice_auto_topup_minutes") or 60), 1),
+        "voice_auto_topup_minutes": max(
+            int(row.get("voice_auto_topup_minutes") or 60), 1
+        ),
         "voice_auto_topup_threshold_minutes": max(
             int(row.get("voice_auto_topup_threshold_minutes") or 15), 0
         ),
@@ -62,6 +65,12 @@ def assert_voice_org_enabled(client, *, org_id: str) -> dict[str, Any]:
                 {"reason": "voice_org_disabled", "action": "voice_use"},
             ),
         )
+    from app.config import get_settings
+    from app.billing.safety import reserve_trial_units
+
+    settings["trial_quota_reserved"] = reserve_trial_units(
+        client, get_settings(), org_id, "voice_minutes", 1
+    )
     return settings
 
 

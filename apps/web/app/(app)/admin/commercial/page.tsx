@@ -19,6 +19,7 @@ type Offer = {
   valid_until: string | null
   redeemed_at: string | null
   checkout_attempt_id: string | null
+  max_promotion_value_cents?: number
 }
 type Account = {
   org_id: string
@@ -39,7 +40,9 @@ type StripeAccount = {
   verified_at: string | null
   has_more?: boolean
 }
-async function requestJson(url: string, body?: object): Promise<{ accounts?: Account[]; offers_enabled?: boolean; next_offset?: number } & Partial<StripeAccount>> {
+type BillingAlert = { id: string; kind: string; org_id: string | null; occurrences: number }
+type Reconciliation = { status: string; summary?: { checked?: number; mismatches?: number; errors?: number } }
+async function requestJson(url: string, body?: object): Promise<{ accounts?: Account[]; offers_enabled?: boolean; next_offset?: number; alerts?: BillingAlert[]; reconciliation?: Reconciliation[]; status?: string; mismatches?: number; errors?: number } & Partial<StripeAccount>> {
   const response = await apiFetch(url, body
     ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }
     : { method: "GET" })
@@ -52,6 +55,9 @@ async function requestJson(url: string, body?: object): Promise<{ accounts?: Acc
 
 export default function CommercialAccountsPage() {
   const { user } = useAuth()
+  const [alerts, setAlerts] = useState<BillingAlert[]>([])
+  const [reconciliation, setReconciliation] = useState<Reconciliation | null>(null)
+  const [promotionCap, setPromotionCap] = useState("")
   const [offersEnabled, setOffersEnabled] = useState(false)
   const [stripeAccount, setStripeAccount] = useState<StripeAccount | null>(null)
   const [stripeError, setStripeError] = useState("")
@@ -87,6 +93,9 @@ export default function CommercialAccountsPage() {
       }
       setAccounts(allAccounts)
       setOffersEnabled(enabled)
+      const safety = await requestJson("/api/billing/admin/billing-safety")
+      setAlerts(safety.alerts || [])
+      setReconciliation(safety.reconciliation?.[0] || null)
       setError("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load accounts")
@@ -140,8 +149,10 @@ export default function CommercialAccountsPage() {
   }
   async function createOffer() {
     if (!current || current.customer_category !== "external") return
+    const capCents = Math.round(Number(promotionCap) * 100)
+    if (!Number.isFinite(capCents) || capCents < 1) return
     const terms = offerType === "trial" ? `${trialDays}-day trial` : `${percentOff}% off for ${months} month(s)`
-    if (!window.confirm(`Issue ${terms} to ${current.name}? This will create a Stripe-backed offer for the next eligible checkout.`)) return
+    if (!window.confirm(`Issue ${terms} to ${current.name}? Maximum promotional value: $${promotionCap} USD. Stripe applies it at the next eligible checkout.`)) return
     setSaving(true); setError(""); setNotice("")
     try {
       await requestJson("/api/billing/admin/promotional-offers", {
@@ -149,6 +160,7 @@ export default function CommercialAccountsPage() {
         trial_days: offerType === "trial" ? trialDays : null,
         percent_off: offerType === "discount" ? percentOff : null,
         discount_months: offerType === "discount" ? months : null,
+        max_promotion_value_cents: capCents,
         valid_until: validUntil ? new Date(`${validUntil}T23:59:59Z`).toISOString() : null,
       })
       setNotice("Founder offer issued. Stripe applies it when the customer checks out.")
@@ -186,6 +198,21 @@ export default function CommercialAccountsPage() {
             </div>
           )}
         </div>
+        <section className="space-y-2 border-y border-border py-4 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-medium">Billing reconciliation and alerts</h2>
+            <Button variant="outline" size="sm" disabled={saving} onClick={() => {
+              setSaving(true)
+              void requestJson("/api/billing/admin/billing-reconciliation", {}).then(result => {
+                setNotice(`Reconciliation ${result.status}: ${result.mismatches || 0} discrepancies, ${result.errors || 0} errors.`)
+                return refresh()
+              }).catch(err => setError(err instanceof Error ? err.message : "Reconciliation failed")).finally(() => setSaving(false))
+            }}>Run reconciliation</Button>
+          </div>
+          <p className="text-muted-foreground">Latest run: {reconciliation?.status || "Not run"}{reconciliation?.summary ? ` · ${reconciliation.summary.checked || 0} checked · ${reconciliation.summary.mismatches || 0} discrepancies · ${reconciliation.summary.errors || 0} errors` : ""}</p>
+          {alerts.length ? <ul role="alert" className="space-y-1">{alerts.map(alert => <li key={alert.id}>{alert.kind.replaceAll("_", " ")} · {alert.org_id || "Platform"} · {alert.occurrences} occurrence(s)</li>)}</ul> : <p className="text-muted-foreground">No unresolved billing alerts.</p>}
+          {alerts.length === 100 && <p className="text-muted-foreground">Showing the latest 100 unresolved alerts.</p>}
+        </section>
         {error && <p role="alert" className="rounded-lg border border-destructive p-3 text-sm text-destructive">{error}</p>}
         {notice && <p role="status" className="rounded-lg border border-border p-3 text-sm">{notice}</p>}
         <div className="grid gap-5 lg:grid-cols-[minmax(260px,1fr)_minmax(340px,1.3fr)]">
@@ -252,7 +279,8 @@ export default function CommercialAccountsPage() {
                   </div>
                 }
                 <div><label htmlFor="offer-expiry" className="mb-1 block text-sm">Offer redemption deadline (optional)</label><Input id="offer-expiry" type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)}/></div>
-                <Button onClick={() => void createOffer()} disabled={!offersEnabled || saving || current.customer_category !== "external" || current.offers.some(o => o.status === "available") || (offerType === "trial" ? trialDays < 1 || trialDays > 90 : percentOff <= 0 || percentOff > 100 || months < 1 || months > 12)}>Issue offer</Button>
+                <div><label htmlFor="promotion-cap" className="mb-1 block text-sm">Maximum promotional value (USD)</label><Input id="promotion-cap" type="number" min="0.01" step="0.01" value={promotionCap} onChange={e => setPromotionCap(e.target.value)} /><p className="mt-1 text-xs text-muted-foreground">Checkout is blocked if the base-plan trial or discount value exceeds this cap. Trials reserve included usage before execution and cannot auto-top-up.</p></div>
+                <Button onClick={() => void createOffer()} disabled={!Number.isFinite(Number(promotionCap)) || Number(promotionCap) <= 0 || !offersEnabled || saving || current.customer_category !== "external" || current.offers.some(o => o.status === "available") || (offerType === "trial" ? trialDays < 1 || trialDays > 90 : percentOff <= 0 || percentOff > 100 || months < 1 || months > 12)}>Issue offer</Button>
                 {!offersEnabled && <p className="text-xs text-muted-foreground">Offer issuance is disabled until checkout and trial lifecycle verification is complete.</p>}
                 {current.customer_category !== "external" && <p className="text-xs text-muted-foreground">Classify this organization as an external customer before issuing an offer.</p>}
                 <div className="space-y-2 border-t border-border pt-3">

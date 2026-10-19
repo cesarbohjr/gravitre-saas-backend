@@ -1,4 +1,5 @@
 """Pipecat WebSocket voice surface — flag-gated Phase 1 orchestration."""
+
 from __future__ import annotations
 
 import asyncio
@@ -14,7 +15,11 @@ from app.billing.service import get_supabase_client
 from app.billing.voice_access import assert_voice_org_enabled
 from app.config import get_settings
 from app.core.logging import get_logger
-from app.services.org_membership import list_member_org_ids, load_user_primary_org_id, pick_default_org_id
+from app.services.org_membership import (
+    list_member_org_ids,
+    load_user_primary_org_id,
+    pick_default_org_id,
+)
 
 logger = get_logger(__name__)
 
@@ -31,7 +36,11 @@ def _pipecat_available() -> bool:
 
 
 def _token_from_websocket(websocket: WebSocket) -> str:
-    auth = websocket.headers.get("authorization") or websocket.headers.get("Authorization") or ""
+    auth = (
+        websocket.headers.get("authorization")
+        or websocket.headers.get("Authorization")
+        or ""
+    )
     if auth.lower().startswith("bearer "):
         return auth.split(" ", 1)[1].strip()
     q = websocket.query_params
@@ -63,20 +72,26 @@ def _resolve_session_access(
     platform_admin = is_platform_admin(client, user_id)
     if requested_org:
         if requested_org not in member_org_ids and not platform_admin:
-            return {"error": "Not a member of the requested organization", "error_class": "forbidden"}
+            return {
+                "error": "Not a member of the requested organization",
+                "error_class": "forbidden",
+            }
         resolved_org = requested_org
     else:
         primary = load_user_primary_org_id(client, user_id)
-        resolved_org = pick_default_org_id(
-            member_org_ids,
-            primary_org_id=primary,
-            requested_org_id=None,
-        ) or ""
+        resolved_org = (
+            pick_default_org_id(
+                member_org_ids,
+                primary_org_id=primary,
+                requested_org_id=None,
+            )
+            or ""
+        )
     if not resolved_org:
         return {"error": "Organization required", "error_class": "auth"}
 
     try:
-        assert_voice_org_enabled(client, org_id=resolved_org)
+        voice_settings = assert_voice_org_enabled(client, org_id=resolved_org) or {}
         seat = resolve_seat_context(client, org_id=resolved_org, user_id=user_id)
         assert_agent_voice_use(client, seat, org_id=resolved_org, agent_id=agent_id)
     except HTTPException as exc:
@@ -100,7 +115,12 @@ def _resolve_session_access(
             agent = rows[0] if rows else {"id": agent_id}
         except Exception:  # noqa: BLE001
             agent = {"id": agent_id}
-    return {"client": client, "org_id": resolved_org, "agent": agent}
+    return {
+        "client": client,
+        "org_id": resolved_org,
+        "agent": agent,
+        "trial_quota_reserved": bool(voice_settings.get("trial_quota_reserved")),
+    }
 
 
 @router.websocket("/ws")
@@ -120,13 +140,21 @@ async def pipecat_voice_ws(
     settings = get_settings()
     if not bool(getattr(settings, "voice_pipecat_enabled", False)):
         await websocket.send_json(
-            {"type": "error", "error": "VOICE_PIPECAT_ENABLED is false", "error_class": "not_enabled"}
+            {
+                "type": "error",
+                "error": "VOICE_PIPECAT_ENABLED is false",
+                "error_class": "not_enabled",
+            }
         )
         await websocket.close(code=1008)
         return
     if not _pipecat_available():
         await websocket.send_json(
-            {"type": "error", "error": "pipecat-ai not installed", "error_class": "not_configured"}
+            {
+                "type": "error",
+                "error": "pipecat-ai not installed",
+                "error_class": "not_configured",
+            }
         )
         await websocket.close(code=1013)
         return
@@ -142,7 +170,11 @@ async def pipecat_voice_ws(
         payload = decode_supabase_jwt(token, settings)
     except Exception:  # noqa: BLE001
         await websocket.send_json(
-            {"type": "error", "error": "Invalid or expired token", "error_class": "auth"}
+            {
+                "type": "error",
+                "error": "Invalid or expired token",
+                "error_class": "auth",
+            }
         )
         await websocket.close(code=1008)
         return
@@ -168,7 +200,11 @@ async def pipecat_voice_ws(
     )
     if access.get("error"):
         await websocket.send_json(
-            {"type": "error", "error": access["error"], "error_class": access["error_class"]}
+            {
+                "type": "error",
+                "error": access["error"],
+                "error_class": access["error_class"],
+            }
         )
         await websocket.close(code=1008)
         return
@@ -179,8 +215,12 @@ async def pipecat_voice_ws(
     keyterms: list[str] = []
     keyterm_meta: dict[str, Any] = {"keyterms_enabled": False}
     if bool(getattr(settings, "voice_keyterms_v1", False)):
-        from app.services.connector_snapshot_cache import list_connected_integrations_cached
-        from app.services.pipecat_voice.voice_keyterm_service import build_voice_keyterms
+        from app.services.connector_snapshot_cache import (
+            list_connected_integrations_cached,
+        )
+        from app.services.pipecat_voice.voice_keyterm_service import (
+            build_voice_keyterms,
+        )
 
         org_name: str | None = None
         try:
@@ -222,7 +262,9 @@ async def pipecat_voice_ws(
     )
 
     primary = resolve_pipecat_stt_provider(settings)
-    fallback_enabled = bool(getattr(settings, "voice_pipecat_stt_fallback_enabled", True))
+    fallback_enabled = bool(
+        getattr(settings, "voice_pipecat_stt_fallback_enabled", True)
+    )
     fallback = resolve_pipecat_stt_fallback(settings)
     providers: list[tuple[str | None, str | None, str | None]] = [(primary, None, None)]
     if fallback_enabled and fallback != primary:
@@ -248,7 +290,9 @@ async def pipecat_voice_ws(
         from app.services.chat_turn_cancel_service import clear_stop
 
         try:
-            await asyncio.to_thread(clear_stop, resolved_org, conversation_id, settings=settings)
+            await asyncio.to_thread(
+                clear_stop, resolved_org, conversation_id, settings=settings
+            )
         except Exception as exc:  # noqa: BLE001
             logger.warning("pipecat_voice_stop_marker_clear_failed error=%s", exc)
 
@@ -258,7 +302,9 @@ async def pipecat_voice_ws(
         for idx, (prov, fb_from, fb_reason) in enumerate(providers):
             try:
                 if fb_from:
-                    log_stt_fallback(primary=fb_from, fallback=str(prov), reason=str(fb_reason))
+                    log_stt_fallback(
+                        primary=fb_from, fallback=str(prov), reason=str(fb_reason)
+                    )
                     if websocket.client_state == WebSocketState.CONNECTED:
                         try:
                             await websocket.send_json(
@@ -289,8 +335,48 @@ async def pipecat_voice_ws(
                 if reporter is not None:
                     reporters.append(reporter)
                 runner = PipelineRunner(handle_sigint=False)
-                await runner.run(task)
+                if access.get("trial_quota_reserved"):
+                    from app.billing.safety import reserve_trial_units
+
+                    async def trial_lease():
+                        while True:
+                            await asyncio.sleep(60)
+                            await asyncio.to_thread(
+                                reserve_trial_units,
+                                client,
+                                settings,
+                                resolved_org,
+                                "voice_minutes",
+                                1,
+                            )
+
+                    pipeline = asyncio.create_task(runner.run(task))
+                    lease = asyncio.create_task(trial_lease())
+                    try:
+                        done, _ = await asyncio.wait(
+                            {pipeline, lease}, return_when=asyncio.FIRST_COMPLETED
+                        )
+                        for completed in done:
+                            await completed
+                    finally:
+                        for running in (pipeline, lease):
+                            if not running.done():
+                                running.cancel()
+                        await asyncio.gather(pipeline, lease, return_exceptions=True)
+                else:
+                    await runner.run(task)
                 last_exc = None
+                break
+            except HTTPException:
+                if websocket.client_state == WebSocketState.CONNECTED:
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "error": "Trial voice allowance exhausted or unavailable",
+                            "error_class": "billing",
+                        }
+                    )
+                    await websocket.close(code=1008)
                 break
             except WebSocketDisconnect:
                 raise
@@ -328,7 +414,9 @@ async def pipecat_voice_ws(
                 logger.warning("pipecat_voice_stop_marker_release_failed error=%s", exc)
             session = getattr(reporter, "voice_session", None)
             if session is not None:
-                from app.services.pipecat_voice.voice_connection_recovery import release_conversation
+                from app.services.pipecat_voice.voice_connection_recovery import (
+                    release_conversation,
+                )
 
                 release_conversation(
                     resolved_org,

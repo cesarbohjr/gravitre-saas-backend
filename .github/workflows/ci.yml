@@ -249,6 +249,12 @@ jobs:
           APP_ENV: dev
           GRAVITRE_REQUIRE_PG: "1"
 
+      - name: Founder billing safety PostgreSQL acceptance (must not skip)
+        run: python -m pytest tests/db/test_founder_billing_safety_pg.py tests/billing/test_billing_safety_controls.py -q --no-header
+        env:
+          APP_ENV: dev
+          GRAVITRE_REQUIRE_PG: "1"
+
       - name: Assistant atomic usage Postgres acceptance (must not skip)
         run: python -m pytest tests/db/test_assistant_usage_atomic_pg.py -q --no-header
         env:

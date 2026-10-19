@@ -1,4 +1,5 @@
 """BE-00: Config and environment wiring. Loads from .env; no secrets in code."""
+
 from functools import lru_cache
 
 from pydantic import AliasChoices, Field, ValidationError, field_validator
@@ -6,7 +7,11 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.connectors.secret_key import validate_connector_secrets_encryption_key
-from app.public_urls import PRODUCTION_APP_URL, is_legacy_platform_host, normalize_public_url
+from app.public_urls import (
+    PRODUCTION_APP_URL,
+    is_legacy_platform_host,
+    normalize_public_url,
+)
 
 
 class Settings(BaseSettings):
@@ -41,7 +46,9 @@ class Settings(BaseSettings):
 
     @property
     def jwt_audience(self) -> str:
-        return (self.supabase_jwt_audience or "authenticated").strip() or "authenticated"
+        return (
+            self.supabase_jwt_audience or "authenticated"
+        ).strip() or "authenticated"
 
     @property
     def embedding_model(self) -> str:
@@ -86,33 +93,47 @@ class Settings(BaseSettings):
     rag_cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     domain_retrieval_policy_enabled: bool = Field(
         default=False,
-        validation_alias=AliasChoices("DOMAIN_RETRIEVAL_POLICY_ENABLED", "domain_retrieval_policy_enabled"),
+        validation_alias=AliasChoices(
+            "DOMAIN_RETRIEVAL_POLICY_ENABLED", "domain_retrieval_policy_enabled"
+        ),
     )
     domain_adaptive_learning_enabled: bool = Field(
         default=False,
-        validation_alias=AliasChoices("DOMAIN_ADAPTIVE_LEARNING_ENABLED", "domain_adaptive_learning_enabled"),
+        validation_alias=AliasChoices(
+            "DOMAIN_ADAPTIVE_LEARNING_ENABLED", "domain_adaptive_learning_enabled"
+        ),
     )
     audio_transcription_model: str = Field(
         default="gpt-4o-mini-transcribe",
-        validation_alias=AliasChoices("AUDIO_TRANSCRIPTION_MODEL", "audio_transcription_model"),
+        validation_alias=AliasChoices(
+            "AUDIO_TRANSCRIPTION_MODEL", "audio_transcription_model"
+        ),
     )
     intelligence_visibility_enabled: bool = Field(
         default=False,
-        validation_alias=AliasChoices("INTELLIGENCE_VISIBILITY_ENABLED", "intelligence_visibility_enabled"),
+        validation_alias=AliasChoices(
+            "INTELLIGENCE_VISIBILITY_ENABLED", "intelligence_visibility_enabled"
+        ),
     )
     # Unified turn reasoning (Phase 1 shadow — parallel to classical pipeline).
     unified_turn_shadow_enabled: bool = Field(
         default=False,
-        validation_alias=AliasChoices("UNIFIED_TURN_SHADOW_ENABLED", "unified_turn_shadow_enabled"),
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_SHADOW_ENABLED", "unified_turn_shadow_enabled"
+        ),
     )
     unified_turn_shadow_max_tools: int = Field(
         default=32,
-        validation_alias=AliasChoices("UNIFIED_TURN_SHADOW_MAX_TOOLS", "unified_turn_shadow_max_tools"),
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_SHADOW_MAX_TOOLS", "unified_turn_shadow_max_tools"
+        ),
     )
     # Phase 4 cutover — when true, unified-turn outcomes serve the user (classical = rollback).
     unified_turn_live_enabled: bool = Field(
         default=False,
-        validation_alias=AliasChoices("UNIFIED_TURN_LIVE_ENABLED", "unified_turn_live_enabled"),
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_LIVE_ENABLED", "unified_turn_live_enabled"
+        ),
     )
     # Typed LIVE answers stream as checked sentences (typed_live_stream.py).
     # False restores the whole-reply typed path.
@@ -165,7 +186,9 @@ class Settings(BaseSettings):
     # CognitiveTurnKernel kill-switch — when false, pre-ACT stages return a skipped minimal context.
     cognitive_turn_kernel_enabled: bool = Field(
         default=True,
-        validation_alias=AliasChoices("COGNITIVE_TURN_KERNEL_ENABLED", "cognitive_turn_kernel_enabled"),
+        validation_alias=AliasChoices(
+            "COGNITIVE_TURN_KERNEL_ENABLED", "cognitive_turn_kernel_enabled"
+        ),
     )
     # Evidence-sufficiency replan loop: evaluate whether retrieval actually answers
     # the question, and retrieve from a different source when it does not.
@@ -188,7 +211,8 @@ class Settings(BaseSettings):
     evidence_contradiction_check_enabled: bool = Field(
         default=True,
         validation_alias=AliasChoices(
-            "EVIDENCE_CONTRADICTION_CHECK_ENABLED", "evidence_contradiction_check_enabled"
+            "EVIDENCE_CONTRADICTION_CHECK_ENABLED",
+            "evidence_contradiction_check_enabled",
         ),
     )
     # Shared cross-source ranking. Shadow computes diagnostics while preserving
@@ -246,7 +270,9 @@ class Settings(BaseSettings):
     )
     unified_turn_task_max_tools: int = Field(
         default=16,
-        validation_alias=AliasChoices("UNIFIED_TURN_TASK_MAX_TOOLS", "unified_turn_task_max_tools"),
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_TASK_MAX_TOOLS", "unified_turn_task_max_tools"
+        ),
     )
     unified_turn_tool_embed_local: bool = Field(
         default=True,
@@ -365,7 +391,10 @@ class Settings(BaseSettings):
     database_url: str = ""
 
     # Stripe Billing (MVP)
-    commercial_offers_enabled: bool = False  # enable only after production migration and billing QA
+    billing_reconciliation_enabled: bool = False
+    commercial_offers_enabled: bool = (
+        False  # enable only after production migration and billing QA
+    )
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_price_id_starter: str = ""
@@ -387,7 +416,9 @@ class Settings(BaseSettings):
     # Nango long-tail connector infrastructure. Secret key is backend-only.
     nango_secret_key: str = Field(
         default="",
-        validation_alias=AliasChoices("NANGO_SECRET_KEY", "NANGO_API_KEY", "nango_secret_key"),
+        validation_alias=AliasChoices(
+            "NANGO_SECRET_KEY", "NANGO_API_KEY", "nango_secret_key"
+        ),
     )
     nango_api_base_url: str = Field(
         default="https://api.nango.dev",
@@ -526,7 +557,9 @@ class Settings(BaseSettings):
     # Google Ads API developer token (required in addition to OAuth; MCC API Center).
     google_ads_developer_token: str = Field(
         default="",
-        validation_alias=AliasChoices("GOOGLE_ADS_DEVELOPER_TOKEN", "google_ads_developer_token"),
+        validation_alias=AliasChoices(
+            "GOOGLE_ADS_DEVELOPER_TOKEN", "google_ads_developer_token"
+        ),
     )
     # Stripe usage-based (metered) billing: meter event name configured on the
     # Stripe Billing Meter that the metered price is attached to.
@@ -535,7 +568,9 @@ class Settings(BaseSettings):
     # reconciliation and production operator acceptance have passed.
     stripe_meter_outbox_enabled: bool = Field(
         default=False,
-        validation_alias=AliasChoices("STRIPE_METER_OUTBOX_ENABLED", "stripe_meter_outbox_enabled"),
+        validation_alias=AliasChoices(
+            "STRIPE_METER_OUTBOX_ENABLED", "stripe_meter_outbox_enabled"
+        ),
     )
     # Per-plan metered (usage-based) price IDs tied to the AI-credits meter. When
     # set, they are added as an extra subscription/checkout line item so usage is
@@ -695,7 +730,9 @@ class Settings(BaseSettings):
     # Release 4: allow MSP parent-org members to resolve child org context (needs migration).
     msp_parent_org_enabled: bool = Field(
         default=False,
-        validation_alias=AliasChoices("MSP_PARENT_ORG_ENABLED", "msp_parent_org_enabled"),
+        validation_alias=AliasChoices(
+            "MSP_PARENT_ORG_ENABLED", "msp_parent_org_enabled"
+        ),
     )
     # Route auto-approved event-triggered runs through the durable workflow queue.
     event_trigger_use_workflow_queue: bool = Field(
@@ -717,7 +754,8 @@ class Settings(BaseSettings):
     assistant_billing_atomic_enabled: bool = Field(
         default=False,
         validation_alias=AliasChoices(
-            "ASSISTANT_BILLING_ATOMIC_ENABLED", "assistant_billing_atomic_enabled",
+            "ASSISTANT_BILLING_ATOMIC_ENABLED",
+            "assistant_billing_atomic_enabled",
         ),
     )
     # Route all allowance-bearing writers through the same database lock as
@@ -729,7 +767,8 @@ class Settings(BaseSettings):
     assistant_billing_recovery_enabled: bool = Field(
         default=False,
         validation_alias=AliasChoices(
-            "ASSISTANT_BILLING_RECOVERY_ENABLED", "assistant_billing_recovery_enabled",
+            "ASSISTANT_BILLING_RECOVERY_ENABLED",
+            "assistant_billing_recovery_enabled",
         ),
     )
     workflow_queue_fail_closed: bool = Field(
@@ -792,15 +831,21 @@ class Settings(BaseSettings):
     )
     elevenlabs_default_voice: str = Field(
         default="sarah",
-        validation_alias=AliasChoices("ELEVENLABS_DEFAULT_VOICE", "elevenlabs_default_voice"),
+        validation_alias=AliasChoices(
+            "ELEVENLABS_DEFAULT_VOICE", "elevenlabs_default_voice"
+        ),
     )
     elevenlabs_voice_sarah: str = Field(
         default="",
-        validation_alias=AliasChoices("ELEVENLABS_VOICE_SARAH", "elevenlabs_voice_sarah"),
+        validation_alias=AliasChoices(
+            "ELEVENLABS_VOICE_SARAH", "elevenlabs_voice_sarah"
+        ),
     )
     elevenlabs_voice_rachel: str = Field(
         default="",
-        validation_alias=AliasChoices("ELEVENLABS_VOICE_RACHEL", "elevenlabs_voice_rachel"),
+        validation_alias=AliasChoices(
+            "ELEVENLABS_VOICE_RACHEL", "elevenlabs_voice_rachel"
+        ),
     )
     elevenlabs_voice_adam: str = Field(
         default="",
@@ -899,7 +944,9 @@ class Settings(BaseSettings):
     )
     voice_mic_telemetry_v1: bool = Field(
         default=False,
-        validation_alias=AliasChoices("VOICE_MIC_TELEMETRY_V1", "voice_mic_telemetry_v1"),
+        validation_alias=AliasChoices(
+            "VOICE_MIC_TELEMETRY_V1", "voice_mic_telemetry_v1"
+        ),
     )
     voice_preroll_v2: bool = Field(
         default=False,
@@ -920,7 +967,9 @@ class Settings(BaseSettings):
     # Voice 3.0 Phase 2 — echo / noise (default OFF except silent tap fix).
     voice_mic_silent_tap_v2: bool = Field(
         default=True,
-        validation_alias=AliasChoices("VOICE_MIC_SILENT_TAP_V2", "voice_mic_silent_tap_v2"),
+        validation_alias=AliasChoices(
+            "VOICE_MIC_SILENT_TAP_V2", "voice_mic_silent_tap_v2"
+        ),
     )
     voice_echo_test_mode: bool = Field(
         default=False,
@@ -956,7 +1005,9 @@ class Settings(BaseSettings):
     )
     voice_realtime_eval_lane: str = Field(
         default="A",
-        validation_alias=AliasChoices("VOICE_REALTIME_EVAL_LANE", "voice_realtime_eval_lane"),
+        validation_alias=AliasChoices(
+            "VOICE_REALTIME_EVAL_LANE", "voice_realtime_eval_lane"
+        ),
         description="3.0-C eval lane A/B/C. Production audio stays A regardless of B/C.",
     )
     # Voice 3.0 Phase 4 — latency tuning (default OFF).
@@ -966,7 +1017,9 @@ class Settings(BaseSettings):
     )
     voice_speculative_min_chars: int = Field(
         default=8,
-        validation_alias=AliasChoices("VOICE_SPECULATIVE_MIN_CHARS", "voice_speculative_min_chars"),
+        validation_alias=AliasChoices(
+            "VOICE_SPECULATIVE_MIN_CHARS", "voice_speculative_min_chars"
+        ),
     )
     voice_speculative_prefix_adopt: bool = Field(
         default=True,
@@ -986,7 +1039,9 @@ class Settings(BaseSettings):
     # cancelled after this long; past the buffer caps its producer pauses.
     voice_speculative_timeout_s: float = Field(
         default=5.0,
-        validation_alias=AliasChoices("VOICE_SPECULATIVE_TIMEOUT_S", "voice_speculative_timeout_s"),
+        validation_alias=AliasChoices(
+            "VOICE_SPECULATIVE_TIMEOUT_S", "voice_speculative_timeout_s"
+        ),
     )
     voice_speculative_max_buffer_chars: int = Field(
         default=2000,
@@ -1006,7 +1061,9 @@ class Settings(BaseSettings):
     # always on. Kept so an existing VOICE_REQUEST_REVISIONS_V1 still parses.
     voice_request_revisions_v1: bool = Field(
         default=False,
-        validation_alias=AliasChoices("VOICE_REQUEST_REVISIONS_V1", "voice_request_revisions_v1"),
+        validation_alias=AliasChoices(
+            "VOICE_REQUEST_REVISIONS_V1", "voice_request_revisions_v1"
+        ),
     )
     voice_tts_chunk_v2: bool = Field(
         default=False,
@@ -1014,7 +1071,9 @@ class Settings(BaseSettings):
     )
     voice_tts_chunk_min_chars: int = Field(
         default=12,
-        validation_alias=AliasChoices("VOICE_TTS_CHUNK_MIN_CHARS", "voice_tts_chunk_min_chars"),
+        validation_alias=AliasChoices(
+            "VOICE_TTS_CHUNK_MIN_CHARS", "voice_tts_chunk_min_chars"
+        ),
     )
     voice_tts_ab_v1: bool = Field(
         default=False,
@@ -1029,7 +1088,9 @@ class Settings(BaseSettings):
     # measurements showed prompt-only ceilings were not reliably obeyed.
     voice_spoken_prompt_v2: bool = Field(
         default=True,
-        validation_alias=AliasChoices("VOICE_SPOKEN_PROMPT_V2", "voice_spoken_prompt_v2"),
+        validation_alias=AliasChoices(
+            "VOICE_SPOKEN_PROMPT_V2", "voice_spoken_prompt_v2"
+        ),
     )
     voice_response_length_adapt_v1: bool = Field(
         default=False,
@@ -1198,15 +1259,21 @@ class Settings(BaseSettings):
     )
     twilio_connect_client_id: str = Field(
         default="",
-        validation_alias=AliasChoices("TWILIO_CONNECT_CLIENT_ID", "twilio_connect_client_id"),
+        validation_alias=AliasChoices(
+            "TWILIO_CONNECT_CLIENT_ID", "twilio_connect_client_id"
+        ),
     )
     twilio_connect_client_secret: str = Field(
         default="",
-        validation_alias=AliasChoices("TWILIO_CONNECT_CLIENT_SECRET", "twilio_connect_client_secret"),
+        validation_alias=AliasChoices(
+            "TWILIO_CONNECT_CLIENT_SECRET", "twilio_connect_client_secret"
+        ),
     )
     internet_research_enabled: bool = Field(
         default=True,
-        validation_alias=AliasChoices("INTERNET_RESEARCH_ENABLED", "internet_research_enabled"),
+        validation_alias=AliasChoices(
+            "INTERNET_RESEARCH_ENABLED", "internet_research_enabled"
+        ),
     )
     # Internet research provider: serper | tavily | google (Grounded Generation)
     web_research_provider: str = Field(
@@ -1215,11 +1282,15 @@ class Settings(BaseSettings):
     )
     web_research_fallback_tavily: bool = Field(
         default=True,
-        validation_alias=AliasChoices("WEB_RESEARCH_FALLBACK_TAVILY", "web_research_fallback_tavily"),
+        validation_alias=AliasChoices(
+            "WEB_RESEARCH_FALLBACK_TAVILY", "web_research_fallback_tavily"
+        ),
     )
     web_research_google_model: str = Field(
         default="gemini-2.5-flash",
-        validation_alias=AliasChoices("WEB_RESEARCH_GOOGLE_MODEL", "web_research_google_model"),
+        validation_alias=AliasChoices(
+            "WEB_RESEARCH_GOOGLE_MODEL", "web_research_google_model"
+        ),
     )
     google_cloud_project: str = Field(
         default="",
@@ -1231,7 +1302,9 @@ class Settings(BaseSettings):
     )
     google_genai_use_vertexai: bool = Field(
         default=False,
-        validation_alias=AliasChoices("GOOGLE_GENAI_USE_VERTEXAI", "google_genai_use_vertexai"),
+        validation_alias=AliasChoices(
+            "GOOGLE_GENAI_USE_VERTEXAI", "google_genai_use_vertexai"
+        ),
     )
     # Hard per-org hourly circuit breaker on grounding calls (0 disables). Independent of
     # the 75% platform daily alert — prevents runaway cascade loops before humans respond.
@@ -1307,8 +1380,8 @@ class Settings(BaseSettings):
     figma_client_secret: str = ""
 
     # Multi-provider failover
-    gemini_api_key: str = ""          # Google Gemini (GEMINI_API_KEY)
-    voyage_api_key: str = ""          # Voyage AI embeddings fallback (VOYAGE_API_KEY)
+    gemini_api_key: str = ""  # Google Gemini (GEMINI_API_KEY)
+    voyage_api_key: str = ""  # Voyage AI embeddings fallback (VOYAGE_API_KEY)
     # Intelligence packs — Gravitre-managed sources (Phase 1). Humans provision on Railway.
     fred_api_key: str = ""
     fred_base_url: str = "https://api.stlouisfed.org/fred"
@@ -1322,7 +1395,9 @@ class Settings(BaseSettings):
     opencorporates_license_confirmed: bool = False
     nvd_api_key: str = ""
     nvd_base_url: str = "https://services.nvd.nist.gov/rest/json"
-    cisa_kev_url: str = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+    cisa_kev_url: str = (
+        "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+    )
     crunchbase_api_key: str = ""
     pdl_api_key: str = ""
     # True only after corpus is re-indexed with Voyage (1024-dim). See docs/voyage-reindex-runbook.md
@@ -1366,7 +1441,9 @@ class Settings(BaseSettings):
             if not (self.internal_api_secret or "").strip():
                 missing.append("INTERNAL_API_SECRET")
             if missing:
-                raise ValueError(f"Missing required settings for {env}: {', '.join(missing)}")
+                raise ValueError(
+                    f"Missing required settings for {env}: {', '.join(missing)}"
+                )
             self.public_app_url = normalize_public_url(
                 self.public_app_url,
                 fallback=PRODUCTION_APP_URL,

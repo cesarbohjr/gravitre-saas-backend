@@ -28,7 +28,9 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
 # subscriptions.status CHECK allows only these values (see monetization migration).
-_ALLOWED_SUBSCRIPTION_STATUSES = frozenset({"active", "past_due", "canceled", "trialing", "inactive"})
+_ALLOWED_SUBSCRIPTION_STATUSES = frozenset(
+    {"active", "past_due", "canceled", "trialing", "inactive"}
+)
 _STRIPE_SUBSCRIPTION_STATUS_MAP = {
     "active": "active",
     "trialing": "trialing",
@@ -60,7 +62,9 @@ def _normalize_subscription_status(stripe_status: str | None) -> str:
     mapped = _STRIPE_SUBSCRIPTION_STATUS_MAP.get(normalized, normalized)
     if mapped in _ALLOWED_SUBSCRIPTION_STATUSES:
         return mapped
-    logger.warning("Unknown Stripe subscription status %r; storing as inactive", stripe_status)
+    logger.warning(
+        "Unknown Stripe subscription status %r; storing as inactive", stripe_status
+    )
     return "inactive"
 
 
@@ -104,7 +108,9 @@ def _licensed_base_price_id(data: dict[str, Any]) -> str | None:
         price = item.get("price") if isinstance(item, dict) else None
         if not isinstance(price, dict):
             continue
-        recurring = price.get("recurring") if isinstance(price.get("recurring"), dict) else {}
+        recurring = (
+            price.get("recurring") if isinstance(price.get("recurring"), dict) else {}
+        )
         if str(recurring.get("usage_type") or "").lower() == "metered":
             continue
         price_id = str(price.get("id") or "").strip()
@@ -113,14 +119,20 @@ def _licensed_base_price_id(data: dict[str, Any]) -> str | None:
     return None
 
 
-def _plan_from_subscription_items(settings: Settings, data: dict[str, Any]) -> str | None:
+def _plan_from_subscription_items(
+    settings: Settings, data: dict[str, Any]
+) -> str | None:
     """Pick the first known *base* plan price from subscription items (skip metered)."""
     items = (data.get("items") or {}).get("data") or []
     for item in items:
         price = item.get("price") if isinstance(item, dict) else None
         price_id = (price or {}).get("id") if isinstance(price, dict) else None
         if isinstance(price, dict):
-            recurring = price.get("recurring") if isinstance(price.get("recurring"), dict) else {}
+            recurring = (
+                price.get("recurring")
+                if isinstance(price.get("recurring"), dict)
+                else {}
+            )
             if str(recurring.get("usage_type") or "").lower() == "metered":
                 continue
         mapped = _plan_from_price(settings, price_id)
@@ -154,7 +166,9 @@ def _stripe_event_dict(event: Any) -> dict[str, Any]:
     return dict(event)
 
 
-def _resolve_org_id(client, data: dict[str, Any], metadata: dict[str, Any]) -> str | None:
+def _resolve_org_id(
+    client, data: dict[str, Any], metadata: dict[str, Any]
+) -> str | None:
     org_id = str(metadata.get("org_id") or "").strip() or None
     if org_id:
         return org_id
@@ -164,7 +178,13 @@ def _resolve_org_id(client, data: dict[str, Any], metadata: dict[str, Any]) -> s
     return resolve_org_id_from_stripe_customer(client, data.get("customer"))
 
 
-def _write_event(client, org_id: str | None, event_type: str, payload: Any, status_value: str = "success") -> None:
+def _write_event(
+    client,
+    org_id: str | None,
+    event_type: str,
+    payload: Any,
+    status_value: str = "success",
+) -> None:
     if not org_id:
         return
     client.table("billing_events").insert(
@@ -217,8 +237,12 @@ def _apply_subscription_deleted(
     if org_id:
         subscription_payload["org_id"] = org_id
         org_billing_payload["org_id"] = org_id
-        client.table("subscriptions").upsert(subscription_payload, on_conflict="org_id").execute()
-        client.table("org_billing").upsert(org_billing_payload, on_conflict="org_id").execute()
+        client.table("subscriptions").upsert(
+            subscription_payload, on_conflict="org_id"
+        ).execute()
+        client.table("org_billing").upsert(
+            org_billing_payload, on_conflict="org_id"
+        ).execute()
         return
 
     # Fallback when metadata/customer lookup failed: match on Stripe subscription id.
@@ -243,7 +267,11 @@ def _upsert_subscription_from_event(
     items = (data.get("items") or {}).get("data") or []
     primary_item = items[0] if items else {}
     quantity = int(primary_item.get("quantity") or data.get("quantity") or 1)
-    meta = metadata if isinstance(metadata, dict) else (data.get("metadata") if isinstance(data.get("metadata"), dict) else {})
+    meta = (
+        metadata
+        if isinstance(metadata, dict)
+        else (data.get("metadata") if isinstance(data.get("metadata"), dict) else {})
+    )
     plan_tier = _resolve_plan_code(settings, data, meta) or "free"
     payload = {
         "org_id": org_id,
@@ -252,7 +280,11 @@ def _upsert_subscription_from_event(
         "tier": plan_tier,
         "status": _normalize_subscription_status(data.get("status")),
         "current_period_start": _to_iso(data.get("current_period_start")),
-        "current_period_end": _to_iso(data.get("trial_end") if data.get("status") == "trialing" else data.get("current_period_end")),
+        "current_period_end": _to_iso(
+            data.get("trial_end")
+            if data.get("status") == "trialing"
+            else data.get("current_period_end")
+        ),
         "seat_count": quantity,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -291,11 +323,16 @@ def _apply_stripe_event(
     event: Any,
 ) -> None:
 
-    if event_type == "checkout.session.completed":
+    if event_type in {
+        "checkout.session.completed",
+        "checkout.session.async_payment_succeeded",
+    }:
         from app.marketplace.entitlements import fulfill_entitlement_from_checkout
         from app.billing.voice_topup import fulfill_voice_minutes_topup
 
-        marketplace_entitlement = fulfill_entitlement_from_checkout(client, settings, session=data)
+        marketplace_entitlement = fulfill_entitlement_from_checkout(
+            client, settings, session=data
+        )
         if marketplace_entitlement:
             _write_event(
                 client,
@@ -318,6 +355,7 @@ def _apply_stripe_event(
             # imply an active subscription (especially for trials or failed
             # first invoices). Verify live subscription status and customer.
             from app.billing.stripe import init_stripe
+
             init_stripe(settings)
             stripe_subscription = stripe.Subscription.retrieve(str(subscription_id))
             stripe_customer = stripe_subscription.get("customer")
@@ -327,24 +365,34 @@ def _apply_stripe_event(
                 raise ValueError("Stripe checkout customer does not match subscription")
             remote_status = str(stripe_subscription.get("status") or "").lower()
             if remote_status not in {
-                "active", "trialing", "incomplete", "incomplete_expired",
-                "past_due", "unpaid", "canceled", "paused",
+                "active",
+                "trialing",
+                "incomplete",
+                "incomplete_expired",
+                "past_due",
+                "unpaid",
+                "canceled",
+                "paused",
             }:
                 raise ValueError("Stripe checkout subscription status unavailable")
             local_status = _normalize_subscription_status(remote_status)
-            billing_status = "pending" if remote_status == "incomplete" else remote_status
+            billing_status = (
+                "pending" if remote_status == "incomplete" else remote_status
+            )
             from app.services.org_membership import (
                 promote_user_to_org_owner,
                 resolve_user_id_by_email,
             )
 
             payer_user_id = str(
-                metadata.get("user_id")
-                or data.get("client_reference_id")
-                or ""
+                metadata.get("user_id") or data.get("client_reference_id") or ""
             ).strip()
             if not payer_user_id:
-                details = data.get("customer_details") if isinstance(data.get("customer_details"), dict) else {}
+                details = (
+                    data.get("customer_details")
+                    if isinstance(data.get("customer_details"), dict)
+                    else {}
+                )
                 checkout_email = (
                     str(details.get("email") or "").strip()
                     or str(data.get("customer_email") or "").strip()
@@ -374,7 +422,11 @@ def _apply_stripe_event(
                 "billing_status": billing_status,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
-            trial_end = _to_iso(stripe_subscription.get("trial_end")) if remote_status == "trialing" else None
+            trial_end = (
+                _to_iso(stripe_subscription.get("trial_end"))
+                if remote_status == "trialing"
+                else None
+            )
             if trial_end:
                 subscription_row["current_period_end"] = trial_end
                 org_billing_row["current_period_end"] = trial_end
@@ -383,18 +435,36 @@ def _apply_stripe_event(
                 org_billing_row["plan_code"] = plan_code
             if price_id:
                 org_billing_row["stripe_price_id"] = price_id
-            client.table("subscriptions").upsert(subscription_row, on_conflict="org_id").execute()
-            client.table("org_billing").upsert(org_billing_row, on_conflict="org_id").execute()
+            client.table("subscriptions").upsert(
+                subscription_row, on_conflict="org_id"
+            ).execute()
+            client.table("org_billing").upsert(
+                org_billing_row, on_conflict="org_id"
+            ).execute()
             # Only signed Stripe Checkout completion can consume a founder grant.
             # Customer-supplied checkout parameters never grant promotions.
-            if getattr(settings, "commercial_offers_enabled", False) and remote_status in {"active", "trialing"}:
+            if getattr(
+                settings, "commercial_offers_enabled", False
+            ) and remote_status in {"active", "trialing"}:
                 grant_id = str(metadata.get("offer_grant_id") or "").strip()
                 if grant_id:
                     from app.billing.commercial_offers import redeem_checkout_offer
-                    if redeem_checkout_offer(client, org_id, grant_id, str(subscription_id), attempt_id=metadata.get("offer_attempt_id")):
+
+                    if redeem_checkout_offer(
+                        client,
+                        org_id,
+                        grant_id,
+                        str(subscription_id),
+                        attempt_id=metadata.get("offer_attempt_id"),
+                    ):
                         _write_event(
-                            client, org_id, "billing.founder_offer.redeemed",
-                            {"grant_id": grant_id, "subscription_id": str(subscription_id)},
+                            client,
+                            org_id,
+                            "billing.founder_offer.redeemed",
+                            {
+                                "grant_id": grant_id,
+                                "subscription_id": str(subscription_id),
+                            },
                         )
 
     if event_type in {"customer.subscription.created", "customer.subscription.updated"}:
@@ -407,13 +477,18 @@ def _apply_stripe_event(
 
             payer_user_id = str(metadata.get("user_id") or "").strip()
             if not payer_user_id:
-                payer_user_id = resolve_user_id_by_email(
-                    client, str(metadata.get("checkout_email") or "").strip()
-                ) or ""
+                payer_user_id = (
+                    resolve_user_id_by_email(
+                        client, str(metadata.get("checkout_email") or "").strip()
+                    )
+                    or ""
+                )
             if payer_user_id:
                 promote_user_to_org_owner(client, org_id, payer_user_id)
         if org_id:
-            plan_code = _resolve_plan_code(settings, data, metadata if isinstance(metadata, dict) else {})
+            plan_code = _resolve_plan_code(
+                settings, data, metadata if isinstance(metadata, dict) else {}
+            )
             price_id = _licensed_base_price_id(data)
             billing_status = data.get("status") or "active"
             if billing_status == "incomplete":
@@ -423,7 +498,11 @@ def _apply_stripe_event(
                 "stripe_customer_id": data.get("customer"),
                 "stripe_subscription_id": data.get("id"),
                 "billing_status": billing_status,
-                "current_period_end": _to_iso(data.get("trial_end") if data.get("status") == "trialing" else data.get("current_period_end")),
+                "current_period_end": _to_iso(
+                    data.get("trial_end")
+                    if data.get("status") == "trialing"
+                    else data.get("current_period_end")
+                ),
                 "cancel_at_period_end": bool(data.get("cancel_at_period_end") or False),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
@@ -431,7 +510,9 @@ def _apply_stripe_event(
                 org_billing_row["plan_code"] = plan_code
             if price_id:
                 org_billing_row["stripe_price_id"] = price_id
-            client.table("org_billing").upsert(org_billing_row, on_conflict="org_id").execute()
+            client.table("org_billing").upsert(
+                org_billing_row, on_conflict="org_id"
+            ).execute()
 
     # Asynchronous payment methods may activate after Checkout completion.
     # Subscription lifecycle events can redeem a founder grant once Stripe
@@ -445,9 +526,18 @@ def _apply_stripe_event(
         grant_id = str((data.get("metadata") or {}).get("offer_grant_id") or "").strip()
         if grant_id:
             from app.billing.commercial_offers import redeem_checkout_offer
-            if redeem_checkout_offer(client, org_id, grant_id, str(data.get("id") or ""), attempt_id=(data.get("metadata") or {}).get("offer_attempt_id")):
+
+            if redeem_checkout_offer(
+                client,
+                org_id,
+                grant_id,
+                str(data.get("id") or ""),
+                attempt_id=(data.get("metadata") or {}).get("offer_attempt_id"),
+            ):
                 _write_event(
-                    client, org_id, "billing.founder_offer.redeemed",
+                    client,
+                    org_id,
+                    "billing.founder_offer.redeemed",
                     {"grant_id": grant_id, "subscription_id": str(data.get("id"))},
                 )
 
@@ -459,9 +549,13 @@ def _apply_stripe_event(
     # invoice notifications must never reactivate an expired subscription.
 
     if event_type == "account.updated":
-        from app.services.marketplace_billing_service import handle_connect_account_updated
+        from app.services.marketplace_billing_service import (
+            handle_connect_account_updated,
+        )
 
-        handle_connect_account_updated(client, settings, data if isinstance(data, dict) else {})
+        handle_connect_account_updated(
+            client, settings, data if isinstance(data, dict) else {}
+        )
 
     _write_event(client, org_id, event_type, event)
 
@@ -483,10 +577,14 @@ async def stripe_webhook(
         event = verify_webhook(settings, payload_bytes, signature)
     except stripe.error.SignatureVerificationError as exc:
         logger.warning("Stripe webhook signature verification failed: %s", exc)
-        raise HTTPException(status_code=400, detail="Invalid Stripe webhook signature") from exc
+        raise HTTPException(
+            status_code=400, detail="Invalid Stripe webhook signature"
+        ) from exc
     except ValueError as exc:
         logger.warning("Stripe webhook payload invalid: %s", exc)
-        raise HTTPException(status_code=400, detail="Invalid Stripe webhook payload") from exc
+        raise HTTPException(
+            status_code=400, detail="Invalid Stripe webhook payload"
+        ) from exc
 
     stripe_event_id = str(getattr(event, "id", None) or event.get("id") or "")
     event_type = str(getattr(event, "type", None) or event.get("type") or "")
@@ -504,14 +602,36 @@ async def stripe_webhook(
         return {"status": "already_processed", "received": True}
 
     if not claim_webhook_event(client, stripe_event_id, event_type, org_id):
-        logger.info("Skipping duplicate Stripe webhook event %s (concurrent claim)", stripe_event_id)
+        logger.info(
+            "Skipping duplicate Stripe webhook event %s (concurrent claim)",
+            stripe_event_id,
+        )
         return {"status": "already_processed", "received": True}
 
     try:
-        _process_stripe_event(client, settings, event_type, data, metadata, org_id, event)
-    except Exception:
+        _process_stripe_event(
+            client, settings, event_type, data, metadata, org_id, event
+        )
+    except Exception as exc:
+        from app.billing.safety import record_billing_alert
+
+        record_billing_alert(
+            client,
+            kind="stripe_webhook_failed",
+            key=f"webhook:{stripe_event_id}",
+            org_id=org_id,
+            details={
+                "event_id": stripe_event_id,
+                "event_type": event_type,
+                "error_class": type(exc).__name__,
+            },
+        )
         release_webhook_event_claim(client, stripe_event_id)
-        logger.exception("Stripe webhook processing failed for event %s (%s)", stripe_event_id, event_type)
+        logger.exception(
+            "Stripe webhook processing failed for event %s (%s)",
+            stripe_event_id,
+            event_type,
+        )
         raise
 
     return {"received": True}
