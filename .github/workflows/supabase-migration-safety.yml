@@ -328,8 +328,29 @@ jobs:
           pnpm --dir apps/web install --frozen-lockfile
           pip install --no-cache-dir -r backend/requirements-dev.txt
           npx playwright install --with-deps chromium
+      - name: Configure disposable authenticated role acceptance
+        if: steps.gate.outputs.run == 'true' && startsWith(github.head_ref, 'fix/billing-acceptance')
+        run: |
+          umask 077
+          supabase status --workdir "$BILLING_REPLAY_DIR" -o json > "$RUNNER_TEMP/billing-supabase.json"
+          python scripts/configure-billing-acceptance.py --supabase-status "$RUNNER_TEMP/billing-supabase.json" --auth-only
+      - name: Genuine founder and organization-owner browser authorization
+        if: steps.gate.outputs.run == 'true' && startsWith(github.head_ref, 'fix/billing-acceptance')
+        env:
+          CI: 'true'
+          PYTHON: python
+        run: npx playwright test --config playwright.billing.acceptance.config.ts --grep 'signed-in organization owner|founder can read controls'
+      - name: Upload sanitized authenticated role evidence
+        if: always() && steps.gate.outputs.run == 'true' && startsWith(github.head_ref, 'fix/billing-acceptance')
+        uses: actions/upload-artifact@v4
+        with:
+          name: billing-authenticated-roles
+          path: |
+            test-results/billing-acceptance-summary.json
+            test-results/**/*.png
       - name: Configure disposable Supabase and Stripe sandbox only
         env:
+          BILLING_REQUIRE_STRIPE_TEST_KEYS: '1'
           STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
           STRIPE_TEST_PUBLISHABLE_KEY: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
           STRIPE_EXISTING_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}

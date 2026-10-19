@@ -11,9 +11,29 @@ import stripe
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--supabase-status', required=True)
+parser.add_argument('--auth-only', action='store_true')
 args = parser.parse_args()
 status = json.loads(Path(args.supabase_status).read_text())
 assert urlparse(status['API_URL']).hostname in {'localhost', '127.0.0.1'}, 'Local Supabase required'
+values = {
+    'SUPABASE_URL': status['API_URL'], 'SUPABASE_ANON_KEY': status['ANON_KEY'],
+    'SUPABASE_SERVICE_ROLE_KEY': status['SERVICE_ROLE_KEY'], 'SUPABASE_JWT_SECRET': status['JWT_SECRET'],
+    'NEXT_PUBLIC_SUPABASE_URL': status['API_URL'], 'NEXT_PUBLIC_SUPABASE_ANON_KEY': status['ANON_KEY'],
+    'APP_ENV': 'dev', 'DISABLE_AI': 'true', 'COMMERCIAL_OFFERS_ENABLED': 'true',
+    'USAGE_SYNC_INTERVAL_SECONDS': '0', 'BILLING_RECONCILIATION_ENABLED': 'false',
+    'PUBLIC_APP_URL': 'http://localhost:3000', 'NEXT_PUBLIC_APP_URL': 'http://localhost:3000',
+    'PLAYWRIGHT_BASE_URL': 'http://localhost:3000', 'FASTAPI_BASE_URL': 'http://127.0.0.1:8000',
+    'NEXT_PUBLIC_PLAYWRIGHT_E2E': '1', 'PLAYWRIGHT_E2E': '1', 'BILLING_ACCEPTANCE_ISOLATED': '1',
+}
+for name in ['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_JWT_SECRET']:
+    print('::add-mask::' + values[name])
+with Path(os.environ['GITHUB_ENV']).open('a') as output:
+    for name, value in values.items():
+        assert '\n' not in value
+        output.write(f'{name}={value}\n')
+if args.auth_only:
+    print('Configured disposable local Supabase for genuine role sign-in.')
+    raise SystemExit(0)
 root = Path(os.environ['RUNNER_TEMP'])
 config = root / 'billing-stripe.toml'
 cli = ['npx', '--yes', '@stripe/cli@1.54.0', '--config', str(config)]
@@ -27,6 +47,8 @@ if provided_key:
     sandbox = {'secret_key': provided_key, 'publishable_key': provided_public}
     assert sandbox['publishable_key'].startswith('pk_test_'), 'Sandbox publishable key required'
 else:
+    if os.environ.get('BILLING_REQUIRE_STRIPE_TEST_KEYS') == '1':
+        raise RuntimeError('Configure STRIPE_TEST_SECRET_KEY and STRIPE_TEST_PUBLISHABLE_KEY as repository Actions secrets from a dedicated Stripe sandbox.')
     created = subprocess.run(cli + ['sandboxes', 'create', '--email', 'billing-acceptance@gravitre.app', '--non-interactive'], capture_output=True, text=True, timeout=120, check=True)
     match = re.search(r'\{\s*"secret_key"[\s\S]*?\}', created.stdout)
     if not match:
@@ -53,22 +75,9 @@ for _ in range(90):
         raise RuntimeError('Stripe listener exited before readiness: ' + diagnostics[-2000:])
     time.sleep(1)
 assert secret, 'Stripe listener did not become ready'
-values = {
-    'SUPABASE_URL': status['API_URL'], 'SUPABASE_ANON_KEY': status['ANON_KEY'],
-    'SUPABASE_SERVICE_ROLE_KEY': status['SERVICE_ROLE_KEY'], 'SUPABASE_JWT_SECRET': status['JWT_SECRET'],
-    'NEXT_PUBLIC_SUPABASE_URL': status['API_URL'], 'NEXT_PUBLIC_SUPABASE_ANON_KEY': status['ANON_KEY'],
-    'STRIPE_SECRET_KEY': key, 'STRIPE_WEBHOOK_SECRET': secret, 'STRIPE_PRICE_ID_NODE_MONTHLY': price.id,
-    'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY': sandbox['publishable_key'],
-    'APP_ENV': 'dev', 'DISABLE_AI': 'true', 'COMMERCIAL_OFFERS_ENABLED': 'true',
-    'USAGE_SYNC_INTERVAL_SECONDS': '0', 'BILLING_RECONCILIATION_ENABLED': 'false',
-    'PUBLIC_APP_URL': 'http://localhost:3000', 'NEXT_PUBLIC_APP_URL': 'http://localhost:3000',
-    'PLAYWRIGHT_BASE_URL': 'http://localhost:3000', 'FASTAPI_BASE_URL': 'http://127.0.0.1:8000',
-    'NEXT_PUBLIC_PLAYWRIGHT_E2E': '1', 'PLAYWRIGHT_E2E': '1', 'BILLING_ACCEPTANCE_ISOLATED': '1',
-}
-for name in ['SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_JWT_SECRET', 'STRIPE_WEBHOOK_SECRET']:
-    print('::add-mask::' + values[name])
+print('::add-mask::' + secret)
 with Path(os.environ['GITHUB_ENV']).open('a') as output:
-    for name, value in values.items():
+    for name, value in {'STRIPE_SECRET_KEY': key, 'STRIPE_WEBHOOK_SECRET': secret, 'STRIPE_PRICE_ID_NODE_MONTHLY': price.id, 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY': sandbox['publishable_key']}.items():
         assert '\n' not in value
         output.write(f'{name}={value}\n')
 print('Configured local Supabase, real sandbox price, and signed webhook forwarding.')

@@ -34,7 +34,7 @@ test("signed-in organization owner cannot access founder data or write offers", 
   evidence.nonFounder = "403 read and write denial with genuine Supabase sign-in"
 })
 
-test("founder can read controls and issue a capped trial; customer completes real sandbox checkout", async ({ page, context }) => {
+async function issueCappedTrial(page: Page) {
   const fixtures = loadBillingFixtures()
   if (!fixtures.founder || !fixtures.founderTrialCustomer) throw new Error("Isolated founder fixtures required")
   await loginWithPassword(page, fixtures.founder.email, fixtures.founder.password)
@@ -49,6 +49,17 @@ test("founder can read controls and issue a capped trial; customer completes rea
   expect(grant.status).toBe(200)
   await page.screenshot({ path: "test-results/founder-controls.png", fullPage: true })
   evidence.founder = "200 read and grant issuance with genuine Supabase sign-in"
+  return { fixtures, grant }
+}
+
+test("founder can read controls and issue a capped trial", async ({ page }) => {
+  const { grant } = await issueCappedTrial(page)
+  expect((await api(page, `/api/billing/admin/promotional-offers/${grant.body.grant_id}/revoke`, { reason: "Completed isolated role acceptance" })).status).toBe(200)
+})
+
+test("customer completes real sandbox checkout and signed webhook persists subscription", async ({ page, context }) => {
+  const { fixtures } = await issueCappedTrial(page)
+  if (!fixtures.founderTrialCustomer) throw new Error("Isolated customer fixture required")
   await context.clearCookies()
   await page.evaluate(() => window.localStorage.clear())
   await page.goto("/login")
