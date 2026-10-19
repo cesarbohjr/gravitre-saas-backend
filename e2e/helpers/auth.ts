@@ -67,23 +67,27 @@ export async function loginWithPassword(page: Page, email: string, password: str
 export async function openProductPage(page: Page, orgId: string, path = "/assistant") {
   await setSelectedOrg(page, orgId)
   await clearTrialBannerDismiss(page)
-  const billingStatus = page.waitForResponse(
-    (response) => response.url().includes("/api/billing/status") && response.status() === 200,
-  )
   await page.goto(path)
-  const response = await billingStatus
-  return (await response.json()) as Record<string, unknown>
+  await page.waitForFunction(() => Boolean(window.__gravitreApiFetch))
+  // Read in the current document: CDP response handles can be invalidated by
+  // the /assistant redirect before response.json() is consumed by the runner.
+  return afterNavigationSettles(page, () => page.evaluate(async (selectedOrgId) => {
+    const apiFetch = window.__gravitreApiFetch
+    if (!apiFetch) throw new Error("Authenticated E2E helper required")
+    const response = await apiFetch("/api/billing/status", { headers: { "x-org-id": selectedOrgId } })
+    if (response.status !== 200) throw new Error(`Billing status returned ${response.status}`)
+    return (await response.json()) as Record<string, unknown>
+  }, orgId))
 }
 
 const ORG_STORAGE_KEY = "gravitre:selectedOrg"
 
 /** Post-login client redirects can destroy the execution context mid-evaluate; settle and retry. */
-async function afterNavigationSettles(page: Page, run: () => Promise<unknown>, attempts = 4) {
+async function afterNavigationSettles<T>(page: Page, run: () => Promise<T>, attempts = 4): Promise<T> {
   for (let attempt = 1; ; attempt++) {
     await page.waitForLoadState("domcontentloaded").catch(() => undefined)
     try {
-      await run()
-      return
+      return await run()
     } catch (error) {
       const destroyed = error instanceof Error && /Execution context was destroyed|navigation/i.test(error.message)
       if (!destroyed || attempt >= attempts) throw error
