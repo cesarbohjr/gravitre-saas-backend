@@ -83,6 +83,17 @@ def current_promotions(
     """The caller's org: available founder offer and the live Stripe discount."""
     _user, org_id, _role = member
     client = shared_service_client(settings, create_client)
+    # A partner (MSP) pays for this workspace: checkout is refused, so no
+    # founder offer, promo field or discount banner either.
+    from app.billing.msp_billing import org_is_msp_billed
+
+    if org_is_msp_billed(client, org_id):
+        return {
+            "founder_offer": None,
+            "active_discount": None,
+            "discount_unverified": False,
+            "promotion_codes_enabled": False,
+        }
     founder = None
     try:
         founder = customer_founder_offer(client, settings, org_id)

@@ -552,17 +552,11 @@ def apply_wholesale_event(
     return msp_org_id
 
 
-def assert_not_msp_billed(settings: Settings, org_id: str) -> None:
-    """Block self-checkout for a workspace a partner already pays for."""
-    from fastapi import HTTPException
-    from supabase import create_client
-
-    from app.core.db import shared_service_client
-
+def org_is_msp_billed(client: Any, org_id: str) -> bool:
+    """True when a partner (MSP) pays for this workspace. Never raises."""
     try:
         rows = (
-            shared_service_client(settings, create_client)
-            .table("org_billing")
+            client.table("org_billing")
             .select("billing_source")
             .eq("org_id", org_id)
             .limit(1)
@@ -571,8 +565,22 @@ def assert_not_msp_billed(settings: Settings, org_id: str) -> None:
             or []
         )
     except Exception:  # noqa: BLE001 - column missing before migration: nothing is partner-billed
+        return False
+    return bool(rows and isinstance(rows[0], dict) and rows[0].get("billing_source") == "msp")
+
+
+def assert_not_msp_billed(settings: Settings, org_id: str) -> None:
+    """Block self-checkout for a workspace a partner already pays for."""
+    from fastapi import HTTPException
+    from supabase import create_client
+
+    from app.core.db import shared_service_client
+
+    try:
+        client = shared_service_client(settings, create_client)
+    except Exception:  # noqa: BLE001 - no client: same fail-open as before the migration
         return
-    if rows and isinstance(rows[0], dict) and rows[0].get("billing_source") == "msp":
+    if org_is_msp_billed(client, org_id):
         raise HTTPException(
             status_code=409,
             detail={

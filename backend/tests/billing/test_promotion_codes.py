@@ -562,6 +562,16 @@ def test_banner_hidden_when_offers_disabled(monkeypatch):
     assert result["founder_offer"] is None
 
 
+def test_banner_hidden_for_msp_billed_workspace(monkeypatch):
+    client = _founder_client()
+    client.store["org_billing"][0]["billing_source"] = "msp"
+    monkeypatch.setattr(billing_promotions, "shared_service_client", lambda *_a: client)
+    result = billing_promotions.current_promotions(({"user_id": "u"}, ORG, "member"), _settings())
+    assert result["founder_offer"] is None
+    assert result["active_discount"] is None
+    assert result["promotion_codes_enabled"] is False
+
+
 def test_active_discount_reads_stripe_subscription(monkeypatch):
     end = int((datetime.now(timezone.utc) + timedelta(days=60)).timestamp())
     monkeypatch.setattr(stripe.Subscription, "retrieve", MagicMock(return_value={"discounts": [
