@@ -1,46 +1,39 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { motion } from "framer-motion"
+import { Check, CircleCheck, CircleSlash, Columns3, ShieldCheck, UserRound, Users, X } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { SettingsShell } from "@/components/settings/settings-shell"
-import { Button } from "@/components/ui/button"
-import { Shield, Check, X, Users } from "lucide-react"
-import { TYPE } from "@/lib/design-system"
-import { cn } from "@/lib/utils"
-import { AdaptiveDataView } from "@/components/gravitre/adaptive-data-view"
-import { Skeleton } from "@/components/ui/skeleton"
+import { SetError, SetPill, SetSkeleton, SetTabs } from "@/components/settings/settings-kit"
 import { fetcher } from "@/lib/fetcher"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { useSettingsSectionNav } from "@/lib/settings-nav"
-import type { OrgRolePermissionsMatrix } from "@/lib/api"
+import {
+  buildRoleCards,
+  ROLE_PERMISSIONS_KEY,
+  roleName,
+  type RolePermissionsResponse,
+} from "@/lib/settings-api/roles"
+import "@/components/settings/roles.css"
 
-function Cell({ allowed }: { allowed: boolean }) {
-  return allowed ? (
-    <Check className="mx-auto h-4 w-4 text-success" aria-label="Allowed" />
-  ) : (
-    <X className="mx-auto h-4 w-4 text-muted-foreground/40" aria-label="Not allowed" />
-  )
-}
-
-function roleLabel(role: string): string {
-  return role.charAt(0).toUpperCase() + role.slice(1)
-}
+type View = "matrix" | "role"
 
 export default function PermissionsMatrixPage() {
   const { showAdmin, loading: adminLoading } = useOrgAdmin()
   const onSectionChange = useSettingsSectionNav("permissions")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { data, error, isLoading } = useSWR<OrgRolePermissionsMatrix>(
-    "/api/org/role-permissions",
-    fetcher,
-    { revalidateOnFocus: false },
-  )
+  const [view, setView] = useState<View>("matrix")
+  const [selectedRole, setSelectedRole] = useState<string | null>(null)
+  const { data, error, isLoading, mutate } = useSWR<RolePermissionsResponse>(ROLE_PERMISSIONS_KEY, fetcher, {
+    revalidateOnFocus: false,
+  })
 
-  const roles = data?.roles ?? ["admin", "member", "viewer"]
+  const cards = useMemo(() => (data ? buildRoleCards(data) : []), [data])
+  const roles = data?.roles ?? []
   const capabilities = data?.capabilities ?? []
+  const current = cards.find((card) => card.role === selectedRole) ?? cards[0] ?? null
 
   return (
     <AppShell title="Settings">
@@ -52,97 +45,179 @@ export default function PermissionsMatrixPage() {
         onSectionChange={onSectionChange}
         hideHeader
       >
-        <div className="space-y-6 p-4 md:p-6">
-          {/* Matches the approvals hero, which previously used a different
-              two-hue gradient — sibling settings pages now share one wash. */}
-          <div className="relative overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-gradient-to-br from-[color:var(--g-brand-soft)] via-[color:var(--g-surface-1)] to-[color:var(--g-surface-2)] p-6 md:p-8">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
-            >
-              <div className="max-w-xl">
-                <div className={cn(TYPE.eyebrow, "mb-3 inline-flex items-center gap-2 rounded-[var(--np-radius-md)] border border-divide bg-[color:var(--g-surface-1)]/90 px-3 py-1 normal-case tracking-normal")}>
-                  <Shield className="h-3.5 w-3.5 text-[color:var(--g-brand)]" />
-                  Access control
-                </div>
-                <h1 className={TYPE.pageTitle}>Role permissions</h1>
-                <p className={cn(TYPE.pageLead, "mt-2 leading-relaxed")}>
-                  What each workspace role can access. Loaded from org role definitions on the backend.
-                </p>
-              </div>
-              <div className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] px-4 py-3">
-                <p className="text-xs text-muted-foreground font-medium">Roles</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{roles.length}</p>
-              </div>
-            </motion.div>
+        <section className="roles-hero">
+          <div>
+            <SetPill tone="white">
+              <ShieldCheck size={13} aria-hidden />
+              Access control
+            </SetPill>
+            <h1>Role permissions</h1>
+            <p>What each workspace role can do. Roles come from your organization&apos;s role definitions.</p>
           </div>
+          <SetTabs<View>
+            label="View"
+            value={view}
+            onChange={setView}
+            options={[
+              { id: "matrix", label: "Compare roles", icon: Columns3 },
+              { id: "role", label: "One role", icon: UserRound, disabled: cards.length === 0 },
+            ]}
+          />
+        </section>
 
-          {adminLoading || (isLoading && !data) ? (
-            /* Was a centered spinner, which collapsed the layout and then jumped
-               when the table arrived. This mirrors the real table's shape. */
-            <div className="overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] shadow-sm">
-              <div className="flex gap-4 border-b border-divide bg-[color:var(--g-surface-2)] px-4 py-3">
-                <Skeleton className="h-4 w-40" />
-                {roles.map((role) => (
-                  <Skeleton key={role} className="h-4 flex-1" />
-                ))}
-              </div>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4 border-b border-divide/60 px-4 py-3 last:border-0">
-                  <Skeleton className="h-4 w-40" />
-                  {roles.map((role) => (
-                    <div key={role} className="flex flex-1 justify-center">
-                      <Skeleton className="h-4 w-4 rounded-full" />
-                    </div>
-                  ))}
+        {error && !data ? (
+          <section className="gs-card">
+            <SetError message="Could not load role permissions." onRetry={() => void mutate()} />
+          </section>
+        ) : adminLoading || (isLoading && !data) ? (
+          <>
+            <div className="roles-cards" aria-hidden>
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="gs-wcard" style={{ cursor: "default" }}>
+                  <span className="gs-skel" style={{ height: 18, width: "40%" }} />
+                  <span className="gs-skel" style={{ height: 14, width: "90%" }} />
+                  <span className="gs-skel" style={{ height: 6, width: "100%" }} />
                 </div>
               ))}
             </div>
-          ) : error ? (
-            <div className="rounded-[10px] border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              Could not load role permissions. Try again later.
+            <section className="gs-card">
+              <SetSkeleton rows={6} label="Loading role permissions" />
+            </section>
+          </>
+        ) : capabilities.length === 0 ? (
+          <section className="gs-card">
+            <div className="gs-empty">
+              <b>No role definitions yet</b>
+              <p>Your organization has no role capabilities on record.</p>
             </div>
-          ) : (
-            <AdaptiveDataView className="overflow-hidden rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] shadow-[var(--np-shadow)] shadow-sm">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-divide bg-[color:var(--g-surface-2)] text-left">
-                    <th className="px-4 py-3 font-medium text-foreground">Capability</th>
-                    {roles.map((role) => (
-                      <th key={role} className="px-4 py-3 text-center font-medium text-foreground">
-                        {roleLabel(role)}
-                      </th>
+          </section>
+        ) : (
+          <>
+            <div className="roles-cards">
+              {cards.map((card) => (
+                <button
+                  key={card.role}
+                  type="button"
+                  className="gs-wcard"
+                  aria-pressed={view === "role" && current?.role === card.role}
+                  onClick={() => {
+                    setSelectedRole(card.role)
+                    setView("role")
+                  }}
+                  aria-label={`${card.name}: ${card.allowed} of ${card.total} capabilities, ${card.peopleLabel}`}
+                >
+                  <span className="roles-card-top">
+                    <b>{card.name}</b>
+                    <span className="gs-count">
+                      {card.allowed} of {card.total}
+                    </span>
+                  </span>
+                  {card.description ? <span className="roles-desc">{card.description}</span> : null}
+                  <span className="roles-bar" aria-hidden>
+                    {card.bar.map((on, index) => (
+                      <span key={index} className={on ? "on" : undefined} style={{ animationDelay: `${index * 40}ms` }} />
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {capabilities.map((row) => (
-                    <tr key={row.key} className="border-b border-divide/60 last:border-0">
-                      <td className="px-4 py-3 text-foreground">{row.capability}</td>
-                      {roles.map((role) => (
-                        <td key={role} className="px-4 py-3">
-                          <Cell allowed={Boolean(row.access[role])} />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </AdaptiveDataView>
-          )}
+                  </span>
+                  <span className="roles-people">{card.peopleLabel}</span>
+                </button>
+              ))}
+            </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Button variant="outline" className="gap-2" asChild>
-              <Link href="/settings?section=team">
-                <Users className="h-4 w-4" />
-                Manage team
-              </Link>
-            </Button>
-            <Button variant="ghost" asChild>
-              <Link href="/settings">Back to settings</Link>
-            </Button>
-          </div>
+            <section className="gs-card clip" aria-live="polite">
+              {view === "matrix" ? (
+                <div className="gs-scroll-x">
+                  <div
+                    className="gs-tbl roles-matrix"
+                    role="table"
+                    aria-label="Capabilities by role"
+                    style={{ "--cols": `minmax(0, 1fr) ${roles.map(() => "110px").join(" ")}` } as React.CSSProperties}
+                  >
+                    <div className="gs-tr head" role="row">
+                      <div className="gs-th" role="columnheader">
+                        Capability
+                      </div>
+                      {roles.map((role) => (
+                        <div key={role} className="gs-th" role="columnheader" style={{ textAlign: "center" }}>
+                          {roleName(role)}
+                        </div>
+                      ))}
+                    </div>
+                    {capabilities.map((row) => (
+                      <div key={row.key} className="gs-tr body" role="row">
+                        <div className="roles-cap" role="rowheader">
+                          {row.area ? <span className="roles-area">{row.area}</span> : null}
+                          {row.capability}
+                        </div>
+                        {roles.map((role) => (
+                          <div key={role} className="roles-cell" role="cell">
+                            {row.access[role] ? (
+                              <span className="roles-yes" aria-label={`${roleName(role)}: allowed`} role="img">
+                                <Check size={15} aria-hidden />
+                              </span>
+                            ) : (
+                              <span className="roles-no" aria-label={`${roleName(role)}: not allowed`} role="img">
+                                <X size={15} aria-hidden />
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : current ? (
+                <div className="roles-one">
+                  <div>
+                    <h3 style={{ color: "var(--gs-green-ink)" }}>
+                      <CircleCheck size={17} aria-hidden />
+                      {current.name} can
+                    </h3>
+                    {current.can.length > 0 ? (
+                      <ul>
+                        {current.can.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="gs-sub">Nothing yet. This role has no capabilities.</p>
+                    )}
+                  </div>
+                  <div className="cannot">
+                    <h3 style={{ color: "var(--gs-muted)" }}>
+                      <CircleSlash size={17} aria-hidden />
+                      {current.name} cannot
+                    </h3>
+                    {current.cannot.length > 0 ? (
+                      <ul>
+                        {current.cannot.map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="gs-sub" style={{ fontSize: 14 }}>
+                        Nothing. This role has full access.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </section>
+            {data?.member_counts?.owner ? (
+              <p className="gs-sub" style={{ margin: 0 }}>
+                Owners have every Admin capability, and only an owner can change another owner or delete the workspace.
+              </p>
+            ) : null}
+          </>
+        )}
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          <Link href="/settings?section=team" className="gs-btn line sm">
+            <Users size={15} aria-hidden />
+            Manage team
+          </Link>
+          <Link href="/settings" className="gs-btn text sm">
+            Back to settings
+          </Link>
         </div>
       </SettingsShell>
     </AppShell>

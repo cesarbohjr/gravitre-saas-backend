@@ -104,6 +104,79 @@ def list_department_assignments(
     return {"assignments": list(resp.data or [])}
 
 
+@router.get("/{department_id}/members")
+def list_department_members(
+    department_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Lite users assigned to a department (org admins and its managers only).
+
+    Returns only what the Lite seats panel shows: member row id, user id, role
+    and the user's email / name when a profile exists.
+    """
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    seat = _seat(current_user, org_id, settings)
+    assert_department_manager(seat, department_id)
+    client = _client(settings)
+    dept = (
+        client.table("departments")
+        .select("id")
+        .eq("id", department_id)
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
+    if not dept.data:
+        raise HTTPException(status_code=404, detail="Department not found")
+    resp = (
+        client.table("department_members")
+        .select("id, department_id, user_id, role, created_at")
+        .eq("department_id", department_id)
+        .execute()
+    )
+    err = response_error(resp)
+    if err:
+        if "department_members" in str(err):
+            return {"members": []}
+        raise HTTPException(status_code=500, detail=str(err))
+    rows = list(resp.data or [])
+    user_ids = sorted({str(r.get("user_id")) for r in rows if r.get("user_id")})
+    profiles: dict[str, dict[str, Any]] = {}
+    if user_ids:
+        for column in ("id", "auth_user_id"):
+            try:
+                prof = (
+                    client.table("users")
+                    .select("id, auth_user_id, email, full_name")
+                    .in_(column, user_ids)
+                    .execute()
+                )
+            except Exception:  # noqa: BLE001
+                continue
+            for p in prof.data or []:
+                key = str(p.get(column) or "")
+                if key and key not in profiles:
+                    profiles[key] = p
+    members = []
+    for r in rows:
+        uid = str(r.get("user_id") or "")
+        profile = profiles.get(uid) or {}
+        members.append(
+            {
+                "id": str(r.get("id") or uid),
+                "user_id": uid,
+                "role": "admin" if str(r.get("role") or "").lower() == "admin" else "viewer",
+                "email": profile.get("email"),
+                "name": profile.get("full_name"),
+                "created_at": r.get("created_at"),
+            }
+        )
+    return {"members": members}
+
+
 @router.post("/assignments")
 def assign_department_resource(
     body: AssignResourceRequest,

@@ -1,0 +1,21 @@
+/* Settings > API keys (design p10). Kit tokens only. */
+.gv-set .apikeys-create { padding: 18px 20px; }
+.gv-set .apikeys-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.gv-set .apikeys-form .gs-field.name { flex: 2 1 240px; }
+.gv-set .apikeys-form .gs-field.scope { flex: 1 1 160px; }
+.gv-set .apikeys-form .gs-field.exp { flex: 1 1 140px; }
+.gv-set .apikeys-reveal { margin-top: 14px; }
+.gv-set .apikeys-reveal .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.gv-set .apikeys-reveal .row > div { flex: 1 1 240px; min-width: 0; }
+.gv-set .apikeys-secret { margin-top: 6px; font-size: 13px; overflow-wrap: anywhere; color: var(--gs-ink); }
+.gv-set .apikeys-empty { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; padding: 24px; }
+.gv-set .apikeys-empty .gs-art { flex: 0 1 280px; width: 100%; }
+.gv-set .apikeys-empty > div:last-child { flex: 1 1 260px; }
+.gv-set .apikeys-empty h4 { margin: 0; font-size: 17px; font-weight: 600; }
+.gv-set .apikeys-empty p { margin: 6px 0 0; font-size: 14px; color: var(--gs-ink-3); line-height: 1.5; }
+.gv-set .apikeys-empty a { display: inline-flex; margin-top: 10px; font-size: 14px; }
+.gv-set .apikeys-tbl { --cols: minmax(0, 1fr) 150px 130px 130px 88px; }
+.gv-set .apikeys-tbl .actions { display: flex; justify-content: flex-end; gap: 2px; }
+.gv-set .apikeys-tbl .date { font-size: 13px; color: var(--gs-ink-3); }
+.gv-set .apikeys-tbl .expired { color: var(--gs-red-ink); }
+.gv-set .apikeys-tbl .gs-row { cursor: default; }

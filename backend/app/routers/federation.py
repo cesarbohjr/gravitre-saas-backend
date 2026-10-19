@@ -165,10 +165,50 @@ def get_partnerships(
         return {"partnerships": []}
     client = _client(settings)
     try:
-        return {"partnerships": list_partnerships(client, org_id)}
+        partnerships = list_partnerships(client, org_id)
     except Exception as exc:
         logger.exception("federation_partnerships_failed org_id=%s error=%s", org_id, exc)
         return {"partnerships": []}
+    return {"partnerships": _with_partner_names(client, org_id, partnerships)}
+
+
+def _with_partner_names(
+    client: Any, org_id: str, partnerships: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Add ``partnerOrgName`` where the viewer is entitled to see it.
+
+    A name is shown for active partnerships and for invitations the partner
+    sent us (we need to know who is asking before consenting). An invite we
+    sent that is still pending, declined or revoked keeps the name hidden, so
+    inviting an org id never reveals that org's name.
+    """
+    visible: set[str] = set()
+    for p in partnerships:
+        partner = str(p.get("partnerOrgId") or "")
+        if not partner:
+            continue
+        status_value = p.get("status")
+        invited_us = str(p.get("invitedByOrgId") or "") != org_id
+        if status_value == "active" or (status_value == "pending_partner" and invited_us):
+            visible.add(partner)
+    names: dict[str, str] = {}
+    if visible:
+        try:
+            resp = (
+                client.table("organizations")
+                .select("id, name")
+                .in_("id", sorted(visible))
+                .execute()
+            )
+            for row in resp.data or []:
+                if row.get("id") and row.get("name"):
+                    names[str(row["id"])] = str(row["name"])
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("federation_partner_names_failed org_id=%s error=%s", org_id, exc)
+    return [
+        {**p, "partnerOrgName": names.get(str(p.get("partnerOrgId") or ""))}
+        for p in partnerships
+    ]
 
 
 @router.post("/partnerships")

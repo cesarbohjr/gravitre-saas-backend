@@ -1,55 +1,54 @@
 "use client"
 
+/**
+ * Federation and B2B (design p17): partner organizations under mutual
+ * consent, plus handoffs, connector grants and delegated tasks with them.
+ * Every list and count comes from /api/federation.
+ */
 import { Suspense, useMemo, useState } from "react"
 import useSWR from "swr"
-import { motion } from "framer-motion"
 import { toast } from "sonner"
 import {
-  Handshake,
-  Plus,
   ArrowLeftRight,
-  ShieldCheck,
-  Network,
+  Handshake,
   Inbox,
-  Send,
   Lock,
+  Network,
+  Plug,
+  Plus,
+  Send,
+  ClipboardList,
+  Users,
 } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { SettingsShell } from "@/components/settings/settings-shell"
-import { Button } from "@/components/ui/button"
-import { GravitreMetric, GravitrePageHeader } from "@/components/gravitre/nodus-product"
+import { SetError, SetIco, SetNote, SetSkeleton, SetStat, SetTabs } from "@/components/settings/settings-kit"
+import { FederationConsentDiagram } from "@/components/settings/federation-diagram"
+import { GrantList, HandoffList, PartnerList, TaskList } from "@/components/settings/federation-lists"
+import "@/components/settings/federation.css"
 import { federationApi } from "@/lib/api"
 import { formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
+import { useSettingsSectionNav } from "@/lib/settings-nav"
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
-import type {
-  FederationPartnership,
-  FederationHandoff,
-  FederationConnectorGrant,
-  FederationDelegatedTask,
-} from "@/types/api"
-import { PartnerCard, awaitingOurConsent } from "@/components/federation/partner-card"
-import { HandoffTimeline } from "@/components/federation/handoff-timeline"
-import { FederationGrantList } from "@/components/federation/federation-grant-list"
-import { FederationDelegatedTaskList } from "@/components/federation/federation-delegated-task-list"
+import type { FederationConnectorGrant, FederationDelegatedTask, FederationHandoff } from "@/types/api"
+import {
+  FEDERATION_TABS,
+  awaitsOurConsent,
+  federationStats,
+  type FederationPartnershipRow,
+  type FederationTab,
+} from "@/lib/settings-api/federation"
 import { InvitePartnerDialog } from "@/components/federation/invite-partner-dialog"
 import { CreateHandoffDialog } from "@/components/federation/create-handoff-dialog"
 import { ProposeGrantDialog } from "@/components/federation/propose-grant-dialog"
 import { CreateDelegatedTaskDialog } from "@/components/federation/create-delegated-task-dialog"
-import { FederationEmptyState } from "@/components/federation/federation-empty-state"
-import { TrustBoundaryVisual } from "@/components/federation/trust-boundary-visual"
-import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
-import { cn } from "@/lib/utils"
-import { TYPE } from "@/lib/design-system"
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 16 },
-  show: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: i * 0.06, duration: 0.4, ease: [0.16, 1, 0.3, 1] as const },
-  }),
+const TAB_ICONS: Record<FederationTab, typeof Send> = {
+  handoffs: ArrowLeftRight,
+  grants: Plug,
+  tasks: ClipboardList,
 }
 
 export default function FederationPage() {
@@ -63,14 +62,15 @@ export default function FederationPage() {
 }
 
 function FederationContent() {
-  const { user, loading: authLoading } = useAuth()
-  const { isAdmin, showAdmin, loading: adminLoading } = useOrgAdmin()
+  const { loading: authLoading } = useAuth()
+  const { isAdmin, showAdmin } = useOrgAdmin()
+  const onSectionChange = useSettingsSectionNav("federation")
   const currentOrgId = getSelectedOrgFromStorage()?.id
   const [inviteOpen, setInviteOpen] = useState(false)
   const [handoffOpen, setHandoffOpen] = useState(false)
   const [grantOpen, setGrantOpen] = useState(false)
   const [taskOpen, setTaskOpen] = useState(false)
-  const [activity, setActivity] = useState<"handoffs" | "grants" | "tasks">("handoffs")
+  const [activity, setActivity] = useState<FederationTab>("handoffs")
 
   const {
     data: partnershipsData,
@@ -78,21 +78,18 @@ function FederationContent() {
     isLoading: loadingPartners,
     mutate: mutatePartners,
   } = useSWR("federation/partnerships", () => federationApi.listPartnerships())
-
   const {
     data: handoffsData,
     error: handoffsError,
     isLoading: loadingHandoffs,
     mutate: mutateHandoffs,
   } = useSWR("federation/handoffs", () => federationApi.listHandoffs({ direction: "all" }))
-
   const {
     data: grantsData,
     error: grantsError,
     isLoading: loadingGrants,
     mutate: mutateGrants,
   } = useSWR("federation/grants", () => federationApi.listConnectorGrants())
-
   const {
     data: tasksData,
     error: tasksError,
@@ -101,58 +98,36 @@ function FederationContent() {
   } = useSWR("federation/delegated-tasks", () => federationApi.listDelegatedTasks({ direction: "all" }))
 
   const partnerships = useMemo(
-    () => partnershipsData?.partnerships ?? [],
+    () => (partnershipsData?.partnerships ?? []) as FederationPartnershipRow[],
     [partnershipsData],
   )
   const handoffs = useMemo(() => handoffsData?.handoffs ?? [], [handoffsData])
   const grants = useMemo(() => grantsData?.grants ?? [], [grantsData])
   const delegatedTasks = useMemo(() => tasksData?.tasks ?? [], [tasksData])
-
-  const stats = useMemo(() => {
-    const active = partnerships.filter((p) => p.status === "active").length
-    const pending = partnerships.filter((p) => p.status === "pending_partner").length
-    const openHandoffs = handoffs.filter(
-      (h) => h.status === "pending_receiver" || h.status === "accepted",
-    ).length
-    return { active, pending, openHandoffs, total: partnerships.length }
-  }, [partnerships, handoffs])
-
+  const stats = useMemo(() => federationStats(partnerships, handoffs), [partnerships, handoffs])
   const pendingInvites = useMemo(
-    () => partnerships.filter((p) => awaitingOurConsent(p)),
-    [partnerships],
+    () => partnerships.filter((p) => awaitsOurConsent(p, currentOrgId)),
+    [partnerships, currentOrgId],
   )
-
-  const activePartnerships = useMemo(
-    () => partnerships.filter((p) => p.status === "active"),
-    [partnerships],
-  )
-
-  const loadError = partnershipsError || handoffsError || grantsError || tasksError
+  const activePartnerships = useMemo(() => partnerships.filter((p) => p.status === "active"), [partnerships])
+  const hasPartner = activePartnerships.length > 0
+  const statsLoading = (loadingPartners && !partnershipsData) || (loadingHandoffs && !handoffsData)
 
   async function refreshAll() {
     await Promise.all([mutatePartners(), mutateHandoffs(), mutateGrants(), mutateTasks()])
   }
 
-  async function handlePartnerAction(
-    action: "accept" | "reject" | "revoke",
-    partnership: FederationPartnership,
-  ) {
+  async function handlePartnerAction(action: "accept" | "reject" | "revoke", partnership: FederationPartnershipRow) {
     try {
       if (action === "accept") await federationApi.acceptPartnership(partnership.id)
       if (action === "reject") await federationApi.rejectPartnership(partnership.id)
       if (action === "revoke") await federationApi.revokePartnership(partnership.id)
       toast.success(
-        action === "accept"
-          ? "Partnership activated"
-          : action === "reject"
-            ? "Invitation declined"
-            : "Partnership revoked",
+        action === "accept" ? "Partnership activated" : action === "reject" ? "Invitation declined" : "Partnership revoked",
       )
       await refreshAll()
     } catch (err) {
-      toast.error("Action failed", {
-        description: err instanceof Error ? err.message : "Please try again.",
-      })
+      toast.error("Action failed", { description: err instanceof Error ? err.message : "Please try again." })
     }
   }
 
@@ -163,28 +138,19 @@ function FederationContent() {
       toast.success(action === "accept" ? "Handoff accepted" : "Handoff declined")
       await mutateHandoffs()
     } catch (err) {
-      toast.error("Action failed", {
-        description: err instanceof Error ? err.message : "Please try again.",
-      })
+      toast.error("Action failed", { description: err instanceof Error ? err.message : "Please try again." })
     }
   }
 
-  async function handleGrantAction(
-    action: "accept" | "reject" | "revoke",
-    grant: FederationConnectorGrant,
-  ) {
+  async function handleGrantAction(action: "accept" | "reject" | "revoke", grant: FederationConnectorGrant) {
     try {
       if (action === "accept") await federationApi.acceptConnectorGrant(grant.id)
       if (action === "reject") await federationApi.rejectConnectorGrant(grant.id)
       if (action === "revoke") await federationApi.revokeConnectorGrant(grant.id)
-      toast.success(
-        action === "accept" ? "Grant accepted" : action === "reject" ? "Grant declined" : "Grant revoked",
-      )
+      toast.success(action === "accept" ? "Grant accepted" : action === "reject" ? "Grant declined" : "Grant revoked")
       await mutateGrants()
     } catch (err) {
-      toast.error("Grant action failed", {
-        description: err instanceof Error ? err.message : "Please try again.",
-      })
+      toast.error("Grant action failed", { description: err instanceof Error ? err.message : "Please try again." })
     }
   }
 
@@ -195,277 +161,175 @@ function FederationContent() {
       toast.success(action === "accept" ? "Task accepted" : "Task declined")
       await mutateTasks()
     } catch (err) {
-      toast.error("Task action failed", {
-        description: err instanceof Error ? err.message : "Please try again.",
-      })
+      toast.error("Task action failed", { description: err instanceof Error ? err.message : "Please try again." })
     }
   }
 
-  const statCards = [
-    { label: "Active partners", value: stats.active, hint: "Consented partnerships" },
-    { label: "Pending invites", value: stats.pending, hint: "Awaiting consent", warning: stats.pending > 0 },
-    { label: "Open handoffs", value: stats.openHandoffs, hint: "In-flight handoffs" },
-    { label: "Total partnerships", value: stats.total, hint: "All partnership rows" },
-  ]
+  const openCreate = (tab: FederationTab) => {
+    if (tab === "handoffs") setHandoffOpen(true)
+    if (tab === "grants") setGrantOpen(true)
+    if (tab === "tasks") setTaskOpen(true)
+  }
+
+  const tab = FEDERATION_TABS.find((t) => t.id === activity) ?? FEDERATION_TABS[0]
+  const tabState = {
+    handoffs: { loading: loadingHandoffs && !handoffsData, error: handoffsError, count: handoffs.length, retry: mutateHandoffs },
+    grants: { loading: loadingGrants && !grantsData, error: grantsError, count: grants.length, retry: mutateGrants },
+    tasks: { loading: loadingTasks && !tasksData, error: tasksError, count: delegatedTasks.length, retry: mutateTasks },
+  }[activity]
+  const createLabel = activity === "handoffs" ? "Send handoff" : activity === "grants" ? "Propose grant" : "Delegate task"
+
+  const headerAction = isAdmin ? (
+    <button type="button" className="gs-btn dark" onClick={() => setInviteOpen(true)}>
+      <Plus size={16} aria-hidden />
+      Invite partner
+    </button>
+  ) : !authLoading ? (
+    <span className="gs-sub" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <Lock size={14} aria-hidden />
+      Admin access required to invite partners
+    </span>
+  ) : null
 
   return (
-    <SettingsShell activeSection="federation" isAdmin={showAdmin} hideHeader>
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-      <GravitrePageHeader
-        title="Federation & B2B"
-        description="Securely connect with partner organizations. Both sides must consent before any agent handoff, connector grant, or delegated task can flow across org boundaries."
-        icon={<Handshake className="h-5 w-5" aria-hidden />}
-        className="mb-6 !px-0 border-b-0"
-        actions={
-          isAdmin ? (
-            <Button onClick={() => setInviteOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Invite partner
-            </Button>
-          ) : !authLoading ? (
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Lock className="h-3.5 w-3.5" />
-              Admin access required to invite partners
-            </p>
-          ) : null
-        }
-      />
+    <SettingsShell activeSection="federation" isAdmin={showAdmin} onSectionChange={onSectionChange} actions={headerAction}>
+      <div className="gs-stats">
+        <SetStat icon={Handshake} tone="green" label="Active partners" value={statsLoading ? "…" : stats.active} hint="Consented" />
+        <SetStat icon={Inbox} label="Pending invites" value={statsLoading ? "…" : stats.pending} hint="Awaiting consent" />
+        <SetStat icon={Send} label="Open handoffs" value={statsLoading ? "…" : stats.openHandoffs} hint="In flight" />
+        <SetStat icon={Users} label="Partnerships" value={statsLoading ? "…" : stats.total} hint="All time" />
+      </div>
 
-      <section className="mb-8 grid grid-cols-2 gap-[var(--np-kpi-gap)] sm:grid-cols-4">
-        {statCards.map((s) => (
-          <GravitreMetric
-            key={s.label}
-            label={s.label}
-            value={s.value}
-            hint={s.hint}
-            warning={"warning" in s ? Boolean(s.warning) : false}
-          />
-        ))}
-      </section>
-
-      {loadError ? (
-        <div className="mb-6">
-          <WorkSectionErrorCard
-            title="Federation data failed to load"
-            message={formatUnknownError(loadError, "Check backend connectivity and migrations.")}
-            error={loadError}
-            onRetry={() => refreshAll()}
-          />
-        </div>
+      {pendingInvites.length > 0 ? (
+        <SetNote tone="amber" icon={Inbox}>
+          <strong>{pendingInvites.length}</strong> partner{" "}
+          {pendingInvites.length === 1 ? "invitation needs" : "invitations need"} your consent.
+        </SetNote>
       ) : null}
 
-      {/* Pending invites callout */}
-      {pendingInvites.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6 flex items-center gap-3 rounded-[10px] border border-[color:var(--g-border-default)] bg-[color:var(--g-signal-surface)] p-4"
-        >
-          <Inbox className="h-5 w-5 shrink-0 text-chart-3" />
-          <p className="text-sm">
-            <span className="font-medium">{pendingInvites.length}</span> partner{" "}
-            {pendingInvites.length === 1 ? "invitation needs" : "invitations need"} your consent.
-          </p>
-        </motion.div>
-      )}
-
-      <div className="grid gap-8 lg:grid-cols-5">
-        {/* Partners */}
-        <section className="lg:col-span-3">
-          <div className="mb-4 flex items-center gap-2">
-            <Network className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold text-muted-foreground">
-              Partner organizations
-            </h2>
-          </div>
-
-          <PageHeaderlessSection
-            loading={loadingPartners}
-            empty={partnerships.length === 0}
-            emptyState={
-              <FederationEmptyState
-                icon={Handshake}
-                visual={<TrustBoundaryVisual className="mb-3" />}
-                title="No partner organizations yet"
-                description="Invite a partner organization to start exchanging agent handoffs, connector grants, and delegated tasks under mutual consent."
-                action={
-                  isAdmin ? (
-                    <Button onClick={() => setInviteOpen(true)} className="gap-2">
-                      <Plus className="h-4 w-4" />
-                      Invite your first partner
-                    </Button>
-                  ) : undefined
-                }
+      <div className="fd-row">
+        <section className="gs-card fd-partners" aria-label="Partner organizations">
+          {loadingPartners && !partnershipsData ? (
+            <>
+              <div style={{ padding: "16px 20px 0" }}>
+                <PartnersTitle />
+              </div>
+              <SetSkeleton rows={3} label="Loading partners" />
+            </>
+          ) : partnershipsError && !partnershipsData ? (
+            <>
+              <div style={{ padding: "16px 20px 0" }}>
+                <PartnersTitle />
+              </div>
+              <SetError
+                message={formatUnknownError(partnershipsError, "Federation data failed to load.")}
+                onRetry={() => void refreshAll()}
               />
-            }
-          >
-            <div className="grid gap-4">
-              {partnerships.map((p, i) => (
-                <motion.div key={p.id} custom={i} initial="hidden" animate="show" variants={fadeUp}>
-                  <PartnerCard partnership={p} onAction={handlePartnerAction} />
-                </motion.div>
-              ))}
+            </>
+          ) : partnerships.length === 0 ? (
+            <div className="fd-partners-empty">
+              <PartnersTitle />
+              <FederationConsentDiagram />
+              <div>
+                <h4>No partner organizations yet</h4>
+                <p>
+                  Invite a partner to exchange agent handoffs, connector grants and delegated tasks. Nothing moves until
+                  both sides agree.
+                </p>
+              </div>
+              {isAdmin ? (
+                <button type="button" className="gs-btn green sm" onClick={() => setInviteOpen(true)}>
+                  Invite your first partner
+                </button>
+              ) : null}
             </div>
-          </PageHeaderlessSection>
+          ) : (
+            <>
+              <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--gs-line)" }}>
+                <PartnersTitle />
+              </div>
+              <PartnerList
+                partnerships={partnerships}
+                viewerOrgId={currentOrgId}
+                isAdmin={isAdmin}
+                onAction={handlePartnerAction}
+              />
+            </>
+          )}
         </section>
 
-        {/* B2B activity tabs */}
-        <section className="lg:col-span-2 space-y-4">
-          <nav aria-label="Federation activity" className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-            {(
-              [
-                { id: "handoffs" as const, label: "Handoffs" },
-                { id: "grants" as const, label: "Connector grants" },
-                { id: "tasks" as const, label: "Delegated tasks" },
-              ]
-            ).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActivity(item.id)}
-                className={cn(
-                  TYPE.meta,
-                  "underline-offset-4",
-                  activity === item.id
-                    ? "text-[color:var(--g-text-primary)] underline"
-                    : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-
-          {activity === "handoffs" ? (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Send className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold text-muted-foreground">
-                    Cross-org handoffs
-                  </h2>
-                </div>
-                {isAdmin ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1.5"
-                    onClick={() => setHandoffOpen(true)}
-                    disabled={activePartnerships.length === 0}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Send handoff
-                  </Button>
-                ) : null}
+        <section className="gs-card clip fd-activity" aria-label="Federation activity">
+          <div className="fd-tabbar">
+            <SetTabs<FederationTab>
+              mode="tabs"
+              label="Exchange type"
+              value={activity}
+              onChange={setActivity}
+              options={FEDERATION_TABS.map((t) => ({ id: t.id, label: t.label }))}
+            />
+          </div>
+          <div role="tabpanel" aria-label={tab.label} style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+            {tabState.loading ? (
+              <SetSkeleton rows={3} label={`Loading ${tab.label.toLowerCase()}`} />
+            ) : tabState.error && tabState.count === 0 ? (
+              <SetError
+                message={formatUnknownError(tabState.error, `Could not load ${tab.label.toLowerCase()}.`)}
+                onRetry={() => void tabState.retry()}
+              />
+            ) : tabState.count === 0 ? (
+              <div className="fd-tab-empty">
+                <SetIco icon={TAB_ICONS[activity]} tone="mute" size="lg" />
+                <div style={{ fontWeight: 600 }}>{tab.emptyTitle}</div>
+                <div className="d">{tab.emptyText}</div>
+                <button
+                  type="button"
+                  className="gs-btn line sm"
+                  disabled={!isAdmin || !hasPartner}
+                  title={!hasPartner ? "Add a partner first" : !isAdmin ? "Admin access required" : undefined}
+                  onClick={() => openCreate(activity)}
+                >
+                  {tab.cta}
+                </button>
+                {!hasPartner ? <span className="gs-sub">Add a partner first</span> : null}
               </div>
-              <PageHeaderlessSection
-                loading={loadingHandoffs}
-                empty={handoffs.length === 0}
-                emptyState={
-                  <FederationEmptyState
-                    icon={ArrowLeftRight}
-                    title="No handoffs yet"
-                    description="When agents pass work to a partner org, the exchange appears here as a consent-gated timeline."
-                    action={
-                      isAdmin && activePartnerships.length > 0 ? (
-                        <Button onClick={() => setHandoffOpen(true)} className="gap-2">
-                          <Plus className="h-4 w-4" />
-                          Send your first handoff
-                        </Button>
-                      ) : undefined
-                    }
+            ) : (
+              <>
+                <div className="fd-tab-head">
+                  <span>
+                    {tabState.count} {tab.label.toLowerCase()}
+                  </span>
+                  {isAdmin ? (
+                    <button
+                      type="button"
+                      className="gs-btn line sm"
+                      disabled={!hasPartner}
+                      title={!hasPartner ? "Add a partner first" : undefined}
+                      onClick={() => openCreate(activity)}
+                    >
+                      <Plus size={15} aria-hidden />
+                      {createLabel}
+                    </button>
+                  ) : null}
+                </div>
+                {activity === "handoffs" ? (
+                  <HandoffList handoffs={handoffs} viewerOrgId={currentOrgId} isAdmin={isAdmin} onAction={handleHandoffAction} />
+                ) : activity === "grants" ? (
+                  <GrantList grants={grants} viewerOrgId={currentOrgId} isAdmin={isAdmin} onAction={handleGrantAction} />
+                ) : (
+                  <TaskList
+                    tasks={delegatedTasks}
+                    viewerOrgId={currentOrgId}
+                    isAdmin={isAdmin}
+                    onAction={handleDelegatedTaskAction}
                   />
-                }
-              >
-                <HandoffTimeline
-                  handoffs={handoffs}
-                  currentOrgId={currentOrgId}
-                  onAction={handleHandoffAction}
-                />
-              </PageHeaderlessSection>
-            </div>
-          ) : null}
-
-          {activity === "grants" ? (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold text-muted-foreground">
-                    Connector grants
-                  </h2>
-                </div>
-                {isAdmin ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1.5"
-                    onClick={() => setGrantOpen(true)}
-                    disabled={activePartnerships.length === 0}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Propose grant
-                  </Button>
-                ) : null}
-              </div>
-              {loadingGrants ? (
-                <LoadingPlaceholder />
-              ) : (
-                <FederationGrantList
-                  grants={grants}
-                  currentOrgId={currentOrgId}
-                  onAction={handleGrantAction}
-                  onPropose={isAdmin ? () => setGrantOpen(true) : undefined}
-                  canPropose={isAdmin && activePartnerships.length > 0}
-                />
-              )}
-            </div>
-          ) : null}
-
-          {activity === "tasks" ? (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Inbox className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold text-muted-foreground">
-                    Delegated tasks
-                  </h2>
-                </div>
-                {isAdmin ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1.5"
-                    onClick={() => setTaskOpen(true)}
-                    disabled={activePartnerships.length === 0}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Delegate task
-                  </Button>
-                ) : null}
-              </div>
-              {loadingTasks ? (
-                <LoadingPlaceholder />
-              ) : (
-                <FederationDelegatedTaskList
-                  tasks={delegatedTasks}
-                  currentOrgId={currentOrgId}
-                  onAction={handleDelegatedTaskAction}
-                  onCreate={isAdmin ? () => setTaskOpen(true) : undefined}
-                  canCreate={isAdmin && activePartnerships.length > 0}
-                />
-              )}
-            </div>
-          ) : null}
+                )}
+              </>
+            )}
+          </div>
         </section>
       </div>
 
-      <InvitePartnerDialog
-        open={inviteOpen}
-        onOpenChange={setInviteOpen}
-        disabled={!isAdmin}
-        onInvited={() => refreshAll()}
-      />
+      <InvitePartnerDialog open={inviteOpen} onOpenChange={setInviteOpen} disabled={!isAdmin} onInvited={() => refreshAll()} />
       <CreateHandoffDialog
         open={handoffOpen}
         onOpenChange={setHandoffOpen}
@@ -487,44 +351,15 @@ function FederationContent() {
         activePartnerships={activePartnerships}
         onCreated={() => refreshAll()}
       />
-    </div>
     </SettingsShell>
   )
 }
 
-function LoadingPlaceholder() {
+function PartnersTitle() {
   return (
-    <div className="grid gap-4">
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="h-24 animate-pulse rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]" />
-      ))}
+    <div className="fd-card-title">
+      <Network size={18} aria-hidden />
+      <h3>Partner organizations</h3>
     </div>
   )
-}
-
-function PageHeaderlessSection({
-  loading,
-  empty,
-  emptyState,
-  children,
-}: {
-  loading: boolean
-  empty: boolean
-  emptyState: React.ReactNode
-  children: React.ReactNode
-}) {
-  if (loading) {
-    return (
-      <div className="grid gap-4">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="h-28 animate-pulse rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-2)]"
-          />
-        ))}
-      </div>
-    )
-  }
-  if (empty) return <>{emptyState}</>
-  return <>{children}</>
 }

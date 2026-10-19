@@ -1,0 +1,68 @@
+/* Audit trail (design p19). Scoped under .gv-set; kit tokens only. */
+.gv-set .adt-live { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--gs-ink-3); }
+.gv-set .adt-spin { animation: adtSpin 0.9s linear infinite; }
+
+.gv-set .adt-intro { padding: 16px; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+.gv-set .adt-art { flex: 0 1 200px; }
+.gv-set .adt-intro-copy { flex: 1 1 320px; min-width: 0; }
+.gv-set .adt-intro-copy p { margin: 6px 0 0; font-size: 14px; color: var(--gs-ink-3); line-height: 1.55; }
+.gv-set .adt-tiles { display: grid; grid-template-columns: repeat(3, minmax(90px, 1fr)); gap: 8px; flex: 1 1 300px; min-width: 0; }
+.gv-set .adt-tile-skel { display: inline-block; width: 48px; height: 22px; vertical-align: middle; }
+
+.gv-set .adt-toolbar { gap: 10px; }
+.gv-set .adt-filters-label { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--gs-muted); }
+.gv-set .adt-toolbar .gs-select { min-height: 44px; max-width: 100%; }
+.gv-set .adt-search { min-height: 44px; flex: 1 1 200px; }
+.gv-set .adt-view { margin-left: auto; }
+.gv-set .adt-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 20px; border-bottom: 1px solid var(--gs-line); }
+.gv-set .adt-stale { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 20px; background: var(--gs-red-tile); color: var(--gs-red-ink); font-size: 13px; }
+.gv-set .adt-empty { padding: 32px; }
+
+/* Timeline */
+.gv-set .adt-tl { list-style: none; margin: 0; padding: 6px 20px 10px; }
+.gv-set .adt-ev { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 14px; padding: 12px 0; border-top: 1px solid var(--gs-line-faint); align-items: start; }
+.gv-set .adt-ev:first-child { border-top: 0; }
+.gv-set .adt-ev-main { min-width: 0; }
+.gv-set .adt-ev-btn { border: 0; background: transparent; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; display: block; width: 100%; border-radius: 6px; }
+.gv-set .adt-ev-btn:focus-visible { outline: 2px solid var(--gs-green-bright); outline-offset: 3px; }
+.gv-set .adt-ev-btn:hover .adt-ev-title { color: var(--gs-green-strong); }
+.gv-set .adt-ev-title { display: block; font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+.gv-set .adt-ev-sub { display: block; font-size: 13px; color: var(--gs-muted); margin-top: 2px; overflow-wrap: anywhere; }
+.gv-set .adt-ev-sub .gs-mono { font-size: 12px; }
+.gv-set .adt-err { font-size: 13px; color: var(--gs-red-ink); margin-top: 6px; overflow-wrap: anywhere; }
+
+/* Expanded details */
+.gv-set .adt-details { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; animation: gsRise 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.gv-set .adt-desc { margin: 0; font-size: 13px; color: var(--gs-ink-2); line-height: 1.5; }
+.gv-set .adt-meta { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.gv-set .adt-meta > div { background: var(--gs-tile); border-radius: 8px; padding: 6px 10px; min-width: 0; }
+.gv-set .adt-meta .k { font-size: 11px; color: var(--gs-faint); }
+.gv-set .adt-meta .v { font-size: 12px; overflow-wrap: anywhere; }
+.gv-set .adt-links { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; }
+.gv-set .adt-link { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; }
+.gv-set .adt-raw summary { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 12px; color: var(--gs-muted); min-height: 32px; list-style: none; }
+.gv-set .adt-raw summary::-webkit-details-marker { display: none; }
+.gv-set .adt-raw[open] summary svg { transform: rotate(180deg); }
+.gv-set .adt-raw pre { margin: 6px 0 0; max-height: 220px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--gs-line); background: var(--gs-tile); border-radius: 8px; padding: 8px 10px; font-size: 11px; color: var(--gs-ink-3); }
+
+/* Table */
+.gv-set .adt-tbl { min-width: 760px; --cols: minmax(0, 1fr) 170px 180px 120px; }
+.gv-set .adt-row { cursor: pointer; }
+.gv-set .adt-row:hover { background: var(--gs-hover); }
+.gv-set .adt-row.sel { background: var(--gs-sel); }
+.gv-set .adt-row .gs-td .t, .gv-set .adt-row .gs-td .s { display: block; }
+.gv-set .adt-td-actor { font-size: 13px; overflow-wrap: anywhere; }
+.gv-set .adt-td-when { font-size: 12px; color: var(--gs-ink-3); }
+.gv-set .adt-row-details { padding: 0 20px 14px; background: var(--gs-sel); }
+
+@media (max-width: 640px) {
+  .gv-set .adt-tl { padding: 4px 16px 8px; }
+  .gv-set .adt-ev { grid-template-columns: 34px minmax(0, 1fr); gap: 10px; }
+  .gv-set .adt-ev > .gs-pill { grid-column: 2; justify-self: start; }
+  .gv-set .adt-view { margin-left: 0; }
+  .gv-set .adt-toolbar .gs-select { flex: 1 1 140px; }
+  .gv-set .adt-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@keyframes adtSpin { to { transform: rotate(360deg); } }
+.gv-set .adt-tile-na { font-size: 14px; font-weight: 500; color: var(--gs-ghost); }
