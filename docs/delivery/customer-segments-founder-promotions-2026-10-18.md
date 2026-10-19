@@ -14,7 +14,7 @@ Platform admins only:
 - `POST /api/billing/admin/promotional-offers` assigns either `{"org_id":"...","offer_type":"trial","trial_days":30}` or `{"org_id":"...","offer_type":"discount","percent_off":30,"discount_months":3}`.
 - `POST /api/billing/admin/promotional-offers/{grant_id}/revoke` revokes an unused offer.
 
-Discount offers create a **real Stripe coupon** with the selected percentage and duration; no local invoice or price manipulation. Founder-issued trials are passed to Stripe Checkout as `subscription_data.trial_period_days`, with payment-method collection. Stripe Checkout can also accept ordinary Stripe-managed promotion codes on non-grant checkouts. The offer cannot be selected or inflated by the end user; it is resolved server-side for the authenticated org.
+Discount offers create a **real Stripe coupon** with the selected percentage and duration; no local invoice or price manipulation. Founder-issued trials are passed to Stripe Checkout as `subscription_data.trial_period_days`, with payment-method collection. Generic promotion-code entry is disabled: only platform-admin-issued grants are applied at Checkout. Coupons have a one-redemption cap and apply only to licensed base-plan products, not AI, voice, or research overages. The offer cannot be selected or inflated by the end user; it is resolved server-side for the authenticated org.
 
 This does not create a live promotion by itself. The founder must deliberately issue each grant after rollout.
 
@@ -32,9 +32,9 @@ This does not create a live promotion by itself. The founder must deliberately i
 1. Run migrations in staging, then production using normal migration deployment; verify RLS denies direct `anon` and `authenticated` reads/writes.
 2. Review seeded founder and QA org classifications; manually classify remaining orgs. Never auto-label every unknown organization as external.
 3. Verify CI, Stripe Checkout trials, coupons, webhook redemption, payment method, canceled trial, retry/idempotency, and the existing Payment Element subscription path. The Payment Element path does not support founder offers; promotional customers must use Checkout.
-4. Build a founder-only Commercial accounts UI with categories, offers, audit log, Stripe payment status, and an explicit confirmation for issuing coupons/trials.
+4. Review the implemented founder Commercial accounts UI at `/admin/commercial` (linked from platform intelligence); verify permission denial, category editing, offer creation, revocation, and audit events. Before activation, confirm offer issuance in the UI and expose verified Stripe subscription status alongside account classification.
 5. Enable `COMMERCIAL_OFFERS_ENABLED=true` **only after** the above and a production smoke test. Default is false. Existing customer billing must not change until then.
-6. Add a reservation/claim step before granting checkout sessions so a grant cannot be used in multiple simultaneous sessions. This is a **release blocker** for automatic promotion activation; signed webhook redemption alone is not sufficient to prevent concurrent redemptions.
-7. Reconcile trial state from Stripe before enabling promotional entitlements; `checkout.session.completed` must not independently imply a paid subscription. Also verify whether an offer's end date should be reflected in active-cohort reporting.
+6. Add a reservation/claim step before granting Checkout sessions so a trial grant cannot be used in multiple simultaneous sessions. This is a **release blocker** for automatic trial activation; Stripe discount coupons are limited to one redemption, but trial sessions are not yet reserved atomically.
+7. Validate the implemented live Stripe subscription lookup during `checkout.session.completed` for active, trialing, expired and mismatched-customer cases. Verify an offer's end date and post-redemption cohort reporting. Free trials waive the base subscription price, **not necessarily metered overages**; make trial terms and usage caps explicit before release.
 
 No live coupons, charges, refunds, or customer subscription changes are made by this PR.
