@@ -314,17 +314,6 @@ def _apply_stripe_event(
         subscription_id = data.get("subscription")
         customer_id = data.get("customer")
         if org_id and subscription_id:
-            # Redeem a founder grant only after Stripe confirms checkout completion.
-            # The grant ID comes from signed Stripe session metadata, never a
-            # caller-supplied checkout request. Historical grants stay auditable.
-            grant_id = str(metadata.get("offer_grant_id") or "").strip()
-            if grant_id:
-                client.table("org_promotional_grants").update({
-                    "status": "redeemed",
-                    "redeemed_at": datetime.now(timezone.utc).isoformat(),
-                    "stripe_subscription_id": subscription_id,
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                }).eq("id", grant_id).eq("org_id", org_id).eq("status", "available").execute()
             from app.services.org_membership import (
                 promote_user_to_org_owner,
                 resolve_user_id_by_email,
@@ -424,25 +413,9 @@ def _apply_stripe_event(
     if event_type == "customer.subscription.deleted":
         _apply_subscription_deleted(client, org_id=org_id, data=data)
 
-    if event_type == "invoice.payment_succeeded":
-        if org_id:
-            now = datetime.now(timezone.utc).isoformat()
-            client.table("subscriptions").update(
-                {"status": "active", "updated_at": now}
-            ).eq("org_id", org_id).execute()
-            client.table("org_billing").update(
-                {"billing_status": "active", "updated_at": now}
-            ).eq("org_id", org_id).execute()
-
-    if event_type == "invoice.payment_failed":
-        if org_id:
-            now = datetime.now(timezone.utc).isoformat()
-            client.table("subscriptions").update(
-                {"status": "past_due", "updated_at": now}
-            ).eq("org_id", org_id).execute()
-            client.table("org_billing").update(
-                {"billing_status": "past_due", "updated_at": now}
-            ).eq("org_id", org_id).execute()
+    # Invoice payment events are audit evidence, not subscription lifecycle
+    # transitions. Stripe subscription events control local paid status; late
+    # invoice notifications must never reactivate an expired subscription.
 
     if event_type == "account.updated":
         from app.services.marketplace_billing_service import handle_connect_account_updated
