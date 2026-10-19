@@ -58,7 +58,7 @@ async def test_cancel_at_period_end_without_stripe_subscription(monkeypatch):
     billing_row = client._store["org_billing"][0]
     assert billing_row["cancel_at_period_end"] is True
     sub_row = client._store["subscriptions"][0]
-    assert sub_row["status"] == "active"
+    assert sub_row["status"] == "trialing"
 
 
 @pytest.mark.asyncio
@@ -156,7 +156,7 @@ async def test_cancel_at_period_end_without_subscriptions_row(monkeypatch):
     )
 
     assert result["cancel_at_period_end"] is True
-    assert client._store["subscriptions"][0]["status"] == "active"
+    assert client._store["subscriptions"][0]["status"] == "trialing"
     assert client._store["subscriptions"][0]["tier"] == "node"
 
 
@@ -258,3 +258,71 @@ async def test_reactivate_clears_cancel_at_period_end(monkeypatch):
 
     assert result["cancel_at_period_end"] is False
     assert client._store["org_billing"][0]["cancel_at_period_end"] is False
+
+
+def _lifecycle_client(monkeypatch, *, status="trialing", subscription_id="sub_trial", source="self"):
+    client = _FakeClient()
+    org_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    client._store["org_billing"] = [{
+        "org_id": org_id, "plan_code": "node", "billing_status": status,
+        "stripe_subscription_id": subscription_id, "billing_source": source,
+        "cancel_at_period_end": True,
+    }]
+    client._store["subscriptions"] = [{
+        "org_id": org_id, "tier": "node", "status": status,
+        "stripe_subscription_id": subscription_id,
+    }]
+    settings = MagicMock(stripe_secret_key="sk_test_x")
+    monkeypatch.setattr(billing_router, "shared_service_client", lambda *_a, **_k: client)
+    return client, settings, org_id
+
+
+@pytest.mark.asyncio
+async def test_resume_trial_preserves_trial_in_both_billing_tables(monkeypatch):
+    client, settings, org_id = _lifecycle_client(monkeypatch)
+    monkeypatch.setattr("app.services.stripe_service.reactivate_subscription", lambda *_a, **_k: {
+        "id": "sub_trial", "status": "trialing", "cancel_at_period_end": False,
+    })
+    result = await billing_router.reactivate_subscription(_admin=({"user_id": "u1"}, org_id), settings=settings)
+    assert result["status"] == "trialing"
+    assert client._store["org_billing"][0]["billing_status"] == "trialing"
+    assert client._store["subscriptions"][0]["status"] == "trialing"
+
+
+@pytest.mark.asyncio
+async def test_resume_without_subscription_never_grants_paid_access(monkeypatch):
+    from fastapi import HTTPException
+    client, settings, org_id = _lifecycle_client(monkeypatch, status="cancelled", subscription_id=None)
+    with pytest.raises(HTTPException) as error:
+        await billing_router.reactivate_subscription(_admin=({"user_id": "u1"}, org_id), settings=settings)
+    assert error.value.status_code == 409
+    assert client._store["org_billing"][0]["billing_status"] == "cancelled"
+
+
+@pytest.mark.asyncio
+async def test_resume_missing_stripe_subscription_fails_closed(monkeypatch):
+    import stripe
+    from fastapi import HTTPException
+    client, settings, org_id = _lifecycle_client(monkeypatch, status="cancelled")
+    def missing(*_a, **_k):
+        raise stripe.error.InvalidRequestError("No such subscription: sub_trial", param="id")
+    monkeypatch.setattr("app.services.stripe_service.reactivate_subscription", missing)
+    with pytest.raises(HTTPException):
+        await billing_router.reactivate_subscription(_admin=({"user_id": "u1"}, org_id), settings=settings)
+    assert client._store["org_billing"][0]["billing_status"] == "cancelled"
+    assert client._store["org_billing"][0]["cancel_at_period_end"] is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("operation", ["cancel", "reactivate"])
+async def test_partner_billed_workspace_cannot_change_its_subscription(monkeypatch, operation):
+    from fastapi import HTTPException
+    client, settings, org_id = _lifecycle_client(monkeypatch, status="active", source="msp")
+    with pytest.raises(HTTPException) as error:
+        if operation == "cancel":
+            await billing_router.cancel_subscription(billing_router.CancelRequest(at_period_end=False), _admin=({"user_id": "u1"}, org_id), settings=settings)
+        else:
+            await billing_router.reactivate_subscription(_admin=({"user_id": "u1"}, org_id), settings=settings)
+    assert error.value.status_code == 409
+    assert error.value.detail["code"] == "BILLED_BY_PARTNER"
+    assert client._store["org_billing"][0]["billing_status"] == "active"

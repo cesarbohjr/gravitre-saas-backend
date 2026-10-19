@@ -2084,6 +2084,8 @@ async def cancel_subscription(
     _user, org_id = _admin
     client = shared_service_client(settings, create_client)
     billing = get_org_billing(client, org_id) or {}
+    if billing.get("billing_source") == "msp":
+        raise HTTPException(409, detail={"code": "BILLED_BY_PARTNER", "message": "Your partner manages this subscription."})
     sub_resp = (
         client.table("subscriptions")
         .select("stripe_subscription_id")
@@ -2098,6 +2100,7 @@ async def cancel_subscription(
         or ""
     ).strip()
     now = datetime.now(timezone.utc).isoformat()
+    stripe_result: dict = {}
 
     if sub_id and settings.stripe_secret_key:
         from app.services.stripe_service import (
@@ -2105,7 +2108,7 @@ async def cancel_subscription(
         )
 
         try:
-            stripe_cancel_subscription(
+            stripe_result = stripe_cancel_subscription(
                 sub_id, immediate=not body.at_period_end, settings=settings
             )
         except stripe.error.StripeError as exc:
@@ -2151,7 +2154,12 @@ async def cancel_subscription(
             detail=error_detail(upsert_err, "DATABASE_ERROR"),
         )
 
-    sub_status = "active" if body.at_period_end else "canceled"
+    from app.routers.webhooks.stripe import _normalize_subscription_status
+
+    sub_status = (
+        _normalize_subscription_status(str(stripe_result.get("status") or billing.get("billing_status") or sub_row.get("status") or "inactive"))
+        if body.at_period_end else "canceled"
+    )
     row = _persist_subscription_status(
         client,
         org_id,
@@ -2182,6 +2190,8 @@ async def reactivate_subscription(
     _user, org_id = _admin
     client = shared_service_client(settings, create_client)
     billing = get_org_billing(client, org_id) or {}
+    if billing.get("billing_source") == "msp":
+        raise HTTPException(409, detail={"code": "BILLED_BY_PARTNER", "message": "Your partner manages this subscription."})
     sub_resp = (
         client.table("subscriptions")
         .select("stripe_subscription_id")
@@ -2197,23 +2207,22 @@ async def reactivate_subscription(
     ).strip()
     now = datetime.now(timezone.utc).isoformat()
 
+    if not sub_id:
+        raise HTTPException(409, detail="No Stripe subscription to resume. Choose a plan first.")
+    if not settings.stripe_secret_key:
+        raise HTTPException(503, detail="Stripe is not configured")
+    stripe_result: dict = {}
+
     if sub_id and settings.stripe_secret_key:
         from app.services.stripe_service import (
             reactivate_subscription as stripe_reactivate_subscription,
         )
 
         try:
-            stripe_reactivate_subscription(sub_id, settings=settings)
+            stripe_result = stripe_reactivate_subscription(sub_id, settings=settings)
         except stripe.error.StripeError as exc:
-            if _stripe_cancel_is_soft_fail(exc):
-                logger.warning(
-                    "stripe reactivate soft-fail org_id=%s sub_id=%s err=%s",
-                    org_id,
-                    sub_id,
-                    exc,
-                )
-            else:
-                _raise_stripe_http_error(exc)
+            # A missing/invalid subscription cannot grant local paid access.
+            _raise_stripe_http_error(exc)
         except Exception as exc:  # noqa: BLE001
             logger.error(
                 "stripe reactivate unexpected org_id=%s sub_id=%s err=%s",
@@ -2227,12 +2236,17 @@ async def reactivate_subscription(
                 detail=error_detail("Stripe reactivate failed", "STRIPE_ERROR"),
             ) from exc
 
+    from app.routers.webhooks.stripe import _normalize_subscription_status
+
+    resumed_status = _normalize_subscription_status(str(
+        stripe_result.get("status") or billing.get("billing_status") or sub_row.get("status") or "inactive"
+    ))
     reactivate_resp = _execute_billing_query(
         client.table("org_billing").upsert(
             {
                 "org_id": org_id,
                 "cancel_at_period_end": False,
-                "billing_status": "active",
+                "billing_status": normalize_billing_status(resumed_status),
                 "updated_at": now,
             },
             on_conflict="org_id",
@@ -2250,7 +2264,7 @@ async def reactivate_subscription(
     row = _persist_subscription_status(
         client,
         org_id,
-        status="active",
+        status=resumed_status,
         billing=billing,
         sub_row=sub_row if sub_row else None,
         now=now,
