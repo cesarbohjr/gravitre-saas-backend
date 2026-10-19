@@ -106,6 +106,8 @@ export default function CommercialAccountsPage() {
   }
   async function createOffer() {
     if (!current || current.customer_category !== "external") return
+    const terms = offerType === "trial" ? `${trialDays}-day trial` : `${percentOff}% off for ${months} month(s)`
+    if (!window.confirm(`Issue ${terms} to ${current.name}? This will create a Stripe-backed offer for the next eligible checkout.`)) return
     setSaving(true); setError(""); setNotice("")
     try {
       await requestJson("/api/billing/admin/promotional-offers", {
