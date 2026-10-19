@@ -12,10 +12,24 @@ from app.billing.commercial_offers import (
 from app.billing import stripe as stripe_billing
 
 
-def _client_with_grants(grants):
+def _client_with_grants(grants, category="external"):
     client = MagicMock()
-    client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = grants
+    profile_table = MagicMock()
+    grant_table = MagicMock()
+    profile_table.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+        {"customer_category": category}
+    ]
+    grant_table.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = grants
+    client.table.side_effect = lambda name: profile_table if name == "org_commercial_profiles" else grant_table
     return client
+
+
+@pytest.mark.parametrize("category", ["internal", "test", "unreviewed"])
+def test_only_external_orgs_receive_checkout_offers(category):
+    client = _client_with_grants([{
+        "id": "g", "offer_type": "trial", "trial_days": 30, "valid_until": None,
+    }], category=category)
+    assert checkout_offer_for_org(client, "org") is None
 
 
 def test_founder_trial_30_days():
