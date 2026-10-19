@@ -397,6 +397,40 @@ async function auditSidebarIsolated(page, origin) {
   return results
 }
 
+async function loginPageNotice(page) {
+  // The login form shows its own error text; surface it so a failed sign-in
+  // says why instead of only "timeout".
+  const text = await page
+    .locator("[role=alert], form p")
+    .allInnerTexts()
+    .catch(() => [])
+  return text.map((t) => t.trim()).filter(Boolean).join(" | ").slice(0, 300)
+}
+
+// Production sign-in is a live dependency: retry a failed attempt from a clean
+// cookie jar before failing the audit, and record every attempt in the report.
+async function loginWithRetry(page, context, origin, email, password, report, attempts = 3) {
+  report.login_attempts = []
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      await login(page, origin, email, password)
+      report.login_attempts.push({ attempt, ok: true })
+      return
+    } catch (err) {
+      const message = err instanceof Error ? err.message.split("\n")[0] : String(err)
+      const notice = await loginPageNotice(page)
+      report.login_attempts.push({ attempt, ok: false, url: page.url(), error: message, notice })
+      console.warn(`Login attempt ${attempt}/${attempts} failed at ${page.url()}: ${message}${notice ? ` (${notice})` : ""}`)
+      if (attempt === attempts) {
+        report.login_error = message
+        throw err
+      }
+      await context.clearCookies().catch(() => undefined)
+      await page.waitForTimeout(5000 * attempt)
+    }
+  }
+}
+
 ;(async () => {
   if (!EMAIL || !PASSWORD) {
     console.error("Requires --email/--password or CLICK_AUDIT_EMAIL/PASSWORD")
@@ -420,7 +454,7 @@ async function auditSidebarIsolated(page, origin) {
   }
 
   try {
-    await login(page, origin, EMAIL, PASSWORD)
+    await loginWithRetry(page, context, origin, EMAIL, PASSWORD, report)
     console.log(`Logged in -> ${page.url()}`)
 
     for (const surface of SURFACES) {
@@ -457,7 +491,11 @@ async function auditSidebarIsolated(page, origin) {
     }
     // Authoritative: surface FAIL or sidebar FAIL → overall FAIL; WARN-only → PARTIAL
     report.verdict =
-      surfaceFail > 0 || sideFail > 0 ? "FAIL" : surfaceWarn > 0 ? "PARTIAL" : "PASS"
+      report.login_error || surfaceFail > 0 || sideFail > 0
+        ? "FAIL"
+        : surfaceWarn > 0
+          ? "PARTIAL"
+          : "PASS"
     fs.mkdirSync(path.dirname(OUT), { recursive: true })
     fs.writeFileSync(OUT, JSON.stringify(report, null, 2))
     console.log(`Wrote ${OUT} verdict=${report.verdict}`)
