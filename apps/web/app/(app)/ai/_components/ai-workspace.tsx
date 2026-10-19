@@ -54,6 +54,7 @@ import {
 } from "@/lib/chat-typography"
 import { endChatPerf, startChatPerf } from "@/lib/chat-performance"
 import { parseContextSources, type ContextSourcesSummary } from "@/lib/context-sources"
+import { isAiConversationRoute } from "@/lib/page-family"
 import { OrgContextPill } from "@/components/gravitre/assistant/org-context-pill"
 import { buildConversationTranscript, mergeTranscriptWithLiveMessages } from "@/lib/conversation-transcript"
 import { uiMessageText } from "@/lib/chat-messages"
@@ -226,7 +227,7 @@ function parseWorkspaceMode(value: string | null): ModeId {
 
 function isAiWorkspacePath(pathname: string): boolean {
   const path = pathname.split("?")[0] ?? ""
-  if (path === "/ai" || path.startsWith("/ai/")) return true
+  if (isAiConversationRoute(path)) return true
   // Mirrors the /e2e/shots layout gate (404 in production unless the E2E flag
   // is set), so plain dev capture can deep-link `?c=` like Playwright can.
   const captureAllowed =

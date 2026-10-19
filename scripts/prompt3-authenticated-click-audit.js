@@ -273,6 +273,10 @@ async function auditSurface(page, origin, surface) {
     }
     if (surface.heading) {
       await page.getByRole("heading", { name: surface.heading, exact: true }).waitFor({ state: "visible", timeout: 30_000 })
+      if (surface.id === "context_help") {
+        // A visible heading alone passed while a full chat rendered below it.
+        await page.locator(".ai-chat-surface").waitFor({ state: "hidden", timeout: 30_000 })
+      }
       const dir = path.join(path.dirname(OUT), "release-surface-screenshots")
       fs.mkdirSync(dir, { recursive: true })
       await page.screenshot({ path: path.join(dir, `${surface.id}.png`), fullPage: true })
