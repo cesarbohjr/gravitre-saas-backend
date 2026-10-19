@@ -21,7 +21,7 @@ import { NucleoClose } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { clearCachedBillingStatus, readCachedBillingStatus, writeCachedBillingStatus } from "@/lib/billing-status-cache"
-import { familyHidesTopBar, resolvePageFamily } from "@/lib/page-family"
+import { familyHidesTopBar, isAiHelpRoute, resolvePageFamily } from "@/lib/page-family"
 import {
   AppShellHostProvider,
   useAppShellHost,
@@ -167,7 +167,7 @@ function AppShellFrame({ children, title, fillViewport, persistent = false }: Ap
   const pathname = usePathname()
   const isImmersiveChat =
     pathname === "/ai" ||
-    pathname.startsWith("/ai/") ||
+    (pathname.startsWith("/ai/") && !isAiHelpRoute(pathname)) ||
     (pathname.startsWith("/agents/") && pathname.endsWith("/chat"))
   /** Full-height hub with its own scroll region; keeps the standard top bar. */
   const isFullHeightHub = pathname === "/connectors"
