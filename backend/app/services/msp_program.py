@@ -367,7 +367,7 @@ def approve(
         for uid in chosen:
             if member_role(client, client_org_id, uid) is None:
                 granted.append(uid)
-    client.table("msp_clients").update(
+    activated = client.table("msp_clients").update(
         {
             "status": "active",
             "access_level": access_level,
@@ -376,6 +376,9 @@ def approve(
             "granted_user_ids": granted,
         }
     ).eq("id", relationship_id).eq("status", "pending_client_approval").execute()
+    if not activated.data:
+        # Answered concurrently (approved, declined or withdrawn): grant nothing.
+        raise HTTPException(409, "This request was already answered")
     client.table("organizations").update({"parent_org_id": msp_org_id}).eq("id", client_org_id).execute()
     if access_level == "full":
         for uid in granted:

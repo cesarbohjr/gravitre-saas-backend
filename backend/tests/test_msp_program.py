@@ -665,6 +665,47 @@ def test_branding_inherits_only_with_active_relationship(world):
     assert "inheritedFrom" not in apply_inherited_branding(world.db, world.client, {}, base)
 
 
+def test_every_route_requires_an_authenticated_user():
+    from app.auth.dependencies import get_current_user
+    from app.routers.msp_program import router
+
+    def deps(dependant):
+        for dep in dependant.dependencies:
+            yield dep.call
+            yield from deps(dep)
+
+    routes = [r for r in router.routes if hasattr(r, "dependant")]
+    assert len(routes) >= 12
+    for route in routes:
+        assert get_current_user in set(deps(route.dependant)), route.path
+
+
+def test_concurrent_answer_grants_nothing(world):
+    rel = _link(world)
+    original = world.db.table
+
+    def racing_table(name):
+        query = original(name)
+        if name == "msp_clients":
+            real_update = query.update
+
+            def update(payload):
+                # The client declines (or the MSP withdraws) between read and write.
+                world.db.tables["msp_clients"][0].update(status="detached", detached_at="now")
+                return real_update(payload)
+
+            query.update = update
+        return query
+
+    world.db.table = racing_table
+    with pytest.raises(HTTPException) as exc:
+        msp_program.approve(world.db, settings(), relationship_id=rel, user_id=world.client_owner,
+                            access_level="full", member_user_ids=[world.msp_tech])
+    assert exc.value.status_code == 409
+    assert not world.db.rows("organization_members", org_id=world.client, user_id=world.msp_tech)
+    assert world.db.org(world.client)["parent_org_id"] is None
+
+
 def test_wholesale_setup_reports_honest_status():
     assert msp_billing.wholesale_setup(settings(stripe_secret_key=""))["status"] == "not_configured"
     assert msp_billing.wholesale_setup(settings(stripe_price_id_msp_command_wholesale=""))["status"] == "partial"
