@@ -38,15 +38,21 @@ if args.auth_only:
 root = Path(os.environ['RUNNER_TEMP'])
 config = root / 'billing-stripe.toml'
 cli = ['npx', '--yes', '@stripe/cli@1.54.0', '--config', str(config)]
-provided_key = os.environ.get('STRIPE_TEST_SECRET_KEY', '')
-provided_public = os.environ.get('STRIPE_TEST_PUBLISHABLE_KEY', '')
-legacy_key = os.environ.get('STRIPE_EXISTING_SECRET_KEY', '')
-legacy_public = os.environ.get('STRIPE_EXISTING_PUBLISHABLE_KEY', '')
+def configured_credential(name):
+    value = os.environ.get(name, '').strip()
+    if len(value) > 1 and value[0] == value[-1] and value[0] in "'\"":
+        value = value[1:-1].strip()
+    return value
+
+provided_key = configured_credential('STRIPE_TEST_SECRET_KEY')
+provided_public = configured_credential('STRIPE_TEST_PUBLISHABLE_KEY')
+legacy_key = configured_credential('STRIPE_EXISTING_SECRET_KEY')
+legacy_public = configured_credential('STRIPE_EXISTING_PUBLISHABLE_KEY')
 if not provided_key and '_test_' in legacy_key and legacy_public.startswith('pk_test_'):
     provided_key, provided_public = legacy_key, legacy_public
 if provided_key:
     sandbox = {'secret_key': provided_key, 'publishable_key': provided_public}
-    assert sandbox['publishable_key'].startswith('pk_test_'), 'Sandbox publishable key required'
+    assert re.fullmatch(r'pk_test_[A-Za-z0-9]+', sandbox['publishable_key']), 'STRIPE_TEST_PUBLISHABLE_KEY must be a sandbox pk_test_ key'
 else:
     if os.environ.get('BILLING_REQUIRE_STRIPE_TEST_KEYS') == '1':
         raise RuntimeError('Configure STRIPE_TEST_SECRET_KEY and STRIPE_TEST_PUBLISHABLE_KEY as repository Actions secrets from a dedicated Stripe sandbox.')

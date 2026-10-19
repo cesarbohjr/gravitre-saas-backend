@@ -41,6 +41,10 @@ export async function loginWithPassword(page: Page, email: string, password: str
   }
   await page.getByPlaceholder("you@company.com").fill(email)
   await page.getByPlaceholder("Enter your password").fill(password)
+  // MarketingProviders performs a document reload when sign-in enters the app.
+  // Wait for that bridge to finish before another protected-page navigation.
+  const appDocumentReady = page.waitForEvent("domcontentloaded", { timeout: 90_000 })
+    .then(() => true, () => false)
   const authenticated = page.waitForResponse(response => new URL(response.url()).pathname === "/auth/v1/token" && response.request().method() === "POST", { timeout: 30_000 })
   await page.getByRole("button", { name: "Sign in" }).click()
   const response = await authenticated.catch(async () => {
@@ -51,6 +55,8 @@ export async function loginWithPassword(page: Page, email: string, password: str
     throw new Error(`Supabase password sign-in failed (${response.status()}): ${error.error_code || error.code || "unknown"}`)
   }
   try {
+    if (!await appDocumentReady) throw new Error("Post-login app document did not load")
+    await page.waitForLoadState("load")
     await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 90_000 })
   } catch {
     // Text excludes password input values and auth response bodies/tokens.
