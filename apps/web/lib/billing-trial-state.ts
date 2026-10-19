@@ -1,5 +1,10 @@
 import type { PlanRequiredDetail } from "@/lib/billing-plan-required"
 
+/** The plan selector must not cover the payment step it just opened. */
+export function isBillingCheckoutRoute(pathname: string): boolean {
+  return /^\/settings\/billing\/checkout(?:\/|$)/.test(pathname.split("?")[0] ?? "")
+}
+
 export type BillingStatusSnapshot = {
   billingStatus?: string
   planCode?: string

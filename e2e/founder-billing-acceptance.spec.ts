@@ -17,7 +17,9 @@ function stripeProof(session?: string) {
 
 test.afterAll(() => {
   fs.mkdirSync("test-results", { recursive: true })
-  fs.writeFileSync("test-results/billing-acceptance-summary.json", JSON.stringify(evidence, null, 2))
+  const summaryPath = "test-results/billing-acceptance-summary.json"
+  const previous = fs.existsSync(summaryPath) ? JSON.parse(fs.readFileSync(summaryPath, "utf8")) : {}
+  fs.writeFileSync(summaryPath, JSON.stringify({ ...previous, ...evidence }, null, 2))
 })
 
 test("signed-in organization owner cannot access founder data or write offers", async ({ page }) => {

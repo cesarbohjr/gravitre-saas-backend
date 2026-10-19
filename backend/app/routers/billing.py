@@ -338,11 +338,16 @@ def _reconcile_plan_from_stripe(
     )
 
     now = datetime.now(timezone.utc).isoformat()
+    remote_period_end = (
+        data.get("trial_end")
+        if data.get("status") == "trialing"
+        else data.get("current_period_end")
+    )
     period_end = (
         datetime.fromtimestamp(
-            int(data["current_period_end"]), tz=timezone.utc
+            int(remote_period_end), tz=timezone.utc
         ).isoformat()
-        if data.get("current_period_end")
+        if remote_period_end
         else (subscription_row or {}).get("current_period_end")
     )
     sub_status = _normalize_subscription_status(data.get("status"))
@@ -393,7 +398,7 @@ def _reconcile_plan_from_stripe(
 
     billing_status = (
         "active"
-        if data.get("status") in {None, "active", "trialing"}
+        if data.get("status") in {None, "active"}
         else normalize_billing_status(str(data.get("status") or "active"))
     )
     cancel_at_period_end = bool(data.get("cancel_at_period_end") or False)

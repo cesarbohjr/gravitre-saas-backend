@@ -41,6 +41,7 @@ import {
 } from "@/lib/billing-plan-required"
 import {
   isBillingStatusDegraded,
+  isBillingCheckoutRoute,
   isTrialExpiredState,
   resolveCanAccessApp,
   trialExpiredBannerMessage,
@@ -409,7 +410,7 @@ function AppShellFrame({ children, title, fillViewport, persistent = false }: Ap
     router.replace(APP_ROUTES.welcome)
   }, [user, onboardingProgress, pathname, router, canAccessApp])
 
-  const showTrialExpiredBanner = trialExpired
+  const showTrialExpiredBanner = trialExpired && !isBillingCheckoutRoute(pathname)
 
   // Show loading only on the first auth/billing bootstrap — not on background revalidation.
   const awaitingInitialBilling = Boolean(user) && billingLoading && billingStatusData === undefined
@@ -489,7 +490,7 @@ function AppShellFrame({ children, title, fillViewport, persistent = false }: Ap
             return (
             <div className={cn("flex min-h-9 items-center justify-between border-b border-l-2 border-[color:var(--g-border-subtle)] bg-background px-4 py-1.5 text-[13px] text-foreground", bannerClass)} data-testid="active-trial-banner">
               <span>
-                You&apos;re on a 7-day free trial of Node.
+                You&apos;re on a free trial.
                 {days !== null && ` ${days} day${days === 1 ? "" : "s"} left.`}
                 {" "}
                 {urgent ? (
@@ -593,7 +594,7 @@ function AppShellFrame({ children, title, fillViewport, persistent = false }: Ap
         onOpenChange={setGoalWizardOpen}
       />
       <UpgradeModal
-        open={upgradeModalOpen}
+        open={upgradeModalOpen && !isBillingCheckoutRoute(pathname)}
         onOpenChange={setUpgradeModalOpen}
         subscriptionStatus={planRequired?.subscription_status ?? billingStatusData?.billingState}
       />

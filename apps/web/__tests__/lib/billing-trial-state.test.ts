@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  isBillingCheckoutRoute,
   isBillingStatusDegraded,
   isTrialExpiredFromBillingStatus,
   isTrialExpiredFromPlanRequired,
@@ -57,5 +58,16 @@ describe("billing trial state", () => {
       ),
     ).toBe(true)
     expect(isBillingStatusDegraded({ billingKnown: false, _auth_degraded: true })).toBe(true)
+  })
+})
+
+
+describe("billing checkout recovery", () => {
+  it("keeps the payment step clear without suppressing the plan picker elsewhere", () => {
+    expect(isBillingCheckoutRoute("/settings/billing/checkout?plan=node")).toBe(true)
+    expect(isBillingCheckoutRoute("/settings/billing/checkout/")).toBe(true)
+    expect(isBillingCheckoutRoute("/settings/billing")).toBe(false)
+    expect(isBillingCheckoutRoute("/settings/billing/checkout-other")).toBe(false)
+    expect(isBillingCheckoutRoute("/ai")).toBe(false)
   })
 })
