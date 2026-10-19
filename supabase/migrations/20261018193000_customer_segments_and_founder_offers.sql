@@ -15,6 +15,8 @@ create table if not exists public.org_promotional_grants (
   offer_type text not null check (offer_type in ('trial','discount')),
   trial_days integer check (trial_days between 1 and 90),
   stripe_coupon_id text,
+  percent_off numeric(5,2) check (percent_off > 0 and percent_off <= 100),
+  discount_months integer check (discount_months between 1 and 12),
   status text not null default 'available'
     check (status in ('available','redeemed','revoked','expired')),
   valid_until timestamptz,
@@ -24,8 +26,8 @@ create table if not exists public.org_promotional_grants (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (
-    (offer_type = 'trial' and trial_days is not null and stripe_coupon_id is null)
-    or (offer_type = 'discount' and trial_days is null and nullif(stripe_coupon_id, '') is not null)
+    (offer_type = 'trial' and trial_days is not null and stripe_coupon_id is null and percent_off is null and discount_months is null)
+    or (offer_type = 'discount' and trial_days is null and nullif(stripe_coupon_id, '') is not null and percent_off is not null and discount_months is not null)
   )
 );
 create unique index if not exists org_promotional_grants_one_available
