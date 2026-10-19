@@ -373,6 +373,17 @@ def _apply_stripe_event(
                 org_billing_row["stripe_price_id"] = price_id
             client.table("subscriptions").upsert(subscription_row, on_conflict="org_id").execute()
             client.table("org_billing").upsert(org_billing_row, on_conflict="org_id").execute()
+            # Only signed Stripe Checkout completion can consume a founder grant.
+            # Customer-supplied checkout parameters never grant promotions.
+            if getattr(settings, "commercial_offers_enabled", False):
+                grant_id = str(metadata.get("offer_grant_id") or "").strip()
+                if grant_id:
+                    from app.billing.commercial_offers import redeem_checkout_offer
+                    if redeem_checkout_offer(client, org_id, grant_id, str(subscription_id)):
+                        _write_event(
+                            client, org_id, "billing.founder_offer.redeemed",
+                            {"grant_id": grant_id, "subscription_id": str(subscription_id)},
+                        )
 
     if event_type in {"customer.subscription.created", "customer.subscription.updated"}:
         _upsert_subscription_from_event(client, settings, org_id, data, metadata)
