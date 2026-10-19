@@ -32,7 +32,7 @@ const labels: Record<Category, string> = {
   internal: "Founder / internal",
   test: "Test / QA",
 }
-async function requestJson(url: string, body?: object): Promise<any> {
+async function requestJson(url: string, body?: object): Promise<{ accounts?: Account[]; detail?: string | { message?: string } }> {
   const response = await apiFetch(url, body
     ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }
     : { method: "GET" })
