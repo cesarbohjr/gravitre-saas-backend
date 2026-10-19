@@ -18,6 +18,10 @@ import { AIModelsSettings } from "@/components/settings/ai-models-settings"
 import { WebhooksSettings } from "@/components/settings/webhooks-settings"
 import { MesonAddonsSettings } from "@/components/settings/meson-addons-settings"
 import { LiteSeatsSettings } from "@/components/settings/lite-seats-settings"
+import { EnterpriseWhiteLabel } from "@/components/settings/enterprise-white-label"
+import { EnterpriseResidency } from "@/components/settings/enterprise-residency"
+import { EnterpriseSiem } from "@/components/settings/enterprise-siem"
+import "@/components/settings/enterprise-sections.css"
 import { SettingsShell, canAccessSettingsSection } from "@/components/settings/settings-shell"
 import { SETTINGS_SECTIONS, settingsHrefForSection, type SettingsSectionId } from "@/lib/settings-sections"
 import { useOrgAdmin } from "@/lib/use-org-admin"
@@ -83,6 +87,10 @@ function SettingsContent() {
       router.replace("/audit")
       return
     }
+    if (section === "mcp-servers") {
+      router.replace(settingsHrefForSection("mcp-servers"))
+      return
+    }
     if (section) {
       setActiveSection(section as SettingsSectionId)
     }
@@ -142,7 +150,28 @@ function SettingsContent() {
           />
         )
       case "ai-models": return <AIModelsSettings isAdmin={isAdmin} />
-      case "security": return <SecuritySettings isAdmin={isAdmin} />
+      case "security":
+        // Data residency and SIEM export moved here from Enterprise: both are
+        // about where workspace data lives and leaves, which admins look for
+        // next to the access controls.
+        return (
+          <>
+            <SecuritySettings isAdmin={isAdmin} />
+            {isAdmin ? (
+              <>
+                <section aria-labelledby="security-residency-heading" className="mt-8 flex flex-col gap-3">
+                  <h2 id="security-residency-heading" className="gs-eyebrow">Data residency</h2>
+                  <EnterpriseResidency isAdmin={isAdmin} />
+                </section>
+                <section aria-labelledby="security-siem-heading" className="mt-8 flex flex-col gap-3">
+                  <h2 id="security-siem-heading" className="gs-eyebrow">SIEM export</h2>
+                  <EnterpriseSiem isAdmin={isAdmin} />
+                </section>
+              </>
+            ) : null}
+          </>
+        )
+      case "branding": return <EnterpriseWhiteLabel isAdmin={isAdmin} />
       case "api-keys": return <ApiKeysSettings isAdmin={isAdmin} />
       case "notifications": return <NotificationSettings isAdmin={isAdmin} />
       case "team":
@@ -173,6 +202,7 @@ function SettingsContent() {
       case "environments":
       case "profile":
       case "organizations":
+      case "mcp-servers":
         return (
           <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

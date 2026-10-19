@@ -6,6 +6,7 @@
  * Every list and count comes from /api/federation.
  */
 import { Suspense, useMemo, useState } from "react"
+import Link from "next/link"
 import useSWR from "swr"
 import { toast } from "sonner"
 import {
@@ -193,6 +194,10 @@ function FederationContent() {
 
   return (
     <SettingsShell activeSection="federation" isAdmin={showAdmin} onSectionChange={onSectionChange} actions={headerAction}>
+      <SetNote tone="white">
+        Federation is for working with another company as equals. Each side keeps its own plan and billing. If you
+        resell Gravitre to clients and bill them yourself, use <Link href="/settings/clients">Clients</Link> instead.
+      </SetNote>
       <div className="gs-stats">
         <SetStat icon={Handshake} tone="green" label="Active partners" value={statsLoading ? "…" : stats.active} hint="Consented" />
         <SetStat icon={Inbox} label="Pending invites" value={statsLoading ? "…" : stats.pending} hint="Awaiting consent" />

@@ -6,6 +6,7 @@ import {
   healthBand,
   ingestBars,
   isValidDomain,
+  movedEnterpriseSectionHref,
   parsePositiveNumber,
   recommendationLevel,
   resolveEnterpriseSection,
@@ -16,8 +17,18 @@ describe("enterprise settings helpers", () => {
   it("resolves ?section= and keeps old ?tab= deep links working", () => {
     expect(resolveEnterpriseSection("agent-roi", null)).toBe("agent-roi")
     expect(resolveEnterpriseSection(null, "cs")).toBe("command-center")
-    expect(resolveEnterpriseSection(null, "branding")).toBe("white-label")
+    expect(resolveEnterpriseSection(null, "roi")).toBe("agent-roi")
     expect(resolveEnterpriseSection("nope", "nope")).toBe("command-center")
+  })
+
+  it("sends links to moved sections to their new pages", () => {
+    expect(movedEnterpriseSectionHref("white-label", null)).toBe("/settings?section=branding")
+    expect(movedEnterpriseSectionHref(null, "branding")).toBe("/settings?section=branding")
+    expect(movedEnterpriseSectionHref("siem", null)).toBe("/settings?section=security")
+    expect(movedEnterpriseSectionHref(null, "region")).toBe("/settings?section=security")
+    expect(movedEnterpriseSectionHref("knowledge-sync", null)).toBe("/connectors#knowledge-sync")
+    expect(movedEnterpriseSectionHref("cost", null)).toBeNull()
+    expect(movedEnterpriseSectionHref(null, "cs")).toBeNull()
   })
 
   it("maps backend grades to the design's bands", () => {

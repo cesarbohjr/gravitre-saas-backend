@@ -9,43 +9,43 @@ import { apiFetch, fetcher } from "@/lib/fetcher"
 import { extractApiErrorMessage } from "@/lib/api-error-message"
 import type { IntegrationHealthGrade } from "@/types/api"
 
-export type EnterpriseSectionId =
-  | "command-center"
-  | "knowledge-sync"
-  | "data-residency"
-  | "white-label"
-  | "workforce"
-  | "cost"
-  | "agent-roi"
-  | "siem"
+export type EnterpriseSectionId = "command-center" | "workforce" | "cost" | "agent-roi"
 
-export const ENTERPRISE_SECTION_IDS: EnterpriseSectionId[] = [
-  "command-center",
-  "knowledge-sync",
-  "data-residency",
-  "white-label",
-  "workforce",
-  "cost",
-  "agent-roi",
-  "siem",
-]
+export const ENTERPRISE_SECTION_IDS: EnterpriseSectionId[] = ["command-center", "workforce", "cost", "agent-roi"]
+
+/**
+ * Sections that moved out of Enterprise, by their old ?section= id and old
+ * ?tab= value, so saved links still land on the page that now owns them.
+ */
+const MOVED_SECTIONS: Record<string, string> = {
+  "knowledge-sync": "/connectors#knowledge-sync",
+  knowledge: "/connectors#knowledge-sync",
+  "data-residency": "/settings?section=security",
+  region: "/settings?section=security",
+  "white-label": "/settings?section=branding",
+  branding: "/settings?section=branding",
+  siem: "/settings?section=security",
+}
 
 /** Old ?tab= values (CS workspace links, org-context) mapped to the new ?section= ids. */
 const LEGACY_TABS: Record<string, EnterpriseSectionId> = {
   cs: "command-center",
-  knowledge: "knowledge-sync",
-  region: "data-residency",
-  branding: "white-label",
   workforce: "workforce",
   cost: "cost",
   roi: "agent-roi",
-  siem: "siem",
 }
 
 export function resolveEnterpriseSection(section: string | null, legacyTab: string | null): EnterpriseSectionId {
   if (section && (ENTERPRISE_SECTION_IDS as string[]).includes(section)) return section as EnterpriseSectionId
   if (legacyTab && LEGACY_TABS[legacyTab]) return LEGACY_TABS[legacyTab]
   return "command-center"
+}
+
+/** Where an old Enterprise ?section= or ?tab= link now lives, or null when it stays on this page. */
+export function movedEnterpriseSectionHref(section: string | null, legacyTab: string | null): string | null {
+  if (section && MOVED_SECTIONS[section]) return MOVED_SECTIONS[section]
+  if (!section && legacyTab && MOVED_SECTIONS[legacyTab]) return MOVED_SECTIONS[legacyTab]
+  return null
 }
 
 // ---------------------------------------------------------------------------
