@@ -83,5 +83,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: prompt3-click-audit
-          path: docs/delivery/prompt3-phase2-click-audit-live.json
+          path: |
+            docs/delivery/prompt3-phase2-click-audit-live.json
+            docs/delivery/release-surface-screenshots/*.png
           if-no-files-found: ignore

@@ -41,7 +41,10 @@ const SURFACES = [
   { id: "settings_personal_profile", path: "/settings/profile", tier: "personal", mustHave: [/profile|name|email|account/i] },
   { id: "settings_personal_orgs", path: "/settings/organizations", tier: "personal", mustHave: [/organization|workspace|member/i] },
   { id: "settings_org", path: "/settings?section=organization", tier: "organization", mustHave: [/organization|brand|workspace/i] },
-  { id: "settings_ai_models", path: "/settings?section=ai-models", tier: "organization", mustHave: [/model|ai|memory/i] },
+  { id: "settings_ai_models", path: "/settings?section=ai-models", tier: "organization", mustHave: [/model|ai|memory/i], heading: "Customer data", readOnly: true },
+  { id: "context_help", path: "/ai/help/context", mustHave: [/context/i], heading: "How Gravitre uses your context", readOnly: true },
+  { id: "customer_accounts", path: "/intelligence/accounts", mustHave: [/account/i], heading: "Accounts", readOnly: true },
+  { id: "msp_clients", path: "/settings/clients", tier: "admin", mustHave: [/client|partner/i], heading: "Resell Gravitre to your clients", readOnly: true },
   { id: "settings_admin_audit", path: "/settings?section=audit", tier: "admin", mustHave: [/audit|event|log|admin|permission|empty/i] },
   { id: "settings_admin_enterprise", path: "/settings/enterprise", tier: "admin", mustHave: [/enterprise|sso|federation|admin|empty/i] },
   { id: "connectors", path: "/connectors", mustHave: [/connector|integrat|connect|hubspot|apollo|empty/i] },
@@ -268,6 +271,12 @@ async function auditSurface(page, origin, surface) {
       await page.waitForTimeout(10_000)
       await dismissBlockers(page)
     }
+    if (surface.heading) {
+      await page.getByRole("heading", { name: surface.heading, exact: true }).waitFor({ state: "visible", timeout: 30_000 })
+      const dir = path.join(path.dirname(OUT), "release-surface-screenshots")
+      fs.mkdirSync(dir, { recursive: true })
+      await page.screenshot({ path: path.join(dir, `${surface.id}.png`), fullPage: true })
+    }
   } catch (err) {
     loadError = err instanceof Error ? err.message : String(err)
   }
@@ -279,7 +288,7 @@ async function auditSurface(page, origin, surface) {
   const blankEmpty = empty && (empty.blank || (!empty.helpful && empty.textLen < 40))
 
   let interactives = []
-  if (!loadError) {
+  if (!loadError && !surface.readOnly) {
     interactives = await sampleInteractives(page, { max: 6 })
   }
 
