@@ -395,6 +395,10 @@ class Settings(BaseSettings):
     commercial_offers_enabled: bool = (
         False  # enable only after production migration and billing QA
     )
+    # Public promo codes only exist once a platform admin creates them (Stripe
+    # Coupon + PromotionCode), so the feature is on by default. Off: no new
+    # codes, no promo field at checkout, and Stripe's own code entry is hidden.
+    promotion_codes_enabled: bool = True
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_price_id_starter: str = ""

@@ -26,6 +26,11 @@ from app.billing.commercial_offers import (
     segment_for_org,
 )
 from app.billing.entitlements import compute_app_access, normalize_billing_status
+from app.billing.promotion_codes import (
+    checkout_discount,
+    checkout_response_fields,
+    checkout_session_kwargs,
+)
 from app.billing.service import (
     DEFAULT_PLAN_CODE,
     get_base_plan_for_org,
@@ -553,6 +558,7 @@ class CheckoutRequest(BaseModel):
     billing_interval: str | None = Field(default=None, alias="billingInterval")
     price_id: str | None = Field(default=None, alias="price_id")
     quantity: int | None = Field(default=1, ge=1)
+    promotion_code: str | None = Field(default=None, alias="promotionCode", max_length=64)
 
 
 class PublicCheckoutRequest(BaseModel):
@@ -562,6 +568,7 @@ class PublicCheckoutRequest(BaseModel):
     price_id: str | None = Field(default=None, alias="price_id")
     email: EmailStr
     company_name: str | None = Field(default=None, alias="companyName")
+    promotion_code: str | None = Field(default=None, alias="promotionCode", max_length=64)
     org_id: str | None = Field(default=None, alias="orgId")
     user_id: str | None = Field(default=None, alias="userId")
 
@@ -1120,6 +1127,9 @@ class FounderOfferRequest(BaseModel):
     discount_months: int | None = Field(default=None, ge=1, le=12)
     valid_until: datetime | None = None
     max_promotion_value_cents: int = Field(ge=1, le=2147483647)
+    # Classify an unreviewed org as External in the same audited step.
+    classify_as_external: bool = False
+    classification_reason: str | None = Field(default=None, max_length=500)
 
 
 @router.get("/admin/commercial-accounts")
@@ -1441,10 +1451,56 @@ def create_founder_offer(
         .data
         or []
     )
-    if not profile or profile[0].get("customer_category") != "external":
+    current_category = profile[0].get("customer_category") if profile else "unreviewed"
+    if (
+        current_category == "unreviewed"
+        and body.classify_as_external
+        and len((body.classification_reason or "").strip()) >= 5
+    ):
+        has_available = (
+            client.table("org_promotional_grants")
+            .select("id")
+            .eq("org_id", org_id)
+            .eq("status", "available")
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if has_available:
+            raise HTTPException(
+                status_code=409, detail="Revoke the existing available offer first"
+            )
+        reason = (body.classification_reason or "").strip()
+        client.table("org_commercial_profiles").upsert(
+            {
+                "org_id": org_id,
+                "customer_category": "external",
+                "classification_reason": reason,
+                "classified_by": founder["user_id"],
+                "classified_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            on_conflict="org_id",
+        ).execute()
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=founder["user_id"],
+            action="billing.customer_category.changed",
+            resource_type="org_commercial_profiles",
+            resource_id=org_id,
+            metadata={"category": "external", "reason": reason, "via": "issue_offer"},
+        )
+        current_category = "external"
+    if current_category != "external":
         raise HTTPException(
             status_code=403,
-            detail="Only reviewed external customer organizations may receive founder offers",
+            detail=(
+                "Only reviewed external customer organizations may receive founder offers"
+                if current_category != "unreviewed"
+                else "Classify this organization as External (with a reason) before issuing an offer"
+            ),
         )
     existing = (
         client.table("org_promotional_grants")
@@ -1536,7 +1592,7 @@ def revoke_founder_offer(
     client = shared_service_client(settings, create_client)
     rows = (
         client.table("org_promotional_grants")
-        .select("id,org_id,status,checkout_attempt_id")
+        .select("id,org_id,status,checkout_attempt_id,stripe_coupon_id")
         .eq("id", grant_id)
         .limit(1)
         .execute()
@@ -1567,6 +1623,11 @@ def revoke_founder_offer(
             status_code=409,
             detail="Offer was reserved concurrently; review its Stripe checkout",
         )
+    # Best effort: a deleted coupon can never be applied later. Existing
+    # subscriptions keep any discount already attached.
+    from app.billing.founder_offer_ops import delete_coupon_best_effort
+
+    coupon_deleted = delete_coupon_best_effort(settings, grant.get("stripe_coupon_id"))
     write_audit_event(
         client,
         org_id=grant["org_id"],
@@ -1574,9 +1635,12 @@ def revoke_founder_offer(
         action="billing.founder_offer.revoked",
         resource_type="org_promotional_grants",
         resource_id=grant_id,
-        metadata={},
+        metadata={
+            "stripe_coupon_id": grant.get("stripe_coupon_id"),
+            "coupon_deleted": coupon_deleted,
+        },
     )
-    return {"grant_id": grant_id, "status": "revoked"}
+    return {"grant_id": grant_id, "status": "revoked", "coupon_deleted": coupon_deleted}
 
 
 @router.post("/checkout")
@@ -1616,6 +1680,15 @@ def create_checkout(
         if settings.commercial_offers_enabled
         else None
     )
+    # One discount only: founder offer > validated promo code > Stripe's field.
+    discount = checkout_discount(
+        client,
+        settings,
+        promotion_code=body.promotion_code,
+        plan_code=plan_code or plan_code_for_price(settings, price_id),
+        founder_offer=offer,
+    )
+    discount_kwargs = checkout_session_kwargs(discount)
     customer_id = billing.get("stripe_customer_id") if billing else None
     if not customer_id:
         try:
@@ -1671,6 +1744,7 @@ def create_checkout(
                 "billing_interval": billing_interval or "monthly",
                 "user_id": current_user["user_id"],
             },
+            **discount_kwargs,
         )
     except stripe.error.StripeError as exc:
         if customer_id and not offer and _stripe_customer_missing(exc):
@@ -1691,6 +1765,7 @@ def create_checkout(
                         "billing_interval": billing_interval or "monthly",
                         "user_id": current_user["user_id"],
                     },
+                    **discount_kwargs,
                 )
             except stripe.error.StripeError as retry_exc:
                 _raise_stripe_http_error(retry_exc)
@@ -1706,9 +1781,15 @@ def create_checkout(
         metadata={
             "plan_code": plan_code,
             "billing_interval": billing_interval or "monthly",
+            "discount_source": discount.get("mode"),
+            "promotion_code": discount.get("code"),
         },
     )
-    return {"url": session.url, "checkout_url": session.url}
+    return {
+        "url": session.url,
+        "checkout_url": session.url,
+        **checkout_response_fields(discount),
+    }
 
 
 @router.post("/subscribe")
@@ -1749,6 +1830,20 @@ def create_subscription_payment(
         )
 
     client = shared_service_client(settings, create_client)
+    # Founder offers were redirected to hosted checkout above, so only a
+    # validated public promo code can apply here (Stripe re-validates it).
+    discount = (
+        checkout_discount(
+            client,
+            settings,
+            promotion_code=body.promotion_code,
+            plan_code=plan_code,
+            founder_offer=None,
+        )
+        if (body.promotion_code or "").strip()
+        else {"mode": "none"}
+    )
+    promotion_code_id = discount.get("stripe_promotion_code_id")
     billing = get_org_billing(client, org_id)
     customer_id = billing.get("stripe_customer_id") if billing else None
     if not customer_id:
@@ -1773,6 +1868,7 @@ def create_subscription_payment(
             price_id=price_id,
             metadata=metadata,
             quantity=quantity,
+            promotion_code_id=promotion_code_id,
         )
     except stripe.error.StripeError as exc:
         if customer_id and _stripe_customer_missing(exc):
@@ -1786,6 +1882,7 @@ def create_subscription_payment(
                     price_id=price_id,
                     metadata=metadata,
                     quantity=quantity,
+                    promotion_code_id=promotion_code_id,
                 )
             except stripe.error.StripeError as retry_exc:
                 _raise_stripe_http_error(retry_exc)
@@ -1808,6 +1905,8 @@ def create_subscription_payment(
             "plan_code": plan_code,
             "billing_interval": billing_interval or "monthly",
             "subscription_id": result["subscription_id"],
+            "discount_source": discount.get("mode"),
+            "promotion_code": discount.get("code"),
         },
     )
     return {
@@ -1815,6 +1914,7 @@ def create_subscription_payment(
         "subscription_id": result["subscription_id"],
         "customer_id": result["customer_id"],
         "subscription_status": result["subscription_status"],
+        **checkout_response_fields(discount),
     }
 
 
@@ -1847,6 +1947,15 @@ def create_public_checkout(
     app_url = (settings.public_app_url or "http://localhost:3000").rstrip("/")
     success_url = f"{app_url}/get-started?checkout=success"
     cancel_url = f"{app_url}/get-started?checkout=cancelled"
+    # Public signup has no org, so no founder offer: a validated code or
+    # Stripe's own promo-code field.
+    discount = checkout_discount(
+        shared_service_client(settings, create_client),
+        settings,
+        promotion_code=body.promotion_code,
+        plan_code=plan_code,
+        founder_offer=None,
+    )
 
     from stripe import Customer
 
@@ -1879,10 +1988,15 @@ def create_public_checkout(
                 **({"org_id": str(body.org_id).strip()} if body.org_id else {}),
                 **({"user_id": str(body.user_id).strip()} if body.user_id else {}),
             },
+            **checkout_session_kwargs(discount),
         )
     except stripe.error.StripeError as exc:
         _raise_stripe_http_error(exc)
-    return {"url": session.url, "checkout_url": session.url}
+    return {
+        "url": session.url,
+        "checkout_url": session.url,
+        **checkout_response_fields(discount),
+    }
 
 
 @router.post("/portal")

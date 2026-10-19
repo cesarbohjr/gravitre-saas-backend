@@ -84,24 +84,37 @@ def test_checkout_discount_uses_stripe_coupon_not_local_price_override(monkeypat
         _settings(), "cus_1", "price_node_flat", "https://ok", "https://cancel",
         {"org_id": "org-1", "plan_code": "node"},
         offer={"grant_id": "grant-2", "stripe_coupon_id": "coupon_30pct"},
+        allow_promotion_codes=True,  # founder coupon still wins; never combined
     )
     assert captured["discounts"] == [{"coupon": "coupon_30pct"}]
     assert captured["line_items"][0]["price"] == "price_node_flat"
     assert "allow_promotion_codes" not in captured
 
 
-def test_regular_checkout_allows_stripe_validated_promotion_codes(monkeypatch):
+def test_regular_checkout_shows_stripe_promo_field_only_when_requested(monkeypatch):
+    """Rule: allow_promotion_codes is set only when the caller opts in (no code
+    supplied and no founder offer); the router decides via checkout_discount."""
     captured = {}
     monkeypatch.setattr(stripe.checkout.Session, "create", lambda **kwargs: captured.update(kwargs) or MagicMock())
     create_checkout_session(_settings(), "cus_1", "price_node_flat", "https://ok", "https://cancel", {})
     assert "allow_promotion_codes" not in captured
     assert "trial_period_days" not in captured["subscription_data"]
+    captured.clear()
+    create_checkout_session(
+        _settings(), "cus_1", "price_node_flat", "https://ok", "https://cancel", {}, allow_promotion_codes=True
+    )
+    assert captured["allow_promotion_codes"] is True
+    assert "discounts" not in captured
 
 
-def test_promotion_codes_remain_disabled_even_after_release_flag(monkeypatch):
+def test_founder_offer_never_opens_promo_code_field_even_after_release_flag(monkeypatch):
     captured = {}
     monkeypatch.setattr(stripe.checkout.Session, "create", lambda **kwargs: captured.update(kwargs) or MagicMock())
     settings = _settings()
     settings.commercial_offers_enabled = True
-    create_checkout_session(settings, "cus_1", "price_node_flat", "https://ok", "https://cancel", {})
+    create_checkout_session(
+        settings, "cus_1", "price_node_flat", "https://ok", "https://cancel", {},
+        offer={"grant_id": "grant-3", "stripe_coupon_id": "coupon_30pct"}, allow_promotion_codes=True,
+    )
     assert "allow_promotion_codes" not in captured
+    assert captured["discounts"] == [{"coupon": "coupon_30pct"}]

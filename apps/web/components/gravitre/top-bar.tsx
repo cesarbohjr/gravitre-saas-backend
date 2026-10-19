@@ -123,6 +123,15 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
     refreshInterval: 120_000,
   })
 
+  // Platform operators get links to the admin-only pages (each page and API
+  // also enforces require_platform_admin server-side).
+  const { data: meData } = useSWR<{ platformAdmin?: boolean }>(
+    user ? "/api/auth/me" : null,
+    apiFetcher,
+    { revalidateOnFocus: false },
+  )
+  const isPlatformAdmin = meData?.platformAdmin === true
+
   // Real org-switcher membership list — the same organizationsApi.list() call
   // that already correctly powers /settings/organizations and the current-org
   // label below. Previously this dropdown rendered two hardcoded demo orgs
@@ -547,6 +556,32 @@ export function TopBar({ title, onMenuClick, compact = false }: TopBarProps) {
                 </DropdownMenuItem>
               </div>
               
+              {isPlatformAdmin ? (
+                <>
+                  <DropdownMenuSeparator className="my-0" />
+                  <div className="p-1.5" data-testid="platform-admin-links">
+                    <p className="px-3 pb-1 pt-1.5 text-[11px] font-medium text-muted-foreground">
+                      Platform admin
+                    </p>
+                    {[
+                      { href: "/admin/commercial", label: "Commercial & promotions", hint: "Founder offers and promo codes", icon: "tag" as const },
+                      { href: "/admin/intelligence", label: "Platform intelligence", hint: "Learning and evaluation", icon: "brain" as const },
+                      { href: "/platform/cs-workspace", label: "CS workspace", hint: "Cross-org tenant health", icon: "shieldCheck" as const },
+                    ].map((item) => (
+                      <DropdownMenuItem key={item.href} className="gap-3 cursor-pointer rounded-lg px-3 py-2 transition-colors" asChild>
+                        <Link href={item.href}>
+                          <Icon name={item.icon} size="sm" className="text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium">{item.label}</p>
+                            <p className="text-[10px] text-muted-foreground">{item.hint}</p>
+                          </div>
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+
               <DropdownMenuSeparator className="my-0" />
 
               <div className="flex items-center justify-between gap-3 px-4 py-2.5">

@@ -557,6 +557,19 @@ def _apply_stripe_event(
             client, settings, data if isinstance(data, dict) else {}
         )
 
+    # Public promo-code redemption evidence (exactly once, never raises).
+    from app.billing.promotion_codes import record_redemptions_from_event
+
+    for promo_id in record_redemptions_from_event(
+        client, settings, event_type, data, org_id
+    ):
+        _write_event(
+            client,
+            org_id,
+            "billing.promotion_code.redeemed",
+            {"promotion_code_id": promo_id, "source_event": event_type},
+        )
+
     _write_event(client, org_id, event_type, event)
 
 
