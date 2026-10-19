@@ -53,6 +53,8 @@ import {
   CHAT_USER_BUBBLE_CLASS,
 } from "@/lib/chat-typography"
 import { endChatPerf, startChatPerf } from "@/lib/chat-performance"
+import { parseContextSources, type ContextSourcesSummary } from "@/lib/context-sources"
+import { OrgContextPill } from "@/components/gravitre/assistant/org-context-pill"
 import { buildConversationTranscript, mergeTranscriptWithLiveMessages } from "@/lib/conversation-transcript"
 import { uiMessageText } from "@/lib/chat-messages"
 import { messageCreatedAt } from "@/lib/chat-message-time"
@@ -466,6 +468,7 @@ export function AiWorkspace({
     missing_context?: string[]
   } | null>(null)
   const [contextExplanation, setContextExplanation] = useState<string | null>(null)
+  const [contextSources, setContextSources] = useState<ContextSourcesSummary | null>(null)
   const [executionGate, setExecutionGate] = useState<{
     confidence?: number
     can_proceed?: boolean
@@ -701,6 +704,7 @@ export function AiWorkspace({
         explainability?: typeof explainability
         executionGate?: typeof executionGate
         contextExplanation?: string
+        contextSources?: unknown
         taskState?: typeof taskState
         researchCascade?: ResearchCascadePayload
         progressSteps?: string[]
@@ -723,6 +727,8 @@ export function AiWorkspace({
       if (payload.advisorBrief) setAdvisorBrief(payload.advisorBrief)
       if (payload.explainability) setExplainability(payload.explainability)
       if (payload.contextExplanation) setContextExplanation(payload.contextExplanation)
+      const parsedSources = parseContextSources(payload.contextSources)
+      if (parsedSources) setContextSources(parsedSources)
       if (payload.executionGate) setExecutionGate(payload.executionGate)
       if (payload.researchCascade) setResearchCascade(payload.researchCascade)
       if (Array.isArray(payload.progressSteps) && payload.progressSteps.length > 0) {
@@ -1746,6 +1752,11 @@ export function AiWorkspace({
       setResearchCascade(null)
       setResearchProgressSteps([])
       setAgentStatusExplanation(null)
+      // "Why this answer?" belongs to one answer; a new question starts clean
+      // so the last turn's sources never show under the next reply.
+      setExplainability(null)
+      setContextExplanation(null)
+      setContextSources(null)
       await ensureConversation(effectivePrompt)
       const engine = await resolveEngine(effectivePrompt, mode)
       setInput("")
@@ -2873,6 +2884,8 @@ export function AiWorkspace({
                 duplex={duplexControls}
               />
             ) : null}
+            {/* What org context the next reply can draw on (documented in concepts/assistant). */}
+            <OrgContextPill enabled={showLanding} />
 
             {conversationLoading && !sessionBusy && !isChatBusy ? (
               <div className="space-y-4 py-4">
@@ -2927,6 +2940,7 @@ export function AiWorkspace({
                     agentStatusLabel={agentStatusLabel}
                     explainability={explainability}
                     contextExplanation={contextExplanation}
+                    contextSources={contextSources}
                     dialogueMode={dialogueMode}
                     executionResult={lifecycleExecutionResult}
                     pendingTask={pendingTask}

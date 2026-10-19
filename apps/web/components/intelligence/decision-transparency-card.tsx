@@ -9,6 +9,24 @@ import { freshnessLabelText } from "@/lib/intelligence/visibility-helpers"
 import type { DecisionTransparencyEnvelope } from "@/lib/intelligence/visibility-types"
 import { KnowledgeCitationCard, type KnowledgeCitation } from "@/components/intelligence/knowledge-citation-card"
 
+/** Plain wording for how the answer was produced. Unknown values are not shown. */
+export function answerMethodLabel(runtimeStatus: string | undefined): string | null {
+  switch ((runtimeStatus ?? "").trim().toLowerCase()) {
+    case "heuristic":
+      return "Built-in rules"
+    case "trained":
+    case "model_loaded":
+    case "trained_model":
+      return "Trained model"
+    default:
+      return null
+  }
+}
+
+function plainWords(value: string): string {
+  return value.replace(/[_-]+/g, " ").trim()
+}
+
 export function DecisionTransparencyCard({
   envelope,
   className,
@@ -24,26 +42,30 @@ export function DecisionTransparencyCard({
   const isEstimate = Boolean(
     envelope.confidence_is_estimate ?? envelope.confidenceIsEstimate,
   )
-  const runtimeStatus = envelope.runtime_status?.trim()
+  const method = answerMethodLabel(envelope.runtime_status)
   const confSource = envelope.confidence_source ?? envelope.confidenceSource
 
   return (
     <article className={`rounded-2xl border border-border/70 bg-card p-4 md:p-5 ${className ?? ""}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold text-foreground">Decision transparency</h3>
+          <h3 className="text-base font-semibold text-foreground">How this answer was put together</h3>
           <p className="mt-1 text-sm text-muted-foreground text-pretty">
-            Evidence-level visibility only — no internal reasoning or deliberation.
+            What Gravitre looked at. Private reasoning isn&apos;t shown.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {runtimeStatus ? (
+          {method ? (
             <Badge
               variant="outline"
               className="border-info/30 bg-info/5 font-normal text-info"
-              title="Whether a trained artifact is loaded at runtime (not catalog TRAINED)."
+              title={
+                method === "Built-in rules"
+                  ? "Answered with built-in rules, not a model trained on your data."
+                  : "Answered with a model trained on your data."
+              }
             >
-              {runtimeStatus === "heuristic" ? "Heuristic runtime" : runtimeStatus.replace(/_/g, " ")}
+              {method}
             </Badge>
           ) : null}
           <ConfidenceBadge score={envelope.confidence} isEstimate={isEstimate} />
@@ -51,25 +73,26 @@ export function DecisionTransparencyCard({
       </div>
       {confSource ? (
         <p className="mt-2 text-xs text-muted-foreground">
-          Confidence source: <span className="font-medium text-foreground">{confSource}</span>
+          Confidence based on:{" "}
+          <span className="font-medium text-foreground">{plainWords(String(confSource))}</span>
         </p>
       ) : null}
 
       <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-          <dt className="text-xs text-muted-foreground font-medium">Decision type</dt>
+          <dt className="text-xs text-muted-foreground font-medium">Type of answer</dt>
           <dd className="mt-1 text-sm font-medium capitalize text-foreground">
-            {readString(envelope.decision_type, "answer").replace(/_/g, " ")}
+            {plainWords(readString(envelope.decision_type, "answer"))}
           </dd>
         </div>
         <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-          <dt className="text-xs text-muted-foreground font-medium">Freshness</dt>
+          <dt className="text-xs text-muted-foreground font-medium">Source freshness</dt>
           <dd className="mt-1 text-sm font-medium text-foreground">
             {envelope.freshness_status ? freshnessLabelText(envelope.freshness_status) : "—"}
           </dd>
         </div>
         <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-          <dt className="text-xs text-muted-foreground font-medium">Learning confidence</dt>
+          <dt className="text-xs text-muted-foreground font-medium">Learned from past results</dt>
           <dd className="mt-1">
             <LearningConfidenceBadge learning={envelope.learning_confidence} showSamples />
           </dd>
@@ -78,25 +101,26 @@ export function DecisionTransparencyCard({
 
       {domain.department || domain.subdomain ? (
         <div className="mt-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm">
-          <span className="text-muted-foreground">Domain context: </span>
+          <span className="text-muted-foreground">Area: </span>
           <span className="font-medium text-foreground">
-            {[domain.department, domain.subdomain].filter(Boolean).join(" → ")}
+            {[domain.department, domain.subdomain]
+              .filter(Boolean)
+              .map((value) => plainWords(String(value)))
+              .join(" → ")}
           </span>
         </div>
       ) : null}
 
       {alt && (alt.alternative_strategy_count ?? 0) > 0 ? (
         <div className="mt-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">Strategy selection: </span>
-          {alt.alternative_strategy_count} alternatives considered
-          {alt.selected_strategy ? ` · selected ${alt.selected_strategy}` : ""}
-          {alt.guidance_strength != null ? ` · guidance ${Math.round(alt.guidance_strength * 100)}%` : ""}
+          <span className="font-medium text-foreground">Other approaches considered: </span>
+          {alt.alternative_strategy_count}
         </div>
       ) : null}
 
       {gaps.length ? (
         <div className="mt-3">
-          <p className="text-xs font-medium text-foreground">Known gaps</p>
+          <p className="text-xs font-medium text-foreground">What&apos;s missing</p>
           <ul className="mt-1 list-disc pl-4 text-xs text-muted-foreground">
             {gaps.slice(0, 6).map((gap) => (
               <li key={gap}>{gap}</li>
