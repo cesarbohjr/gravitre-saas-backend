@@ -143,7 +143,25 @@ def build_fixtures() -> dict:
         billing_status="cancelled",
     )
 
+    founder_fixture = None
+    trial_customer_fixture = None
+    if os.environ.get("BILLING_ACCEPTANCE_ISOLATED") == "1":
+        from urllib.parse import urlparse
+        assert urlparse(env["SUPABASE_URL"]).hostname in {"localhost", "127.0.0.1"}
+        founder_org, founder_user, founder_email, founder_password = _create_user(client, "founder")
+        _complete_onboarding(client, founder_org)
+        _set_trial_window(client, founder_org, ends_at=now + timedelta(days=5))
+        client.table("platform_admins").insert({"user_id": founder_user, "email": founder_email, "notes": "Disposable local acceptance only"}).execute()
+        trial_org, trial_user, trial_email, trial_password = _create_user(client, "founder-trial")
+        _complete_onboarding(client, trial_org)
+        _set_trial_window(client, trial_org, ends_at=now + timedelta(days=5))
+        trial_customer_fixture = {"orgId": trial_org, "userId": trial_user, "email": trial_email, "password": trial_password}
+        client.table("org_commercial_profiles").upsert({"org_id": trial_org, "customer_category": "external", "classification_reason": "Disposable sandbox checkout acceptance"}).execute()
+        founder_fixture = {"orgId": founder_org, "userId": founder_user, "email": founder_email, "password": founder_password}
+
     return {
+        "founder": founder_fixture,
+        "founderTrialCustomer": trial_customer_fixture,
         "generatedAt": now.isoformat(),
         "expiredTrial": {
             "orgId": expired_org,

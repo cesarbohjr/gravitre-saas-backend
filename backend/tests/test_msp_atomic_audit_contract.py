@@ -5,7 +5,7 @@ These do not replace live two-tenant integration tests.
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SQL = (ROOT / "supabase/migrations/20261017230000_msp_delegation_atomic_audit.sql").read_text()
+SQL = (ROOT / "supabase/migrations/20261018032503_msp_delegation_atomic_audit.sql").read_text()
 ROUTER = (ROOT / "backend/app/routers/msp_delegations.py").read_text()
 
 

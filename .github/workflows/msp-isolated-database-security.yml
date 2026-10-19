@@ -66,8 +66,8 @@ jobs:
             PRIMARY KEY (org_id, user_id)
           );
           EOF
-          cp supabase/migrations/20261017220000_msp_delegations_restricted.sql "$RUNNER_TEMP/msp-db/supabase/migrations/"
-          cp supabase/migrations/20261017230000_msp_delegation_atomic_audit.sql "$RUNNER_TEMP/msp-db/supabase/migrations/"
+          cp supabase/migrations/20261018032455_msp_delegations_restricted.sql "$RUNNER_TEMP/msp-db/supabase/migrations/"
+          cp supabase/migrations/20261018032503_msp_delegation_atomic_audit.sql "$RUNNER_TEMP/msp-db/supabase/migrations/"
       - name: Start disposable local Supabase and apply MSP migrations
         run: |
           cd "$RUNNER_TEMP/msp-db"

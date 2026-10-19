@@ -12,6 +12,8 @@ export type BillingFixtureUser = {
 }
 
 export type BillingFixtures = {
+  founder?: BillingFixtureUser | null
+  founderTrialCustomer?: BillingFixtureUser | null
   generatedAt: string
   expiredTrial: BillingFixtureUser
   activeTrial: BillingFixtureUser

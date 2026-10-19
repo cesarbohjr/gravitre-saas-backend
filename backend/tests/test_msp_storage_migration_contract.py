@@ -7,7 +7,7 @@ from pathlib import Path
 
 SQL = (
     Path(__file__).resolve().parents[2]
-    / "supabase/migrations/20261017220000_msp_delegations_restricted.sql"
+    / "supabase/migrations/20261018032455_msp_delegations_restricted.sql"
 ).read_text(encoding="utf-8").lower()
 
 

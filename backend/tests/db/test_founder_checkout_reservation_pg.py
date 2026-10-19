@@ -19,7 +19,7 @@ def pg():
         CREATE ROLE service_role NOLOGIN BYPASSRLS;
         CREATE TABLE public.organizations (id uuid PRIMARY KEY);
         INSERT INTO public.organizations VALUES ('{ORG}'), ('{OTHER}');
-    """, (MIGRATIONS / "20261018193000_customer_segments_and_founder_offers.sql").read_text()) as db:
+    """, (MIGRATIONS / "20261019050504_customer_segments_and_founder_offers.sql").read_text()) as db:
         db.psql(f"""
             INSERT INTO public.org_commercial_profiles(org_id,customer_category) VALUES ('{ORG}','external');
             INSERT INTO public.org_promotional_grants(id,org_id,offer_type,trial_days) VALUES ('{GRANT}','{ORG}','trial',30);
