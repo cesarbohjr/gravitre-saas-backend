@@ -575,6 +575,8 @@ def apply_source_freshness(
                         2 * _MAX_FRESHNESS_ADJUSTMENT * (freshness - 0.5), 4
                     ),
                     "freshness_as_of": latest.date().isoformat(),
+                    # Full timestamp for user-facing wording ("updated 2 hours ago").
+                    "freshness_at": latest.isoformat(),
                 },
             )
         )
