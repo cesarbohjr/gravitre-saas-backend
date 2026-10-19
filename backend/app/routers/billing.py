@@ -1,4 +1,5 @@
 """Billing API — subscriptions, checkout, usage overview, cancel/reactivate."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -11,8 +12,19 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from supabase import create_client
 from app.core.db import shared_service_client
 
-from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin, require_org_member, require_platform_admin
-from app.billing.commercial_offers import checkout_offer_for_org, reserve_checkout_offer, segment_for_org
+from app.auth.dependencies import (
+    get_current_user,
+    get_environment_context,
+    get_org_context,
+    require_admin,
+    require_org_member,
+    require_platform_admin,
+)
+from app.billing.commercial_offers import (
+    checkout_offer_for_org,
+    reserve_checkout_offer,
+    segment_for_org,
+)
 from app.billing.entitlements import compute_app_access, normalize_billing_status
 from app.billing.service import (
     DEFAULT_PLAN_CODE,
@@ -54,7 +66,9 @@ router = APIRouter(prefix="/api/billing", tags=["billing"])
 
 
 def _raise_stripe_http_error(exc: stripe.error.StripeError) -> None:
-    message = (getattr(exc, "user_message", None) or str(exc) or "Stripe request failed").strip()
+    message = (
+        getattr(exc, "user_message", None) or str(exc) or "Stripe request failed"
+    ).strip()
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail=error_detail(message, "STRIPE_ERROR"),
@@ -68,7 +82,9 @@ def _stripe_customer_missing(exc: stripe.error.StripeError) -> bool:
     return "no such customer" in message
 
 
-def _create_stripe_customer(settings: Settings, client, org_id: str, user_id: str, plan_code: str | None) -> str:
+def _create_stripe_customer(
+    settings: Settings, client, org_id: str, user_id: str, plan_code: str | None
+) -> str:
     from stripe import Customer
 
     # Always init the module-level key — Customer.api_key alone is unreliable
@@ -93,17 +109,17 @@ def _create_stripe_customer(settings: Settings, client, org_id: str, user_id: st
 def billing_health(settings: Annotated[Settings, Depends(get_settings)]):
     """Check if Stripe is properly configured."""
     issues = []
-    
+
     # Check Stripe secret key
     if not settings.stripe_secret_key:
         issues.append("STRIPE_SECRET_KEY is not set")
     elif not settings.stripe_secret_key.startswith(("sk_test_", "sk_live_")):
         issues.append("STRIPE_SECRET_KEY has invalid format")
-    
+
     # Check webhook secret
     if not settings.stripe_webhook_secret:
         issues.append("STRIPE_WEBHOOK_SECRET is not set")
-    
+
     # Check price IDs
     price_checks = [
         ("STRIPE_PRICE_ID_NODE_MONTHLY", settings.stripe_price_id_node_monthly),
@@ -113,16 +129,18 @@ def billing_health(settings: Annotated[Settings, Depends(get_settings)]):
         ("STRIPE_PRICE_ID_COMMAND_MONTHLY", settings.stripe_price_id_command_monthly),
         ("STRIPE_PRICE_ID_COMMAND_ANNUAL", settings.stripe_price_id_command_annual),
     ]
-    
+
     for name, value in price_checks:
         if not value:
             issues.append(f"{name} is not set")
         elif not value.startswith("price_"):
             issues.append(f"{name} has invalid format (should start with 'price_')")
-    
+
     # Test Stripe API connectivity
     stripe_connected = False
-    if settings.stripe_secret_key and settings.stripe_secret_key.startswith(("sk_test_", "sk_live_")):
+    if settings.stripe_secret_key and settings.stripe_secret_key.startswith(
+        ("sk_test_", "sk_live_")
+    ):
         try:
             stripe.api_key = settings.stripe_secret_key
             stripe.Account.retrieve()
@@ -131,9 +149,13 @@ def billing_health(settings: Annotated[Settings, Depends(get_settings)]):
             issues.append("STRIPE_SECRET_KEY is invalid (authentication failed)")
         except Exception as e:
             issues.append(f"Stripe API error: {str(e)}")
-    
-    mode = "test" if settings.stripe_secret_key and "test" in settings.stripe_secret_key else "live"
-    
+
+    mode = (
+        "test"
+        if settings.stripe_secret_key and "test" in settings.stripe_secret_key
+        else "live"
+    )
+
     def _price_tail(value: str | None) -> str | None:
         text = str(value or "").strip()
         if not text:
@@ -156,9 +178,13 @@ def billing_health(settings: Annotated[Settings, Depends(get_settings)]):
             "command_annual_set": bool(settings.stripe_price_id_command_annual),
             # Last 8 chars only — enough to confirm which Price objects are wired.
             "node_monthly_tail": _price_tail(settings.stripe_price_id_node_monthly),
-            "control_monthly_tail": _price_tail(settings.stripe_price_id_control_monthly),
-            "command_monthly_tail": _price_tail(settings.stripe_price_id_command_monthly),
-        }
+            "control_monthly_tail": _price_tail(
+                settings.stripe_price_id_control_monthly
+            ),
+            "command_monthly_tail": _price_tail(
+                settings.stripe_price_id_command_monthly
+            ),
+        },
     }
 
 
@@ -172,9 +198,15 @@ async def billing_webhook_health(settings: Annotated[Settings, Depends(get_setti
     if not settings.stripe_webhook_secret:
         issues.append("STRIPE_WEBHOOK_SECRET is not set")
     elif not settings.stripe_webhook_secret.startswith("whsec_"):
-        issues.append("STRIPE_WEBHOOK_SECRET has invalid format (should start with whsec_)")
+        issues.append(
+            "STRIPE_WEBHOOK_SECRET has invalid format (should start with whsec_)"
+        )
 
-    idempotency_table = {"table": "stripe_webhook_events", "reachable": False, "error": "supabase_not_configured"}
+    idempotency_table = {
+        "table": "stripe_webhook_events",
+        "reachable": False,
+        "error": "supabase_not_configured",
+    }
     if settings.supabase_url and settings.supabase_service_role_key:
         client = shared_service_client(settings, create_client)
         idempotency_table = check_webhook_idempotency_table(client)
@@ -213,7 +245,9 @@ def _default_subscription(org_id: str) -> dict:
     }
 
 
-def _normalize_subscription(row: dict | None, org_id: str, *, tier: str | None = None) -> dict:
+def _normalize_subscription(
+    row: dict | None, org_id: str, *, tier: str | None = None
+) -> dict:
     if not row:
         base = _default_subscription(org_id)
         if tier:
@@ -230,8 +264,12 @@ def _normalize_subscription(row: dict | None, org_id: str, *, tier: str | None =
         "status": str(row.get("status") or "trialing"),
         "seat_count": _safe_int(row.get("seat_count"), 1),
         "lite_seats": _safe_int(row.get("lite_seats"), 0),
-        "current_period_start": (row.get("current_period_start") or datetime.now(timezone.utc).isoformat()),
-        "current_period_end": (row.get("current_period_end") or datetime.now(timezone.utc).isoformat()),
+        "current_period_start": (
+            row.get("current_period_start") or datetime.now(timezone.utc).isoformat()
+        ),
+        "current_period_end": (
+            row.get("current_period_end") or datetime.now(timezone.utc).isoformat()
+        ),
         "cancel_at_period_end": bool(row.get("cancel_at_period_end") or False),
         "meson_addons": meson_addons,
         "stripe_price_id": row.get("stripe_price_id"),
@@ -268,7 +306,9 @@ def _reconcile_plan_from_stripe(
         init_stripe(settings)
         stripe_sub = stripe.Subscription.retrieve(sub_id)
     except Exception as exc:  # noqa: BLE001
-        logger.warning("stripe reconcile retrieve failed org_id=%s error=%s", org_id, exc)
+        logger.warning(
+            "stripe reconcile retrieve failed org_id=%s error=%s", org_id, exc
+        )
         return None
 
     if hasattr(stripe_sub, "to_dict"):
@@ -293,7 +333,9 @@ def _reconcile_plan_from_stripe(
 
     now = datetime.now(timezone.utc).isoformat()
     period_end = (
-        datetime.fromtimestamp(int(data["current_period_end"]), tz=timezone.utc).isoformat()
+        datetime.fromtimestamp(
+            int(data["current_period_end"]), tz=timezone.utc
+        ).isoformat()
         if data.get("current_period_end")
         else (subscription_row or {}).get("current_period_end")
     )
@@ -324,7 +366,9 @@ def _reconcile_plan_from_stripe(
                     "updated_at": now,
                 }
             ).eq("org_id", org_id).execute()
-            client.table("org_billing").upsert(org_billing_payload, on_conflict="org_id").execute()
+            client.table("org_billing").upsert(
+                org_billing_payload, on_conflict="org_id"
+            ).execute()
         except Exception as exc:  # noqa: BLE001
             invalidate_org_state(org_id)
             logger.error(
@@ -351,7 +395,8 @@ def _reconcile_plan_from_stripe(
         "org_id": org_id,
         "plan_code": plan_code,
         "stripe_subscription_id": sub_id,
-        "stripe_customer_id": data.get("customer") or (subscription_row or {}).get("stripe_customer_id"),
+        "stripe_customer_id": data.get("customer")
+        or (subscription_row or {}).get("stripe_customer_id"),
         "billing_status": billing_status,
         "current_period_end": period_end,
         "cancel_at_period_end": cancel_at_period_end,
@@ -363,12 +408,16 @@ def _reconcile_plan_from_stripe(
         client.table("subscriptions").update(
             {
                 "tier": plan_code,
-                "status": sub_status or (subscription_row or {}).get("status") or "active",
+                "status": sub_status
+                or (subscription_row or {}).get("status")
+                or "active",
                 "current_period_end": period_end,
                 "updated_at": now,
             }
         ).eq("org_id", org_id).execute()
-        client.table("org_billing").upsert(org_billing_payload, on_conflict="org_id").execute()
+        client.table("org_billing").upsert(
+            org_billing_payload, on_conflict="org_id"
+        ).execute()
     except Exception as exc:  # noqa: BLE001
         invalidate_org_state(org_id)
         logger.error(
@@ -406,8 +455,12 @@ def _weekly_workflow_totals(client, org_id: str, period_start_iso: str) -> list[
     return [buckets[i] for i in range(4)]
 
 
-def _map_usage_for_billing_status(usage_payload: dict, *, weekly_totals: list[int] | None = None) -> dict:
-    period_start = str(usage_payload.get("period_start") or datetime.now(timezone.utc).isoformat())
+def _map_usage_for_billing_status(
+    usage_payload: dict, *, weekly_totals: list[int] | None = None
+) -> dict:
+    period_start = str(
+        usage_payload.get("period_start") or datetime.now(timezone.utc).isoformat()
+    )
     tier = usage_payload.get("tier")
     totals = usage_payload.get("totals") or {}
     plan = usage_payload.get("plan") or {}
@@ -436,22 +489,48 @@ def _map_usage_for_billing_status(usage_payload: dict, *, weekly_totals: list[in
         "weekly_totals": weekly_totals or [],
         "overage_outputs": int(usage_payload.get("overage_outputs") or 0),
         "overage_cost_usd": float(usage_payload.get("overage_cost_usd") or 0),
-        "output_overage_rate_usd": float(usage_payload.get("output_overage_rate_usd") or 0),
-        "included_research_lookups": int(usage_payload.get("included_research_lookups") or 0),
-        "remaining_research_lookups": int(usage_payload.get("remaining_research_lookups") or 0),
-        "overage_research_lookups": int(usage_payload.get("overage_research_lookups") or 0),
-        "overage_research_cost_usd": float(usage_payload.get("overage_research_cost_usd") or 0),
-        "research_lookup_overage_rate_usd": float(usage_payload.get("research_lookup_overage_rate_usd") or 0),
-        "internet_research_enabled": bool(usage_payload.get("internet_research_enabled")),
-        "research_lookups_billing_visible": bool(usage_payload.get("research_lookups_billing_visible")),
+        "output_overage_rate_usd": float(
+            usage_payload.get("output_overage_rate_usd") or 0
+        ),
+        "included_research_lookups": int(
+            usage_payload.get("included_research_lookups") or 0
+        ),
+        "remaining_research_lookups": int(
+            usage_payload.get("remaining_research_lookups") or 0
+        ),
+        "overage_research_lookups": int(
+            usage_payload.get("overage_research_lookups") or 0
+        ),
+        "overage_research_cost_usd": float(
+            usage_payload.get("overage_research_cost_usd") or 0
+        ),
+        "research_lookup_overage_rate_usd": float(
+            usage_payload.get("research_lookup_overage_rate_usd") or 0
+        ),
+        "internet_research_enabled": bool(
+            usage_payload.get("internet_research_enabled")
+        ),
+        "research_lookups_billing_visible": bool(
+            usage_payload.get("research_lookups_billing_visible")
+        ),
         "included_voice_minutes": int(usage_payload.get("included_voice_minutes") or 0),
-        "remaining_voice_minutes": int(usage_payload.get("remaining_voice_minutes") or 0),
+        "remaining_voice_minutes": int(
+            usage_payload.get("remaining_voice_minutes") or 0
+        ),
         "overage_voice_minutes": int(usage_payload.get("overage_voice_minutes") or 0),
-        "overage_voice_cost_usd": float(usage_payload.get("overage_voice_cost_usd") or 0),
-        "voice_minute_overage_rate_usd": float(usage_payload.get("voice_minute_overage_rate_usd") or 0),
-        "voice_minutes_billing_visible": bool(usage_payload.get("voice_minutes_billing_visible")),
+        "overage_voice_cost_usd": float(
+            usage_payload.get("overage_voice_cost_usd") or 0
+        ),
+        "voice_minute_overage_rate_usd": float(
+            usage_payload.get("voice_minute_overage_rate_usd") or 0
+        ),
+        "voice_minutes_billing_visible": bool(
+            usage_payload.get("voice_minutes_billing_visible")
+        ),
     }
     return mapped
+
+
 @router.get("/plans")
 def list_billing_plans(
     _user: Annotated[dict, Depends(get_current_user)],
@@ -459,11 +538,13 @@ def list_billing_plans(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
     client = get_supabase_client(settings)
     plans = list(get_billing_plans(client).values())
     return {"plans": plans}
-
 
 
 class CheckoutRequest(BaseModel):
@@ -556,20 +637,28 @@ def _persist_subscription_status(
     sub_row: dict | None,
     now: str,
 ) -> dict | None:
-    tier = _normalize_subscription_tier(billing.get("plan_code") or (sub_row or {}).get("tier"))
+    tier = _normalize_subscription_tier(
+        billing.get("plan_code") or (sub_row or {}).get("tier")
+    )
     payload: dict = {
         "org_id": org_id,
         "status": status,
         "tier": tier,
         "updated_at": now,
     }
-    stripe_sub = billing.get("stripe_subscription_id") or (sub_row or {}).get("stripe_subscription_id")
+    stripe_sub = billing.get("stripe_subscription_id") or (sub_row or {}).get(
+        "stripe_subscription_id"
+    )
     if stripe_sub:
         payload["stripe_subscription_id"] = stripe_sub
-    stripe_cus = billing.get("stripe_customer_id") or (sub_row or {}).get("stripe_customer_id")
+    stripe_cus = billing.get("stripe_customer_id") or (sub_row or {}).get(
+        "stripe_customer_id"
+    )
     if stripe_cus:
         payload["stripe_customer_id"] = stripe_cus
-    period_end = billing.get("current_period_end") or (sub_row or {}).get("current_period_end")
+    period_end = billing.get("current_period_end") or (sub_row or {}).get(
+        "current_period_end"
+    )
     if period_end:
         payload["current_period_end"] = period_end
 
@@ -597,7 +686,9 @@ def _resolve_org_id_from_checkout_metadata(client, metadata: dict) -> str | None
     return resolve_org_id_from_checkout_metadata(client, metadata)
 
 
-def _usage_from_records(client, org_id: str, tier: str | None, *, settings: Settings | None = None) -> dict:
+def _usage_from_records(
+    client, org_id: str, tier: str | None, *, settings: Settings | None = None
+) -> dict:
     from app.billing.plan_rates import (
         included_ai_credits_for_plan,
         included_outputs_for_plan,
@@ -607,7 +698,9 @@ def _usage_from_records(client, org_id: str, tier: str | None, *, settings: Sett
     from app.billing.usage_records_summary import summarize_usage_records_billing
 
     try:
-        return summarize_usage_records_billing(client, org_id, tier=tier, settings=settings)
+        return summarize_usage_records_billing(
+            client, org_id, tier=tier, settings=settings
+        )
     except RuntimeError:
         now = datetime.now(timezone.utc)
         period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -615,10 +708,22 @@ def _usage_from_records(client, org_id: str, tier: str | None, *, settings: Sett
         return {
             "period_start": period_start.isoformat(),
             "tier": resolved_tier,
-            "totals": {"outputs": 0, "workflow_runs": 0, "api_calls": 0, "ai_tokens": 0, "research_lookups": 0},
-            "included_outputs": included_outputs_for_plan(None, plan_code=resolved_tier),
-            "workflow_runs_included": included_workflow_runs_for_plan(None, plan_code=resolved_tier),
-            "ai_credits_included": included_ai_credits_for_plan(None, plan_code=resolved_tier),
+            "totals": {
+                "outputs": 0,
+                "workflow_runs": 0,
+                "api_calls": 0,
+                "ai_tokens": 0,
+                "research_lookups": 0,
+            },
+            "included_outputs": included_outputs_for_plan(
+                None, plan_code=resolved_tier
+            ),
+            "workflow_runs_included": included_workflow_runs_for_plan(
+                None, plan_code=resolved_tier
+            ),
+            "ai_credits_included": included_ai_credits_for_plan(
+                None, plan_code=resolved_tier
+            ),
             "overage_outputs": 0,
             "overage_cost_usd": 0.0,
             "output_overage_rate_usd": overage_usd_per_output(None),
@@ -627,22 +732,28 @@ def _usage_from_records(client, org_id: str, tier: str | None, *, settings: Sett
             "overage_research_lookups": 0,
             "overage_research_cost_usd": 0.0,
             "research_lookup_overage_rate_usd": 0.35,
-            "internet_research_enabled": bool(settings and settings.internet_research_enabled),
+            "internet_research_enabled": bool(
+                settings and settings.internet_research_enabled
+            ),
             "research_lookups_billing_visible": False,
             "plan": {},
         }
 
 
-def _fetch_invoices_and_payment_methods(settings: Settings, customer_id: str | None) -> tuple[list[dict], list[dict]]:
+def _fetch_invoices_and_payment_methods(
+    settings: Settings, customer_id: str | None
+) -> tuple[list[dict], list[dict]]:
     if not settings.stripe_secret_key or not customer_id:
         return ([], [])
     stripe.api_key = settings.stripe_secret_key
     invoices: list[dict] = []
     payment_methods: list[dict] = []
+
     def _ts_to_iso(ts_value: int | None) -> str:
         if not ts_value:
             return datetime.now(timezone.utc).isoformat()
         return datetime.fromtimestamp(int(ts_value), tz=timezone.utc).isoformat()
+
     try:
         stripe_invoices = stripe.Invoice.list(customer=customer_id, limit=20)
         for invoice in stripe_invoices.data:
@@ -650,11 +761,17 @@ def _fetch_invoices_and_payment_methods(settings: Settings, customer_id: str | N
                 {
                     "id": invoice.get("id"),
                     "stripe_invoice_id": invoice.get("id"),
-                    "amount_cents": int(invoice.get("amount_paid") or invoice.get("amount_due") or 0),
+                    "amount_cents": int(
+                        invoice.get("amount_paid") or invoice.get("amount_due") or 0
+                    ),
                     "currency": str(invoice.get("currency") or "usd"),
                     "status": str(invoice.get("status") or "open"),
-                    "period_start": _ts_to_iso(invoice.get("period_start") or invoice.get("created")),
-                    "period_end": _ts_to_iso(invoice.get("period_end") or invoice.get("created")),
+                    "period_start": _ts_to_iso(
+                        invoice.get("period_start") or invoice.get("created")
+                    ),
+                    "period_end": _ts_to_iso(
+                        invoice.get("period_end") or invoice.get("created")
+                    ),
                     "pdf_url": invoice.get("invoice_pdf"),
                     "created_at": _ts_to_iso(invoice.get("created")),
                 }
@@ -692,11 +809,20 @@ async def billing_overview(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
     client = shared_service_client(settings, create_client)
     billing_row = get_org_billing(client, org_id) or {}
     billing_status = normalize_billing_status(billing_row.get("billing_status"))
-    sub_resp = client.table("subscriptions").select("*").eq("org_id", org_id).limit(1).execute()
+    sub_resp = (
+        client.table("subscriptions")
+        .select("*")
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
     sub_err = getattr(sub_resp, "error", None)
     if sub_err:
         raise HTTPException(status_code=500, detail=str(sub_err))
@@ -707,7 +833,9 @@ async def billing_overview(
         if billing_status == "cancelled":
             seed = {
                 "org_id": org_id,
-                "tier": str(billing_row.get("plan_code") or DEFAULT_PLAN_CODE).strip().lower()
+                "tier": str(billing_row.get("plan_code") or DEFAULT_PLAN_CODE)
+                .strip()
+                .lower()
                 or DEFAULT_PLAN_CODE,
                 "status": "canceled",
                 "seat_count": 1,
@@ -736,16 +864,28 @@ async def billing_overview(
     # Always reconcile from Stripe when a subscription id exists. Prior logic only
     # ran for node/free or tier mismatch, which left stripe_price_id stuck on Node
     # after a Command upgrade while plan_code already said command.
-    if (subscription_row or {}).get("stripe_subscription_id") and settings.stripe_secret_key:
-        repaired = _reconcile_plan_from_stripe(client, settings, org_id, subscription_row)
+    if (subscription_row or {}).get(
+        "stripe_subscription_id"
+    ) and settings.stripe_secret_key:
+        repaired = _reconcile_plan_from_stripe(
+            client, settings, org_id, subscription_row
+        )
         if repaired:
             canonical_tier = repaired
-            refreshed = client.table("subscriptions").select("*").eq("org_id", org_id).limit(1).execute()
+            refreshed = (
+                client.table("subscriptions")
+                .select("*")
+                .eq("org_id", org_id)
+                .limit(1)
+                .execute()
+            )
             subscription_row = (refreshed.data or [subscription_row])[0]
             billing_row = get_org_billing(client, org_id) or billing_row
             billing_status = normalize_billing_status(billing_row.get("billing_status"))
     elif (subscription_row or {}).get("stripe_subscription_id") and (
-        canonical_tier in {"node", "free"} or sub_tier != billing_tier or not billing_tier
+        canonical_tier in {"node", "free"}
+        or sub_tier != billing_tier
+        or not billing_tier
     ):
         # No Stripe key locally: still surface the dual-row mismatch for ops logs.
         logger.warning(
@@ -756,10 +896,16 @@ async def billing_overview(
         )
 
     # Keep subscriptions.tier aligned with org_billing so UI + usage share one plan.
-    if subscription_row and str(subscription_row.get("tier") or "").strip().lower() != canonical_tier:
+    if (
+        subscription_row
+        and str(subscription_row.get("tier") or "").strip().lower() != canonical_tier
+    ):
         try:
             client.table("subscriptions").update(
-                {"tier": canonical_tier, "updated_at": datetime.now(timezone.utc).isoformat()}
+                {
+                    "tier": canonical_tier,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
             ).eq("org_id", org_id).execute()
             invalidate_org_state(org_id)
             subscription_row = {**(subscription_row or {}), "tier": canonical_tier}
@@ -791,7 +937,9 @@ async def billing_overview(
             "stripe_price_id": stripe_price_id,
             "plan_unit_amount_cents": plan_unit_amount_cents,
             "plan_billing_interval": plan_billing_interval,
-            "cancel_at_period_end": bool(billing_row.get("cancel_at_period_end") or False),
+            "cancel_at_period_end": bool(
+                billing_row.get("cancel_at_period_end") or False
+            ),
         },
         org_id,
         tier=canonical_tier,
@@ -803,7 +951,9 @@ async def billing_overview(
     plan = get_plan_for_org(client, org_id)
     usage["plan"] = plan
     usage["tier"] = str(plan.get("code") or canonical_tier)
-    period_start = str(usage.get("period_start") or datetime.now(timezone.utc).isoformat())
+    period_start = str(
+        usage.get("period_start") or datetime.now(timezone.utc).isoformat()
+    )
     weekly_totals = _weekly_workflow_totals(client, org_id, period_start)
     invoices, payment_methods = _fetch_invoices_and_payment_methods(
         settings=settings,
@@ -827,7 +977,10 @@ def get_billing_status(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
     client = get_supabase_client(settings)
     cacheable = billing_status_cache.enabled and cache_allowed(client)
     cache_key = (org_id, environment)
@@ -838,7 +991,9 @@ def get_billing_status(
         cache_token = billing_status_cache.token()
     payload = _compute_billing_status(client, org_id, environment)
     if cacheable:
-        billing_status_cache.set(cache_key, payload, tags=(org_tag(org_id),), token=cache_token)
+        billing_status_cache.set(
+            cache_key, payload, tags=(org_tag(org_id),), token=cache_token
+        )
     return payload
 
 
@@ -846,7 +1001,10 @@ def _compute_billing_status(client, org_id: str, environment: str) -> dict:
     # Each row is read once per request and handed to the helpers (they used to
     # re-read org_billing ~4x and organizations ~3x).
     billing_row = get_org_billing(client, org_id)
-    billing = billing_row or {"plan_code": DEFAULT_PLAN_CODE, "billing_status": "trialing"}
+    billing = billing_row or {
+        "plan_code": DEFAULT_PLAN_CODE,
+        "billing_status": "trialing",
+    }
     base_plan = get_base_plan_for_org(client, org_id, billing=billing_row)
     overrides = get_org_billing_overrides(client, org_id)
     plan = get_plan_for_org(client, org_id, base_plan=base_plan, overrides=overrides)
@@ -870,14 +1028,18 @@ def _compute_billing_status(client, org_id: str, environment: str) -> dict:
             trial_ends_at = billing_settings.get("trial_ends_at")
     from app.billing.entitlement_service import get_org_billing_state
 
-    billing_state = get_org_billing_state(client, org_id, billing=billing_row, org_settings=org_settings)
+    billing_state = get_org_billing_state(
+        client, org_id, billing=billing_row, org_settings=org_settings
+    )
     if billing_state["is_blocked"]:
         reason = (
             "trial_expired"
             if billing_state["status"] == "trial_expired"
-            else "payment_past_due"
-            if billing_state["status"] == "past_due"
-            else "subscription_cancelled"
+            else (
+                "payment_past_due"
+                if billing_state["status"] == "past_due"
+                else "subscription_cancelled"
+            )
         )
         access = {
             "can_access_app": False,
@@ -950,6 +1112,7 @@ class FounderOfferRequest(BaseModel):
     percent_off: float | None = Field(default=None, gt=0, le=100)
     discount_months: int | None = Field(default=None, ge=1, le=12)
     valid_until: datetime | None = None
+    max_promotion_value_cents: int = Field(ge=1, le=2147483647)
 
 
 @router.get("/admin/commercial-accounts")
@@ -962,17 +1125,46 @@ def list_commercial_accounts(
     if offset < 0 or not 1 <= limit <= 200:
         raise HTTPException(status_code=422, detail="Invalid account page")
     client = shared_service_client(settings, create_client)
-    rows = client.table("organizations").select("id,name").order("created_at", desc=True).order("id").range(offset, offset + limit).execute().data or []
+    rows = (
+        client.table("organizations")
+        .select("id,name")
+        .order("created_at", desc=True)
+        .order("id")
+        .range(offset, offset + limit)
+        .execute()
+        .data
+        or []
+    )
     has_more = len(rows) > limit
     orgs = rows[:limit]
     org_ids = [str(org["id"]) for org in orgs]
-    profiles = client.table("org_commercial_profiles").select("org_id,customer_category,classification_reason").in_("org_id", org_ids).execute().data or [] if org_ids else []
+    profiles = (
+        client.table("org_commercial_profiles")
+        .select("org_id,customer_category,classification_reason")
+        .in_("org_id", org_ids)
+        .execute()
+        .data
+        or []
+        if org_ids
+        else []
+    )
     grants = []
     # Histories also page: an old redeemed offer must not disappear from its cohort.
     if org_ids:
         grant_offset = 0
         while True:
-            page = client.table("org_promotional_grants").select("id,org_id,offer_type,trial_days,percent_off,discount_months,status,valid_until,redeemed_at,checkout_attempt_id").in_("org_id", org_ids).order("id").range(grant_offset, grant_offset + 499).execute().data or []
+            page = (
+                client.table("org_promotional_grants")
+                .select(
+                    "id,org_id,offer_type,trial_days,percent_off,discount_months,status,valid_until,redeemed_at,checkout_attempt_id"
+                )
+                .in_("org_id", org_ids)
+                .order("id")
+                .range(grant_offset, grant_offset + 499)
+                .execute()
+                .data
+                or []
+            )
             grants.extend(page)
             if len(page) < 500:
                 break
@@ -987,11 +1179,17 @@ def list_commercial_accounts(
         "next_offset": offset + len(orgs),
         "accounts": [
             {
-                "org_id": str(org["id"]), "name": org.get("name"),
-                "customer_category": by_org.get(str(org["id"]), {}).get("customer_category", "unreviewed"),
-                "classification_reason": by_org.get(str(org["id"]), {}).get("classification_reason"),
+                "org_id": str(org["id"]),
+                "name": org.get("name"),
+                "customer_category": by_org.get(str(org["id"]), {}).get(
+                    "customer_category", "unreviewed"
+                ),
+                "classification_reason": by_org.get(str(org["id"]), {}).get(
+                    "classification_reason"
+                ),
                 "offers": grants_by_org.get(str(org["id"]), []),
-            } for org in orgs
+            }
+            for org in orgs
         ],
     }
 
@@ -1003,6 +1201,7 @@ def inspect_commercial_stripe_account(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     from uuid import UUID
+
     try:
         org_id = str(UUID(org_id))
     except (TypeError, ValueError) as exc:
@@ -1011,25 +1210,87 @@ def inspect_commercial_stripe_account(
     billing = get_org_billing(client, org_id) or {}
     customer_id = billing.get("stripe_customer_id")
     if not customer_id:
-        return {"customer_id": None, "subscriptions": [], "source": "stripe", "verified_at": None}
+        return {
+            "customer_id": None,
+            "subscriptions": [],
+            "source": "stripe",
+            "verified_at": None,
+        }
     init_stripe(settings)
     try:
         customer = stripe.Customer.retrieve(customer_id)
         if (customer.get("metadata") or {}).get("org_id") != org_id:
-            raise HTTPException(status_code=409, detail="Stripe customer ownership needs reconciliation")
-        subscriptions = stripe.Subscription.list(customer=customer_id, status="all", limit=100)
+            raise HTTPException(
+                status_code=409, detail="Stripe customer ownership needs reconciliation"
+            )
+        subscriptions = stripe.Subscription.list(
+            customer=customer_id, status="all", limit=100
+        )
         return {
-            "customer_id": customer_id, "source": "stripe",
+            "customer_id": customer_id,
+            "source": "stripe",
             "verified_at": datetime.now(timezone.utc).isoformat(),
             "has_more": bool(subscriptions.get("has_more")),
-            "subscriptions": [{
-                "id": row["id"], "status": row["status"],
-                "trial_end": row.get("trial_end"),
-                "cancel_at_period_end": row.get("cancel_at_period_end", False),
-            } for row in subscriptions.get("data", [])],
+            "subscriptions": [
+                {
+                    "id": row["id"],
+                    "status": row["status"],
+                    "trial_end": row.get("trial_end"),
+                    "cancel_at_period_end": row.get("cancel_at_period_end", False),
+                }
+                for row in subscriptions.get("data", [])
+            ],
         }
     except stripe.error.StripeError as exc:
         _raise_stripe_http_error(exc)
+
+
+@router.get("/admin/billing-safety")
+def billing_safety_status(
+    _founder: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    client = shared_service_client(settings, create_client)
+    return {
+        "alerts": client.table("billing_safety_alerts")
+        .select("*")
+        .is_("resolved_at", "null")
+        .order("last_seen_at", desc=True)
+        .limit(100)
+        .execute()
+        .data
+        or [],
+        "reconciliation": client.table("billing_reconciliation_runs")
+        .select("*")
+        .order("started_at", desc=True)
+        .limit(1)
+        .execute()
+        .data
+        or [],
+    }
+
+
+@router.post("/admin/billing-reconciliation")
+def reconcile_billing(
+    founder: Annotated[dict, Depends(require_platform_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    from app.billing.safety import run_billing_reconciliation
+
+    client = shared_service_client(settings, create_client)
+    result = run_billing_reconciliation(
+        client, settings, run_key=f"manual:{datetime.now(timezone.utc).isoformat()}"
+    )
+    write_audit_event(
+        client,
+        org_id=None,
+        actor_id=founder["user_id"],
+        action="billing.reconciliation.requested",
+        resource_type="billing_reconciliation_runs",
+        resource_id=result["run_key"],
+        metadata={"status": result["status"]},
+    )
+    return result
 
 
 @router.post("/admin/customer-segments")
@@ -1039,25 +1300,40 @@ def set_customer_category(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     from uuid import UUID
+
     try:
         org_id = str(UUID(body.org_id))
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail="Invalid organization ID") from exc
     client = shared_service_client(settings, create_client)
-    if not (client.table("organizations").select("id").eq("id", org_id).limit(1).execute().data or []):
+    if not (
+        client.table("organizations")
+        .select("id")
+        .eq("id", org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    ):
         raise HTTPException(status_code=404, detail="Organization not found")
-    client.table("org_commercial_profiles").upsert({
-        "org_id": org_id,
-        "customer_category": body.customer_category,
-        "classification_reason": body.reason,
-        "classified_by": founder["user_id"],
-        "classified_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }, on_conflict="org_id").execute()
+    client.table("org_commercial_profiles").upsert(
+        {
+            "org_id": org_id,
+            "customer_category": body.customer_category,
+            "classification_reason": body.reason,
+            "classified_by": founder["user_id"],
+            "classified_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        },
+        on_conflict="org_id",
+    ).execute()
     write_audit_event(
-        client, org_id=org_id, actor_id=founder["user_id"],
+        client,
+        org_id=org_id,
+        actor_id=founder["user_id"],
         action="billing.customer_category.changed",
-        resource_type="org_commercial_profiles", resource_id=org_id,
+        resource_type="org_commercial_profiles",
+        resource_id=org_id,
         metadata={"category": body.customer_category, "reason": body.reason},
     )
     return {"org_id": org_id, "customer_category": body.customer_category}
@@ -1074,7 +1350,9 @@ def _founder_discount_base_products(settings: Settings) -> list[str]:
     for plan in ("node", "control", "command"):
         monthly_price_id = price_id_for_plan(settings, plan, billing_interval="monthly")
         if not monthly_price_id:
-            raise HTTPException(status_code=503, detail=f"Missing Stripe base price for {plan}")
+            raise HTTPException(
+                status_code=503, detail=f"Missing Stripe base price for {plan}"
+            )
         for interval in ("monthly", "annual"):
             price_id = price_id_for_plan(settings, plan, billing_interval=interval)
             if not price_id:
@@ -1083,10 +1361,14 @@ def _founder_discount_base_products(settings: Settings) -> list[str]:
             product = price.get("product")
             product_id = product.get("id") if isinstance(product, dict) else product
             if not isinstance(product_id, str) or not product_id.startswith("prod_"):
-                raise HTTPException(status_code=503, detail="Unable to verify Stripe base plan product")
+                raise HTTPException(
+                    status_code=503, detail="Unable to verify Stripe base plan product"
+                )
             products.add(product_id)
     if not products:
-        raise HTTPException(status_code=503, detail="No Stripe base plan products available")
+        raise HTTPException(
+            status_code=503, detail="No Stripe base plan products available"
+        )
     return sorted(products)
 
 
@@ -1097,30 +1379,80 @@ def create_founder_offer(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     from uuid import UUID
+
     try:
         org_id = str(UUID(body.org_id))
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail="Invalid organization ID") from exc
     if not settings.commercial_offers_enabled:
-        raise HTTPException(status_code=503, detail="Founder promotions are not yet activated")
+        raise HTTPException(
+            status_code=503, detail="Founder promotions are not yet activated"
+        )
     if body.offer_type == "trial":
-        if body.trial_days is None or body.percent_off is not None or body.discount_months is not None:
-            raise HTTPException(status_code=422, detail="Trial offers require trial_days only")
-    elif body.percent_off is None or body.discount_months is None or body.trial_days is not None:
-        raise HTTPException(status_code=422, detail="Discount offers require percent_off and discount_months")
+        if (
+            body.trial_days is None
+            or body.percent_off is not None
+            or body.discount_months is not None
+        ):
+            raise HTTPException(
+                status_code=422, detail="Trial offers require trial_days only"
+            )
+    elif (
+        body.percent_off is None
+        or body.discount_months is None
+        or body.trial_days is not None
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Discount offers require percent_off and discount_months",
+        )
     if body.valid_until and body.valid_until.tzinfo is None:
-        raise HTTPException(status_code=422, detail="Offer expiration requires a timezone")
+        raise HTTPException(
+            status_code=422, detail="Offer expiration requires a timezone"
+        )
     if body.valid_until and body.valid_until <= datetime.now(timezone.utc):
-        raise HTTPException(status_code=422, detail="Offer expiration must be in the future")
+        raise HTTPException(
+            status_code=422, detail="Offer expiration must be in the future"
+        )
     client = shared_service_client(settings, create_client)
-    if not (client.table("organizations").select("id").eq("id", org_id).limit(1).execute().data or []):
+    if not (
+        client.table("organizations")
+        .select("id")
+        .eq("id", org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    ):
         raise HTTPException(status_code=404, detail="Organization not found")
-    profile = client.table("org_commercial_profiles").select("customer_category").eq("org_id", org_id).limit(1).execute().data or []
+    profile = (
+        client.table("org_commercial_profiles")
+        .select("customer_category")
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
     if not profile or profile[0].get("customer_category") != "external":
-        raise HTTPException(status_code=403, detail="Only reviewed external customer organizations may receive founder offers")
-    existing = client.table("org_promotional_grants").select("id").eq("org_id", org_id).eq("status", "available").limit(1).execute().data or []
+        raise HTTPException(
+            status_code=403,
+            detail="Only reviewed external customer organizations may receive founder offers",
+        )
+    existing = (
+        client.table("org_promotional_grants")
+        .select("id")
+        .eq("org_id", org_id)
+        .eq("status", "available")
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
     if existing:
-        raise HTTPException(status_code=409, detail="Revoke the existing available offer first")
+        raise HTTPException(
+            status_code=409, detail="Revoke the existing available offer first"
+        )
     coupon_id = None
     if body.offer_type == "discount":
         if not settings.stripe_secret_key:
@@ -1141,24 +1473,45 @@ def create_founder_offer(
         except stripe.error.StripeError as exc:
             _raise_stripe_http_error(exc)
     payload = {
-        "org_id": org_id, "offer_type": body.offer_type,
-        "trial_days": body.trial_days, "stripe_coupon_id": coupon_id,
-        "percent_off": body.percent_off, "discount_months": body.discount_months,
-        "status": "available", "created_by": founder["user_id"],
+        "org_id": org_id,
+        "offer_type": body.offer_type,
+        "trial_days": body.trial_days,
+        "stripe_coupon_id": coupon_id,
+        "max_promotion_value_cents": body.max_promotion_value_cents,
+        "percent_off": body.percent_off,
+        "discount_months": body.discount_months,
+        "status": "available",
+        "created_by": founder["user_id"],
         "valid_until": body.valid_until.isoformat() if body.valid_until else None,
     }
-    inserted = client.table("org_promotional_grants").insert(payload).execute().data or []
+    inserted = (
+        client.table("org_promotional_grants").insert(payload).execute().data or []
+    )
     if not inserted:
-        raise HTTPException(status_code=502, detail="Could not persist promotional offer")
+        raise HTTPException(
+            status_code=502, detail="Could not persist promotional offer"
+        )
     grant = inserted[0]
     write_audit_event(
-        client, org_id=org_id, actor_id=founder["user_id"],
+        client,
+        org_id=org_id,
+        actor_id=founder["user_id"],
         action="billing.founder_offer.created",
-        resource_type="org_promotional_grants", resource_id=str(grant["id"]),
-        metadata={"type": body.offer_type, "trial_days": body.trial_days,
-                  "percent_off": body.percent_off, "discount_months": body.discount_months},
+        resource_type="org_promotional_grants",
+        resource_id=str(grant["id"]),
+        metadata={
+            "type": body.offer_type,
+            "trial_days": body.trial_days,
+            "percent_off": body.percent_off,
+            "discount_months": body.discount_months,
+        },
     )
-    return {"grant_id": grant["id"], "org_id": org_id, "status": "available", "offer_type": body.offer_type}
+    return {
+        "grant_id": grant["id"],
+        "org_id": org_id,
+        "status": "available",
+        "offer_type": body.offer_type,
+    }
 
 
 @router.post("/admin/promotional-offers/{grant_id}/revoke")
@@ -1168,24 +1521,53 @@ def revoke_founder_offer(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     from uuid import UUID
+
     try:
         grant_id = str(UUID(grant_id))
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=422, detail="Invalid grant ID") from exc
     client = shared_service_client(settings, create_client)
-    rows = client.table("org_promotional_grants").select("id,org_id,status,checkout_attempt_id").eq("id", grant_id).limit(1).execute().data or []
+    rows = (
+        client.table("org_promotional_grants")
+        .select("id,org_id,status,checkout_attempt_id")
+        .eq("id", grant_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
     if not rows:
         raise HTTPException(status_code=404, detail="Offer not found")
     grant = rows[0]
     if grant["status"] != "available" or grant.get("checkout_attempt_id"):
-        raise HTTPException(status_code=409, detail="Only unreserved offers may be revoked; reconcile reserved checkout sessions in Stripe first")
-    updated = client.table("org_promotional_grants").update({"status": "revoked", "updated_at": datetime.now(timezone.utc).isoformat()}).eq("id", grant_id).eq("status", "available").is_("checkout_attempt_id", "null").execute().data
+        raise HTTPException(
+            status_code=409,
+            detail="Only unreserved offers may be revoked; reconcile reserved checkout sessions in Stripe first",
+        )
+    updated = (
+        client.table("org_promotional_grants")
+        .update(
+            {"status": "revoked", "updated_at": datetime.now(timezone.utc).isoformat()}
+        )
+        .eq("id", grant_id)
+        .eq("status", "available")
+        .is_("checkout_attempt_id", "null")
+        .execute()
+        .data
+    )
     if not updated:
-        raise HTTPException(status_code=409, detail="Offer was reserved concurrently; review its Stripe checkout")
+        raise HTTPException(
+            status_code=409,
+            detail="Offer was reserved concurrently; review its Stripe checkout",
+        )
     write_audit_event(
-        client, org_id=grant["org_id"], actor_id=founder["user_id"],
+        client,
+        org_id=grant["org_id"],
+        actor_id=founder["user_id"],
         action="billing.founder_offer.revoked",
-        resource_type="org_promotional_grants", resource_id=grant_id, metadata={},
+        resource_type="org_promotional_grants",
+        resource_id=grant_id,
+        metadata={},
     )
     return {"grant_id": grant_id, "status": "revoked"}
 
@@ -1201,12 +1583,17 @@ def create_checkout(
     billing_interval = (body.billing_interval or "").strip().lower() or None
     price_id = (body.price_id or "").strip() or None
     if not price_id and plan_code:
-        price_id = price_id_for_plan(settings, plan_code, billing_interval=billing_interval)
+        price_id = price_id_for_plan(
+            settings, plan_code, billing_interval=billing_interval
+        )
     if not plan_code and price_id:
         mapped = plan_code_for_price(settings, price_id)
         plan_code = mapped or "free"
     if not price_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_detail("Invalid plan", "VALIDATION_ERROR"))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail("Invalid plan", "VALIDATION_ERROR"),
+        )
     if not settings.stripe_secret_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1217,7 +1604,11 @@ def create_checkout(
     cancel_url = f"{app_url}/settings/billing?status=cancelled"
     client = shared_service_client(settings, create_client)
     billing = get_org_billing(client, org_id)
-    offer = checkout_offer_for_org(client, org_id) if settings.commercial_offers_enabled else None
+    offer = (
+        checkout_offer_for_org(client, org_id)
+        if settings.commercial_offers_enabled
+        else None
+    )
     customer_id = billing.get("stripe_customer_id") if billing else None
     if not customer_id:
         try:
@@ -1229,20 +1620,36 @@ def create_checkout(
     if offer:
         verified_plan = plan_code_for_price(settings, price_id)
         if not verified_plan or (plan_code and verified_plan != plan_code):
-            raise HTTPException(status_code=422, detail="Offer requires a configured base plan price")
+            raise HTTPException(
+                status_code=422, detail="Offer requires a configured base plan price"
+            )
         plan_code = verified_plan
         init_stripe(settings)
         customer = stripe.Customer.retrieve(customer_id)
         if (customer.get("metadata") or {}).get("org_id") != org_id:
-            raise HTTPException(status_code=409, detail="Stripe customer ownership requires reconciliation")
-        subscriptions = stripe.Subscription.list(customer=customer_id, status="all", limit=100)
+            raise HTTPException(
+                status_code=409,
+                detail="Stripe customer ownership requires reconciliation",
+            )
+        subscriptions = stripe.Subscription.list(
+            customer=customer_id, status="all", limit=100
+        )
         if subscriptions.get("has_more") or any(
-            row.get("status") in {"active", "trialing", "past_due", "unpaid", "incomplete", "paused"}
+            row.get("status")
+            in {"active", "trialing", "past_due", "unpaid", "incomplete", "paused"}
             or (offer.get("trial_days") and row.get("trial_start"))
             for row in subscriptions.get("data", [])
         ):
-            raise HTTPException(status_code=409, detail="Existing subscription or prior trial requires founder review")
-        offer = reserve_checkout_offer(client, org_id, offer, customer_id, price_id, current_user["user_id"])
+            raise HTTPException(
+                status_code=409,
+                detail="Existing subscription or prior trial requires founder review",
+            )
+        from app.billing.safety import assert_promotion_cap
+
+        assert_promotion_cap(client, settings, org_id, offer, price_id)
+        offer = reserve_checkout_offer(
+            client, org_id, offer, customer_id, price_id, current_user["user_id"]
+        )
     try:
         session = create_checkout_session(
             settings=settings,
@@ -1289,7 +1696,10 @@ def create_checkout(
         action="billing.checkout.created",
         resource_type="org_billing",
         resource_id=str(org_id),
-        metadata={"plan_code": plan_code, "billing_interval": billing_interval or "monthly"},
+        metadata={
+            "plan_code": plan_code,
+            "billing_interval": billing_interval or "monthly",
+        },
     )
     return {"url": session.url, "checkout_url": session.url}
 
@@ -1305,18 +1715,26 @@ def create_subscription_payment(
     if settings.commercial_offers_enabled:
         offer_client = shared_service_client(settings, create_client)
         if checkout_offer_for_org(offer_client, org_id):
-            raise HTTPException(status_code=409, detail="Use Stripe Checkout to redeem your founder offer")
+            raise HTTPException(
+                status_code=409,
+                detail="Use Stripe Checkout to redeem your founder offer",
+            )
 
     plan_code = (body.plan_code or "").strip().lower() or None
     billing_interval = (body.billing_interval or "").strip().lower() or None
     price_id = (body.price_id or "").strip() or None
     if not price_id and plan_code:
-        price_id = price_id_for_plan(settings, plan_code, billing_interval=billing_interval)
+        price_id = price_id_for_plan(
+            settings, plan_code, billing_interval=billing_interval
+        )
     if not plan_code and price_id:
         mapped = plan_code_for_price(settings, price_id)
         plan_code = mapped or "free"
     if not price_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_detail("Invalid plan", "VALIDATION_ERROR"))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail("Invalid plan", "VALIDATION_ERROR"),
+        )
     if not settings.stripe_secret_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1402,12 +1820,17 @@ def create_public_checkout(
     billing_interval = (body.billing_interval or "").strip().lower() or None
     price_id = (body.price_id or "").strip() or None
     if not price_id and plan_code:
-        price_id = price_id_for_plan(settings, plan_code, billing_interval=billing_interval)
+        price_id = price_id_for_plan(
+            settings, plan_code, billing_interval=billing_interval
+        )
     if not plan_code and price_id:
         mapped = plan_code_for_price(settings, price_id)
         plan_code = mapped or "free"
     if not price_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_detail("Invalid plan", "VALIDATION_ERROR"))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail("Invalid plan", "VALIDATION_ERROR"),
+        )
     if not settings.stripe_secret_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1470,7 +1893,9 @@ def create_portal(
     billing = get_org_billing(client, org_id)
     customer_id = billing.get("stripe_customer_id") if billing else None
     if not customer_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stripe customer not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Stripe customer not found"
+        )
     app_url = (settings.public_app_url or "http://localhost:3000").rstrip("/")
     portal = create_customer_portal(
         settings=settings,
@@ -1503,7 +1928,14 @@ def update_seats(
     # full row by default (returning=representation).
     response = (
         client.table("subscriptions")
-        .upsert({"org_id": org_id, "seat_count": body.quantity, "updated_at": datetime.now(timezone.utc).isoformat()}, on_conflict="org_id")
+        .upsert(
+            {
+                "org_id": org_id,
+                "seat_count": body.quantity,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            on_conflict="org_id",
+        )
         .execute()
     )
     invalidate_org_state(org_id)
@@ -1532,15 +1964,21 @@ async def cancel_subscription(
     )
     sub_row = (sub_resp.data or [{}])[0]
     sub_id = str(
-        billing.get("stripe_subscription_id") or sub_row.get("stripe_subscription_id") or ""
+        billing.get("stripe_subscription_id")
+        or sub_row.get("stripe_subscription_id")
+        or ""
     ).strip()
     now = datetime.now(timezone.utc).isoformat()
 
     if sub_id and settings.stripe_secret_key:
-        from app.services.stripe_service import cancel_subscription as stripe_cancel_subscription
+        from app.services.stripe_service import (
+            cancel_subscription as stripe_cancel_subscription,
+        )
 
         try:
-            stripe_cancel_subscription(sub_id, immediate=not body.at_period_end, settings=settings)
+            stripe_cancel_subscription(
+                sub_id, immediate=not body.at_period_end, settings=settings
+            )
         except stripe.error.StripeError as exc:
             if body.at_period_end and _stripe_cancel_is_soft_fail(exc):
                 logger.warning(
@@ -1624,12 +2062,16 @@ async def reactivate_subscription(
     )
     sub_row = (sub_resp.data or [{}])[0]
     sub_id = str(
-        billing.get("stripe_subscription_id") or sub_row.get("stripe_subscription_id") or ""
+        billing.get("stripe_subscription_id")
+        or sub_row.get("stripe_subscription_id")
+        or ""
     ).strip()
     now = datetime.now(timezone.utc).isoformat()
 
     if sub_id and settings.stripe_secret_key:
-        from app.services.stripe_service import reactivate_subscription as stripe_reactivate_subscription
+        from app.services.stripe_service import (
+            reactivate_subscription as stripe_reactivate_subscription,
+        )
 
         try:
             stripe_reactivate_subscription(sub_id, settings=settings)
@@ -1705,11 +2147,22 @@ def list_invoices(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if org_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
     client = shared_service_client(settings, create_client)
-    sub_resp = client.table("subscriptions").select("stripe_customer_id").eq("org_id", org_id).limit(1).execute()
+    sub_resp = (
+        client.table("subscriptions")
+        .select("stripe_customer_id")
+        .eq("org_id", org_id)
+        .limit(1)
+        .execute()
+    )
     customer_id = ((sub_resp.data or [{}])[0]).get("stripe_customer_id")
-    invoices, _payment_methods = _fetch_invoices_and_payment_methods(settings, customer_id)
+    invoices, _payment_methods = _fetch_invoices_and_payment_methods(
+        settings, customer_id
+    )
     return {"invoices": invoices}
 
 
@@ -1721,14 +2174,19 @@ def download_invoice_pdf(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> Response:
     if org_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
     if not settings.stripe_secret_key:
         raise HTTPException(status_code=503, detail="Stripe is not configured")
     stripe.api_key = settings.stripe_secret_key
     try:
         invoice = stripe.Invoice.retrieve(invoice_id)
     except Exception as exc:
-        raise HTTPException(status_code=404, detail=f"Invoice not found: {exc}") from exc
+        raise HTTPException(
+            status_code=404, detail=f"Invoice not found: {exc}"
+        ) from exc
     pdf_url = invoice.get("invoice_pdf")
     if not pdf_url:
         raise HTTPException(status_code=404, detail="Invoice PDF unavailable")
@@ -1796,5 +2254,6 @@ async def handle_webhook(
     from app.routers.webhooks.stripe import stripe_webhook
 
     return await stripe_webhook(request, settings)
+
 
 # Deploy gate touch for Command plan billing fix (9b1d748c)

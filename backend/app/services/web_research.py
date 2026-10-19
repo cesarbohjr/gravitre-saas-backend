@@ -1,5 +1,8 @@
 """Shared web research — Serper primary (when selected), Tavily fallback, Google optional."""
+
 from __future__ import annotations
+
+import asyncio
 
 import hashlib
 from typing import Any
@@ -29,7 +32,9 @@ class SerperNotConfiguredError(WebResearchNotConfiguredError):
 
 def is_web_research_provider_configured(settings: Settings) -> bool:
     """True when the selected provider (or fallback) can run."""
-    provider = (getattr(settings, "web_research_provider", None) or "google").strip().lower()
+    provider = (
+        (getattr(settings, "web_research_provider", None) or "google").strip().lower()
+    )
     if provider == "tavily":
         return bool((getattr(settings, "tavily_api_key", None) or "").strip())
     if provider == "serper":
@@ -56,7 +61,13 @@ async def _search_tavily(
     api_key = (getattr(settings, "tavily_api_key", None) or "").strip()
     cleaned_query = (query or "").strip()
     if not cleaned_query:
-        return {"results": [], "sources": [], "totalResults": 0, "error": "Missing query", "provider": "tavily"}
+        return {
+            "results": [],
+            "sources": [],
+            "totalResults": 0,
+            "error": "Missing query",
+            "provider": "tavily",
+        }
     if not api_key:
         raise TavilyNotConfiguredError("TAVILY_API_KEY is not configured")
 
@@ -73,7 +84,11 @@ async def _search_tavily(
                 },
             )
         if resp.status_code >= 400:
-            logger.warning("tavily_search_http_error status=%s query=%s", resp.status_code, cleaned_query[:120])
+            logger.warning(
+                "tavily_search_http_error status=%s query=%s",
+                resp.status_code,
+                cleaned_query[:120],
+            )
             return {
                 "results": [],
                 "sources": [],
@@ -83,7 +98,9 @@ async def _search_tavily(
             }
         payload = resp.json()
     except Exception as exc:  # noqa: BLE001
-        logger.warning("tavily_search_failed query=%s error=%s", cleaned_query[:120], str(exc))
+        logger.warning(
+            "tavily_search_failed query=%s error=%s", cleaned_query[:120], str(exc)
+        )
         return {
             "results": [],
             "sources": [],
@@ -123,7 +140,13 @@ async def _search_serper(
     api_key = (getattr(settings, "serper_api_key", None) or "").strip()
     cleaned_query = (query or "").strip()
     if not cleaned_query:
-        return {"results": [], "sources": [], "totalResults": 0, "error": "Missing query", "provider": "serper"}
+        return {
+            "results": [],
+            "sources": [],
+            "totalResults": 0,
+            "error": "Missing query",
+            "provider": "serper",
+        }
     if not api_key:
         raise SerperNotConfiguredError("SERPER_API_KEY is not configured")
 
@@ -150,7 +173,9 @@ async def _search_serper(
             }
         payload = resp.json()
     except Exception as exc:  # noqa: BLE001
-        logger.warning("serper_search_failed query=%s error=%s", cleaned_query[:120], str(exc))
+        logger.warning(
+            "serper_search_failed query=%s error=%s", cleaned_query[:120], str(exc)
+        )
         return {
             "results": [],
             "sources": [],
@@ -232,6 +257,11 @@ async def search_web(
         }
 
     if org_id and client is not None:
+        from app.billing.safety import reserve_trial_units
+
+        await asyncio.to_thread(
+            reserve_trial_units, client, active_settings, org_id, "research_lookups", 1
+        )
         circuit = check_org_grounding_circuit(client, org_id, active_settings)
         if circuit.get("blocked"):
             return {
@@ -243,9 +273,15 @@ async def search_web(
                 **query_meta,
             }
 
-    provider = (getattr(active_settings, "web_research_provider", None) or "google").strip().lower()
+    provider = (
+        (getattr(active_settings, "web_research_provider", None) or "google")
+        .strip()
+        .lower()
+    )
     capped = max(1, min(int(max_results), 10))
-    fallback_enabled = bool(getattr(active_settings, "web_research_fallback_tavily", True))
+    fallback_enabled = bool(
+        getattr(active_settings, "web_research_fallback_tavily", True)
+    )
 
     payload: dict[str, Any] | None = None
     errors: list[str] = []
@@ -254,7 +290,9 @@ async def search_web(
 
     if provider == "serper":
         try:
-            payload = await _search_serper(governed_query, settings=active_settings, max_results=capped)
+            payload = await _search_serper(
+                governed_query, settings=active_settings, max_results=capped
+            )
             need_fb, reason = _should_fallback_from_primary(payload)
             if need_fb and fallback_enabled:
                 fallback_from = "serper"
@@ -317,7 +355,9 @@ async def search_web(
         # Direct tavily, or fallback after serper/google failure
         if provider == "tavily" or fallback_enabled:
             try:
-                payload = await _search_tavily(governed_query, settings=active_settings, max_results=capped)
+                payload = await _search_tavily(
+                    governed_query, settings=active_settings, max_results=capped
+                )
                 if fallback_from and payload is not None:
                     payload["fallback_from"] = fallback_from
                     payload["fallback_reason"] = fallback_reason
@@ -337,7 +377,9 @@ async def search_web(
                     )
                 raise WebResearchNotConfiguredError("; ".join(errors))
         else:
-            raise WebResearchNotConfiguredError(errors[0] if errors else "Internet research provider unavailable")
+            raise WebResearchNotConfiguredError(
+                errors[0] if errors else "Internet research provider unavailable"
+            )
 
     if payload is not None:
         payload.update(query_meta)
@@ -356,7 +398,13 @@ async def search_web(
             settings=active_settings,
         )
 
-    return payload or {"results": [], "sources": [], "totalResults": 0, "error": "no results", **query_meta}
+    return payload or {
+        "results": [],
+        "sources": [],
+        "totalResults": 0,
+        "error": "no results",
+        **query_meta,
+    }
 
 
 async def _record_usage_after_search(
@@ -398,4 +446,6 @@ async def _record_usage_after_search(
             extra_metadata=extra_meta or None,
         )
     except Exception as exc:  # noqa: BLE001
-        logger.warning("research_lookup_metering_failed org_id=%s error=%s", org_id, str(exc))
+        logger.warning(
+            "research_lookup_metering_failed org_id=%s error=%s", org_id, str(exc)
+        )
