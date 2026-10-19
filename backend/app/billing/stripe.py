@@ -293,17 +293,39 @@ def create_checkout_session(
     success_url: str,
     cancel_url: str,
     metadata: dict[str, Any],
+    offer: dict[str, Any] | None = None,
 ) -> stripe.checkout.Session:
     init_stripe(settings)
     line_items = _subscription_line_items(settings, price_id, quantity=1)
-    return stripe.checkout.Session.create(
-        mode="subscription",
-        customer=customer_id,
-        line_items=line_items,
-        success_url=success_url,
-        cancel_url=cancel_url,
-        metadata=metadata,
-    )
+    offer = offer or {}
+    checkout_args: dict[str, Any] = {
+        "mode": "subscription",
+        "customer": customer_id,
+        "line_items": line_items,
+        "success_url": success_url,
+        "cancel_url": cancel_url,
+        "metadata": {
+            **metadata,
+            **({"offer_grant_id": offer["grant_id"]} if offer.get("grant_id") else {}),
+        },
+        "subscription_data": {
+            "metadata": {
+                "org_id": str(metadata.get("org_id") or ""),
+                "plan_code": str(metadata.get("plan_code") or ""),
+                **({"offer_grant_id": offer["grant_id"]} if offer.get("grant_id") else {}),
+            }
+        },
+    }
+    if offer.get("trial_days"):
+        checkout_args["subscription_data"]["trial_period_days"] = offer["trial_days"]
+        # Collect a payment method before the trial; no immediate plan charge.
+        checkout_args["payment_method_collection"] = "always"
+    if offer.get("stripe_coupon_id"):
+        checkout_args["discounts"] = [{"coupon": offer["stripe_coupon_id"]}]
+    else:
+        # Stripe validates codes, redemption limits, expirations and restrictions.
+        checkout_args["allow_promotion_codes"] = True
+    return stripe.checkout.Session.create(**checkout_args)
 
 
 def create_customer_portal(settings: Settings, customer_id: str, return_url: str) -> stripe.billing_portal.Session:
