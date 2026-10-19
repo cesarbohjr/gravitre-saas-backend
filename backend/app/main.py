@@ -727,6 +727,9 @@ app.include_router(org.organizations_router)
 # MSP grants are storage-only until tenant isolation acceptance; no inherited access.
 from app.routers import msp_delegations
 app.include_router(msp_delegations.router)
+# MSP partner program: wholesale billing, client workspaces, rebilling.
+from app.routers import msp_program
+app.include_router(msp_program.router)
 app.include_router(billing.router)
 app.include_router(billing_sync.internal_router)
 app.include_router(billing_sync.admin_router)

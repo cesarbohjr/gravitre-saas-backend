@@ -60,6 +60,7 @@ from app.core.org_state_cache import (
     org_tag,
 )
 from app.workflows.audit import write_audit_event
+from app.billing.msp_billing import assert_not_msp_billed
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/billing", tags=["billing"])
@@ -1586,6 +1587,7 @@ def create_checkout(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     current_user, org_id, _role = member
+    assert_not_msp_billed(settings, org_id)
     plan_code = (body.plan_code or "").strip().lower() or None
     billing_interval = (body.billing_interval or "").strip().lower() or None
     price_id = (body.price_id or "").strip() or None
@@ -1719,6 +1721,7 @@ def create_subscription_payment(
 ) -> dict:
     """Create an incomplete Stripe subscription and return Payment Element client_secret."""
     current_user, org_id, _role = member
+    assert_not_msp_billed(settings, org_id)
     if settings.commercial_offers_enabled:
         offer_client = shared_service_client(settings, create_client)
         if checkout_offer_for_org(offer_client, org_id):

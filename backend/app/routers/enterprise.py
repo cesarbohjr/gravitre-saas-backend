@@ -262,6 +262,10 @@ def get_branding(
     if org_settings != raw_settings:
         _save_org_settings(client, org_id, org_settings)
     branding = get_org_branding(org_settings)
+    # MSP client workspaces with no branding of their own show their partner's.
+    from app.services.msp_branding import apply_inherited_branding
+
+    branding = apply_inherited_branding(client, org_id, org_settings, branding)
     token = branding.get("domainVerificationToken")
     domain = branding.get("customDomain")
     if domain and token:

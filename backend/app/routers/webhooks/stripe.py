@@ -322,6 +322,13 @@ def _apply_stripe_event(
     org_id: str | None,
     event: Any,
 ) -> None:
+    # MSP wholesale subscriptions belong to the partner program, never to the
+    # MSP's own org_billing row; handle them separately and stop here.
+    from app.billing.msp_billing import apply_wholesale_event, is_wholesale_event
+
+    if is_wholesale_event(client, event_type, data, metadata):
+        apply_wholesale_event(client, settings, event_type, data, metadata)
+        return
 
     if event_type in {
         "checkout.session.completed",
