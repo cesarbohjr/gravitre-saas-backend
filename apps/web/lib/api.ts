@@ -1567,6 +1567,17 @@ export interface MCPAdminTool {
 export const mcpAdminApi = {
   listServers: () =>
     fetcher<{ servers: MCPAdminServer[] }>(apiUrl("/api/admin/mcp/servers")),
+  createServer: (body: {
+    serverName: string
+    serverUrl: string
+    authType: "none" | "bearer" | "api_key"
+    authConfig?: { bearer_token?: string; api_key?: string; header?: string }
+  }) =>
+    postJson<{ server: MCPAdminServer }>(apiUrl("/api/admin/mcp/servers"), {
+      ...body,
+      transport: "streamable_http",
+      enabled: true,
+    }),
   patchServer: (serverId: string, enabled: boolean) =>
     patchJson<{ server: MCPAdminServer }>(
       apiUrl(`/api/admin/mcp/servers/${encodeURIComponent(serverId)}`),

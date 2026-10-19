@@ -12,6 +12,8 @@ import {
   Link2,
   ListChecks,
   Lock,
+  Palette,
+  PlugZap,
   Server,
   ShieldCheck,
   Sparkles,
@@ -55,6 +57,8 @@ export type SettingsSectionId =
   | "federation"
   | "environments"
   | "clients"
+  | "branding"
+  | "mcp-servers"
 
 export interface SettingsSection {
   id: SettingsSectionId
@@ -112,6 +116,16 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     href: "/settings?section=organization",
   },
   {
+    id: "branding",
+    title: "Branding",
+    description: "Your logo, accent color, sender name and custom domain, shown to everyone in this workspace.",
+    group: "workspace",
+    icon: Palette,
+    tier: "admin",
+    href: "/settings?section=branding",
+    adminOnly: true,
+  },
+  {
     id: "ai-models",
     title: "AI models",
     description: "How Gravitre picks models for your agents, how chat memory matches the people and channels you mention, and which customer data it may use.",
@@ -123,7 +137,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "security",
     title: "Security",
-    description: "Sign in, single sign on and access controls for everyone in this workspace.",
+    description: "Sign in, single sign on, access controls, where your data is stored and SIEM export.",
     group: "workspace",
     icon: Lock,
     tier: "organization",
@@ -187,7 +201,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     id: "clients",
     title: "Clients",
     description:
-      "Partner program for MSPs. You pay Gravitre the wholesale price for each client and bill them your own price. The difference is your margin.",
+      "For MSPs reselling Gravitre. You pay Gravitre the wholesale price for each client workspace and bill them your own price. The difference is your margin.",
     group: "people",
     icon: HandCoins,
     tier: "organization",
@@ -225,7 +239,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "enterprise",
     title: "Enterprise",
-    description: "Advanced controls for data residency, white labeling, workforce analytics and security.",
+    description: "Reports for admins: integration health, agent work by team, cost and agent ROI.",
     group: "advanced",
     icon: Briefcase,
     tier: "admin",
@@ -235,11 +249,21 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "federation",
     title: "Federation and B2B",
-    description: "Work with partner organizations safely. Both sides must consent before any agent handoff, connector grant or delegated task crosses org boundaries.",
+    description: "Work with another company as an equal partner. Both sides must consent before any agent handoff, connector grant or delegated task crosses org boundaries. Billing is not shared.",
     group: "advanced",
     icon: Link2,
     tier: "admin",
     href: "/settings/federation",
+    adminOnly: true,
+  },
+  {
+    id: "mcp-servers",
+    title: "MCP servers",
+    description: "Connect outside MCP servers so your agents can use their tools.",
+    group: "advanced",
+    icon: PlugZap,
+    tier: "admin",
+    href: "/marketplace/capabilities?filter=mcp#mcp-servers",
     adminOnly: true,
   },
   {
@@ -291,6 +315,7 @@ export const WIDE_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   "meson-addons",
   "ai-models",
   "clients",
+  "branding",
 ])
 
 export function settingsHrefForSection(section: SettingsSectionId): string {
@@ -314,6 +339,7 @@ export function settingsSectionsForTier(
 const GROUP_ORDER: Partial<Record<SettingsSectionId, number>> = {
   organizations: 0,
   organization: 1,
+  branding: 1.5,
   security: 2,
   "api-keys": 3,
   notifications: 4,
@@ -327,6 +353,7 @@ const GROUP_ORDER: Partial<Record<SettingsSectionId, number>> = {
   clients: 5,
   federation: 0,
   enterprise: 1,
+  "mcp-servers": 2,
   audit: 0,
   environments: 1,
   approvals: 2,

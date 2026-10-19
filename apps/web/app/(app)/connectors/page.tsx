@@ -21,6 +21,9 @@ import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
 import { AvailableConnectorsStrip } from "@/components/connectors/available-connectors-strip"
 import { DATA_REMOVAL_KEY, DataRemovalReceipts, DisconnectImpact, useDataRemoval } from "@/components/connectors/data-removal"
+import { EnterpriseKnowledgeSync } from "@/components/settings/enterprise-knowledge-sync"
+import "@/components/settings/settings-kit.css"
+import "@/components/settings/enterprise-sections.css"
 import {
   ConnectorAttentionList,
   ResponsiveConnectorInspector,
@@ -3488,6 +3491,15 @@ function ConnectorsPageContent() {
           </>
           )}
           {!chromeCollapsed ? <DataRemovalReceipts className="mt-8" /> : null}
+          {!chromeCollapsed && isAdmin ? (
+            // Moved here from Settings > Enterprise: sync status belongs next to the connectors it reads.
+            <section id="knowledge-sync" aria-labelledby="knowledge-sync-heading" className="gv-set mt-8 flex scroll-mt-20 flex-col gap-3">
+              <h2 id="knowledge-sync-heading" className="text-[13px] font-semibold text-foreground">
+                Knowledge sync
+              </h2>
+              <EnterpriseKnowledgeSync isAdmin={isAdmin} />
+            </section>
+          ) : null}
           {!chromeCollapsed && connectors.length > 0 ? (
             <div className="-mx-4 mt-8 border-t border-[color:var(--g-border-default)] pt-2 md:-mx-6" data-testid="connectors-discovery">
               <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />

@@ -217,7 +217,7 @@ export function SecuritySettings({ isAdmin = false }: { isAdmin?: boolean }) {
       <SetHeader
         crumb="Settings / Workspace"
         title="Security"
-        description="Sign in, single sign on and access controls for everyone in this workspace."
+        description="Sign in, single sign on, access controls, where your data is stored and SIEM export."
       />
       <p className="sr-only" role="status" aria-live="polite">
         {announce}

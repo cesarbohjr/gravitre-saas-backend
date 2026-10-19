@@ -1,22 +1,20 @@
 "use client"
 
 /**
- * Settings > Enterprise (design p18). Admin only. A left section menu
- * (aria-pressed, linkable through ?section=) switches between the design's
- * seven sections plus SIEM export, which the page already had. Each section
- * lives in components/settings/enterprise-*.tsx and reads real data only.
+ * Settings > Enterprise (design p18). Admin only, reports only. A left section
+ * menu (aria-pressed, linkable through ?section=) switches between Command
+ * center, Workforce, Cost attribution and Agent ROI. Knowledge sync moved to
+ * Connectors, White label to Settings > Branding, Data residency and SIEM
+ * export to Settings > Security; old links to them redirect there. Each
+ * section lives in components/settings/enterprise-*.tsx and reads real data only.
  */
-import { Suspense } from "react"
+import { Suspense, useEffect } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import {
-  BookOpen,
   DollarSign,
-  Globe,
   HeartPulse,
   LineChart,
-  Palette,
-  ShieldAlert,
   Users,
   type LucideIcon,
 } from "lucide-react"
@@ -25,28 +23,24 @@ import { SettingsShell } from "@/components/settings/settings-shell"
 import { SetNote, SetSkeleton } from "@/components/settings/settings-kit"
 import { PlatformOrgViewBanner } from "@/components/enterprise/platform-org-view-banner"
 import { EnterpriseCommandCenter } from "@/components/settings/enterprise-command-center"
-import { EnterpriseKnowledgeSync } from "@/components/settings/enterprise-knowledge-sync"
-import { EnterpriseResidency } from "@/components/settings/enterprise-residency"
-import { EnterpriseWhiteLabel } from "@/components/settings/enterprise-white-label"
 import { EnterpriseWorkforce } from "@/components/settings/enterprise-workforce"
 import { EnterpriseCost } from "@/components/settings/enterprise-cost"
 import { EnterpriseRoi } from "@/components/settings/enterprise-roi"
-import { EnterpriseSiem } from "@/components/settings/enterprise-siem"
 import "@/components/settings/enterprise-sections.css"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { fetcher } from "@/lib/fetcher"
-import { resolveEnterpriseSection, type EnterpriseSectionId } from "@/lib/settings-api/enterprise"
+import {
+  movedEnterpriseSectionHref,
+  resolveEnterpriseSection,
+  type EnterpriseSectionId,
+} from "@/lib/settings-api/enterprise"
 
 const SECTIONS: { id: EnterpriseSectionId; label: string; description: string; icon: LucideIcon }[] = [
   { id: "command-center", label: "Command center", description: "Integration health and recommendations", icon: HeartPulse },
-  { id: "knowledge-sync", label: "Knowledge sync", description: "Connector ingest jobs and manual sync", icon: BookOpen },
-  { id: "data-residency", label: "Data residency", description: "Where your data is stored", icon: Globe },
-  { id: "white-label", label: "White label", description: "Logo, color and domain", icon: Palette },
   { id: "workforce", label: "Workforce", description: "Agent task counts by team", icon: Users },
   { id: "cost", label: "Cost attribution", description: "Spend by agent and department", icon: DollarSign },
   { id: "agent-roi", label: "Agent ROI", description: "Cost against estimated labor value", icon: LineChart },
-  { id: "siem", label: "SIEM export", description: "Stream audit events to your SIEM", icon: ShieldAlert },
 ]
 
 export default function EnterprisePage() {
@@ -63,6 +57,10 @@ function EnterprisePageContent() {
   const pathname = usePathname()
   // The URL is the source of truth for the section, so sections can be linked.
   const active = resolveEnterpriseSection(searchParams.get("section"), searchParams.get("tab"))
+  const movedHref = movedEnterpriseSectionHref(searchParams.get("section"), searchParams.get("tab"))
+  useEffect(() => {
+    if (movedHref) router.replace(movedHref)
+  }, [movedHref, router])
   const { user, loading } = useAuth()
   const { data: me } = useSWR(user ? "/api/auth/me" : null, fetcher)
   const isPlatformAdmin = Boolean((me as { platformAdmin?: boolean } | undefined)?.platformAdmin)
@@ -117,13 +115,9 @@ function EnterprisePageContent() {
             </nav>
             <div className="ent-body">
               {active === "command-center" && <EnterpriseCommandCenter />}
-              {active === "knowledge-sync" && <EnterpriseKnowledgeSync isAdmin={canAct} />}
-              {active === "data-residency" && <EnterpriseResidency isAdmin={canAct} />}
-              {active === "white-label" && <EnterpriseWhiteLabel isAdmin={canAct} />}
               {active === "workforce" && <EnterpriseWorkforce />}
               {active === "cost" && <EnterpriseCost />}
               {active === "agent-roi" && <EnterpriseRoi isAdmin={canAct} />}
-              {active === "siem" && <EnterpriseSiem isAdmin={canAct} />}
             </div>
           </div>
         )}

@@ -21,6 +21,14 @@ import {
   GravitreSurface,
 } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -170,6 +178,15 @@ export default function CapabilityMarketplacePage() {
     Record<string, { secret: string; header: string }>
   >({})
   const [mcpBusy, setMcpBusy] = useState<string | null>(null)
+  const [mcpConnectOpen, setMcpConnectOpen] = useState(false)
+  const [mcpConnectBusy, setMcpConnectBusy] = useState(false)
+  const [mcpConnect, setMcpConnect] = useState<{
+    name: string
+    url: string
+    authType: "none" | "bearer" | "api_key"
+    secret: string
+    header: string
+  }>({ name: "", url: "", authType: "none", secret: "", header: "X-API-Key" })
   const [historyPackageId, setHistoryPackageId] = useState<string | null>(null)
   const [historyBusy, setHistoryBusy] = useState<string | null>(null)
   const [trustedPublisherName, setTrustedPublisherName] = useState("")
@@ -267,9 +284,7 @@ export default function CapabilityMarketplacePage() {
   )
   const marketplaceRows = marketplaces.data?.items ?? []
   const candidateRows = candidates.data?.items ?? []
-  const portableMcpServers = (mcpServers.data?.servers ?? []).filter((server) =>
-    Boolean(server.source_capability_package_id),
-  )
+  const portableMcpServers = mcpServers.data?.servers ?? []
   const portableMcpTools = mcpTools.data?.tools ?? []
   const pendingCandidates = candidateRows.filter(
     (row) => row.status === "pending_review",
@@ -302,6 +317,19 @@ export default function CapabilityMarketplacePage() {
   }, [adminLoading, isAdmin, router, user])
 
   const operationLocks = useRef<Record<string, boolean>>({})
+
+  // Settings > MCP servers links here as ?filter=mcp#mcp-servers.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (new URLSearchParams(window.location.search).get("filter") === "mcp") setCapabilityFilter("mcp")
+  }, [])
+  const mcpSectionReady = Boolean(isAdmin && mcpServers.data)
+  useEffect(() => {
+    if (!mcpSectionReady || typeof window === "undefined") return
+    if (window.location.hash === "#mcp-servers") {
+      document.getElementById("mcp-servers")?.scrollIntoView({ block: "start" })
+    }
+  }, [mcpSectionReady])
   const [decision, setDecision] = useState<{
     title: string
     description: string
@@ -615,6 +643,50 @@ export default function CapabilityMarketplacePage() {
     }
   }
 
+  const mcpConnectUrlValid = /^https?:\/\/[^\s/]+/i.test(mcpConnect.url.trim())
+  const mcpConnectReady =
+    Boolean(mcpConnect.name.trim()) &&
+    mcpConnectUrlValid &&
+    (mcpConnect.authType === "none" || Boolean(mcpConnect.secret.trim()))
+
+  async function connectMcpServer(event: FormEvent) {
+    event.preventDefault()
+    if (!mcpConnectReady || operationLocks.current.mcp) return
+    operationLocks.current.mcp = true
+    setMcpConnectBusy(true)
+    try {
+      const { server } = await mcpAdminApi.createServer({
+        serverName: mcpConnect.name.trim(),
+        serverUrl: mcpConnect.url.trim(),
+        authType: mcpConnect.authType,
+        authConfig:
+          mcpConnect.authType === "bearer"
+            ? { bearer_token: mcpConnect.secret.trim() }
+            : mcpConnect.authType === "api_key"
+              ? { api_key: mcpConnect.secret.trim(), header: mcpConnect.header.trim() || "X-API-Key" }
+              : undefined,
+      })
+      setMcpConnectOpen(false)
+      setMcpConnect({ name: "", url: "", authType: "none", secret: "", header: "X-API-Key" })
+      try {
+        const result = await mcpAdminApi.discoverTools(server.id)
+        toast.success(`${server.server_name} connected`, {
+          description: `${result.count} tool${result.count === 1 ? "" : "s"} found. Grant them to an agent on its page before it can use them.`,
+        })
+      } catch (error) {
+        toast.warning(`${server.server_name} was added, but its tools could not be listed`, {
+          description: error instanceof Error ? error.message : "Check the URL and credentials, then use Discover tools.",
+        })
+      }
+      await Promise.allSettled([mcpServers.mutate(), mcpTools.mutate()])
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not connect the MCP server")
+    } finally {
+      operationLocks.current.mcp = false
+      setMcpConnectBusy(false)
+    }
+  }
+
   async function discoverMcp(serverId: string) {
     if (operationLocks.current.mcp) return
     operationLocks.current.mcp = true
@@ -622,7 +694,7 @@ export default function CapabilityMarketplacePage() {
     try {
       const result = await mcpAdminApi.discoverTools(serverId)
       toast.success("MCP tools discovered", {
-        description: `${result.count} tool${result.count === 1 ? "" : "s"} found. Portable-package tools remain disabled until approved.`,
+        description: `${result.count} tool${result.count === 1 ? "" : "s"} found. Package tools stay off until you enable them, and an agent can only use a tool after you grant it on the agent's page.`,
       })
       await Promise.allSettled([mcpTools.mutate()])
     } catch (error) {
@@ -2039,23 +2111,31 @@ export default function CapabilityMarketplacePage() {
           ) : null}
 
           {isAdmin ? (
+            <div id="mcp-servers" className="scroll-mt-20">
             <GravitreSurface className="p-0">
-              <div className="border-b border-divide px-4 py-3">
-                <h2 className="text-sm font-medium text-foreground">
-                  Portable MCP review
-                </h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Capability-declared MCP servers are prepared disabled.
-                  Discover tools first, then explicitly enable the server and
-                  only the tools you approve.
-                </p>
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-divide px-4 py-3">
+                <div className="min-w-0">
+                  <h2 className="text-sm font-medium text-foreground">
+                    MCP servers
+                  </h2>
+                  <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
+                    Connect an outside MCP server by its URL, or prepare one
+                    declared by an installed capability. Servers from a
+                    capability start disabled until you approve them and their
+                    tools. Either way, an agent can only call a tool after you
+                    grant it on that agent&apos;s page.
+                  </p>
+                </div>
+                <Button size="sm" onClick={() => setMcpConnectOpen(true)}>
+                  Connect by URL
+                </Button>
               </div>
               {portableMcpServers.length === 0 ? (
                 <div className="p-4">
                   <GravitreEmpty
                     illustration="moment-focus-time"
-                    title="No prepared MCP dependencies"
-                    hint="Use Prepare MCP on an installed capability that declares remote MCP servers."
+                    title="No MCP servers yet"
+                    hint="Connect one by URL, or use Prepare MCP on an installed capability that declares remote MCP servers."
                   />
                 </div>
               ) : (
@@ -2259,6 +2339,7 @@ export default function CapabilityMarketplacePage() {
                 </ul>
               )}
             </GravitreSurface>
+            </div>
           ) : null}
 
           <GravitreSurface className="p-0">
@@ -2384,6 +2465,101 @@ export default function CapabilityMarketplacePage() {
           </GravitreSurface>
         </div>
       </div>
+      <Dialog open={mcpConnectOpen} onOpenChange={(open) => !mcpConnectBusy && setMcpConnectOpen(open)}>
+        <DialogContent>
+          <form onSubmit={(event) => void connectMcpServer(event)} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Connect an MCP server</DialogTitle>
+              <DialogDescription>
+                Gravitre connects over Streamable HTTP. The server must be reachable on the public internet.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-1.5">
+              <Label htmlFor="mcp-connect-name">Name</Label>
+              <Input
+                id="mcp-connect-name"
+                value={mcpConnect.name}
+                onChange={(event) => setMcpConnect((c) => ({ ...c, name: event.target.value }))}
+                placeholder="Acme docs"
+                autoComplete="off"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="mcp-connect-url">Server URL</Label>
+              <Input
+                id="mcp-connect-url"
+                type="url"
+                inputMode="url"
+                value={mcpConnect.url}
+                onChange={(event) => setMcpConnect((c) => ({ ...c, url: event.target.value }))}
+                placeholder="https://mcp.example.com/mcp"
+                autoComplete="off"
+                aria-invalid={Boolean(mcpConnect.url.trim()) && !mcpConnectUrlValid}
+              />
+              {mcpConnect.url.trim() && !mcpConnectUrlValid ? (
+                <p className="text-xs text-destructive">Enter a full http(s) URL.</p>
+              ) : null}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="mcp-connect-auth">Authentication</Label>
+              <select
+                id="mcp-connect-auth"
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                value={mcpConnect.authType}
+                onChange={(event) =>
+                  setMcpConnect((c) => ({
+                    ...c,
+                    authType: event.target.value as "none" | "bearer" | "api_key",
+                  }))
+                }
+              >
+                <option value="none">None</option>
+                <option value="bearer">Bearer token</option>
+                <option value="api_key">API key header</option>
+              </select>
+            </div>
+            {mcpConnect.authType !== "none" ? (
+              <div className={mcpConnect.authType === "api_key" ? "grid gap-3 sm:grid-cols-[1fr_10rem]" : ""}>
+                <div className="space-y-1.5">
+                  <Label htmlFor="mcp-connect-secret">
+                    {mcpConnect.authType === "bearer" ? "Bearer token" : "API key"}
+                  </Label>
+                  <Input
+                    id="mcp-connect-secret"
+                    type="password"
+                    autoComplete="off"
+                    value={mcpConnect.secret}
+                    onChange={(event) => setMcpConnect((c) => ({ ...c, secret: event.target.value }))}
+                  />
+                </div>
+                {mcpConnect.authType === "api_key" ? (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="mcp-connect-header">Header</Label>
+                    <Input
+                      id="mcp-connect-header"
+                      value={mcpConnect.header}
+                      onChange={(event) => setMcpConnect((c) => ({ ...c, header: event.target.value }))}
+                      autoComplete="off"
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            <p className="text-xs text-muted-foreground">
+              Credentials are stored encrypted. After connecting, Gravitre lists the server&apos;s tools. Grant the
+              ones you want on each agent&apos;s page.
+            </p>
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={mcpConnectBusy} onClick={() => setMcpConnectOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!mcpConnectReady || mcpConnectBusy}>
+                {mcpConnectBusy ? "Connecting…" : "Connect"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
       {decision ? (
         <WorkDecisionDialog {...decision} onCancel={() => setDecision(null)} />
       ) : null}
