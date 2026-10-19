@@ -2,8 +2,8 @@
 -- All writes go through service-role-only, platform-admin endpoints.
 create table if not exists public.org_commercial_profiles (
   org_id uuid primary key references public.organizations(id) on delete cascade,
-  customer_category text not null default 'external'
-    check (customer_category in ('external','internal','test')),
+  customer_category text not null default 'unreviewed'
+    check (customer_category in ('unreviewed','external','internal','test')),
   classification_reason text,
   classified_by uuid,
   classified_at timestamptz not null default now(),
@@ -39,3 +39,14 @@ revoke all on public.org_promotional_grants from public, anon, authenticated;
 grant select, insert, update on public.org_commercial_profiles to service_role;
 grant select, insert, update on public.org_promotional_grants to service_role;
 -- No direct browser writes and no customer ability to grant themselves a promotion.
+
+-- Evidence-based classification from the 2026-10-18 Stripe audit.
+-- Unknown organizations remain unreviewed, never automatically counted as customers.
+insert into public.org_commercial_profiles (org_id, customer_category, classification_reason)
+values
+('cbbf993b-b22f-41ce-964b-1fc25e0dd9ea', 'internal', 'Founder-owned workspace, Stripe reconciliation 2026-10-18'),
+('28d91c1f-63e6-4c62-9eb7-519212635b64', 'internal', 'Founder-owned workspace, Stripe reconciliation 2026-10-18'),
+('d797d382-8038-456c-ab9e-ac0b750c3a92', 'test', 'click-audit workspace, Stripe reconciliation 2026-10-18'),
+('e94447a9-1442-427e-9fef-d3515f302d93', 'test', 'click-audit workspace, Stripe reconciliation 2026-10-18'),
+('658c76b3-04b7-489b-bb7e-64a5f3ec1cbe', 'test', 'isolated conversation smoke workspace, Stripe reconciliation 2026-10-18')
+on conflict (org_id) do nothing;
