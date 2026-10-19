@@ -402,25 +402,11 @@ def _apply_stripe_event(
     if event_type == "customer.subscription.deleted":
         _apply_subscription_deleted(client, org_id=org_id, data=data)
 
-    if event_type == "invoice.payment_succeeded":
-        if org_id:
-            now = datetime.now(timezone.utc).isoformat()
-            client.table("subscriptions").update(
-                {"status": "active", "updated_at": now}
-            ).eq("org_id", org_id).execute()
-            client.table("org_billing").update(
-                {"billing_status": "active", "updated_at": now}
-            ).eq("org_id", org_id).execute()
-
-    if event_type == "invoice.payment_failed":
-        if org_id:
-            now = datetime.now(timezone.utc).isoformat()
-            client.table("subscriptions").update(
-                {"status": "past_due", "updated_at": now}
-            ).eq("org_id", org_id).execute()
-            client.table("org_billing").update(
-                {"billing_status": "past_due", "updated_at": now}
-            ).eq("org_id", org_id).execute()
+    # Invoice events are payment evidence, not subscription lifecycle evidence.
+    # An invoice may belong to a previous, expired subscription, may be $0,
+    # or may be delivered out of order. Only subscription lifecycle events may
+    # update subscription/billing status; Stripe remains authoritative.
+    # Retain invoice events in the immutable event audit below.
 
     if event_type == "account.updated":
         from app.services.marketplace_billing_service import handle_connect_account_updated
