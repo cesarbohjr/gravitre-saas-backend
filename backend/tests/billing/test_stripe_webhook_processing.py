@@ -148,7 +148,8 @@ def test_plan_from_subscription_items_skips_metered_and_reads_command():
     assert stripe_webhook_router._plan_from_subscription_items(settings, data) == "command"
 
 
-def test_checkout_completed_writes_plan_code_from_metadata(monkeypatch):
+@pytest.mark.parametrize("remote_status,expected_status", [("active", "active"), ("trialing", "trialing"), ("incomplete_expired", "inactive")])
+def test_checkout_completed_writes_plan_code_from_metadata(monkeypatch, remote_status, expected_status):
     import sys
     import types
 
@@ -163,7 +164,7 @@ def test_checkout_completed_writes_plan_code_from_metadata(monkeypatch):
         "metadata": metadata,
     }
     monkeypatch.setattr(stripe_webhook_router.stripe.Subscription, "retrieve",
-                        lambda _id: {"id": "sub_cmd", "customer": "cus_cmd", "status": "active"})
+                        lambda _id: {"id": "sub_cmd", "customer": "cus_cmd", "status": remote_status})
     fake_entitlements = types.ModuleType("app.marketplace.entitlements")
     fake_entitlements.fulfill_entitlement_from_checkout = lambda *_a, **_k: None
     monkeypatch.setitem(sys.modules, "app.marketplace.entitlements", fake_entitlements)
@@ -180,6 +181,8 @@ def test_checkout_completed_writes_plan_code_from_metadata(monkeypatch):
 
     assert client._store["subscriptions"][0]["tier"] == "command"
     assert client._store["org_billing"][0]["plan_code"] == "command"
+    assert client._store["subscriptions"][0]["status"] == expected_status
+    assert client._store["org_billing"][0]["billing_status"] == remote_status
 
 
 def test_subscription_deleted_writes_complete_terminal_state():
