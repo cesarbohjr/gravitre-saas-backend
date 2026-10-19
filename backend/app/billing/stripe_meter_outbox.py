@@ -21,6 +21,44 @@ logger = get_logger(__name__)
 SUPPORTED_METRICS = frozenset({"ai_credits", "research_lookups", "voice_minutes"})
 
 
+def _verified_active_meter_customer(client: Any, org_id: str, settings: Settings) -> tuple[str | None, str | None]:
+    """Fail closed unless local and live Stripe subscription identities agree.
+
+    A customer ID by itself is not proof of an active, billable subscription.
+    Never stage or claim a charge if Stripe cannot be reached for verification.
+    """
+    try:
+        rows = (
+            client.table("subscriptions")
+            .select("status,stripe_subscription_id,stripe_customer_id")
+            .eq("org_id", org_id)
+            .eq("status", "active")
+            .execute().data or []
+        )
+    except Exception:
+        logger.exception("meter_subscription_lookup_failed org_id=%s", org_id)
+        return None, "subscription_lookup_failed"
+    candidates = [
+        row for row in rows
+        if row.get("stripe_subscription_id") and row.get("stripe_customer_id")
+    ]
+    if len(candidates) != 1:
+        return None, "active_stripe_subscription_required"
+    local = candidates[0]
+    try:
+        stripe.api_key = settings.stripe_secret_key
+        remote = stripe.Subscription.retrieve(str(local["stripe_subscription_id"]))
+    except Exception:
+        logger.exception("meter_subscription_verification_failed org_id=%s", org_id)
+        return None, "stripe_subscription_verification_failed"
+    if remote.get("status") not in {"active", "trialing"}:
+        return None, "stripe_subscription_not_active"
+    if remote.get("customer") != local["stripe_customer_id"]:
+        return None, "stripe_subscription_customer_mismatch"
+    return str(local["stripe_customer_id"]), None
+
+
+
 def preview_meter_intents(
     org_id: str, metric_type: str, period_start: date, period_end: date, *, client: Any,
 ) -> dict[str, Any]:
@@ -114,11 +152,11 @@ def report_meter_intents(
         result["error"] = "closed_period_requires_manual_reconciliation"
         return result
 
-    # Resolve this once, before claiming any rows. No Stripe customer = no send.
-    from app.billing.stripe_metering import _get_customer_id
-    customer_id = _get_customer_id(client, org_id)
-    if not customer_id:
-        result["error"] = "no_customer"
+    # Validate an active subscription in both the local ledger and live Stripe.
+    # Do not stage or claim any intent when the two systems disagree.
+    customer_id, verification_error = _verified_active_meter_customer(client, org_id, settings)
+    if verification_error:
+        result["error"] = verification_error
         return result
 
     included = 0
