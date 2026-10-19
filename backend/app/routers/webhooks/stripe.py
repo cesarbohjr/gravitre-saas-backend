@@ -383,7 +383,7 @@ def _apply_stripe_event(
             client.table("org_billing").upsert(org_billing_row, on_conflict="org_id").execute()
             # Only signed Stripe Checkout completion can consume a founder grant.
             # Customer-supplied checkout parameters never grant promotions.
-            if getattr(settings, "commercial_offers_enabled", False):
+            if getattr(settings, "commercial_offers_enabled", False) and remote_status in {"active", "trialing"}:
                 grant_id = str(metadata.get("offer_grant_id") or "").strip()
                 if grant_id:
                     from app.billing.commercial_offers import redeem_checkout_offer
@@ -428,6 +428,24 @@ def _apply_stripe_event(
             if price_id:
                 org_billing_row["stripe_price_id"] = price_id
             client.table("org_billing").upsert(org_billing_row, on_conflict="org_id").execute()
+
+    # Asynchronous payment methods may activate after Checkout completion.
+    # Subscription lifecycle events can redeem a founder grant once Stripe
+    # confirms active/trialing, including when events arrive out of order.
+    if (
+        event_type in {"customer.subscription.created", "customer.subscription.updated"}
+        and org_id
+        and getattr(settings, "commercial_offers_enabled", False)
+        and str(data.get("status") or "") in {"active", "trialing"}
+    ):
+        grant_id = str((data.get("metadata") or {}).get("offer_grant_id") or "").strip()
+        if grant_id:
+            from app.billing.commercial_offers import redeem_checkout_offer
+            if redeem_checkout_offer(client, org_id, grant_id, str(data.get("id") or "")):
+                _write_event(
+                    client, org_id, "billing.founder_offer.redeemed",
+                    {"grant_id": grant_id, "subscription_id": str(data.get("id"))},
+                )
 
     if event_type == "customer.subscription.deleted":
         _apply_subscription_deleted(client, org_id=org_id, data=data)
