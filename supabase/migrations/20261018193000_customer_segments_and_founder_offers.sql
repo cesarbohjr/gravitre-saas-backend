@@ -44,11 +44,16 @@ grant select, insert, update on public.org_promotional_grants to service_role;
 
 -- Evidence-based classification from the 2026-10-18 Stripe audit.
 -- Unknown organizations remain unreviewed, never automatically counted as customers.
+-- Seed only if a matching production organization exists; clean local/staging
+-- resets have no founder/QA rows and must still apply successfully.
 insert into public.org_commercial_profiles (org_id, customer_category, classification_reason)
-values
+select source.org_id::uuid, source.customer_category, source.classification_reason
+from (values
 ('cbbf993b-b22f-41ce-964b-1fc25e0dd9ea', 'internal', 'Founder-owned workspace, Stripe reconciliation 2026-10-18'),
 ('28d91c1f-63e6-4c62-9eb7-519212635b64', 'internal', 'Founder-owned workspace, Stripe reconciliation 2026-10-18'),
 ('d797d382-8038-456c-ab9e-ac0b750c3a92', 'test', 'click-audit workspace, Stripe reconciliation 2026-10-18'),
 ('e94447a9-1442-427e-9fef-d3515f302d93', 'test', 'click-audit workspace, Stripe reconciliation 2026-10-18'),
 ('658c76b3-04b7-489b-bb7e-64a5f3ec1cbe', 'test', 'isolated conversation smoke workspace, Stripe reconciliation 2026-10-18')
+) as source(org_id, customer_category, classification_reason)
+join public.organizations as org on org.id = source.org_id::uuid
 on conflict (org_id) do nothing;
