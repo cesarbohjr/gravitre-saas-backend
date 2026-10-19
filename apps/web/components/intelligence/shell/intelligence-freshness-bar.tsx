@@ -37,7 +37,7 @@ export function IntelligenceFreshnessBar({
         updatedAt={showTimestamp ? generatedAt : null}
         isRefreshing={isRefreshing}
         onRefresh={onRefresh}
-        label={loadState === "READY" ? "Updated" : snapshotLoadStateLabel(loadState)}
+        label={loadState === "READY" ? "Refreshed" : snapshotLoadStateLabel(loadState)}
       />
       {loadState === "DEGRADED" ? (
         <span className="rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-warning">

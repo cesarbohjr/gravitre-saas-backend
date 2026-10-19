@@ -10,6 +10,7 @@ import {
   type AccountHealthDimension,
   type AccountHealthStatus,
 } from "@/lib/api"
+import { CustomerContextOffState } from "@/components/accounts/customer-context-off-state"
 
 const STATUS_LABEL: Record<AccountHealthStatus, string> = {
   at_risk: "At risk",
@@ -80,23 +81,37 @@ export function AccountHealthDetail({ entityId }: { entityId: string }) {
   )
 }
 
-/** Accounts with recent customer evidence, most at-risk first. Renders nothing while switched off. */
+const ACCOUNT_HEALTH_SHOWS =
+  "what customers are saying and doing, account by account: tone, urgency and churn-risk language in their emails, each with the words quoted."
+
+/**
+ * Accounts with recent customer evidence, most at-risk first. While the feature
+ * is switched off (404) or has nothing yet, it says so plainly instead of hiding.
+ */
 export function AccountHealthPanel() {
   const { data, error, isLoading, mutate } = useSWR("account-health-list", () => accountIntelligenceApi.healthList(20), {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
   })
   const [open, setOpen] = useState<string | null>(null)
+  const featureOff = isFeatureOff(error)
 
-  if (isFeatureOff(error)) return null
   return (
-    <section aria-labelledby="account-health-heading" className="space-y-3">
+    <section id="account-health" aria-labelledby="account-health-heading" className="scroll-mt-24 space-y-3">
       <div>
         <h2 id="account-health-heading" className="font-sans text-xl font-medium">Account health</h2>
         <p className="text-sm text-muted-foreground">What customers are saying and doing, account by account.</p>
       </div>
+      {featureOff ? (
+        <CustomerContextOffState
+          feature="Account health"
+          whatItShows={ACCOUNT_HEALTH_SHOWS}
+          reason="notAvailable"
+          emptyMessage="No account has enough recent customer messages yet."
+        />
+      ) : null}
       {isLoading && !data ? <p role="status" className="text-sm text-muted-foreground">Loading accounts…</p> : null}
-      {error && !data ? (
+      {error && !data && !featureOff ? (
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           Accounts couldn&apos;t load.
           <Button variant="outline" size="sm" className="min-h-11" onClick={() => void mutate()}>
@@ -105,7 +120,12 @@ export function AccountHealthPanel() {
         </div>
       ) : null}
       {data && data.accounts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No account has enough recent customer messages yet.</p>
+        <CustomerContextOffState
+          feature="Account health"
+          whatItShows={ACCOUNT_HEALTH_SHOWS}
+          reason="empty"
+          emptyMessage="No account has enough recent customer messages yet."
+        />
       ) : null}
       <ul className="divide-y divide-divide">
         {data?.accounts.map((a) => {

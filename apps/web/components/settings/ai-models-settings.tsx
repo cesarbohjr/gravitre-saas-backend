@@ -2,7 +2,7 @@
 
 import { Route } from "lucide-react"
 import { MemoryEntityEmbeddingsSettings } from "@/components/settings/memory-entity-embeddings-settings"
-import { SOURCE_GOVERNANCE_UI_ENABLED, SourceGovernanceSettings } from "@/components/settings/source-governance-settings"
+import { SourceGovernanceSettings } from "@/components/settings/source-governance-settings"
 import { SetHeader, SetIco } from "./settings-kit"
 import "./aimodels-settings.css"
 
@@ -17,7 +17,7 @@ export function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
       <SetHeader
         crumb="Settings / Workspace"
         title="AI models"
-        description="How Gravitre picks models for your agents, and how chat memory matches the people and channels you mention."
+        description="How Gravitre picks models for your agents, how chat memory matches the people and channels you mention, and which customer data it may use."
       />
       <section className="gs-card aimodels-routing" aria-label="Model routing">
         <div className="aimodels-routing-copy">
@@ -51,7 +51,7 @@ export function AIModelsSettings({ isAdmin }: { isAdmin: boolean }) {
         </div>
       </section>
       <MemoryEntityEmbeddingsSettings isAdmin={isAdmin} />
-      {SOURCE_GOVERNANCE_UI_ENABLED ? <SourceGovernanceSettings isAdmin={isAdmin} /> : null}
+      <SourceGovernanceSettings isAdmin={isAdmin} />
     </>
   )
 }

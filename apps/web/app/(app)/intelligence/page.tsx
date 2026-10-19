@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense, useEffect, useRef, useState } from "react"
+import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -52,6 +53,10 @@ function IntelligenceSectionRedirect() {
     }
     if (section === "predictive") {
       router.replace(APP_ROUTES.intelligencePredictive)
+      return
+    }
+    if (section === "accounts" || section === "account-health") {
+      router.replace(APP_ROUTES.intelligenceAccounts)
     }
   }, [router, searchParams])
   return null
@@ -185,12 +190,20 @@ function IntelligenceCenterInner() {
           title={copy.title}
           description={copy.description}
           actions={
-            <AskGravitreSummonButton
-              label="Ask about this page"
-              selected={selected}
-              prompt="Walk me through what Gravitre is learning right now: what signal came in today, which connections got stronger, and how close forecasts are to being scored."
-              className="inline-flex items-center rounded-[10px] bg-foreground px-3.5 text-[13px] text-background hover:no-underline hover:opacity-90 dark:text-background"
-            />
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href={APP_ROUTES.contextHelp}
+                className="text-[13px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              >
+                How Gravitre uses your context
+              </Link>
+              <AskGravitreSummonButton
+                label="Ask about this page"
+                selected={selected}
+                prompt="Walk me through what changed today: which signals came in from my connected tools, and what they mean."
+                className="inline-flex items-center rounded-[10px] bg-foreground px-3.5 text-[13px] text-background hover:no-underline hover:opacity-90 dark:text-background"
+              />
+            </div>
           }
         />
         <IntelligenceShell

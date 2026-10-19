@@ -112,7 +112,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "ai-models",
     title: "AI models",
-    description: "How Gravitre picks models for your agents, and how chat memory matches the people and channels you mention.",
+    description: "How Gravitre picks models for your agents, how chat memory matches the people and channels you mention, and which customer data it may use.",
     group: "workspace",
     icon: Sparkles,
     tier: "organization",
