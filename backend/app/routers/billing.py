@@ -1030,6 +1030,9 @@ def create_founder_offer(
     client = shared_service_client(settings, create_client)
     if not (client.table("organizations").select("id").eq("id", org_id).limit(1).execute().data or []):
         raise HTTPException(status_code=404, detail="Organization not found")
+    profile = client.table("org_commercial_profiles").select("customer_category").eq("org_id", org_id).limit(1).execute().data or []
+    if not profile or profile[0].get("customer_category") != "external":
+        raise HTTPException(status_code=403, detail="Only reviewed external customer organizations may receive founder offers")
     existing = client.table("org_promotional_grants").select("id").eq("org_id", org_id).eq("status", "available").limit(1).execute().data or []
     if existing:
         raise HTTPException(status_code=409, detail="Revoke the existing available offer first")
