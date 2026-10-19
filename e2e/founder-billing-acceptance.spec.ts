@@ -72,8 +72,11 @@ test("customer completes real sandbox checkout and signed webhook persists subsc
   const sessionId = checkoutUrl.match(/cs_test_[A-Za-z0-9]+/)?.[0]
   if (!sessionId) throw new Error("Stripe sandbox checkout session required")
   await page.goto(checkoutUrl)
-  const email = page.getByLabel("Email", { exact: true })
-  if (await email.count()) await email.fill(fixtures.founderTrialCustomer.email)
+  // Stripe renders this required field asynchronously. Counting immediately
+  // after navigation skipped it and left checkout blocked on REQUIRED.
+  const email = page.getByRole("textbox", { name: "Email", exact: true })
+  await expect(email).toBeVisible()
+  await email.fill(fixtures.founderTrialCustomer.email)
   await page.getByRole("textbox", { name: /Card number/i }).fill("4242424242424242")
   await page.getByRole("textbox", { name: /Expiration|Expiry/i }).fill("1230")
   await page.getByRole("textbox", { name: /Security code|CVC/i }).fill("123")

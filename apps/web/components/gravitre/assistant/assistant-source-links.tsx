@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import type { ToolInvocation } from "@/components/gravitre/assistant/tool-chip"
+import { CONTEXT_HELP_HREF, type ContextSourcesSummary } from "@/lib/context-sources"
 
 function connectorNeedsAuth(result: unknown): boolean {
   if (!result || typeof result !== "object") return false
@@ -55,8 +56,16 @@ function knowledgeCitations(result: unknown): Citation[] {
   return citations.slice(0, 5)
 }
 
-export function AssistantSourceLinks({ invocations }: { invocations: ToolInvocation[] }) {
-  if (!invocations.length) return null
+export function AssistantSourceLinks({
+  invocations,
+  contextSources,
+}: {
+  invocations: ToolInvocation[]
+  /** Ranked context the answer was built from (documents, memory, connected tools). */
+  contextSources?: ContextSourcesSummary | null
+}) {
+  const contextUsed = contextSources?.used ?? []
+  if (!invocations.length && !contextUsed.length) return null
 
   const links: Array<{ label: string; href: string }> = []
   const citations: Citation[] = []
@@ -107,6 +116,7 @@ export function AssistantSourceLinks({ invocations }: { invocations: ToolInvocat
   }
 
   add("View audit trail", "/audit")
+  if (contextUsed.length) add("How Gravitre uses your context", CONTEXT_HELP_HREF)
   add("How Gravitre keeps you in control", "/ai/help/control")
 
   const webOrKbInvoked = invocations.some(
@@ -117,9 +127,9 @@ export function AssistantSourceLinks({ invocations }: { invocations: ToolInvocat
         inv.toolName === "searchKnowledgeBase"),
   )
 
-  if (!links.length && !citations.length && !webOrKbInvoked) return null
+  if (!links.length && !citations.length && !webOrKbInvoked && !contextUsed.length) return null
 
-  const sourceCount = citations.length
+  const sourceCount = citations.length + contextUsed.length
   const summary =
     sourceCount > 0
       ? `Sources (${sourceCount})`
@@ -131,6 +141,20 @@ export function AssistantSourceLinks({ invocations }: { invocations: ToolInvocat
     <details className="not-prose mt-3 text-xs text-muted-foreground">
       <summary className="cursor-pointer text-foreground/80">{summary}</summary>
       <div className="mt-2 space-y-2">
+      {contextUsed.length ? (
+        <ul className="space-y-1" aria-label="Context used for this answer">
+          {contextUsed.map((row) => (
+            <li key={`${row.kind}:${row.name}`} className="leading-snug">
+              <span className="text-foreground">{row.name}</span>
+              <span>
+                {" · "}
+                {row.kind}
+                {row.freshness ? ` · ${row.freshness}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {citations.length ? (
         <div className="space-y-1.5">
           <ol className="list-decimal space-y-1 pl-4">

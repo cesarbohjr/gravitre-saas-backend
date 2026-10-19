@@ -7,6 +7,7 @@ import {
   Building2,
   CreditCard,
   Hand,
+  HandCoins,
   KeyRound,
   Link2,
   ListChecks,
@@ -53,6 +54,7 @@ export type SettingsSectionId =
   | "enterprise"
   | "federation"
   | "environments"
+  | "clients"
 
 export interface SettingsSection {
   id: SettingsSectionId
@@ -112,7 +114,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "ai-models",
     title: "AI models",
-    description: "How Gravitre picks models for your agents, and how chat memory matches the people and channels you mention.",
+    description: "How Gravitre picks models for your agents, how chat memory matches the people and channels you mention, and which customer data it may use.",
     group: "workspace",
     icon: Sparkles,
     tier: "organization",
@@ -180,6 +182,16 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     icon: CreditCard,
     tier: "organization",
     href: "/settings/billing",
+  },
+  {
+    id: "clients",
+    title: "Clients",
+    description:
+      "Partner program for MSPs. You pay Gravitre the wholesale price for each client and bill them your own price. The difference is your margin.",
+    group: "people",
+    icon: HandCoins,
+    tier: "organization",
+    href: "/settings/clients",
   },
   {
     id: "webhooks",
@@ -278,6 +290,7 @@ export const WIDE_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   "lite-seats",
   "meson-addons",
   "ai-models",
+  "clients",
 ])
 
 export function settingsHrefForSection(section: SettingsSectionId): string {
@@ -311,6 +324,7 @@ const GROUP_ORDER: Partial<Record<SettingsSectionId, number>> = {
   "lite-seats": 2,
   "meson-addons": 3,
   billing: 4,
+  clients: 5,
   federation: 0,
   enterprise: 1,
   audit: 0,

@@ -322,6 +322,13 @@ def _apply_stripe_event(
     org_id: str | None,
     event: Any,
 ) -> None:
+    # MSP wholesale subscriptions belong to the partner program, never to the
+    # MSP's own org_billing row; handle them separately and stop here.
+    from app.billing.msp_billing import apply_wholesale_event, is_wholesale_event
+
+    if is_wholesale_event(client, event_type, data, metadata):
+        apply_wholesale_event(client, settings, event_type, data, metadata)
+        return
 
     if event_type in {
         "checkout.session.completed",
@@ -555,6 +562,19 @@ def _apply_stripe_event(
 
         handle_connect_account_updated(
             client, settings, data if isinstance(data, dict) else {}
+        )
+
+    # Public promo-code redemption evidence (exactly once, never raises).
+    from app.billing.promotion_codes import record_redemptions_from_event
+
+    for promo_id in record_redemptions_from_event(
+        client, settings, event_type, data, org_id
+    ):
+        _write_event(
+            client,
+            org_id,
+            "billing.promotion_code.redeemed",
+            {"promotion_code_id": promo_id, "source_event": event_type},
         )
 
     _write_event(client, org_id, event_type, event)

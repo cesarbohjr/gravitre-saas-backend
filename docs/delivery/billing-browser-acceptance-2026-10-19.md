@@ -19,3 +19,12 @@ Hosted sandbox Checkout, signed-webhook grant redemption/subscription persistenc
 Checkout acceptance requires a complete real Stripe test session, a paid zero-value trial invoice, a redeemed grant, a persisted Stripe subscription, licensed-only trial items, billing status, rendered invoice, owner PDF access, and cross-organization PDF denial. These assertions are prepared but **not passed**.
 
 Authenticated production UI acceptance is **NOT RUN**: no usable production browser session was available. Production promotional offers remain disabled. Do not treat the skipped Supabase PR-preview check as production migration acceptance.
+
+
+## Release follow-up (2026-10-19)
+
+PR #511 merged as `8e476fc7afacf949e01f433430fb7b4ad484f498` after its web, backend, migration replay, dependency, authenticated-surface and integration checks passed. Supabase's connected production deployment applied `20261019120000_msp_partner_program` and `20261019180000_public_promotion_codes`; the native check passed and all 277 versions are recorded.
+
+User explicitly selected exactly 30% off the existing retail prices: USD 41.30 / 104.30 / 244.30 per month, per client workspace. Live licensed Stripe prices were created and their IDs configured in Railway. Public promotions are configured on; parent-org implicit access remains off. Founder offers remain gated pending complete sandbox browser acceptance.
+
+The last isolated run passed role verification and a genuine paid sandbox invoice, but checkout was blocked by an email input rendered after an immediate conditional count, and an expired-trial upgrade dialog was covered by the AI workspace. The test now waits for and fills Stripe's required email field. The upgrade dialog and backdrop render above the workspace. Assertions, normal pointer clicks, and zero retries are preserved; no forced click or mocked payment is used.

@@ -33,10 +33,10 @@ Five evidence-backed organizations are seeded as internal (2) or test (3). All o
 ## Production release checklist (must pass before enabling offers)
 
 1. Review and merge PR with backend, web and migration CI green; fix any test failures. Run a signed Stripe webhook integration test.
-2. Apply `supabase/migrations/20261018193000_customer_segments_and_founder_offers.sql` to staging first, then production with an operator-approved migration. Verify grants are inaccessible from `anon` and `authenticated` roles.
+2. Apply `supabase/migrations/20261019050504_customer_segments_and_founder_offers.sql` (then `20261019050855_founder_billing_safety.sql`) to staging first, then production with an operator-approved migration. Verify grants are inaccessible from `anon` and `authenticated` roles.
 3. In Stripe test mode, verify 30-day trial creates `trialing`, 30% discount applies to the correct recurring base plan, redemption is idempotent, and a revoked/expired grant cannot be applied.
 4. **Decide and enforce trial overage policy** before enabling live 30-day trials. Metered AI, voice and research charges must not surprise trial users. Recommended: included quota only during trial; block overage or require explicit opt-in.
-5. Confirm payment collection timing, trial-ending notifications, refund and coupon semantics, renewal amount and invoice display. Verify public checkout and Payment Element flow do not silently bypass intended offers (only authenticated Checkout currently uses founder grants).
+5. Confirm payment collection timing, trial-ending notifications, refund and coupon semantics, renewal amount and invoice display. Verify public checkout and Payment Element flow do not silently bypass intended offers (only authenticated hosted Checkout applies founder grants; Payment Element returns 409 and the client falls back to hosted Checkout).
 6. Confirm the webhook's checkout completion does not overwrite Stripe's authoritative `trialing` or `incomplete_expired` status. Invoice webhook correction PR #504 must pass and merge independently.
 7. Turn on `COMMERCIAL_OFFERS_ENABLED=true` in staging only after migration and tests; keep false in production until sign-off. The default is false. Never enable unrelated billing metering flags as part of this release.
 
@@ -88,3 +88,80 @@ The current Stripe connector exposes only the live account; Railway OAuth hides
 secret values. Production migration and offer activation are not yet performed.
 Customer-facing trial controls and terms are explicitly authorized by the user's
 PR #505 request; no placeholder prices or product capabilities were introduced.
+
+
+## Public promo codes and founder-offer fixes — 2026-10-19
+
+Owner decision (Cesar): support both **founder offers** (one reviewed external
+org at a time, applied automatically) and **public promo codes** (e.g. 30% off,
+usable by anyone at checkout). They never stack.
+
+### Public promo codes
+
+- Migration `supabase/migrations/20261019180000_public_promotion_codes.sql`
+  (expand-only, idempotent, RLS + service-role only, rollback in header):
+  `promotion_codes` mirrors a Stripe PromotionCode + Coupon (code, % or $ off,
+  once/repeating/forever, months, max redemptions, expiry, first-time only,
+  restricted plans, active, cached `times_redeemed`); `promotion_code_events`
+  holds created / deactivated / redeemed evidence with a unique `dedupe_key`;
+  `record_promotion_code_redemption()` inserts evidence and bumps the counter
+  exactly once.
+- Platform-admin API (also in `/admin/commercial` › Promo codes):
+  `GET|POST /api/billing/admin/promotion-codes`,
+  `POST /api/billing/admin/promotion-codes/{id}/deactivate`. Create makes a
+  Stripe Coupon restricted to base-plan products (never metered overages) and a
+  PromotionCode with `max_redemptions`, `expires_at` and
+  `restrictions.first_time_transaction`; it fails with 503 when
+  `STRIPE_SECRET_KEY` is missing. List refreshes redemption counts and active
+  state from Stripe. Deactivate sets the Stripe PromotionCode `active=false`.
+- Public validation: `GET /api/billing/promo-codes/validate?code=&plan=`,
+  20 requests/minute per client IP. Unknown, expired, exhausted and inactive
+  codes all return the same message; only a plan mismatch on a valid code is
+  explained.
+- Checkout discount selection (`app/billing/promotion_codes.py`):
+  1. founder offer available → founder coupon/trial; any code is ignored and the
+     response says so (`promotion_code_ignored`, `notice`);
+  2. valid code → `discounts=[{promotion_code}]` (hosted, public signup, and
+     Payment Element `/subscribe`);
+  3. invalid code → 422 with the customer-safe reason;
+  4. no code → `allow_promotion_codes=true`, so Stripe's own field works;
+  5. `PROMOTION_CODES_ENABLED=false` → neither.
+  Stripe re-validates every code at checkout and remains authoritative.
+- Webhooks: `checkout.session.completed` and the first
+  `invoice.paid`/`invoice.payment_succeeded` (`billing_reason=subscription_create`)
+  record a `redeemed` event per (promotion code, subscription) and write
+  `billing.promotion_code.redeemed` to `billing_events`. Recording never fails
+  the webhook; the admin list re-syncs counts from Stripe.
+- Frontend: "Have a promo code?" with live validation in the Settings › Billing
+  plan picker and on `/get-started`; `?promo=CODE` on `/pricing` or
+  `/get-started` is remembered for 14 days (localStorage, guarded) and prefilled
+  at upgrade; `/pricing?promo=CODE` shows a banner and discounted card prices;
+  checkout shows the applied code; Settings › Billing shows the live Stripe
+  discount ("30% off until <date>").
+- Flag `PROMOTION_CODES_ENABLED` defaults to **true**: codes only exist after a
+  platform admin creates one. `COMMERCIAL_OFFERS_ENABLED` stays **false**.
+
+### Founder-offer fixes
+
+- Customer banner: `GET /api/billing/promotions/current` returns the org's own
+  available offer (no internal IDs), shown as "You have 30% off for 3 months on
+  any paid plan. It's applied automatically at checkout."
+- Value cap is pre-filled from plan price × percent × cycles (or trial value),
+  using the same formula as `promotion_value_cents`, for the most expensive
+  plan/interval so checkout is never blocked; editable, and still enforced by
+  the backend.
+- "Issue offer" can classify an unreviewed org as External in the same audited
+  step (`classify_as_external` + `classification_reason`). Internal/test orgs
+  are still refused.
+- `POST /api/billing/admin/promotional-offers/{id}/release` (optional
+  `{"revoke": true}`) releases a stuck "Checkout reserved" grant after checking
+  Stripe: open sessions for the attempt are expired; a completed session or a
+  live subscription carrying the attempt blocks the release.
+- Revoke deletes the founder Stripe coupon (best effort, audited as
+  `coupon_deleted`); existing subscriptions keep any applied discount.
+- `/admin/commercial` is linked from the account menu for platform admins and
+  shows a friendly "Platform admin access required" page to everyone else.
+
+Release gate for codes: apply `20261019180000_public_promotion_codes.sql` with
+operator approval (after the two founder migrations), then create a code in
+Stripe test mode and complete hosted, public and Payment Element checkouts.

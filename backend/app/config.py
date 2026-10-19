@@ -395,6 +395,10 @@ class Settings(BaseSettings):
     commercial_offers_enabled: bool = (
         False  # enable only after production migration and billing QA
     )
+    # Public promo codes only exist once a platform admin creates them (Stripe
+    # Coupon + PromotionCode), so the feature is on by default. Off: no new
+    # codes, no promo field at checkout, and Stripe's own code entry is hidden.
+    promotion_codes_enabled: bool = True
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_price_id_starter: str = ""
@@ -406,6 +410,11 @@ class Settings(BaseSettings):
     stripe_price_id_control_annual: str = ""
     stripe_price_id_command_monthly: str = ""
     stripe_price_id_command_annual: str = ""
+    # MSP partner program: wholesale Prices the MSP pays per active client
+    # (env STRIPE_PRICE_ID_MSP_{NODE,CONTROL,COMMAND}_WHOLESALE). Empty = not set up.
+    stripe_price_id_msp_node_wholesale: str = ""
+    stripe_price_id_msp_control_wholesale: str = ""
+    stripe_price_id_msp_command_wholesale: str = ""
     public_app_url: str = Field(
         default="",
         validation_alias=AliasChoices("NEXT_PUBLIC_APP_URL", "PUBLIC_APP_URL"),

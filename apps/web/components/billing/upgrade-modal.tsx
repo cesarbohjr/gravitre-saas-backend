@@ -40,7 +40,7 @@ export function UpgradeModal({ open, onOpenChange, subscriptionStatus }: Upgrade
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl" data-testid="upgrade-modal">
+      <DialogContent className="z-[110] max-w-2xl" overlayClassName="z-[109]" data-testid="upgrade-modal">
         <DialogHeader>
           <DialogTitle data-testid="upgrade-modal-title">{title}</DialogTitle>
           <DialogDescription>

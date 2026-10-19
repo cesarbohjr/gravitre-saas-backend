@@ -105,7 +105,7 @@ Automated anonymous smoke: `scripts/verify-release1-production-smoke.py` → `do
 
 ## 7. Release 4 — MSP / external MCP
 
-**PARTIAL (Option A scaffold)** — `parent_org_id` migration and `msp_org_context` + `MSP_PARENT_ORG_ENABLED`, with explicit child membership still required. The parent RLS path (`20261014110000`) was **withdrawn** and must not be applied. External MCP API, client switcher, acceptance **NOT STARTED**. See `docs/design/RELEASE_4_MSP_CLIENT_MODEL_OPTIONS.md`.
+**PARTIAL — Option A decided; MSP partner program CODE COMPLETE, NOT APPLIED** (2026-10-19). MSPs pay Gravitre wholesale per client workspace and rebill clients. Code: `/api/msp/program` (enroll, create/link client, client-owner approval with full or health-only access, detach, rebilling list + CSV), one wholesale Stripe subscription per MSP with per-tier quantities, webhook status mirroring to clients, Settings › Clients, "Billed through" billing view, white label inheritance, pricing `#msp`, public docs. Migration `20261019120000_msp_partner_program.sql` **not applied** (needs approval); wholesale Stripe Prices **not created**; authenticated production acceptance **NOT RUN**. Parent link still grants no access; `MSP_PARENT_ORG_ENABLED` stays `false`. The parent RLS path (`20261014110000`) remains **withdrawn**. External MCP API **NOT STARTED**. See `docs/design/RELEASE_4_MSP_CLIENT_MODEL_OPTIONS.md`.
 
 ---
 

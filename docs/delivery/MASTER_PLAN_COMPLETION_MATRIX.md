@@ -209,7 +209,8 @@ Columns: **Impl** · **PR / commit** · **Tests executed** · **Migrations** · 
 | `parent_org_id` scaffold | PARTIAL (relationship only; explicit client membership required) | #429 + Codex branch | `test_msp_org_context.py` denies parent-only access | `20261014060000` (review) | `MSP_PARENT_ORG_ENABLED=false` | NOT RUN | Apply authorization |
 | Parent RLS path | WITHDRAWN | `MSP_RLS_PARENT_ACCESS_DEFERRED.md` | — | `20261014110000` removed | — | N/A | Product Option A/B |
 | Workspace/client selection for explicit memberships | CODE COMPLETE (existing) | workspace-switcher.tsx + organizations switch route; no implicit parent delegation | Existing suite; authenticated switching acceptance open | None | Existing membership authority | NOT RUN | Cross-org cache/credential acceptance |
-| Explicit MSP delegation / external MCP product | NOT STARTED | — | — | — | — | NOT RUN | Client-specific grant design and external auth |
+| MSP partner program (wholesale + rebilling, client consent, health-only delegation) | CODE COMPLETE | `routers/msp_program.py`, `billing/msp_billing.py`, Settings › Clients | `test_msp_program.py`, `db/test_msp_partner_program_pg.py`, `msp-clients.test.tsx` | `20261019120000` (not applied) | `STRIPE_PRICE_ID_MSP_*_WHOLESALE` unset = "not set up" state | NOT RUN | Apply migration (approval), create wholesale Prices, two-client acceptance on gravitre.app |
+| External MCP product for MSPs | NOT STARTED | — | — | — | — | NOT RUN | External auth design |
 
 ---
 

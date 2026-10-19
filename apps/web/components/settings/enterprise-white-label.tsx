@@ -186,6 +186,12 @@ export function EnterpriseWhiteLabel({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <>
+      {data?.inheritedFrom ? (
+        <SetNote>
+          This workspace uses {data.inheritedFrom.name}&apos;s branding because it has none of its own. Save changes here
+          to give it its own look; your custom domain always stays separate.
+        </SetNote>
+      ) : null}
       <section className="gs-card" style={{ padding: 20 }}>
         <div className="gs-grid-fields" style={{ gap: 16 }}>
           <label className="gs-field">
