@@ -314,6 +314,17 @@ def _apply_stripe_event(
         subscription_id = data.get("subscription")
         customer_id = data.get("customer")
         if org_id and subscription_id:
+            # Redeem a founder grant only after Stripe confirms checkout completion.
+            # The grant ID comes from signed Stripe session metadata, never a
+            # caller-supplied checkout request. Historical grants stay auditable.
+            grant_id = str(metadata.get("offer_grant_id") or "").strip()
+            if grant_id:
+                client.table("org_promotional_grants").update({
+                    "status": "redeemed",
+                    "redeemed_at": datetime.now(timezone.utc).isoformat(),
+                    "stripe_subscription_id": subscription_id,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }).eq("id", grant_id).eq("org_id", org_id).eq("status", "available").execute()
             from app.services.org_membership import (
                 promote_user_to_org_owner,
                 resolve_user_id_by_email,
