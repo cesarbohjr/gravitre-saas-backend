@@ -252,7 +252,7 @@ def _upsert_subscription_from_event(
         "tier": plan_tier,
         "status": _normalize_subscription_status(data.get("status")),
         "current_period_start": _to_iso(data.get("current_period_start")),
-        "current_period_end": _to_iso(data.get("current_period_end")),
+        "current_period_end": _to_iso(data.get("trial_end") if data.get("status") == "trialing" else data.get("current_period_end")),
         "seat_count": quantity,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -314,6 +314,25 @@ def _apply_stripe_event(
         subscription_id = data.get("subscription")
         customer_id = data.get("customer")
         if org_id and subscription_id:
+            # Stripe is authoritative: a completed Checkout session does not
+            # imply an active subscription (especially for trials or failed
+            # first invoices). Verify live subscription status and customer.
+            from app.billing.stripe import init_stripe
+            init_stripe(settings)
+            stripe_subscription = stripe.Subscription.retrieve(str(subscription_id))
+            stripe_customer = stripe_subscription.get("customer")
+            if isinstance(stripe_customer, dict):
+                stripe_customer = stripe_customer.get("id")
+            if str(stripe_customer or "") != str(customer_id or ""):
+                raise ValueError("Stripe checkout customer does not match subscription")
+            remote_status = str(stripe_subscription.get("status") or "").lower()
+            if remote_status not in {
+                "active", "trialing", "incomplete", "incomplete_expired",
+                "past_due", "unpaid", "canceled", "paused",
+            }:
+                raise ValueError("Stripe checkout subscription status unavailable")
+            local_status = _normalize_subscription_status(remote_status)
+            billing_status = "pending" if remote_status == "incomplete" else remote_status
             from app.services.org_membership import (
                 promote_user_to_org_owner,
                 resolve_user_id_by_email,
@@ -345,16 +364,20 @@ def _apply_stripe_event(
                 "org_id": org_id,
                 "stripe_customer_id": customer_id,
                 "stripe_subscription_id": subscription_id,
-                "status": "active",
+                "status": local_status,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
             org_billing_row: dict[str, Any] = {
                 "org_id": org_id,
                 "stripe_customer_id": customer_id,
                 "stripe_subscription_id": subscription_id,
-                "billing_status": "active",
+                "billing_status": billing_status,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
+            trial_end = _to_iso(stripe_subscription.get("trial_end")) if remote_status == "trialing" else None
+            if trial_end:
+                subscription_row["current_period_end"] = trial_end
+                org_billing_row["current_period_end"] = trial_end
             if plan_code:
                 subscription_row["tier"] = plan_code
                 org_billing_row["plan_code"] = plan_code
@@ -362,6 +385,17 @@ def _apply_stripe_event(
                 org_billing_row["stripe_price_id"] = price_id
             client.table("subscriptions").upsert(subscription_row, on_conflict="org_id").execute()
             client.table("org_billing").upsert(org_billing_row, on_conflict="org_id").execute()
+            # Only signed Stripe Checkout completion can consume a founder grant.
+            # Customer-supplied checkout parameters never grant promotions.
+            if getattr(settings, "commercial_offers_enabled", False) and remote_status in {"active", "trialing"}:
+                grant_id = str(metadata.get("offer_grant_id") or "").strip()
+                if grant_id:
+                    from app.billing.commercial_offers import redeem_checkout_offer
+                    if redeem_checkout_offer(client, org_id, grant_id, str(subscription_id), attempt_id=metadata.get("offer_attempt_id")):
+                        _write_event(
+                            client, org_id, "billing.founder_offer.redeemed",
+                            {"grant_id": grant_id, "subscription_id": str(subscription_id)},
+                        )
 
     if event_type in {"customer.subscription.created", "customer.subscription.updated"}:
         _upsert_subscription_from_event(client, settings, org_id, data, metadata)
@@ -389,7 +423,7 @@ def _apply_stripe_event(
                 "stripe_customer_id": data.get("customer"),
                 "stripe_subscription_id": data.get("id"),
                 "billing_status": billing_status,
-                "current_period_end": _to_iso(data.get("current_period_end")),
+                "current_period_end": _to_iso(data.get("trial_end") if data.get("status") == "trialing" else data.get("current_period_end")),
                 "cancel_at_period_end": bool(data.get("cancel_at_period_end") or False),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
@@ -399,28 +433,30 @@ def _apply_stripe_event(
                 org_billing_row["stripe_price_id"] = price_id
             client.table("org_billing").upsert(org_billing_row, on_conflict="org_id").execute()
 
+    # Asynchronous payment methods may activate after Checkout completion.
+    # Subscription lifecycle events can redeem a founder grant once Stripe
+    # confirms active/trialing, including when events arrive out of order.
+    if (
+        event_type in {"customer.subscription.created", "customer.subscription.updated"}
+        and org_id
+        and getattr(settings, "commercial_offers_enabled", False)
+        and str(data.get("status") or "") in {"active", "trialing"}
+    ):
+        grant_id = str((data.get("metadata") or {}).get("offer_grant_id") or "").strip()
+        if grant_id:
+            from app.billing.commercial_offers import redeem_checkout_offer
+            if redeem_checkout_offer(client, org_id, grant_id, str(data.get("id") or ""), attempt_id=(data.get("metadata") or {}).get("offer_attempt_id")):
+                _write_event(
+                    client, org_id, "billing.founder_offer.redeemed",
+                    {"grant_id": grant_id, "subscription_id": str(data.get("id"))},
+                )
+
     if event_type == "customer.subscription.deleted":
         _apply_subscription_deleted(client, org_id=org_id, data=data)
 
-    if event_type == "invoice.payment_succeeded":
-        if org_id:
-            now = datetime.now(timezone.utc).isoformat()
-            client.table("subscriptions").update(
-                {"status": "active", "updated_at": now}
-            ).eq("org_id", org_id).execute()
-            client.table("org_billing").update(
-                {"billing_status": "active", "updated_at": now}
-            ).eq("org_id", org_id).execute()
-
-    if event_type == "invoice.payment_failed":
-        if org_id:
-            now = datetime.now(timezone.utc).isoformat()
-            client.table("subscriptions").update(
-                {"status": "past_due", "updated_at": now}
-            ).eq("org_id", org_id).execute()
-            client.table("org_billing").update(
-                {"billing_status": "past_due", "updated_at": now}
-            ).eq("org_id", org_id).execute()
+    # Invoice payment events are audit evidence, not subscription lifecycle
+    # transitions. Stripe subscription events control local paid status; late
+    # invoice notifications must never reactivate an expired subscription.
 
     if event_type == "account.updated":
         from app.services.marketplace_billing_service import handle_connect_account_updated

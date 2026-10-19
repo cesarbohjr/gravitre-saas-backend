@@ -365,6 +365,7 @@ class Settings(BaseSettings):
     database_url: str = ""
 
     # Stripe Billing (MVP)
+    commercial_offers_enabled: bool = False  # enable only after production migration and billing QA
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_price_id_starter: str = ""
