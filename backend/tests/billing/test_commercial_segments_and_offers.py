@@ -98,10 +98,10 @@ def test_regular_checkout_allows_stripe_validated_promotion_codes(monkeypatch):
     assert "trial_period_days" not in captured["subscription_data"]
 
 
-def test_promotion_codes_enabled_only_after_release_flag(monkeypatch):
+def test_promotion_codes_remain_disabled_even_after_release_flag(monkeypatch):
     captured = {}
     monkeypatch.setattr(stripe.checkout.Session, "create", lambda **kwargs: captured.update(kwargs) or MagicMock())
     settings = _settings()
     settings.commercial_offers_enabled = True
     create_checkout_session(settings, "cus_1", "price_node_flat", "https://ok", "https://cancel", {})
-    assert captured["allow_promotion_codes"] is True
+    assert "allow_promotion_codes" not in captured
