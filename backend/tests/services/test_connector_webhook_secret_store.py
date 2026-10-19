@@ -95,11 +95,11 @@ def test_legacy_plaintext_still_verifies_then_is_sealed(svc):
 
 
 def test_pagerduty_signing_secret_keeps_precedence_after_sealing():
-    db = _DB({"webhook_secret": "ours", "pagerduty_signing_secret": "theirs"})
-    assert pd.ensure_connector_webhook_secret(db, "o1", "c1") == "theirs"
-    _no_plaintext(db.config, "theirs")
-    assert "ours" not in json.dumps(db.config)
-    assert pd.get_connector_webhook_secret({"config": db.config}) == "theirs"
+    db = _DB({"webhook_secret": "our secret!", "pagerduty_signing_secret": "their secret!"})
+    assert pd.ensure_connector_webhook_secret(db, "o1", "c1") == "their secret!"
+    _no_plaintext(db.config, "their secret!")
+    assert "our secret!" not in json.dumps(db.config)
+    assert pd.get_connector_webhook_secret({"config": db.config}) == "their secret!"
 
 
 def test_segment_generation_writes_both_keys_encrypted():
@@ -124,11 +124,11 @@ def test_without_key_behaves_as_before(monkeypatch):
 
 
 def test_backfill_dry_run_counts_without_writing_and_never_returns_values():
-    db = _DB({"webhook_secret": "p1"})
+    db = _DB({"webhook_secret": "plain p1!"})
     out = store.seal_plaintext_webhook_secrets(db, SETTINGS, dry_run=True)
     assert out == {"scanned": 1, "with_plaintext": 1, "sealed": 0}
     assert db.writes == []
-    assert "p1" not in json.dumps(out)
+    assert "plain p1!" not in json.dumps(out)
     out = store.seal_plaintext_webhook_secrets(db, SETTINGS, dry_run=False)
     assert out["sealed"] == 1
-    _no_plaintext(db.config, "p1")
+    _no_plaintext(db.config, "plain p1!")
