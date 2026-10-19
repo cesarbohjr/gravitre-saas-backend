@@ -1,0 +1,27 @@
+/* Settings > Security (design p09). Kit tokens only, so light and dark both work. */
+.gv-set .security-posture { padding: 20px; display: flex; flex-wrap: wrap; gap: 24px; align-items: center; }
+.gv-set .security-posture .gs-art { flex: 0 1 260px; width: 100%; }
+.gv-set .security-posture-body { flex: 1 1 320px; min-width: 0; }
+.gv-set .security-score { display: flex; align-items: baseline; gap: 10px; margin-top: 6px; }
+.gv-set .security-score b { font-size: 40px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.gv-set .security-score span { font-size: 15px; color: var(--gs-ink-3); }
+.gv-set .security-bars { display: flex; gap: 6px; margin-top: 10px; }
+.gv-set .security-bars span { flex: 1; height: 8px; border-radius: 4px; background: var(--gs-track); }
+.gv-set .security-bars span.on { background: var(--gs-green-bright); }
+.gv-set .security-advice { margin: 12px 0 0; font-size: 14px; color: var(--gs-ink-3); line-height: 1.5; }
+.gv-set .security-title { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.gv-set .security-title b { display: inline; }
+.gv-set .security-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.gv-set .security-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.gv-set .security-step { display: flex; gap: 10px; align-items: center; border: 1px solid var(--gs-line); background: var(--gs-hover); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--gs-ink-2); }
+.gv-set .security-step.current { background: var(--gs-card); border-color: var(--gs-border); color: var(--gs-ink); }
+.gv-set .security-step .n { width: 22px; height: 22px; border-radius: 50%; background: var(--gs-ghost); color: #ffffff; display: grid; place-items: center; font-size: 11px; font-weight: 700; flex: 0 0 auto; }
+.gv-set .security-step.current .n { background: var(--gs-dark); color: var(--gs-on-dark); }
+.gv-set .security-step.done .n { background: var(--gs-green); }
+.gv-set .security-meta { margin-top: 8px; font-size: 12px; color: var(--gs-muted); overflow-wrap: anywhere; }
+.gv-set .security-ranges { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.gv-set .security-ranges .gs-chip { min-height: 30px; }
+.gv-set .security-ranges .gs-input { flex: 0 1 260px; min-height: 36px; }
+.gv-set .security-under-note { margin-top: 10px; }
+.gv-set .security-error { margin: 8px 0 0; font-size: 13px; color: var(--gs-red-ink); }
+.gv-set .security-hint { margin: 8px 0 0; font-size: 13px; color: var(--gs-muted); }

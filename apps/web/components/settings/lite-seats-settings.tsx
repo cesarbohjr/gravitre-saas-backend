@@ -1,349 +1,340 @@
 "use client"
 
-import { useState } from "react"
+/**
+ * Lite seats (design p15): stat tiles, departments as cards or a table with a
+ * 10-per-page pager, and a side panel to manage the selected department.
+ * Rendered by app/(app)/settings/page.tsx for ?section=lite-seats with the
+ * shell header hidden, so it draws its own SetHeader.
+ */
+import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
-import { Loader2, Plus, Trash2 } from "lucide-react"
+import { Armchair, Building2, LayoutGrid, Loader2, Plus, Search, Table2, UserCheck } from "lucide-react"
 import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { apiFetch, fetcher as apiFetcher } from "@/lib/fetcher"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { settingsApi } from "@/lib/api"
-import type { LiteSeatDepartment } from "@/types/api"
+import { useOrgAdmin } from "@/lib/use-org-admin"
+import {
+  LITE_SEATS_KEY,
+  filterDepartments,
+  liteTotals,
+  pageSlice,
+  seatBarWidth,
+  type LiteDepartment,
+  type LiteSeatsPayload,
+} from "@/lib/settings-api/lite"
+import { SetError, SetHeader, SetNote, SetPager, SetSkeleton, SetStat, SetTabs } from "./settings-kit"
+import { LiteSeatsPanel } from "./lite-seats-panel"
+import "./lite-seats.css"
+
+const HEADER = {
+  crumb: "Settings / People and plan",
+  title: "Lite seats",
+  description:
+    "Give approvers and occasional users a Lite seat by department. Lite users can run assigned workflows and approve work, but building still needs a full seat.",
+}
+
+type View = "cards" | "table"
 
 export function LiteSeatsSettings({ isAdmin }: { isAdmin: boolean }) {
-  const { data, error, isLoading, mutate } = useSWR(isAdmin ? "/api/settings/lite-seats" : null, apiFetcher, {
+  const { pending: adminPending, showAdmin } = useOrgAdmin()
+  const { data, error, isLoading, mutate } = useSWR<LiteSeatsPayload>(isAdmin ? LITE_SEATS_KEY : null, apiFetcher, {
     revalidateOnFocus: false,
   })
-  const [newDeptName, setNewDeptName] = useState("")
-  const [newDeptSeats, setNewDeptSeats] = useState(0)
-  const [memberEmailByDept, setMemberEmailByDept] = useState<Record<string, string>>({})
-  const [memberRoleByDept, setMemberRoleByDept] = useState<Record<string, "viewer" | "admin">>({})
-  const [sendInviteByDept, setSendInviteByDept] = useState<Record<string, boolean>>({})
-  const [assignByDept, setAssignByDept] = useState<
-    Record<string, { resource_type: "workflow" | "agent" | "council" | "knowledge_pack"; resource_id: string }>
-  >({})
-  const [isSaving, setIsSaving] = useState(false)
-  if (!isAdmin) return <p className="text-sm text-muted-foreground">Admin or owner permission is required to manage Lite seats.</p>
-  if (isLoading) return <p role="status" className="text-sm text-muted-foreground">Loading Lite seats…</p>
-  if (error) return <div role="alert" className="space-y-3"><p className="text-sm">Could not load Lite seats.</p><Button variant="outline" className="min-h-11" onClick={() => void mutate()}>Retry Lite seats</Button></div>
-  const summary = (
-    data as {
-      summary?: {
-        included: number | null
-        included_display?: string
-        unlimited?: boolean
-        allocated: number
-        used: number
-        plan_code?: string
-      }
-    } | undefined
-  )?.summary
-  const departments = ((data as { departments?: LiteSeatDepartment[] } | undefined)?.departments ?? []) as LiteSeatDepartment[]
+  const [adding, setAdding] = useState(false)
 
-  const handleAddDepartment = async () => {
-    if (!newDeptName.trim()) return
-    setIsSaving(true)
-    try {
-      await settingsApi.createDepartment({
-        name: newDeptName.trim(),
-        lite_seat_allocation: Math.max(0, newDeptSeats),
-      })
-      toast.success("Department added")
-      setNewDeptName("")
-      setNewDeptSeats(0)
-      await mutate()
-    } catch (err) {
-      console.error("[v0] Failed to add department:", err)
-      toast.error("Failed to add department")
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handleUpdateAllocation = async (department: LiteSeatDepartment, delta: number) => {
-    const nextValue = Math.max(0, Number(department.lite_seat_allocation ?? 0) + delta)
-    setIsSaving(true)
-    try {
-      await settingsApi.updateDepartment({
-        id: department.id,
-        lite_seat_allocation: nextValue,
-      })
-      await mutate()
-    } catch (err) {
-      console.error("[v0] Failed to update allocation:", err)
-      toast.error("Failed to update seat allocation")
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handleDeleteDepartment = async (departmentId: string, name: string) => {
-    if (!confirm(`Delete department "${name}"?`)) return
-    setIsSaving(true)
-    try {
-      await settingsApi.deleteDepartment(departmentId)
-      toast.success("Department removed")
-      await mutate()
-    } catch (err) {
-      console.error("[v0] Failed to delete department:", err)
-      toast.error("Failed to remove department")
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handleInviteMember = async (departmentId: string) => {
-    const email = (memberEmailByDept[departmentId] || "").trim()
-    const role = memberRoleByDept[departmentId] === "admin" ? "admin" : "viewer"
-    const sendInvite = sendInviteByDept[departmentId] ?? true
-    if (!email) {
-      toast.error("Enter a member email")
-      return
-    }
-    setIsSaving(true)
-    try {
-      const response = await settingsApi.addDepartmentMember({
-        department_id: departmentId,
-        user_email: email,
-        role,
-        send_invite: sendInvite,
-      })
-      const invitePayload = (response as { invite?: { invite_email_sent?: boolean } }).invite
-      toast.success(
-        invitePayload?.invite_email_sent
-          ? "Lite seat assigned and invite email sent"
-          : "Lite seat assigned",
-      )
-      setMemberEmailByDept((prev) => ({ ...prev, [departmentId]: "" }))
-      await mutate()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to assign member")
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handleAssignResource = async (departmentId: string) => {
-    const draft = assignByDept[departmentId] || { resource_type: "workflow" as const, resource_id: "" }
-    const resourceId = draft.resource_id.trim()
-    if (!resourceId) {
-      toast.error("Enter a workflow, agent, council, or knowledge pack id")
-      return
-    }
-    setIsSaving(true)
-    try {
-      const res = await apiFetch("/api/departments/assignments", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          department_id: departmentId,
-          resource_type: draft.resource_type,
-          resource_id: resourceId,
-        }),
-      })
-      if (!res.ok) {
-        const payload = await res.json().catch(() => ({}))
-        throw new Error(
-          (payload as { detail?: string; error?: string }).detail ||
-            (payload as { error?: string }).error ||
-            `Assign failed (${res.status})`,
-        )
-      }
-      toast.success("Assigned to department")
-      setAssignByDept((prev) => ({
-        ...prev,
-        [departmentId]: { resource_type: draft.resource_type, resource_id: "" },
-      }))
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to assign resource")
-    } finally {
-      setIsSaving(false)
-    }
+  if (!isAdmin) {
+    return (
+      <>
+        <SetHeader {...HEADER} />
+        {adminPending || showAdmin ? (
+          <p role="status" className="gs-sub">
+            Checking admin access…
+          </p>
+        ) : (
+          <SetNote>Admin or owner permission is required to manage Lite seats.</SetNote>
+        )}
+      </>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="border-b border-divide py-3">
-        <p className="text-sm font-medium text-foreground">Gravitre Lite seats</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Included: {summary?.included_display ?? (summary?.unlimited ? "Unlimited" : String(summary?.included ?? 0))}
-          {" | "}Allocated: {summary?.allocated ?? 0}
-          {" | "}Used: {summary?.used ?? 0}
-          {summary?.plan_code ? ` · Plan ${summary.plan_code}` : ""}
-        </p>
-      </div>
+    <>
+      <SetHeader
+        {...HEADER}
+        actions={
+          <button
+            type="button"
+            className="gs-btn dark"
+            aria-expanded={adding}
+            onClick={() => setAdding((open) => !open)}
+          >
+            <Plus size={16} aria-hidden />
+            Add department
+          </button>
+        }
+      />
+      {adding ? <AddDepartmentForm onDone={() => setAdding(false)} onAdded={() => mutate()} /> : null}
+      {isLoading && !data ? (
+        <section className="gs-card">
+          <SetSkeleton rows={4} label="Loading Lite seats" />
+        </section>
+      ) : error && !data ? (
+        <section className="gs-card">
+          <SetError message="Could not load Lite seats." onRetry={() => void mutate()} />
+        </section>
+      ) : (
+        <LiteSeatsBody payload={data} onChanged={() => mutate()} onAdd={() => setAdding(true)} />
+      )}
+    </>
+  )
+}
 
-      <div className="space-y-3">
-        {departments.map((department) => (
-          <div key={department.id} className="rounded-[var(--np-radius-lg)] border border-divide bg-[color:var(--g-surface-1)] p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-foreground">{department.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  Used {department.used_seats ?? 0} / Allocated {department.lite_seat_allocation ?? 0}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleUpdateAllocation(department, -1)}
-                  disabled={!isAdmin || isSaving}
-                >
-                  -
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleUpdateAllocation(department, 1)}
-                  disabled={!isAdmin || isSaving}
-                >
-                  +
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handleDeleteDepartment(department.id, department.name)}
-                  disabled={!isAdmin || isSaving}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            <div className="mt-3 flex flex-col gap-2">
-              <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={memberEmailByDept[department.id] ?? ""}
-                onChange={(event) =>
-                  setMemberEmailByDept((prev) => ({
-                    ...prev,
-                    [department.id]: event.target.value,
-                  }))
-                }
-                placeholder="Assign Lite user by email"
-                disabled={!isAdmin || isSaving}
-              />
-              <select
-                className="h-9 rounded-md border border-border bg-secondary px-2 text-sm sm:w-[220px]"
-                value={memberRoleByDept[department.id] ?? "viewer"}
-                disabled={!isAdmin || isSaving}
-                onChange={(event) =>
-                  setMemberRoleByDept((prev) => ({
-                    ...prev,
-                    [department.id]: event.target.value === "admin" ? "admin" : "viewer",
-                  }))
-                }
-              >
-                <option value="viewer">Lite user</option>
-                <option value="admin">Department manager</option>
-              </select>
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={!isAdmin || isSaving}
-                onClick={() => handleInviteMember(department.id)}
-              >
-                Assign seat
-              </Button>
-              </div>
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                <input
-                  type="checkbox"
-                  className="rounded border-border"
-                  checked={sendInviteByDept[department.id] ?? true}
-                  onChange={(event) =>
-                    setSendInviteByDept((prev) => ({
-                      ...prev,
-                      [department.id]: event.target.checked,
-                    }))
-                  }
-                  disabled={!isAdmin || isSaving}
-                />
-                Send Gravitre invite email so this user can verify and onboard
-              </label>
-            </div>
-            <div className="mt-3 space-y-2 border-t border-divide pt-3">
-              <p className="text-xs font-medium text-foreground">Assign workflow / agent / council / knowledge pack</p>
-              <p className="text-[11px] text-muted-foreground">
-                Lite seats in this department can run assigned workflows (Meson build still requires a full seat).
-              </p>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <select
-                  className="h-9 rounded-md border border-border bg-secondary px-2 text-sm"
-                  value={(assignByDept[department.id] || { resource_type: "workflow" }).resource_type}
-                  disabled={!isAdmin || isSaving}
-                  onChange={(event) =>
-                    setAssignByDept((prev) => ({
-                      ...prev,
-                      [department.id]: {
-                        resource_type: event.target.value as "workflow" | "agent" | "council" | "knowledge_pack",
-                        resource_id: prev[department.id]?.resource_id || "",
-                      },
-                    }))
-                  }
-                >
-                  <option value="workflow">Workflow</option>
-                  <option value="agent">Agent</option>
-                  <option value="council">Council</option>
-                  <option value="knowledge_pack">Knowledge pack</option>
-                </select>
-                <Input
-                  value={assignByDept[department.id]?.resource_id ?? ""}
-                  onChange={(event) =>
-                    setAssignByDept((prev) => ({
-                      ...prev,
-                      [department.id]: {
-                        resource_type: prev[department.id]?.resource_type || "workflow",
-                        resource_id: event.target.value,
-                      },
-                    }))
-                  }
-                  placeholder="Resource id"
-                  disabled={!isAdmin || isSaving}
-                />
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={!isAdmin || isSaving}
-                  onClick={() => handleAssignResource(department.id)}
-                >
-                  Assign resource
-                </Button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="space-y-3 border-b border-divide py-3">
-        <p className="text-sm font-medium text-foreground">Add department</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Input
-            value={newDeptName}
-            onChange={(e) => setNewDeptName(e.target.value)}
-            placeholder="Department name"
-            disabled={!isAdmin || isSaving}
-            className="bg-secondary border-border"
+function AddDepartmentForm({ onDone, onAdded }: { onDone: () => void; onAdded: () => Promise<unknown> }) {
+  const [name, setName] = useState("")
+  const [seats, setSeats] = useState("1")
+  const [saving, setSaving] = useState(false)
+  const submit = async () => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    setSaving(true)
+    try {
+      await settingsApi.createDepartment({
+        name: trimmed,
+        lite_seat_allocation: Math.max(0, Number.parseInt(seats || "0", 10) || 0),
+      })
+      toast.success("Department added")
+      await onAdded()
+      onDone()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add department")
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <section className="gs-card gs-rise" aria-label="Add department">
+      <form
+        className="ls-add"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void submit()
+        }}
+      >
+        <label className="gs-field">
+          Department name
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Sales" autoFocus disabled={saving} />
+        </label>
+        <label className="gs-field seats">
+          Seats
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            value={seats}
+            onChange={(e) => setSeats(e.target.value)}
+            disabled={saving}
           />
-          <Input
-            value={String(newDeptSeats)}
-            onChange={(e) => setNewDeptSeats(Number.parseInt(e.target.value || "0", 10) || 0)}
-            placeholder="Seat allocation"
-            disabled={!isAdmin || isSaving}
-            className="bg-secondary border-border"
+        </label>
+        <div className="ls-row">
+          <button type="submit" className="gs-btn dark" disabled={saving || !name.trim()}>
+            {saving ? <Loader2 size={16} className="animate-spin" aria-hidden /> : <Plus size={16} aria-hidden />}
+            Add department
+          </button>
+          <button type="button" className="gs-btn line" onClick={onDone} disabled={saving}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </section>
+  )
+}
+
+function LiteSeatsBody({
+  payload,
+  onChanged,
+  onAdd,
+}: {
+  payload: LiteSeatsPayload | undefined
+  onChanged: () => Promise<unknown>
+  onAdd: () => void
+}) {
+  const departments = useMemo(() => payload?.departments ?? [], [payload])
+  const totals = liteTotals(payload)
+  const [query, setQuery] = useState("")
+  const [view, setView] = useState<View>("cards")
+  const [page, setPage] = useState(1)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  /** Unsaved +/- clicks per department, shown immediately and rolled back on error. */
+  const [draftAlloc, setDraftAlloc] = useState<Record<string, number>>({})
+
+  const filtered = filterDepartments(departments, query)
+  const slice = pageSlice(filtered, page)
+  const selected = departments.find((d) => d.id === selectedId) ?? departments[0] ?? null
+
+  useEffect(() => {
+    if (selectedId && !departments.some((d) => d.id === selectedId)) setSelectedId(null)
+  }, [departments, selectedId])
+
+  const allocOf = (d: LiteDepartment) => draftAlloc[d.id] ?? Number(d.lite_seat_allocation || 0)
+  const allocatedTotal = departments.reduce((sum, d) => sum + allocOf(d), 0)
+
+  return (
+    <>
+      <div className="gs-stats">
+        <SetStat icon={Armchair} tone="green" label="Included" value={totals.includedLabel} hint={totals.planLabel ?? "Your plan"} />
+        <SetStat
+          icon={Building2}
+          label="Allocated"
+          value={departments.length ? allocatedTotal : totals.allocated}
+          hint={`Across ${totals.departments} department${totals.departments === 1 ? "" : "s"}`}
+        />
+        <SetStat icon={UserCheck} label="In use" value={totals.used} hint="Assigned Lite users" />
+      </div>
+
+      <section className="gs-card clip" aria-label="Departments">
+        <div className="gs-toolbar">
+          <label className="gs-input">
+            <Search size={16} aria-hidden />
+            <input
+              aria-label="Search departments"
+              placeholder="Search departments"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                setPage(1)
+              }}
+            />
+          </label>
+          <SetTabs<View>
+            label="View"
+            value={view}
+            onChange={setView}
+            options={[
+              { id: "cards", label: "Cards", icon: LayoutGrid },
+              { id: "table", label: "Table", icon: Table2 },
+            ]}
           />
         </div>
-        <Button
-          size="sm"
-          className="gap-2"
-          onClick={handleAddDepartment}
-          disabled={!isAdmin || isSaving || !newDeptName.trim()}
-        >
-          {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-          Add department
-        </Button>
-      </div>
-    </div>
+        <div className="gs-split">
+          <div className="gs-split-main">
+            {departments.length === 0 ? (
+              <div className="gs-empty">
+                <b>No departments yet</b>
+                <p>Add a department, give it Lite seats, then assign the people and workflows it needs.</p>
+                <button type="button" className="gs-btn dark sm" onClick={onAdd}>
+                  <Plus size={15} aria-hidden />
+                  Add department
+                </button>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="gs-empty" role="status">
+                <b>No departments match “{query.trim()}”</b>
+                <button type="button" className="gs-btn line sm" onClick={() => setQuery("")}>
+                  Clear search
+                </button>
+              </div>
+            ) : view === "cards" ? (
+              <div className="gs-cards" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))" }}>
+                {slice.rows.map((d) => {
+                  const alloc = allocOf(d)
+                  const used = Number(d.used_seats || 0)
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      className="gs-wcard"
+                      aria-pressed={selected?.id === d.id}
+                      onClick={() => setSelectedId(d.id)}
+                    >
+                      <div className="ls-card-top">
+                        <span className="n">{d.name || "Untitled department"}</span>
+                        <span className="gs-count">
+                          {used} / {alloc}
+                        </span>
+                      </div>
+                      <div className="gs-track" aria-hidden>
+                        <span style={{ width: seatBarWidth(used, alloc) }} />
+                      </div>
+                      <div className="ls-card-foot">
+                        <span>
+                          {d.resource_count ?? 0} resource{(d.resource_count ?? 0) === 1 ? "" : "s"}
+                        </span>
+                        <span>{Math.max(alloc - used, 0)} free</span>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="gs-tbl stack" style={{ ["--cols" as string]: "minmax(0,1fr) 110px 110px 110px" }}>
+                <div className="gs-tr head" aria-hidden>
+                  <div className="gs-th">Department</div>
+                  <div className="gs-th">Used</div>
+                  <div className="gs-th">Allocated</div>
+                  <div className="gs-th">Resources</div>
+                </div>
+                {slice.rows.map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    className="gs-row"
+                    aria-pressed={selected?.id === d.id}
+                    aria-label={`${d.name || "Untitled department"}: ${d.used_seats ?? 0} used of ${allocOf(d)} allocated, ${d.resource_count ?? 0} resources`}
+                    onClick={() => setSelectedId(d.id)}
+                  >
+                    <span className="gs-td">
+                      <span className="t">{d.name || "Untitled department"}</span>
+                    </span>
+                    <span className="gs-td gs-mono">
+                      {d.used_seats ?? 0}
+                    </span>
+                    <span className="gs-td gs-mono">
+                      {allocOf(d)}
+                    </span>
+                    <span className="gs-td gs-mono">
+                      {d.resource_count ?? 0}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {filtered.length > 0 ? (
+              <SetPager
+                page={slice.page}
+                pageCount={slice.pageCount}
+                from={slice.from}
+                to={slice.to}
+                total={slice.total}
+                onPage={setPage}
+              />
+            ) : null}
+          </div>
+          <aside className="gs-split-side" aria-label="Department">
+            {selected ? (
+              <LiteSeatsPanel
+                key={selected.id}
+                department={selected}
+                allocation={allocOf(selected)}
+                onDraftAllocation={(value) =>
+                  setDraftAlloc((prev) => {
+                    const next = { ...prev }
+                    if (value === null) delete next[selected.id]
+                    else next[selected.id] = value
+                    return next
+                  })
+                }
+                onChanged={onChanged}
+                onDeleted={() => setSelectedId(null)}
+              />
+            ) : (
+              <div className="gs-empty">
+                <b>No department selected</b>
+                <p>Add a department to manage its Lite seats, users and resources here.</p>
+              </div>
+            )}
+          </aside>
+        </div>
+      </section>
+    </>
   )
 }

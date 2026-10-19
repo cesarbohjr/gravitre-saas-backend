@@ -1,0 +1,22 @@
+/* Settings > Notifications (design p11). Kit tokens only. */
+.gv-set .notifications-scroll { overflow-x: auto; }
+.gv-set .notifications-matrix { min-width: 620px; }
+.gv-set .notifications-matrix .gs-tr { --cols: minmax(0, 1fr) 100px 100px 100px; padding: 0 20px; }
+.gv-set .notifications-matrix .gs-tr.head { background: var(--gs-band); border-bottom: 1px solid var(--gs-line); }
+.gv-set .notifications-matrix .gs-th:first-child { padding-left: 0; }
+.gv-set .notifications-matrix .gs-th.c { display: flex; gap: 6px; align-items: center; justify-content: center; }
+.gv-set .notifications-group { padding: 14px 20px 4px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gs-faint); }
+.gv-set .notifications-row { min-height: 60px; border-top: 1px solid var(--gs-line-faint); }
+.gv-set .notifications-event { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.gv-set .notifications-event .gs-dot { width: 8px; height: 8px; }
+.gv-set .notifications-event b { display: block; font-size: 14px; font-weight: 500; }
+.gv-set .notifications-event span.h { display: block; font-size: 12px; color: var(--gs-muted); }
+.gv-set .notifications-cell { display: flex; justify-content: center; }
+.gv-set .notifications-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.gv-set .notifications-card { padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.gv-set .notifications-card .top { display: flex; gap: 12px; align-items: center; }
+.gv-set .notifications-card .top > div { flex: 1; min-width: 0; }
+.gv-set .notifications-card .top b { display: block; font-weight: 600; }
+.gv-set .notifications-card .top span { display: block; font-size: 13px; color: var(--gs-muted); }
+.gv-set .notifications-quiet { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--gs-ink-3); flex-wrap: wrap; }
+.gv-set .notifications-card .gs-btn { align-self: flex-start; }

@@ -773,6 +773,10 @@ def _fetch_invoices_and_payment_methods(
                         invoice.get("period_end") or invoice.get("created")
                     ),
                     "pdf_url": invoice.get("invoice_pdf"),
+                    # Display fields for the Invoices card: Stripe's invoice
+                    # number and its hosted page (both null until finalized).
+                    "number": invoice.get("number"),
+                    "hosted_invoice_url": invoice.get("hosted_invoice_url"),
                     "created_at": _ts_to_iso(invoice.get("created")),
                 }
             )
@@ -787,11 +791,14 @@ def _fetch_invoices_and_payment_methods(
             default_pm = invoice_settings.get("default_payment_method")
         for method in pm_list.data:
             card = method.get("card") or {}
+            # Only display-safe card fields leave the backend: brand, last 4,
+            # expiry. Never invent digits when Stripe has none.
             payment_methods.append(
                 {
                     "id": method.get("id"),
                     "type": method.get("type") or "card",
-                    "last4": card.get("last4") or "0000",
+                    "brand": card.get("brand") or None,
+                    "last4": card.get("last4") or None,
                     "exp_month": int(card.get("exp_month") or 0),
                     "exp_year": int(card.get("exp_year") or 0),
                     "is_default": bool(default_pm and method.get("id") == default_pm),
@@ -2159,11 +2166,35 @@ def list_invoices(
         .limit(1)
         .execute()
     )
-    customer_id = ((sub_resp.data or [{}])[0]).get("stripe_customer_id")
+    customer_id = ((sub_resp.data or [{}])[0]).get("stripe_customer_id") or (
+        get_org_billing(client, org_id) or {}
+    ).get("stripe_customer_id")
     invoices, _payment_methods = _fetch_invoices_and_payment_methods(
         settings, customer_id
     )
     return {"invoices": invoices}
+
+
+def _org_stripe_customer_ids(client, org_id: str) -> set[str]:
+    """Stripe customer ids this org owns (subscriptions + org_billing)."""
+    ids: set[str] = set()
+    try:
+        sub_resp = (
+            client.table("subscriptions")
+            .select("stripe_customer_id")
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+        )
+        for row in sub_resp.data or []:
+            if row.get("stripe_customer_id"):
+                ids.add(str(row["stripe_customer_id"]))
+    except Exception:  # noqa: BLE001
+        pass
+    billing_row = get_org_billing(client, org_id) or {}
+    if billing_row.get("stripe_customer_id"):
+        ids.add(str(billing_row["stripe_customer_id"]))
+    return ids
 
 
 @router.get("/invoices/{invoice_id}/pdf")
@@ -2187,6 +2218,16 @@ def download_invoice_pdf(
         raise HTTPException(
             status_code=404, detail=f"Invoice not found: {exc}"
         ) from exc
+    # Only hand out PDFs for this org's own Stripe customer; an invoice id from
+    # another customer must look exactly like a missing invoice.
+    client = shared_service_client(settings, create_client)
+    invoice_customer = invoice.get("customer")
+    if isinstance(invoice_customer, dict):
+        invoice_customer = invoice_customer.get("id")
+    if not invoice_customer or str(invoice_customer) not in _org_stripe_customer_ids(
+        client, org_id
+    ):
+        raise HTTPException(status_code=404, detail="Invoice not found")
     pdf_url = invoice.get("invoice_pdf")
     if not pdf_url:
         raise HTTPException(status_code=404, detail="Invoice PDF unavailable")

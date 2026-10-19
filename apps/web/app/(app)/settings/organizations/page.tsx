@@ -3,10 +3,35 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
+import { Check, LayoutGrid, List, Loader2, Plus, Search } from "lucide-react"
+import { toast } from "sonner"
+import { AppShell } from "@/components/gravitre/app-shell"
+import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
+import { MspDelegationPanel } from "@/components/settings/msp-delegation-panel"
+import { SettingsShell } from "@/components/settings/settings-shell"
+import {
+  SetArt,
+  SetError,
+  SetPill,
+  SetSkeleton,
+  SetTabs,
+  avatarTone,
+  initialsOf,
+} from "@/components/settings/settings-kit"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   Dialog,
   DialogContent,
@@ -14,88 +39,115 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
-import { useAuth } from "@/lib/auth-context"
-import { AppShell } from "@/components/gravitre/app-shell"
-import { SettingsShell } from "@/components/settings/settings-shell"
-import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
-import { useOrgAdmin } from "@/lib/use-org-admin"
 import { organizationsApi } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
+import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { getSelectedOrgFromStorage, invalidateOrgCache, setSelectedOrgInStorage } from "@/lib/org-context"
-import { Icon } from "@/lib/icons"
-import { EmptyState } from "@/components/gravitre/empty-state"
-import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
-import { Building2 } from "lucide-react"
-import { MspDelegationPanel } from "@/components/settings/msp-delegation-panel"
-import { toast } from "sonner"
-import { cn } from "@/lib/utils"
-import { TYPE } from "@/lib/design-system"
-import type { Organization, User } from "@/types/api"
+import { useOrgAdmin } from "@/lib/use-org-admin"
+import {
+  countLabel,
+  createdLabel,
+  filterOrgs,
+  ORGS_DOCS_HREF,
+  ORGS_KEY,
+  planLabel,
+  roleName,
+  sortOrgs,
+  type OrgListItem,
+} from "@/lib/settings-api/orgs"
+import type { User } from "@/types/api"
+import "@/components/settings/orgs.css"
 
-type OrganizationWithRole = Organization & { role?: string }
-type Member = User & { role: string }
+type Member = User & { role: string; user_id?: string }
+type View = "list" | "grid"
 
 export default function ManageOrganizationsPage() {
   const { user } = useAuth()
-  // Controls which tiers the settings rail exposes.
+  // Controls which sections the settings rail exposes.
   const { showAdmin } = useOrgAdmin()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
-  const [showMembersDialog, setShowMembersDialog] = useState(false)
-  // Bug fix (2026-09-11): this used to start at `null` and fall back to
-  // `organizations[0]?.id`, so on every fresh page load the "Current" badge
-  // and the "Switch to this org" menu item were keyed off "whichever org the
-  // list API happened to return first" instead of the REAL active org. That
-  // silently hid the "Switch to this org" action for organizations[0] any
-  // time the real active org (localStorage `gravitre:selectedOrg`, the same
-  // value the top-bar switcher and every API call's `x-org-id` header read)
-  // was something else — permanently blocking switching back to it from this
-  // page. Seed from the real source of truth instead.
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(
-    () => getSelectedOrgFromStorage()?.id ?? null
+
+  if (!user) {
+    return (
+      <AppShell title="Settings">
+        <SettingsShell activeSection="organizations" isAdmin={showAdmin}>
+          <section className="gs-card">
+            <div className="gs-empty">
+              <b>Sign in required</b>
+              <p>Sign in to manage organizations and members.</p>
+            </div>
+          </section>
+        </SettingsShell>
+      </AppShell>
+    )
+  }
+
+  return (
+    <AppShell title="Settings">
+      <SettingsShell
+        activeSection="organizations"
+        isAdmin={showAdmin}
+        actions={
+          <button type="button" className="gs-btn dark" onClick={() => setShowCreateDialog(true)}>
+            <Plus size={16} aria-hidden />
+            Create organization
+          </button>
+        }
+      >
+        <OrganizationsContent showCreateDialog={showCreateDialog} setShowCreateDialog={setShowCreateDialog} />
+      </SettingsShell>
+    </AppShell>
   )
-  // Separate from `selectedOrgId`: which org's members dialog is open. This
-  // used to reuse `selectedOrgId` itself, which meant opening "Manage members"
-  // on a non-active org would also (wrongly) relabel that org as "Current"
-  // and hide its own "Switch to this org" action — the same bug class as
-  // above, via a different path.
+}
+
+function OrganizationsContent({
+  showCreateDialog,
+  setShowCreateDialog,
+}: {
+  showCreateDialog: boolean
+  setShowCreateDialog: (open: boolean) => void
+}) {
+  // The real active org: localStorage `gravitre:selectedOrg` is what the top
+  // bar switcher and every API call's `x-org-id` header read; /api/auth/me's
+  // resolved org is the fallback when nothing is stored yet.
+  const [storedOrgId, setStoredOrgId] = useState<string | null>(() => getSelectedOrgFromStorage()?.id ?? null)
+  const [query, setQuery] = useState("")
+  const [view, setView] = useState<View>("list")
+  const [inspectId, setInspectId] = useState<string | null>(null)
   const [membersDialogOrgId, setMembersDialogOrgId] = useState<string | null>(null)
+  const [deleteOrgId, setDeleteOrgId] = useState<string | null>(null)
   const [newOrgName, setNewOrgName] = useState("")
   const [newOrgSlug, setNewOrgSlug] = useState("")
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteRole, setInviteRole] = useState("member")
   const [sendInviteEmail, setSendInviteEmail] = useState(true)
   const [isMutating, setIsMutating] = useState(false)
-  const [inspectId, setInspectId] = useState<string | null>(null)
 
-  const { data, isLoading, mutate } = useSWR(
-    user ? "organizations:list" : null,
-    () => organizationsApi.list()
-  )
+  const { data, error, isLoading, mutate } = useSWR(ORGS_KEY, () => organizationsApi.list())
+  const { data: me } = useSWR<{ org_id?: string | null }>("/api/auth/me", apiFetcher, { revalidateOnFocus: false })
+  const organizations = useMemo(() => (data?.organizations as OrgListItem[] | undefined) ?? [], [data])
 
-  const organizations = useMemo(
-    () => (data?.organizations as OrganizationWithRole[] | undefined) ?? [],
-    [data]
-  )
-
-  const currentOrgId = selectedOrgId ?? organizations[0]?.id ?? null
-
-  // If the org id read from storage is no longer a valid membership (e.g. the
-  // user left or was removed from it), fall back to organizations[0] rather
-  // than getting stuck pointing at an org that no longer exists.
+  // If the stored org is no longer a membership (left or removed), stop pointing at it.
   useEffect(() => {
-    if (!selectedOrgId || organizations.length === 0) return
-    if (!organizations.some((org) => org.id === selectedOrgId)) {
-      setSelectedOrgId(null)
-    }
-  }, [organizations, selectedOrgId])
+    if (!storedOrgId || organizations.length === 0) return
+    if (!organizations.some((org) => org.id === storedOrgId)) setStoredOrgId(null)
+  }, [organizations, storedOrgId])
 
+  const currentOrgId =
+    storedOrgId ??
+    (me?.org_id && organizations.some((org) => org.id === me.org_id) ? me.org_id : null) ??
+    organizations[0]?.id ??
+    null
+  const sorted = useMemo(() => sortOrgs(organizations, currentOrgId), [organizations, currentOrgId])
+  const rows = useMemo(() => filterOrgs(sorted, query), [sorted, query])
+  const inspectOrg = organizations.find((org) => org.id === (inspectId ?? currentOrgId)) ?? sorted[0] ?? null
   const membersDialogOrg = organizations.find((org) => org.id === membersDialogOrgId) ?? null
-  const inspectOrg = organizations.find((org) => org.id === inspectId) ?? null
+  const deleteOrg = organizations.find((org) => org.id === deleteOrgId) ?? null
 
   const { data: membersData, isLoading: membersLoading, mutate: mutateMembers } = useSWR(
-    user && showMembersDialog && membersDialogOrg?.id ? `organizations:members:${membersDialogOrg.id}` : null,
-    () => organizationsApi.listMembers(membersDialogOrg!.id)
+    membersDialogOrg?.id ? `organizations:members:${membersDialogOrg.id}` : null,
+    () => organizationsApi.listMembers(membersDialogOrg!.id),
   )
   const members = (membersData?.members as Member[] | undefined) ?? []
 
@@ -111,15 +163,15 @@ export default function ManageOrganizationsPage() {
     }
     try {
       setIsMutating(true)
-      await organizationsApi.create({ name: newOrgName.trim(), slug: newOrgSlug.trim() || undefined })
+      const created = await organizationsApi.create({ name: newOrgName.trim(), slug: newOrgSlug.trim() || undefined })
       await mutate()
       setNewOrgName("")
       setNewOrgSlug("")
       setShowCreateDialog(false)
+      if (created?.id) setInspectId(created.id)
       toast.success("Organization created")
-    } catch (error) {
-      console.error("Failed to create organization", error)
-      toast.error(error instanceof Error ? error.message : "Failed to create organization")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create organization")
     } finally {
       setIsMutating(false)
     }
@@ -129,40 +181,33 @@ export default function ManageOrganizationsPage() {
     try {
       setIsMutating(true)
       await organizationsApi.switch(orgId)
-      // Bug fix (2026-09-11): the backend switch succeeded and this toasted
-      // success, but nothing ever updated the client-side org context that
-      // every other page's API calls actually read (`x-org-id` comes from
-      // localStorage via getSelectedOrgFromStorage — see lib/fetcher.ts),
-      // so the rest of the app kept operating on the previous org. Mirror
-      // the working top-bar switch pattern: persist the new org to
-      // localStorage, drop the cached org id, then reload so every
-      // SWR-cached, org-scoped fetch picks up the new org_id header.
+      // Same as the top bar switcher: persist the org every API call's x-org-id
+      // header reads, drop the cached org id, then reload so every org scoped
+      // fetch picks up the new org.
       const targetOrg = organizations.find((org) => org.id === orgId)
       setSelectedOrgInStorage({ id: orgId, name: targetOrg?.name ?? "Organization" })
       invalidateOrgCache()
-      setSelectedOrgId(orgId)
+      setStoredOrgId(orgId)
       toast.success("Organization switched")
       window.location.reload()
-    } catch (error) {
-      console.error("Failed to switch organization", error)
-      toast.error(error instanceof Error ? error.message : "Failed to switch organization")
-    } finally {
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to switch organization")
       setIsMutating(false)
     }
   }
 
   const handleDeleteOrganization = async (orgId: string) => {
-    if (!window.confirm("Delete this organization? This action cannot be undone.")) return
     try {
       setIsMutating(true)
       await organizationsApi.delete(orgId)
       await mutate()
-      if (selectedOrgId === orgId) setSelectedOrgId(null)
+      if (storedOrgId === orgId) setStoredOrgId(null)
       if (membersDialogOrgId === orgId) setMembersDialogOrgId(null)
+      if (inspectId === orgId) setInspectId(null)
+      setDeleteOrgId(null)
       toast.success("Organization deleted")
-    } catch (error) {
-      console.error("Failed to delete organization", error)
-      toast.error(error instanceof Error ? error.message : "Failed to delete organization")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete organization")
     } finally {
       setIsMutating(false)
     }
@@ -177,26 +222,27 @@ export default function ManageOrganizationsPage() {
       setIsMutating(true)
       await organizationsApi.inviteMember(membersDialogOrg.id, inviteEmail.trim(), inviteRole, sendInviteEmail)
       setInviteEmail("")
-      await mutateMembers()
+      await Promise.all([mutateMembers(), mutate()])
       toast.success(sendInviteEmail ? "Invitation sent" : "Member added without invite email")
-    } catch (error) {
-      console.error("Failed to invite member", error)
-      toast.error(error instanceof Error ? error.message : "Failed to invite member")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to invite member")
     } finally {
       setIsMutating(false)
     }
   }
 
+  // The backend keys member changes by the auth user id (user_id), not public.users.id.
+  const memberKey = (member: Member) => member.user_id ?? member.id
+
   const handleUpdateMemberRole = async (member: Member, role: "admin" | "member") => {
     if (!membersDialogOrg) return
     try {
       setIsMutating(true)
-      await organizationsApi.updateMemberRole(membersDialogOrg.id, member.id, role)
+      await organizationsApi.updateMemberRole(membersDialogOrg.id, memberKey(member), role)
       await mutateMembers()
       toast.success("Member role updated")
-    } catch (error) {
-      console.error("Failed to update member role", error)
-      toast.error(error instanceof Error ? error.message : "Failed to update role")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update role")
     } finally {
       setIsMutating(false)
     }
@@ -207,242 +253,294 @@ export default function ManageOrganizationsPage() {
     if (!window.confirm(`Remove ${member.email ?? member.id} from organization?`)) return
     try {
       setIsMutating(true)
-      await organizationsApi.removeMember(membersDialogOrg.id, member.id)
-      await mutateMembers()
+      await organizationsApi.removeMember(membersDialogOrg.id, memberKey(member))
+      await Promise.all([mutateMembers(), mutate()])
       toast.success("Member removed")
-    } catch (error) {
-      console.error("Failed to remove member", error)
-      toast.error(error instanceof Error ? error.message : "Failed to remove member")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to remove member")
     } finally {
       setIsMutating(false)
     }
   }
 
-  if (!user) {
-    return (
-      <AppShell title="Settings">
-        <SettingsShell activeSection="organizations" isAdmin={showAdmin} hideHeader>
-          <div className="px-6 py-12">
-            <p className={TYPE.sectionTitle}>Sign in required</p>
-            <p className={cn(TYPE.pageLead, "mt-2")}>Sign in to manage organizations and members.</p>
-          </div>
-        </SettingsShell>
-      </AppShell>
-    )
-  }
+  const inspectRole = String(inspectOrg?.role ?? "").toLowerCase()
+  const inspectIsCurrent = Boolean(inspectOrg && inspectOrg.id === currentOrgId)
 
   return (
-    <AppShell title="Settings">
-      <SettingsShell activeSection="organizations" isAdmin={showAdmin} hideHeader>
-      <GravitrePageHeader
-        className="!px-0 border-b-0 mb-6"
-        title="Organizations"
-        description="Create and manage your organizations and workspaces"
-        icon={<Building2 className="h-5 w-5" aria-hidden />}
-        actions={
-          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Icon name="plus" size="sm" />
-                Create organization
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Create organization</DialogTitle>
-                <DialogDescription>
-                  Create a new organization to collaborate with your team
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="org-name">Organization name</Label>
-                    <Input
-                      id="org-name"
-                      placeholder="Acme Inc"
-                      value={newOrgName}
-                      onChange={(e) => handleNameChange(e.target.value)}
-                    />
+    <>
+      <section className="gs-card clip" data-review-surface="settings-orgs">
+        <div className="gs-toolbar">
+          <label className="gs-input">
+            <Search size={16} aria-hidden />
+            <input
+              type="search"
+              aria-label="Search organizations"
+              placeholder="Search organizations"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+          <SetTabs<View>
+            label="View"
+            value={view}
+            onChange={setView}
+            options={[
+              { id: "list", label: "List", icon: List },
+              { id: "grid", label: "Grid", icon: LayoutGrid },
+            ]}
+          />
+        </div>
+
+        {error && !data ? (
+          <SetError message="Could not load your organizations." onRetry={() => void mutate()} />
+        ) : isLoading && !data ? (
+          <SetSkeleton rows={4} label="Loading organizations" />
+        ) : organizations.length === 0 ? (
+          <div className="gs-empty">
+            <b>No organizations yet</b>
+            <p>
+              Organizations keep your teams, clients and projects separate, each with its own agents, workflows and
+              billing. Create your first one to get started.
+            </p>
+            <button type="button" className="gs-btn dark sm" onClick={() => setShowCreateDialog(true)}>
+              <Plus size={15} aria-hidden />
+              Create organization
+            </button>
+          </div>
+        ) : (
+          <div className="gs-split">
+            <div className="gs-split-main">
+              <div data-review-surface="settings-orgs-queue" role="group" aria-label="Organizations">
+                {rows.length === 0 ? (
+                  <p role="status" style={{ padding: "32px 18px", textAlign: "center", fontSize: 14, color: "var(--gs-muted)", margin: 0 }}>
+                    No organization matches that search.
+                  </p>
+                ) : view === "list" ? (
+                  rows.map((org) => (
+                    <button
+                      key={org.id}
+                      type="button"
+                      className="gs-orow"
+                      aria-pressed={inspectOrg?.id === org.id}
+                      onClick={() => setInspectId(org.id)}
+                    >
+                      <OrgAvatar org={org} />
+                      <span className="orgs-row-body">
+                        <span className="orgs-name">
+                          <span>{org.name}</span>
+                          {org.id === currentOrgId ? <SetPill tone="green">Current</SetPill> : null}
+                        </span>
+                        <span className="orgs-slug gs-mono">{org.slug}</span>
+                      </span>
+                      <span className="gs-chip">{roleName(org.role)}</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="gs-cards">
+                    {rows.map((org) => (
+                      <button
+                        key={org.id}
+                        type="button"
+                        className="gs-wcard"
+                        aria-pressed={inspectOrg?.id === org.id}
+                        onClick={() => setInspectId(org.id)}
+                      >
+                        <span className="orgs-card-top">
+                          <OrgAvatar org={org} />
+                          {org.id === currentOrgId ? <SetPill tone="green">Current</SetPill> : null}
+                        </span>
+                        <span className="orgs-card-name">{org.name}</span>
+                        <span className="orgs-card-counts">
+                          <span>{countLabel(org.agent_count)} agents</span>
+                          <span>{countLabel(org.workflow_count)} workflows</span>
+                        </span>
+                      </button>
+                    ))}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="org-slug">URL Slug</Label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">gravitre.ai/</span>
-                      <Input
-                        id="org-slug"
-                        placeholder="acme-inc"
-                        value={newOrgSlug}
-                        onChange={(e) => setNewOrgSlug(e.target.value)}
-                        className="flex-1"
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      This will be used in URLs and cannot be changed later
-                    </p>
+                )}
+              </div>
+              <div className="orgs-list-foot" role="status" aria-live="polite">
+                Showing {rows.length} of {organizations.length} organization{organizations.length === 1 ? "" : "s"}
+              </div>
+            </div>
+
+            {inspectOrg ? (
+              <aside className="gs-split-side" aria-label="Organization details" data-review-surface="settings-orgs-inspect">
+                <SetArt name="settings-organizations" ratio="320 / 170" />
+                <div className="orgs-panel-head">
+                  <OrgAvatar org={inspectOrg} />
+                  <div style={{ minWidth: 0 }}>
+                    <h3>{inspectOrg.name}</h3>
+                    <div className="orgs-slug gs-mono">{inspectOrg.slug}</div>
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleCreateOrganization} disabled={isMutating || !newOrgName.trim()}>
-                    Create organization
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-        }
-      />
-
-      <div className="px-4 py-4 sm:px-6" data-review-surface="settings-orgs">
-        {isLoading && <p className={cn(TYPE.meta, "py-4")}>Loading organizations…</p>}
-        <div className="flex flex-col border-t border-divide lg:flex-row lg:border-t-0">
-          <ul
-            className={cn("min-w-0 flex-1 divide-y divide-divide", inspectOrg ? "hidden lg:block" : "block")}
-            data-review-surface="settings-orgs-queue"
-          >
-            {organizations.map((org) => (
-              <li key={org.id}>
-                <button
-                  type="button"
-                  onClick={() => setInspectId(org.id)}
-                  className={cn(
-                    "flex w-full items-center justify-between gap-3 px-1 py-3 text-left",
-                    inspectId === org.id
-                      ? "bg-[color:var(--g-surface-active)]"
-                      : "hover:bg-[color:var(--g-surface-2)]",
+                <div className="orgs-tiles">
+                  <CountTile value={inspectOrg.member_count} label="Members" />
+                  <CountTile value={inspectOrg.agent_count} label="Agents" />
+                  <CountTile value={inspectOrg.workflow_count} label="Workflows" />
+                </div>
+                <div className="gs-kv">
+                  <div>
+                    <span>Your role</span>
+                    <strong>{roleName(inspectOrg.role)}</strong>
+                  </div>
+                  <div>
+                    <span>Plan</span>
+                    <strong>{planLabel(inspectOrg) ?? "No plan on record"}</strong>
+                  </div>
+                  <div>
+                    <span>Created</span>
+                    <strong>{createdLabel(inspectOrg.created_at) ?? "Not recorded"}</strong>
+                  </div>
+                </div>
+                <div className="orgs-actions">
+                  {inspectIsCurrent ? (
+                    <SetPill tone="green">
+                      <Check size={13} aria-hidden />
+                      You are here
+                    </SetPill>
+                  ) : (
+                    <button
+                      type="button"
+                      className="gs-btn green sm"
+                      data-review-cta="switch-org"
+                      disabled={isMutating}
+                      onClick={() => void handleSwitchOrganization(inspectOrg.id)}
+                    >
+                      {isMutating ? <Loader2 size={14} className="animate-spin" aria-hidden /> : null}
+                      Switch to this workspace
+                    </button>
                   )}
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-foreground">{org.name}</span>
-                    <span className={cn(TYPE.meta, "mt-0.5 block truncate")}>
-                      {org.slug}
-                      {currentOrgId === org.id ? " · current workspace" : ""}
-                      {org.role ? ` · ${org.role}` : ""}
-                    </span>
-                  </span>
-                  <Icon name="more" size="sm" className="shrink-0 text-muted-foreground" />
-                </button>
-              </li>
-            ))}
-          </ul>
-          {inspectOrg ? (
-            <aside
-              className="min-w-0 flex-1 border-t border-divide p-4 lg:max-w-sm lg:border-l lg:border-t-0"
-              data-review-surface="settings-orgs-inspect"
-            >
-              <Button variant="ghost" size="sm" className="mb-3 lg:hidden" onClick={() => setInspectId(null)}>
-                Back to list
-              </Button>
-              <p className={TYPE.eyebrow}>Organization</p>
-              <h2 className={cn(TYPE.sectionTitle, "mt-1")}>{inspectOrg.name}</h2>
-              <p className={cn(TYPE.meta, "mt-1")}>{inspectOrg.slug}</p>
-              {inspectOrg.plan ? (
-                <p className={cn(TYPE.meta, "mt-2")}>Plan on record: {inspectOrg.plan}</p>
-              ) : (
-                <p className={cn(TYPE.meta, "mt-2")}>Plan is shown from billing when the org has one on record.</p>
-              )}
-              {inspectOrg.role ? <p className={cn(TYPE.meta, "mt-1")}>Your role: {inspectOrg.role}</p> : null}
-              <div className="mt-4 flex flex-col gap-2">
-                {currentOrgId !== inspectOrg.id ? (
-                  <Button
-                    data-review-cta="switch-org"
-                    disabled={isMutating}
-                    onClick={() => void handleSwitchOrganization(inspectOrg.id)}
-                  >
-                    Switch to this org
-                  </Button>
-                ) : (
-                  <Button data-review-cta="open-org-settings" asChild>
-                    <Link href={`/settings?org=${inspectOrg.id}`}>Organization settings</Link>
-                  </Button>
-                )}
-                {currentOrgId !== inspectOrg.id ? (
-                  <Button variant="ghost" asChild>
-                    <Link href={`/settings?org=${inspectOrg.id}`}>Organization settings</Link>
-                  </Button>
-                ) : null}
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setMembersDialogOrgId(inspectOrg.id)
-                    setShowMembersDialog(true)
-                  }}
-                >
-                  Manage members
-                </Button>
-                <Button variant="ghost" asChild>
-                  <Link href="/settings/billing">Billing</Link>
-                </Button>
-                {process.env.NEXT_PUBLIC_MSP_DELEGATION_UI_ENABLED === "true" &&
-                  (inspectOrg.role ?? "").toLowerCase() === "owner" ? (
-                    <MspDelegationPanel key={inspectOrg.id} customerOrgId={inspectOrg.id} />
+                  {inspectIsCurrent ? (
+                    <Link href="/settings?section=organization" className="gs-btn line sm" data-review-cta="open-org-settings">
+                      Manage
+                    </Link>
                   ) : null}
-                {(inspectOrg.role ?? "").toLowerCase() === "admin" ? (
-                  <Button
-                    variant="ghost"
-                    className="text-destructive"
-                    disabled={isMutating}
-                    onClick={() => void handleDeleteOrganization(inspectOrg.id)}
-                  >
-                    Delete organization
-                  </Button>
+                </div>
+                {!inspectIsCurrent ? (
+                  <p className="gs-sub" style={{ margin: 0 }}>
+                    Switch to this workspace to manage its general settings and billing.
+                  </p>
                 ) : null}
-              </div>
-            </aside>
-          ) : null}
-        </div>
-        {!inspectOrg && !isLoading && organizations.length > 0 ? (
-          <p className={cn(TYPE.meta, "pt-3")}>Select an organization — inspector stays closed until then.</p>
-        ) : null}
-        {!isLoading && organizations.length === 0 && (
-          <EmptyState
-            icon={Building2}
-            title="No organizations yet"
-            description="Organizations keep your teams, clients, and projects separate — each with its own agents, workflows, and billing. Create your first one to get started."
-            action={{ label: "Create organization", onClick: () => setShowCreateDialog(true) }}
-            className="mt-4"
-          />
+                <div className="orgs-more">
+                  <button type="button" className="gs-btn text sm" onClick={() => setMembersDialogOrgId(inspectOrg.id)}>
+                    Manage members
+                  </button>
+                  {inspectIsCurrent ? (
+                    <Link href="/settings/billing" className="gs-btn text sm">
+                      Billing
+                    </Link>
+                  ) : null}
+                  {inspectRole === "owner" ? (
+                    <button
+                      type="button"
+                      className="gs-btn text sm"
+                      style={{ color: "var(--gs-red-ink)" }}
+                      disabled={isMutating}
+                      onClick={() => setDeleteOrgId(inspectOrg.id)}
+                    >
+                      Delete organization
+                    </button>
+                  ) : null}
+                </div>
+                {process.env.NEXT_PUBLIC_MSP_DELEGATION_UI_ENABLED === "true" && inspectRole === "owner" ? (
+                  <MspDelegationPanel key={inspectOrg.id} customerOrgId={inspectOrg.id} />
+                ) : null}
+              </aside>
+            ) : null}
+          </div>
         )}
-        <p className={cn(TYPE.meta, "mt-8")}>
-          Each organization has its own agents, workflows, and billing. Switch workspaces from this list after you
-          select one.
-        </p>
-        <Link href="/docs/organizations" className="mt-2 inline-block text-sm text-[color:var(--g-brand)] hover:underline">
-          Documentation
-        </Link>
-      </div>
+      </section>
 
-      <Dialog open={showMembersDialog} onOpenChange={setShowMembersDialog}>
+      <p className="orgs-docs">
+        New to organizations?{" "}
+        <Link href={ORGS_DOCS_HREF} className="gs-link">
+          Read the documentation
+        </Link>
+      </p>
+
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create organization</DialogTitle>
+            <DialogDescription>Create a new organization to collaborate with your team</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="org-name">Organization name</Label>
+              <Input id="org-name" placeholder="Acme Inc" value={newOrgName} onChange={(e) => handleNameChange(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="org-slug">URL slug</Label>
+              <Input id="org-slug" placeholder="acme-inc" value={newOrgSlug} onChange={(e) => setNewOrgSlug(e.target.value)} />
+              <p className="text-xs text-muted-foreground">Used in URLs and the API org context.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleCreateOrganization()} disabled={isMutating || !newOrgName.trim()}>
+              Create organization
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={Boolean(deleteOrg)} onOpenChange={(open) => !open && setDeleteOrgId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deleteOrg?.name ?? "this organization"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Its agents, workflows, members and billing go with it. This can&apos;t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isMutating}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isMutating}
+              onClick={(event) => {
+                event.preventDefault()
+                if (deleteOrg) void handleDeleteOrganization(deleteOrg.id)
+              }}
+            >
+              Delete organization
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={Boolean(membersDialogOrg)} onOpenChange={(open) => !open && setMembersDialogOrgId(null)}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Manage members</DialogTitle>
-            <DialogDescription>
-              Invite and manage members in {membersDialogOrg?.name ?? "organization"}.
-            </DialogDescription>
+            <DialogDescription>Invite and manage members in {membersDialogOrg?.name ?? "organization"}.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-              <Input
-                placeholder="member@company.com"
-                value={inviteEmail}
-                onChange={(event) => setInviteEmail(event.target.value)}
-                disabled={isMutating}
-              />
-              <select
-                className="h-9 rounded-md border border-border bg-secondary px-2 text-sm sm:w-[180px]"
-                value={inviteRole}
-                disabled={isMutating}
-                onChange={(event) => setInviteRole(event.target.value)}
-              >
-                <option value="member">Member</option>
-                <option value="admin">Admin</option>
-                <option value="viewer">Viewer (Lite)</option>
-              </select>
-              <Button onClick={() => void handleInviteMember()} disabled={isMutating || !inviteEmail.trim()}>
-                Invite
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  aria-label="Invite email"
+                  placeholder="member@company.com"
+                  value={inviteEmail}
+                  onChange={(event) => setInviteEmail(event.target.value)}
+                  disabled={isMutating}
+                  className="min-w-0 flex-1"
+                />
+                <select
+                  aria-label="Invite role"
+                  className="h-9 rounded-md border border-border bg-secondary px-2 text-sm sm:w-[180px]"
+                  value={inviteRole}
+                  disabled={isMutating}
+                  onChange={(event) => setInviteRole(event.target.value)}
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                  <option value="viewer">Viewer (Lite)</option>
+                </select>
+                <Button onClick={() => void handleInviteMember()} disabled={isMutating || !inviteEmail.trim()}>
+                  Invite
+                </Button>
               </div>
               <label className="flex items-center gap-2 text-xs text-muted-foreground">
                 <input
@@ -455,20 +553,13 @@ export default function ManageOrganizationsPage() {
                 Send branded Gravitre invite email via Supabase
               </label>
             </div>
-            <div className="space-y-2">
-              {membersLoading && <p className="text-sm text-muted-foreground">Loading members...</p>}
-              {!membersLoading && members.length === 0 && (
-                <p className="text-sm text-muted-foreground">No members found.</p>
-              )}
+            <div className="max-h-[50vh] space-y-2 overflow-y-auto">
+              {membersLoading ? <p className="text-sm text-muted-foreground">Loading members…</p> : null}
+              {!membersLoading && members.length === 0 ? <p className="text-sm text-muted-foreground">No members found.</p> : null}
               {members.map((member) => (
-                <div key={member.id} className="flex items-center justify-between rounded-lg border p-3">
+                <div key={memberKey(member)} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <UserAccountAvatar
-                      name={member.full_name}
-                      email={member.email}
-                      avatarUrl={member.avatar_url}
-                      size="sm"
-                    />
+                    <UserAccountAvatar name={member.full_name} email={member.email} avatarUrl={member.avatar_url} size="sm" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{member.full_name || member.email || member.id}</p>
                       <p className="truncate text-xs text-muted-foreground">{member.email ?? member.id}</p>
@@ -484,12 +575,10 @@ export default function ManageOrganizationsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={isMutating}
-                      onClick={() =>
-                        void handleUpdateMemberRole(member, member.role === "admin" ? "member" : "admin")
-                      }
+                      disabled={isMutating || member.role === "owner"}
+                      onClick={() => void handleUpdateMemberRole(member, member.role === "admin" ? "member" : "admin")}
                     >
-                      Toggle role
+                      {member.role === "admin" ? "Make member" : "Make admin"}
                     </Button>
                     <Button
                       variant="ghost"
@@ -506,13 +595,29 @@ export default function ManageOrganizationsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowMembersDialog(false)}>
+            <Button variant="outline" onClick={() => setMembersDialogOrgId(null)}>
               Close
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </SettingsShell>
-    </AppShell>
+    </>
+  )
+}
+
+function OrgAvatar({ org }: { org: OrgListItem }) {
+  return (
+    <span className={`gs-avatar ${avatarTone(org.id)}`} aria-hidden>
+      {initialsOf(org.name, "O")}
+    </span>
+  )
+}
+
+function CountTile({ value, label }: { value: number | null | undefined; label: string }) {
+  return (
+    <div className="gs-tile white" title={typeof value === "number" ? undefined : "Could not be counted right now"}>
+      <b>{countLabel(value)}</b>
+      <span>{label}</span>
+    </div>
   )
 }

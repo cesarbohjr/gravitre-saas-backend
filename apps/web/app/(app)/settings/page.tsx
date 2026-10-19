@@ -142,7 +142,7 @@ function SettingsContent() {
           />
         )
       case "ai-models": return <AIModelsSettings isAdmin={isAdmin} />
-      case "security": return <SecuritySettings />
+      case "security": return <SecuritySettings isAdmin={isAdmin} />
       case "api-keys": return <ApiKeysSettings isAdmin={isAdmin} />
       case "notifications": return <NotificationSettings isAdmin={isAdmin} />
       case "team":
