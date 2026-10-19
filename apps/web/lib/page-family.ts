@@ -12,6 +12,12 @@ export function isAiHelpRoute(pathname: string): boolean {
   return /^\/ai\/help(?:\/|$)/.test(pathname.split("?")[0] ?? "")
 }
 
+/** Conversation surfaces exclude the help documents beneath the same URL. */
+export function isAiConversationRoute(pathname: string): boolean {
+  const path = pathname.split("?")[0] ?? ""
+  return (path === "/ai" || path.startsWith("/ai/")) && !isAiHelpRoute(path)
+}
+
 const IMMERSIVE: RegExp[] = [
   /^\/ai(\/|$)/,
   /^\/agents\/[^/]+\/chat\/?$/,
