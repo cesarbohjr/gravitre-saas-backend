@@ -17,8 +17,10 @@ on:
       - "apps/web/components/gravitre/sidebar-nav-config.ts"
 
 concurrency:
-  group: authenticated-click-audit-${{ github.ref }}
-  cancel-in-progress: true
+  # Every ref rotates the SAME smoke user's password before its browser run.
+  # Serialize the entire run across refs so another run cannot invalidate it.
+  group: authenticated-click-audit-isolated-smoke-account
+  cancel-in-progress: false
 
 jobs:
   deep-surface-click-audit:

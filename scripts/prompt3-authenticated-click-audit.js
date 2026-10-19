@@ -382,7 +382,14 @@ async function auditSidebarIsolated(page, origin) {
     let reason
     try {
       await link.click({ timeout: 8_000 })
-      await page.waitForTimeout(1200)
+      // A fixed 1.2s sleep classified a slow /workflows transition as a dead
+      // link. Require the actual destination, with a bounded navigation wait.
+      if (targetPath) {
+        await page.waitForURL(
+          (url) => (url.pathname.replace(/\/+$/, "") || "/") === targetPath,
+          { timeout: 30_000 },
+        )
+      }
     } catch (err) {
       status = "FAIL"
       reason = err instanceof Error ? err.message : String(err)
