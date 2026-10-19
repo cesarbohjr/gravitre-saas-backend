@@ -956,24 +956,44 @@ class FounderOfferRequest(BaseModel):
 def list_commercial_accounts(
     _founder: Annotated[dict, Depends(require_platform_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
+    offset: int = 0,
+    limit: int = 200,
 ) -> dict:
+    if offset < 0 or not 1 <= limit <= 200:
+        raise HTTPException(status_code=422, detail="Invalid account page")
     client = shared_service_client(settings, create_client)
-    orgs = client.table("organizations").select("id,name").order("created_at", desc=True).limit(200).execute().data or []
-    profiles = client.table("org_commercial_profiles").select("org_id,customer_category,classification_reason").limit(500).execute().data or []
-    grants = client.table("org_promotional_grants").select("id,org_id,offer_type,trial_days,percent_off,discount_months,status,valid_until,redeemed_at,checkout_attempt_id").limit(500).execute().data or []
+    rows = client.table("organizations").select("id,name").order("created_at", desc=True).order("id").range(offset, offset + limit).execute().data or []
+    has_more = len(rows) > limit
+    orgs = rows[:limit]
+    org_ids = [str(org["id"]) for org in orgs]
+    profiles = client.table("org_commercial_profiles").select("org_id,customer_category,classification_reason").in_("org_id", org_ids).execute().data or [] if org_ids else []
+    grants = []
+    # Histories also page: an old redeemed offer must not disappear from its cohort.
+    if org_ids:
+        grant_offset = 0
+        while True:
+            page = client.table("org_promotional_grants").select("id,org_id,offer_type,trial_days,percent_off,discount_months,status,valid_until,redeemed_at,checkout_attempt_id").in_("org_id", org_ids).order("id").range(grant_offset, grant_offset + 499).execute().data or []
+            grants.extend(page)
+            if len(page) < 500:
+                break
+            grant_offset += 500
     by_org = {str(p["org_id"]): p for p in profiles}
     grants_by_org: dict[str, list[dict]] = {}
     for grant in grants:
         grants_by_org.setdefault(str(grant["org_id"]), []).append(grant)
-    return {"offers_enabled": settings.commercial_offers_enabled, "accounts": [
-        {
-            "org_id": str(org["id"]),
-            "name": org.get("name"),
-            "customer_category": by_org.get(str(org["id"]), {}).get("customer_category", "unreviewed"),
-            "classification_reason": by_org.get(str(org["id"]), {}).get("classification_reason"),
-            "offers": grants_by_org.get(str(org["id"]), []),
-        } for org in orgs
-    ]}
+    return {
+        "offers_enabled": settings.commercial_offers_enabled,
+        "has_more": has_more,
+        "next_offset": offset + len(orgs),
+        "accounts": [
+            {
+                "org_id": str(org["id"]), "name": org.get("name"),
+                "customer_category": by_org.get(str(org["id"]), {}).get("customer_category", "unreviewed"),
+                "classification_reason": by_org.get(str(org["id"]), {}).get("classification_reason"),
+                "offers": grants_by_org.get(str(org["id"]), []),
+            } for org in orgs
+        ],
+    }
 
 
 @router.get("/admin/commercial-accounts/{org_id}/stripe")

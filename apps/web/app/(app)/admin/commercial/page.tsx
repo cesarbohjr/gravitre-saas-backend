@@ -39,7 +39,7 @@ type StripeAccount = {
   verified_at: string | null
   has_more?: boolean
 }
-async function requestJson(url: string, body?: object): Promise<{ accounts?: Account[]; offers_enabled?: boolean } & Partial<StripeAccount>> {
+async function requestJson(url: string, body?: object): Promise<{ accounts?: Account[]; offers_enabled?: boolean; next_offset?: number } & Partial<StripeAccount>> {
   const response = await apiFetch(url, body
     ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }
     : { method: "GET" })
@@ -74,9 +74,19 @@ export default function CommercialAccountsPage() {
     if (!user) return
     setLoading(true)
     try {
-      const data = await requestJson("/api/billing/admin/commercial-accounts")
-      setAccounts(data.accounts || [])
-      setOffersEnabled(data.offers_enabled === true)
+      const allAccounts: Account[] = []
+      let offset = 0
+      let enabled = false
+      while (true) {
+        const data = await requestJson(`/api/billing/admin/commercial-accounts?offset=${offset}&limit=200`)
+        allAccounts.push(...(data.accounts || []))
+        enabled = data.offers_enabled === true
+        if (!data.has_more) break
+        if (typeof data.next_offset !== "number" || data.next_offset <= offset) throw new Error("Unable to load the complete account list")
+        offset = data.next_offset
+      }
+      setAccounts(allAccounts)
+      setOffersEnabled(enabled)
       setError("")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load accounts")
