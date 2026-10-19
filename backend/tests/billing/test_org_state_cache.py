@@ -286,11 +286,11 @@ def test_stripe_webhook_write_invalidates_org_caches_and_billing_gate(treat_fake
     stripe_webhook_router._process_stripe_event(
         client,
         mock_settings,
-        "invoice.payment_failed",
-        {"id": "in_1"},
+        "customer.subscription.updated",
+        {"id": "sub_1", "customer": "cus_1", "status": "past_due", "items": {"data": []}},
         {"org_id": ORG},
         ORG,
-        {"id": "evt_1", "type": "invoice.payment_failed"},
+        {"id": "evt_1", "type": "customer.subscription.updated"},
     )
 
     assert client.store["org_billing"][0]["billing_status"] == "past_due"
