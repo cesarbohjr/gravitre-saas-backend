@@ -728,6 +728,9 @@ app.include_router(org.organizations_router)
 from app.routers import msp_delegations
 app.include_router(msp_delegations.router)
 app.include_router(billing.router)
+# Public promo codes + founder-offer ops (platform admin), same /api/billing prefix.
+from app.routers import billing_promotions
+app.include_router(billing_promotions.router)
 app.include_router(billing_sync.internal_router)
 app.include_router(billing_sync.admin_router)
 app.include_router(business_outcomes.router)
