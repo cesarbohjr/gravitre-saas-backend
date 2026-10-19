@@ -25,7 +25,7 @@ test("signed-in organization owner cannot access founder data or write offers", 
   await loginWithPassword(page, fixtures.activeTrial.email, fixtures.activeTrial.password)
   await setSelectedOrg(page, fixtures.activeTrial.orgId)
   await page.goto("/admin/commercial")
-  await expect(page.getByText("Platform admin required", { exact: true })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Platform admin access required", exact: true })).toBeVisible()
   for (const path of ["commercial-accounts", "billing-safety"]) {
     const response = await api(page, `/api/billing/admin/${path}`)
     expect(response.status).toBe(403)
@@ -84,6 +84,9 @@ test("customer completes real sandbox checkout and signed webhook persists subsc
   if (await name.count()) await name.fill("Sandbox Acceptance")
   const postal = page.getByLabel(/ZIP|Postal code/i)
   if (await postal.count()) await postal.fill("94107")
+  // Exercise card checkout without enrolling in optional Link/SMS signup.
+  const saveWithLink = page.getByRole("checkbox", { name: /Save my information|Save my payment/i })
+  if (await saveWithLink.isVisible()) await saveWithLink.uncheck()
   await page.getByRole("button", { name: /Start trial|Subscribe|Start free trial/i }).click()
   await expect(page).toHaveURL(/localhost:3000\/settings\/billing/, { timeout: 90_000 })
   await expect.poll(() => stripeProof(sessionId).checkout_status, { timeout: 45_000 }).toBe("complete")
