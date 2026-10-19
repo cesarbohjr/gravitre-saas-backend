@@ -65,9 +65,24 @@ class _DB:
 
 
 def _no_plaintext(config: dict[str, Any], secret: str) -> None:
-    assert secret not in json.dumps(config)
     for key in store.SECRET_KEYS:
         assert key not in config
+    encrypted_keys = {f"{key}{store.ENCRYPTED_SUFFIX}" for key in store.SECRET_KEYS}
+    # Random base64 ciphertext can contain a short plaintext fragment such as
+    # "p1" by chance. Check leakage outside ciphertext, then prove the stored
+    # ciphertext is valid encryption of the intended secret.
+    assert secret not in json.dumps({key: value for key, value in config.items() if key not in encrypted_keys})
+    ciphertexts = [value for key, value in config.items() if key in encrypted_keys]
+    assert ciphertexts
+    assert all(value != secret for value in ciphertexts)
+    assert secret in [decrypt_secret(value, KEY) for value in ciphertexts]
+
+
+def test_encrypted_secret_may_contain_a_short_plaintext_fragment():
+    # Synthetic ciphertext of "p1" under the test KEY from the failing CI run.
+    ciphertext = "gAAAAABq1mf7Ei3q5Qp6aFTfsKYTFs5-qocrYqHMxGdRm1TGvLtlLNtDkvatns6vYX9vJG0LGV64tmnutaYhWDPpJnXXjVTp1A=="
+    assert "p1" in ciphertext
+    _no_plaintext({"webhook_secret_encrypted": ciphertext}, "p1")
 
 
 @pytest.mark.parametrize("svc", [pd, sf, seg])
@@ -98,7 +113,7 @@ def test_pagerduty_signing_secret_keeps_precedence_after_sealing():
     db = _DB({"webhook_secret": "ours", "pagerduty_signing_secret": "theirs"})
     assert pd.ensure_connector_webhook_secret(db, "o1", "c1") == "theirs"
     _no_plaintext(db.config, "theirs")
-    assert "ours" not in json.dumps(db.config)
+    _no_plaintext(db.config, "ours")
     assert pd.get_connector_webhook_secret({"config": db.config}) == "theirs"
 
 

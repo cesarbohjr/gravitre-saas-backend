@@ -7,6 +7,17 @@ on:
       - 'supabase/migrations/**'
       - '.github/workflows/supabase-migration-safety.yml'
       - 'docs/delivery/AI_RELEASE_INSTRUCTIONS.md'
+      - 'backend/app/billing/**'
+      - 'backend/app/routers/billing.py'
+      - 'backend/app/routers/webhooks/stripe.py'
+      - 'apps/web/app/(app)/admin/commercial/**'
+      - 'apps/web/app/(app)/settings/billing/**'
+      - 'e2e/*billing*.spec.ts'
+      - 'e2e/helpers/auth.ts'
+      - 'e2e/global-setup.ts'
+      - 'e2e/load-env.ts'
+      - 'scripts/*billing*.py'
+      - 'playwright.billing.acceptance.config.ts'
   workflow_dispatch:
 
 permissions:
@@ -133,10 +144,10 @@ jobs:
           PY
 
   staging-validate:
-    name: Staging / local migration apply (optional)
+    name: Local migration and billing acceptance
     needs: validate-migrations
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 55
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
@@ -144,15 +155,20 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Skip when no migration SQL changed
+      - name: Select migration and billing acceptance
         id: gate
         shell: bash
         run: |
           set -euo pipefail
           git fetch origin "${{ github.base_ref }}" --depth=1
-          if git diff --quiet "origin/${{ github.base_ref }}...HEAD" -- 'supabase/migrations/*.sql'; then
+          billing=false
+          if ! git diff --quiet "origin/${{ github.base_ref }}...HEAD" -- '.github/workflows/supabase-migration-safety.yml' 'backend/app/billing/**' 'backend/app/routers/billing.py' 'backend/app/routers/webhooks/stripe.py' 'apps/web/app/(app)/admin/commercial/**' 'apps/web/app/(app)/settings/billing/**' 'e2e/*billing*.spec.ts' 'e2e/helpers/auth.ts' 'e2e/global-setup.ts' 'e2e/load-env.ts' 'scripts/*billing*.py' 'playwright.billing.acceptance.config.ts'; then
+            billing=true
+          fi
+          echo "billing=$billing" >> "$GITHUB_OUTPUT"
+          if [ "$billing" = false ] && git diff --quiet "origin/${{ github.base_ref }}...HEAD" -- 'supabase/migrations/*.sql'; then
             echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "No migration changes — skipping local apply."
+            echo "No migration or billing changes — skipping isolated acceptance."
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
           fi
@@ -173,6 +189,7 @@ jobs:
           # workspace used to replay ALL migrations in this CI job.
           replay_dir="$(mktemp -d)"
           cp -a supabase "$replay_dir/supabase"
+          echo "BILLING_REPLAY_DIR=$replay_dir" >> "$GITHUB_ENV"
           python3 - "$replay_dir/supabase/migrations/20250220000006_phase7_multi_environment.sql" <<'PY'
           import pathlib
           import sys
@@ -306,6 +323,74 @@ jobs:
           supabase start -x studio,imgproxy,edge-runtime,logflare,vector
           supabase db reset --no-seed
           echo "Local Supabase replayed all migrations with the two declared historical DROP FUNCTION compatibility statements (production not touched)."
+
+      - name: Set up isolated billing browser acceptance
+        if: steps.gate.outputs.billing == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v4
+        if: steps.gate.outputs.billing == 'true'
+        with:
+          version: 10.11.0
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.billing == 'true'
+        with:
+          python-version: '3.12'
+      - name: Install billing acceptance dependencies
+        if: steps.gate.outputs.billing == 'true'
+        run: |
+          npm ci --ignore-scripts
+          pnpm --dir apps/web install --frozen-lockfile
+          pip install --no-cache-dir -r backend/requirements-dev.txt
+          npx playwright install --with-deps chromium
+      - name: Configure disposable authenticated role acceptance
+        if: steps.gate.outputs.billing == 'true'
+        run: |
+          umask 077
+          supabase status --workdir "$BILLING_REPLAY_DIR" -o json > "$RUNNER_TEMP/billing-supabase.json"
+          python scripts/configure-billing-acceptance.py --supabase-status "$RUNNER_TEMP/billing-supabase.json" --auth-only
+      - name: Genuine founder and organization-owner browser authorization
+        if: steps.gate.outputs.billing == 'true'
+        env:
+          CI: 'true'
+          PYTHON: python
+        run: npx playwright test --config playwright.billing.acceptance.config.ts --grep 'signed-in organization owner|founder can read controls'
+      - name: Upload sanitized authenticated role evidence
+        if: always() && steps.gate.outputs.billing == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: billing-authenticated-roles
+          path: |
+            test-results/billing-acceptance-summary.json
+            test-results/**/*.png
+      - name: Configure disposable Supabase and Stripe sandbox only
+        env:
+          BILLING_REQUIRE_STRIPE_TEST_KEYS: '1'
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+          STRIPE_TEST_PUBLISHABLE_KEY: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
+          STRIPE_EXISTING_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_EXISTING_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+        if: steps.gate.outputs.billing == 'true'
+        run: |
+          umask 077
+          supabase status --workdir "$BILLING_REPLAY_DIR" -o json > "$RUNNER_TEMP/billing-supabase.json"
+          python scripts/configure-billing-acceptance.py --supabase-status "$RUNNER_TEMP/billing-supabase.json"
+      - name: Authenticated billing browser and sandbox invoice acceptance
+        if: steps.gate.outputs.billing == 'true'
+        env:
+          CI: 'true'
+          PYTHON: python
+        run: npx playwright test --config playwright.billing.acceptance.config.ts
+      - name: Upload sanitized billing acceptance evidence
+        if: always() && startsWith(github.head_ref, 'fix/billing-acceptance')
+        uses: actions/upload-artifact@v4
+        with:
+          name: billing-isolated-acceptance
+          path: |
+            test-results/billing-acceptance-summary.json
+            test-results/**/*.png
+          if-no-files-found: warn
 
       - name: Remote staging reconcile (when configured)
         if: steps.gate.outputs.run == 'true' && vars.SUPABASE_STAGING_PROJECT_REF != ''
