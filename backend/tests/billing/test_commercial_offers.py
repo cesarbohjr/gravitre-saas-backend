@@ -101,6 +101,7 @@ def test_stripe_checkout_discount_is_coupon_not_custom_price(monkeypatch):
         MagicMock(), "cus_1", "price_1", "https://app/success",
         "https://app/cancel", {"org_id": "org", "plan_code": "control"},
         offer={"grant_id": "grant_2", "stripe_coupon_id": "coupon_30"},
+        allow_promotion_codes=True,  # founder coupon still wins; never combined
     )
     args = create.call_args.kwargs
     assert args["discounts"] == [{"coupon": "coupon_30"}]

@@ -2550,6 +2550,15 @@ export const auditApi = {
 }
 
 // ============ Billing ============
+/** Which discount the backend applied to a checkout (see lib/promotions.ts). */
+export type CheckoutDiscountFields = {
+  discount_source?: "founder_offer" | "promotion_code" | "stripe_field" | "none"
+  promotion_code?: string
+  discount_summary?: string
+  promotion_code_ignored?: boolean
+  notice?: string | null
+}
+
 export const billingApi = {
   overview: () => fetcher<BillingOverview>(apiUrl("/api/billing")),
   status: () =>
@@ -2581,32 +2590,44 @@ export const billingApi = {
       price_id: priceId,
       quantity,
     }),
-  createCheckoutForPlan: (planCode: string, billingInterval: "monthly" | "annual" = "monthly") =>
-    postJson<{ checkout_url: string }>(apiUrl("/api/billing/checkout"), {
+  createCheckoutForPlan: (
+    planCode: string,
+    billingInterval: "monthly" | "annual" = "monthly",
+    promotionCode?: string | null,
+  ) =>
+    postJson<{ checkout_url: string } & CheckoutDiscountFields>(apiUrl("/api/billing/checkout"), {
       plan_code: planCode,
       billing_interval: billingInterval,
+      ...(promotionCode ? { promotion_code: promotionCode } : {}),
     }),
-  createSubscriptionForPlan: (planCode: string, billingInterval: "monthly" | "annual" = "monthly") =>
+  createSubscriptionForPlan: (
+    planCode: string,
+    billingInterval: "monthly" | "annual" = "monthly",
+    promotionCode?: string | null,
+  ) =>
     postJson<{
       client_secret: string
       subscription_id: string
       customer_id: string
       subscription_status?: string
-    }>(apiUrl("/api/billing/subscribe"), {
+    } & CheckoutDiscountFields>(apiUrl("/api/billing/subscribe"), {
       plan_code: planCode,
       billing_interval: billingInterval,
+      ...(promotionCode ? { promotion_code: promotionCode } : {}),
     }),
   createPublicCheckoutForPlan: (
     planCode: string,
     billingInterval: "monthly" | "annual" = "monthly",
     email: string,
     companyName?: string,
+    promotionCode?: string | null,
   ) =>
-    postJson<{ checkout_url: string }>(apiUrl("/api/billing/checkout/public"), {
+    postJson<{ checkout_url: string } & CheckoutDiscountFields>(apiUrl("/api/billing/checkout/public"), {
       plan_code: planCode,
       billing_interval: billingInterval,
       email,
       company_name: companyName,
+      ...(promotionCode ? { promotion_code: promotionCode } : {}),
     }),
   createPortalSession: () =>
     postJson<{ portal_url: string }>(apiUrl("/api/billing/portal"), {}),

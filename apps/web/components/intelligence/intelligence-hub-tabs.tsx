@@ -8,6 +8,8 @@
  *     Overview  → what is changing?
  *     Knowledge → what has Gravitre learned and remembered? (route /intelligence/learning; Memory lives here)
  *     Forecasts → what is likely to happen next? (route /intelligence/predictive)
+ *     Accounts  → how is each customer account doing? (route /intelligence/accounts;
+ *                 /intelligence/predictive#account-health and ?section=accounts redirect here)
  *     Impact    → what did agents deliver? (route /intelligence/performance)
  *     Reports   → shareable summaries.
  *   Build
@@ -26,6 +28,7 @@ export type IntelligenceHubTab =
   | "overview"
   | "learning"
   | "predictions"
+  | "accounts"
   | "performance"
   | "models"
   | "reports"
@@ -63,6 +66,13 @@ export const INTELLIGENCE_HUB_TABS: Array<
     group: "understand",
   },
   {
+    id: "accounts",
+    label: "Accounts",
+    href: APP_ROUTES.intelligenceAccounts,
+    description: "How each customer account is doing, from what customers say and do",
+    group: "understand",
+  },
+  {
     id: "performance",
     label: "Impact",
     href: APP_ROUTES.intelligencePerformance,
@@ -97,6 +107,7 @@ export function resolveIntelligenceHubTab(pathname: string): IntelligenceHubTab 
   if (pathname.startsWith("/intelligence/memory")) return "learning"
   if (pathname.startsWith("/intelligence/data")) return "data"
   if (pathname.startsWith("/intelligence/predictive")) return "predictions"
+  if (pathname.startsWith("/intelligence/accounts")) return "accounts"
   if (pathname.startsWith("/intelligence/performance")) return "performance"
   if (pathname.startsWith("/intelligence/model-studio")) return "models"
   if (pathname.startsWith("/models")) return "models"

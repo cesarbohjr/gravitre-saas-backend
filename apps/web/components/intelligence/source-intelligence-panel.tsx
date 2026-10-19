@@ -4,6 +4,13 @@ import { Database } from "@phosphor-icons/react"
 import { readString } from "@/lib/intelligence/helpers"
 import type { DecisionTransparencyEnvelope } from "@/lib/intelligence/visibility-types"
 
+/** A 0–1 freshness score in words; the raw percentage meant nothing to users. */
+function freshnessWords(score: number): string {
+  if (score >= 0.75) return "recent"
+  if (score >= 0.4) return "a few months old"
+  return "older"
+}
+
 export function SourceIntelligencePanel({
   envelope,
   className,
@@ -15,7 +22,7 @@ export function SourceIntelligencePanel({
   if (!sources.length) {
     return (
       <div className={className}>
-        <p className="text-xs text-muted-foreground">No grounded sources recorded for this decision.</p>
+        <p className="text-xs text-muted-foreground">No sources were recorded for this answer.</p>
       </div>
     )
   }
@@ -46,7 +53,7 @@ export function SourceIntelligencePanel({
                   <span>Relevance {Math.round(Number(score) * 100)}%</span>
                 ) : null}
                 {freshness != null && !Number.isNaN(Number(freshness)) ? (
-                  <span>Freshness {Math.round(Number(freshness) * 100)}%</span>
+                  <span>Freshness: {freshnessWords(Number(freshness))}</span>
                 ) : null}
               </div>
             </li>

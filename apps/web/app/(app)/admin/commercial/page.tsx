@@ -1,12 +1,18 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import Link from "next/link"
+import useSWR from "swr"
+import { ShieldAlert } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { PromoCodesAdmin } from "@/components/admin/promo-codes-admin"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PAGE_FRAME } from "@/lib/design-system"
-import { apiFetch } from "@/lib/fetcher"
+import { apiFetch, fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
+import { suggestedPromotionCap } from "@/lib/promotions"
+import { promotionAdminApi } from "@/lib/promotions-api"
 
 type Category = "unreviewed" | "external" | "internal" | "test"
 type Offer = {
@@ -53,11 +59,61 @@ async function requestJson(url: string, body?: object): Promise<{ accounts?: Acc
   return result
 }
 
+/** Client-side gate; every endpoint is also require_platform_admin on the server. */
 export default function CommercialAccountsPage() {
+  const { user } = useAuth()
+  const { data: me, error: meError } = useSWR<{ platformAdmin?: boolean }>(user ? "/api/auth/me" : null, fetcher)
+  const [tab, setTab] = useState<"accounts" | "codes">("accounts")
+  if (!user || (!me && !meError)) {
+    return (
+      <AppShell title="Commercial accounts">
+        <p className="p-8 text-sm text-muted-foreground">Checking access…</p>
+      </AppShell>
+    )
+  }
+  if (!me?.platformAdmin) {
+    return (
+      <AppShell title="Commercial accounts">
+        <div className="mx-auto max-w-lg space-y-4 p-8 text-center">
+          <ShieldAlert className="mx-auto h-10 w-10 text-muted-foreground" aria-hidden />
+          <h1 className="text-lg font-semibold">Platform admin access required</h1>
+          <p className="text-sm text-muted-foreground">
+            Commercial accounts, founder offers and promo codes are managed by Gravitre platform operators. If you
+            have a promo code, enter it when you upgrade in Billing.
+          </p>
+          <Button variant="outline" asChild>
+            <Link href="/settings/billing">Go to Billing</Link>
+          </Button>
+        </div>
+      </AppShell>
+    )
+  }
+  return (
+    <AppShell title="Commercial accounts">
+      <div className={`${PAGE_FRAME} space-y-6 pb-12`}>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Commercial accounts</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Founder-only customer classification, Stripe-backed founder offers and public promo codes. Stripe remains the authority for invoices, subscription status and charges.</p>
+          </div>
+          <div role="tablist" aria-label="Commercial sections" className="flex gap-2">
+            <Button role="tab" aria-selected={tab === "accounts"} variant={tab === "accounts" ? "default" : "outline"} size="sm" onClick={() => setTab("accounts")}>Accounts &amp; founder offers</Button>
+            <Button role="tab" aria-selected={tab === "codes"} variant={tab === "codes" ? "default" : "outline"} size="sm" onClick={() => setTab("codes")}>Promo codes</Button>
+          </div>
+        </div>
+        {tab === "accounts" ? <CommercialAccountsPanel /> : <PromoCodesAdmin />}
+      </div>
+    </AppShell>
+  )
+}
+
+function CommercialAccountsPanel() {
   const { user } = useAuth()
   const [alerts, setAlerts] = useState<BillingAlert[]>([])
   const [reconciliation, setReconciliation] = useState<Reconciliation | null>(null)
   const [promotionCap, setPromotionCap] = useState("")
+  const [capEdited, setCapEdited] = useState(false)
+  const [classifyExternal, setClassifyExternal] = useState(true)
   const [offersEnabled, setOffersEnabled] = useState(false)
   const [stripeAccount, setStripeAccount] = useState<StripeAccount | null>(null)
   const [stripeError, setStripeError] = useState("")
@@ -117,6 +173,17 @@ export default function CommercialAccountsPage() {
     return () => { canceled = true }
   }, [selected])
   const current = accounts.find(a => a.org_id === selected)
+  // Default cap = the largest base-plan value this offer can reach (any plan,
+  // monthly or annual), so checkout is never blocked; editable to tighten.
+  const capSuggestion = useMemo(() => suggestedPromotionCap(
+    offerType === "trial" ? { offerType, trialDays } : { offerType, percentOff, months },
+  ), [offerType, trialDays, percentOff, months])
+  useEffect(() => {
+    if (!capEdited && capSuggestion) setPromotionCap((capSuggestion.cents / 100).toFixed(2))
+  }, [capSuggestion, capEdited])
+  const needsClassification = current?.customer_category === "unreviewed"
+  const canIssue = current?.customer_category === "external" ||
+    (needsClassification && classifyExternal && reason.trim().length >= 5)
   const filtered = useMemo(() => accounts.filter(a =>
     `${a.name} ${a.org_id} ${a.customer_category}`.toLowerCase().includes(search.toLowerCase())
   ), [accounts, search])
@@ -148,11 +215,12 @@ export default function CommercialAccountsPage() {
     finally { setSaving(false) }
   }
   async function createOffer() {
-    if (!current || current.customer_category !== "external") return
+    if (!current || !canIssue) return
     const capCents = Math.round(Number(promotionCap) * 100)
     if (!Number.isFinite(capCents) || capCents < 1) return
     const terms = offerType === "trial" ? `${trialDays}-day trial` : `${percentOff}% off for ${months} month(s)`
-    if (!window.confirm(`Issue ${terms} to ${current.name}? Maximum promotional value: $${promotionCap} USD. Stripe applies it at the next eligible checkout.`)) return
+    const classifyNote = needsClassification ? ` ${current.name} will be classified as an External customer ("${reason.trim()}").` : ""
+    if (!window.confirm(`Issue ${terms} to ${current.name}? Maximum promotional value: $${promotionCap} USD. Stripe applies it at the next eligible checkout.${classifyNote}`)) return
     setSaving(true); setError(""); setNotice("")
     try {
       await requestJson("/api/billing/admin/promotional-offers", {
@@ -162,14 +230,28 @@ export default function CommercialAccountsPage() {
         discount_months: offerType === "discount" ? months : null,
         max_promotion_value_cents: capCents,
         valid_until: validUntil ? new Date(`${validUntil}T23:59:59Z`).toISOString() : null,
+        ...(needsClassification ? { classify_as_external: true, classification_reason: reason.trim() } : {}),
       })
       setNotice("Founder offer issued. Stripe applies it when the customer checks out.")
       await refresh()
     } catch (err) { setError(err instanceof Error ? err.message : "Unable to create offer") }
     finally { setSaving(false) }
   }
+  async function releaseOffer(id: string, revoke: boolean) {
+    const question = revoke
+      ? "Release the reserved checkout and revoke this offer? Open Stripe Checkout sessions for it are expired first; a completed checkout blocks this."
+      : "Release the reserved checkout? Open Stripe Checkout sessions for it are expired so the customer can start a fresh checkout."
+    if (!window.confirm(question)) return
+    setSaving(true); setError(""); setNotice("")
+    try {
+      const result = await promotionAdminApi.releaseFounderCheckout(id, revoke)
+      setNotice(`Reservation released${result.expired_checkout_sessions.length ? ` (${result.expired_checkout_sessions.length} Stripe session expired)` : ""}${revoke ? " and offer revoked" : ""}.`)
+      await refresh()
+    } catch (err) { setError(err instanceof Error ? err.message : "Unable to release") }
+    finally { setSaving(false) }
+  }
   async function revokeOffer(id: string) {
-    if (!window.confirm("Revoke this unredeemed offer? Existing Stripe subscriptions are not changed.")) return
+    if (!window.confirm("Revoke this unredeemed offer? Its Stripe coupon is deleted; existing Stripe subscriptions are not changed.")) return
     setSaving(true); setError(""); setNotice("")
     try {
       await requestJson(`/api/billing/admin/promotional-offers/${id}/revoke`, {})
@@ -180,12 +262,7 @@ export default function CommercialAccountsPage() {
   }
 
   return (
-    <AppShell title="Commercial accounts">
-      <div className={`${PAGE_FRAME} space-y-6 pb-12`}>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Commercial accounts</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Founder-only customer classification and Stripe-backed promotional offers. Stripe remains the authority for invoices, subscription status and charges.</p>
-        </div>
+      <div className="space-y-6">
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           {([
             ["External", counts.external], ["Promotional", counts.promotional],
@@ -279,24 +356,45 @@ export default function CommercialAccountsPage() {
                   </div>
                 }
                 <div><label htmlFor="offer-expiry" className="mb-1 block text-sm">Offer redemption deadline (optional)</label><Input id="offer-expiry" type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)}/></div>
-                <div><label htmlFor="promotion-cap" className="mb-1 block text-sm">Maximum promotional value (USD)</label><Input id="promotion-cap" type="number" min="0.01" step="0.01" value={promotionCap} onChange={e => setPromotionCap(e.target.value)} /><p className="mt-1 text-xs text-muted-foreground">Checkout is blocked if the base-plan trial or discount value exceeds this cap. Trials reserve included usage before execution and cannot auto-top-up.</p></div>
-                <Button onClick={() => void createOffer()} disabled={!Number.isFinite(Number(promotionCap)) || Number(promotionCap) <= 0 || !offersEnabled || saving || current.customer_category !== "external" || current.offers.some(o => o.status === "available") || (offerType === "trial" ? trialDays < 1 || trialDays > 90 : percentOff <= 0 || percentOff > 100 || months < 1 || months > 12)}>Issue offer</Button>
+                <div>
+                  <label htmlFor="promotion-cap" className="mb-1 block text-sm">Maximum promotional value (USD)</label>
+                  <Input id="promotion-cap" type="number" min="0.01" step="0.01" value={promotionCap} onChange={e => { setCapEdited(true); setPromotionCap(e.target.value) }} />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {capSuggestion ? <>Suggested ${(capSuggestion.cents / 100).toFixed(2)}: {capSuggestion.explanation} </> : null}
+                    Checkout is blocked if the base-plan trial or discount value exceeds this cap, so a lower cap limits which plan the customer can choose. Trials reserve included usage before execution and cannot auto-top-up.
+                    {capEdited && capSuggestion ? <> <button type="button" className="underline" onClick={() => setCapEdited(false)}>Use suggested</button></> : null}
+                  </p>
+                </div>
+                {needsClassification && (
+                  <div className="space-y-2 rounded-lg border border-border p-3 text-sm">
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" checked={classifyExternal} onChange={e => setClassifyExternal(e.target.checked)} />
+                      Classify as External customer in the same step
+                    </label>
+                    <p className="text-xs text-muted-foreground">Uses the classification reason above (at least 5 characters). The change is audited.</p>
+                  </div>
+                )}
+                <Button onClick={() => void createOffer()} disabled={!Number.isFinite(Number(promotionCap)) || Number(promotionCap) <= 0 || !offersEnabled || saving || !canIssue || current.offers.some(o => o.status === "available") || (offerType === "trial" ? trialDays < 1 || trialDays > 90 : percentOff <= 0 || percentOff > 100 || months < 1 || months > 12)}>Issue offer</Button>
                 {!offersEnabled && <p className="text-xs text-muted-foreground">Offer issuance is disabled until checkout and trial lifecycle verification is complete.</p>}
-                {current.customer_category !== "external" && <p className="text-xs text-muted-foreground">Classify this organization as an external customer before issuing an offer.</p>}
+                {current.customer_category !== "external" && !needsClassification && <p className="text-xs text-muted-foreground">Only external customers can receive offers. Internal and test organizations are excluded.</p>}
+                {needsClassification && !canIssue && <p className="text-xs text-muted-foreground">Add a classification reason above and keep &quot;Classify as External&quot; checked to issue an offer.</p>}
                 <div className="space-y-2 border-t border-border pt-3">
                   <h3 className="text-sm font-medium">Offer history</h3>
                   {!current.offers.length && <p className="text-xs text-muted-foreground">No offers issued.</p>}
                   {current.offers.map(o => <div key={o.id} className="flex items-center justify-between gap-2 rounded-lg border border-border p-3 text-sm">
                     <span>{o.offer_type === "trial" ? `${o.trial_days} day trial` : `${o.percent_off}% off for ${o.discount_months} month(s)`} <span className="text-xs text-muted-foreground">· {o.checkout_attempt_id && o.status === "available" ? "Checkout reserved" : o.status}</span></span>
                     {o.status === "available" && !o.checkout_attempt_id && <Button size="sm" variant="outline" disabled={saving} onClick={() => void revokeOffer(o.id)}>Revoke</Button>}
+                    {o.status === "available" && o.checkout_attempt_id && <span className="flex shrink-0 gap-1">
+                      <Button size="sm" variant="outline" disabled={saving} onClick={() => void releaseOffer(o.id, false)}>Release</Button>
+                      <Button size="sm" variant="outline" disabled={saving} onClick={() => void releaseOffer(o.id, true)}>Release &amp; revoke</Button>
+                    </span>}
                   </div>)}
                 </div>
-                {current.offers.some(o => o.status === "available" && o.checkout_attempt_id) && <p className="text-xs text-muted-foreground">A checkout is reserved. Reconcile its session in Stripe before changing the grant; ambiguous attempts are never retried as a new subscription.</p>}
+                {current.offers.some(o => o.status === "available" && o.checkout_attempt_id) && <p className="text-xs text-muted-foreground">A checkout is reserved. Release verifies Stripe first: open sessions are expired, and a completed checkout or live subscription blocks the release. Ambiguous attempts are never retried as a new subscription.</p>}
               </section>
             </>}
           </div>
         </div>
       </div>
-    </AppShell>
   )
 }

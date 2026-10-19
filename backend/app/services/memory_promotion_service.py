@@ -1099,11 +1099,14 @@ class MemoryPromotionService:
             q = q.eq("source_table", source)
         result = q.order("updated_at", desc=True).range(offset, offset + limit - 1).execute()
         items = result.data or []
+        connectors_by_source = self._source_connectors_for_candidates(client, org_id, items)
         enriched = []
         for item in items:
+            source_connector = connectors_by_source.get(str(item.get("source_id") or ""))
             enriched.append(
                 {
                     **item,
+                    **({"sourceConnector": source_connector} if source_connector else {}),
                     "thresholdComparison": {
                         "frequency": item.get("frequency"),
                         "departmentCount": item.get("department_count"),
@@ -1120,6 +1123,83 @@ class MemoryPromotionService:
                 }
             )
         return {"items": enriched, "total": result.count or len(items), "limit": limit, "offset": offset}
+
+    def _source_connectors_for_candidates(
+        self,
+        client: Any,
+        org_id: str,
+        items: list[dict[str, Any]],
+    ) -> dict[str, dict[str, Any]]:
+        """Connector each agent-memory candidate was learned from, keyed by source_id.
+
+        Read-only. Only when memory source lineage is on: the
+        ``agent_memories.source_connector_id`` column arrives with migration
+        20261012070000, so flag-off reads stay exactly as before. Any read error
+        means no connector is shown (never a guessed one).
+        """
+        from app.services.memory_contamination_guard import lineage_required
+
+        if not lineage_required(self.settings):
+            return {}
+        memory_ids = sorted(
+            {
+                str(item.get("source_id"))
+                for item in items
+                if item.get("source_table") == "agent_memories" and item.get("source_id")
+            }
+        )
+        if not memory_ids:
+            return {}
+        try:
+            memories = (
+                client.table("agent_memories")
+                .select("id, source_connector_id")
+                .eq("org_id", org_id)
+                .in_("id", memory_ids)
+                .execute()
+                .data
+                or []
+            )
+            by_memory = {
+                str(row.get("id")): str(row.get("source_connector_id"))
+                for row in memories
+                if row.get("source_connector_id")
+            }
+            if not by_memory:
+                return {}
+            connectors = (
+                client.table("connectors")
+                .select("id, type, name, status, deleted_at")
+                .eq("org_id", org_id)
+                .in_("id", sorted(set(by_memory.values())))
+                .execute()
+                .data
+                or []
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("memory_candidate_source_connector_skipped org_id=%s error=%s", org_id, exc)
+            return {}
+        from app.services.connector_semantic_registry import connector_display_name
+        from app.services.memory_source_liveness import DEAD_CONNECTOR_STATUSES
+
+        named: dict[str, dict[str, Any]] = {}
+        for row in connectors:
+            vendor = str(row.get("type") or "").strip().lower()
+            display = connector_display_name(vendor) if vendor else ""
+            name = str(row.get("name") or "").strip() or display
+            if not name:
+                continue
+            status = str(row.get("status") or "").strip().lower()
+            named[str(row.get("id"))] = {
+                "name": name,
+                "type": display or None,
+                "connected": not row.get("deleted_at") and status not in DEAD_CONNECTOR_STATUSES,
+            }
+        return {
+            memory_id: named[connector_id]
+            for memory_id, connector_id in by_memory.items()
+            if connector_id in named
+        }
 
     def list_audit(
         self,

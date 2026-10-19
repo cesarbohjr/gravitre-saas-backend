@@ -3088,7 +3088,7 @@ class AgentIntelligence:
                 )
                 yield sse_intelligence_metadata(
                     message_id=message_id,
-                    confidence={"score": 0.9, "needs_clarification": False},
+                    confidence={"needs_clarification": False},
                     answer_explanation="Continuing the offered inspection",
                     dialogue_mode="answer",
                     effective_mode=mode_key,
@@ -3128,7 +3128,7 @@ class AgentIntelligence:
                 tool_results = executed.get("tool_results") if isinstance(executed.get("tool_results"), list) else []
                 yield sse_intelligence_metadata(
                     message_id=message_id,
-                    confidence={"score": 0.9, "needs_clarification": False},
+                    confidence={"needs_clarification": False},
                     answer_explanation="Offered READ continuation",
                     dialogue_mode="answer",
                     effective_mode=mode_key,
@@ -4430,12 +4430,32 @@ class AgentIntelligence:
                     if isinstance(live_turn.get("latency_breakdown"), dict)
                     else {}
                 )
+                from app.services.context_sources_summary import build_user_context_sources
+
+                # LIVE has no calibrated confidence score: send only the real
+                # clarification flag rather than a made-up number.
+                live_confidence = {"needs_clarification": dialogue_mode == "confirm"}
+                try:
+                    live_context_sources = build_user_context_sources(
+                        lat_bd.get("unifiedTurnKnowledge")
+                        if isinstance(lat_bd.get("unifiedTurnKnowledge"), dict)
+                        else None
+                    )
+                except Exception as exc:  # noqa: BLE001 - explanation is optional
+                    logger.debug("live_context_sources_skipped: %s", exc)
+                    live_context_sources = None
                 yield sse_intelligence_metadata(
                     message_id=message_id,
-                    confidence={"score": 0.9, "needs_clarification": dialogue_mode == "confirm"},
+                    confidence=live_confidence,
                     answer_explanation=str(
                         live_turn.get("answer_explanation") or "Unified turn live"
                     ),
+                    context_explanation=(
+                        str(live_context_sources.get("summary") or "") or None
+                        if live_context_sources
+                        else None
+                    ),
+                    context_sources=live_context_sources,
                     dialogue_mode=dialogue_mode,
                     persona_key=str(persona.get("persona_key") or ""),
                     task_state=task_state,
@@ -4564,7 +4584,7 @@ class AgentIntelligence:
                     react_result=None,
                     model=str(live_turn.get("model") or "unified_turn_live"),
                     message_id=message_id,
-                    confidence={"score": 0.9, "needs_clarification": dialogue_mode == "confirm"},
+                    confidence=live_confidence,
                     answer_explanation=str(
                         live_turn.get("answer_explanation") or "Unified turn live"
                     ),

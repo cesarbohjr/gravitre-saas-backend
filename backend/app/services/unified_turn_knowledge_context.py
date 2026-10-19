@@ -1343,6 +1343,11 @@ async def build_unified_turn_knowledge_context(
         if fresh_on:
             meta["contextRanking"]["freshnessApplied"] = True
             meta["contextRanking"]["staleExcludedCount"] = len(stale_exclusions)
+            # Parallel to selectedSources; read by context_sources_summary for
+            # "updated 2 hours ago" wording. Only dates freshness recorded.
+            meta["contextRanking"]["selectedSourcesAsOf"] = [
+                source.metadata.get("freshness_at") for source in profile.ranked_sources[:20]
+            ]
         if active_ranking:
             sections = ranked_sections
 

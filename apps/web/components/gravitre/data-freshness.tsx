@@ -11,7 +11,7 @@ interface DataFreshnessProps {
   isRefreshing?: boolean
   /** Optional manual refresh handler — renders a refresh button when provided */
   onRefresh?: () => void
-  /** Label prefix, defaults to "Updated" */
+  /** Label prefix, defaults to "Refreshed": when this page last loaded its data, not when the underlying sources changed. */
   label?: string
   /** Additional className */
   className?: string
@@ -45,7 +45,7 @@ export function DataFreshness({
   updatedAt,
   isRefreshing = false,
   onRefresh,
-  label = "Updated",
+  label = "Refreshed",
   className,
 }: DataFreshnessProps) {
   const resolved = updatedAt != null ? new Date(updatedAt) : null

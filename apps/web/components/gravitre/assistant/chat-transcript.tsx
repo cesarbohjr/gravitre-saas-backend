@@ -31,6 +31,7 @@ import {
 } from "@/lib/chat-typography"
 import { AssistantSourceLinks } from "@/components/gravitre/assistant/assistant-source-links"
 import { ExplainabilityPanel } from "@/components/gravitre/assistant/explainability-panel"
+import type { ContextSourcesSummary } from "@/lib/context-sources"
 import {
   ChatExecutionPanel,
   type ChatExecutionResult,
@@ -97,6 +98,8 @@ type ChatTranscriptProps = {
     missing_context?: string[]
   } | null
   contextExplanation?: string | null
+  /** Sources the latest answer was built from (LIVE path); shown on the last answer only. */
+  contextSources?: ContextSourcesSummary | null
   dialogueMode?: string | null
   executionResult?: ChatExecutionResult | null
   pendingTask?: ChatPendingTask | null
@@ -158,6 +161,7 @@ export function ChatTranscript({
   showWaiting = false,
   explainability,
   contextExplanation,
+  contextSources,
   dialogueMode,
   executionResult,
   pendingTask,
@@ -364,7 +368,10 @@ export function ChatTranscript({
                           <AssistantMarkdown>{displayText}</AssistantMarkdown>
                         )
                       ) : null}
-                      <AssistantSourceLinks invocations={toolInvocations} />
+                      <AssistantSourceLinks
+                        invocations={toolInvocations}
+                        contextSources={isLastAssistant ? contextSources : null}
+                      />
                       {isLastAssistant ? (
                         <>
                           <ChatExecutionPanel
@@ -381,7 +388,8 @@ export function ChatTranscript({
                           <ExplainabilityPanel
                             explanation={explainability}
                             contextExplanation={contextExplanation}
-                            toolInvocations={[]}
+                            contextSources={contextSources}
+                            toolInvocations={toolInvocations}
                           />
                         </>
                       ) : null}

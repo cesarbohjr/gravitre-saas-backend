@@ -262,10 +262,20 @@ def create_subscription_for_payment_element(
     price_id: str,
     metadata: dict[str, Any],
     quantity: int = 1,
+    promotion_code_id: str | None = None,
 ) -> dict[str, Any]:
-    """Create an incomplete subscription and return Payment Element client_secret."""
+    """Create an incomplete subscription and return Payment Element client_secret.
+
+    ``promotion_code_id`` must come from server-side validation
+    (``promotion_codes.checkout_discount``); Stripe re-validates it.
+    """
     init_stripe(settings)
+    extra: dict[str, Any] = {}
+    if promotion_code_id:
+        extra["discounts"] = [{"promotion_code": promotion_code_id}]
+        metadata = {**metadata, "promotion_code_id": promotion_code_id}
     subscription = stripe.Subscription.create(
+        **extra,
         customer=customer_id,
         items=_subscription_line_items(settings, price_id, quantity),
         metadata=metadata,
@@ -294,10 +304,34 @@ def create_checkout_session(
     cancel_url: str,
     metadata: dict[str, Any],
     offer: dict[str, Any] | None = None,
+    promotion_code_id: str | None = None,
+    promotion_code: str | None = None,
+    allow_promotion_codes: bool = False,
 ) -> stripe.checkout.Session:
+    """Hosted subscription checkout with at most one discount mechanism.
+
+    Precedence: founder offer (coupon or trial) > validated public promotion
+    code > Stripe's own promo-code field (``allow_promotion_codes``). Stripe
+    rejects ``discounts`` combined with ``allow_promotion_codes``, and a founder
+    offer is never combined with a public code.
+    """
     init_stripe(settings)
     line_items = _subscription_line_items(settings, price_id, quantity=1)
     offer = offer or {}
+    if offer.get("grant_id"):
+        promotion_code_id = None
+        promotion_code = None
+        allow_promotion_codes = False
+    elif promotion_code_id:
+        allow_promotion_codes = False
+    promo_meta = (
+        {
+            "promotion_code_id": promotion_code_id,
+            **({"promotion_code": promotion_code} if promotion_code else {}),
+        }
+        if promotion_code_id
+        else {}
+    )
     checkout_args: dict[str, Any] = {
         "mode": "subscription",
         "customer": customer_id,
@@ -308,6 +342,7 @@ def create_checkout_session(
             **metadata,
             **({"offer_grant_id": offer["grant_id"]} if offer.get("grant_id") else {}),
             **({"offer_attempt_id": offer["attempt_id"]} if offer.get("attempt_id") else {}),
+            **promo_meta,
         },
         "subscription_data": {
             "metadata": {
@@ -315,6 +350,7 @@ def create_checkout_session(
                 "plan_code": str(metadata.get("plan_code") or ""),
                 **({"offer_grant_id": offer["grant_id"]} if offer.get("grant_id") else {}),
                 **({"offer_attempt_id": offer["attempt_id"]} if offer.get("attempt_id") else {}),
+                **promo_meta,
             }
         },
     }
@@ -336,6 +372,10 @@ def create_checkout_session(
         )}}
     if offer.get("stripe_coupon_id"):
         checkout_args["discounts"] = [{"coupon": offer["stripe_coupon_id"]}]
+    elif promotion_code_id and not offer.get("trial_days"):
+        checkout_args["discounts"] = [{"promotion_code": promotion_code_id}]
+    elif allow_promotion_codes and not offer:
+        checkout_args["allow_promotion_codes"] = True
     if offer.get("attempt_id"):
         checkout_args["expires_at"] = offer["expires_at"]
         checkout_args["idempotency_key"] = f"founder-checkout:{offer['attempt_id']}"

@@ -1576,6 +1576,8 @@ export interface EnterpriseBranding {
   customDomainVerified: boolean
   hidePoweredBy: boolean
   emailFromName: string | null
+  /** Set when an MSP client workspace shows its partner's branding (it has none of its own). */
+  inheritedFrom?: { id: string; name: string } | null
 }
 
 export interface EnterpriseDnsRecord {
