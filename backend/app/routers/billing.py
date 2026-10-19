@@ -1046,6 +1046,7 @@ def create_founder_offer(
                 percent_off=body.percent_off,
                 duration="repeating",
                 duration_in_months=body.discount_months,
+                max_redemptions=1,  # Prevent reusing a founder grant across parallel checkouts.
                 name=f"Gravitre founder offer {body.percent_off:g}% for {body.discount_months} month(s)",
                 metadata={"org_id": org_id, "issued_by": str(founder["user_id"])},
             )
