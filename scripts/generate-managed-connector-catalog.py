@@ -6,12 +6,13 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
-from app.connectors.nango_registry import NANGO_CONNECTOR_REGISTRY
+from app.connectors.nango_registry import NANGO_CONNECTOR_REGISTRY, BUSINESS_CONNECTORS
 
 rows = [
     {"vendorKey": spec.vendor, "type": spec.display_name,
      "integrationId": spec.integration_id, "category": spec.category,
-     "description": spec.description}
+     "description": spec.description, "authMode": spec.auth_mode, "providerSupported": bool(spec.provider),
+     "hasReadActions": spec.vendor in {"freshservice", "okta"} or any(r["vendor"] == spec.vendor for r in BUSINESS_CONNECTORS)}
     for spec in NANGO_CONNECTOR_REGISTRY.values()
 ]
 (ROOT / "apps/web/lib/managed-connectors.json").write_text(

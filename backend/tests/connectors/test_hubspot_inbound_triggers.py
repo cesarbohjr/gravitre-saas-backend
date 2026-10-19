@@ -182,7 +182,6 @@ async def test_process_hubspot_event_batch_starts_workflow():
 def _hubspot_app(monkeypatch, settings):
     from fastapi import FastAPI
 
-    from app.config import get_settings
     from app.routers.webhooks import hubspot_inbound
 
     calls: list = []
@@ -195,7 +194,9 @@ def _hubspot_app(monkeypatch, settings):
     monkeypatch.setattr(hubspot_inbound, "webhook_client_secret", lambda _s: "test-secret")
     app = FastAPI()
     app.include_router(hubspot_inbound.router)
-    app.dependency_overrides[get_settings] = lambda: settings
+    # Override the callable captured by this router, including when another
+    # isolated router fixture imported it while app.config was monkeypatched.
+    app.dependency_overrides[hubspot_inbound.get_settings] = lambda: settings
     return app, calls
 
 

@@ -29,10 +29,18 @@ def test_catalog_covers_all_vendors(catalog: dict) -> None:
     assert "mailchimp" in vendors
 
 
-def test_each_vendor_has_three_tiers_and_four_workflows(catalog: dict) -> None:
+def test_vendor_tiers_and_workflows_match_declared_support(catalog: dict) -> None:
     for entry in catalog["vendors"]:
         tiers = entry["tiers"]
         assert len(tiers["v1"]["actions"]) >= 1, entry["vendor"]
+        from app.connectors.nango_registry import BUSINESS_CONNECTORS
+        if entry["vendor"] in {row["vendor"] for row in BUSINESS_CONNECTORS}:
+            # These integrations deliberately ship reads only. Inventing v2/v3
+            # writes or demonstration workflows would misrepresent support.
+            assert not tiers["v2"]["actions"] and not tiers["v3"]["actions"]
+            assert not entry["demoWorkflows"]
+            assert all(a["implemented"] for a in tiers["v1"]["actions"])
+            continue
         assert len(tiers["v2"]["actions"]) >= 1, entry["vendor"]
         assert len(tiers["v3"]["actions"]) >= 1, entry["vendor"]
         assert len(entry["demoWorkflows"]) == 4, entry["vendor"]

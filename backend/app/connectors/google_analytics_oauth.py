@@ -80,6 +80,13 @@ def refresh_google_analytics_tokens_if_needed(
     *,
     environment_name: str | None = None,
 ) -> tuple[dict[str, Any] | None, str | None]:
+    from app.connectors.managed_oauth import managed_oauth_tokens
+    try:
+        managed = managed_oauth_tokens(client, org_id, connector_id, settings, environment_name=environment_name)
+    except ValueError:
+        return None, "Managed authorization unavailable; reconnect this account"
+    if managed is not None:
+        return managed, None
     env = environment_name or _connector_environment(client, org_id, connector_id)
     client_id, client_secret = google_analytics_credentials(settings, env)
     if not client_id or not client_secret:

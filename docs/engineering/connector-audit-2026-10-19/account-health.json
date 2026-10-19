@@ -1,0 +1,282 @@
+[
+  {
+    "vendor": "ai_visibility_ui",
+    "status": "active",
+    "auth_provider": null,
+    "auth_status": null,
+    "checked_at": null,
+    "accounts": 1
+  },
+  {
+    "vendor": "apollo",
+    "status": "healthy",
+    "auth_provider": null,
+    "auth_status": "connected",
+    "checked_at": "2026-10-19T22:18:40.204250+00:00",
+    "accounts": 2
+  },
+  {
+    "vendor": "bamboohr",
+    "status": "needs_connection",
+    "auth_provider": null,
+    "auth_status": null,
+    "checked_at": null,
+    "accounts": 1
+  },
+  {
+    "vendor": "canva",
+    "status": "healthy",
+    "auth_provider": null,
+    "auth_status": "connected",
+    "checked_at": "2026-10-19T22:18:38.889330+00:00",
+    "accounts": 1
+  },
+  {
+    "vendor": "clay",
+    "status": "active",
+    "auth_provider": null,
+    "auth_status": null,
+    "checked_at": null,
+    "accounts": 1
+  },
+  {
+    "vendor": "clay",
+    "status": "syncing",
+    "auth_provider": null,
+    "auth_status": null,
+    "checked_at": null,
+    "accounts": 1
+  },
+  {
+    "vendor": "clio",
+    "status": "pending_auth",
+    "auth_provider": null,
+    "auth_status": "pending_auth",
+    "checked_at": "2026-10-19T22:18:39.209754+00:00",
+    "accounts": 1
+  },
+  {
+    "vendor": "fhir",
+    "status": "active",
+    "auth_provider": null,
+    "auth_status": null,
+    "checked_at": null,
+    "accounts": 1
+  },
+  {
+    "vendor": "finseo",
+    "status": "needs_connection",
+    "auth_provider": null,
+    "auth_status": null,
+    "checked_at": null,
+    "accounts": 1
+  },
+  {
+    "vendor": "gmail",
+    "status": "healthy",
+    "auth_provider": null,
+    "auth_status": "connected",
+    "checked_at": "2026-10-19T22:18:39.256984+00:00",
+    "accounts": 1
+  },
+  {
+    "vendor": "gmail",
+    "status": "pending_auth",
+    "auth_provider": null,
+    "auth_status": "pending_auth",
+    "checked_at": "2026-10-19T22:18:40.561897+00:00",
+    "accounts": 1
+  },
+  {
+    "vendor": "google_ads",
+    "status": "error",
+    "auth_provider": null,
+    "auth_status": "auth_expired",
+    "checked_at": "2026-10-19T22:18:39.042051+00:00",
+    "accounts": 1
+  },
+  {
+    "vendor": "google_ads",
+    "status": "healthy",
+    "auth_provider": null,
+    "auth_status": "connected",
+    "checked_at": "2026-10-19T22:18:39.855101+00:00",
+    "accounts": 2
+  },
+  {
+    "vendor": "google_analytics",
+    "status": "error",
+    "auth_provider": null,
+    "auth_status": "auth_expired",
+    "checked_at": "2026-10-19T22:18:39.504334+00:00",
+    "accounts": 1
+  },
+  {
+    "vendor": "google_analytics",
+    "status": "healthy",
+    "auth_provider": null,
+    "auth_status": "connected",
+    "checked_at": "2026-10-19T22:18:38.662199+00:00",
+    "accounts": 1
+  },
+  {
+    "vendor": "google_analytics",
+    "status": "pending_auth",
+    "auth_provider": null,
+    "auth_status": "pending_auth",
+    "checked_at": "2026-10-19T22:18:40.029225+00:00",
+    "accounts": 2
+  },
+  {
+    "vendor": "google_analytics",
+    "status": "pending_auth",
+    "auth_provider": null,
+    "auth_status": "pending_property",
+    "checked_at": "2026-10-19T22:18:40.503305+00:00",
+    "accounts": 1
+  },
+  {
+    "vendor": "google_search_console",
+    "status": "healthy",
+    "auth_provider": null,
+    "auth_status": "connected",
+    "checked_at": "2026-10-19T22:18:38.990433+00:00",
+    "accounts": 1
+  },
+  {
+    "vendor": "google_search_console",
+    "status": "pending_auth",
+    "auth_provider": null,
+    "auth_status": "pending_auth",
+    "checked_at": "2026-10-19T22:18:39.305495+00:00",
+    "accounts": 1
+  },
+  {
+    "vendor": "greenhouse",
+    "status": "active",
+    "auth_provider": null,
+    "auth_status": null,
+    "checked_at": null,
+    "accounts": 1
+  },
+  {
+    "vendor": "greenhouse",
+    "status": "needs_connection",
+    "auth_provider": null,
+    "auth_status": null,
+    "checked_at": null,
+    "accounts": 1
+  },
+  {
+    "vendor": "gusto",
+    "status": "needs_connection",
+    "auth_provider": null,
+    "auth_status": null,
+    "checked_at": null,
+    "accounts": 1
+  },
+  {
+    "vendor": "hubspot",
+    "status": "healthy",
+    "auth_provider": null,
+    "auth_status": "connected",
+    "checked_at": "2026-10-19T22:18:40.272046+00:00",
+    "accounts": 2
+  },
+  {
+    "vendor": "hubspot",
+    "status": "pending_auth",
+    "auth_provider": null,
+    "auth_status": "pending_auth",
+    "checked_at": "2026-10-19T22:18:40.091498+00:00",
+    "accounts": 2
+  },
+  {
+    "vendor": "linkedin",
+    "status": "active",
+    "auth_provider": null,
+    "auth_status": null,
+    "checked_at": null,
+    "accounts": 1
+  },
+  {
+    "vendor": "linkedin_sales_navigator",
+    "status": "needs_connection",
+    "auth_provider": null,
+    "auth_status": null,
+    "checked_at": null,
+    "accounts": 1
+  },
+  {
+    "vendor": "mailchimp",
+    "status": "healthy",
+    "auth_provider": null,
+    "auth_status": "connected",
+    "checked_at": "2026-10-19T22:18:40.429139+00:00",
+    "accounts": 1
+  },
+  {
+    "vendor": "microsoft365",
+    "status": "healthy",
+    "auth_provider": null,
+    "auth_status": "connected",
+    "checked_at": "2026-10-19T22:18:39.451822+00:00",
+    "accounts": 2
+  },
+  {
+    "vendor": "pipedrive",
+    "status": "healthy",
+    "auth_provider": null,
+    "auth_status": "connected",
+    "checked_at": "2026-10-19T22:18:39.152601+00:00",
+    "accounts": 1
+  },
+  {
+    "vendor": "quickbooks",
+    "status": "pending_auth",
+    "auth_provider": null,
+    "auth_status": "pending_auth",
+    "checked_at": "2026-10-19T22:18:40.321375+00:00",
+    "accounts": 1
+  },
+  {
+    "vendor": "semrush",
+    "status": "syncing",
+    "auth_provider": null,
+    "auth_status": null,
+    "checked_at": null,
+    "accounts": 1
+  },
+  {
+    "vendor": "slack",
+    "status": "error",
+    "auth_provider": null,
+    "auth_status": "auth_expired",
+    "checked_at": "2026-10-19T22:18:38.575290+00:00",
+    "accounts": 1
+  },
+  {
+    "vendor": "stripe",
+    "status": "active",
+    "auth_provider": null,
+    "auth_status": null,
+    "checked_at": null,
+    "accounts": 1
+  },
+  {
+    "vendor": "zendesk",
+    "status": "pending_auth",
+    "auth_provider": null,
+    "auth_status": "pending_auth",
+    "checked_at": "2026-10-19T22:18:39.777743+00:00",
+    "accounts": 1
+  },
+  {
+    "vendor": "zoominfo",
+    "status": "needs_connection",
+    "auth_provider": null,
+    "auth_status": null,
+    "checked_at": null,
+    "accounts": 1
+  }
+]

@@ -118,8 +118,8 @@ import {
   resolveConnectorDisplayStatus,
   supportsDualPatAuth,
 } from "@/lib/connectors"
-import { openManagedConnector } from "@/lib/managed-connector-auth"
-import { isManagedConnectorVendor } from "@/lib/connectors"
+import { openManagedConnector, managedProviderAvailable } from "@/lib/managed-connector-auth"
+import { isManagedConnectorVendor, MANAGED_OAUTH_FALLBACK_VENDOR_KEYS } from "@/lib/connectors"
 import { openPlaidLink } from "@/lib/plaid-link"
 import {
   CONNECTOR_DEPARTMENTS,
@@ -176,6 +176,7 @@ interface Connector {
     repo?: string
     staged?: boolean
     needs_connection?: boolean
+    auth_provider?: string
   }
 }
 
@@ -1122,7 +1123,7 @@ function AddConnectorModal({
     return true
   }
 
-  const handleOAuthConnect = async () => {
+  const handleOAuthConnect = async (managedFallback = false) => {
     if (!selectedType || !canStartOAuth()) return
     const selected = getSelectedConnector()
     const provider = resolveVendor(selected, selectedType)
@@ -1132,7 +1133,7 @@ function AddConnectorModal({
         c.name.trim().toLowerCase() === name.trim().toLowerCase()
     )
 
-    if (isManagedConnectorVendor(provider)) {
+    if (isManagedConnectorVendor(provider) || managedFallback || existing?.config?.auth_provider === "managed") {
       setSelectedEnvironmentInStorage(environment)
       setOauthStatus("redirecting")
       try {
@@ -1357,8 +1358,8 @@ function AddConnectorModal({
   }
 
   const handleSelectConnector = (connector: CatalogConnector) => {
-    if (isManagedConnectorVendor(connector.vendorKey || connector.type) && !managedCatalog?.configured) {
-      toast.message("Secure authorization needs administrator setup", { description: "Contact your administrator to enable managed connector authorization." })
+    if (isManagedConnectorVendor(connector.vendorKey || connector.type) && !managedProviderAvailable(managedCatalog, connector.vendorKey || connector.type)) {
+      toast.message("Provider setup required", { description: "An administrator must finish this provider’s authorization configuration before accounts can connect." })
       return
     }
     if (connector.partner) {
@@ -1408,7 +1409,7 @@ function AddConnectorModal({
   }, [open, initialConnectorType, catalogConnectors, managedCatalog])
 
   return (
-    <Dialog open={open} onOpenChange={handleClose} modal={!(oauthStatus === "redirecting" && isManagedConnectorVendor(selectedConnectorMeta()?.vendorKey || ""))}>
+    <Dialog open={open} onOpenChange={handleClose} modal={oauthStatus !== "redirecting"}>
       <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[min(85vh,900px)] min-h-0 overflow-hidden flex flex-col gap-0 p-0">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
           <div className="flex items-center gap-3">
@@ -1533,7 +1534,7 @@ function AddConnectorModal({
                               {!connector.partner && isShippedConnector(connector) && (
                                 <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-success/10 text-success">
                                   {isManagedConnectorVendor(connector.vendorKey || connector.type)
-                                    ? !managedCatalog?.configured ? "Setup required" : connector.shipped ? "Actions supported" : "Connect account"
+                                    ? !managedProviderAvailable(managedCatalog, connector.vendorKey || connector.type) ? "Setup required" : connector.shipped ? "Actions supported" : "Connect account"
                                     : "Available"}
                                 </span>
                               )}
@@ -1623,6 +1624,12 @@ function AddConnectorModal({
                           </p>
                         )}
                     </div>
+                    {MANAGED_OAUTH_FALLBACK_VENDOR_KEYS.has(selectedConnectorMeta()?.vendorKey || "") && (
+                      <Button variant="link" size="sm" disabled={!canStartOAuth() || !managedProviderAvailable(managedCatalog, selectedConnectorMeta()?.vendorKey || "")}
+                        onClick={() => void handleOAuthConnect(true)}>
+                        {managedProviderAvailable(managedCatalog, selectedConnectorMeta()?.vendorKey || "") ? "Connect using managed authorization" : "Managed authorization needs administrator setup"}
+                      </Button>
+                    )}
                     <div className="space-y-3 text-left max-w-sm mx-auto">
                       <div>
                         <label className="text-xs text-muted-foreground">Connector name</label>
@@ -1694,7 +1701,7 @@ function AddConnectorModal({
                         </>
                       )}
                     </div>
-                    <Button onClick={handleOAuthConnect} className="gap-2" disabled={!canStartOAuth()}>
+                    <Button onClick={() => void handleOAuthConnect()} className="gap-2" disabled={!canStartOAuth()}>
                       <ExternalLink className="h-4 w-4" />
                       {isPlaidLinkConnector(getSelectedConnector())
                         ? "Connect with Plaid Link"
@@ -2853,7 +2860,11 @@ function ConnectorsPageContent() {
 
   const handleReconnectOAuth = async (connector: Connector) => {
     const provider = connectorVendorKey(connector.type)
-    if (isManagedConnectorVendor(provider)) {
+    let useManaged = isManagedConnectorVendor(provider) || connector.config?.auth_provider === "managed"
+    if (!useManaged && MANAGED_OAUTH_FALLBACK_VENDOR_KEYS.has(provider) && connector.authStatus === "auth_expired") {
+      try { useManaged = managedProviderAvailable(await connectorsApi.managedCatalog(), provider) } catch { /* Native reconnect remains available. */ }
+    }
+    if (useManaged) {
       try {
         const connected = await openManagedConnector(provider, { name: connector.name, connectorId: connector.id })
         if (connected) { toast.success(`${connector.type} reconnected`); await mutate() }

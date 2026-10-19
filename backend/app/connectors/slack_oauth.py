@@ -188,6 +188,11 @@ def slack_connection_auth_status(
     *,
     environment_name: str | None = None,
 ) -> str:
+    from app.connectors.managed_oauth import managed_oauth_row
+    if managed_oauth_row(client, org_id, connector_id, environment_name=environment_name):
+        from app.connectors.managed_health import managed_auth_status
+        return managed_auth_status(client, org_id, connector_id, settings,
+                                   environment_name=environment_name, validate_remote=True)
     env = environment_name or _connector_environment(client, org_id, connector_id)
     if not slack_oauth_configured(settings, env):
         return "misconfigured"

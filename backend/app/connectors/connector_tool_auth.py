@@ -112,7 +112,13 @@ def resolve_slack_bot_token(
     org_id: str,
     connector_id: str,
     settings: Settings,
+    *,
+    environment_name: str | None = None,
 ) -> str | None:
+    from app.connectors.managed_oauth import managed_oauth_tokens
+    managed = managed_oauth_tokens(client, org_id, connector_id, settings, environment_name=environment_name)
+    if managed is not None:
+        return str(managed["access_token"])
     token = get_decrypted_secret(client, connector_id, "token", settings, org_id=org_id)
     if token:
         return token.strip()

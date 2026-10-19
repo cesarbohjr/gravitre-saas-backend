@@ -2969,7 +2969,7 @@ def _slack_connector_and_token(ctx: ToolContext, params: dict[str, Any]) -> tupl
     conn = _connector_by_type(ctx, "slack", params)
     cid = str(conn["id"])
     _enforce_tool_rate_limit(ctx, "slack", cid)
-    token = resolve_slack_bot_token(ctx.client, ctx.org_id, cid, ctx.settings)
+    token = resolve_slack_bot_token(ctx.client, ctx.org_id, cid, ctx.settings, environment_name=ctx.environment_name)
     if not token:
         raise ToolAuthExpiredError("Slack connector missing bot token")
     return cid, token
@@ -4912,6 +4912,7 @@ from app.services.platform_health_tools import PLATFORM_HEALTH_TOOL_EXECUTORS
 from app.services.connectwise_tools import CONNECTWISE_TOOL_EXECUTORS
 from app.services.managed_service_desk_tools import MANAGED_SERVICE_DESK_TOOL_EXECUTORS
 from app.services.managed_security_tools import MANAGED_SECURITY_TOOL_EXECUTORS
+from app.services.managed_business_tools import MANAGED_BUSINESS_TOOL_EXECUTORS
 
 _TOOL_REGISTRY.update(NETSUITE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(WORKDAY_TOOL_EXECUTORS)
@@ -4949,6 +4950,7 @@ _TOOL_REGISTRY.update(PLATFORM_HEALTH_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(CONNECTWISE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(MANAGED_SERVICE_DESK_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(MANAGED_SECURITY_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(MANAGED_BUSINESS_TOOL_EXECUTORS)
 
 from app.services.priority_connector_tools import PRIORITY_CONNECTOR_TOOLS
 from app.services.intelligence_pack_tools import INTELLIGENCE_PACK_TOOL_EXECUTORS

@@ -5,7 +5,9 @@ Adding a vendor here never changes an existing native connector's auth path.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+import json
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -15,6 +17,13 @@ class NangoConnectorSpec:
     integration_id: str
     category: str
     description: str
+    provider_key: str | None = None
+    auth_mode: str = "OAUTH2"
+    native_fallback: bool = False
+
+    @property
+    def provider(self) -> str:
+        return self.integration_id if self.provider_key is None else self.provider_key
 
 
 _SPECS = [
@@ -60,7 +69,7 @@ _SPECS = [
     NangoConnectorSpec("okta", "Okta", "okta", "Storage / Dev / Infra", "Identity and access management"),
     NangoConnectorSpec("jumpcloud", "JumpCloud", "jumpcloud", "Storage / Dev / Infra", "Directory, identity, and device management"),
     NangoConnectorSpec("duo", "Duo", "duo", "Storage / Dev / Infra", "Multi-factor authentication and access security"),
-    NangoConnectorSpec("onepassword", "1Password", "1password", "Storage / Dev / Infra", "Secrets and workforce credential management"),
+    NangoConnectorSpec("onepassword", "1Password", "1password", "Storage / Dev / Infra", "1Password Events API authorization for audit events"),
     NangoConnectorSpec("microsoft_intune", "Microsoft Intune", "microsoft-intune", "Storage / Dev / Infra", "Endpoint and mobile device management"),
     NangoConnectorSpec("jamf_pro", "Jamf Pro", "jamf-pro", "Storage / Dev / Infra", "Apple device management"),
     NangoConnectorSpec("braintree", "Braintree", "braintree", "Payments / Finance", "Payment processing"),
@@ -68,10 +77,76 @@ _SPECS = [
 ]
 
 
+# Provider template names are distinct from our stable integration unique keys.
+# Empty mappings deliberately fail closed until Nango supports that provider.
+_PROVIDER_OVERRIDES = {
+    "hibob": "hibob-service-user", "sap_s4hana_cloud": "sap-odata-basic",
+    "helpscout": "helpscout-mailbox", "halo_psa": "halo-psa",
+    "duo": "cisco-duo-admin", "onepassword": "1password-events",
+    "jamf_pro": "jamf", "syncro": "", "recurly": "",
+}
+_AUTH_MODES = {
+    "ashby": "BASIC",
+    "autotask": "API_KEY",
+    "cal_com": "API_KEY",
+    "chargebee": "BASIC",
+    "connectsecure": "BASIC",
+    "crowdstrike": "OAUTH2_CC",
+    "discourse": "API_KEY",
+    "drata": "API_KEY",
+    "duo": "BASIC",
+    "freshsales": "API_KEY",
+    "freshservice": "BASIC",
+    "gong": "BASIC",
+    "halo_psa": "OAUTH2_CC",
+    "hibob": "BASIC",
+    "humaans": "API_KEY",
+    "huntress": "BASIC",
+    "instantly": "API_KEY",
+    "jamf_pro": "OAUTH2_CC",
+    "jumpcloud": "API_KEY",
+    "klaviyo": "API_KEY",
+    "kustomer": "API_KEY",
+    "lemlist": "BASIC",
+    "metabase": "API_KEY",
+    "microsoft_intune": "OAUTH2_CC",
+    "onepassword": "API_KEY",
+    "pax8": "OAUTH2_CC",
+    "personio": "OAUTH2_CC",
+    "recharge": "API_KEY",
+    "rippling": "API_KEY",
+    "sage_intacct": "TWO_STEP",
+    "sap_s4hana_cloud": "BASIC",
+    "sentinelone": "API_KEY",
+    "sentry": "API_KEY",
+    "talentlms": "API_KEY",
+    "toggl": "BASIC",
+    "ukg_pro": "BASIC"
+}
+
+_SPECS = [replace(s, provider_key=_PROVIDER_OVERRIDES.get(s.vendor), auth_mode=_AUTH_MODES.get(s.vendor, "OAUTH2")) for s in _SPECS]
+BUSINESS_CONNECTORS = json.loads(Path(__file__).with_name("managed_business_connectors.json").read_text())
+_SPECS.extend(NangoConnectorSpec(**{k: row[k] for k in (
+    "vendor", "display_name", "integration_id", "category", "description", "provider_key", "auth_mode"
+)}) for row in BUSINESS_CONNECTORS)
+
 NANGO_CONNECTOR_REGISTRY: dict[str, NangoConnectorSpec] = {spec.vendor: spec for spec in _SPECS}
 NANGO_CONNECTOR_VENDORS: frozenset[str] = frozenset(NANGO_CONNECTOR_REGISTRY)
+
+# Opt-in replacements for confirmed failed native authorization. Healthy native
+# accounts keep their existing path and are never migrated by a health check.
+NANGO_FALLBACK_REGISTRY = {
+    vendor: NangoConnectorSpec(vendor, display, f"gravitre-{provider}", category,
+                              "Optional managed authorization for reconnecting an account",
+                              provider_key=provider, native_fallback=True)
+    for vendor, display, provider, category in (
+        ("slack", "Slack", "slack", "Communication"),
+        ("google_ads", "Google Ads", "google-ads", "CRM / Marketing"),
+        ("google_analytics", "Google Analytics", "google-analytics", "CRM / Marketing"),
+    )
+}
 
 
 def get_nango_connector_spec(vendor: str) -> NangoConnectorSpec | None:
     key = vendor.strip().lower().replace("-", "_").replace(" ", "_")
-    return NANGO_CONNECTOR_REGISTRY.get(key)
+    return NANGO_CONNECTOR_REGISTRY.get(key) or NANGO_FALLBACK_REGISTRY.get(key)

@@ -194,7 +194,31 @@ _OKTA = build_vendor(
 )
 
 
-VENDOR_CATALOG_EXTENSIONS: tuple[VendorCatalogSpec, ...] = (_FRESHSERVICE, _OKTA)
+from app.connectors.nango_registry import BUSINESS_CONNECTORS
+
+
+def _business_catalog(row: dict[str, Any]) -> VendorCatalogSpec:
+    # Do not generate demo write workflows for a read-only integration.
+    properties = {"connector_id": {"type": "string"}}
+    required: list[str] = []
+    if row["vendor"] == "harvest":
+        properties["harvest_account_id"] = {"type": "string", "pattern": "^[0-9]+$"}
+        required.append("harvest_account_id")
+    if row["vendor"] == "freshsales":
+        properties["contact_id"] = {"type": "string", "pattern": "^[0-9]+$"}
+        required.append("contact_id")
+    read = action(row["vendor"], row["read_action"], row["description"], tier="v1", kind="read",
+                  scope_suffix="read", api_reference="GET " + row["read_path"], idempotent=True,
+                  input_schema={"type": "object", "properties": properties, "required": required,
+                                "additionalProperties": False})
+    return VendorCatalogSpec(vendor=row["vendor"], display_name=row["display_name"], category=row["category"],
+                             api_docs_url=row["api_docs_url"], shipped=True, v1=(read,), v2=(), v3=(),
+                             demo_workflows=())
+
+
+VENDOR_CATALOG_EXTENSIONS: tuple[VendorCatalogSpec, ...] = (
+    _FRESHSERVICE, _OKTA, *(_business_catalog(row) for row in BUSINESS_CONNECTORS)
+)
 
 # Runtime per-action schema overrides (partner SDK, MCP, admin API).
 ACTION_SCHEMA_EXTENSIONS: dict[str, dict[str, Any]] = {}

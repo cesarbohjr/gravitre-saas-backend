@@ -89,6 +89,14 @@ def get_connector_by_type(
     """Get first usable connector of type for org (active, healthy, connected, syncing)."""
     from app.intelligence_packs.shared.auth_mode import connector_type_lookup_keys
 
+    from app.connectors.nango_registry import BUSINESS_CONNECTORS
+    if any(row["vendor"] == connector_type for row in BUSINESS_CONNECTORS):
+        result = (client.table("connectors").select("id,org_id,vendor,type,status,config,environment")
+                  .eq("org_id", org_id).eq("environment", environment_name).eq("vendor", connector_type)
+                  .eq("type", "custom").in_("status", sorted(ACTIVE_CONNECTOR_STATUSES))
+                  .is_("deleted_at", "null").order("updated_at", desc=True).limit(1).execute())
+        return result.data[0] if result.data else None
+
     usable = sorted(ACTIVE_CONNECTOR_STATUSES)
     for type_key in connector_type_lookup_keys(connector_type):
         for env in connector_environment_candidates(environment_name):

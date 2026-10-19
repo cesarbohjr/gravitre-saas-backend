@@ -22,7 +22,7 @@
  * Out:  public/brand-logos/<slug>.svg, <slug>-white.svg
  *       lib/provider-registry.generated.json
  */
-import { mkdir, writeFile, access } from "node:fs/promises"
+import { mkdir, writeFile, access, readFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 import * as simpleIcons from "simple-icons"
@@ -44,7 +44,11 @@ const MIN_LIGHT_CONTRAST = 1.6
  *   Only for assets that are the bare mark — never ones that bake in a tile or plate.
  * darkPlate: the official asset has dark ink that disappears on Carbon surfaces.
  */
+const businessProviders = JSON.parse(await readFile(join(webRoot, "../../backend/app/connectors/managed_business_connectors.json"), "utf8"))
+const businessCategories = { "Communication": "communication", "Storage / Dev / Infra": "devops", "DevOps / Incidents": "devops", "Operations / Workflow": "productivity", "Customer Support": "support", "HR / People": "hr", "Payments / Finance": "finance", "CRM / Marketing": "marketing", "Sales / Prospecting": "sales", "Analytics / Data": "analytics", "Learning / Creative": "design" }
+
 const PROVIDERS = [
+  ...businessProviders.map((row) => ({ id: row.vendor, name: row.display_name, category: businessCategories[row.category], asset: `/vendor-logos/${row.vendor}.svg`, darkPlate: true })),
   // CRM / Marketing
   { id: "salesforce", name: "Salesforce", category: "crm", asset: "/vendor-logos/salesforce.svg" },
   { id: "hubspot", name: "HubSpot", category: "crm", si: "hubspot" },

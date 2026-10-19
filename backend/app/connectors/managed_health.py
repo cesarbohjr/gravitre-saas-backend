@@ -5,6 +5,7 @@ from urllib.parse import quote
 import httpx
 from app.connectors.nango_client import nango_configured, _auth_headers, _base_url
 from app.connectors.nango_registry import get_nango_connector_spec
+from app.core.safe_dict import safe_normalize_stored_dict
 
 
 def managed_auth_status(client: Any, org_id: str, connector_id: str, settings: Any, *, environment_name: str | None, validate_remote: bool = False) -> str:
@@ -18,7 +19,7 @@ def managed_auth_status(client: Any, org_id: str, connector_id: str, settings: A
     if not rows:
         return "pending_auth"
     row = rows[0]
-    config = row.get("config") if isinstance(row.get("config"), dict) else {}
+    config = safe_normalize_stored_dict(row, key="config")
     spec = get_nango_connector_spec(str(row.get("vendor") or row.get("type") or ""))
     if not spec or config.get("auth_provider") != "managed":
         return "pending_auth"
@@ -27,7 +28,7 @@ def managed_auth_status(client: Any, org_id: str, connector_id: str, settings: A
         return "misconfigured"
     if not connection_id or row.get("status") in {"pending_auth", "needs_connection", "inactive", "disconnected"}:
         return "pending_auth"
-    if row.get("status") == "error":
+    if row.get("status") == "error" and not validate_remote:
         return "auth_expired"
     if validate_remote:
         try:

@@ -840,7 +840,9 @@ def test_connector_route(
     vendor = normalize_vendor(data.get("vendor") or "")
     connector_env = data.get("environment") or environment_name
     from app.connectors.nango_registry import get_nango_connector_spec
-    if get_nango_connector_spec(vendor):
+    managed_spec = get_nango_connector_spec(vendor)
+    managed_config = safe_normalize_stored_dict(data, key="config")
+    if managed_spec and (not managed_spec.native_fallback or managed_config.get("auth_provider") == "managed"):
         from app.connectors.managed_health import managed_auth_status
         auth = managed_auth_status(client, org_id, str(connector_id), settings,
                                    environment_name=environment_name, validate_remote=True)

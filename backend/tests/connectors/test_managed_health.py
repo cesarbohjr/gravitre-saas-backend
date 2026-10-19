@@ -45,6 +45,16 @@ def test_missing_secret_is_not_connected():
     assert managed_auth_status(client(None),'org1','c1',settings(secret=''),environment_name='production') == 'misconfigured'
 
 
+def test_remote_validation_can_recover_an_account_marked_error(monkeypatch):
+    import httpx
+    monkeypatch.setattr(httpx.Client, 'get', lambda self, url, **kwargs: httpx.Response(
+        200, json={'connection_id': 'n1', 'provider_config_key': 'freshservice', 'errors': []},
+        request=httpx.Request('GET', url)))
+    c = client({'vendor': 'freshservice', 'status': 'error', 'config': {
+        'auth_provider': 'managed', 'managed_connection_id': 'n1', 'managed_integration_id': 'freshservice'}})
+    assert managed_auth_status(c, 'org1', 'c1', settings(), environment_name='production', validate_remote=True) == 'connected'
+
+
 @pytest.mark.parametrize('remote_status,body,expected', [
     (200,{'connection_id':'n1','provider_config_key':'freshservice','errors':[]},'connected'),
     (200,{'connection_id':'n1','provider_config_key':'okta','errors':[]},'auth_expired'),
@@ -69,5 +79,9 @@ def test_remote_health_uses_current_api_and_rejects_invalid_metadata(monkeypatch
 
 def test_managed_types_migration_covers_registry():
     migration = (Path(__file__).parents[3] / 'supabase/migrations/20261001233000_add_nango_long_tail_connector_types.sql').read_text()
-    for vendor in NANGO_CONNECTOR_REGISTRY:
+    from app.connectors.nango_registry import BUSINESS_CONNECTORS
+    business = {r["vendor"] for r in BUSINESS_CONNECTORS}
+    assert len(business) == 30
+    assert "'custom'" in migration
+    for vendor in NANGO_CONNECTOR_REGISTRY.keys() - business:
         assert "'" + vendor + "'" in migration
