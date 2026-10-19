@@ -964,7 +964,7 @@ def create_checkout(
     cancel_url = f"{app_url}/settings/billing?status=cancelled"
     client = shared_service_client(settings, create_client)
     billing = get_org_billing(client, org_id)
-    offer = checkout_offer_for_org(client, org_id)
+    offer = checkout_offer_for_org(client, org_id) if settings.commercial_offers_enabled else None
     customer_id = billing.get("stripe_customer_id") if billing else None
     if not customer_id:
         try:
@@ -1001,7 +1001,7 @@ def create_checkout(
                     success_url=success_url,
                     cancel_url=cancel_url,
                     offer=offer,
-            metadata={
+                    metadata={
                         "org_id": org_id,
                         "plan_code": plan_code,
                         "billing_interval": billing_interval or "monthly",
