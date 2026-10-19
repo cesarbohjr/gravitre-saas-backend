@@ -1007,6 +1007,33 @@ def set_customer_category(
     return {"org_id": org_id, "customer_category": body.customer_category}
 
 
+def _founder_discount_base_products(settings: Settings) -> list[str]:
+    """Resolve configured licensed plan products, excluding metered add-ons.
+
+    Restrict Stripe discounts to base plan products so 30% off a subscription
+    cannot silently discount AI-credit, voice or research overages.
+    """
+    init_stripe(settings)
+    products: set[str] = set()
+    for plan in ("node", "control", "command"):
+        monthly_price_id = price_id_for_plan(settings, plan, billing_interval="monthly")
+        if not monthly_price_id:
+            raise HTTPException(status_code=503, detail=f"Missing Stripe base price for {plan}")
+        for interval in ("monthly", "annual"):
+            price_id = price_id_for_plan(settings, plan, billing_interval=interval)
+            if not price_id:
+                continue
+            price = stripe.Price.retrieve(price_id)
+            product = price.get("product")
+            product_id = product.get("id") if isinstance(product, dict) else product
+            if not isinstance(product_id, str) or not product_id.startswith("prod_"):
+                raise HTTPException(status_code=503, detail="Unable to verify Stripe base plan product")
+            products.add(product_id)
+    if not products:
+        raise HTTPException(status_code=503, detail="No Stripe base plan products available")
+    return sorted(products)
+
+
 @router.post("/admin/promotional-offers")
 def create_founder_offer(
     body: FounderOfferRequest,
@@ -1042,7 +1069,9 @@ def create_founder_offer(
             raise HTTPException(status_code=503, detail="Stripe not configured")
         init_stripe(settings)
         try:
+            base_products = _founder_discount_base_products(settings)
             coupon = stripe.Coupon.create(
+                applies_to={"products": base_products},
                 percent_off=body.percent_off,
                 duration="repeating",
                 duration_in_months=body.discount_months,
