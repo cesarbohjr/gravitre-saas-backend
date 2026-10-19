@@ -18,6 +18,7 @@ from supabase import create_client
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.config import Settings, get_settings
 from app.core.db import shared_service_client
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.core.org_state_cache import invalidate_org_state
 from app.workflows.audit import write_audit_event
 
@@ -120,7 +121,7 @@ def update_security_controls_route(
         controls["requireTwoFactor"] = bool(body.requireTwoFactor)
         changed["requireTwoFactor"] = controls["requireTwoFactor"]
     if body.ipAllowlist is not None:
-        allow = dict(controls["ipAllowlist"])
+        allow = safe_normalize_stored_dict(controls, key="ipAllowlist")
         if body.ipAllowlist.ranges is not None:
             ranges: list[str] = []
             for item in body.ipAllowlist.ranges:

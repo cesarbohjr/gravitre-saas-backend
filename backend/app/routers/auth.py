@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 from supabase import create_client
 from app.core.db import shared_service_client
+from app.core.safe_dict import safe_normalize_stored_dict
 
 from app.auth.dependencies import get_current_user, get_org_context
 from app.auth.jwt_verify import decode_supabase_jwt
@@ -111,7 +112,7 @@ def _save_auth_profile(client, auth_user_id: str, fields: dict, preferences: dic
     if current is None:
         # Never overwrite what we could not read.
         raise HTTPException(status_code=502, detail="Unable to load your profile to update it. Try again.")
-    merged = dict(current["profile"])
+    merged = safe_normalize_stored_dict(current, key="profile")
     for field, value in fields.items():
         cleaned = value.strip() if isinstance(value, str) else value
         if cleaned:
@@ -119,7 +120,7 @@ def _save_auth_profile(client, auth_user_id: str, fields: dict, preferences: dic
         else:
             merged.pop(field, None)
     if preferences:
-        prefs = dict(merged.get("preferences") or {})
+        prefs = safe_normalize_stored_dict(merged, key="preferences")
         prefs.update(preferences)
         merged["preferences"] = prefs
     try:
