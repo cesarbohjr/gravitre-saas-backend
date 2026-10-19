@@ -162,6 +162,8 @@ def test_checkout_completed_writes_plan_code_from_metadata(monkeypatch):
         "subscription": "sub_cmd",
         "metadata": metadata,
     }
+    monkeypatch.setattr(stripe_webhook_router.stripe.Subscription, "retrieve",
+                        lambda _id: {"id": "sub_cmd", "customer": "cus_cmd", "status": "active"})
     fake_entitlements = types.ModuleType("app.marketplace.entitlements")
     fake_entitlements.fulfill_entitlement_from_checkout = lambda *_a, **_k: None
     monkeypatch.setitem(sys.modules, "app.marketplace.entitlements", fake_entitlements)
