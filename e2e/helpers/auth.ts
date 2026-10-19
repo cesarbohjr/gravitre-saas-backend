@@ -27,10 +27,24 @@ export function loadBillingFixtures(): BillingFixtures {
 
 export async function loginWithPassword(page: Page, email: string, password: string) {
   await page.goto("/login?intent=login")
+  // A cold Next dev server can expose SSR inputs before React attaches handlers.
+  // Wait for the existing E2E AuthProvider effect before filling the real form.
+  await page.waitForFunction(() => Boolean((window as Window & { __GRAVITRE_AUTH_TEST?: unknown }).__GRAVITRE_AUTH_TEST))
   await page.getByPlaceholder("you@company.com").fill(email)
   await page.getByPlaceholder("Enter your password").fill(password)
+  const authenticated = page.waitForResponse(response => new URL(response.url()).pathname === "/auth/v1/token" && response.request().method() === "POST")
   await page.getByRole("button", { name: "Sign in" }).click()
-  await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 90_000 })
+  const response = await authenticated
+  if (!response.ok()) {
+    const error = await response.json()
+    throw new Error(`Supabase password sign-in failed (${response.status()}): ${error.error_code || error.code || "unknown"}`)
+  }
+  try {
+    await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 90_000 })
+  } catch {
+    // Text excludes password input values and auth response bodies/tokens.
+    throw new Error(`Sign-in returned ${response.status()} but stayed at ${new URL(page.url()).pathname}: ${(await page.locator("body").innerText()).slice(-6000)}`)
+  }
 }
 
 export async function openProductPage(page: Page, orgId: string, path = "/assistant") {

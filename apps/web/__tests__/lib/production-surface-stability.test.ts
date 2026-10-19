@@ -19,8 +19,9 @@ describe("production surface stability",()=>{
   })
   it("keeps the settings rail on one continuous surface",()=>{
     const c=read("components/settings/settings-shell.tsx")
-    expect(c).toMatch(/min-h-full/)
-    expect(c).toMatch(/self-stretch/)
+    // The redesigned rail is one sticky card (settings-kit.css .gs-nav), not a stretched column.
+    expect(c).toMatch(/className="gs-nav hidden lg:block"/)
+    expect(read("components/settings/settings-kit.css")).toMatch(/\.gs-nav \{[^}]*position: sticky/)
     expect(c).not.toMatch(/bg-\[color:var\(--g-surface-1\)\]\/95 p-4/)
   })
 })

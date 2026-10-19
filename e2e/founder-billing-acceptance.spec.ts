@@ -78,7 +78,11 @@ test("founder can read controls and issue a capped trial; customer completes rea
   expect(proof.subscription_status).toBe("trialing")
   expect(proof.invoice_status).toBe("paid")
   expect(proof.invoice_amount_paid).toBe(0)
-  evidence.checkout = proof
+  await expect.poll(() => stripeProof(sessionId).grant_status, { timeout: 45_000 }).toBe("redeemed")
+  const persisted = stripeProof(sessionId)
+  expect(persisted.subscription_persisted).toBe(true)
+  expect(persisted.trial_has_only_licensed_items).toBe(true)
+  evidence.checkout = persisted
   await expect.poll(async () => (await api(page, "/api/billing/status")).body.billingStatus, { timeout: 45_000 }).toBe("trialing")
 })
 

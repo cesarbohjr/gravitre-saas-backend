@@ -253,11 +253,23 @@ def emit_notification(
     if notification_id is None:
         return None
 
-    from app.services.notification_preference_service import channel_enabled
+    from app.services.notification_preference_service import channel_enabled, held_by_quiet_hours
 
     bell_allowed = channel_enabled(client, org_id, user_id, canonical_type, "bell")
     email_allowed = channel_enabled(client, org_id, user_id, canonical_type, "email")
     slack_allowed = channel_enabled(client, org_id, user_id, canonical_type, "slack")
+    # Quiet hours (Settings > Notifications) skip email and Slack, never the
+    # inbox row above, and never urgent approvals.
+    if (email_allowed or slack_allowed) and held_by_quiet_hours(
+        client, org_id, user_id, canonical_type, "email"
+    ):
+        logger.info(
+            "quiet hours: email and slack skipped notification_id=%s event_type=%s",
+            notification_id,
+            canonical_type,
+        )
+        email_allowed = False
+        slack_allowed = False
 
     # Slack is opt-in per event in Settings > Notifications; it never sends
     # unless the person switched it on, so no caller hint is needed.

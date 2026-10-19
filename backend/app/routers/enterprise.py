@@ -81,8 +81,9 @@ class SiemConfigUpdate(BaseModel):
 
 
 class SiemTestRequest(BaseModel):
-    endpoint: str
-    secret: str
+    # Both optional: the Settings page sends {} to test the saved configuration.
+    endpoint: str | None = None
+    secret: str | None = None
 
 
 class AutonomousRunBudgetUpdate(BaseModel):
@@ -843,4 +844,20 @@ def test_siem_delivery(
         resource_id=org_id,
         metadata={"actorId": _user["user_id"]},
     )
-    return dispatch_siem_event(endpoint=body.endpoint.strip(), secret=body.secret.strip(), event=event)
+    endpoint = (body.endpoint or "").strip()
+    secret = (body.secret or "").strip()
+    if not endpoint or not secret:
+        enterprise = safe_normalize_stored_dict(_org_settings(shared_service_client(settings, create_client), org_id), key="enterprise")
+        saved = enterprise.get("siem") if isinstance(enterprise.get("siem"), dict) else {}
+        endpoint = endpoint or str(saved.get("endpoint") or "").strip()
+        secret = secret or (resolve_siem_secret(saved, settings) or "")
+    if not endpoint or not secret:
+        raise HTTPException(status_code=400, detail="Save a SIEM endpoint and signing secret before sending a test event")
+    return dispatch_siem_event(endpoint=endpoint, secret=secret, event=event)
+
+
+# Settings > Enterprise redesign read models (/api/enterprise/insights/*). Included
+# here so the routes ship with this router and main.py needs no change.
+from app.routers.settings_enterprise import router as _insights_router  # noqa: E402
+
+router.include_router(_insights_router)

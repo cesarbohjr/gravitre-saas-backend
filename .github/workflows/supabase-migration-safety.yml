@@ -329,6 +329,11 @@ jobs:
           pip install --no-cache-dir -r backend/requirements-dev.txt
           npx playwright install --with-deps chromium
       - name: Configure disposable Supabase and Stripe sandbox only
+        env:
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+          STRIPE_TEST_PUBLISHABLE_KEY: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
+          STRIPE_EXISTING_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_EXISTING_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
         if: steps.gate.outputs.run == 'true' && startsWith(github.head_ref, 'fix/billing-acceptance')
         run: |
           umask 077

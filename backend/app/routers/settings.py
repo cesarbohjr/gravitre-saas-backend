@@ -317,6 +317,24 @@ def get_lite_seats_route(
             if dept_id:
                 members_by_department[str(dept_id)] += 1
 
+    # Assigned resources per department (workflows, agents, councils, knowledge
+    # packs). Fail soft when the assignments table is not migrated yet.
+    resources_by_department: dict[str, int] = defaultdict(int)
+    try:
+        assignments_resp = (
+            client.table("department_resource_assignments")
+            .select("department_id")
+            .eq("org_id", org_id)
+            .execute()
+        )
+        if not response_error(assignments_resp):
+            for assignment in assignments_resp.data or []:
+                dept_id = assignment.get("department_id")
+                if dept_id:
+                    resources_by_department[str(dept_id)] += 1
+    except Exception:  # noqa: BLE001
+        resources_by_department = defaultdict(int)
+
     # E1: included Lite seats from plan features.lite_users (SoT).
     # None = unlimited (Command/Enterprise); never invent a fake large number.
     from app.middleware.entitlements import resolve_entitlements
@@ -340,6 +358,7 @@ def get_lite_seats_route(
                 "lite_seat_allocation": allocation,
                 "used_seats": used_seats,
                 "available_seats": max(allocation - used_seats, 0),
+                "resource_count": int(resources_by_department.get(dept_id, 0)),
                 "department_admin_id": d.get("department_admin_id"),
                 "status": "active" if allocation > 0 else "inactive",
                 "created_at": d.get("created_at"),

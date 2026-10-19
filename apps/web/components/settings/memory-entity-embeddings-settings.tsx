@@ -1,185 +1,170 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import useSWR from "swr"
-import { Button } from "@/components/ui/button"
-import { Info, Loader2, Save, Shield, Check } from "lucide-react"
-import { settingsApi } from "@/lib/api"
-import { toast } from "sonner"
+import { Brain, Check, Info } from "lucide-react"
+import { connectorsApi, settingsApi } from "@/lib/api"
+import {
+  CONNECTORS_KEY,
+  MEMORY_KEY,
+  appChips,
+  samePolicy,
+  scopeText,
+  type MemoryPolicy,
+} from "@/lib/settings-api/ai-models"
+import { SetError, SetIco, SetNote, SetSkeleton, SetSwitch } from "./settings-kit"
+import { SettingsSaveBar } from "./settings-save-bar"
 
-const CONNECTOR_OPTIONS = [
-  { id: "asana", label: "Asana" },
-  { id: "slack", label: "Slack" },
-  { id: "hubspot", label: "HubSpot" },
-  { id: "jira", label: "Jira" },
-  { id: "apollo", label: "Apollo" },
-] as const
-
-type MemoryEntityEmbeddingsPolicy = {
-  enabled: boolean
-  connectors: string[]
-}
-
+/**
+ * Chat entity matching (Memory), STA-316: org opt-in for opaque-token entity
+ * embeddings, optionally limited to some connected apps. Saved through
+ * PUT /api/settings/memory-entity-embeddings (owners and admins only).
+ */
 export function MemoryEntityEmbeddingsSettings({ isAdmin }: { isAdmin: boolean }) {
-  const { data, mutate, isLoading } = useSWR(
-    "/api/settings/memory-entity-embeddings",
-    () => settingsApi.getMemoryEntityEmbeddings(),
-    { revalidateOnFocus: false },
-  )
+  const { data, error, isLoading, mutate } = useSWR(MEMORY_KEY, () => settingsApi.getMemoryEntityEmbeddings(), {
+    revalidateOnFocus: false,
+  })
+  const connectors = useSWR(CONNECTORS_KEY, () => connectorsApi.list(), { revalidateOnFocus: false })
   const remote = data?.memoryEntityEmbeddings
-  const [enabled, setEnabled] = useState(false)
-  const [connectors, setConnectors] = useState<string[]>([])
-  const [isSaving, setIsSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const baseline = useMemo<MemoryPolicy>(
+    () => ({
+      enabled: Boolean(remote?.enabled),
+      connectors: Array.isArray(remote?.connectors) ? remote.connectors.map((id) => String(id).toLowerCase()) : [],
+    }),
+    [remote],
+  )
+  const [draft, setDraft] = useState<MemoryPolicy>(baseline)
+  const [saving, setSaving] = useState(false)
+  const [savedAt, setSavedAt] = useState<number | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  useEffect(() => setDraft(baseline), [baseline])
 
-  useEffect(() => {
-    if (!remote) return
-    setEnabled(Boolean(remote.enabled))
-    setConnectors(Array.isArray(remote.connectors) ? remote.connectors.map(String) : [])
-  }, [remote])
+  const chips = useMemo(() => appChips(connectors.data?.connectors, baseline.connectors), [connectors.data, baseline.connectors])
+  const dirty = Boolean(remote) && !samePolicy(draft, baseline)
 
-  const dirty = useMemo(() => {
-    if (!remote) return false
-    const remoteConnectors = [...(remote.connectors || [])].map(String).sort()
-    const localConnectors = [...connectors].sort()
-    return (
-      Boolean(remote.enabled) !== enabled ||
-      JSON.stringify(remoteConnectors) !== JSON.stringify(localConnectors)
-    )
-  }, [remote, enabled, connectors])
-
-  const toggleConnector = (id: string) => {
-    setConnectors((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
-    )
+  const toggleApp = (id: string) => {
+    setDraft((prev) => ({
+      ...prev,
+      connectors: prev.connectors.includes(id) ? prev.connectors.filter((item) => item !== id) : [...prev.connectors, id],
+    }))
+    setSaveError(null)
   }
 
-  const handleSave = async () => {
-    if (!isAdmin) {
-      toast.error("Only organization admins can change this setting")
-      return
-    }
-    setIsSaving(true)
+  const save = async () => {
+    if (!isAdmin) return
+    setSaving(true)
+    setSaveError(null)
     try {
-      const payload: MemoryEntityEmbeddingsPolicy = {
-        enabled,
-        connectors: enabled ? connectors : [],
-      }
-      await settingsApi.updateMemoryEntityEmbeddings(payload)
-      await mutate()
-      setSaved(true)
-      toast.success(enabled ? "Chat entity matching enabled" : "Chat entity matching disabled")
-      setTimeout(() => setSaved(false), 2000)
+      const payload = { enabled: draft.enabled, connectors: draft.enabled ? draft.connectors : [] }
+      const result = await settingsApi.updateMemoryEntityEmbeddings(payload)
+      const saved = result?.memoryEntityEmbeddings
+      await mutate(saved ? { memoryEntityEmbeddings: saved } : undefined, { revalidate: !saved })
+      setSavedAt(Date.now())
     } catch (err) {
-      console.error("[settings] memory entity embeddings save failed:", err)
-      toast.error("Failed to save Memory entity matching setting")
+      setSaveError(err instanceof Error ? err.message : "Could not save the Memory setting")
     } finally {
-      setIsSaving(false)
+      setSaving(false)
     }
-  }
-
-  if (isLoading && !remote) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Loading Memory settings…
-      </div>
-    )
   }
 
   return (
-    <div className="space-y-4 pt-6 border-t border-divide">
-      <div>
-        <h3 className="text-sm font-medium text-foreground">Chat entity matching (Memory)</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Improve chat matching of people and channels when you use fuzzy mentions (for example
-          “Sarah” or “#sales”). Off by default.
-        </p>
-      </div>
-
-      <div className="flex items-start gap-2 p-3 rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-2)] border border-divide">
-        <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-        <div className="text-xs text-muted-foreground space-y-1.5">
-          <p>
-            When enabled, Gravitre may send <span className="text-foreground font-medium">non-raw opaque tokens</span>{" "}
-            (HMAC digests) and redacted mention fragments to a third-party embedding API (OpenAI) to
-            match known entities. Raw emails, assignee names, and channel names are never embedded.
-          </p>
-          <p>
-            Exact alias matches still use your local entity cache without a provider call. This setting
-            does <span className="text-foreground font-medium">not</span> mean “no data leaves Gravitre”
-            while Memory matching is on.
-          </p>
-          <p>Vectors are stored separately from the knowledge base and expire after 30 days.</p>
+    <section className="gs-card clip" aria-label="Chat entity matching (Memory)">
+      <div className="gs-row-sec">
+        <SetIco icon={Brain} />
+        <div className="gs-what">
+          <b>Chat entity matching (Memory)</b>
+          <span>
+            Better matching when you mention people or channels loosely, like &ldquo;Sarah&rdquo; or &ldquo;#sales&rdquo;.
+            Off by default.
+          </span>
         </div>
+        {remote ? (
+          <SetSwitch
+            label="Enable entity matching"
+            checked={draft.enabled}
+            disabled={!isAdmin || saving}
+            onChange={(next) => {
+              setDraft((prev) => ({ ...prev, enabled: next }))
+              setSaveError(null)
+            }}
+          />
+        ) : null}
       </div>
-
-      <label
-        className={`flex items-center justify-between p-3 rounded-lg border border-divide bg-[color:var(--g-surface-2)] transition-colors ${
-          isAdmin ? "cursor-pointer hover:bg-secondary/50" : "opacity-70"
-        }`}
-      >
-        <div className="flex items-center gap-3">
-          <Shield className="h-4 w-4 text-muted-foreground" />
+      <div className="aimodels-memory-body">
+        <SetNote icon={Info}>
           <div>
-            <p className="text-sm font-medium text-foreground">Enable opaque-token entity matching</p>
-            <p className="text-xs text-muted-foreground">
-              Opt in for Memory Phase 1 embeddings behind sensitive chat fields
-            </p>
+            When this is on, Gravitre sends <strong>opaque tokens</strong> (HMAC digests) and redacted fragments to an
+            embedding provider (OpenAI) to match known names. Raw emails, assignee names and channel names are never sent.
           </div>
-        </div>
-        <input
-          type="checkbox"
-          className="rounded border-border"
-          checked={enabled}
-          disabled={!isAdmin || isSaving}
-          onChange={(e) => setEnabled(e.target.checked)}
-        />
-      </label>
+          <div style={{ marginTop: 6 }}>
+            Exact alias matches stay on your local cache. Vectors are stored apart from the knowledge base and expire after
+            30 days.
+          </div>
+        </SetNote>
 
-      {enabled ? (
-        <div className="space-y-2 pl-1">
-          <p className="text-xs text-muted-foreground">
-            Optional connector allowlist — leave all unchecked to apply to every connected app when
-            enabled.
+        {isLoading && !remote ? (
+          <SetSkeleton rows={2} label="Loading Memory settings" />
+        ) : error || !remote ? (
+          <SetError message="Could not load the Memory setting." onRetry={() => void mutate()} />
+        ) : draft.enabled ? (
+          <div>
+            <div className="aimodels-apps-label">
+              Limit to these apps <span>(leave all off to apply everywhere)</span>
+            </div>
+            {connectors.isLoading && !connectors.data ? (
+              <SetSkeleton rows={1} label="Loading connected apps" />
+            ) : connectors.error ? (
+              <SetError message="Could not load your connected apps." onRetry={() => void connectors.mutate()} />
+            ) : chips.length === 0 ? (
+              <p className="aimodels-scope">
+                No apps connected yet. <Link href="/connectors">Connect an app</Link> to limit matching to it.
+              </p>
+            ) : (
+              <div className="aimodels-apps" role="group" aria-label="Limit to these apps">
+                {chips.map((chip) => {
+                  const on = draft.connectors.includes(chip.id)
+                  return (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      className="gs-leg"
+                      aria-pressed={on}
+                      disabled={!isAdmin || saving}
+                      title={chip.stale ? "No longer connected" : undefined}
+                      onClick={() => toggleApp(chip.id)}
+                    >
+                      {on ? <Check size={14} aria-hidden /> : null}
+                      {chip.name}
+                      {chip.stale ? <span className="sr-only"> (no longer connected)</span> : null}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            <div className="aimodels-scope">{scopeText(chips, draft.connectors)}</div>
+          </div>
+        ) : null}
+
+        {!isAdmin ? <p className="aimodels-scope">Only owners and admins can change this setting.</p> : null}
+        {saveError ? (
+          <p role="alert" className="gs-note red">
+            {saveError}
           </p>
-          <div className="flex flex-wrap gap-2">
-            {CONNECTOR_OPTIONS.map((connector) => {
-              const active = connectors.includes(connector.id)
-              return (
-                <button
-                  key={connector.id}
-                  type="button"
-                  disabled={!isAdmin || isSaving}
-                  onClick={() => toggleConnector(connector.id)}
-                  className={`px-2.5 py-1 rounded-md text-xs border transition-colors ${
-                    active
-                      ? "border-foreground/30 bg-foreground/5 text-foreground"
-                      : "border-border text-muted-foreground hover:bg-secondary/40"
-                  }`}
-                >
-                  {connector.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        ) : null}
+      </div>
+      {isAdmin ? (
+        <SettingsSaveBar
+          dirty={dirty}
+          saving={saving}
+          savedAt={savedAt}
+          onDiscard={() => {
+            setDraft(baseline)
+            setSaveError(null)
+          }}
+          onSave={() => void save()}
+        />
       ) : null}
-
-      {!isAdmin ? (
-        <p className="text-xs text-muted-foreground">Only organization admins can change this setting.</p>
-      ) : (
-        <Button size="sm" className="gap-2" onClick={handleSave} disabled={isSaving || !dirty}>
-          {isSaving ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : saved ? (
-            <Check className="h-3.5 w-3.5" />
-          ) : (
-            <Save className="h-3.5 w-3.5" />
-          )}
-          {saved ? "Saved" : "Save Memory setting"}
-        </Button>
-      )}
-    </div>
+    </section>
   )
 }

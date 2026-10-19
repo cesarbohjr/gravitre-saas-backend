@@ -16,6 +16,7 @@ import {
   NavPackage,
   NavPlug,
   NavRocket,
+  NavShield,
   NavSliders,
   NavSparkles,
   NavTarget,
@@ -55,6 +56,8 @@ export const SIDEBAR_NUCLEO_BY_ICON: Partial<Record<IconName, NavIcon>> = {
   chartLine: NavChart,
   sliders: NavSliders,
   rocket: NavRocket,
+  shield: NavShield,
+  shieldCheck: NavShield,
 }
 
 export function resolveSidebarNavIcon(name: IconName): NavIcon | null {

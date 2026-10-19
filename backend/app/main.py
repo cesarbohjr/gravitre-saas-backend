@@ -134,6 +134,7 @@ from app.routers.webhooks import (
     segment_inbound,
 )
 from app.routers import freshservice_triggers, run_cost
+from app.routers import settings_api_keys, settings_security
 from app.routers.webhooks import stripe as stripe_webhooks
 from app.samples.stripe_connect_v2.router import router as stripe_connect_sample_router
 from app.routers.webhooks import workflow_triggers
@@ -768,6 +769,8 @@ app.include_router(department_pipelines.router)
 app.include_router(entitlements.router)
 app.include_router(extension.router)
 app.include_router(environments.router)
+app.include_router(settings_security.router)
+app.include_router(settings_api_keys.router)
 app.include_router(settings.router)
 app.include_router(entity_observations.router)
 app.include_router(recommendation_feed.router)

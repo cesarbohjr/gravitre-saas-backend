@@ -123,6 +123,9 @@ def _complete_onboarding(client, org_id: str) -> None:
 
 def build_fixtures() -> dict:
     env = _load_env()
+    if os.environ.get("BILLING_ACCEPTANCE_ISOLATED") == "1":
+        from urllib.parse import urlparse
+        assert urlparse(env["SUPABASE_URL"]).hostname in {"localhost", "127.0.0.1"}
     client = _supabase_client(env)
     now = datetime.now(timezone.utc)
 
