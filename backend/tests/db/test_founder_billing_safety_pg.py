@@ -26,9 +26,9 @@ def pg():
     with pg_cluster(
         BOOTSTRAP,
         (
-            MIGRATIONS / "20261018193000_customer_segments_and_founder_offers.sql"
+            MIGRATIONS / "20261019050504_customer_segments_and_founder_offers.sql"
         ).read_text(),
-        (MIGRATIONS / "20261019034805_founder_billing_safety.sql").read_text(),
+        (MIGRATIONS / "20261019050855_founder_billing_safety.sql").read_text(),
     ) as db:
         db.psql(
             f"INSERT INTO public.org_commercial_profiles(org_id,customer_category) VALUES('{ORG}','external'); INSERT INTO public.org_promotional_grants(id,org_id,offer_type,trial_days,status) VALUES('{GRANT}','{ORG}','trial',30,'redeemed');"

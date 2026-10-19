@@ -8,7 +8,7 @@ import pytest
 
 from tests.db.pg_harness import MIGRATIONS, PG_BIN, pg_cluster, requires_pg
 
-MIGRATION = MIGRATIONS / "20261016190000_stripe_meter_outbox.sql"
+MIGRATION = MIGRATIONS / "20261016185052_stripe_meter_outbox.sql"
 A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
 U1 = "11111111-1111-4111-8111-111111111111"
