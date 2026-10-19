@@ -26,15 +26,26 @@ export function loadBillingFixtures(): BillingFixtures {
 }
 
 export async function loginWithPassword(page: Page, email: string, password: string) {
+  const pageErrors: string[] = []
+  const recordError = (error: Error) => pageErrors.push(error.message)
+  page.on("pageerror", recordError)
   await page.goto("/login?intent=login")
   // A cold Next dev server can expose SSR inputs before React attaches handlers.
   // Wait for the existing E2E AuthProvider effect before filling the real form.
-  await page.waitForFunction(() => Boolean((window as Window & { __GRAVITRE_AUTH_TEST?: unknown }).__GRAVITRE_AUTH_TEST))
+  try {
+    await page.waitForFunction(() => Boolean((window as Window & { __GRAVITRE_AUTH_TEST?: unknown }).__GRAVITRE_AUTH_TEST), undefined, { timeout: 30_000 })
+  } catch {
+    throw new Error(`Login did not hydrate: ${pageErrors.join("; ").slice(0, 2000)}`)
+  } finally {
+    page.off("pageerror", recordError)
+  }
   await page.getByPlaceholder("you@company.com").fill(email)
   await page.getByPlaceholder("Enter your password").fill(password)
-  const authenticated = page.waitForResponse(response => new URL(response.url()).pathname === "/auth/v1/token" && response.request().method() === "POST")
+  const authenticated = page.waitForResponse(response => new URL(response.url()).pathname === "/auth/v1/token" && response.request().method() === "POST", { timeout: 30_000 })
   await page.getByRole("button", { name: "Sign in" }).click()
-  const response = await authenticated
+  const response = await authenticated.catch(async () => {
+    throw new Error(`Supabase sign-in sent no completed token response: ${(await page.locator("body").innerText()).slice(-6000)}`)
+  })
   if (!response.ok()) {
     const error = await response.json()
     throw new Error(`Supabase password sign-in failed (${response.status()}): ${error.error_code || error.code || "unknown"}`)
