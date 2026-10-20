@@ -3497,7 +3497,18 @@ export type MlAdminTrainResult = {
   message?: string
 }
 
+export type TrainingPermission = {
+  model_name: string; what: string; why: string; data: string; when: string; where: string;
+  security: string; controls: string; scope_digest: string;
+  consent_state: "pending" | "approved" | "paused" | "revoked" | "deferred";
+  candidate_data_detected: boolean; observed_count: number | null; required_count: number | null;
+  eligibility_note: string;
+}
+
 export const mlAdminApi = {
+  trainingPermissions: () => fetcher<{ models: TrainingPermission[] }>(apiUrl("/api/admin/ml/training-permissions")),
+  updateTrainingPermission: (modelName: string, state: "approved" | "paused" | "revoked" | "deferred", scopeDigest: string) =>
+    postJson(apiUrl(`/api/admin/ml/training-permissions/${encodeURIComponent(modelName)}`), { state, scope_digest: scopeDigest }),
   listCatalog: () => fetcher<MlAdminCatalogResponse>(apiUrl("/api/admin/ml/models")),
   modelStatus: (modelName: string) =>
     fetcher<MlAdminOrgModelStatus>(apiUrl(`/api/admin/ml/models/${modelName}/status`)),

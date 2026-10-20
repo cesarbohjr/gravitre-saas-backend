@@ -5,6 +5,8 @@ import os
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+import asyncio
 
 from app.auth.dependencies import get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -63,3 +65,40 @@ async def train_ml_model(
         return await train_ml_model_for_org(org_id, model_name, settings=settings)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+class TrainingPermissionUpdate(BaseModel):
+    state: str = Field(pattern="^(approved|paused|revoked|deferred)$")
+    scope_digest: str = Field(min_length=64, max_length=64)
+
+
+@router.get("/training-permissions")
+async def list_training_permissions(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.ml.training_consent import training_permission_inventory
+    try:
+        return await training_permission_inventory(org_id, settings)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Training permissions could not be verified") from exc
+
+
+@router.post("/training-permissions/{model_name}")
+async def update_training_permission(
+    model_name: str,
+    payload: TrainingPermissionUpdate,
+    org_id: Annotated[str, Depends(get_org_context)],
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    from app.ml.automatic_training import CONSENT_MANAGED_MODELS
+    from app.ml.training_consent import save_training_consent
+    if model_name not in CONSENT_MANAGED_MODELS:
+        raise HTTPException(status_code=400, detail="Automatic training is not available for this model")
+    try:
+        return await asyncio.to_thread(save_training_consent, org_id, model_name, admin[0]["user_id"],
+                                       payload.state, payload.scope_digest, settings)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc

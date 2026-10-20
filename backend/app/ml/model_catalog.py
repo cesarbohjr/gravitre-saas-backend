@@ -137,7 +137,7 @@ GRAVITRE_ML_CATALOG: dict[str, dict[str, Any]] = {
     "causal_impact_analyzer": {
         "status": ModelStatus.PLANNED,
         "use_cases": ["causal_business_impact"],
-        "activation": "30+ pre/post action observations per metric",
+        "activation": "30+ measured before/after observation pairs for one metric; observational, not causal proof",
         "fallback": "correlation_with_disclosure",
         "advisory_only": True,
     },
@@ -172,12 +172,12 @@ GRAVITRE_ML_CATALOG: dict[str, dict[str, Any]] = {
     },
     "agentic_planning": {
         "status": ModelStatus.PLANNED,
-        "activation": "Accumulate v8 trajectory data, extend ReActEngine",
+        "activation": "100+ measured deal_amount action outcomes with both outcome classes in temporal training and holdout windows",
         "advisory_only": True,
     },
     "world_model": {
         "status": ModelStatus.PLANNED,
-        "activation": "6+ months v8 outcome data + CausalImpactAnalyzer active",
+        "activation": "500+ measured deal_amount transitions spanning 180+ days; must beat a temporal holdout baseline",
         "advisory_only": True,
     },
     "domain_specific_llm": {
@@ -197,7 +197,7 @@ GRAVITRE_ML_CATALOG: dict[str, dict[str, Any]] = {
     },
     "self_supervised_embeddings": {
         "status": ModelStatus.PLANNED,
-        "note": "Current embedding model sufficient. Activate if v7 shows quality gap.",
+        "note": "100+ distinct org-local documents for latent semantic embeddings; independent retrieval-quality validation required before promotion",
         "advisory_only": False,
     },
 }
@@ -230,6 +230,15 @@ _MODEL_CLASS_MAP: dict[str, Callable[[], Any]] = {
     "diffusion_model": DiffusionModelConnector,
     "self_supervised_embeddings": SelfSupervisedEmbeddingLearner,
 }
+
+
+# Implementation availability is separate from the legacy catalog designation.
+# Advanced entries remain admin-only even after an implementation is available.
+IMPLEMENTED_ADVANCED_MODELS = frozenset({
+    "active_learning", "neuro_symbolic", "causal_impact_analyzer",
+    "agentic_planning", "world_model", "self_supervised_embeddings",
+})
+ARTIFACT_ADVANCED_MODELS = frozenset({"agentic_planning", "world_model", "self_supervised_embeddings"})
 
 
 def get_catalog() -> dict[str, dict[str, Any]]:
@@ -382,7 +391,7 @@ async def get_org_model_status(org_id: str, model_name: str, *, settings: Settin
         "live_inference_path": "heuristic" if status == ModelStatus.TRAINED else status.value,
         "runtime_status": "heuristic" if status == ModelStatus.TRAINED else status.value,
     }
-    if status == ModelStatus.TRAINED:
+    if status == ModelStatus.TRAINED or model_name in ARTIFACT_ADVANCED_MODELS:
         payload.update(_count_org_data_points(org_id, model_name, active))
         data_counts = payload.get("data_counts") if isinstance(payload.get("data_counts"), dict) else {}
         # Prefer registry deployed artifact over catalog label.
@@ -454,6 +463,7 @@ async def get_org_model_status(org_id: str, model_name: str, *, settings: Settin
 def model_inventory_definition(model_name: str) -> dict[str, Any]:
     """Product exposure and supported controls, independent of catalog TRAINED."""
     from app.ml.intelligence_training import TRAINING_DISPATCH
+    from app.ml.automatic_training import CONSENT_MANAGED_MODELS
 
     meta = GRAVITRE_ML_CATALOG.get(model_name)
     if meta is None:
@@ -467,6 +477,11 @@ def model_inventory_definition(model_name: str) -> dict[str, Any]:
         "capabilities": meta.get("use_cases") or [],
         "visibility": "operational" if operational else "admin_technical",
         "manual_training_supported": supported,
+        "implementation_status": "implemented" if operational or model_name in IMPLEMENTED_ADVANCED_MODELS else "scaffolded",
+        "activation_mode": "automatic_after_consent" if model_name in CONSENT_MANAGED_MODELS else
+            "on_demand" if model_name in {"active_learning", "neuro_symbolic", "causal_impact_analyzer"} else "unavailable",
+        "automatic_training_supported": model_name in CONSENT_MANAGED_MODELS,
+        "customer_activation_control": False,
         "training_unavailable_reason": (
             None if supported else "missing_training_columns" if blocked else "not_implemented"
         ),
@@ -492,8 +507,6 @@ async def build_ml_catalog_dashboard(
                    if definitions[name]["visibility"] == "operational"}
     org_status: dict[str, Any] = {}
     for name, meta in catalog.items():
-        if meta.get("status") != "trained":
-            continue
         try:
             org_status[name] = await get_org_model_status(org_id, name, settings=active)
         except Exception as exc:  # noqa: BLE001
@@ -514,6 +527,8 @@ async def build_ml_catalog_dashboard(
             "artifact_readiness": "loaded" if loaded else "not_loaded" if runtime else "not_verified",
             "inference_health": "not_verified",
             "runtime_status": runtime.get("runtime_status") or "not_verified",
+            "activation_state": "artifact_loaded" if loaded else "dormant",
+            "activation_note": "Automatic evaluation does not bypass consent, data validation, infrastructure, or promotion gates.",
             "fallback": runtime.get("fallback") or catalog[name].get("fallback"),
             "data_eligibility": {
                 "status": "requires_training_validation" if definitions[name]["manual_training_supported"] else "unavailable",
@@ -551,6 +566,10 @@ async def load_org_trained_catalog_model(
 
     active = settings or get_settings()
     instance = get_model_instance(model_name)
+    from app.ml.automatic_training import CONSENT_MANAGED_MODELS
+    from app.ml.training_consent import training_is_approved
+    if model_name in CONSENT_MANAGED_MODELS and not await training_is_approved(org_id, model_name, active):
+        return instance
     registry_name = CATALOG_MODEL_NAMES.get(model_name, model_name)
     try:
         registry = get_model_registry()
@@ -624,3 +643,50 @@ async def _log_ml_prediction(
         )
     except Exception:  # noqa: BLE001
         return
+
+
+async def infer_catalog_capability(
+    org_id: str, model_name: str, inputs: dict[str, Any], *, settings: Settings | None = None,
+) -> dict[str, Any]:
+    """Shared internal inference boundary; never interprets catalog TRAINED as readiness.
+
+    Callers supply org-authorized inputs, not another org id from a payload.
+    A capability output is advisory and cannot grant tool authorization.
+    """
+    if not org_id or not org_id.strip():
+        raise ValueError("org_id required")
+    if model_name not in GRAVITRE_ML_CATALOG:
+        raise ValueError(f"Unknown catalog model: {model_name}")
+    if not isinstance(inputs, dict):
+        raise ValueError("Structured model inputs required")
+    # Scope and runtime dependencies must come from the caller's authenticated
+    # context, never from model inputs or stored user payloads.
+    args = {key: value for key, value in inputs.items() if key not in {"org_id", "settings"}}
+    from app.ml.automatic_training import CONSENT_MANAGED_MODELS
+    from app.ml.training_consent import training_is_approved
+    if model_name in CONSENT_MANAGED_MODELS and not await training_is_approved(org_id, model_name, settings or get_settings()):
+        return {"status": "dormant", "model": model_name, "reason": "training_permission_inactive",
+                "used_fallback": True, "advisory_only": True}
+
+    if model_name in {"active_learning", "neuro_symbolic", "causal_impact_analyzer"}:
+        instance = get_model_instance(model_name)
+    else:
+        instance = await load_org_trained_catalog_model(org_id, model_name, settings=settings)
+        if not getattr(instance, "registry_ref", None):
+            return {"status": "dormant", "model": model_name, "reason": "validated_deployed_artifact_required",
+                    "used_fallback": True, "advisory_only": True}
+    import asyncio
+    start = time.perf_counter()
+    try:
+        if model_name in IMPLEMENTED_ADVANCED_MODELS:
+            result = await asyncio.wait_for(instance.predict_structured(org_id=org_id, settings=settings or get_settings(), **args), timeout=1.5)
+        else:
+            predictions, probabilities = await asyncio.wait_for(instance.predict(args.get("inputs")), timeout=1.5)
+            result = {"status": "ok", "predictions": predictions, "probabilities": probabilities}
+    except (ValueError, TypeError, TimeoutError) as exc:
+        logger.warning("catalog_inference_refused org_id=%s model=%s error=%s", org_id, model_name, exc)
+        return {"status": "dormant", "model": model_name, "reason": "inference_inputs_or_runtime_unavailable",
+                "used_fallback": True, "advisory_only": True}
+    return {**result, "model": model_name, "latency_ms": int((time.perf_counter()-start)*1000),
+            "used_fallback": result.get("status") != "ok", "advisory_only": True,
+            "registry_ref": getattr(instance, "registry_ref", None)}

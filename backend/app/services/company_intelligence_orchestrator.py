@@ -91,9 +91,13 @@ class CompanyIntelligenceOrchestrator:
                 self.settings, org_id, since_days=30, client=client
             )
             memories = await collect_org_memory_digest(self.settings, org_id, client=client)
+            from app.ml.training_consent import training_is_approved
+
+            async def permitted(name: str) -> bool:
+                return await training_is_approved(org_id, name, self.settings)
 
             intent_model_id = None
-            if len(queries) >= self.MIN_QUERY_ROWS:
+            if len(queries) >= self.MIN_QUERY_ROWS and await permitted("intent_classifier"):
                 try:
                     intent_result = await train_v2_intent_classifier(
                         org_id,
@@ -111,7 +115,7 @@ class CompanyIntelligenceOrchestrator:
 
             anomaly_model_id = None
             recent_anomalies: list[dict[str, Any]] = []
-            if len(workflow_features) >= self.MIN_WORKFLOW_ROWS:
+            if len(workflow_features) >= self.MIN_WORKFLOW_ROWS and await permitted("workflow_anomaly_detector"):
                 try:
                     anomaly_model_id, recent_anomalies = await self._train_anomaly_detector(
                         org_id, workflow_features
@@ -125,7 +129,7 @@ class CompanyIntelligenceOrchestrator:
 
             forecaster_model_id = None
             forecast_summary: list[dict[str, Any]] | None = None
-            if len(workflow_features) >= self.MIN_WORKFLOW_ROWS:
+            if len(workflow_features) >= self.MIN_WORKFLOW_ROWS and await permitted("workflow_duration_forecaster"):
                 try:
                     forecaster_model_id, forecast_summary = await self._train_forecaster(
                         org_id, workflow_features
@@ -139,7 +143,7 @@ class CompanyIntelligenceOrchestrator:
 
             success_model_id = None
             success_predictions: list[dict[str, Any]] | None = None
-            if len(workflow_features) >= self.MIN_WORKFLOW_ROWS:
+            if len(workflow_features) >= self.MIN_WORKFLOW_ROWS and await permitted("workflow_success_predictor"):
                 try:
                     success_model_id, success_predictions = await self._train_success_predictor(
                         org_id, workflow_features, client
@@ -153,7 +157,7 @@ class CompanyIntelligenceOrchestrator:
 
             cluster_model_id = None
             cluster_results: list[dict[str, Any]] | None = None
-            if distinct_normalized_count(queries) >= self.MIN_CLUSTERING_ROWS:
+            if distinct_normalized_count(queries) >= self.MIN_CLUSTERING_ROWS and await permitted("query_clusterer"):
                 cluster_results = await run_query_clustering(
                     self.settings, org_id, queries, client=client
                 )
@@ -175,13 +179,14 @@ class CompanyIntelligenceOrchestrator:
 
             memory_promotion_model_id = None
             try:
-                memory_result = await train_v4_memory_promotion_scorer(
-                    org_id,
-                    settings=self.settings,
-                    client=client,
-                    registry_name=COMPANY_MODEL_NAMES["memory_promotion"],
-                )
-                memory_promotion_model_id = memory_result.get("model_id")
+                if await permitted("memory_promotion_scorer"):
+                    memory_result = await train_v4_memory_promotion_scorer(
+                        org_id,
+                        settings=self.settings,
+                        client=client,
+                        registry_name=COMPANY_MODEL_NAMES["memory_promotion"],
+                    )
+                    memory_promotion_model_id = memory_result.get("model_id")
             except Exception as exc:  # noqa: BLE001
                 logger.debug(
                     "company_intelligence_memory_promotion_skipped org_id=%s error=%s",
@@ -210,7 +215,7 @@ class CompanyIntelligenceOrchestrator:
 
             ranker_model_id = None
             training_count = await count_training_examples(org_id, client)
-            if training_count >= RetrievalRanker.MIN_TRAINING_EXAMPLES:
+            if training_count >= RetrievalRanker.MIN_TRAINING_EXAMPLES and await permitted("retrieval_ranker"):
                 try:
                     ranker_result = await train_v5_retrieval_ranker(
                         org_id,
@@ -225,6 +230,15 @@ class CompanyIntelligenceOrchestrator:
                         org_id,
                         exc,
                     )
+
+            # Both Temporal and the in-process scheduler enter this method.
+            # Training stays off interactive text/voice request latency.
+            from app.ml.automatic_training import reconcile_automatic_models
+            try:
+                automatic_models = await reconcile_automatic_models(org_id, self.settings)
+            except Exception as exc:
+                logger.warning("automatic_model_reconciliation_failed org_id=%s error=%s", org_id, exc)
+                automatic_models = {"status": "not_verified", "reason": "reconciliation_failed"}
 
             category_distribution = aggregate_query_categories(queries)
             org_deltas = await UserIntelligenceService()._get_changes_since(client, org_id)
@@ -267,6 +281,7 @@ class CompanyIntelligenceOrchestrator:
             )
 
             stats = {
+                "automatic_models": automatic_models,
                 "query_rows": len(queries),
                 "workflow_rows": len(workflow_features),
                 "memory_rows": len(memories),

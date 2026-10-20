@@ -139,7 +139,7 @@ class MLUpgradeService:
 
         readiness = await get_training_signal_service(self.settings).get_training_readiness(org_id)
         queued: list[dict[str, Any]] = []
-        for model_name, meta in (readiness.get("models") or {}).items():
+        for model_name, meta in (readiness.get("by_model") or {}).items():
             if meta.get("status") != "ready":
                 continue
             try:
