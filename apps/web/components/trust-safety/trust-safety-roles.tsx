@@ -1,215 +1,145 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
+import useSWR from "swr"
+import { fetcher } from "@/lib/fetcher"
+import type { User } from "@/types/api"
+import { Hero, Icon, Segmented } from "./ts-ui"
 
-const ROLE_CARDS = [
-  {
-    name: "Admin",
-    desc: "Full workspace control including billing, members and all settings.",
-    count: 2,
-    color: "#2B59E0",
-    bg: "#E8EEFC",
-  },
-  {
-    name: "Member",
-    desc: "Can create agents, run workflows and view intelligence dashboards.",
-    count: 14,
-    color: "#0B8A5C",
-    bg: "#EAF7F0",
-  },
-  {
-    name: "Viewer",
-    desc: "Read-only access to dashboards and agent run history.",
-    count: 5,
-    color: "#6A6B64",
-    bg: "#F2F2EE",
-  },
+/** What each role can do: [area, capability, [admin, member, viewer]]. */
+const CAPS: Array<[string, string, [boolean, boolean, boolean]]> = [
+  ["Insights", "View dashboards and intelligence", [true, true, true]],
+  ["Insights", "Run Gravitre AI and chat", [true, true, true]],
+  ["Build", "Create agents and workflows", [true, true, false]],
+  ["Build", "Install marketplace packs", [true, false, false]],
+  ["Build", "Manage connectors", [true, true, false]],
+  ["Govern", "Approve write actions", [true, true, false]],
+  ["Govern", "Org settings and billing", [true, false, false]],
+  ["Govern", "Invite and manage members", [true, false, false]],
+  ["Govern", "Export the audit trail", [true, false, false]],
 ]
 
-const CAPS: [string, string, [number, number, number]][] = [
-  ["Insights", "View dashboards and intelligence", [1, 1, 1]],
-  ["Insights", "Run Gravitre AI and chat", [1, 1, 1]],
-  ["Build", "Create agents and workflows", [1, 1, 0]],
-  ["Build", "Install marketplace packs", [1, 0, 0]],
-  ["Build", "Manage connectors", [1, 1, 0]],
-  ["Govern", "Review and decide approvals", [1, 1, 0]],
-  ["Govern", "Configure policies", [1, 0, 0]],
-  ["Govern", "View audit trail", [1, 1, 1]],
-  ["Settings", "Manage members and roles", [1, 0, 0]],
-  ["Settings", "Billing and subscriptions", [1, 0, 0]],
-  ["Settings", "Security settings", [1, 0, 0]],
-]
+const ROLES = [
+  { name: "Admin", desc: "Full control of the workspace, people and billing.", ico: "ts-ico sm" },
+  { name: "Member", desc: "Builds and runs agents, approves day to day work.", ico: "ts-ico sm blue" },
+  { name: "Viewer", desc: "Sees dashboards and asks Gravitre questions.", ico: "ts-ico sm warn" },
+] as const
 
-type View = "matrix" | "role"
+function people(n: number | null): string {
+  if (n == null) return "Loading"
+  if (n === 0) return "No one yet"
+  return `${n} ${n === 1 ? "person" : "people"}`
+}
 
 export function TrustSafetyRoles() {
-  const [view, setView] = useState<View>("matrix")
+  const [view, setView] = useState<"matrix" | "role">("matrix")
   const [role, setRole] = useState(0)
+  const team = useSWR<{ team?: User[] }>("/api/settings/team", fetcher, { revalidateOnFocus: false })
 
-  const cur = ROLE_CARDS[role]
+  const members = team.data?.team ?? null
+  const countOf = (match: (r: string) => boolean) => (members ? members.filter((m) => match(String(m.role ?? "member").toLowerCase())).length : null)
+  const counts = [countOf((r) => r === "owner" || r === "admin"), countOf((r) => r === "member"), countOf((r) => r === "viewer")]
 
-  // Group caps by category for single-role view
-  const grouped: Record<string, typeof CAPS> = {}
-  for (const cap of CAPS) {
-    if (!grouped[cap[0]]) grouped[cap[0]] = []
-    grouped[cap[0]].push(cap)
-  }
+  const cur = ROLES[role]
+  const can = CAPS.filter((c) => c[2][role])
+  const cannot = CAPS.filter((c) => !c[2][role])
 
   return (
-    <div className="gv-rise" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-      {/* ── Hero tiles ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 12 }}>
-        {ROLE_CARDS.map((rc, i) => (
-          <button
-            key={rc.name}
-            type="button"
-            className={`gv-wcard${view === "role" && role === i ? " sel" : ""}`}
-            style={{
-              border: `1.5px solid ${view === "role" && role === i ? rc.color : "#E4E4DF"}`,
-              borderRadius: 14,
-              padding: "16px 18px",
-              background: view === "role" && role === i ? rc.bg : "#FFFFFF",
-              textAlign: "left",
-              cursor: "pointer",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-              transition: "border-color .15s,background .15s",
-            }}
-            onClick={() => { setRole(i); setView("role") }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: rc.color }}>{rc.name}</span>
-              <span style={{ fontFamily: "'Geist Mono',monospace", fontSize: 11, color: "#6A6B64" }}>{rc.count} members</span>
-            </div>
-            <p style={{ margin: 0, fontSize: 13, color: "#55564F", lineHeight: 1.45 }}>{rc.desc}</p>
-          </button>
-        ))}
+    <>
+      <Hero
+        art="roles"
+        eyebrow="Role permissions · access control"
+        big={ROLES.length}
+        unit="roles defined"
+        advice="Roles decide who can approve writes, change policies and export the audit trail. They follow your organization's role definitions."
+        actions={
+          <>
+            <Segmented label="View" value={view} onChange={setView} options={[["matrix", "Compare roles"], ["role", "One role"]] as const} />
+            <Link href="/settings?section=team" className="ts-btn line sm">Invite people</Link>
+          </>
+        }
+        tiles={[
+          { value: counts[0] ?? "–", label: "Admins", tone: "good" },
+          { value: counts[1] ?? "–", label: "Members" },
+          { value: counts[2] ?? "–", label: "Viewers" },
+          { value: CAPS.length, label: "Capabilities" },
+        ]}
+      />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        {ROLES.map((r, i) => {
+          const n = CAPS.filter((c) => c[2][i]).length
+          return (
+            <button
+              key={r.name}
+              type="button"
+              className={`ts-wcard${view === "role" && role === i ? " sel" : ""}`}
+              onClick={() => { setRole(i); setView("role") }}
+              style={{ textAlign: "left", font: "inherit", color: "inherit" }}
+            >
+              <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <span className={r.ico}><Icon name="shield" size={15} /></span>
+                  <span style={{ fontWeight: 600, fontSize: 16 }}>{r.name}</span>
+                </span>
+                <span className="ts-mono" style={{ fontSize: 11, color: "#6A6B64" }}>{n} of {CAPS.length}</span>
+              </span>
+              <span style={{ fontSize: 13, color: "#55564F", lineHeight: 1.45 }}>{r.desc}</span>
+              <span style={{ display: "flex", gap: 3 }} aria-hidden="true">
+                {CAPS.map((c) => <span key={c[1]} style={{ flex: 1, height: 6, borderRadius: 3, background: c[2][i] ? "#19C37D" : "#E4E4DF" }} />)}
+              </span>
+              <span style={{ fontSize: 12, color: "#6A6B64" }}>{people(counts[i])}</span>
+            </button>
+          )
+        })}
       </div>
-
-      {/* ── View toggle ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <div className="gv-tabs" style={{ alignSelf: "flex-start" }}>
-          <button
-            type="button"
-            className={`gv-tab${view === "matrix" ? " on" : ""}`}
-            onClick={() => setView("matrix")}
-          >
-            Compare all roles
-          </button>
-          <button
-            type="button"
-            className={`gv-tab${view === "role" ? " on" : ""}`}
-            onClick={() => setView("role")}
-          >
-            {cur.name} detail
-          </button>
-        </div>
-        {view === "role" && (
-          <div style={{ display: "flex", gap: 6 }}>
-            {ROLE_CARDS.map((rc, i) => (
-              <button
-                key={rc.name}
-                type="button"
-                className={`gv-chip${role === i ? " on" : ""}`}
-                style={role === i ? { borderColor: rc.color, background: rc.bg, color: rc.color } : {}}
-                onClick={() => setRole(i)}
-              >
-                {rc.name}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── Matrix view ── */}
-      {view === "matrix" && (
-        <div className="gv-card gv-tblwrap">
-          <div style={{ minWidth: 560 }}>
-            {/* Header */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr repeat(3,80px)", padding: "12px 20px", borderBottom: "1px solid #EFEFEA" }}>
-              <span className="gv-th">Capability</span>
-              {ROLE_CARDS.map(rc => (
-                <span key={rc.name} className="gv-th" style={{ textAlign: "center", color: rc.color }}>{rc.name}</span>
+      <section className="ts-card" style={{ overflow: "hidden" }}>
+        {view === "matrix" ? (
+          <div className="ts-tblwrap">
+            <div style={{ minWidth: 560 }}>
+              <div className="ts-tr" style={{ ["--cols" as string]: "minmax(0,1fr) 110px 110px 110px", padding: "0 20px", background: "#FBFBF9", borderBottom: "1px solid #EFEFEA" }}>
+                <div className="ts-th" style={{ paddingLeft: 0 }}>Capability</div>
+                <div className="ts-th" style={{ textAlign: "center" }}>Admin</div>
+                <div className="ts-th" style={{ textAlign: "center" }}>Member</div>
+                <div className="ts-th" style={{ textAlign: "center" }}>Viewer</div>
+              </div>
+              {CAPS.map(([area, label, cells]) => (
+                <div key={label} className="ts-row" style={{ ["--cols" as string]: "minmax(0,1fr) 110px 110px 110px", padding: "0 20px", minHeight: 54 }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 14 }}>
+                    <span className="ts-mono ts-area">{area}</span>
+                    {label}
+                  </div>
+                  {cells.map((yes, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "center" }}>
+                      {yes ? (
+                        <span role="img" aria-label="Allowed" style={{ width: 26, height: 26, borderRadius: "50%", background: "#E8F5EE", color: "#0B8A5C", display: "grid", placeItems: "center" }}>
+                          <Icon name="tick" size={15} width={2.4} />
+                        </span>
+                      ) : (
+                        <span role="img" aria-label="Not allowed" style={{ width: 26, height: 26, display: "grid", placeItems: "center", color: "#B4B5AE" }}>
+                          <Icon name="dash" size={15} width={2.2} />
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               ))}
             </div>
-            {/* Group separator + rows */}
-            {(() => {
-              let lastGroup = ""
-              return CAPS.map(([grp, cap, perms], idx) => {
-                const showHeader = grp !== lastGroup
-                lastGroup = grp
-                return (
-                  <div key={idx}>
-                    {showHeader && (
-                      <div style={{ padding: "10px 20px 4px", fontSize: 11, fontFamily: "'Geist Mono',monospace", letterSpacing: ".1em", textTransform: "uppercase", color: "#6A6B64", background: "#FAFAF8", borderTop: idx > 0 ? "1px solid #EFEFEA" : undefined }}>
-                        {grp}
-                      </div>
-                    )}
-                    <div className="gv-row" style={{ display: "grid", gridTemplateColumns: "1fr repeat(3,80px)", padding: "0 20px" }}>
-                      <span className="gv-td" style={{ fontSize: 13, color: "#3E3F3A" }}>{cap}</span>
-                      {perms.map((p, pi) => (
-                        <span key={pi} className="gv-td" style={{ textAlign: "center" }}>
-                          {p ? (
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ROLE_CARDS[pi].color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-label="Yes"><circle cx="12" cy="12" r="8.5" /><path d="m8.5 12 2.5 2.5 4.5-5" /></svg>
-                          ) : (
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D9D9D3" strokeWidth="2" strokeLinecap="round" aria-label="No"><path d="M6 18 18 6M6 6l12 12" /></svg>
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })
-            })()}
           </div>
-        </div>
-      )}
-
-      {/* ── Single-role view ── */}
-      {view === "role" && (
-        <div className="gv-card" style={{ overflow: "hidden" }}>
-          <div style={{ padding: "20px 20px 0", borderBottom: "1px solid #EFEFEA" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 16 }}>
-              <div className="gv-ico" style={{ background: cur.bg, color: cur.color }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c1-3.5 3.5-5.5 6.5-5.5s5.5 2 6.5 5.5" /><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.8.8 3 2.6 3.5 5.2" /></svg>
-              </div>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: cur.color }}>{cur.name}</div>
-                <div style={{ fontSize: 13, color: "#6A6B64" }}>{cur.desc}</div>
-              </div>
-              <div style={{ marginLeft: "auto", textAlign: "right" }}>
-                <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: 22, fontWeight: 700, color: "#141513" }}>{cur.count}</div>
-                <div style={{ fontSize: 12, color: "#6A6B64" }}>members</div>
-              </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+            <div style={{ padding: 20, borderRight: "1px solid #EFEFEA" }}>
+              <div style={{ fontWeight: 600, marginBottom: 10, color: "#1F6B42" }}>{cur.name} can</div>
+              {can.map((c) => <div key={c[1]} style={{ fontSize: 14, padding: "8px 0", borderTop: "1px solid #F3F3EF" }}>{c[1]}</div>)}
+            </div>
+            <div style={{ padding: 20 }}>
+              <div style={{ fontWeight: 600, marginBottom: 10, color: "#6A6B64" }}>{cur.name} cannot</div>
+              {cannot.map((c) => <div key={c[1]} style={{ fontSize: 14, padding: "8px 0", borderTop: "1px solid #F3F3EF", color: "#55564F" }}>{c[1]}</div>)}
+              {cannot.length === 0 ? <div style={{ fontSize: 14, color: "#6A6B64" }}>Nothing. This role has full access.</div> : null}
             </div>
           </div>
-
-          {Object.entries(grouped).map(([grp, caps]) => (
-            <div key={grp}>
-              <div style={{ padding: "12px 20px 4px", fontSize: 11, fontFamily: "'Geist Mono',monospace", letterSpacing: ".1em", textTransform: "uppercase", color: "#6A6B64", background: "#FAFAF8", borderTop: "1px solid #EFEFEA" }}>
-                {grp}
-              </div>
-              {caps.map(([, cap, perms]) => {
-                const allowed = perms[role] === 1
-                return (
-                  <div key={cap} className="gv-row" style={{ display: "flex", alignItems: "center", gap: 14, padding: "0 20px" }}>
-                    <span className="gv-td" style={{ flex: 1, fontSize: 13, color: "#3E3F3A" }}>{cap}</span>
-                    <span className="gv-td" style={{ flexShrink: 0 }}>
-                      {allowed ? (
-                        <span className="gv-pill" style={{ background: "#EAF7F0", color: "#0B8A5C" }}>Allowed</span>
-                      ) : (
-                        <span className="gv-pill" style={{ background: "#F2F2EE", color: "#6A6B64" }}>Not allowed</span>
-                      )}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+        )}
+      </section>
+    </>
   )
 }

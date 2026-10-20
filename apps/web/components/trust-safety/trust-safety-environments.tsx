@@ -1,201 +1,148 @@
 "use client"
 
-import { useState } from "react"
+import { Fragment, useState } from "react"
+import { Hero, Icon, Note, Pill, Switch, TONE } from "./ts-ui"
 
-const STAGES = [
-  {
-    id: "dev",
-    label: "Development",
-    short: "Dev",
-    status: "healthy",
-    agents: 3,
-    runs: 142,
-    uptime: "99.8%",
-    lastDeploy: "2 min ago",
-    desc: "Sandbox for building and testing agents before promoting to staging. Changes here do not affect live workflows.",
-    color: "#2B59E0",
-    bg: "#E8EEFC",
-  },
-  {
-    id: "staging",
-    label: "Staging",
-    short: "Staging",
-    status: "healthy",
-    agents: 2,
-    runs: 89,
-    uptime: "99.5%",
-    lastDeploy: "1 h ago",
-    desc: "Pre-production mirror of live connectors. QA and stakeholder review happen here before agents go live.",
-    color: "#D08A00",
-    bg: "#FBF1DC",
-  },
-  {
-    id: "prod",
-    label: "Production",
-    short: "Prod",
-    status: "healthy",
-    agents: 2,
-    runs: 1204,
-    uptime: "99.97%",
-    lastDeploy: "3 d ago",
-    desc: "Live environment processing real customer data. All approvals and policies are enforced here.",
-    color: "#0B8A5C",
-    bg: "#EAF7F0",
-  },
+type StageId = "dev" | "stage" | "prod"
+
+const STAGES: Array<{ id: StageId; name: string; slug: string; hint: string; live: boolean; why: string }> = [
+  { id: "dev", name: "Development", slug: "development", hint: "Try changes safely with test data", live: false, why: "Build and test agents without touching real records." },
+  { id: "stage", name: "Staging", slug: "staging", hint: "Rehearse with a copy of production", live: false, why: "Check changes against production like data before they go live." },
+  { id: "prod", name: "Production", slug: "production", hint: "Live for everyone", live: true, why: "" },
 ]
 
-const METRICS = [
-  { label: "Runs today", vals: [142, 89, 1204] },
-  { label: "Uptime", vals: ["99.8%", "99.5%", "99.97%"] },
-  { label: "Avg. latency", vals: ["340 ms", "280 ms", "210 ms"] },
-  { label: "Error rate", vals: ["0.4%", "0.2%", "0.03%"] },
-]
+const METRICS = ["Workflows", "Agents", "Connectors", "Sources"]
 
 export function TrustSafetyEnvironments() {
-  const [sel, setSel] = useState(0)
-  const [promo, setPromo] = useState(false)
-
-  const env = STAGES[sel]
+  const [sel, setSel] = useState<StageId>("prod")
+  const [promo, setPromo] = useState(true)
+  const env = STAGES.find((s) => s.id === sel) ?? STAGES[2]
+  const liveCount = STAGES.filter((s) => s.live).length
+  const missing = STAGES.length - liveCount
 
   return (
-    <div className="gv-rise" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-      {/* ── Pipeline strip ── */}
-      <div className="gv-card" style={{ padding: 28 }}>
-        <div style={{ fontSize: 11, fontFamily: "'Geist Mono',monospace", letterSpacing: ".12em", textTransform: "uppercase", color: "#6A6B64", marginBottom: 16 }}>
-          Deployment pipeline
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 0, overflowX: "auto" }}>
-          {STAGES.map((s, i) => (
-            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 0, flex: i < STAGES.length - 1 ? "1 1 0" : undefined }}>
-              <button
-                type="button"
-                onClick={() => setSel(i)}
-                style={{
-                  border: `2px solid ${sel === i ? s.color : "#E4E4DF"}`,
-                  borderRadius: 14,
-                  padding: "14px 20px",
-                  background: sel === i ? s.bg : "#FAFAF8",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  minWidth: 130,
-                  transition: "border-color .15s,background .15s",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span className="gv-dot" style={{ background: "#19C37D" }} />
-                  <span style={{ fontSize: 12, fontWeight: 700, color: sel === i ? s.color : "#141513" }}>{s.short}</span>
-                </div>
-                <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: 18, fontWeight: 700, color: sel === i ? s.color : "#141513" }}>
-                  {s.agents}
-                </div>
-                <div style={{ fontSize: 11, color: "#8A8B85" }}>agents</div>
-              </button>
-
-              {i < STAGES.length - 1 && (
-                <div style={{ flex: 1, display: "flex", alignItems: "center", padding: "0 4px", position: "relative", minWidth: 40 }}>
-                  <div style={{ flex: 1, borderTop: "2px dashed #D9D9D3" }} />
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="#D9D9D3" style={{ flexShrink: 0 }}>
-                    <path d="M8 4l8 8-8 8" fill="none" stroke="#D9D9D3" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Detail panel ── */}
-      <div className="gv-card" style={{ overflow: "hidden" }}>
-        <div style={{ padding: "20px 24px", borderBottom: "1px solid #EFEFEA", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-          <div className="gv-ico" style={{ background: env.bg, color: env.color }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="7" rx="2" /><rect x="4" y="13" width="16" height="7" rx="2" /><path d="M8 7.5h.01M8 16.5h.01" /></svg>
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: env.color }}>{env.label}</div>
-            <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>{env.desc}</div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            <span className="gv-pill" style={{ background: "#EAF7F0", color: "#0B8A5C", fontSize: 12 }}>
-              <span className="gv-dot gv-live" style={{ background: "#19C37D" }} />
-              {env.status}
-            </span>
-            <span style={{ fontSize: 12, color: "#8A8B85" }}>Last deploy: {env.lastDeploy}</span>
-          </div>
-        </div>
-
-        {/* Metrics grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 1, background: "#EFEFEA", borderBottom: "1px solid #EFEFEA" }}>
-          {METRICS.map((m) => (
-            <div key={m.label} style={{ background: "#FFFFFF", padding: "16px 20px" }}>
-              <div style={{ fontSize: 11, fontFamily: "'Geist Mono',monospace", letterSpacing: ".1em", textTransform: "uppercase", color: "#6A6B64", marginBottom: 4 }}>{m.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: "#141513", letterSpacing: "-0.02em" }}>
-                {String(m.vals[sel])}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Promotion toggle */}
-        {sel < STAGES.length - 1 && (
-          <div className="gv-sec">
-            <div className="gv-ico" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v16M4 12l8-8 8 8" /></svg>
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#141513" }}>
-                Promote to {STAGES[sel + 1].label}
-              </div>
-              <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>
-                Auto-promote agents when all checks pass in {env.label}. Requires approval from a member with Admin role.
-              </div>
-            </div>
-            <button
-              type="button"
-              className={`gv-sw${promo ? " on" : ""}`}
-              aria-pressed={promo}
-              aria-label={`Toggle auto-promote to ${STAGES[sel + 1].label}`}
-              onClick={() => setPromo(!promo)}
-            />
-          </div>
-        )}
-        {promo && sel < STAGES.length - 1 && (
-          <div style={{ margin: "0 20px 20px", marginLeft: 72 }}>
-            <div className="gv-note">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B8A5C" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "0 0 auto", marginTop: 2 }}><circle cx="12" cy="12" r="8.5" /><path d="M12 11v5M12 8h.01" /></svg>
-              <span>
-                Agents passing all checks in <strong>{env.label}</strong> will automatically be promoted to <strong>{STAGES[sel + 1].label}</strong>. An Admin must approve each promotion before it goes live.
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Manual promote action (only dev→staging, staging→prod) */}
-        {sel < STAGES.length - 1 && (
-          <div style={{ padding: "16px 24px", borderTop: "1px solid #EFEFEA", display: "flex", gap: 10 }}>
-            <button type="button" className="gv-btn green sm">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v16M4 12l8-8 8 8" /></svg>
-              Promote to {STAGES[sel + 1].label}
-            </button>
-            <button type="button" className="gv-btn line sm">View diff</button>
-          </div>
-        )}
-      </div>
-
-      {/* Stage navigation pills */}
-      <div style={{ display: "flex", gap: 6 }}>
-        {STAGES.map((s, i) => (
-          <button
-            key={s.id}
-            type="button"
-            className={`gv-chip${sel === i ? " on" : ""}`}
-            style={sel === i ? { borderColor: s.color, background: s.bg, color: s.color } : {}}
-            onClick={() => setSel(i)}
-          >
-            {s.label}
+    <>
+      <Hero
+        art="envs"
+        eyebrow="Environments · deployment"
+        big={liveCount}
+        unit={`of ${STAGES.length} stages live`}
+        bars={STAGES.map((s) => s.live)}
+        advice="Only Production is running. Add Development and Staging so changes are tested before they reach real records."
+        actions={
+          <button type="button" className="ts-btn dark sm" onClick={() => setSel("dev")}>
+            <Icon name="plus" size={15} width={2} />
+            New environment
           </button>
-        ))}
+        }
+        tiles={[
+          { value: liveCount, label: "Online", tone: "good" },
+          { value: `${liveCount} of ${STAGES.length}`, label: "Configured" },
+          { value: "None yet", label: "Workflows", muted: true },
+          { value: "None yet", label: "Agents", muted: true },
+        ]}
+      />
+      <section className="ts-card" style={{ padding: "20px 22px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <div>
+            <div className="ts-eyebrow">Deployment pipeline</div>
+            <div style={{ fontWeight: 600, marginTop: 4 }}>Promote changes stage by stage</div>
+          </div>
+          {missing > 0 ? <Pill bg={TONE.warn.bg} fg={TONE.warn.fg} dot={TONE.warn.dot}>{missing} stages not set up</Pill> : null}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", marginTop: 18, overflowX: "auto", paddingBottom: 4 }}>
+          {STAGES.map((s, i) => {
+            const tone = s.live ? TONE.ok : TONE.mute
+            const lineC = s.live ? "#19C37D" : "#D3D3CC"
+            return (
+              <Fragment key={s.id}>
+                {i > 0 ? (
+                  <svg width="64" height="20" viewBox="0 0 64 20" aria-hidden="true" style={{ flex: "0 0 auto" }}>
+                    <path d="M4 10 H 60" stroke={lineC} strokeWidth="2" strokeDasharray="5 5" className="ts-flow2" />
+                    <path d="M54 5 l6 5 -6 5" stroke={lineC} strokeWidth="2" fill="none" />
+                  </svg>
+                ) : null}
+                <button
+                  type="button"
+                  className={`ts-wcard${sel === s.id ? " sel" : ""}${s.live ? "" : " ts-ghost"}`}
+                  aria-pressed={sel === s.id}
+                  onClick={() => setSel(s.id)}
+                  style={{ flex: "1 0 180px", textAlign: "left", font: "inherit", color: "inherit" }}
+                >
+                  <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span className={`ts-ico${s.live ? "" : " mute"}`}><Icon name="servers" /></span>
+                    <Pill bg={tone.bg} fg={tone.fg} dot={s.live ? "#19C37D" : "#8A8B85"} live={s.live}>{s.live ? "Active" : "Not set up"}</Pill>
+                  </span>
+                  <span style={{ fontWeight: 600 }}>{s.name}</span>
+                  <span style={{ fontSize: 12, color: "#6A6B64" }}>{s.hint}</span>
+                </button>
+              </Fragment>
+            )
+          })}
+        </div>
+      </section>
+      <div className="ts-cols">
+        <div className="ts-colmain">
+          <section className="ts-card" style={{ overflow: "hidden" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center", padding: "20px 22px", borderBottom: "1px solid #EFEFEA" }}>
+              <span className="ts-ico" style={{ width: 48, height: 48, borderRadius: 14 }}><Icon name="servers" size={22} /></span>
+              <div style={{ flex: "1 1 240px" }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <h3 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>{env.name}</h3>
+                  {env.live ? <span className="ts-chip" style={{ cursor: "default", minHeight: 24 }}>Default</span> : null}
+                </div>
+                <div style={{ display: "flex", gap: 14, marginTop: 4, fontSize: 13, color: "#55564F" }}>
+                  <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+                    <span className={`ts-dot${env.live ? " ts-live" : ""}`} style={{ background: env.live ? "#19C37D" : "#8A8B85" }} />
+                    {env.live ? "Active" : "Not set up"}
+                  </span>
+                  <span className="ts-mono" style={{ fontSize: 12 }}>{env.slug}</span>
+                </div>
+              </div>
+            </div>
+            {env.live ? (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, padding: "18px 22px" }}>
+                  {METRICS.map((m) => (
+                    <div key={m} className="ts-tile">
+                      <span className="l">{m}</span>
+                      <span style={{ fontSize: 15, fontWeight: 500, color: "#6A6B64" }}>Not reported</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ padding: "0 22px 20px" }}>
+                  <div style={{ fontSize: 13, color: "#55564F", marginBottom: 6 }}>API endpoint</div>
+                  <div className="ts-mono" style={{ background: "#F7F7F4", border: "1px solid #EFEFEA", borderRadius: 10, padding: "11px 12px", fontSize: 13, color: "#6A6B64" }}>
+                    Not reported yet. It appears after the first deploy.
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div style={{ padding: "32px 22px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 10 }}>
+                <div style={{ fontWeight: 600 }}>{env.name} is not set up</div>
+                <p style={{ margin: 0, fontSize: 14, color: "#55564F", maxWidth: 420, lineHeight: 1.5 }}>{env.why}</p>
+                <button type="button" className="ts-btn green sm">
+                  <Icon name="plus" size={15} width={2} />
+                  Create {env.name}
+                </button>
+              </div>
+            )}
+          </section>
+        </div>
+        <aside className="ts-colside" aria-label="Promotion rules">
+          <section className="ts-card ts-side">
+            <div className="ts-sidetitle"><span className="ts-ico sm"><Icon name="up" size={15} /></span>Promotion rules</div>
+            <div className="ts-mini">
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>Approve before Production</div>
+                <div style={{ fontSize: 12, color: "#6A6B64" }}>Uses the approval routing</div>
+              </div>
+              <Switch on={promo} label="Require approval to promote to Production" onToggle={() => setPromo((v) => !v)} />
+            </div>
+          </section>
+          <Note><strong>Organization wide.</strong> Environment changes apply to everyone in this workspace.</Note>
+        </aside>
       </div>
-    </div>
+    </>
   )
 }

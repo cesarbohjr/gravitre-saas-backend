@@ -1,154 +1,129 @@
-/* ── Trust & Safety hub – gv-* design system ──────────────────────────────── */
-/* All classes here are prefixed gv- to avoid collision with existing gs-/adt- */
+/* Trust & Safety hub. Ported from the Trust & Safety design reference.
+   Every class is prefixed ts- so nothing collides with other gv- design kits. */
+.ts-root{font-family:var(--font-geist),'Geist',system-ui,-apple-system,sans-serif;color:#141513;background:#F4F4F1;min-height:100%}
+.ts-root *{box-sizing:border-box}
+.ts-root a{color:#0B8A5C}.ts-root a:hover{color:#0A6B47}
+.ts-btn{border:0;font:inherit;font-weight:600;font-size:14px;border-radius:10px;padding:0 16px;min-height:44px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;text-decoration:none;white-space:nowrap}
+.ts-btn.dark{background:#141513;color:#FFFFFF}.ts-btn.dark:hover{background:#2A2C2A}
+.ts-btn.green{background:#0B8A5C;color:#FFFFFF}.ts-btn.green:hover{background:#0A6B47}
+.ts-btn.line{background:#FFFFFF;color:#141513;border:1px solid #E4E4DF}.ts-btn.line:hover{border-color:#0B8A5C;color:#0A6B47}
+.ts-btn.danger{background:#FFFFFF;color:#8A2530;border:1px solid #EBC8CB}.ts-btn.danger:hover{background:#FBEFEF}
+.ts-btn.text{background:transparent;color:#0B8A5C;padding:0 8px}.ts-btn.text:hover{background:#DDF3E8}
+.ts-btn.sm{min-height:36px;font-size:13px;padding:0 12px;border-radius:9px}
+.ts-card{background:#FFFFFF;border:1px solid #E4E4DF;border-radius:16px}
+.ts-tile{border-radius:12px;padding:12px 14px;background:#F7F7F4;display:flex;flex-direction:column;gap:2px;min-width:0}
+.ts-tile .v{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ts-tile .l{font-size:12px;color:#6A6B64}
+.ts-tile.good{background:#EAF7F0}.ts-tile.good .v,.ts-tile.good .l{color:#0A6B47}
+.ts-tile.bad{background:#FBEFEF}.ts-tile.bad .v,.ts-tile.bad .l{color:#8A2530}
+.ts-tab{border:0;background:transparent;font:inherit;font-size:13px;color:#55564F;padding:0 12px;min-height:38px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.ts-tab:hover{color:#141513}
+.ts-tab.on{background:#FFFFFF;color:#141513;font-weight:600;box-shadow:0 1px 2px rgba(20,21,19,.08)}
+.ts-tab.on svg{color:#0B8A5C}
+.ts-tabs{display:flex;flex-wrap:wrap;gap:2px;background:#EFEFEA;border-radius:11px;padding:3px}
+.ts-tabbar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
+.ts-tgrp{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ts-tlabel{font-family:var(--font-geist-mono),'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6A6B64}
+.ts-tn{font-family:var(--font-geist-mono),'Geist Mono',ui-monospace,monospace;font-size:11px;color:#6A6B64;font-weight:400}
+.ts-tn.bad{background:#F8E3E4;color:#8A2530;border-radius:999px;padding:1px 7px}
+.ts-input{display:flex;align-items:center;gap:10px;border:1px solid #E4E4DF;border-radius:10px;padding:0 12px;min-height:44px;background:#FFFFFF;flex:1 1 220px;min-width:0;color:#8A8B85}
+.ts-input input{flex:1;min-width:0;border:0;outline:none;font:inherit;font-size:14px;background:transparent;color:#141513}
+.ts-input:focus-within{border-color:#0B8A5C;box-shadow:0 0 0 3px rgba(25,195,125,.15)}
+.ts-select{font:inherit;font-size:13px;min-height:44px;border:1px solid #E4E4DF;border-radius:10px;background:#FFFFFF;padding:0 10px;color:#141513}
+.ts-select.sm{min-height:36px}
+.ts-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:500;white-space:nowrap}
+.ts-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 auto}
+.ts-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #E4E4DF;border-radius:8px;padding:0 10px;min-height:32px;font:inherit;font-size:12px;color:#55564F;background:#FFFFFF;white-space:nowrap;cursor:pointer}
+.ts-chip.on{border-color:#9FD3B4;background:#EAF7F0;color:#0A6B47;font-weight:600}
+.ts-tr,.ts-row{display:grid;grid-template-columns:var(--cols);align-items:center}
+.ts-row{border-top:1px solid #EFEFEA}
+.ts-row:hover{background:#FAFAF8}
+.ts-td{min-width:0;padding:14px 12px}
+.ts-th{padding:10px 12px;font-weight:500;font-size:12px;color:#6A6B64;text-transform:uppercase;letter-spacing:.06em;text-align:left;white-space:nowrap}
+.ts-pg{min-width:36px;height:36px;border-radius:9px;border:1px solid transparent;background:transparent;font:inherit;font-size:13px;color:#55564F;cursor:pointer;padding:0 8px}
+.ts-pg:hover{background:#EFEFEA;color:#141513}
+.ts-pg.on{background:#141513;color:#FFFFFF}
+.ts-pg:disabled{opacity:.35;cursor:default;background:transparent}
+.ts-art{position:relative;overflow:hidden;border-radius:14px;border:1px solid #E4E1D9;background:#DEDAD0}
+.ts-art:hover{box-shadow:0 14px 30px -18px rgba(20,22,21,.35)}
+.ts-artbox{flex:0 0 280px;width:280px;height:166px}
+.ts-hero{border-radius:20px;padding:20px;display:flex;flex-wrap:wrap;gap:24px;align-items:center}
+.ts-hsum{flex:1 1 280px;min-width:0}
+.ts-eyebrow{font-family:var(--font-geist-mono),'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.12em;color:#6A6B64;text-transform:uppercase}
+.ts-area{color:#6A6B64;font-size:11px;width:74px;flex:0 0 auto;text-transform:uppercase;letter-spacing:.08em}
+.ts-metric{display:flex;align-items:baseline;gap:10px;margin-top:6px}
+.ts-metric .big{font-size:40px;font-weight:600;letter-spacing:-0.02em;line-height:1}
+.ts-metric .unit{font-size:15px;color:#55564F}
+.ts-hsum p{margin:10px 0 0;font-size:14px;color:#55564F;line-height:1.5}
+.ts-hact{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.ts-htiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;flex:0 1 300px;min-width:240px}
+.ts-cols{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.ts-colmain{flex:2 1 560px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.ts-colside{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:16px}
+.ts-cardhead{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid #EFEFEA;background:#FBFBF9}
+.ts-side{padding:18px;display:flex;flex-direction:column;gap:12px}
+.ts-sidetitle{display:flex;gap:10px;align-items:center;font-weight:600}
+.ts-mini{display:flex;gap:12px;align-items:center;padding-top:12px;border-top:1px solid #F3F3EF}
+.ts-step{display:flex;gap:12px;align-items:flex-start;font-size:13px;color:#3E3F3A;line-height:1.45}
+.ts-stepn{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;flex:0 0 auto;background:#141513;color:#FFFFFF}
+.ts-live{animation:tsPulse 1.8s ease-out infinite}
+.ts-rise{animation:tsRise .5s cubic-bezier(.22,1,.36,1) both}
+.ts-bar{transform-origin:left;animation:tsGrowX .7s cubic-bezier(.22,1,.36,1) both}
+@keyframes tsPulse{0%{box-shadow:0 0 0 0 rgba(25,195,125,.5)}100%{box-shadow:0 0 0 7px rgba(25,195,125,0)}}
+@keyframes tsRise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes tsGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.ts-mono{font-family:var(--font-geist-mono),'Geist Mono',ui-monospace,monospace}
+.ts-sw{width:40px;height:24px;border-radius:999px;border:0;background:#D9D9D3;position:relative;cursor:pointer;flex:0 0 auto;transition:background .2s;padding:0}
+.ts-sw::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .25s cubic-bezier(.22,1,.36,1)}
+.ts-sw.on{background:#0B8A5C}.ts-sw.on::after{transform:translateX(16px)}
+.ts-sw:focus-visible,.ts-btn:focus-visible,.ts-tab:focus-visible,.ts-pg:focus-visible,.ts-chip:focus-visible,.ts-wcard:focus-visible{outline:2px solid #19C37D;outline-offset:2px}
+.ts-ico{width:38px;height:38px;border-radius:11px;background:#EAF7F0;color:#0B8A5C;display:grid;place-items:center;flex:0 0 auto}
+.ts-ico.sm{width:30px;height:30px;border-radius:9px}
+.ts-ico.mute{background:#F2F2EE;color:#55564F}.ts-ico.warn{background:#FBF1DC;color:#8A5A06}.ts-ico.bad{background:#F8E3E4;color:#8A2530}.ts-ico.blue{background:#E8EEFC;color:#2B59E0}
+.ts-sec{display:flex;align-items:center;gap:14px;padding:18px 20px;border-top:1px solid #EFEFEA;flex-wrap:wrap}
+.ts-sec:first-child{border-top:0}
+.ts-sub{flex:1 1 100%;margin-left:52px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ts-note{display:flex;gap:12px;align-items:flex-start;background:#F7F7F4;border:1px solid #EFEFEA;border-radius:12px;padding:12px 14px;font-size:13px;color:#3E3F3A;line-height:1.5}
+.ts-wcard{border:1px solid #E4E4DF;border-radius:14px;background:#FFFFFF;padding:16px;display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}
+.ts-wcard:hover{transform:translateY(-2px);box-shadow:0 14px 30px -18px rgba(20,22,21,.3)}
+.ts-wcard.sel{border-color:#19C37D;box-shadow:0 0 0 3px rgba(25,195,125,.14)}
+.ts-ghost{border-style:dashed;background:#FBFBF9}
+.ts-flow2{animation:tsDash2 2s linear infinite}
+@keyframes tsDash2{to{stroke-dashoffset:-20}}
+.ts-tblwrap{overflow-x:auto}
+.ts-tblin{min-width:720px}
+@media (max-width:760px){.ts-hide-sm{display:none !important}.ts-sub{margin-left:0}.ts-artbox{flex:1 1 100%;width:100%;height:auto;aspect-ratio:320 / 190}.ts-htiles{flex:1 1 100%;min-width:0}}
 
-.gv-btn{border:0;font:inherit;font-weight:600;font-size:14px;border-radius:10px;padding:0 16px;min-height:44px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;text-decoration:none;white-space:nowrap}
-.gv-btn.dark{background:#141513;color:#FFFFFF}.gv-btn.dark:hover{background:#2A2C2A}
-.gv-btn.green{background:#0B8A5C;color:#FFFFFF}.gv-btn.green:hover{background:#0A6B47}
-.gv-btn.line{background:#FFFFFF;color:#141513;border:1px solid #E4E4DF}.gv-btn.line:hover{border-color:#0B8A5C;color:#0A6B47}
-.gv-btn.danger{background:#FFFFFF;color:#8A2530;border:1px solid #EBC8CB}.gv-btn.danger:hover{background:#FBEFEF}
-.gv-btn.text{background:transparent;color:#0B8A5C;padding:0 8px}.gv-btn.text:hover{background:#DDF3E8}
-.gv-btn.sm{min-height:36px;font-size:13px;padding:0 12px;border-radius:9px}
-.gv-btn:focus-visible{outline:2px solid #19C37D;outline-offset:2px}
-
-.gv-card{background:#FFFFFF;border:1px solid #E4E4DF;border-radius:16px}
-.gv-tile{border-radius:12px;padding:14px 16px;background:#F7F7F4;display:flex;flex-direction:column;gap:4px;min-width:0}
-.gv-tile.good{background:#EAF7F0;border:1px solid #9FD3B4}
-
-.gv-tab{border:0;background:transparent;font:inherit;font-size:13px;color:#55564F;padding:0 12px;min-height:36px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.gv-tab:hover{color:#141513}
-.gv-tab.on{background:#FFFFFF;color:#141513;font-weight:600;box-shadow:0 1px 2px rgba(20,21,19,.08)}
-.gv-tab:focus-visible{outline:2px solid #19C37D;outline-offset:2px}
-.gv-tabs{display:flex;flex-wrap:wrap;gap:2px;background:#EFEFEA;border-radius:11px;padding:3px}
-
-.gv-count{font-family:'Geist Mono',monospace;font-size:11px;color:#6A6B64;margin-left:auto}
-.gv-count.bad{background:#F8E3E4;color:#8A2530;border-radius:999px;padding:1px 7px}
-
-.gv-mono{font-family:'Geist Mono',monospace}
-
-.gv-input{display:flex;align-items:center;gap:10px;border:1px solid #E4E4DF;border-radius:10px;padding:0 12px;min-height:44px;background:#FFFFFF;flex:1 1 220px;min-width:0;color:#8A8B85}
-.gv-input input{flex:1;min-width:0;border:0;outline:none;font:inherit;font-size:14px;background:transparent;color:#141513}
-.gv-input:focus-within{border-color:#0B8A5C;box-shadow:0 0 0 3px rgba(25,195,125,.15)}
-
-.gv-select{font:inherit;font-size:13px;min-height:44px;border:1px solid #E4E4DF;border-radius:10px;background:#FFFFFF;padding:0 10px;color:#141513}
-.gv-select.sm{min-height:36px}
-
-.gv-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:500;white-space:nowrap}
-.gv-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 auto}
-
-.gv-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #E4E4DF;border-radius:8px;padding:0 10px;min-height:32px;font:inherit;font-size:12px;color:#55564F;background:#FFFFFF;white-space:nowrap;cursor:pointer}
-.gv-chip.on{border-color:#9FD3B4;background:#EAF7F0;color:#0A6B47;font-weight:600}
-.gv-chip:focus-visible{outline:2px solid #19C37D;outline-offset:2px}
-
-/* Table */
-.gv-tr,.gv-row{display:grid;grid-template-columns:var(--cols);align-items:center}
-.gv-row{border-top:1px solid #EFEFEA}
-.gv-row:hover{background:#FAFAF8}
-.gv-td{min-width:0;padding:14px 12px}
-.gv-th{padding:10px 12px;font-weight:500;font-size:12px;color:#6A6B64;text-transform:uppercase;letter-spacing:.06em;text-align:left;white-space:nowrap}
-.gv-tblwrap{overflow-x:auto}
-.gv-tblin{min-width:720px}
-
-/* Pagination */
-.gv-pg{min-width:36px;height:36px;border-radius:9px;border:1px solid transparent;background:transparent;font:inherit;font-size:13px;color:#55564F;cursor:pointer;padding:0 8px}
-.gv-pg:hover{background:#EFEFEA;color:#141513}
-.gv-pg.on{background:#141513;color:#FFFFFF}
-.gv-pg:disabled{opacity:.35;cursor:default;background:transparent}
-.gv-pg:focus-visible{outline:2px solid #19C37D;outline-offset:2px}
-
-/* Icons / switch */
-.gv-ico{width:38px;height:38px;border-radius:11px;background:#EAF7F0;color:#0B8A5C;display:grid;place-items:center;flex:0 0 auto}
-.gv-ico.mute{background:#F2F2EE;color:#55564F}
-.gv-ico.warn{background:#FBF1DC;color:#8A5A06}
-.gv-ico.bad{background:#F8E3E4;color:#8A2530}
-.gv-ico.blue{background:#E8EEFC;color:#2B59E0}
-.gv-ico.sm{width:30px;height:30px;border-radius:8px}
-
-.gv-sw{width:40px;height:24px;border-radius:999px;border:0;background:#D9D9D3;position:relative;cursor:pointer;flex:0 0 auto;transition:background .2s;padding:0}
-.gv-sw::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .25s cubic-bezier(.22,1,.36,1)}
-.gv-sw.on{background:#0B8A5C}
-.gv-sw.on::after{transform:translateX(16px)}
-.gv-sw:focus-visible{outline:2px solid #19C37D;outline-offset:2px}
-
-/* Sidebar nav */
-.gv-snav{flex:0 0 250px;display:flex;flex-direction:column;gap:18px;position:sticky;top:16px;align-self:flex-start}
-.gv-sl{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:0 12px;border-radius:10px;border:0;background:transparent;font:inherit;color:#3E3F3A;font-size:14px;position:relative;cursor:pointer;text-align:left}
-.gv-sl:hover{background:#ECECE7;color:#141513}
-.gv-sl.on{background:#FFFFFF;color:#141513;font-weight:600;box-shadow:0 1px 2px rgba(20,21,19,.06)}
-.gv-sl.on::before{content:'';position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:2px;background:#19C37D}
-.gv-sl svg{color:#8A8B85;flex:0 0 auto}
-.gv-sl.on svg{color:#0B8A5C}
-.gv-sl:focus-visible{outline:2px solid #19C37D;outline-offset:2px}
-.gv-sgrp{font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6A6B64;padding:0 12px 6px}
-.gv-shead{display:flex;flex-direction:column;gap:4px}
-
-/* Section rows */
-.gv-sec{display:flex;align-items:center;gap:14px;padding:18px 20px;border-top:1px solid #EFEFEA;flex-wrap:wrap}
-.gv-sec:first-child{border-top:0}
-.gv-sub{flex:1 1 100%;margin-left:52px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-
-/* Notes / alerts */
-.gv-note{display:flex;gap:12px;align-items:flex-start;background:#F7F7F4;border:1px solid #EFEFEA;border-radius:12px;padding:12px 14px;font-size:13px;color:#3E3F3A;line-height:1.5}
-.gv-alert{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#FBEFEF;border:1px solid #EBC8CB;border-radius:14px;padding:12px 14px 12px 16px;color:#8A2530}
-
-/* Live indicator */
-.gv-live{animation:gvPulse 1.8s ease-out infinite}
-@keyframes gvPulse{0%,100%{opacity:1}50%{opacity:.4}}
-.gv-rise{animation:gvRise .5s cubic-bezier(.22,1,.36,1) both}
-@keyframes gvRise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-
-/* ── v2 additions ── */
-
-/* Hero section with score / summary */
-.gv-hero{background:#FAFAF8}
-
-/* Eyebrow label (small caps above a metric) */
-.gv-eyebrow{font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6A6B64}
-
-/* Score bar */
-.gv-bar{height:8px;border-radius:999px;background:#E4E4DF;transition:background .3s}
-.gv-bar.on{background:#0B8A5C}
-
-/* Hero metric tile */
-.gv-metric{display:flex;flex-direction:column;gap:4px}
-.gv-metric .gv-eyebrow{margin-bottom:4px}
-
-/* Hero summary tiles row */
-.gv-htiles{display:flex;flex-wrap:wrap;gap:10px}
-.gv-htiles .gv-tile.good{background:#EAF7F0;border:1px solid #9FD3B4}
-
-/* Hero action row */
-.gv-hact{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
-
-/* Two-column layout for detail pages */
-.gv-cols{display:flex;gap:20px;flex-wrap:wrap}
-.gv-colmain{flex:1 1 420px;min-width:0}
-.gv-colside{flex:0 0 280px;min-width:0}
-.gv-sidetitle{font-size:13px;font-weight:600;color:#141513;margin:0 0 10px}
-
-/* Role card (selectable) */
-.gv-wcard{border:1.5px solid #E4E4DF;border-radius:14px;padding:16px 18px;background:#FFFFFF;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:8px;transition:border-color .15s,background .15s}
-.gv-wcard:hover{border-color:#0B8A5C}
-.gv-wcard.sel{border-color:#0B8A5C;background:#EAF7F0}
-.gv-wcard:focus-visible{outline:2px solid #19C37D;outline-offset:2px}
-
-/* Ghost placeholder state */
-.gv-ghost{color:#8A8B85;text-align:center;padding:40px 20px;font-size:14px;line-height:1.6}
-
-/* Two-item flow (e.g. input + button in a row) */
-.gv-flow2{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-
-/* Side panel inside a card */
-.gv-side{border-left:1px solid #EFEFEA;padding-left:20px;display:flex;flex-direction:column;gap:14px}
-
-/* Responsive: sidebar collapses to horizontal scroll at narrow widths */
-@media(max-width:900px){
-  .gv-snav{flex:1 1 100%;position:static;flex-direction:row;overflow-x:auto;gap:4px}
-  .gv-snav .gv-sgrp,.gv-snav .gv-shead,.gv-snav .gv-note{display:none}
-  .gv-snav nav{display:flex;flex-direction:row !important;gap:4px}
-  .gv-snav nav > div{display:flex;gap:4px}
-  .gv-sl{white-space:nowrap;width:auto}
-  .gv-sub{margin-left:0}
-  .gv-cols{flex-direction:column}
-  .gv-colside{flex:1 1 auto}
-  .gv-side{border-left:0;border-top:1px solid #EFEFEA;padding-left:0;padding-top:14px}
-}
+/* Hero illustrations */
+.ts-art .art-root svg{transition:transform .9s cubic-bezier(.2,.7,.2,1)}
+.ts-art .art-root:hover svg{transform:scale(1.035)}
+.ts-art .g-float{animation:tsgfloat 5s ease-in-out infinite}
+.ts-art .g-bob{animation:tsgfloat 3.6s ease-in-out infinite}
+@keyframes tsgfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.ts-art .g-twinkle{animation:tsgtw 3.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes tsgtw{0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+.ts-art .g-spin{animation:tsgspin 16s linear infinite;transform-box:fill-box;transform-origin:center}
+.ts-art .g-spin-rev{animation:tsgspin 9s linear infinite reverse;transform-box:fill-box;transform-origin:center}
+.ts-art .g-hand{animation:tsgspin 4s linear infinite;transform-box:view-box;transform-origin:110px 66px}
+@keyframes tsgspin{to{transform:rotate(360deg)}}
+.ts-art .g-pulse{animation:tsgpulse 2.6s ease-in-out infinite}
+@keyframes tsgpulse{0%,100%{opacity:1}50%{opacity:.45}}
+.ts-art .g-beat{animation:tsgbeat 2.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes tsgbeat{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.ts-art .g-ring{animation:tsgring 2.4s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes tsgring{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(1.25)}}
+.ts-art .g-flow{animation:tsgflow 1.6s linear infinite}
+@keyframes tsgflow{to{stroke-dashoffset:-24}}
+.ts-art .g-grow{animation:tsggrow 4.5s ease-in-out infinite;transform-box:fill-box;transform-origin:bottom}
+@keyframes tsggrow{0%,100%{transform:scaleY(.9)}50%{transform:scaleY(1.05)}}
+.ts-art .g-draw{stroke-dasharray:120;animation:tsgdraw 6s ease-in-out infinite}
+@keyframes tsgdraw{0%{stroke-dashoffset:120}35%,100%{stroke-dashoffset:0}}
+.ts-art .g-steam{animation:tsgsteam 2.8s ease-in-out infinite}
+@keyframes tsgsteam{0%{opacity:0;transform:translateY(4px)}40%{opacity:.9}100%{opacity:0;transform:translateY(-6px)}}
+.ts-art .g-run{animation:tsgrun 6s linear infinite}
+@keyframes tsgrun{0%{transform:translateX(0);opacity:0}8%{opacity:1}92%{opacity:1}100%{transform:translateX(252px);opacity:0}}
+.ts-art .g-nudge{animation:tsgnudge 3.4s ease-in-out infinite}
+@keyframes tsgnudge{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
+.ts-art .g-reach{animation:tsgreach 3.4s ease-in-out infinite;transform-box:fill-box;transform-origin:0% 100%}
+@keyframes tsgreach{0%,100%{transform:rotate(0)}50%{transform:rotate(-5deg)}}
+@media (prefers-reduced-motion: reduce){.ts-art [class*="g-"]{animation:none!important}.ts-art .art-root:hover svg{transform:none}}
