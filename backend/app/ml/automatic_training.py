@@ -21,6 +21,7 @@ logger = get_logger(__name__)
 AUTOMATIC_MODELS = (
     "revenue_forecaster", "churn_risk_scorer", "cf_matrix_factorizer",
     "capacity_forecaster", "agentic_planning", "world_model",
+    "sla_breach_predictor", "deal_loss_scorer",
     "graph_neural_network", "self_supervised_embeddings", "meta_learning",
 )
 # These already train in CompanyIntelligenceOrchestrator; require the same

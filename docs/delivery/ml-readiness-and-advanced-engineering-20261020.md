@@ -84,3 +84,8 @@ Reuse existing `trained_models` entry (`base_model` equal to catalog name), `tra
 - No frontend claims, prices or toggles were added. New optional backend advice reports actual model output only, stays advisory and cannot grant approval. Consent/dialog behavior was explicitly requested earlier by the user.
 - No dependency, schema, production flags or deployment changes. Supabase skill used: `skill://plugin_asdk_app_69d3e5ee6a708191baa733f7b8931995/supabase/SKILL.md`. Current Python select documentation checked; changelog Markdown fetch unsupported by search transport. Queries use the already installed Python client patterns; actual production schema checked read-only.
 - Full CI, deployed SHA alignment, authenticated admin/non-admin UI, real organization inference, independent outcomes and the full combined text/voice standing quality batteries remain **NOT RUN for this branch**. In particular, shared evidence changes require those live quality batteries before release acceptance under engineering standards §8.
+
+
+## Phase 1 follow-up in the same pull request
+
+The initial implementation/evidence above describes the original #528 head, not a closure claim. Subsequent Phase 1 work replaces the SLA/deal missing-column stubs, completes their bound-data and batch-inference paths, reuses the actual ranker for retrieval composition, adds all-catalog lifecycle contracts and execution-only ledger evidence, and prepares (without applying) a registry type-compatibility migration. The current scope, tests, schema blocker, and remaining acceptance gaps are maintained in [gravitre-ml-phase1-status.md](gravitre-ml-phase1-status.md). Earlier production measurements remain historical.

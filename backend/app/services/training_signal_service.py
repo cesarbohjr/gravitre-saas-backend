@@ -7,6 +7,7 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.core.io_pool import run_io
 from app.ml.learning_to_rank import count_training_examples
 from app.services.intelligence_evaluation_service import get_intelligence_evaluation_service
 from app.services.outcome_learning_service import get_outcome_learning_service
@@ -30,8 +31,8 @@ class TrainingSignalService:
         "revenue_forecaster": {"min_history_points": 14},
         "churn_risk_scorer": {"min_labeled_churn_examples": 30},
         "cf_matrix_factorizer": {"min_scored_interactions_30d": 50},
-        "sla_breach_predictor": {"min_ticket_volume_rows": 60},
-        "deal_loss_scorer": {"min_measured_deal_outcomes": 25},
+        "sla_breach_predictor": {"min_labeled_ticket_records": 60},
+        "deal_loss_scorer": {"min_labeled_deal_records": 25},
         "capacity_forecaster": {"min_capacity_observations": 21},
         "workflow_duration_forecaster": {"min_workflow_runs": 30},
         "workflow_success_predictor": {"min_workflow_runs": 30},
@@ -66,7 +67,7 @@ class TrainingSignalService:
             models = await registry.list_models(org_id=org_id)
             from app.ml.intelligence_training import CATALOG_MODEL_NAMES
 
-            match = next((m for m in models if m.name == CATALOG_MODEL_NAMES.get(model_name, model_name)), None)
+            match = next((m for m in models if m.name == CATALOG_MODEL_NAMES.get(model_name, model_name) and m.current_version > 0), None)
             if match and match.updated_at:
                 return match.updated_at.isoformat()
         except Exception:  # noqa: BLE001
@@ -103,7 +104,7 @@ class TrainingSignalService:
                 try:
                     from app.ml.model_catalog import _count_org_data_points
 
-                    counts = _count_org_data_points(org_id, model_name, self.settings).get("data_counts") or {}
+                    counts = (await run_io(_count_org_data_points, org_id, model_name, self.settings)).get("data_counts") or {}
                     signals_available = int(counts.get("labeled_churn_examples") or 0)
                     min_required = thresholds["min_labeled_churn_examples"]
                 except Exception:  # noqa: BLE001
@@ -132,26 +133,26 @@ class TrainingSignalService:
                 except Exception:  # noqa: BLE001
                     signals_available = 0
                     min_required = thresholds["min_scored_interactions_30d"]
-            elif "min_ticket_volume_rows" in thresholds or "min_capacity_observations" in thresholds:
+            elif "min_labeled_ticket_records" in thresholds or "min_capacity_observations" in thresholds:
                 try:
                     from app.ml.model_catalog import _count_org_data_points
 
-                    counts = _count_org_data_points(org_id, model_name, self.settings).get("data_counts") or {}
-                    if "min_ticket_volume_rows" in thresholds:
-                        signals_available = int(counts.get("ticket_volume_rows") or 0)
-                        min_required = thresholds["min_ticket_volume_rows"]
+                    counts = (await run_io(_count_org_data_points, org_id, model_name, self.settings)).get("data_counts") or {}
+                    if "min_labeled_ticket_records" in thresholds:
+                        signals_available = int(counts.get("provenance_bearing_bound_candidates") or 0)
+                        min_required = thresholds["min_labeled_ticket_records"]
                     else:
                         signals_available = int(counts.get("capacity_observations") or 0)
                         min_required = thresholds["min_capacity_observations"]
                 except Exception:  # noqa: BLE001
                     signals_available = 0
-            elif "min_measured_deal_outcomes" in thresholds:
+            elif "min_labeled_deal_records" in thresholds:
                 try:
                     from app.ml.model_catalog import _count_org_data_points
 
-                    counts = _count_org_data_points(org_id, model_name, self.settings).get("data_counts") or {}
-                    signals_available = int(counts.get("measured_deal_outcomes") or 0)
-                    min_required = thresholds["min_measured_deal_outcomes"]
+                    counts = (await run_io(_count_org_data_points, org_id, model_name, self.settings)).get("data_counts") or {}
+                    signals_available = int(counts.get("provenance_bearing_bound_candidates") or 0)
+                    min_required = thresholds["min_labeled_deal_records"]
                 except Exception:  # noqa: BLE001
                     signals_available = 0
             last_trained = await self._last_trained_at(org_id, model_name)
@@ -211,7 +212,7 @@ class TrainingSignalService:
         }
         if (
             model_name in predictive_ops_models
-            or "min_ticket_volume_rows" in threshold
+            or "min_labeled_ticket_records" in threshold
             or "min_labeled_churn_examples" in threshold
         ):
             readiness = await self.get_training_readiness(org_id)
@@ -250,6 +251,8 @@ class TrainingSignalService:
                 from app.temporal.starters import start_ml_model_training_workflow
 
                 started = await start_ml_model_training_workflow(org_id, model_name)
+                if started.get("status") == "awaiting_consent":
+                    return started
                 if started.get("temporal"):
                     return {"status": "queued", **started}
             except Exception as exc:  # noqa: BLE001

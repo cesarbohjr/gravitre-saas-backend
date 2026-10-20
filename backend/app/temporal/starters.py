@@ -68,6 +68,11 @@ async def start_marketplace_install_workflow(
 
 
 async def start_ml_model_training_workflow(org_id: str, model_name: str) -> dict[str, Any]:
+    from app.config import get_settings
+    from app.ml.automatic_training import CONSENT_MANAGED_MODELS
+    from app.ml.training_consent import training_is_approved
+    if model_name in CONSENT_MANAGED_MODELS and not await training_is_approved(org_id, model_name, get_settings()):
+        return {"temporal": False, "status": "awaiting_consent", "model_name": model_name}
     if not temporal_enabled():
         return {"temporal": False}
     client = await get_temporal_client()

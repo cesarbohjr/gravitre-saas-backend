@@ -247,8 +247,10 @@ async def test_capacity_trainer_selects_only_real_columns():
 @pytest.mark.parametrize("trainer", ["train_sla_breach_predictor", "train_deal_loss_scorer"])
 async def test_label_less_trainers_refuse_without_querying(trainer: str):
     client = _Client([])
-    result = await getattr(it, trainer)("org-1", settings=MagicMock(), client=client)
-    assert result == {**result, "trained": False, "reason": "missing_training_columns"}
+    with patch("app.ml.training_consent.training_is_approved", AsyncMock(return_value=False)):
+        result = await getattr(it, trainer)("org-1", settings=MagicMock(), client=client)
+    assert result["trained"] is False
+    assert result["reason"] == "training_permission_inactive"
     assert client.log == []
 
 

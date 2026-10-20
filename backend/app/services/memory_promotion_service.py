@@ -1097,7 +1097,7 @@ class MemoryPromotionService:
             return result
         try:
             inference = await infer_catalog_capability(
-                org_id, "memory_promotion_scorer", {"inputs": items[:100]}, settings=self.settings,
+                org_id, "memory_promotion_scorer", {"inputs": items[:100]}, settings=self.settings, source="memory_review",
             )
             probabilities = inference.get("probabilities")
             if (inference.get("status") == "ok" and isinstance(probabilities, list)

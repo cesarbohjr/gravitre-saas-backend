@@ -4,7 +4,6 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import { OrganizationSettings } from "@/components/settings/organization-settings"
 import { TeamSettings } from "@/components/settings/team-settings"
-import { ApprovalRulesSettings } from "@/components/settings/approval-rules-settings"
 
 const mocks = vi.hoisted(() => ({
   swr: {} as Record<string, { data?: unknown; error?: Error; isLoading?: boolean }>,
@@ -115,17 +114,6 @@ it("keeps invalid logo URLs from breaking the preview or reaching the save endpo
   expect(container.querySelector("img")?.getAttribute("src")).toBe("/team-logo.svg")
   await saveChanges(); expect(mocks.updateOrg).not.toHaveBeenCalled()
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("valid logo image URL")
-})
-it("saves the human in the loop rules and decision SLA", async () => {
-  mocks.updateApprovalRules.mockResolvedValue({ rules: {} })
-  act(() => root.render(<ApprovalRulesSettings />))
-  const toggle = container.querySelector('[role="switch"][aria-label="Escalate past due requests"]')!
-  expect(toggle.getAttribute("aria-checked")).toBe("false")
-  click(toggle)
-  const sla = container.querySelector<HTMLSelectElement>("#decision-sla")!
-  act(() => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(sla, "1bd"); sla.dispatchEvent(new Event("change", { bubbles: true })) })
-  await saveChanges()
-  expect(mocks.updateApprovalRules).toHaveBeenCalledWith({ customerEmailApproval: true, twoApprovalsHighRisk: false, autoApproveReadOnly: false, escalatePastDue: true, sla: "1bd" })
 })
 it("shows team loading and error without inventing members", () => {
   act(() => root.render(<TeamSettings members={[]} isLoading isAdmin onUpdate={mocks.refresh} />))

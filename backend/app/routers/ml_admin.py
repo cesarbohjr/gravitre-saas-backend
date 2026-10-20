@@ -54,6 +54,9 @@ async def train_ml_model(
         require_supported_manual_training(model_name)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    from app.ml.training_consent import training_is_approved
+    if not await training_is_approved(org_id, model_name, settings):
+        raise HTTPException(status_code=409, detail="Approve the current training disclosure before requesting training")
     if (os.environ.get("TEMPORAL_HOST") or "").strip():
         try:
             started = await start_ml_model_training_workflow(org_id, model_name)
@@ -102,7 +105,7 @@ async def verify_ml_inference(
     if (GRAVITRE_ML_CATALOG[model_name]["status"].value != "trained"
             and model_name not in IMPLEMENTED_ADVANCED_MODELS):
         raise HTTPException(status_code=400, detail="Model inference is not implemented")
-    result = await infer_catalog_capability(org_id, model_name, payload.inputs, settings=settings)
+    result = await infer_catalog_capability(org_id, model_name, payload.inputs, settings=settings, source="diagnostic")
     return {
         "org_id": org_id, "checked_at": datetime.now(timezone.utc).isoformat(),
         "inference_health": "verified" if result.get("status") == "ok" and not result.get("used_fallback") else "not_verified",
@@ -141,3 +144,28 @@ async def update_training_permission(
                                        payload.state, payload.scope_digest, settings)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get("/lifecycle")
+async def list_model_lifecycle(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """All 26 entries remain accounted for, including dormant/blocked models."""
+    from app.ml.lifecycle import resolve_lifecycle
+    from app.ml.training_consent import training_permission_inventory
+
+    dashboard = await build_ml_catalog_dashboard(org_id, settings=settings, include_advanced=True)
+    try:
+        permissions = await training_permission_inventory(org_id, settings)
+        by_model = {row["model_name"]: row for row in permissions["models"]}
+    except Exception:
+        by_model = {}
+    models = {}
+    for name, inventory in dashboard["inventory"].items():
+        models[name] = resolve_lifecycle(name, dashboard["orgTrainingStatus"].get(name) or {},
+                                        by_model.get(name), inventory.get("recent_execution_evidence"))
+    return {"models": models, "scope": "backend_model_lifecycle_only",
+            "phase1_acceptance": "not_complete", "phase2_acceptance": "not_complete",
+            "note": "Execution evidence does not prove accuracy, downstream consumption, or business outcomes."}

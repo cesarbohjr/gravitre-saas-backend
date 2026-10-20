@@ -180,7 +180,7 @@ class PredictiveOperationsEngine:
         if not rows:
             return {"status": "not_available", "model": model_name, "reason": "measured_workflow_features_required", "advisory_only": True}
         inputs = features_to_anomaly_input(rows) if model_name == "workflow_anomaly_detector" else features_to_forecaster_train(rows)[0]
-        result = await infer_catalog_capability(org_id, model_name, {"inputs": inputs}, settings=self.settings)
+        result = await infer_catalog_capability(org_id, model_name, {"inputs": inputs}, settings=self.settings, source="predictive_operations")
         return {**result, "run_ids": [row["run_id"] for row in rows],
                 "scope_note": "Scores observed workflow runs; this is not a forecast of unobserved future runs."}
 

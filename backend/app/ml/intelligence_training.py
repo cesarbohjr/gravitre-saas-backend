@@ -519,7 +519,11 @@ async def train_retrieval_memory_learner(
     client: Any | None = None,
 ) -> dict[str, Any]:
     """Unified v3 + v4 + v5/v7 training pass."""
+    from app.ml.training_consent import training_is_approved
     active = settings or get_settings()
+    for component in ("retrieval_memory_learner", "retrieval_ranker", "query_clusterer", "memory_promotion_scorer"):
+        if not await training_is_approved(org_id, component, active):
+            return {"trained": False, "reason": "component_training_permission_inactive", "component": component}
     db = client or get_supabase_client(active)
     v3 = await train_v3_query_clusterer(org_id, settings=active, client=db, persist_clusters=True)
     v4 = await train_v4_memory_promotion_scorer(org_id, settings=active, client=db)
@@ -835,54 +839,14 @@ async def train_cf_matrix_factorizer(
     }
 
 
-async def train_sla_breach_predictor(
-    org_id: str,
-    *,
-    settings: Settings | None = None,
-    client: Any | None = None,
-) -> dict[str, Any]:
-    """Not trainable from the current schema.
-
-    The predictor needs per-ticket SLA features and a breached/not-breached
-    label. agent_action_outcomes stores only metric_value_before/after per
-    action (no payload, no success flag), so there is no honest label source.
-    Return a clear reason instead of querying columns that do not exist.
-    """
-    _ = settings, client
-    from app.ml.predictive_ops_models import SLA_FEATURE_KEYS
-
-    return {
-        "trained": False,
-        "reason": REASON_MISSING_TRAINING_COLUMNS,
-        "table": "agent_action_outcomes",
-        "missing": ["sla feature payload", "sla_breached label"],
-        "feature_keys": list(SLA_FEATURE_KEYS),
-        "org_id": org_id,
-    }
+async def train_sla_breach_predictor(org_id: str, *, settings: Settings | None = None, client: Any | None = None) -> dict[str, Any]:
+    from app.ml.bound_risk_training import train_bound_risk_model
+    return await train_bound_risk_model(org_id, "sla_breach_predictor", settings=settings)
 
 
-async def train_deal_loss_scorer(
-    org_id: str,
-    *,
-    settings: Settings | None = None,
-    client: Any | None = None,
-) -> dict[str, Any]:
-    """Not trainable from the current schema.
-
-    Needs per-deal features and a won/lost label; agent_action_outcomes has
-    neither (no outcome_payload / outcome_success). Return a clear reason.
-    """
-    _ = settings, client
-    from app.ml.predictive_ops_models import DEAL_FEATURE_KEYS
-
-    return {
-        "trained": False,
-        "reason": REASON_MISSING_TRAINING_COLUMNS,
-        "table": "agent_action_outcomes",
-        "missing": ["deal feature payload", "won/lost label"],
-        "feature_keys": list(DEAL_FEATURE_KEYS),
-        "org_id": org_id,
-    }
+async def train_deal_loss_scorer(org_id: str, *, settings: Settings | None = None, client: Any | None = None) -> dict[str, Any]:
+    from app.ml.bound_risk_training import train_bound_risk_model
+    return await train_bound_risk_model(org_id, "deal_loss_scorer", settings=settings)
 
 
 async def train_capacity_forecaster(

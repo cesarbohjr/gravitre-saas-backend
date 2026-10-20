@@ -38,7 +38,7 @@ describe("training consent dialog", () => {
     expect(document.body.textContent).toContain("Gravitre has detected data")
     for (const label of ["What", "Why", "Data", "When", "Where", "Security", "Controls"]) expect(document.body.textContent).toContain(label)
     expect(state.update).not.toHaveBeenCalled()
-    expect(document.querySelector('a[href="/settings?section=security"]')).toBeTruthy()
+    expect(document.querySelector('a[href="/trust-safety?tab=security"]')).toBeTruthy()
   })
   it("saves exactly the reviewed model and disclosure on explicit approval", async () => {
     await render(); await click("Approve automatic training")

@@ -114,7 +114,7 @@ function TrustSafetyContent() {
           <div className="ts-tgrp">
             <span className="ts-tlabel">Controls</span>
             <div className="ts-tabs" role="tablist" aria-label="Controls">
-              {tabBtn("policies", "shieldCheck", "Policies", { text: `${policy.on}/4` })}
+              {tabBtn("policies", "shieldCheck", "Policies", { text: `${policy.on ?? "–"}/4` })}
               {tabBtn("security", "lock", "Security", { text: `${security.score}/4` })}
               {tabBtn("roles", "users", "Role permissions")}
               {tabBtn("envs", "servers", "Environments")}

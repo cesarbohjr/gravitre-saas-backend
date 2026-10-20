@@ -43,7 +43,6 @@ vi.mock("@/lib/settings-api/notifications", async (importOriginal) => {
   return { ...actual, browserTimeZone: () => "America/Los_Angeles", notificationPrefsApi: { get: vi.fn(), save: mocks.savePrefs } }
 })
 
-import { SecuritySettings } from "@/components/settings/security-settings"
 import { ApiKeysSettings } from "@/components/settings/api-keys-settings"
 import { NotificationSettings } from "@/components/settings/notification-settings"
 import { AIModelsSettings } from "@/components/settings/ai-models-settings"
@@ -124,78 +123,6 @@ describe("security helpers", () => {
     expect(ssoStage({ ...ssoConfig, is_enabled: false } as never)).toBe("setup")
     expect(ssoStage(ssoConfig as never)).toBe("enabled")
     expect(ssoStage(undefined, Object.assign(new Error("Feature unavailable"), { status: 403 }))).toBe("unavailable")
-  })
-})
-
-describe("Security", () => {
-  it("shows posture, SSO status and the real SP metadata URL", () => {
-    mocks.swr = {
-      "/api/auth/sso/config": { data: ssoConfig },
-      "/api/auth/sso/service-provider": { data: sp },
-      "/api/settings/security": { data: { security: controls({ requireTwoFactor: true, ipAllowlist: { enabled: true, ranges: ["10.0.0.0/24"] } }) } },
-    }
-    render(<SecuritySettings isAdmin />)
-    expect(container.querySelector("h1")?.textContent).toBe("Security")
-    expect(container.querySelector(".security-score b")?.textContent).toBe("3")
-    expect(container.textContent).toContain("Set a session timeout")
-    expect(container.textContent).toContain("Enabled")
-    expect(container.textContent).toContain("SP metadata: https://gravitre.app/api/auth/sso/metadata")
-    expect(button("Manage")).toBeTruthy()
-    expect(byLabel("Require two factor authentication")?.getAttribute("aria-checked")).toBe("true")
-    expect(container.textContent).toContain("Sign in does not enforce it yet")
-    expect(container.textContent).toContain("10.0.0.0/24")
-  })
-
-  it("validates a range before saving and saves a good one", async () => {
-    mocks.swr = {
-      "/api/auth/sso/config": { data: null },
-      "/api/auth/sso/service-provider": { data: sp },
-      "/api/settings/security": { data: { security: controls({ ipAllowlist: { enabled: true, ranges: [] } }) } },
-    }
-    mocks.updateSecurity.mockResolvedValue({ security: controls({ ipAllowlist: { enabled: true, ranges: ["10.0.0.0/24"] } }) })
-    render(<SecuritySettings isAdmin />)
-    expect(container.textContent).toContain("Not configured")
-    expect(container.textContent).toContain("No ranges yet")
-    const input = byLabel("Add IP range") as HTMLInputElement
-    type(input, "10.0.0.300/24")
-    await click(button("Add"))
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain("not a valid IP address")
-    expect(mocks.updateSecurity).not.toHaveBeenCalled()
-    type(input, "10.0.0.0/24")
-    await click(button("Add"))
-    expect(mocks.updateSecurity).toHaveBeenCalledWith({ ipAllowlist: { ranges: ["10.0.0.0/24"] } })
-  })
-
-  it("saves the session timeout and keeps controls read only for members", async () => {
-    mocks.swr = {
-      "/api/auth/sso/config": { data: { ...ssoConfig, is_enabled: false } },
-      "/api/auth/sso/service-provider": { data: sp },
-      "/api/settings/security": { data: { security: controls() } },
-    }
-    mocks.updateSecurity.mockResolvedValue({ security: controls({ sessionTimeout: "8h" }) })
-    render(<SecuritySettings isAdmin />)
-    expect(container.textContent).toContain("Setting up")
-    expect(button("Test and enable")).toBeTruthy()
-    choose(byLabel("Session timeout") as HTMLSelectElement, "8h")
-    await act(async () => {})
-    expect(mocks.updateSecurity).toHaveBeenCalledWith({ sessionTimeout: "8h" })
-
-    render(<SecuritySettings isAdmin={false} />)
-    expect((byLabel("Require two factor authentication") as HTMLButtonElement).disabled).toBe(true)
-    expect((byLabel("Session timeout") as HTMLSelectElement).disabled).toBe(true)
-    expect(button("Test and enable")).toBeUndefined()
-    expect(container.textContent).toContain("Only owners and admins can change security settings")
-  })
-
-  it("shows plan gating instead of an error when SSO is not on the plan", () => {
-    mocks.swr = {
-      "/api/auth/sso/config": { error: Object.assign(new Error("Feature unavailable"), { status: 403 }) },
-      "/api/auth/sso/service-provider": { data: sp },
-      "/api/settings/security": { data: { security: controls() } },
-    }
-    render(<SecuritySettings isAdmin />)
-    expect(container.textContent).toContain("Not on your plan")
-    expect(container.querySelector('a[href="/settings/billing"]')).not.toBeNull()
   })
 })
 

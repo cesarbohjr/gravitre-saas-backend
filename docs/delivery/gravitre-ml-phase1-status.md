@@ -1,0 +1,73 @@
+# Gravitre ML program: Phase 1 execution status
+
+Baseline: the user's recovered six-phase engineering sequence, explicitly supplied on October 20, 2026. This file records that sequence and implementation status; it does not replace it with another roadmap. Resume from this file and the linked delivery report after a context reset.
+
+## Agreed sequence
+
+| Phase | Scope | Acceptance status |
+|---|---|---|
+| 1 | Audit the 14 existing models; implementation and readiness across all 26 catalog entries, artifacts, inference, fallbacks, data eligibility and consent-controlled activation | OPEN |
+| 2 | Coordinate contextual, sentiment, causal, temporal, relational, adaptive and predictive intelligence through the existing core/router; prove real model outputs reach relevant backend consumers | OPEN; #520 is infrastructure, not completion proof |
+| 3 | Complete the 12-point text/voice experience audit with real scenarios | Not started by this batch |
+| 4 | Repair verified experience deficiencies using existing components | Follows Phase 3 findings |
+| 5 | Validate approvals, independent readbacks, measured outcomes and repeat-turn improvement | Not claimed from model tests or execution logs |
+| 6 | Release approved changes, CI, deployment alignment and live acceptance | Not complete for this program |
+
+The Phase 3 acceptance areas remain: intent understanding; contextual memory; sentiment/emotional intelligence; reasoning/causal intelligence; temporal/relational intelligence; predictive/adaptive intelligence; response quality; text performance; voice performance; tools/connectors; governance/accountability; end-to-end learning validation. No microphone, frontend redesign, voice-parity testing or new continuous-learning initiative is part of the current batch.
+
+## Foundations retained
+
+- #520: shared seven-intelligence coordination, merged; full integration not proven.
+- #521: honest inventory separation and readiness reporting.
+- #522: versioned training consent and bounded advanced algorithms.
+- #528: graph convolution, organization-local Reptile, automatic bound-corpus training, workflow feature/inference repairs, RAG consent repair and diagnostic inference API. Original head `23f51cfd2128bc0e6e4ecc983e44d0b3c48feaa6` passed [CI 39510942362](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/39510942362). That success does not cover subsequent commits.
+
+## Current Phase 1 batch
+
+1. **SLA and deal models have working data adapters**, replacing permanent `missing_training_columns` responses. Reuses existing bound organization training records, canonical model classes, artifact registry and promotion gates. Never treats ticket volume as an SLA-breach label or aggregate revenue changes as per-deal won/lost labels.
+2. **Their inference consumes every supplied real row**, instead of ignoring `X` and scoring an empty feature map. Missing/incomplete, nonnumeric and nonfinite feature rows fail closed. Empty/unfitted artifacts cannot count as loaded valid risk models.
+3. **Temporal validation and calibration**: features must predate resolved outcomes; entity identifiers are distinct; labels unavailable before the final holdout observations or a calibration window are purged from that training partition. Delayed but valid outcomes do not permanently block activation; sufficient resolved history is still required. Both classes are required in training, calibration and holdout. Sigmoid calibration uses time-series folds inside the training window; final holdout stays untouched. AUC must beat chance and held-out log loss must beat a prior baseline. Brier/log loss are reported, not claimed as independent proof of business improvement or perfect calibration. Training runs off the request event loop.
+4. **All 14 core entries are consent-managed**, including the newly usable SLA/deal trainers. The complementary reconciler now handles 11 entries; the existing company-learning steps cover the remaining eight consent-managed entries, including the retrieval composition over its existing components. These are 19 consent-managed catalog entries total, not 19 independent engines or duplicated training jobs.
+5. **Retrieval composition uses its deployed ranker**, not summary counts masquerading as predictions. It reuses the same artifact/version, requires wrapper and ranker permission, and does not create another trained-model artifact. Composite training also requires component permissions before reading/training.
+6. **New imports are considered**: bound-corpus discovery examines the latest 1,000-record window and restores source order for downstream validation. Older records cannot permanently hide new qualifying data. Discovery uses metadata only. Training rechecks actual contents and temporal validity.
+7. **Current consent is checked before manual Temporal enqueue**, including the shared starter used by other callers. Readiness counters use the new labeled-record source, and draft registry rows no longer masquerade as recently trained models. Approval, pause/revoke and all actual trainer/loader guards remain in force. No consent is granted by this work.
+8. **Execution evidence uses the existing prediction ledger**: deployed-artifact calls through the shared boundary store only generated trace ID, organization/model/version, source, timing and proof type. No customer input or model output is stored by this added evidence mechanism. Diagnostic calls do not count as normal backend use. Ledger I/O is offloaded and time-bounded; failures do not convert a usable prediction into a fallback. Evidence readers ignore missing/legacy/expired proof, match the currently loaded model/version, and explicitly do not claim downstream consumption or outcomes. Dashboard `inference_health` remains unverified; recent execution evidence is separate.
+9. **All 26 lifecycle contracts are explicit** through the admin-only `/api/admin/ml/lifecycle`. Nineteen are organization-trained/composed, three are on-demand advisory algorithms, and four have specialized engineering/infrastructure blockers. Unknown data/permission reads never become zero-data or active claims. A paused/revoked model cannot become active from a stale execution record.
+
+## Risk-data contract
+
+Existing model binding: `purpose=training`, organization-scoped model target, metadata `schema_version=1`, `model_name`, one consistent `target_definition`: exactly `sla_breached` or `deal_lost` for the respective risk model (positive label `1` means breached/lost). Other targets cannot silently train those named models. Record metadata declares `synthetic=false`, `label_source=human_reviewed`, nonempty `source_ref`. These are provenance declarations, not independent source verification.
+
+Each record's JSON input contains `entity_id`, complete numeric `features`, timezone-bearing `observed_at` and `outcome_observed_at`. `expected_output` is exactly `0` or `1`. SLA features are `open_tickets`, `avg_resolution_hours`, `backlog_ratio`, `weekend_load`, `escalation_rate`; deal features are `deal_stage_index`, `days_in_stage`, `deal_amount`, `engagement_score`, `activity_count`. Features must be available as of their observation timestamp, not reconstructed using outcome information. Minimum 60 SLA / 25 deal records; minimum counts alone do not establish eligibility. Invalid chronology or calibration/holdout coverage blocks training. Connector-derived historical feature ingestion and independent source-reference readbacks remain prerequisites for claiming production readiness of an actual organization's data.
+
+## Remaining Phase 1 acceptance work
+
+**Phase 1 and Phase 2 remain OPEN.** The following are not completed by this batch:
+
+- Actual eligible organization data, current administrator consent, deployed artifacts and real inference for every applicable model. No production approvals/training/promotions were performed.
+- Federated learning: actual legal/customer authorization, deployed runtime, audited secure aggregation, validated DP/accounting and participant threshold. Still blocked; plain aggregation was not substituted for a privacy protocol.
+- Diffusion: governed paid provider/tool execution, security and generated-asset handling remain engineering gaps.
+- Multimodal: full provider execution and media validation remain engineering gaps; existing image selection alone is insufficient.
+- Domain-specific LLM: approved departmental corpus, independent evaluation and catalog training/routing integration remain engineering gaps; existing agent fine-tuning is not automatically catalog readiness.
+- Further advanced input assembly: active-learning review integration, vetted rules/facts, controlled causal identification, authorized action candidates, graph/context assembly and independent local-embedding retrieval evaluation remain incomplete.
+- Existing on-demand/dedicated model consumers do not all use the common execution ledger. A zero-log observation is absence of evidence, not proof no inference occurred. New common-boundary evidence proves execution only, not all seven intelligence consumers or frontend use.
+- Production SHA alignment, authenticated activation/pause/resume acceptance, independent inference traces and a complete phase closure review. Passing CI is necessary and insufficient.
+
+Earlier production observations are historical: see [the October 20 readiness audit](ml-readiness-and-advanced-engineering-20261020.md) for its exact SHA/time, two deployed pointers and absent consent/prediction rows. Do not present that snapshot as a fresh production measurement.
+
+## Validation
+
+Initial targeted tests: **45 passed** before final guards/refinements. Broad backend service/ML/lint/intelligence regression after the risk and queue changes: **7,778 passed, 2 skipped** in 188.46 seconds. Final targeted tests after the last refinements: **109 passed, 1 skipped** (native PostgreSQL server binaries unavailable; the actual migration separately passed isolated PGlite checks). Provider HTTP/socket/gRPC dispatch is blocked and provider credentials are fake/empty for local tests. No production customer data is used in synthetic algorithm tests.
+
+The existing unsupported-trainer regression now asserts denial before data access without current consent; it no longer asserts a permanent missing-columns response because real bound-data pipelines exist. Inventory fixtures now require real support for SLA/deal training and retain exact rejection assertions for unsupported models. These changes reflect newly implemented behavior, not weaker data/consent/evaluation gates.
+
+
+## Production registry schema blocker discovered read-only
+
+A read-only production constraint query on `public.trained_models` confirmed `trained_models_model_type_check` permits only classifier, fine_tuned_llm, anomaly_detector, forecaster and embedding. It rejects the existing runtime enum's `regressor` and `causal_model`. The bounded world model uses `regressor`, so successful Python training is insufficient: production registration would fail.
+
+Prepared migration: `supabase/migrations/20261020234133_ml_registry_model_type_compatibility.sql`, generated using the official Supabase CLI's `migration new`. It changes only this existing type constraint to the seven `ModelType` values. It does not add `trained` to registry statuses, change data/pointers, broaden grants, change RLS, or grant consent. The status constraint still rejects the catalog's `TRAINED` designation as a runtime registry state.
+
+Verified the actual SQL on a separate embedded PostgreSQL engine (PGlite): the old constraint rejects regressor; the migration admits all seven types; unknown types and runtime status `trained` remain rejected; existing rows and enabled RLS remain unchanged. A native PostgreSQL regression using the repository's throwaway-cluster harness is committed; it skips locally when server binaries are unavailable. This is not a production migration test or evidence that production registration now works.
+
+**NOT APPLIED to production.** Root `AGENTS.md` states: “never apply prod migrations without explicit human approval.” Applying this to production requires separate, explicit approval at the release step; this Phase 1 implementation request did not apply it. The world-model lifecycle contract reports the prerequisite migration and unverified deployment state instead of hiding this blocker.

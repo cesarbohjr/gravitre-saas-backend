@@ -204,7 +204,7 @@ def test_bound_corpus_uses_canonical_registry_and_rejects_wrong_purpose_or_org()
         def limit(self, count):
             self.rows = self.rows[:count]
             return self
-        def order(self, *_): return self
+        def order(self, *_, **kwargs): return self
         def execute(self): return SimpleNamespace(data=self.rows)
 
     contract = {"schema_version": 1, "model_name": "graph_neural_network", "target_definition": "human-reviewed relationship outcome"}
@@ -227,6 +227,12 @@ def test_bound_corpus_uses_canonical_registry_and_rejects_wrong_purpose_or_org()
         assert collect_bound_records("org-b", "graph_neural_network", MagicMock()) == []
         tables["training_dataset_bindings"][0]["purpose"] = "benchmark"
         assert collect_bound_records("org-a", "graph_neural_network", MagicMock()) == []
+        tables["trained_models"][0]["base_model"] = "sla_breach_predictor"
+        tables["training_dataset_bindings"][0]["purpose"] = "training"
+        contract["model_name"] = "sla_breach_predictor"
+        assert collect_bound_records("org-a", "sla_breach_predictor", MagicMock()) == []
+        contract["target_definition"] = "sla_breached"
+        assert len(collect_bound_records("org-a", "sla_breach_predictor", MagicMock())) == 1
 
 
 @pytest.mark.asyncio

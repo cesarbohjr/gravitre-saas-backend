@@ -413,7 +413,7 @@ class IntelligenceRouter:
         selected = [(name, value) for name, value in inputs.items()
                     if name in GRAVITRE_ML_CATALOG and isinstance(value, dict)][:4]
         results = await asyncio.gather(*(
-            infer_catalog_capability(org_id, name, value, settings=self.settings)
+            infer_catalog_capability(org_id, name, value, settings=self.settings, source="intelligence_router")
             for name, value in selected
         ), return_exceptions=True)
         return {name: result if isinstance(result, dict) else {

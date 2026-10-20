@@ -24,8 +24,8 @@ describe("enterprise settings helpers", () => {
   it("sends links to moved sections to their new pages", () => {
     expect(movedEnterpriseSectionHref("white-label", null)).toBe("/settings?section=branding")
     expect(movedEnterpriseSectionHref(null, "branding")).toBe("/settings?section=branding")
-    expect(movedEnterpriseSectionHref("siem", null)).toBe("/settings?section=security")
-    expect(movedEnterpriseSectionHref(null, "region")).toBe("/settings?section=security")
+    expect(movedEnterpriseSectionHref("siem", null)).toBe("/trust-safety?tab=security")
+    expect(movedEnterpriseSectionHref(null, "region")).toBe("/trust-safety?tab=security")
     expect(movedEnterpriseSectionHref("knowledge-sync", null)).toBe("/connectors#knowledge-sync")
     expect(movedEnterpriseSectionHref("cost", null)).toBeNull()
     expect(movedEnterpriseSectionHref(null, "cs")).toBeNull()

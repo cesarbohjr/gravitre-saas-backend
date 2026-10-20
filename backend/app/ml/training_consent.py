@@ -118,8 +118,8 @@ async def training_permission_inventory(org_id: str, settings: Settings) -> dict
                           "status": "ready" if count >= required else "insufficient_data"}
     observed["retrieval_memory_learner"] = observed.get("retrieval_ranker") or {}
     from app.ml.bound_training_data import collect_bound_records
-    for name in ("graph_neural_network", "self_supervised_embeddings", "meta_learning"):
-        required = 20 if name == "meta_learning" else 100
+    for name in ("graph_neural_network", "self_supervised_embeddings", "meta_learning", "sla_breach_predictor", "deal_loss_scorer"):
+        required = {"meta_learning": 20, "sla_breach_predictor": 60, "deal_loss_scorer": 25}.get(name, 100)
         try:
             records = await asyncio.to_thread(collect_bound_records, org_id, name, settings, include_inputs=False)
         except Exception:

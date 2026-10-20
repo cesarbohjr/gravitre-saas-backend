@@ -117,14 +117,14 @@ GRAVITRE_ML_CATALOG: dict[str, dict[str, Any]] = {
     "sla_breach_predictor": {
         "status": ModelStatus.TRAINED,
         "use_cases": ["support_sla_breach_risk"],
-        "activation": "60+ support tickets with SLA resolution timestamps",
+        "activation": "60+ explicitly bound labeled ticket feature records for sla_breached (1=breached), with pre-outcome timestamps and temporal validation",
         "fallback": "support_backlog correlational detector",
         "advisory_only": True,
     },
     "deal_loss_scorer": {
         "status": ModelStatus.TRAINED,
         "use_cases": ["deal_loss_probability"],
-        "activation": "25+ measured CRM deal win/loss outcomes",
+        "activation": "25+ explicitly bound labeled deal feature records for deal_lost (1=lost), with pre-outcome timestamps and temporal validation",
         "fallback": "stalled_deal correlational detector",
         "advisory_only": True,
     },
@@ -320,25 +320,11 @@ def _count_org_data_points(org_id: str, model_name: str, settings: Settings) -> 
             counts["scored_interactions_30d"] = int(gate.get("current") or 0)
             counts["cf_actors"] = int(gate.get("actors") or 0)
             counts["cf_items"] = int(gate.get("items") or 0)
-        elif model_name == "sla_breach_predictor":
-            rows = (
-                client.table("agent_action_outcomes")
-                .select("id", count="exact")
-                .eq("org_id", org_id)
-                .eq("metric_name", "ticket_volume")
-                .execute()
-            )
-            counts["ticket_volume_rows"] = int(rows.count or 0)
-        elif model_name == "deal_loss_scorer":
-            rows = (
-                client.table("agent_action_outcomes")
-                .select("id", count="exact")
-                .eq("org_id", org_id)
-                .eq("target_entity_type", "deal")
-                .not_.is_("measured_at", "null")
-                .execute()
-            )
-            counts["measured_deal_outcomes"] = int(rows.count or 0)
+        elif model_name in {"sla_breach_predictor", "deal_loss_scorer", "graph_neural_network", "meta_learning", "self_supervised_embeddings"}:
+            from app.ml.bound_training_data import collect_bound_records
+            records = collect_bound_records(org_id, model_name, settings, include_inputs=False)
+            counts["provenance_bearing_bound_candidates"] = len(records)
+            activation = {"min_bound_records": {"sla_breach_predictor": 60, "deal_loss_scorer": 25, "meta_learning": 20}.get(model_name, 100)}
         elif model_name == "capacity_forecaster":
             rows = (
                 client.table("agent_action_outcomes")
@@ -348,14 +334,7 @@ def _count_org_data_points(org_id: str, model_name: str, settings: Settings) -> 
                 .execute()
             )
             counts["capacity_observations"] = int(rows.count or 0)
-        elif model_name == "graph_neural_network":
-            rows = (
-                client.table("org_entity_relationships")
-                .select("id", count="exact")
-                .eq("org_id", org_id)
-                .execute()
-            )
-            counts["relationship_rows"] = int(rows.count or 0)
+
     except Exception as exc:  # noqa: BLE001
         logger.debug(
             "_count_org_data_points query failed model=%s org_id=%s error=%s",
@@ -400,7 +379,7 @@ async def get_org_model_status(org_id: str, model_name: str, *, settings: Settin
             from app.ml.intelligence_training import CATALOG_MODEL_NAMES
             from app.ml.registry import get_model_registry
 
-            registry_name = CATALOG_MODEL_NAMES.get(model_name, model_name)
+            registry_name = CATALOG_MODEL_NAMES.get("retrieval_ranker" if model_name == "retrieval_memory_learner" else model_name, model_name)
             registry = get_model_registry()
             models = await registry.list_models(org_id=org_id)
             match = next(
@@ -411,6 +390,7 @@ async def get_org_model_status(org_id: str, model_name: str, *, settings: Settin
                 # A registry pointer is deployment metadata, not evidence that
                 # the artifact is readable or compatible with this runtime.
                 payload["deployed_version"] = match.deployed_version
+                payload["deployed_model_id"] = str(match.id)
                 artifact = await registry.load_model_artifact(match.id, match.deployed_version)
                 instance = get_model_instance(model_name)
                 instance.load(artifact)
@@ -470,8 +450,7 @@ def model_inventory_definition(model_name: str) -> dict[str, Any]:
     if meta is None:
         raise ValueError(f"Unknown catalog model: {model_name}")
     operational = meta["status"] == ModelStatus.TRAINED
-    blocked = model_name in {"sla_breach_predictor", "deal_loss_scorer"}
-    supported = operational and model_name in TRAINING_DISPATCH and not blocked
+    supported = operational and model_name in TRAINING_DISPATCH
     return {
         "id": model_name,
         "label": str((meta.get("use_cases") or [model_name])[0]).replace("_", " ").capitalize(),
@@ -483,9 +462,9 @@ def model_inventory_definition(model_name: str) -> dict[str, Any]:
             "on_demand" if model_name in {"active_learning", "neuro_symbolic", "causal_impact_analyzer"} else "unavailable",
         "automatic_training_supported": model_name in CONSENT_MANAGED_MODELS,
         "customer_activation_control": False,
+        "composition_of": ["retrieval_ranker", "query_clusterer", "memory_promotion_scorer"] if model_name == "retrieval_memory_learner" else [],
         "training_unavailable_reason": (
-            None if supported else "missing_training_columns" if blocked else
-            "automatic_training_only" if model_name in CONSENT_MANAGED_MODELS else
+            None if supported else "automatic_training_only" if model_name in CONSENT_MANAGED_MODELS else
             "on_demand_only" if model_name in IMPLEMENTED_ADVANCED_MODELS else "not_implemented"
         ),
         "data_requirement": meta.get("min_data") or meta.get("activation") or meta.get("note"),
@@ -521,6 +500,11 @@ async def build_ml_catalog_dashboard(
     except Exception as exc:  # noqa: BLE001
         logger.warning("load_model_outcome_scores failed org_id=%s error=%s", org_id, exc)
         outcome_scores = {}
+    from app.ml.inference_evidence import recent_execution_evidence
+    try:
+        recent_executions = await recent_execution_evidence(org_id, active)
+    except Exception:
+        recent_executions = {}
     inventory = {}
     for name in catalog:
         runtime = org_status.get(name) or {}
@@ -529,6 +513,10 @@ async def build_ml_catalog_dashboard(
             **definitions[name],
             "artifact_readiness": "loaded" if loaded else "not_loaded" if runtime else "not_verified",
             "inference_health": "not_verified",
+            "recent_execution_evidence": recent_executions.get(name) if (
+                loaded and recent_executions.get(name, {}).get("model_id") == runtime.get("deployed_model_id")
+                and recent_executions.get(name, {}).get("version") == runtime.get("deployed_version")
+            ) else None,
             "runtime_status": runtime.get("runtime_status") or "not_verified",
             "activation_state": "artifact_loaded" if loaded else "dormant",
             "activation_note": "Automatic evaluation does not bypass consent, data validation, infrastructure, or promotion gates.",
@@ -574,7 +562,9 @@ async def load_org_trained_catalog_model(
     from app.ml.training_consent import training_is_approved
     if model_name in CONSENT_MANAGED_MODELS and not await training_is_approved(org_id, model_name, active):
         return instance
-    registry_name = CATALOG_MODEL_NAMES.get(model_name, model_name)
+    if model_name == "retrieval_memory_learner" and not await training_is_approved(org_id, "retrieval_ranker", active):
+        return instance
+    registry_name = CATALOG_MODEL_NAMES.get("retrieval_ranker" if model_name == "retrieval_memory_learner" else model_name, model_name)
     try:
         registry = get_model_registry()
         models = await registry.list_models(org_id=org_id)
@@ -650,7 +640,7 @@ async def _log_ml_prediction(
 
 
 async def infer_catalog_capability(
-    org_id: str, model_name: str, inputs: dict[str, Any], *, settings: Settings | None = None,
+    org_id: str, model_name: str, inputs: dict[str, Any], *, settings: Settings | None = None, source: str = "internal",
 ) -> dict[str, Any]:
     """Shared internal inference boundary; never interprets catalog TRAINED as readiness.
 
@@ -702,6 +692,11 @@ async def infer_catalog_capability(
         logger.warning("catalog_inference_refused org_id=%s model=%s error_type=%s", org_id, model_name, type(exc).__name__)
         return {"status": "dormant", "model": model_name, "reason": "inference_inputs_or_runtime_unavailable",
                 "used_fallback": True, "advisory_only": True}
-    return {**result, "model": model_name, "latency_ms": int((time.perf_counter()-start)*1000),
+    from app.ml.inference_evidence import record_execution
+    latency = int((time.perf_counter()-start)*1000)
+    execution_evidence = None
+    if result.get("status") == "ok":
+        execution_evidence = await record_execution(org_id, model_name, getattr(instance, "registry_ref", None), latency, source)
+    return {**result, "execution_evidence": execution_evidence, "model": model_name, "latency_ms": latency,
             "used_fallback": result.get("status") != "ok", "advisory_only": True,
             "registry_ref": getattr(instance, "registry_ref", None)}

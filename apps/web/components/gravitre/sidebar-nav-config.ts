@@ -216,9 +216,7 @@ export function isSidebarItemActive(pathname: string, href: string): boolean {
   if (itemPath === "/audit") {
     return (
       pathname === "/audit" ||
-      pathname.startsWith("/audit/") ||
-      pathname === "/environments" ||
-      pathname.startsWith("/environments/")
+      pathname.startsWith("/audit/")
     )
   }
   if (itemPath === "/trust-safety") {

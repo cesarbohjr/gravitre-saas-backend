@@ -293,7 +293,7 @@ class ModelRegistry:
         latency_ms: float,
     ) -> None:
         client = self._get_client()
-        client.table("model_predictions").insert(
+        query = client.table("model_predictions").insert(
             {
                 "org_id": org_id,
                 "model_id": model_id,
@@ -302,7 +302,8 @@ class ModelRegistry:
                 "prediction": prediction,
                 "latency_ms": int(latency_ms),
             }
-        ).execute()
+        )
+        await run_io(query.execute)
 
     async def _upload_artifact(self, model_id: str, version: int, data: bytes) -> str:
         """Upload via current Vercel Blob put API (pathname query + access header)."""
