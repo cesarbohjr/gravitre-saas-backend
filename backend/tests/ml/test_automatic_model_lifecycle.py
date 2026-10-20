@@ -214,6 +214,9 @@ def test_training_permissions_are_admin_only_at_real_role_boundary():
          patch("app.ml.training_consent.save_training_consent") as save:
         client = TestClient(app)
         assert client.get("/api/admin/ml/training-permissions").status_code == 403
+        assert client.post("/api/admin/ml/models/intent_classifier/verify-inference", json={
+            "inputs": {"inputs": ["real query"]}
+        }).status_code == 403
         assert client.post("/api/admin/ml/training-permissions/world_model", json={
             "state": "approved", "scope_digest": "a"*64}).status_code == 403
     save.assert_not_called()

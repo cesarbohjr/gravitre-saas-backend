@@ -88,7 +88,9 @@ async def test_get_weight_for_org_uses_deployed_ranker():
     registry.list_models = AsyncMock(return_value=[deployed])
     registry.load_model_artifact = AsyncMock(return_value=artifact)
 
-    with patch("app.ml.learning_to_rank.get_model_registry", return_value=registry):
+    with patch("app.ml.learning_to_rank.get_model_registry", return_value=registry), patch(
+        "app.ml.training_consent.training_is_approved", AsyncMock(return_value=True)
+    ):
         from app.ml.learning_to_rank import get_weight_for_org
 
         weight = await get_weight_for_org("org-1", MagicMock(), MagicMock())

@@ -145,7 +145,7 @@ GRAVITRE_ML_CATALOG: dict[str, dict[str, Any]] = {
     "graph_neural_network": {
         "status": ModelStatus.PLANNED,
         "use_cases": ["relationship_scoring"],
-        "activation": "10k+ entity relationships, PyTorch Geometric, GPU",
+        "activation": "100+ provenance-bearing, human-labeled graph examples bound to an organization model; disjoint temporal holdout must beat prior baseline",
         "fallback": "postgres_confidence_traversal",
         "advisory_only": False,
     },
@@ -163,7 +163,7 @@ GRAVITRE_ML_CATALOG: dict[str, dict[str, Any]] = {
     },
     "meta_learning": {
         "status": ModelStatus.PLANNED,
-        "activation": "Same as FederatedLearning",
+        "activation": "20+ explicitly labeled organization-local task episodes, disjoint task holdout, and improvement over support-only adaptation; cross-organization transfer is unsupported",
         "advisory_only": False,
     },
     "neuro_symbolic": {
@@ -237,9 +237,9 @@ _MODEL_CLASS_MAP: dict[str, Callable[[], Any]] = {
 # Advanced entries remain admin-only even after an implementation is available.
 IMPLEMENTED_ADVANCED_MODELS = frozenset({
     "active_learning", "neuro_symbolic", "causal_impact_analyzer",
-    "agentic_planning", "world_model", "self_supervised_embeddings",
+    "agentic_planning", "world_model", "self_supervised_embeddings", "graph_neural_network", "meta_learning",
 })
-ARTIFACT_ADVANCED_MODELS = frozenset({"agentic_planning", "world_model", "self_supervised_embeddings"})
+ARTIFACT_ADVANCED_MODELS = frozenset({"agentic_planning", "world_model", "self_supervised_embeddings", "graph_neural_network", "meta_learning"})
 
 
 def get_catalog() -> dict[str, dict[str, Any]]:
@@ -484,7 +484,9 @@ def model_inventory_definition(model_name: str) -> dict[str, Any]:
         "automatic_training_supported": model_name in CONSENT_MANAGED_MODELS,
         "customer_activation_control": False,
         "training_unavailable_reason": (
-            None if supported else "missing_training_columns" if blocked else "not_implemented"
+            None if supported else "missing_training_columns" if blocked else
+            "automatic_training_only" if model_name in CONSENT_MANAGED_MODELS else
+            "on_demand_only" if model_name in IMPLEMENTED_ADVANCED_MODELS else "not_implemented"
         ),
         "data_requirement": meta.get("min_data") or meta.get("activation") or meta.get("note"),
     }
@@ -532,7 +534,8 @@ async def build_ml_catalog_dashboard(
             "activation_note": "Automatic evaluation does not bypass consent, data validation, infrastructure, or promotion gates.",
             "fallback": runtime.get("fallback") or catalog[name].get("fallback"),
             "data_eligibility": {
-                "status": "requires_training_validation" if definitions[name]["manual_training_supported"] else "unavailable",
+                "status": "requires_training_validation" if (definitions[name]["manual_training_supported"]
+                    or definitions[name]["automatic_training_supported"]) else "unavailable",
                 "observed_counts": runtime.get("data_counts") or {},
                 "note": "Observed row counts are not proof of eligible labels or training readiness.",
             },
@@ -660,6 +663,11 @@ async def infer_catalog_capability(
         raise ValueError(f"Unknown catalog model: {model_name}")
     if not isinstance(inputs, dict):
         raise ValueError("Structured model inputs required")
+    if model_name not in IMPLEMENTED_ADVANCED_MODELS:
+        rows = inputs.get("inputs")
+        if not isinstance(rows, list) or not 1 <= len(rows) <= 100:
+            return {"status": "dormant", "model": model_name, "reason": "one_to_100_real_input_rows_required",
+                    "used_fallback": True, "advisory_only": True}
     # Scope and runtime dependencies must come from the caller's authenticated
     # context, never from model inputs or stored user payloads.
     args = {key: value for key, value in inputs.items() if key not in {"org_id", "settings"}}
@@ -677,15 +685,21 @@ async def infer_catalog_capability(
             return {"status": "dormant", "model": model_name, "reason": "validated_deployed_artifact_required",
                     "used_fallback": True, "advisory_only": True}
     import asyncio
+    from app.ml.inference_validation import normalize_inference_result, validate_inference_result
     start = time.perf_counter()
     try:
-        if model_name in IMPLEMENTED_ADVANCED_MODELS:
+        if model_name == "intent_classifier":
+            predictions, probabilities = await asyncio.wait_for(instance.predict_text(args.get("inputs"), return_probabilities=True), timeout=1.5)
+            result = {"status": "ok", "predictions": predictions, "probabilities": probabilities}
+        elif model_name in IMPLEMENTED_ADVANCED_MODELS:
             result = await asyncio.wait_for(instance.predict_structured(org_id=org_id, settings=settings or get_settings(), **args), timeout=1.5)
         else:
-            predictions, probabilities = await asyncio.wait_for(instance.predict(args.get("inputs")), timeout=1.5)
+            predictions, probabilities = await asyncio.wait_for(instance.predict(args.get("inputs"), org_id=org_id, return_probabilities=True), timeout=1.5)
             result = {"status": "ok", "predictions": predictions, "probabilities": probabilities}
-    except (ValueError, TypeError, TimeoutError) as exc:
-        logger.warning("catalog_inference_refused org_id=%s model=%s error=%s", org_id, model_name, exc)
+        result = normalize_inference_result(result)
+        validate_inference_result(result)
+    except Exception as exc:  # Provider/runtime failures must not break other capabilities.
+        logger.warning("catalog_inference_refused org_id=%s model=%s error_type=%s", org_id, model_name, type(exc).__name__)
         return {"status": "dormant", "model": model_name, "reason": "inference_inputs_or_runtime_unavailable",
                 "used_fallback": True, "advisory_only": True}
     return {**result, "model": model_name, "latency_ms": int((time.perf_counter()-start)*1000),

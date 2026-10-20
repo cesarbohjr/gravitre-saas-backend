@@ -209,6 +209,12 @@ async def count_training_examples(org_id: str, client: Any) -> int:
 async def get_weight_for_org(org_id: str, settings: Any, client: Any) -> float:
     """Return learned reliability weight for org, or v5 fixed constant."""
     try:
+        from app.ml.training_consent import training_is_approved
+
+        # This RAG path does not use the shared catalog loader. Re-check current
+        # permission before every artifact read, including after pause/revoke.
+        if not await training_is_approved(org_id, "retrieval_ranker", settings):
+            return RELIABILITY_WEIGHT
         registry = get_model_registry()
         models = await registry.list_models(org_id=org_id, model_type=ModelType.CLASSIFIER)
         ranker_model = next((m for m in models if m.name == RETRIEVAL_RANKER_MODEL_NAME), None)

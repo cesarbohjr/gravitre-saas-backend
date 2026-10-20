@@ -72,6 +72,45 @@ class TrainingPermissionUpdate(BaseModel):
     scope_digest: str = Field(min_length=64, max_length=64)
 
 
+class InferenceVerificationRequest(BaseModel):
+    inputs: dict[str, Any]
+
+
+@router.post("/models/{model_name}/verify-inference")
+async def verify_ml_inference(
+    model_name: str,
+    payload: InferenceVerificationRequest,
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Run supplied real features through the same boundary as intelligence.
+
+    Does not train, promote, change consent, or call generative providers. Input
+    and output content are deliberately not persisted by this diagnostic.
+    """
+    import json
+    from datetime import datetime, timezone
+    from app.ml.model_catalog import (
+        GRAVITRE_ML_CATALOG, IMPLEMENTED_ADVANCED_MODELS, infer_catalog_capability,
+    )
+
+    if model_name not in GRAVITRE_ML_CATALOG:
+        raise HTTPException(status_code=404, detail="Unknown catalog model")
+    if len(json.dumps(payload.inputs, default=str)) > 65536:
+        raise HTTPException(status_code=413, detail="Inference inputs exceed 64 KiB")
+    if (GRAVITRE_ML_CATALOG[model_name]["status"].value != "trained"
+            and model_name not in IMPLEMENTED_ADVANCED_MODELS):
+        raise HTTPException(status_code=400, detail="Model inference is not implemented")
+    result = await infer_catalog_capability(org_id, model_name, payload.inputs, settings=settings)
+    return {
+        "org_id": org_id, "checked_at": datetime.now(timezone.utc).isoformat(),
+        "inference_health": "verified" if result.get("status") == "ok" and not result.get("used_fallback") else "not_verified",
+        "evidence_scope": "This request only; does not establish model accuracy, outcomes, or other surfaces.",
+        "result": result,
+    }
+
+
 @router.get("/training-permissions")
 async def list_training_permissions(
     org_id: Annotated[str, Depends(get_org_context)],

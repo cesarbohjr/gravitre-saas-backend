@@ -97,6 +97,9 @@ class PredictiveOperationsEngine:
                 "scope_note": SCOPE_NOTE,
             }
 
+        if model_name in {"workflow_anomaly_detector", "workflow_duration_forecaster", "workflow_success_predictor"}:
+            return await self._predict_workflow_runs(org_id, model_name)
+
         payload = await get_org_model_status(org_id, model_name, settings=self.settings)
         if payload.get("catalog_status") != ModelStatus.TRAINED.value:
             raise ModelNotTrainedError(model_name)
@@ -160,6 +163,26 @@ class PredictiveOperationsEngine:
             "advisory_only": True,
             "scope_note": SCOPE_NOTE,
         }
+
+    async def _predict_workflow_runs(self, org_id: str, model_name: str) -> dict[str, Any]:
+        from app.core.io_pool import run_io
+        from app.ml.feature_extraction import collect_workflow_run_features, features_to_anomaly_input, features_to_forecaster_train
+        from app.ml.model_catalog import infer_catalog_capability
+        from app.ml.training_consent import training_is_approved
+
+        # Do not even read the feature corpus when model permission is inactive.
+        if not await training_is_approved(org_id, model_name, self.settings):
+            return {"status": "dormant", "model": model_name, "reason": "training_permission_inactive", "advisory_only": True}
+        rows = await run_io(collect_workflow_run_features, self.settings, org_id)
+        rows = [row for row in rows if row.get("run_id") and row.get("graph_features_from_snapshot")
+                and not row.get("is_approximated") and isinstance(row.get("duration_ms"), (int, float))
+                and row["duration_ms"] > 0][:10]
+        if not rows:
+            return {"status": "not_available", "model": model_name, "reason": "measured_workflow_features_required", "advisory_only": True}
+        inputs = features_to_anomaly_input(rows) if model_name == "workflow_anomaly_detector" else features_to_forecaster_train(rows)[0]
+        result = await infer_catalog_capability(org_id, model_name, {"inputs": inputs}, settings=self.settings)
+        return {**result, "run_ids": [row["run_id"] for row in rows],
+                "scope_note": "Scores observed workflow runs; this is not a forecast of unobserved future runs."}
 
     async def run_domain_predictions(
         self,

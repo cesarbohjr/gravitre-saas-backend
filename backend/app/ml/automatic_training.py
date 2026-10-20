@@ -21,6 +21,7 @@ logger = get_logger(__name__)
 AUTOMATIC_MODELS = (
     "revenue_forecaster", "churn_risk_scorer", "cf_matrix_factorizer",
     "capacity_forecaster", "agentic_planning", "world_model",
+    "graph_neural_network", "self_supervised_embeddings", "meta_learning",
 )
 # These already train in CompanyIntelligenceOrchestrator; require the same
 # reviewed consent without adding duplicate training work.
@@ -58,7 +59,10 @@ async def reconcile_automatic_models(org_id: str, settings: Settings) -> dict[st
                 continue
             registered = next((m for m in models if m.name == CATALOG_MODEL_NAMES[name]), None)
             updated = registered.updated_at if registered else None
-            if updated is not None:
+            # An explicitly bound target starts as a draft registry row. Its
+            # creation timestamp is not a previous training run and must not
+            # delay the first valid, consented training attempt for 14 days.
+            if updated is not None and registered.current_version > 0:
                 if updated.tzinfo is None:
                     updated = updated.replace(tzinfo=timezone.utc)
                 if now - updated < COOLDOWN:

@@ -23,7 +23,7 @@ class RollbackMemoryRequest(BaseModel):
 
 
 @router.get("/candidates")
-def list_promotion_candidates(
+async def list_promotion_candidates(
     org_id: Annotated[str, Depends(get_org_context)],
     _admin: Annotated[tuple, Depends(require_admin)],
     status: str | None = Query(default=None),
@@ -33,7 +33,7 @@ def list_promotion_candidates(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     service = get_memory_promotion_service(settings)
-    return service.list_candidates(org_id, status=status, source=source, limit=limit, offset=offset)
+    return await service.list_candidates_with_ml_advice(org_id, status=status, source=source, limit=limit, offset=offset)
 
 
 @router.post("/candidates/{candidate_id}/approve")

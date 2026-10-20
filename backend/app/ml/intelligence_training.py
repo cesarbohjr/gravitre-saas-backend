@@ -57,6 +57,9 @@ CATALOG_MODEL_NAMES = {
     "sla_breach_predictor": "catalog-sla-breach",
     "deal_loss_scorer": "catalog-deal-loss",
     "capacity_forecaster": "catalog-capacity-forecast",
+    "meta_learning": "catalog-meta-learning",
+    "graph_neural_network": "catalog-graph-neural-network",
+    "self_supervised_embeddings": "catalog-self-supervised-embeddings",
     "world_model": "catalog-world-model",
     "agentic_planning": "catalog-agentic-planning",
 }
@@ -998,10 +1001,13 @@ async def train_causal_impact_analyzer(
     return {"trained": False, "reason": "on_demand_observational_estimator", **structured}
 
 
-from app.ml.advanced_training import train_world_model, train_agentic_planning
+from app.ml.advanced_training import train_world_model, train_agentic_planning, train_graph_neural_network, train_self_supervised_embeddings, train_meta_learning
 
 
 TRAINING_DISPATCH: dict[str, Any] = {
+    "meta_learning": train_meta_learning,
+    "graph_neural_network": train_graph_neural_network,
+    "self_supervised_embeddings": train_self_supervised_embeddings,
     "world_model": train_world_model,
     "agentic_planning": train_agentic_planning,
     "intent_classifier": train_v2_intent_classifier,

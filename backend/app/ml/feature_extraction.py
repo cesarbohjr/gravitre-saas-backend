@@ -317,6 +317,9 @@ def collect_workflow_run_features(
         row = feat.to_ml_dict(include_targets=True)
         row["workflow_id"] = feat.workflow_id
         row["run_id"] = feat.run_id
+        # Preserve measured targets; missing durations are not zero-duration runs.
+        row["duration_ms"] = feat.duration_ms
+        row["status"] = feat.status
         row["graph_features_from_snapshot"] = feat.graph_features_from_snapshot
         row["is_approximated"] = feat.is_approximated
         features.append(row)
@@ -355,8 +358,9 @@ def features_to_forecaster_train(
 def features_to_success_train(
     feature_rows: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], list[bool]]:
-    x_rows = [{key: row.get(key, 0) for key in _ML_FEATURE_KEYS} for row in feature_rows]
-    y_values = [str(row.get("status") or "") == "completed" for row in feature_rows]
+    resolved = [row for row in feature_rows if row.get("status") in {"completed", "failed"}]
+    x_rows = [{key: row.get(key, 0) for key in _ML_FEATURE_KEYS} for row in resolved]
+    y_values = [row["status"] == "completed" for row in resolved]
     return x_rows, y_values
 
 
