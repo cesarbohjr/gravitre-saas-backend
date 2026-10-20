@@ -50,6 +50,7 @@
 .ts-hero{border-radius:20px;padding:20px;display:flex;flex-wrap:wrap;gap:24px;align-items:center}
 .ts-hsum{flex:1 1 280px;min-width:0}
 .ts-eyebrow{font-family:var(--font-geist-mono),'Geist Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.12em;color:#6A6B64;text-transform:uppercase}
+.ts-area{color:#6A6B64;font-size:11px;width:74px;flex:0 0 auto;text-transform:uppercase;letter-spacing:.08em}
 .ts-metric{display:flex;align-items:baseline;gap:10px;margin-top:6px}
 .ts-metric .big{font-size:40px;font-weight:600;letter-spacing:-0.02em;line-height:1}
 .ts-metric .unit{font-size:15px;color:#55564F}

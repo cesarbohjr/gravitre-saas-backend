@@ -106,7 +106,7 @@ export function TrustSafetyRoles() {
               {CAPS.map(([area, label, cells]) => (
                 <div key={label} className="ts-row" style={{ ["--cols" as string]: "minmax(0,1fr) 110px 110px 110px", padding: "0 20px", minHeight: 54 }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 14 }}>
-                    <span className="ts-mono" style={{ color: "#6A6B64", fontSize: 11, width: 74, flex: "0 0 auto", textTransform: "uppercase", letterSpacing: ".08em" }}>{area}</span>
+                    <span className="ts-mono ts-area">{area}</span>
                     {label}
                   </div>
                   {cells.map((yes, i) => (
