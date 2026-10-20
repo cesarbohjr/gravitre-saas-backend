@@ -961,6 +961,11 @@ export default function CapabilityMarketplacePage() {
           title="Capabilities"
           description="Install and govern portable skills, plugins, and MCP capability packages while Gravitre retains execution, approval, and verification control."
           icon={<Package className="h-5 w-5" />}
+          actions={
+            <Button onClick={() => setMcpConnectOpen(true)}>
+              Connect MCP server
+            </Button>
+          }
         />
 
         <div className="mx-auto w-full max-w-6xl space-y-6 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
@@ -1004,6 +1009,238 @@ export default function CapabilityMarketplacePage() {
               icon={<AlertTriangle className="h-4 w-4" />}
             />
           </section>
+
+          {isAdmin ? (
+            <div id="mcp-servers" className="scroll-mt-20">
+            <GravitreSurface className="p-0">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-divide px-4 py-3">
+                <div className="min-w-0">
+                  <h2 className="text-sm font-medium text-foreground">
+                    MCP servers
+                  </h2>
+                  <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
+                    Connect an outside MCP server by its URL, or prepare one
+                    declared by an installed capability. Servers from a
+                    capability start disabled until you approve them and their
+                    tools. Either way, an agent can only call a tool after you
+                    grant it on that agent&apos;s page.
+                  </p>
+                </div>
+                <Button size="sm" onClick={() => setMcpConnectOpen(true)}>
+                  Connect by URL
+                </Button>
+              </div>
+              {portableMcpServers.length === 0 ? (
+                <div className="p-4">
+                  <GravitreEmpty
+                    illustration="moment-focus-time"
+                    title="No MCP servers yet"
+                    hint="Connect one by URL, or use Prepare MCP on an installed capability that declares remote MCP servers."
+                  />
+                </div>
+              ) : (
+                <ul className="divide-y divide-divide">
+                  {portableMcpServers.map((server) => {
+                    const serverTools = portableMcpTools.filter(
+                      (tool) => tool.server_id === server.id,
+                    )
+                    return (
+                      <li key={server.id} className="space-y-3 px-4 py-3">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <p
+                              className="truncate text-sm font-medium text-foreground"
+                              title={server.server_name}
+                            >
+                              {server.server_name}
+                            </p>
+                            <p className="mt-1 truncate text-xs text-muted-foreground">
+                              {server.server_url}
+                            </p>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              {server.transport} ·{" "}
+                              {server.activation_state ?? "pending review"} ·{" "}
+                              {server.enabled
+                                ? "server enabled"
+                                : "server disabled"}
+                            </p>
+                            {server.auth_type !== "none" ? (
+                              <div className="mt-2 grid max-w-xl gap-2 sm:grid-cols-[1fr_auto_auto]">
+                                <Input
+                                  type="password"
+                                  autoComplete="off"
+                                  value={
+                                    mcpCredentialInputs[server.id]?.secret ?? ""
+                                  }
+                                  onChange={(event) =>
+                                    setMcpCredentialInputs((current) => ({
+                                      ...current,
+                                      [server.id]: {
+                                        secret: event.target.value,
+                                        header:
+                                          current[server.id]?.header ??
+                                          "X-API-Key",
+                                      },
+                                    }))
+                                  }
+                                  placeholder={
+                                    server.auth_type === "bearer"
+                                      ? "Bearer token"
+                                      : "API key"
+                                  }
+                                  aria-label={
+                                    server.auth_type === "bearer"
+                                      ? "MCP bearer token"
+                                      : "MCP API key"
+                                  }
+                                />
+                                {server.auth_type === "api_key" ? (
+                                  <Input
+                                    value={
+                                      mcpCredentialInputs[server.id]?.header ??
+                                      "X-API-Key"
+                                    }
+                                    onChange={(event) =>
+                                      setMcpCredentialInputs((current) => ({
+                                        ...current,
+                                        [server.id]: {
+                                          secret:
+                                            current[server.id]?.secret ?? "",
+                                          header: event.target.value,
+                                        },
+                                      }))
+                                    }
+                                    placeholder="Header"
+                                    aria-label="MCP API key header"
+                                  />
+                                ) : null}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={
+                                    mcpBusy === server.id ||
+                                    !(
+                                      mcpCredentialInputs[server.id]?.secret ??
+                                      ""
+                                    ).trim()
+                                  }
+                                  onClick={() =>
+                                    void saveMcpCredentials(server)
+                                  }
+                                >
+                                  Save credentials
+                                </Button>
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="flex shrink-0 flex-wrap gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={Boolean(mcpBusy)}
+                              onClick={() => void discoverMcp(server.id)}
+                            >
+                              {mcpBusy === server.id
+                                ? "Checking…"
+                                : "Discover tools"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={server.enabled ? "ghost" : "outline"}
+                              disabled={
+                                mcpBusy === server.id ||
+                                (!server.enabled && serverTools.length === 0)
+                              }
+                              onClick={() =>
+                                setDecision({
+                                  title: server.enabled
+                                    ? "Disable this MCP server?"
+                                    : "Approve this MCP server?",
+                                  description:
+                                    "This changes server availability. Tool enablement and write approval policies remain separate controls.",
+                                  actionLabel: server.enabled
+                                    ? "Disable server"
+                                    : "Approve server",
+                                  destructive: server.enabled,
+                                  onConfirm: () =>
+                                    setMcpServerEnabled(
+                                      server.id,
+                                      !server.enabled,
+                                    ),
+                                })
+                              }
+                            >
+                              {server.enabled
+                                ? "Disable server"
+                                : "Approve server"}
+                            </Button>
+                          </div>
+                        </div>
+                        {serverTools.length ? (
+                          <div className="rounded border border-divide">
+                            <ul className="divide-y divide-divide">
+                              {serverTools.map((tool) => (
+                                <li
+                                  key={tool.id}
+                                  className="flex min-w-0 flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                                >
+                                  <div className="min-w-0">
+                                    <p
+                                      className="truncate text-xs font-medium text-foreground"
+                                      title={tool.tool_name}
+                                    >
+                                      {tool.tool_name}
+                                    </p>
+                                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                      {tool.capability_tier} ·{" "}
+                                      {tool.requires_approval === true
+                                        ? "approval required"
+                                        : tool.requires_approval === false
+                                          ? "no write approval required"
+                                          : "approval policy not reported"}{" "}
+                                      · {tool.risk_level ?? "unrated"} risk
+                                    </p>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={
+                                      mcpBusy === tool.id ||
+                                      (!server.enabled && !tool.enabled)
+                                    }
+                                    onClick={() =>
+                                      setDecision({
+                                        title: tool.enabled
+                                          ? "Disable this tool?"
+                                          : "Enable this tool?",
+                                        description: `${tool.tool_name} will be ${tool.enabled ? "disabled" : "enabled"}. Server availability and backend approval policy also govern execution.`,
+                                        actionLabel: tool.enabled
+                                          ? "Disable tool"
+                                          : "Enable tool",
+                                        destructive: tool.enabled,
+                                        onConfirm: () =>
+                                          setMcpToolEnabled(
+                                            tool.id,
+                                            !tool.enabled,
+                                          ),
+                                      })
+                                    }
+                                  >
+                                    {tool.enabled ? "Disable" : "Enable"}
+                                  </Button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </GravitreSurface>
+            </div>
+          ) : null}
 
           <GravitreSurface>
             <div className="flex flex-col gap-4">
@@ -2110,237 +2347,6 @@ export default function CapabilityMarketplacePage() {
             </GravitreSurface>
           ) : null}
 
-          {isAdmin ? (
-            <div id="mcp-servers" className="scroll-mt-20">
-            <GravitreSurface className="p-0">
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-divide px-4 py-3">
-                <div className="min-w-0">
-                  <h2 className="text-sm font-medium text-foreground">
-                    MCP servers
-                  </h2>
-                  <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
-                    Connect an outside MCP server by its URL, or prepare one
-                    declared by an installed capability. Servers from a
-                    capability start disabled until you approve them and their
-                    tools. Either way, an agent can only call a tool after you
-                    grant it on that agent&apos;s page.
-                  </p>
-                </div>
-                <Button size="sm" onClick={() => setMcpConnectOpen(true)}>
-                  Connect by URL
-                </Button>
-              </div>
-              {portableMcpServers.length === 0 ? (
-                <div className="p-4">
-                  <GravitreEmpty
-                    illustration="moment-focus-time"
-                    title="No MCP servers yet"
-                    hint="Connect one by URL, or use Prepare MCP on an installed capability that declares remote MCP servers."
-                  />
-                </div>
-              ) : (
-                <ul className="divide-y divide-divide">
-                  {portableMcpServers.map((server) => {
-                    const serverTools = portableMcpTools.filter(
-                      (tool) => tool.server_id === server.id,
-                    )
-                    return (
-                      <li key={server.id} className="space-y-3 px-4 py-3">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="min-w-0">
-                            <p
-                              className="truncate text-sm font-medium text-foreground"
-                              title={server.server_name}
-                            >
-                              {server.server_name}
-                            </p>
-                            <p className="mt-1 truncate text-xs text-muted-foreground">
-                              {server.server_url}
-                            </p>
-                            <p className="mt-1 text-[11px] text-muted-foreground">
-                              {server.transport} ·{" "}
-                              {server.activation_state ?? "pending review"} ·{" "}
-                              {server.enabled
-                                ? "server enabled"
-                                : "server disabled"}
-                            </p>
-                            {server.auth_type !== "none" ? (
-                              <div className="mt-2 grid max-w-xl gap-2 sm:grid-cols-[1fr_auto_auto]">
-                                <Input
-                                  type="password"
-                                  autoComplete="off"
-                                  value={
-                                    mcpCredentialInputs[server.id]?.secret ?? ""
-                                  }
-                                  onChange={(event) =>
-                                    setMcpCredentialInputs((current) => ({
-                                      ...current,
-                                      [server.id]: {
-                                        secret: event.target.value,
-                                        header:
-                                          current[server.id]?.header ??
-                                          "X-API-Key",
-                                      },
-                                    }))
-                                  }
-                                  placeholder={
-                                    server.auth_type === "bearer"
-                                      ? "Bearer token"
-                                      : "API key"
-                                  }
-                                  aria-label={
-                                    server.auth_type === "bearer"
-                                      ? "MCP bearer token"
-                                      : "MCP API key"
-                                  }
-                                />
-                                {server.auth_type === "api_key" ? (
-                                  <Input
-                                    value={
-                                      mcpCredentialInputs[server.id]?.header ??
-                                      "X-API-Key"
-                                    }
-                                    onChange={(event) =>
-                                      setMcpCredentialInputs((current) => ({
-                                        ...current,
-                                        [server.id]: {
-                                          secret:
-                                            current[server.id]?.secret ?? "",
-                                          header: event.target.value,
-                                        },
-                                      }))
-                                    }
-                                    placeholder="Header"
-                                    aria-label="MCP API key header"
-                                  />
-                                ) : null}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={
-                                    mcpBusy === server.id ||
-                                    !(
-                                      mcpCredentialInputs[server.id]?.secret ??
-                                      ""
-                                    ).trim()
-                                  }
-                                  onClick={() =>
-                                    void saveMcpCredentials(server)
-                                  }
-                                >
-                                  Save credentials
-                                </Button>
-                              </div>
-                            ) : null}
-                          </div>
-                          <div className="flex shrink-0 flex-wrap gap-1.5">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={Boolean(mcpBusy)}
-                              onClick={() => void discoverMcp(server.id)}
-                            >
-                              {mcpBusy === server.id
-                                ? "Checking…"
-                                : "Discover tools"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant={server.enabled ? "ghost" : "outline"}
-                              disabled={
-                                mcpBusy === server.id ||
-                                (!server.enabled && serverTools.length === 0)
-                              }
-                              onClick={() =>
-                                setDecision({
-                                  title: server.enabled
-                                    ? "Disable this MCP server?"
-                                    : "Approve this MCP server?",
-                                  description:
-                                    "This changes server availability. Tool enablement and write approval policies remain separate controls.",
-                                  actionLabel: server.enabled
-                                    ? "Disable server"
-                                    : "Approve server",
-                                  destructive: server.enabled,
-                                  onConfirm: () =>
-                                    setMcpServerEnabled(
-                                      server.id,
-                                      !server.enabled,
-                                    ),
-                                })
-                              }
-                            >
-                              {server.enabled
-                                ? "Disable server"
-                                : "Approve server"}
-                            </Button>
-                          </div>
-                        </div>
-                        {serverTools.length ? (
-                          <div className="rounded border border-divide">
-                            <ul className="divide-y divide-divide">
-                              {serverTools.map((tool) => (
-                                <li
-                                  key={tool.id}
-                                  className="flex min-w-0 flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
-                                >
-                                  <div className="min-w-0">
-                                    <p
-                                      className="truncate text-xs font-medium text-foreground"
-                                      title={tool.tool_name}
-                                    >
-                                      {tool.tool_name}
-                                    </p>
-                                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                                      {tool.capability_tier} ·{" "}
-                                      {tool.requires_approval === true
-                                        ? "approval required"
-                                        : tool.requires_approval === false
-                                          ? "no write approval required"
-                                          : "approval policy not reported"}{" "}
-                                      · {tool.risk_level ?? "unrated"} risk
-                                    </p>
-                                  </div>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    disabled={
-                                      mcpBusy === tool.id ||
-                                      (!server.enabled && !tool.enabled)
-                                    }
-                                    onClick={() =>
-                                      setDecision({
-                                        title: tool.enabled
-                                          ? "Disable this tool?"
-                                          : "Enable this tool?",
-                                        description: `${tool.tool_name} will be ${tool.enabled ? "disabled" : "enabled"}. Server availability and backend approval policy also govern execution.`,
-                                        actionLabel: tool.enabled
-                                          ? "Disable tool"
-                                          : "Enable tool",
-                                        destructive: tool.enabled,
-                                        onConfirm: () =>
-                                          setMcpToolEnabled(
-                                            tool.id,
-                                            !tool.enabled,
-                                          ),
-                                      })
-                                    }
-                                  >
-                                    {tool.enabled ? "Disable" : "Enable"}
-                                  </Button>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : null}
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </GravitreSurface>
-            </div>
-          ) : null}
 
           <GravitreSurface className="p-0">
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-divide px-4 py-3">
