@@ -209,4 +209,11 @@ def reconcile_final(released: str, final: str) -> tuple[str, str]:
         return rest, final_text
     if _squash(final_text) in _squash(shown):
         return "", shown
+    # A social rewrite can prepend a greeting to the exact text already shown.
+    # Do not replay that answer just to add "Hey — got it" at the beginning.
+    greeting = re.match(r"^(?:(?:hey|hi|hello|okay|ok|got it|sure|thanks)\b[\s—–,!.-]*)+", final_text, re.I)
+    if greeting and shown:
+        tail = remainder_after(final_text[greeting.end():], shown)
+        if tail is not None:
+            return tail, shown + tail
     return f"\n\n{final_text}", f"{shown}\n\n{final_text}"

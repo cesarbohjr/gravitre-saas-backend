@@ -232,6 +232,10 @@ class ChatOrchestrationService:
             if status in {"awaiting_plan_confirm", "awaiting_step_confirm"}:
                 return True
         text = action_intent_text(message)
+        from app.services.action_intent import is_native_work_request
+
+        if is_native_work_request(message):
+            return False
         if len(text) < 12:
             return False
         integrations = ChatOrchestrationService._mentioned_integrations(text, connected_integrations)
@@ -965,6 +969,10 @@ class ChatOrchestrationService:
         user_id: str,
         classification: dict[str, Any],
     ) -> list[OrchestrationStep]:
+        from app.services.action_intent import is_native_work_request
+
+        if is_native_work_request(message):
+            return []
         # Google Ads multi-campaign structure must stay one executable action
         # (structure.create). Fragmenting into "set up campaigns / keywords / …"
         # steps yields no_executable_action skips + a misleading plan confirm.

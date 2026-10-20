@@ -77,6 +77,11 @@ function FeedItem({ item, onDecided }: { item: RecommendationFeedItem; onDecided
         </ul>
       ) : null}
       <div className="flex flex-wrap gap-2 pt-1">
+        {item.remedies?.map((remedy) => (
+          <Button key={remedy.href} size="sm" variant="outline" className="min-h-11" asChild>
+            <Link href={remedy.href} title={remedy.why}>{remedy.label}</Link>
+          </Button>
+        ))}
         {canDecide ? (
           <>
             <Button size="sm" className="min-h-11" disabled={busy !== null} onClick={() => void decide(true)}>
@@ -87,7 +92,7 @@ function FeedItem({ item, onDecided }: { item: RecommendationFeedItem; onDecided
             </Button>
           </>
         ) : null}
-        {item.href && !canDecide ? (
+        {item.href && !canDecide && !item.remedies?.length ? (
           <Button size="sm" variant="ghost" className="min-h-11" asChild>
             <Link href={item.href}>Open</Link>
           </Button>
@@ -104,11 +109,12 @@ const FEED_SHOWS =
  * One ranked list of what needs attention. While the feature is switched off
  * (404) it says so plainly instead of hiding.
  */
-export function RecommendationFeedPanel() {
+export function RecommendationFeedPanel({ kinds }: { kinds?: readonly string[] } = {}) {
   const { data, error, isLoading, mutate } = useSWR("recommendation-feed", () => accountIntelligenceApi.feed(), {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
   })
+  const items = data?.items.filter((item) => !kinds || kinds.includes(item.kind))
   if (isFeatureOff(error)) {
     return (
       <section aria-labelledby="recommendation-feed-heading" className="space-y-2">
@@ -146,9 +152,9 @@ export function RecommendationFeedPanel() {
           {unavailable === 1 ? "One source" : `${unavailable} sources`} couldn&apos;t be read, so this list may be incomplete.
         </p>
       ) : null}
-      {data && data.items.length === 0 ? <p className="text-sm text-muted-foreground">Nothing needs attention right now.</p> : null}
+      {data && items?.length === 0 ? <p className="text-sm text-muted-foreground">Nothing needs attention right now.</p> : null}
       <ul className="divide-y divide-divide">
-        {data?.items.map((item) => <FeedItem key={item.id} item={item} onDecided={() => void mutate()} />)}
+        {items?.map((item) => <FeedItem key={item.id} item={item} onDecided={() => void mutate()} />)}
       </ul>
     </section>
   )

@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/gravitre/empty-state"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { IntelligenceShell } from "@/components/intelligence/shell"
 import { AccountHealthPanel } from "@/components/accounts/account-health-panel"
+import { RecommendationFeedPanel } from "@/components/accounts/recommendation-feed-panel"
 import { useAuth } from "@/lib/auth-context"
 import { CONTEXT_HELP_HREF } from "@/lib/context-sources"
 import { PAGE_FRAME } from "@/lib/design-system"
@@ -51,6 +52,7 @@ export default function IntelligenceAccountsPage() {
         />
         <IntelligenceShell activeTab="accounts">
           <AccountHealthPanel />
+          <RecommendationFeedPanel kinds={["account_health", "account_change", "proposed_work"]} />
         </IntelligenceShell>
       </div>
     </AppShell>

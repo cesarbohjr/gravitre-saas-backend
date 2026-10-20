@@ -344,6 +344,11 @@ def narrow_tools_for_turn(
     platform_tools = [t for t in tools if _is_platform_tool(t)]
     connector_tools = [t for t in tools if not _is_platform_tool(t)]
 
+    from app.services.action_intent import is_native_work_request
+    if is_native_work_request(query):
+        visible = compress_tool_definitions(platform_tools)
+        return visible, {"totalTools": len(tools), "visibleTools": len(visible), "nativeWorkOnly": True}
+
     focus = {str(c).strip().lower() for c in (connector_names or []) if str(c).strip()}
     mentioned = _mentioned_connectors(query, classification, connected)
     focus |= mentioned

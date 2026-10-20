@@ -240,6 +240,7 @@ export function repeatsAnswer(candidate: string | null | undefined, answer: stri
 }
 
 function pendingLabel(pendingTask: ChatPendingTask): string {
+  if (pendingTask.type === "create_assignment") return "Create Gravitre assignment"
   const params = pendingTask.params
   if (pendingTask.type === "connector_orchestration") {
     if (pendingTask.status === "awaiting_step_confirm" && pendingTask.current_step?.label) {
@@ -275,6 +276,9 @@ function pendingDescription(pendingTask: ChatPendingTask): string {
   }
   if (pendingTask.type === "create_agent") {
     return "Gravitre will create your agent and notify you when it is ready."
+  }
+  if (pendingTask.type === "create_assignment") {
+    return "Creates an assignment inside Gravitre and queues it for an agent. Connected-app writes still need their own approval."
   }
   return "Gravitre will create a draft workflow you can open in the builder."
 }

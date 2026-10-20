@@ -4521,6 +4521,7 @@ export interface RecommendationFeedItem {
   actions: string[]
   advisoryOnly: boolean
   workObjectId?: string
+  remedies?: Array<{ label: string; href: string; why: string }>
 }
 
 export interface RecommendationFeed {

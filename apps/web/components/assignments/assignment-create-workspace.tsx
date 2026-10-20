@@ -73,7 +73,7 @@ export function NewAssignmentPageContent() {
     preselectedAgent,
   )
   const autoResolved = useRef(false)
-  const [brief, setBrief] = useState("")
+  const [brief, setBrief] = useState(() => searchParams.get("task")?.slice(0, 12000) ?? "")
   const [priority, setPriority] = useState("normal")
   const [sources, setSources] = useState<string[]>([])
   const [selectedOutputs, setOutputs] = useState<string[]>([])

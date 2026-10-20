@@ -58,7 +58,11 @@ AGENT_CREATE = re.compile(
 )
 
 PLATFORM_TASK_TYPES = frozenset(
-    {"create_agent", "create_workflow", "execute_workflow", "run_agent_task"}
+    {"create_agent", "create_workflow", "execute_workflow", "run_agent_task", "create_assignment"}
+)
+
+ASSIGNMENT_CREATE = re.compile(
+    r"\b(?:create|make|stage|propose)\b[^.!?;]*\b(?:internal\s+)?(?:gravitre\s+)?assignment\b", re.I
 )
 
 
@@ -147,6 +151,9 @@ def _read_back_evidence(
         return evidence
     observed = str(row.get(field) or "").strip()
     evidence["observed"] = observed
+    if expected and not observed:
+        evidence["detail"] = "field_missing"
+        return evidence
     if str(row.get("id") or resource_id) != resource_id:
         evidence["detail"] = "entity_id_mismatch"
         return evidence
@@ -223,8 +230,18 @@ class ConversationalExecutionService:
         pending = task_state.get("pending_task") or {}
         exec_plan = task_state.get("execution_plan") if isinstance(task_state.get("execution_plan"), dict) else {}
         pending_type = str(pending.get("type") or "") if isinstance(pending, dict) else ""
-        if pending_type and pending_type not in PLATFORM_TASK_TYPES:
+        pending_status = str(pending.get("status") or "")
+        terminal = pending_status in {"executed", "completed", "cancelled", "failed"}
+        if pending_type and pending_type not in PLATFORM_TASK_TYPES and not terminal:
             return None
+        if terminal and not self.is_confirmation(message):
+            # A finished create is conversation history, not a new approval.
+            # Only an explicit new create request may start another one.
+            from app.services.action_intent import action_intent_text
+
+            fresh = action_intent_text(message)
+            if not any(pattern.search(fresh) for pattern in (ASSIGNMENT_CREATE, AGENT_CREATE, WORKFLOW_CREATE)):
+                return None
         from app.services.pending_write_resume import (
             should_resume_frozen_write,
             should_skip_unified_live_for_compiled_write,
@@ -240,6 +257,13 @@ class ConversationalExecutionService:
             return None
         from app.services.chat_action_mapper import WRITE_VERBS
         from app.services.connector_semantic_registry import message_mentions_any_connector
+        from app.services.action_intent import action_intent_text, is_native_work_request
+
+        intent_text = action_intent_text(message)
+        if ASSIGNMENT_CREATE.search(intent_text) and (
+            is_native_work_request(message) or not message_mentions_any_connector(intent_text)
+        ):
+            return "create_assignment"
 
         if (
             WRITE_VERBS.search(message or "")
@@ -292,6 +316,11 @@ class ConversationalExecutionService:
         if not text or self.is_confirmation(text) or self.is_decline(text):
             return {}
         updates: dict[str, str] = {}
+        if task_type == "create_assignment":
+            # Keep the original task and constraints; a quoted title alone is not the task.
+            if ASSIGNMENT_CREATE.search(message):
+                return {"assignment_task": text}
+            return {}
         quoted = QUOTED_NAME.search(text)
         if quoted:
             updates["agent_name" if task_type == "create_agent" else "workflow_goal"] = quoted.group(1).strip()
@@ -318,6 +347,8 @@ class ConversationalExecutionService:
 
     @staticmethod
     def params_ready(task_type: str, clarified: dict[str, Any]) -> bool:
+        if task_type == "create_assignment":
+            return bool(clarified.get("assignment_task"))
         if task_type == "create_agent":
             return bool(clarified.get("agent_name") and clarified.get("agent_purpose"))
         if task_type == "create_workflow":
@@ -329,6 +360,13 @@ class ConversationalExecutionService:
         return False
 
     def build_confirm_message(self, task_type: str, clarified: dict[str, Any]) -> str:
+        if task_type == "create_assignment":
+            task = str(clarified.get("assignment_task") or "")
+            return (
+                f"I'll create this assignment in Gravitre:\n\n{task}\n\n"
+                "Approving queues it in Assignments for an agent. Connected-app writes still require their own approval.\n\n"
+                "Reply **yes** to create it, or **no** to cancel."
+            )
         if task_type == "create_agent":
             name = str(clarified.get("agent_name") or "your agent")
             purpose = str(clarified.get("agent_purpose") or "general assistance")
@@ -375,6 +413,7 @@ class ConversationalExecutionService:
         task_state: dict[str, Any],
         client: Any,
         connected_integrations: list[str] | None = None,
+        environment_name: str = "production",
     ) -> dict[str, Any] | None:
         task_type = self.resolve_task_type(
             message,
@@ -499,6 +538,8 @@ class ConversationalExecutionService:
             clarified["plan_id"] = plan_from_state
             clarified["parent_plan_id"] = plan_from_state
         updates = self.extract_param_updates(message, task_type, clarified)
+        if task_type == "create_assignment" and "assignment_task" in updates:
+            clarified["environment_name"] = environment_name
         if updates:
             clarified.update(updates)
             await self._state.update_task_state(
@@ -576,7 +617,7 @@ class ConversationalExecutionService:
         await self._state.update_task_state(
             conversation_id,
             org_id,
-            {"pending_task": {"type": task_type, "status": "awaiting_confirm", "params": clarified}},
+            {"clarified_params": clarified, "pending_task": {"type": task_type, "status": "awaiting_confirm", "params": clarified}},
         )
         refreshed = await self._state.get_task_state(conversation_id, org_id, client=client)
         return {
@@ -584,7 +625,7 @@ class ConversationalExecutionService:
             "dialogue_mode": "confirm",
             "message": self.build_confirm_message(task_type, clarified),
             "task_state": refreshed,
-            "pending_task": {"type": task_type, "params": clarified},
+            "pending_task": {"type": task_type, "status": "awaiting_confirm", "params": clarified},
         }
 
     async def execute_confirmed_task(
@@ -713,10 +754,10 @@ class ConversationalExecutionService:
     ) -> None:
         from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
 
-        if result.entity_type == "workflow_run" and str(result.entity_id or "").strip():
+        if result.entity_type in {"workflow_run", "agent_job"} and str(result.entity_id or "").strip():
             # The workflow runtime owns that run's terminal fanout (run row, email,
-            # learning). Finalizing it again here would double-notify or overwrite
-            # the runtime's truthful status.
+            # learning). An assignment being queued is not a verified business
+            # result. Its worker owns the eventual outcome and learning event.
             return
         run_id = None
         if not result.success:
@@ -792,6 +833,8 @@ class ConversationalExecutionService:
         try:
             if task_type == "create_agent":
                 result = await self._create_agent(org_id, user_id, clarified, client)
+            elif task_type == "create_assignment":
+                result = await self._create_assignment(org_id, user_id, clarified, client)
             elif task_type == "create_workflow":
                 result = await self._create_workflow(org_id, user_id, clarified, client)
             elif task_type == "execute_workflow":
@@ -982,6 +1025,57 @@ class ConversationalExecutionService:
             task_label=f"Created agent {name}",
             structured={"verification": evidence},
             outcome_verified=verified,
+        )
+
+    async def _create_assignment(
+        self, org_id: str, user_id: str, clarified: dict[str, Any], client: Any,
+    ) -> ExecutionResult:
+        from app.operators import agent_jobs as jobs
+        from app.services.conversation_write_guard import assert_org_write_allowed
+        from app.workers.queue import enqueue_agent_execution_job
+
+        assert_org_write_allowed(org_id, actor_id=user_id, resource="Gravitre assignment")
+        task = str(clarified.get("assignment_task") or "").strip()
+        if not task:
+            raise ValueError("Assignment task is required")
+        brief = (
+            "Complete this assignment. The assignment itself already exists in Gravitre; "
+            "do not create another assignment. Follow the task description and all constraints "
+            "in the approved brief below.\n\n" + task
+        )
+        job = jobs.create_job(
+            client, org_id, kind="operator_task", created_by=user_id,
+            environment=str(clarified.get("environment_name") or "production"),
+            payload={"task": brief, "context": {"source": "approved_chat_assignment", "approved_brief": task}},
+        )
+        job_id = str(job.get("id") or "")
+        if not job_id:
+            raise ValueError("Assignment creation returned no id")
+        evidence = _read_back_evidence(
+            lambda: jobs.get_job(client, org_id, job_id), read_action="agent_jobs.get",
+            resource_id=job_id, field="id", expected=job_id,
+        )
+        from app.workflows.audit import write_audit_event
+
+        write_audit_event(
+            client, org_id=org_id, actor_id=user_id, action="assignment.created",
+            resource_type="agent_job", resource_id=job_id,
+            metadata={"source": "approved_chat_assignment", "creation_verified": evidence["verified"]},
+        )
+        queued = False
+        if evidence["verified"]:
+            try:
+                await enqueue_agent_execution_job(job_id)
+                queued = True
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("chat_assignment_enqueue_failed job_id=%s error=%s", job_id, type(exc).__name__)
+        return ExecutionResult(
+            success=True, entity_type="agent_job", entity_id=job_id,
+            result_url=f"/assignments/{job_id}", title="Gravitre assignment",
+            body=("Assignment created and queued in Gravitre. Its result is not yet verified."
+                  if queued else "Assignment saved in Gravitre. Execution has not been confirmed; check Assignments before retrying."),
+            task_label="Created Gravitre assignment", outcome_verified=evidence["verified"],
+            structured={"verification": evidence, "execution_queued": queued},
         )
 
     async def _create_workflow(

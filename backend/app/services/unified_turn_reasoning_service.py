@@ -2034,6 +2034,29 @@ async def apply_unified_turn_live(
     Write tool proposals stage ``awaiting_confirm`` — never bypass approval.
     """
     active = settings or get_settings()
+    from app.services.conversational_execution_service import (
+        ASSIGNMENT_CREATE, get_conversational_execution_service,
+    )
+    from app.services.action_intent import action_intent_text
+
+    pending_native = safe_normalize_stored_dict(task_state or {}, key="pending_task")
+    native_status = str(pending_native.get("status") or "")
+    native_service = get_conversational_execution_service(active)
+    if conversation_id and (
+        (str(pending_native.get("type") or "") == "create_assignment" and (
+            native_status in {"collecting", "awaiting_confirm"} or native_service.is_confirmation(message)
+        ))
+        or ((not pending_native or native_status in {"completed", "executed", "cancelled", "failed"})
+            and ASSIGNMENT_CREATE.search(action_intent_text(message)))
+    ):
+        native_turn = await native_service.process_turn(
+            org_id=org_id, user_id=user_id, conversation_id=conversation_id,
+            message=message, understanding={}, classification=classification or {},
+            task_state=task_state or {}, client=client,
+            connected_integrations=list(connected_integrations or []), environment_name=environment_name,
+        )
+        if native_turn:
+            return native_turn
     from app.services.capability_evidence_plan import looks_like_ceo_ops_question
 
     if looks_like_ceo_ops_question(message or ""):

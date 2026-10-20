@@ -108,6 +108,21 @@ export default function HowGravitreUsesYourContextPage() {
             </p>
           </li>
           <li className="space-y-1.5">
+            <h2 className="text-sm font-semibold text-foreground">From a finding to useful work</h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Accounts and Forecasts show evidence-backed next steps. Review a relevant Play, such as Customer
+              Rescue, or prepare a review assignment with the finding and evidence already in its brief. Review
+              prerequisites and approve the work before starting. Accepting a proposal only adds planned work;
+              customer-facing changes still require their normal approval.
+            </p>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              A sentiment reading describes customer language. A forecast estimates a future result. When they
+              disagree, compare both sources. Completion and verified business results feed outcome learning;
+              a chat reply or an accepted suggestion does not prove that a model learned or a customer was retained.
+              Analyzing text pasted into chat does not create a stored customer reading by itself.
+            </p>
+          </li>
+          <li className="space-y-1.5">
             <h2 className="text-sm font-semibold text-foreground">Turning things on and off</h2>
             <ul className="list-disc space-y-1 pl-4 text-sm leading-relaxed text-muted-foreground">
               <li>

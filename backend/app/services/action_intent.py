@@ -8,8 +8,8 @@ from __future__ import annotations
 import re
 
 _CLAUSE = re.compile(r"(?<=[.!?;])\s+|\s+(?:but|however)\s+", re.I)
-_NEGATIVE = re.compile(r"\b(?:do\s+not|don['’]?t|never|must\s+not|without)\s+", re.I)
-_QUOTED = re.compile(r'"[^"\n]*"|`[^`\n]*`|(?<!\w)\x27[^\x27\n]*\x27(?!\w)')
+_NEGATIVE = re.compile(r"\b(?:do\s+not|don['’]?t|never|must\s+not|without)\s+|(?:^|,\s*)no\s+(?!later\b|more\s+than\b|less\s+than\b)", re.I)
+_QUOTED = re.compile(r'"[^"\n]*"|“[^”\n]*”|‘[^’\n]*’|`[^`\n]*`|(?<!\w)\x27[^\x27\n]*\x27(?!\w)')
 _META = re.compile(
     r"^(?:first\s+)?(?:show|report|preserve|include|return|provide|list)\b"
     r".*\b(?:approval|trace\s+marker|(?:recommendation|approval|workflow\s+run)\s+ids?)\b",
@@ -40,3 +40,13 @@ def actionable_clauses(message: str) -> list[str]:
 def action_intent_text(message: str) -> str:
     # Literal message bodies and names are parameters, not connector requests.
     return _QUOTED.sub(" ", ". ".join(actionable_clauses(message)))
+
+
+def is_native_work_request(message: str) -> bool:
+    """Explicit Gravitre work must never be fulfilled with a connected app fallback."""
+    text = action_intent_text(message)
+    return bool(re.search(
+        r"\b(?:internal\s+gravitre|gravitre(?:['’]s)?\s+(?:assignment|workflow|play|agent)|"
+        r"(?:assignment|workflow|play|agent)\b[^.!?;]{0,80}\b(?:in|within)\s+gravitre)\b",
+        text, re.I,
+    ))
