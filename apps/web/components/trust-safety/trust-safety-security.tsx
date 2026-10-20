@@ -228,14 +228,14 @@ export function TrustSafetySecurity() {
                     {copied ? "Copied!" : "Copy"}
                   </button>
                 </div>
-                <p style={{ fontSize: 13, color: "#6A6B64", margin: 0 }}>Paste your IdP's XML metadata URL below:</p>
+                <p style={{ fontSize: 13, color: "#6A6B64", margin: 0 }}>Paste your IdP&apos;s XML metadata URL below:</p>
                 <input type="url" className="gv-select" placeholder="https://yourcompany.okta.com/app/metadata.xml" style={{ width: "100%", maxWidth: 440 }} />
               </div>
             )}
             {ssoStep === 2 && (
               <div className="gv-note" style={{ marginBottom: 16 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B8A5C" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "0 0 auto", marginTop: 2 }}><circle cx="12" cy="12" r="8.5" /><path d="m8.5 12 2.5 2.5 4.5-5" /></svg>
-                <span>Configuration looks correct. Click "Enable SSO" to activate single sign-on for your workspace. Members will be redirected to your IdP on next login.</span>
+                <span>Configuration looks correct. Click &quot;Enable SSO&quot; to activate single sign-on for your workspace. Members will be redirected to your IdP on next login.</span>
               </div>
             )}
 
