@@ -69,7 +69,7 @@ def delivery(base: str, token: str, org_id: str) -> tuple[dict, list[str]]:
     if not isinstance(payload, dict):
         return {}, ["delivery_invalid_payload"]
     issues = []
-    if payload.get("status") in ("blocked", "disabled", "paused"):
+    if payload.get("status") != "active":
         issues.append("delivery_not_active")
     if payload.get("blockers"):
         issues.append("delivery_has_blockers")
