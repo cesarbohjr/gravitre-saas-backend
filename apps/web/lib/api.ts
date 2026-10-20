@@ -3143,6 +3143,15 @@ export const intelligenceApi = {
       apiUrl(`/api/admin/intelligence/outcomes${suffix}`),
     )
   },
+  outcomeDelivery: () => fetcher<{
+    status: "blocked" | "queued" | "idle"
+    undelivered_count: number | null
+    blockers: string[]
+    handler_enabled: boolean
+    handler_registered: boolean
+    relay_enabled: boolean
+    delivery_is_not_verified_learning: boolean
+  }>(apiUrl("/api/admin/intelligence/outcomes/delivery")),
   intelligenceEvaluations: (params?: { periodDays?: number }) => {
     const query = new URLSearchParams()
     if (params?.periodDays != null) query.set("periodDays", String(params.periodDays))

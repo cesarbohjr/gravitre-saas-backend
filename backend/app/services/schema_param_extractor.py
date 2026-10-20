@@ -7,6 +7,7 @@ reasoning.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from typing import Any
@@ -23,6 +24,7 @@ from app.services.parameter_ledger import (
 )
 
 logger = get_logger(__name__)
+EXTRACTION_TIMEOUT_SECONDS = 3.0
 
 
 class ExtractedActionArgs(BaseModel):
@@ -294,11 +296,13 @@ async def extract_action_args(
         required_missing = [
             f.label
             for f in schema.required_fields
-            if f.arg_keys and not str(heuristic.get(f.arg_keys[0]) or "").strip()
+            if f.arg_keys and not any(str(heuristic.get(key) or "").strip() for key in f.arg_keys)
         ]
         if not required_missing:
             return heuristic
         missing = required_missing
+    elif not missing:
+        return heuristic
 
     try:
         from app.services.model_router import TaskType, get_model_router
@@ -318,7 +322,7 @@ async def extract_action_args(
             f"Still missing: {', '.join(missing) or 'none'}\n"
             f"Current message: {message}\n"
         )
-        response = await get_model_router().complete(
+        response = await asyncio.wait_for(get_model_router().complete(
             task_type=TaskType.CLASSIFICATION,
             prompt=prompt,
             system_prompt=(
@@ -329,7 +333,7 @@ async def extract_action_args(
             max_tokens=400,
             response_format=ExtractedActionArgs,
             org_id=org_id,
-        )
+        ), timeout=EXTRACTION_TIMEOUT_SECONDS)
         parsed = response.parsed if isinstance(response.parsed, dict) else None
         if not parsed:
             try:

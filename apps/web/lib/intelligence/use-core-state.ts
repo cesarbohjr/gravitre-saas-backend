@@ -2,6 +2,7 @@
 
 import useSWR from "swr"
 import { intelligenceApi } from "@/lib/api"
+import { getQuickOrgId } from "@/lib/org-context"
 
 /**
  * Phase 2 (2026-09-11): polls the real Intelligence Core state endpoint.
@@ -11,7 +12,7 @@ import { intelligenceApi } from "@/lib/api"
  */
 export function useIntelligenceCoreState(enabled: boolean, windowHours = 24) {
   return useSWR(
-    enabled ? ["intelligence/core-state", windowHours] : null,
+    enabled ? ["intelligence/core-state", getQuickOrgId(), windowHours] : null,
     async () => {
       const body = await intelligenceApi.coreState({ windowHours })
       // Consumers read `data.core.*` directly; a body without `core` is no data.

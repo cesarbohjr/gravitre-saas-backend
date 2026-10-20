@@ -26,7 +26,7 @@ _EXECUTING_LEASE_SECONDS = 600
 
 CONFIRM_PATTERN = re.compile(
     r"^\s*(yes|yeah|yep|y|confirm|confirmed|go ahead|proceed|create it|do it|"
-    r"sounds good|approved|sure|ok|okay|please do|let's do it|lets do it)\s*[.!]?\s*$",
+    r"sounds good|approve|approved|sure|ok|okay|please do|let's do it|lets do it)\s*[.!]?\s*$",
     re.I,
 )
 DECLINE_PATTERN = re.compile(

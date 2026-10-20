@@ -639,7 +639,7 @@ export function AiWorkspace({
     }
   }, [user])
 
-  const { messages, sendMessage, status, setMessages, stop, regenerate } = useChat({
+  const { messages, sendMessage, status, setMessages, stop, regenerate, clearError } = useChat({
     transport,
     onError: (error) => {
       connectedFileRefsRef.current = []
@@ -647,12 +647,19 @@ export function AiWorkspace({
       setSessionBusy(false)
       if (!isUserChatAbort(error)) {
         const conversationId = activeConversationIdRef.current
-        void recoverCompletedChatTurn(conversationId, messagesRef.current).then((recovered) => {
-          if (!recovered) return
+        const interruptedMessages = messagesRef.current
+        const interruptedTail = interruptedMessages.at(-1)?.id
+        void recoverCompletedChatTurn(conversationId, interruptedMessages).then((recovered) => {
+          // A late replay must not replace a newer turn or another workspace.
+          if (activeConversationIdRef.current !== conversationId || messagesRef.current.at(-1)?.id !== interruptedTail) return
+          if (!recovered) {
+            toast.error(parseChatError(error instanceof Error ? error : new Error(String(error))))
+            return
+          }
           setMessages(recovered)
+          clearError()
           if (conversationId) writeCachedConversationMessages(conversationId, recovered)
         })
-        toast.error(parseChatError(error instanceof Error ? error : new Error(String(error))))
       }
     },
     onFinish: ({ messages: finishedMessages }) => {
@@ -684,6 +691,7 @@ export function AiWorkspace({
       if (conversationId && lastEmpty) {
         void recoverCompletedChatTurn(conversationId, stamped).then((recovered) => {
           if (!recovered) return
+          if (activeConversationIdRef.current !== conversationId || messagesRef.current.at(-1)?.id !== last?.id) return
           setMessages(recovered)
           writeCachedConversationMessages(conversationId, recovered)
         })

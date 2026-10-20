@@ -330,6 +330,25 @@ async def get_outcome_summaries(
     return {"v8_outcome_attribution": v8, **unified}
 
 
+@router.get("/outcomes/delivery")
+async def get_outcome_delivery(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Read-only, tenant-scoped proof of the effective learning delivery path."""
+    import asyncio
+
+    from app.services.outcome_learning_handler import learning_delivery_status
+    from app.workflows.repository import get_supabase_client
+
+    if not org_id:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    return await asyncio.to_thread(
+        learning_delivery_status, get_supabase_client(settings), settings, org_id=org_id
+    )
+
+
 @router.get("/evaluations/intelligence")
 async def get_intelligence_evaluations(
     org_id: Annotated[str, Depends(get_org_context)],

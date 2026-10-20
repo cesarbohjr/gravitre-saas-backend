@@ -56,6 +56,50 @@ def handler_enabled(settings: Any) -> bool:
     return getattr(settings, "outcome_learning_handler_enabled", False) is True
 
 
+def learning_delivery_status(client: Any, settings: Any, *, org_id: str) -> dict[str, Any]:
+    """Expose effective runtime gates and this tenant's undelivered outcomes.
+
+    Delivery is not model improvement: a handler may legitimately skip a run
+    without verified business results. Do not label queued rows as learned.
+    Payloads and raw error messages are intentionally excluded.
+    """
+    from app.services.domain_events import EVENT_EXECUTION_OUTCOME_FINALIZED
+
+    if not org_id:
+        raise ValueError("Organization context required")
+    relay_enabled = getattr(settings, "domain_event_relay_enabled", False) is True
+    enabled = handler_enabled(settings)
+    registered = any(r.name == HANDLER_NAME for r in handlers_for(EVENT_EXECUTION_OUTCOME_FINALIZED))
+    response = (
+        client.table("domain_event_outbox")
+        .select("event_id,aggregate_id,status,attempts,created_at", count="exact")
+        .eq("org_id", org_id)
+        .eq("event_type", EVENT_EXECUTION_OUTCOME_FINALIZED)
+        .in_("status", ["pending", "processing", "retrying", "dead"])
+        .order("created_at")
+        .limit(20)
+        .execute()
+    )
+    rows = response.data or []
+    blockers = []
+    if not relay_enabled:
+        blockers.append("relay_disabled")
+    if not enabled:
+        blockers.append("outcome_handler_disabled")
+    elif not registered:
+        blockers.append("outcome_handler_not_registered")
+    return {
+        "status": "blocked" if blockers else "queued" if rows else "idle",
+        "relay_enabled": relay_enabled,
+        "handler_enabled": enabled,
+        "handler_registered": registered,
+        "blockers": blockers,
+        "undelivered_count": response.count,
+        "events": rows,
+        "delivery_is_not_verified_learning": True,
+    }
+
+
 def _parse(ts: Any) -> datetime | None:
     if not ts:
         return None

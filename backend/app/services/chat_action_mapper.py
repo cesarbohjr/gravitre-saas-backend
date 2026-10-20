@@ -137,10 +137,13 @@ class ChatActionMapper:
         *,
         connected_integrations: list[str],
     ) -> ActionMatch | None:
+        from app.services.action_intent import action_intent_text
+
         text = message.strip()
-        if not text:
+        routing_text = action_intent_text(message)
+        if not routing_text:
             return None
-        if ADVISE_ONLY_NO_TOOL.search(text):
+        if ADVISE_ONLY_NO_TOOL.search(message):
             return None
         entries = chat_executable_entries(connected_integrations=connected_integrations)
         if not entries:
@@ -152,12 +155,12 @@ class ChatActionMapper:
         # STA-305 catalog-kind authority: clear write intent + write args fail must not
         # silently crown .list/.search or payload-fallthrough lookalikes (update/stories).
         best_write_without_args: ActionMatch | None = None
-        write_intent = bool(WRITE_VERBS.search(text))
+        write_intent = bool(WRITE_VERBS.search(routing_text))
         for entry in entries:
             tool_name = entry.tool_registry_key
             if tool_name not in allowed_tools:
                 continue
-            score = self._score(text, entry)
+            score = self._score(routing_text, entry)
             if score <= 0:
                 continue
             # Fix 3 — schema-constrained extraction is primary; vendor regex is fallback.
@@ -208,7 +211,7 @@ class ChatActionMapper:
             candidate = ActionMatch(entry=entry, tool_name=tool_name, score=score, args=args)
             if best is None or candidate.score > best.score or (
                 candidate.score == best.score
-                and self._prefer_entry(candidate.entry, best.entry, text)
+                and self._prefer_entry(candidate.entry, best.entry, routing_text)
             ):
                 best = candidate
         if write_intent and best_write_without_args is not None:

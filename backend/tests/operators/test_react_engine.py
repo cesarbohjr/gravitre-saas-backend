@@ -74,6 +74,10 @@ async def test_run_no_tools_available_uses_reasoning_only(engine: ReActEngine, t
     assert len(result.trace) == 1
     assert result.trace[0].thought
     assert "invoice" in result.answer.lower()
+    sent = engine.router._openai.chat.completions.create.call_args.kwargs["messages"]
+    user_message = next(row for row in sent if row["role"] == "user")
+    assert user_message["content"] == "Monitor overdue invoices"
+    assert "<untrusted_input>" not in user_message["content"]
 
 
 @pytest.mark.asyncio
