@@ -125,12 +125,24 @@ async def test_context_assembler_handles_source_failure_gracefully():
 
 
 @pytest.mark.asyncio
-async def test_model_selector_prefers_trained_ml_over_llm():
+@pytest.mark.parametrize("artifact_loaded,approved", [(False, False), (False, True), (True, False), (True, True)])
+async def test_model_selector_prefers_trained_ml_over_llm(artifact_loaded, approved):
+    """Catalog TRAINED is insufficient: runtime artifact and consent are required."""
     selector = ModelSelector()
-    with patch.object(selector, "_org_has_deployed_model", AsyncMock(return_value=True)):
-        with patch("app.services.model_selector.get_org_model_status", AsyncMock(return_value={"catalog_status": "trained"})):
-            result = await selector.select("org-1", {"intent": "data_analysis"})
-    assert result["primary_model"] == "ml_internal"
+    with patch.object(selector, "_org_has_deployed_model", AsyncMock(return_value=True)), patch.object(
+        selector, "_list_deployed_ml_models", AsyncMock(return_value=[]),
+    ), patch.object(selector, "_llm_selection_with_ledger", AsyncMock(return_value={"primary_model": "llm"})) as fallback, patch(
+        "app.services.model_selector.get_org_model_status",
+        AsyncMock(return_value={"catalog_status": "trained", "artifact_loaded": artifact_loaded}),
+    ), patch("app.ml.training_consent.training_is_approved", AsyncMock(return_value=approved)) as consent:
+        result = await selector.select("org-1", {"intent": "data_analysis"})
+    assert result["primary_model"] == ("ml_internal" if artifact_loaded and approved else "llm")
+    assert consent.await_args.args[:2] == ("org-1", "workflow_anomaly_detector")
+    if artifact_loaded and approved:
+        fallback.assert_not_awaited()
+        assert result["ml_model_name"] == "workflow_anomaly_detector"
+    else:
+        fallback.assert_awaited_once()
 
 
 @pytest.mark.asyncio
