@@ -563,7 +563,12 @@ export function AuditTrail({ standalone = false }: { standalone?: boolean } = {}
   )
 
   if (standalone) {
-    return <>{user ? body : <SetNote>Sign in to view your audit trail.</SetNote>}</>
+    return (
+      <>
+        {user ? actions : null}
+        {user ? body : <SetNote>Sign in to view your audit trail.</SetNote>}
+      </>
+    )
   }
 
   return (
