@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 from app.config import Settings, get_settings
+from app.core.io_pool import run_io
 from app.core.logging import get_logger
 from app.ml.active_learning import ActiveLearningCoordinator
 from app.ml.anomaly import AnomalyDetector
@@ -383,7 +384,7 @@ async def get_org_model_status(org_id: str, model_name: str, *, settings: Settin
         "runtime_status": "heuristic" if status == ModelStatus.TRAINED else status.value,
     }
     if status == ModelStatus.TRAINED:
-        payload.update(_count_org_data_points(org_id, model_name, active))
+        payload.update(await run_io(_count_org_data_points, org_id, model_name, active))
         data_counts = payload.get("data_counts") if isinstance(payload.get("data_counts"), dict) else {}
         # Prefer registry deployed artifact over catalog label.
         try:
