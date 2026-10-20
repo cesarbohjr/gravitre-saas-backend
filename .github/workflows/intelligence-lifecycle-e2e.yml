@@ -1,0 +1,56 @@
+name: Intelligence lifecycle E2E acceptance
+
+# Manual and fail-closed. Drives one synthetic internal assignment through chat,
+# staged approval, one execution, its outcome run and outcome-learning delivery,
+# in the isolated smoke org only. Writes synthetic rows there; nothing external.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: intelligence-lifecycle-e2e
+  cancel-in-progress: false
+
+jobs:
+  intelligence-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install session dependencies
+        run: python -m pip install --disable-pip-version-check "httpx>=0.27,<1" "PyJWT>=2.8,<3" python-dotenv supabase
+      # Short-lived session for the isolated smoke-org service account, the same
+      # mechanism as the Plays acceptance and Voice SLO probe. Valid for 10 minutes,
+      # masked in the log, never stored. The operator org is refused.
+      - name: Mint short-lived smoke-org session
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python scripts/mint_smoke_org_session.py --github-env
+      - name: Run the synthetic lifecycle
+        run: |
+          python3 scripts/run-intelligence-isolated-live.py \
+            --allow-synthetic-write \
+            --out "$RUNNER_TEMP/intelligence-e2e-report.json"
+      - name: Clear session and check the report for token leaks
+        if: always()
+        shell: bash
+        run: |
+          if [ -n "${PLATFORM_LIVE_BEARER_TOKEN:-}" ] && [ -f "$RUNNER_TEMP/intelligence-e2e-report.json" ] && grep -qF "$PLATFORM_LIVE_BEARER_TOKEN" "$RUNNER_TEMP/intelligence-e2e-report.json"; then
+            echo "::error::report contains the session token"; rm -f "$RUNNER_TEMP/intelligence-e2e-report.json"; exit 1
+          fi
+          echo "PLATFORM_LIVE_BEARER_TOKEN=" >> "$GITHUB_ENV"
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: intelligence-e2e-report
+          path: ${{ runner.temp }}/intelligence-e2e-report.json
+          if-no-files-found: ignore

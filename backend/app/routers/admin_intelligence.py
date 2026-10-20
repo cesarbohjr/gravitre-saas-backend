@@ -349,6 +349,29 @@ async def get_outcome_delivery(
     )
 
 
+@router.get("/outcomes/trace")
+async def get_assignment_outcome_trace(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+    job_id: str = Query(..., alias="jobId", min_length=1, max_length=64),
+) -> dict[str, Any]:
+    """Read-only: one assignment's outcome run and whether learning received it."""
+    import asyncio
+
+    from app.services.outcome_learning_handler import assignment_outcome_trace
+    from app.workflows.repository import get_supabase_client
+
+    if not org_id:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    trace = await asyncio.to_thread(
+        assignment_outcome_trace, get_supabase_client(settings), org_id=org_id, job_id=job_id
+    )
+    if not trace["found"]:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    return trace
+
+
 @router.get("/evaluations/intelligence")
 async def get_intelligence_evaluations(
     org_id: Annotated[str, Depends(get_org_context)],
