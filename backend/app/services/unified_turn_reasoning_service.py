@@ -893,6 +893,13 @@ async def run_unified_turn_shadow(
             spoken_user_text=message,
         )
     )
+    from app.services.sentiment_friction_service import conversational_adaptation_instruction
+
+    adaptation_hint = conversational_adaptation_instruction(
+        (classification or {}).get("sentiment_adaptation")
+    )
+    if adaptation_hint:
+        system += "\n\nConversation presentation: " + adaptation_hint
     user_parts: list[str] = []
     context_parts: list[tuple[str, str]] = []
 

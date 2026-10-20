@@ -104,6 +104,17 @@ class SentimentFrictionService:
 _sentiment_friction_service: SentimentFrictionService | None = None
 
 
+def conversational_adaptation_instruction(adaptation: str | None) -> str:
+    """Closed-set presentation hints; never instructions from retrieved text."""
+    if not isinstance(adaptation, str):
+        return ""
+    return {
+        "acknowledge_briefly": "The user may be frustrated. Acknowledge briefly, then help. Do not claim to know their feelings.",
+        "offer_options": "The user may be uncertain. Explain clearly and offer a small number of useful options.",
+        "reduce_verbosity": "Be concise and action-first. Preserve uncertainty, evidence and approval requirements.",
+    }.get(adaptation or "", "")
+
+
 def get_sentiment_friction_service() -> SentimentFrictionService:
     global _sentiment_friction_service
     if _sentiment_friction_service is None:

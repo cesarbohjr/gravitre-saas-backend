@@ -33,6 +33,26 @@ DEPARTMENT_KEYWORDS: dict[str, tuple[str, ...]] = {
 }
 
 
+async def perceive_turn(
+    org_id: str, message: str, history: list[dict] | None, *,
+    settings: Settings, client: Any, spoken_mode: bool,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Shared perception before routing shortcuts; respects org preferences."""
+    from app.services.chat_dialogue_settings import load_chat_dialogue_settings
+    from app.services.sentiment_friction_service import get_sentiment_friction_service
+
+    dialogue = await load_chat_dialogue_settings(org_id, settings, client=client)
+    sentiment = (
+        get_sentiment_friction_service().analyze(message, history)
+        if dialogue.get("sentiment_detection_enabled", True)
+        else {"recommended_adaptation": "none"}
+    )
+    understanding = await get_contextual_understanding_service(settings).understand(
+        message, history, org_id, spoken_mode=spoken_mode,
+    )
+    return dialogue, sentiment, understanding
+
+
 class ContextualUnderstandingService:
     """Fast structured understanding before TaskClassifier runs."""
 
