@@ -80,3 +80,13 @@ parity score or production PASS is asserted here. Full standing LLM batteries
 are required before accepting this prompt change in a release; this workspace
 does not have the authenticated battery credentials. Do not substitute unit
 tests or the earlier Phase 1 chat smoke for those results.
+
+## Compatibility refresh after model inventory and consent merges
+
+Resolved the catalog conflict against main `34015a81dfa91bd8bd1c04616ac7a2f6add91e85` by retaining both the advanced-artifact model set introduced in #522 and the established I/O-pool dispatch from Phase 2. The router's automatic merge preserves #522's catalog-input extension and the same consent-enforcing loader. New integration regressions check that inactive consent blocks world-model inference through the shared seven-capability router and that advanced-artifact status reads remain off the event loop.
+
+The broader regression run identified stale world-model tests on main that patched a removed observation-count method. These now exercise all four combinations of artifact loading and reviewed consent, plus the absence of predictions when an artifact is missing. This strengthens the current readiness contract; it does not relax promotion or consent requirements.
+
+Local offline verification also exposed a test-containment gap: Python socket interception does not prevent C-backed gRPC channel creation by legacy provider SDKs. The opt-in offline test plugin now blocks HTTP transport dispatch and synchronous/asynchronous gRPC channel factories as well. The contained local run uses explicit fake provider credentials; these safeguards do not modify production networking or provider behavior. A local test action was rejected by automatic approval review when it attempted a Google Generative Language request; that run is not accepted as passing evidence. The stronger containment is a safer test alternative, not authorization for live provider calls.
+
+Focused coordinator/unified/model-consent tests: 71 passed. ML suite: 141 passed. Contained agent-streaming and updated world-model compatibility suite: 67 passed. These runs overlap. Full refreshed CI and the final broader contained-regression results are reported on PR #520. Production acceptance and the standing live LLM batteries remain distinct from these unit and simulated checks; no live quality, latency or improvement claim is made here.
