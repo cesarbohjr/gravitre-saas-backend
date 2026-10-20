@@ -1,42 +1,46 @@
 # Intelligence lifecycle E2E acceptance gate
 
 The workflow `Intelligence lifecycle E2E acceptance` is **manual and fail-closed**.
-It is an evidence verifier, **not yet an automated scenario executor**. Do not
-mark full production E2E complete from deployment and anonymous smoke alone.
+It runs `scripts/run-intelligence-isolated-live.py` against production, in the
+isolated smoke org only (`f07e57c0-1501-4000-8000-c04e57a00001`), with a
+10-minute smoke-org session minted in the job (`scripts/mint_smoke_org_session.py`).
+No long-lived token or hand-written evidence is stored in GitHub.
 
-## Required protected GitHub environment: `intelligence-e2e`
+## What one run does
 
-- Environment variable `GRAVITRE_E2E_ORG_ID`: canonical isolated E2E
-  organization, never a customer organization.
-- Secret `GRAVITRE_E2E_BEARER_TOKEN`: short-lived authorized token with read
-  access to the isolated organization. Rotate/revoke after test.
-- Secret `GRAVITRE_E2E_EVIDENCE_JSON`: JSON generated from authenticated
-  runtime readbacks of the same uniquely traced scenario, not a hand-authored
-  array of assertions. It must not contain PII, credentials or provider payloads.
+1. Creates a conversation and asks chat to stage an internal Gravitre assignment
+   with a unique trace id (`GV-INT-E2E-…`). Nothing external is named as a target.
+2. Reads the staged action back from `GET /api/assistant/conversation/{id}/state`:
+   `pending_task.type == create_assignment`, `status == awaiting_confirm`, the
+   brief carries the trace, and no new assignment exists. Approval is never sent
+   on model text alone.
+3. Negative controls: approving from another org (403) and on another
+   conversation (404) is refused, creates nothing, and leaves the action waiting.
+4. Approves once (`POST …/execute`): exactly one new assignment. A second approval
+   replays (`structured.replayed`) and creates nothing.
+5. Reads the assignment back (`GET /api/agent-jobs/{id}`) until it finishes; it
+   must complete.
+6. Reads the outcome chain back (`GET /api/admin/intelligence/outcomes/trace?jobId=`):
+   one outcome run, completed, whose `execution.outcome_finalized` event was taken
+   by `outcome_learning.record_run_outcome`. Then checks the delivery endpoint has
+   no blockers.
 
-## Scenario to execute in isolated tenant
+The uploaded report lists every check with pass/fail, the trace, job and run ids.
 
-1. Submit the synthetic frustrated onboarding/customer-renewal message with a
-   unique trace identifier. Capture signal, context, sentiment, and selected
-   native remedy identifiers and readbacks.
-2. Stage the native assignment, verify nothing ran before approval, then approve
-   with the authenticated actor. Test wrong actor/org/conversation, modified
-   draft and duplicate confirmation against the same bound action.
-3. Verify one persisted provider/native write and its independent readback.
-   Queue acknowledgment is **not** business completion.
-4. Observe real execution and actual verified business metric result. Capture
-   the outcome's lineage and the corresponding learning handler delivery row.
-   Do not create fictitious production outcomes or turn on previously declined
-   feature flags. Capture cross-tenant isolation and negative controls.
-5. Serialize the independent identifiers and controls into evidence JSON,
-   manually trigger the workflow, inspect the verdict artifact. An absent
-   evidence bundle, disabled handler, missing token or any failed condition
-   must fail.
+## Not covered (separate gates)
 
-## Current limitations
+- **Business-metric impact**: a synthetic internal assignment has no business
+  metric. Measured outcomes need a real Play or goal in an owner tenant; they are
+  not inferred from a completed run.
+- **Customer sentiment capture**: observations and account signals are off in
+  production; this run does not turn them on.
+- **Changed draft needs reapproval**: covered by unit tests of the pending-write
+  revision path, not exercised live here.
 
-The verifier checks supplied evidence correlations and the live delivery health
-endpoint, but cannot independently attest that every statement in the JSON
-originated from the production database. A future execution harness must
-collect attestable readbacks and invoke the verifier directly. Until then this
-is an incremental operator gate, **not a complete authenticated E2E proof**.
+## Requirements
+
+- `DOMAIN_EVENT_RELAY_ENABLED` and `OUTCOME_LEARNING_HANDLER_ENABLED` on in
+  Railway (both on since 2026-10-19).
+- The backend that serves `/api/admin/intelligence/outcomes/trace` deployed.
+- Each run leaves one synthetic conversation, assignment and outcome run in the
+  smoke org, labelled with the trace.

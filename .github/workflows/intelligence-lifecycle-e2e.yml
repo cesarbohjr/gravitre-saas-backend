@@ -1,54 +1,56 @@
 name: Intelligence lifecycle E2E acceptance
 
-# Manual and intentionally fail-closed. This workflow verifies evidence from an
-# authenticated isolated-tenant scenario; it does not manufacture or seed outcomes.
+# Manual and fail-closed. Drives one synthetic internal assignment through chat,
+# staged approval, one execution, its outcome run and outcome-learning delivery,
+# in the isolated smoke org only. Writes synthetic rows there; nothing external.
 on:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: intelligence-lifecycle-e2e
+  cancel-in-progress: false
+
 jobs:
-  verify-intelligence-lifecycle:
+  intelligence-lifecycle:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
-    environment: intelligence-e2e
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Run isolated authenticated synthetic lifecycle probe
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install session dependencies
+        run: python -m pip install --disable-pip-version-check "httpx>=0.27,<1" "PyJWT>=2.8,<3" python-dotenv supabase
+      # Short-lived session for the isolated smoke-org service account, the same
+      # mechanism as the Plays acceptance and Voice SLO probe. Valid for 10 minutes,
+      # masked in the log, never stored. The operator org is refused.
+      - name: Mint short-lived smoke-org session
         env:
-          GRAVITRE_E2E_BEARER_TOKEN: ${{ secrets.GRAVITRE_E2E_BEARER_TOKEN }}
-          ORG_ID: ${{ vars.GRAVITRE_E2E_ORG_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python scripts/mint_smoke_org_session.py --github-env
+      - name: Run the synthetic lifecycle
         run: |
-          python3 scripts/run-intelligence-isolated-live.py \\
-            --org-id "$ORG_ID" \\
-            --allow-synthetic-write \\
-            --out "$RUNNER_TEMP/intelligence-scenario-probe.json"
-      - name: Check isolated-tenant configuration
-        env:
-          ORG_ID: ${{ vars.GRAVITRE_E2E_ORG_ID }}
-          EVIDENCE_JSON: ${{ secrets.GRAVITRE_E2E_EVIDENCE_JSON }}
+          python3 scripts/run-intelligence-isolated-live.py \
+            --allow-synthetic-write \
+            --out "$RUNNER_TEMP/intelligence-e2e-report.json"
+      - name: Clear session and check the report for token leaks
+        if: always()
+        shell: bash
         run: |
-          set -euo pipefail
-          test -n "$ORG_ID" || { echo "::error::Missing isolated org ID"; exit 1; }
-          test -n "$EVIDENCE_JSON" || { echo "::error::No authenticated scenario evidence supplied"; exit 1; }
-          printf '%s' "$EVIDENCE_JSON" > "$RUNNER_TEMP/intelligence-e2e-evidence.json"
-          chmod 600 "$RUNNER_TEMP/intelligence-e2e-evidence.json"
-      - name: Verify correlated approval-to-learning evidence and live delivery
-        env:
-          GRAVITRE_E2E_BEARER_TOKEN: ${{ secrets.GRAVITRE_E2E_BEARER_TOKEN }}
-          ORG_ID: ${{ vars.GRAVITRE_E2E_ORG_ID }}
-        run: |
-          python3 scripts/verify-intelligence-e2e-evidence.py \
-            --evidence "$RUNNER_TEMP/intelligence-e2e-evidence.json" \
-            --org-id "$ORG_ID" \
-            --out "$RUNNER_TEMP/intelligence-e2e-verdict.json"
-      - name: Upload verdict only (never upload credentials or evidence)
+          if [ -n "${PLATFORM_LIVE_BEARER_TOKEN:-}" ] && [ -f "$RUNNER_TEMP/intelligence-e2e-report.json" ] && grep -qF "$PLATFORM_LIVE_BEARER_TOKEN" "$RUNNER_TEMP/intelligence-e2e-report.json"; then
+            echo "::error::report contains the session token"; rm -f "$RUNNER_TEMP/intelligence-e2e-report.json"; exit 1
+          fi
+          echo "PLATFORM_LIVE_BEARER_TOKEN=" >> "$GITHUB_ENV"
+      - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: intelligence-e2e-verdict
-          path: ${{ runner.temp }}/intelligence-e2e-verdict.json
+          name: intelligence-e2e-report
+          path: ${{ runner.temp }}/intelligence-e2e-report.json
           if-no-files-found: ignore
