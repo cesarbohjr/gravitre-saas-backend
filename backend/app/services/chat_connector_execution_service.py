@@ -670,13 +670,13 @@ class ChatConnectorExecutionService:
     def is_connector_intent(message: str, task_state: dict[str, Any]) -> bool:
         pending = task_state.get("pending_task") or {}
         pending_type = str(pending.get("type") or "")
-        exec_plan = task_state.get("execution_plan") if isinstance(task_state.get("execution_plan"), dict) else {}
-        if exec_plan.get("plan_id") and pending_type == "connector_orchestration":
-            return False
-        if exec_plan.get("execution_strategy") in {"SEQUENTIAL"} and pending_type == "connector_orchestration":
-            return False
         if pending_type == "connector_orchestration":
-            return False
+            # Only a live orchestration owns continuation. A blocked/finished
+            # plan must not permanently suppress a new single-connector ask.
+            if str(pending.get("status") or "") in {
+                "awaiting_plan_confirm", "awaiting_step_confirm", "executing", "claimed",
+            }:
+                return False
         if pending_type == "connector_action":
             return True
         params = pending.get("params") if isinstance(pending, dict) else None

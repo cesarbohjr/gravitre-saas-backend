@@ -104,25 +104,30 @@ function IntelligenceCenterInner() {
     isValidating,
     mutate: mutateSnapshot,
     error,
-  } = useIntelligenceSnapshot({ enabled, windowHours: 24 })
+  } = useIntelligenceSnapshot({ enabled, windowHours: 24, swrKeySuffix: orgId ?? undefined })
 
   // Outcome attribution: measured outcomes per agent and how many scoring needs.
   const { data: outcomes, mutate: mutateOutcomes } = useSWR(
-    enabled ? ["intelligence/outcomes", 7] : null,
+    enabled ? ["intelligence/outcomes", orgId, 7] : null,
     () => intelligenceApi.outcomes({ periodDays: 7 }),
     { revalidateOnFocus: false },
   )
-  const { data: trust, mutate: mutateTrust } = useSWR(enabled ? "intelligence/trust-summary" : null, () =>
+  const { data: delivery, error: deliveryError } = useSWR(
+    enabled ? ["intelligence/outcomes/delivery", orgId] : null,
+    () => intelligenceApi.outcomeDelivery(),
+    { refreshInterval: 20_000, revalidateOnFocus: true },
+  )
+  const { data: trust, mutate: mutateTrust } = useSWR(enabled ? ["intelligence/trust-summary", orgId] : null, () =>
     intelligenceApi.trustSummary({ periodDays: 7 }),
   )
   const { data: connectorsData, mutate: mutateConnectors } = useSWR(
-    enabled ? "/api/connectors" : null,
+    enabled ? ["/api/connectors", orgId] : null,
     () => connectorsApi.list(),
     { revalidateOnFocus: false },
   )
   // Patterns still being reinforced (any status; open ones are picked out downstream).
   const { data: candidatesData, mutate: mutateCandidates } = useSWR(
-    enabled ? "intelligence/overview/memory-candidates" : null,
+    enabled ? ["intelligence/overview/memory-candidates", orgId] : null,
     () => memoryPromotionApi.candidates({ limit: 50 }),
     { revalidateOnFocus: false },
   )
@@ -219,6 +224,18 @@ function IntelligenceCenterInner() {
               description="Pick an organization in Settings to see what Gravitre is learning."
             />
           ) : (
+          <>
+          <p role="status" className="mb-3 text-sm text-[color:var(--g-text-secondary)]">
+            {deliveryError
+              ? "Outcome feedback delivery could not be verified. Outcome counts alone do not confirm learning."
+              : delivery?.status === "blocked"
+                ? "Outcome feedback is paused. An administrator needs to enable or restore learning delivery."
+                : delivery?.status === "queued"
+                  ? `${delivery.undelivered_count ?? "Some"} outcome events are waiting for delivery. Learning requires verified results.`
+                  : delivery?.status === "idle"
+                    ? "No outcome events are waiting for delivery. Learning still requires verified business results."
+                    : "Checking outcome feedback delivery…"}
+          </p>
           <IntelligenceBrain
             pageContext={pageContext}
             connectors={connectorsData?.connectors ?? null}
@@ -232,6 +249,7 @@ function IntelligenceCenterInner() {
               mutateSnapshot()
             }}
           />
+          </>
           )}
         </IntelligenceShell>
       </div>

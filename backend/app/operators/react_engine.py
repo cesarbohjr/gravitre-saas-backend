@@ -42,7 +42,6 @@ from app.config import MODEL_TIERS, Settings, get_settings
 from app.core.logging import get_logger
 from app.operators.stream_events import ReActStreamEvent
 from app.services.ai_guardrails import (
-    fence_untrusted,
     moderate_input,
     redact_pii,
 )
@@ -546,7 +545,11 @@ class ReActEngine:
         messages.append(
             {
                 "role": "user",
-                "content": fence_untrusted(redact_pii(task)),
+                # The authenticated user's request is instruction at user
+                # priority. Retrieved/tool content is fenced separately by the
+                # security gateway; fencing the whole task makes valid approvals
+                # inert and encourages a prose-only approval loop.
+                "content": redact_pii(task),
             }
         )
         audit_id = audit_resource_id or ctx.task_id or ctx.agent_id or ctx.actor_id

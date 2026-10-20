@@ -48,6 +48,7 @@ from app.services.connector_session_state import (
     sync_legacy_resolved_entities,
 )
 from app.core.safe_dict import safe_normalize_stored_dict
+from app.services.action_intent import action_intent_text, actionable_clauses
 
 logger = get_logger(__name__)
 
@@ -230,7 +231,7 @@ class ChatOrchestrationService:
             status = str(pending.get("status") or "")
             if status in {"awaiting_plan_confirm", "awaiting_step_confirm"}:
                 return True
-        text = message.strip()
+        text = action_intent_text(message)
         if len(text) < 12:
             return False
         integrations = ChatOrchestrationService._mentioned_integrations(text, connected_integrations)
@@ -2322,7 +2323,7 @@ class ChatOrchestrationService:
     @staticmethod
     def _split_segments(message: str) -> list[str]:
         text = message.strip()
-        parts = [text]
+        parts = actionable_clauses(text)
         for pattern in (SEGMENT_COMMA, MULTI_STEP_SPLIT):
             next_parts: list[str] = []
             for part in parts:
@@ -2398,13 +2399,14 @@ class ChatOrchestrationService:
 
     @staticmethod
     def _mentioned_integrations(message: str, connected_integrations: list[str]) -> list[str]:
-        return resolve_all_connectors_from_text(message, exclude_generic=False)
+        return resolve_all_connectors_from_text(action_intent_text(message), exclude_generic=True)
 
     @staticmethod
     def _mentioned_integrations_ordered(message: str, connected_integrations: list[str]) -> list[str]:
         """Same as _mentioned_integrations but ordered by first appearance in text."""
+        message = action_intent_text(message)
         lowered = message.lower()
-        found = ordered_connectors_from_text(message, exclude_generic=False)
+        found = ordered_connectors_from_text(message, exclude_generic=True)
 
         def first_pos(integration: str) -> int:
             aliases = get_connector_aliases(integration)
