@@ -120,12 +120,11 @@ export const ADMIN_SIDEBAR_NAV: SidebarNavGroup[] = [
         hint: "Completed work, runs, and failure alerts",
       },
       { name: "Schedules", href: APP_ROUTES.schedules, icon: "calendar" },
-      { name: "Approvals", href: APP_ROUTES.approvals, icon: "clipboardCheck" },
       {
-        name: "Governance",
-        href: APP_ROUTES.audit,
-        icon: "shieldCheck",
-        hint: "Audit trail and environments",
+        name: "Trust & Safety",
+        href: APP_ROUTES.trustSafety,
+        icon: "scan",
+        hint: "Approvals, audit trail, and policies",
       },
       {
         name: "Deliverables",
@@ -220,6 +219,16 @@ export function isSidebarItemActive(pathname: string, href: string): boolean {
       pathname.startsWith("/audit/") ||
       pathname === "/environments" ||
       pathname.startsWith("/environments/")
+    )
+  }
+  if (itemPath === "/trust-safety") {
+    return (
+      pathname === "/trust-safety" ||
+      pathname.startsWith("/trust-safety/") ||
+      pathname === "/approvals" ||
+      pathname.startsWith("/approvals/") ||
+      pathname === "/audit" ||
+      pathname.startsWith("/audit/")
     )
   }
   return pathname === itemPath || pathname.startsWith(`${itemPath}/`)

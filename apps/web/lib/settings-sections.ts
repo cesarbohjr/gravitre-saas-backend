@@ -276,17 +276,9 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     href: "/environments",
     adminOnly: true,
   },
-  {
-    id: "audit",
-    title: "Audit trail",
-    description: "Who did what, when, and how it turned out.",
-    group: "governance",
-    icon: ListChecks,
-    tier: "admin",
-    href: "/audit",
-    adminOnly: true,
-  },
 ]
+// Note: Audit trail has moved to the Trust & Safety hub (/trust-safety?tab=audit).
+// It is no longer surfaced in Settings — Settings is configuration-only.
 
 export const PRIMARY_SETTINGS_SECTIONS = SETTINGS_SECTIONS.filter((section) => !section.footer)
 export const FOOTER_SETTINGS_SECTIONS = SETTINGS_SECTIONS.filter((section) => section.footer)
@@ -303,7 +295,6 @@ export const WIDE_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   "billing",
   "approvals",
   "permissions",
-  "audit",
   "enterprise",
   "federation",
   "environments",
@@ -354,9 +345,8 @@ const GROUP_ORDER: Partial<Record<SettingsSectionId, number>> = {
   federation: 0,
   enterprise: 1,
   "mcp-servers": 2,
-  audit: 0,
-  environments: 1,
-  approvals: 2,
+  environments: 0,
+  approvals: 1,
 }
 
 export function settingsSectionsForGroup(group: SettingsGroup, isAdmin: boolean): SettingsSection[] {

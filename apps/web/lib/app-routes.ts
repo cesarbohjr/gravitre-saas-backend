@@ -55,6 +55,7 @@ export const APP_ROUTES = {
   settings: "/settings",
   schedules: "/schedules",
   audit: "/audit",
+  trustSafety: "/trust-safety",
 } as const
 
 /** Legacy paths retained only for redirects — do not link in UI. */
