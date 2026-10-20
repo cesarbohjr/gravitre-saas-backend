@@ -12,6 +12,7 @@
 
 .gv-card{background:#FFFFFF;border:1px solid #E4E4DF;border-radius:16px}
 .gv-tile{border-radius:12px;padding:14px 16px;background:#F7F7F4;display:flex;flex-direction:column;gap:4px;min-width:0}
+.gv-tile.good{background:#EAF7F0;border:1px solid #9FD3B4}
 
 .gv-tab{border:0;background:transparent;font:inherit;font-size:13px;color:#55564F;padding:0 12px;min-height:36px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .gv-tab:hover{color:#141513}
@@ -60,6 +61,7 @@
 .gv-ico.warn{background:#FBF1DC;color:#8A5A06}
 .gv-ico.bad{background:#F8E3E4;color:#8A2530}
 .gv-ico.blue{background:#E8EEFC;color:#2B59E0}
+.gv-ico.sm{width:30px;height:30px;border-radius:8px}
 
 .gv-sw{width:40px;height:24px;border-radius:999px;border:0;background:#D9D9D3;position:relative;cursor:pointer;flex:0 0 auto;transition:background .2s;padding:0}
 .gv-sw::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#FFFFFF;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .25s cubic-bezier(.22,1,.36,1)}
@@ -94,6 +96,50 @@
 .gv-rise{animation:gvRise .5s cubic-bezier(.22,1,.36,1) both}
 @keyframes gvRise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
+/* ── v2 additions ── */
+
+/* Hero section with score / summary */
+.gv-hero{background:#FAFAF8}
+
+/* Eyebrow label (small caps above a metric) */
+.gv-eyebrow{font-family:'Geist Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#6A6B64}
+
+/* Score bar */
+.gv-bar{height:8px;border-radius:999px;background:#E4E4DF;transition:background .3s}
+.gv-bar.on{background:#0B8A5C}
+
+/* Hero metric tile */
+.gv-metric{display:flex;flex-direction:column;gap:4px}
+.gv-metric .gv-eyebrow{margin-bottom:4px}
+
+/* Hero summary tiles row */
+.gv-htiles{display:flex;flex-wrap:wrap;gap:10px}
+.gv-htiles .gv-tile.good{background:#EAF7F0;border:1px solid #9FD3B4}
+
+/* Hero action row */
+.gv-hact{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
+
+/* Two-column layout for detail pages */
+.gv-cols{display:flex;gap:20px;flex-wrap:wrap}
+.gv-colmain{flex:1 1 420px;min-width:0}
+.gv-colside{flex:0 0 280px;min-width:0}
+.gv-sidetitle{font-size:13px;font-weight:600;color:#141513;margin:0 0 10px}
+
+/* Role card (selectable) */
+.gv-wcard{border:1.5px solid #E4E4DF;border-radius:14px;padding:16px 18px;background:#FFFFFF;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:8px;transition:border-color .15s,background .15s}
+.gv-wcard:hover{border-color:#0B8A5C}
+.gv-wcard.sel{border-color:#0B8A5C;background:#EAF7F0}
+.gv-wcard:focus-visible{outline:2px solid #19C37D;outline-offset:2px}
+
+/* Ghost placeholder state */
+.gv-ghost{color:#8A8B85;text-align:center;padding:40px 20px;font-size:14px;line-height:1.6}
+
+/* Two-item flow (e.g. input + button in a row) */
+.gv-flow2{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* Side panel inside a card */
+.gv-side{border-left:1px solid #EFEFEA;padding-left:20px;display:flex;flex-direction:column;gap:14px}
+
 /* Responsive: sidebar collapses to horizontal scroll at narrow widths */
 @media(max-width:900px){
   .gv-snav{flex:1 1 100%;position:static;flex-direction:row;overflow-x:auto;gap:4px}
@@ -102,4 +148,7 @@
   .gv-snav nav > div{display:flex;gap:4px}
   .gv-sl{white-space:nowrap;width:auto}
   .gv-sub{margin-left:0}
+  .gv-cols{flex-direction:column}
+  .gv-colside{flex:1 1 auto}
+  .gv-side{border-left:0;border-top:1px solid #EFEFEA;padding-left:0;padding-top:14px}
 }
