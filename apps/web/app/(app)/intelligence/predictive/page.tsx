@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { toast } from "sonner"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -10,8 +12,8 @@ import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { IntelligenceShell } from "@/components/intelligence/shell"
 import { PredictionsStage } from "@/components/intelligence/pages/predictions-stage"
-import { AccountHealthPanel } from "@/components/accounts/account-health-panel"
 import { RecommendationFeedPanel } from "@/components/accounts/recommendation-feed-panel"
+import { APP_ROUTES } from "@/lib/app-routes"
 import type { FailureAlertWithEvidence } from "@/components/intelligence/forecasts/forecast-model"
 import { workflowsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -29,7 +31,14 @@ const FAILURE_ALERTS_KEY = ["workflow-failure-predictions", "open"] as const
 
 export default function PredictiveOpsPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const [scanning, setScanning] = useState(false)
+  // Old links to the account health section of Forecasts keep working.
+  useEffect(() => {
+    if (window.location.hash === "#account-health") {
+      router.replace(`${APP_ROUTES.intelligenceAccounts}#account-health`)
+    }
+  }, [router])
   const {
     data: pageContext,
     loadState,
@@ -137,10 +146,17 @@ export default function PredictiveOpsPage() {
             onScanWorkflows={() => void scanWorkflows()}
             scanning={scanning}
           />
-          {/* Gravitre 3.0 Plus: both render nothing until their backend flags are on. */}
+          {/* Gravitre 3.0 Plus: says plainly when its backend flag is off. Account
+              health moved to its own Accounts tab. */}
           <div className="mt-8 space-y-8">
             <RecommendationFeedPanel />
-            <AccountHealthPanel />
+            <p className="text-sm text-muted-foreground">
+              Account health now has its own tab:{" "}
+              <Link href={APP_ROUTES.intelligenceAccounts} className="text-foreground underline underline-offset-2">
+                Accounts
+              </Link>
+              .
+            </p>
           </div>
         </IntelligenceShell>
       </div>

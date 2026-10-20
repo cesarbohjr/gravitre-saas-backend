@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: '%s · Gravitre',
   },
   description: 'Enterprise AI operator console for managing workflows, runs, approvals, and AI-assisted operations',
-  generator: 'v0.app',
+  generator: 'Next.js',
   // Favicon set is the green-background mark. The previous icon was the BLACK
   // logo, which disappeared against dark browser chrome — the common case, since
   // the tab strip is dark in dark mode on every major browser. The green tile

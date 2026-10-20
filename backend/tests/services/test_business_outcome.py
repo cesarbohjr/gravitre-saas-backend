@@ -409,10 +409,43 @@ def test_verified_write_still_reaches_the_verified_lifecycle_state():
             "body": "Created contact",
             "result_url": "/runs/r",
             "external_url": "https://app.hubspot.com/contacts/1/contact/42",
-            "structured": {"outcome_effect": "created", "id": "42"},
+            "structured": {
+                "outcome_effect": "created",
+                "id": "42",
+                "verification": {"verified": True, "method": "entity_get", "detail": "entity_found"},
+            },
         },
         invoke_action="hubspot.contacts.create",
     )
     d = outcome.to_dict()
     assert d["sections"]["verification"]["confidence"] == "verified"
     assert "verified" in d["lifecycleStatesReached"]
+
+
+def test_provider_id_without_read_back_is_accepted_not_verified():
+    """A provider id proves acceptance, not that the source system holds the record."""
+    outcome = project_business_outcome(
+        org_id="org-1",
+        run=_sample_run(
+            status="completed",
+            parameters={
+                "invoke_action": "hubspot.contacts.create",
+                "integration": "hubspot",
+                "label": "Create contact",
+                "outcome_effect": "created",
+            },
+        ),
+        execution_result={
+            "success": True,
+            "title": "Create contact",
+            "body": "Created contact",
+            "result_url": "/runs/r",
+            "external_url": "https://app.hubspot.com/contacts/1/contact/42",
+            "structured": {"outcome_effect": "created", "id": "42"},
+        },
+        invoke_action="hubspot.contacts.create",
+    )
+    section = outcome.to_dict()["sections"]["verification"]
+    assert section["confidence"] == "accepted_unproven"
+    assert section["method"] == "provider_accepted_not_read_back"
+    assert section["verified"] is False

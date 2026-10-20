@@ -1,5 +1,6 @@
 """CI lint — connector action schema standard (F8 / G.2)."""
 from __future__ import annotations
+import re
 
 from app.connectors.action_catalog.action_id_aliases import ACTION_ID_ALIASES
 from app.connectors.action_catalog.registry import all_catalog_action_specs
@@ -24,7 +25,7 @@ def test_no_placeholder_or_empty_descriptions():
     bad = []
     for s in specs:
         d = (s.description or "").strip()
-        if not d or any(p in d.lower() for p in _PLACEHOLDER):
+        if not d or any(re.search(r"\b" + re.escape(p) + r"\b", d, re.IGNORECASE) for p in _PLACEHOLDER):
             bad.append(s.id)
     assert not bad, bad[:20]
 
@@ -96,3 +97,11 @@ def test_every_action_has_retrieval_enrichment_examples_and_tags():
         if len(examples) < 3 or len(tags) < 3:
             bad.append(s.id)
     assert not bad, f"examples/tags incomplete for {len(bad)} actions e.g. {bad[:10]}"
+
+
+def test_placeholder_lint_distinguishes_vendor_name_from_todo_marker():
+    def has_marker(value):
+        return any(re.search(r"\b" + re.escape(p) + r"\b", value, re.IGNORECASE) for p in _PLACEHOLDER)
+    assert not has_marker("List Todoist projects")
+    assert has_marker("TODO: describe this action")
+    assert has_marker("This is a placeholder")

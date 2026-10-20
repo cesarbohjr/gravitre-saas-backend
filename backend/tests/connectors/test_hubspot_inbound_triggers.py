@@ -27,7 +27,10 @@ def _sign_v3(*, method: str, uri: str, body: bytes, secret: str, timestamp_ms: s
 
 
 def test_decode_hubspot_request_uri():
-    assert decode_hubspot_request_uri("/api/webhooks/hubspot/inbound%3Ffoo%3D1") == "/api/webhooks/hubspot/inbound?foo=1"
+    # Only the characters HubSpot's v3 rules list are decoded; %3D is not one of them.
+    assert decode_hubspot_request_uri("/api/webhooks/hubspot/inbound%3Ffoo%3D1") == "/api/webhooks/hubspot/inbound?foo%3D1"
+    assert decode_hubspot_request_uri("https%3A%2F%2Fapi.example.com%2Fx%40y") == "https://api.example.com/x@y"
+    assert decode_hubspot_request_uri("/a%20b") == "/a%20b"
 
 
 def test_verify_hubspot_signature_v3_valid():
@@ -131,8 +134,9 @@ async def test_process_hubspot_event_batch_starts_workflow():
             chain = table.select.return_value.eq.return_value.eq.return_value.limit.return_value
             chain.execute.return_value = MagicMock(data=[workflow])
         elif name == "organization_members":
-            table.select.return_value.eq.return_value.in_.return_value.limit.return_value.execute.return_value = (
-                MagicMock(data=[{"user_id": "user-1"}])
+            # Attribution reads memberships ordered by join date and picks an owner.
+            table.select.return_value.eq.return_value.order.return_value.execute.return_value = MagicMock(
+                data=[{"user_id": "user-1", "role": "owner", "created_at": "2026-01-01"}]
             )
         elif name == "workflow_runs":
             table.insert.return_value.execute.return_value = MagicMock(data=[{"id": "run-1"}])
@@ -173,3 +177,73 @@ async def test_process_hubspot_event_batch_starts_workflow():
     assert results[0]["workflow_id"] == "wf-1"
     assert results[0]["status"] == "completed"
     mock_execution.execute_workflow.assert_awaited_once()
+
+
+def _hubspot_app(monkeypatch, settings):
+    from fastapi import FastAPI
+
+    from app.routers.webhooks import hubspot_inbound
+
+    calls: list = []
+
+    async def fake_batch(_settings, events):
+        calls.append(events)
+        return []
+
+    monkeypatch.setattr(hubspot_inbound, "process_hubspot_event_batch", fake_batch)
+    monkeypatch.setattr(hubspot_inbound, "webhook_client_secret", lambda _s: "test-secret")
+    app = FastAPI()
+    app.include_router(hubspot_inbound.router)
+    # Override the callable captured by this router, including when another
+    # isolated router fixture imported it while app.config was monkeypatched.
+    app.dependency_overrides[hubspot_inbound.get_settings] = lambda: settings
+    return app, calls
+
+
+def test_inbound_verifies_against_full_registered_url(monkeypatch):
+    """HubSpot v3 signs scheme + host + path, not the path alone."""
+    from fastapi.testclient import TestClient
+
+    settings = SimpleNamespace(api_public_url="https://api.gravitre.example")
+    app, calls = _hubspot_app(monkeypatch, settings)
+    body = b'[{"portalId":1,"subscriptionType":"contact.creation","objectId":99}]'
+    ts = str(int(time.time() * 1000))
+    full = "https://api.gravitre.example/api/webhooks/hubspot/inbound"
+    sig = _sign_v3(method="POST", uri=full, body=body, secret="test-secret", timestamp_ms=ts)
+    client = TestClient(app, base_url="http://internal-railway-host")
+    headers = {"X-HubSpot-Signature-v3": sig, "X-HubSpot-Request-Timestamp": ts}
+    r = client.post("/api/webhooks/hubspot/inbound", content=body, headers=headers)
+    assert r.status_code == 200, r.text
+    assert len(calls) == 1
+
+    path_only = _sign_v3(
+        method="POST", uri="/api/webhooks/hubspot/inbound", body=body, secret="test-secret", timestamp_ms=ts
+    )
+    r = client.post(
+        "/api/webhooks/hubspot/inbound",
+        content=body,
+        headers={"X-HubSpot-Signature-v3": path_only, "X-HubSpot-Request-Timestamp": ts},
+    )
+    assert r.status_code == 401
+
+
+def test_inbound_falls_back_to_https_host_when_no_public_url(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    app, calls = _hubspot_app(monkeypatch, SimpleNamespace(api_public_url=""))
+    body = b"[]"
+    ts = str(int(time.time() * 1000))
+    sig = _sign_v3(
+        method="POST",
+        uri="https://hooks.gravitre.example/api/webhooks/hubspot/inbound",
+        body=body,
+        secret="test-secret",
+        timestamp_ms=ts,
+    )
+    client = TestClient(app, base_url="http://hooks.gravitre.example")
+    r = client.post(
+        "/api/webhooks/hubspot/inbound",
+        content=body,
+        headers={"X-HubSpot-Signature-v3": sig, "X-HubSpot-Request-Timestamp": ts},
+    )
+    assert r.status_code == 200, r.text

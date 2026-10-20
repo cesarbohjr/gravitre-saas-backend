@@ -3,7 +3,7 @@
 // Connectors Page - Integration Hub with Network Topology View
 import { Suspense, startTransition, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import useSWR from "swr"
+import useSWR, { mutate as globalMutate } from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -20,6 +20,10 @@ import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connecto
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
 import { AvailableConnectorsStrip } from "@/components/connectors/available-connectors-strip"
+import { DATA_REMOVAL_KEY, DataRemovalReceipts, DisconnectImpact, useDataRemoval } from "@/components/connectors/data-removal"
+import { EnterpriseKnowledgeSync } from "@/components/settings/enterprise-knowledge-sync"
+import "@/components/settings/settings-kit.css"
+import "@/components/settings/enterprise-sections.css"
 import {
   ConnectorAttentionList,
   ResponsiveConnectorInspector,
@@ -114,8 +118,8 @@ import {
   resolveConnectorDisplayStatus,
   supportsDualPatAuth,
 } from "@/lib/connectors"
-import { openManagedConnector } from "@/lib/managed-connector-auth"
-import { isManagedConnectorVendor } from "@/lib/connectors"
+import { openManagedConnector, managedProviderAvailable } from "@/lib/managed-connector-auth"
+import { isManagedConnectorVendor, MANAGED_OAUTH_FALLBACK_VENDOR_KEYS } from "@/lib/connectors"
 import { openPlaidLink } from "@/lib/plaid-link"
 import {
   CONNECTOR_DEPARTMENTS,
@@ -172,6 +176,7 @@ interface Connector {
     repo?: string
     staged?: boolean
     needs_connection?: boolean
+    auth_provider?: string
   }
 }
 
@@ -840,6 +845,8 @@ function ConfigureModal({
               <p className="text-sm text-muted-foreground">
                 {connector.authStatus === "auth_expired"
                   ? `${connector.type} authorization expired or was revoked in the provider. Re-authorize to restore the connection.`
+                  : isManagedConnectorVendor(connector.type) || connector.config?.auth_provider === "managed"
+                    ? `${connector.type} uses secure account authorization. Reconnect to update its credentials.`
                   : `${connector.type} uses OAuth. API keys are not used for this connector — authorize with the provider to connect.`}
               </p>
               {onReconnectOAuth && (
@@ -849,7 +856,7 @@ function ConfigureModal({
                   onClick={() => void onReconnectOAuth(connector)}
                 >
                   <ExternalLink className="h-4 w-4" />
-                  {connector.authStatus === "auth_expired" ? `Reconnect ${connector.type}` : "Complete OAuth"}
+                  {connector.authStatus === "auth_expired" ? `Reconnect ${connector.type}` : isManagedConnectorVendor(connector.type) || connector.config?.auth_provider === "managed" ? "Complete authorization" : "Complete OAuth"}
                 </Button>
               )}
             </div>
@@ -918,6 +925,7 @@ function DeleteModal({
 }) {
   const [confirmText, setConfirmText] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
+  const { data: removal } = useDataRemoval(open)
 
   const handleDelete = async () => {
     setIsDeleting(true)
@@ -939,11 +947,12 @@ function DeleteModal({
             </div>
             <div>
               <DialogTitle>Remove connector</DialogTitle>
-              <DialogDescription>This cannot be undone</DialogDescription>
+              <DialogDescription>Disconnecting {connector.name} cannot be undone</DialogDescription>
             </div>
           </div>
         </DialogHeader>
         <div className="py-4 space-y-4">
+          <DisconnectImpact policy={removal?.policy} vendorLabel={connector.type} vendor={connector.vendorKey || connector.type} />
           <p className="text-sm text-muted-foreground">
             Type <span className="font-mono text-foreground">{connector.name}</span> to confirm removal.
           </p>
@@ -1116,7 +1125,7 @@ function AddConnectorModal({
     return true
   }
 
-  const handleOAuthConnect = async () => {
+  const handleOAuthConnect = async (managedFallback = false) => {
     if (!selectedType || !canStartOAuth()) return
     const selected = getSelectedConnector()
     const provider = resolveVendor(selected, selectedType)
@@ -1126,7 +1135,7 @@ function AddConnectorModal({
         c.name.trim().toLowerCase() === name.trim().toLowerCase()
     )
 
-    if (isManagedConnectorVendor(provider)) {
+    if (isManagedConnectorVendor(provider) || managedFallback || existing?.config?.auth_provider === "managed") {
       setSelectedEnvironmentInStorage(environment)
       setOauthStatus("redirecting")
       try {
@@ -1351,8 +1360,8 @@ function AddConnectorModal({
   }
 
   const handleSelectConnector = (connector: CatalogConnector) => {
-    if (isManagedConnectorVendor(connector.vendorKey || connector.type) && !managedCatalog?.configured) {
-      toast.message("Secure authorization needs administrator setup", { description: "Contact your administrator to enable managed connector authorization." })
+    if (isManagedConnectorVendor(connector.vendorKey || connector.type) && !managedProviderAvailable(managedCatalog, connector.vendorKey || connector.type)) {
+      toast.message("Provider setup required", { description: "An administrator must finish this provider’s authorization configuration before accounts can connect." })
       return
     }
     if (connector.partner) {
@@ -1402,7 +1411,7 @@ function AddConnectorModal({
   }, [open, initialConnectorType, catalogConnectors, managedCatalog])
 
   return (
-    <Dialog open={open} onOpenChange={handleClose} modal={!(oauthStatus === "redirecting" && isManagedConnectorVendor(selectedConnectorMeta()?.vendorKey || ""))}>
+    <Dialog open={open} onOpenChange={handleClose} modal={oauthStatus !== "redirecting"}>
       <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[min(85vh,900px)] min-h-0 overflow-hidden flex flex-col gap-0 p-0">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
           <div className="flex items-center gap-3">
@@ -1527,7 +1536,7 @@ function AddConnectorModal({
                               {!connector.partner && isShippedConnector(connector) && (
                                 <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-success/10 text-success">
                                   {isManagedConnectorVendor(connector.vendorKey || connector.type)
-                                    ? !managedCatalog?.configured ? "Setup required" : connector.shipped ? "Actions supported" : "Connect account"
+                                    ? !managedProviderAvailable(managedCatalog, connector.vendorKey || connector.type) ? "Setup required" : connector.shipped ? "Actions supported" : "Connect account"
                                     : "Available"}
                                 </span>
                               )}
@@ -1579,7 +1588,7 @@ function AddConnectorModal({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{selectedType}</span>
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-[color:var(--g-emerald-deep)] font-medium">OAuth</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-[color:var(--g-emerald-deep)] font-medium">{isManagedConnectorVendor(selectedConnectorMeta()?.vendorKey || "") ? "Secure authorization" : "OAuth"}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {getSelectedConnector()?.description}
@@ -1617,6 +1626,12 @@ function AddConnectorModal({
                           </p>
                         )}
                     </div>
+                    {MANAGED_OAUTH_FALLBACK_VENDOR_KEYS.has(selectedConnectorMeta()?.vendorKey || "") && (
+                      <Button variant="link" size="sm" disabled={!canStartOAuth() || !managedProviderAvailable(managedCatalog, selectedConnectorMeta()?.vendorKey || "")}
+                        onClick={() => void handleOAuthConnect(true)}>
+                        {managedProviderAvailable(managedCatalog, selectedConnectorMeta()?.vendorKey || "") ? "Connect using managed authorization" : "Managed authorization needs administrator setup"}
+                      </Button>
+                    )}
                     <div className="space-y-3 text-left max-w-sm mx-auto">
                       <div>
                         <label className="text-xs text-muted-foreground">Connector name</label>
@@ -1688,7 +1703,7 @@ function AddConnectorModal({
                         </>
                       )}
                     </div>
-                    <Button onClick={handleOAuthConnect} className="gap-2" disabled={!canStartOAuth()}>
+                    <Button onClick={() => void handleOAuthConnect()} className="gap-2" disabled={!canStartOAuth()}>
                       <ExternalLink className="h-4 w-4" />
                       {isPlaidLinkConnector(getSelectedConnector())
                         ? "Connect with Plaid Link"
@@ -2643,7 +2658,7 @@ function ConnectorsPageContent() {
   const { data, error, isLoading, isValidating, mutate } = useSWR<{ connectors: Connector[] }>(
     connectorsKey,
     apiFetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60_000, onError: (err) => console.error("[connectors] fetch error:", err) }
+    { revalidateOnFocus: true, revalidateOnReconnect: true, refreshInterval: 30_000, dedupingInterval: 10_000, onError: (err) => console.error("[connectors] fetch error:", err) }
   )
 
   const refreshLiveStatus = async () => {
@@ -2835,6 +2850,7 @@ function ConnectorsPageContent() {
       await connectorsApi.delete(connectorId, confirmName)
       toast.success("Connector removed")
       await mutate()
+      void globalMutate(DATA_REMOVAL_KEY)
     } catch (err) {
       console.error("[connectors] Failed to delete connector:", err)
       await mutate({ connectors: previousConnectors }, false)
@@ -2846,7 +2862,11 @@ function ConnectorsPageContent() {
 
   const handleReconnectOAuth = async (connector: Connector) => {
     const provider = connectorVendorKey(connector.type)
-    if (isManagedConnectorVendor(provider)) {
+    let useManaged = isManagedConnectorVendor(provider) || connector.config?.auth_provider === "managed"
+    if (!useManaged && MANAGED_OAUTH_FALLBACK_VENDOR_KEYS.has(provider) && connector.authStatus === "auth_expired") {
+      try { useManaged = managedProviderAvailable(await connectorsApi.managedCatalog(), provider) } catch { /* Native reconnect remains available. */ }
+    }
+    if (useManaged) {
       try {
         const connected = await openManagedConnector(provider, { name: connector.name, connectorId: connector.id })
         if (connected) { toast.success(`${connector.type} reconnected`); await mutate() }
@@ -3483,6 +3503,16 @@ function ConnectorsPageContent() {
           )}
           </>
           )}
+          {!chromeCollapsed ? <DataRemovalReceipts className="mt-8" /> : null}
+          {!chromeCollapsed && isAdmin ? (
+            // Moved here from Settings > Enterprise: sync status belongs next to the connectors it reads.
+            <section id="knowledge-sync" aria-labelledby="knowledge-sync-heading" className="gv-set mt-8 flex scroll-mt-20 flex-col gap-3">
+              <h2 id="knowledge-sync-heading" className="text-[13px] font-semibold text-foreground">
+                Knowledge sync
+              </h2>
+              <EnterpriseKnowledgeSync isAdmin={isAdmin} />
+            </section>
+          ) : null}
           {!chromeCollapsed && connectors.length > 0 ? (
             <div className="-mx-4 mt-8 border-t border-[color:var(--g-border-default)] pt-2 md:-mx-6" data-testid="connectors-discovery">
               <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />

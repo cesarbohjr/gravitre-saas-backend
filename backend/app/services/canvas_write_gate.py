@@ -95,8 +95,16 @@ def block_canvas_write_step(
     step_type: str,
     config: dict[str, Any] | None,
     run_row: dict[str, Any] | None,
+    run_parameters: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Return a failure payload when this write step must not execute."""
+    from app.services.workflow_approval_scope import (
+        approval_scope_required,
+        definition_digest_matches,
+        scope_from_run_parameters,
+        step_allowed_by_scope,
+    )
+
     stype = str(step_type or "").strip()
     action: str | None = None
     if stype in EXTERNAL_WRITE_STEP_TYPES:
@@ -106,6 +114,59 @@ def block_canvas_write_step(
         action = str(cfg.get("action") or cfg.get("tool_action") or "").strip() or None
     if not action or not invoke_action_requires_write_approval(action):
         return None
+    params = run_parameters
+    if params is None and isinstance(run_row, dict):
+        raw = run_row.get("parameters")
+        params = raw if isinstance(raw, dict) else None
+    scope = scope_from_run_parameters(params)
+    if approval_scope_required(run_row) and not scope:
+        from app.services.gravitre_voice import format_operator_message
+
+        return {
+            "success": False,
+            "error_code": CANVAS_WRITE_AUTHORITY_BLOCKED,
+            "error": format_operator_message(
+                "canvas_write_blocked",
+                confidence_register="blocked",
+                allow_humor=False,
+            ),
+            "action": action,
+            "pending_approval": False,
+            "reason": "approval_scope_missing",
+        }
+    definition = None
+    if isinstance(run_row, dict):
+        definition = run_row.get("definition_snapshot") or run_row.get("definition")
+    if scope and not definition_digest_matches(scope, definition if isinstance(definition, dict) else None):
+        from app.services.gravitre_voice import format_operator_message
+
+        return {
+            "success": False,
+            "error_code": CANVAS_WRITE_AUTHORITY_BLOCKED,
+            "error": format_operator_message(
+                "canvas_write_blocked",
+                confidence_register="blocked",
+                allow_humor=False,
+            ),
+            "action": action,
+            "pending_approval": False,
+            "reason": "approval_scope_digest_mismatch",
+        }
+    if scope and not step_allowed_by_scope(step_type=stype, config=config, scope=scope):
+        from app.services.gravitre_voice import format_operator_message
+
+        return {
+            "success": False,
+            "error_code": CANVAS_WRITE_AUTHORITY_BLOCKED,
+            "error": format_operator_message(
+                "canvas_write_blocked",
+                confidence_register="blocked",
+                allow_humor=False,
+            ),
+            "action": action,
+            "pending_approval": False,
+            "reason": "approval_scope_mismatch",
+        }
     if run_allows_catalog_write_execution(run_row):
         return None
     # User-facing copy owned by Module D gravitre_voice (same SoT as chat/ReAct).
@@ -145,7 +206,7 @@ def load_run_for_write_gate(client: Any, org_id: str, run_id: str | None) -> dic
     try:
         rows = (
             client.table("workflow_runs")
-            .select("id, status, approval_status, required_approvals")
+            .select("id, status, approval_status, required_approvals, parameters, definition_snapshot")
             .eq("id", run_id)
             .eq("org_id", org_id)
             .limit(1)
@@ -156,6 +217,24 @@ def load_run_for_write_gate(client: Any, org_id: str, run_id: str | None) -> dic
     except Exception:  # noqa: BLE001
         return None
     return None
+
+
+def require_approved_authority_run(
+    *, client: Any, org_id: str, run_id: str | None, authority_ref: str,
+) -> dict[str, Any]:
+    """Revalidate declared workflow authority against this tenant's live run.
+
+    A ContextVar describes a caller's intent; it is not durable approval evidence.
+    Never fall back to another authority if the run cannot be read or was revoked.
+    """
+    from app.services.tool_types import ToolValidationError
+
+    if not org_id or not run_id or not authority_ref or str(run_id) != str(authority_ref):
+        raise ToolValidationError("Workflow approval does not match this execution", code="workflow_approval_invalid")
+    run = load_run_for_write_gate(client, org_id, str(run_id))
+    if not run_allows_catalog_write_execution(run):
+        raise ToolValidationError("Workflow approval is unavailable or no longer approved", code="workflow_approval_invalid")
+    return run
 
 
 def bind_f1_write_hmac_context(

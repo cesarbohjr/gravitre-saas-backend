@@ -11,8 +11,10 @@ import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { addOns, howItWorks, roles } from "@/lib/pricing-page-data"
 import { PricingAnnualProvider } from "@/components/marketing/pricing/pricing-annual-context"
 import { PricingFaqAccordion } from "@/components/marketing/pricing/pricing-faq-accordion"
+import { PricingPromoBanner, PricingPromoProvider } from "@/components/marketing/pricing/pricing-promo"
 import { Pricing } from "@/components/marketing/nodus/pricing"
 import { PricingTable } from "@/components/marketing/nodus/pricing-table"
+import { MspPricingSection } from "@/components/marketing/pricing/msp-pricing-section"
 import { Container } from "@/components/marketing/nodus/container"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { Badge } from "@/components/marketing/nodus/badge"
@@ -37,7 +39,9 @@ import { OutcomesPositioningField } from "@/components/marketing/creative"
 export default function PricingPage() {
   return (
     <PricingAnnualProvider>
+      <PricingPromoProvider>
       <div className="relative overflow-hidden bg-[color:var(--g-marketing-canvas)]">
+        <PricingPromoBanner />
         <Pricing />
 
         <DivideX />
@@ -259,6 +263,11 @@ export default function PricingPage() {
 
         <DivideX />
 
+        {/* For MSPs — wholesale partner program (anchor #msp) */}
+        <MspPricingSection />
+
+        <DivideX />
+
         {/* Trust strip */}
         <Container className="border-divide border-x px-4 py-10 md:px-8">
           <div className="divide-divide grid grid-cols-1 divide-y sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4 lg:divide-y-0">
@@ -313,6 +322,7 @@ export default function PricingPage() {
 
         <MarketingPageEndCta />
       </div>
+      </PricingPromoProvider>
     </PricingAnnualProvider>
   )
 }

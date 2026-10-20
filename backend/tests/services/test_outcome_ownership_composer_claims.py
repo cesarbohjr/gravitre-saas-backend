@@ -74,3 +74,16 @@ def test_completion_claim_detector_handles_negation(text: str, claim: bool) -> N
 
 async def _return(value: str) -> str:
     return value
+
+
+import pytest as _pytest
+
+from app.services.response_composer import _COMPLETION_CLAIM
+
+
+@_pytest.mark.parametrize(
+    "text",
+    ["Email sent to Stephanie.", "The email was sent.", "Message delivered.", "Your contact is now in HubSpot."],
+)
+def test_passive_completion_claims_are_caught(text):
+    assert _COMPLETION_CLAIM.search(text)

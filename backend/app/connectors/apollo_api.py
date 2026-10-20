@@ -98,13 +98,14 @@ def resolve_apollo_connector(
 
     # Prefer master API key when present — People/Companies API Search often rejects
     # free-plan OAuth bearer tokens with 403 plan limits even while OAuth is "connected".
-    api_key = get_decrypted_secret(client, cid, "api_token", settings) or get_decrypted_secret(
-        client, cid, "api_key", settings
+    api_key = get_decrypted_secret(client, cid, "api_token", settings, org_id=org_id) or get_decrypted_secret(
+        client, cid, "api_key", settings,
+        org_id=org_id,
     )
     if api_key:
         return cid, {"X-Api-Key": api_key.strip()}
 
-    oauth_tokens = load_oauth_tokens(client, cid, settings)
+    oauth_tokens = load_oauth_tokens(client, cid, settings, org_id=org_id)
     if oauth_tokens and oauth_tokens.get("access_token"):
         access, err = ensure_generic_session(
             client,
@@ -218,7 +219,7 @@ def apollo_connection_auth_status(
     environment_name: str | None = None,
 ) -> str:
     if generic_oauth_configured(settings, "apollo", environment_name):
-        tokens = load_oauth_tokens(client, connector_id, settings)
+        tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
         if tokens and tokens.get("access_token"):
             return generic_connection_auth_status(
                 client,

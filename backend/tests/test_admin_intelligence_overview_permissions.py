@@ -60,6 +60,19 @@ async def test_outcomes_reachable_by_non_admin_member(member_client):
 
 
 @pytest.mark.asyncio
+async def test_outcome_delivery_uses_authenticated_member_org(member_client):
+    client, org_id = member_client
+    with patch("app.workflows.repository.get_supabase_client"), patch(
+        "app.services.outcome_learning_handler.learning_delivery_status",
+        return_value={"status": "blocked", "blockers": ["outcome_handler_disabled"]},
+    ) as delivery:
+        response = await client.get("/api/admin/intelligence/outcomes/delivery")
+    assert response.status_code == 200
+    assert response.json()["status"] == "blocked"
+    assert delivery.call_args.kwargs == {"org_id": org_id}
+
+
+@pytest.mark.asyncio
 async def test_simulations_reachable_by_non_admin_member(member_client):
     client, org_id = member_client
     with patch("app.routers.admin_intelligence.get_simulation_service") as mock_sim:

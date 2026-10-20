@@ -143,6 +143,15 @@ async def _run_typed_turn(fake_live, *, streaming: bool = True, query: str | Non
         stack.enter_context(
             patch("app.services.unified_turn_reasoning_service.apply_unified_turn_live", fake_live)
         )
+        # These are streaming-contract tests, not a live council evaluation.
+        # The fallback answer can trigger consensus; never send unit-test
+        # prompts to a real model provider from this helper.
+        stack.enter_context(
+            patch(
+                "app.services.conversational_consensus_service.get_conversational_consensus_service",
+                return_value=SimpleNamespace(refine_if_warranted=AsyncMock(return_value={"consensus_used": False})),
+            )
+        )
         async for event in intel.execute_task_streaming(
             org_id="org-1",
             user_id="user-1",

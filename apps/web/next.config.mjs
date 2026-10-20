@@ -73,7 +73,12 @@ const nextConfig = {
         .replace(/\/+$/, "")
 
     const beforeFiles = []
-    if (supabaseProject.includes(".supabase.co")) {
+    // Exercise same-origin Auth under the unchanged CSP in disposable dev acceptance.
+    const localAcceptanceAuthProxy =
+      process.env.NODE_ENV === "development" &&
+      process.env.BILLING_ACCEPTANCE_ISOLATED === "1" &&
+      /^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/.test(supabaseProject)
+    if (supabaseProject.includes(".supabase.co") || localAcceptanceAuthProxy) {
       // Same-origin auth proxy: browser uses gravitre.app/auth/v1/* instead of *.supabase.co
       beforeFiles.push({
         source: "/auth/v1/:path*",

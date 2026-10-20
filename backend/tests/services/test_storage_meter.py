@@ -35,6 +35,9 @@ def _settings(**overrides) -> Settings:
         supabase_service_role_key="service-role-test",
         supabase_jwt_secret="jwt-secret-test",
     )
+    # Both ship on; tests start from off so each one says what it turns on.
+    s.storage_meter_enabled = False
+    s.storage_quota_enforcement_enabled = False
     for k, v in overrides.items():
         setattr(s, k, v)
     return s
@@ -60,10 +63,11 @@ def _limit(monkeypatch, limit_bytes: int | None) -> None:
 # --------------------------------------------------------------------------- meter
 
 
-def test_defaults_are_off():
-    s = _settings()
-    assert s.storage_meter_enabled is False
-    assert s.storage_quota_enforcement_enabled is False
+def test_defaults_are_on():
+    # Owner decision 2026-10-20: meter and quota ship on.
+    fields = Settings.model_fields
+    assert fields["storage_meter_enabled"].default is True
+    assert fields["storage_quota_enforcement_enabled"].default is True
 
 
 def test_scheduler_not_started_when_off(monkeypatch):

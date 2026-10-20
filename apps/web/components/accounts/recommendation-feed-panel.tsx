@@ -6,6 +6,7 @@ import useSWR from "swr"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { accountIntelligenceApi, isFeatureOff, type RecommendationFeedItem } from "@/lib/api"
+import { CustomerContextOffState } from "@/components/accounts/customer-context-off-state"
 
 const KIND_LABEL: Record<string, string> = {
   business_signal: "Signal",
@@ -76,6 +77,11 @@ function FeedItem({ item, onDecided }: { item: RecommendationFeedItem; onDecided
         </ul>
       ) : null}
       <div className="flex flex-wrap gap-2 pt-1">
+        {item.remedies?.map((remedy) => (
+          <Button key={remedy.href} size="sm" variant="outline" className="min-h-11" asChild>
+            <Link href={remedy.href} title={remedy.why}>{remedy.label}</Link>
+          </Button>
+        ))}
         {canDecide ? (
           <>
             <Button size="sm" className="min-h-11" disabled={busy !== null} onClick={() => void decide(true)}>
@@ -86,7 +92,7 @@ function FeedItem({ item, onDecided }: { item: RecommendationFeedItem; onDecided
             </Button>
           </>
         ) : null}
-        {item.href && !canDecide ? (
+        {item.href && !canDecide && !item.remedies?.length ? (
           <Button size="sm" variant="ghost" className="min-h-11" asChild>
             <Link href={item.href}>Open</Link>
           </Button>
@@ -96,13 +102,35 @@ function FeedItem({ item, onDecided }: { item: RecommendationFeedItem; onDecided
   )
 }
 
-/** One ranked list of what needs attention. Renders nothing while switched off. */
-export function RecommendationFeedPanel() {
+const FEED_SHOWS =
+  "one ranked list of what needs attention: business signals, suggestions, proposed work and account changes, each with why."
+
+/**
+ * One ranked list of what needs attention. While the feature is switched off
+ * (404) it says so plainly instead of hiding.
+ */
+export function RecommendationFeedPanel({ kinds }: { kinds?: readonly string[] } = {}) {
   const { data, error, isLoading, mutate } = useSWR("recommendation-feed", () => accountIntelligenceApi.feed(), {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
   })
-  if (isFeatureOff(error)) return null
+  const items = data?.items.filter((item) => !kinds || kinds.includes(item.kind))
+  if (isFeatureOff(error)) {
+    return (
+      <section aria-labelledby="recommendation-feed-heading" className="space-y-2">
+        <div>
+          <h2 id="recommendation-feed-heading" className="font-sans text-xl font-medium">Needs attention</h2>
+          <p className="text-sm text-muted-foreground">Recommendations only. Nothing here runs by itself.</p>
+        </div>
+        <CustomerContextOffState
+          feature="Needs attention"
+          whatItShows={FEED_SHOWS}
+          reason="notAvailable"
+          emptyMessage="Nothing needs attention right now."
+        />
+      </section>
+    )
+  }
   const unavailable = data ? Object.entries(data.sources).filter(([, state]) => state === "error").length : 0
   return (
     <section aria-labelledby="recommendation-feed-heading" className="space-y-2">
@@ -124,9 +152,9 @@ export function RecommendationFeedPanel() {
           {unavailable === 1 ? "One source" : `${unavailable} sources`} couldn&apos;t be read, so this list may be incomplete.
         </p>
       ) : null}
-      {data && data.items.length === 0 ? <p className="text-sm text-muted-foreground">Nothing needs attention right now.</p> : null}
+      {data && items?.length === 0 ? <p className="text-sm text-muted-foreground">Nothing needs attention right now.</p> : null}
       <ul className="divide-y divide-divide">
-        {data?.items.map((item) => <FeedItem key={item.id} item={item} onDecided={() => void mutate()} />)}
+        {items?.map((item) => <FeedItem key={item.id} item={item} onDecided={() => void mutate()} />)}
       </ul>
     </section>
   )

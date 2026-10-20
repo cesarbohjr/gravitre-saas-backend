@@ -209,6 +209,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      # tests/db/*_pg.py start a throwaway PostgreSQL from the runner's server
+      # binaries; the retrieval migration test also needs pgvector. Best effort:
+      # without it that one test module skips.
+      - name: Install pgvector for migration tests
+        run: sudo apt-get install -y -q postgresql-16-pgvector || echo "pgvector unavailable; vector migration tests will skip"
+
       - name: Lint confidence honesty (Module C)
         working-directory: .
         run: |
@@ -222,6 +228,133 @@ jobs:
 
       - name: Golden benchmark (Phase A + traffic scenarios)
         run: python -m pytest tests/services/test_phase_a_cognitive_runtime_benchmark.py tests/services/test_golden_benchmark_traffic.py tests/services/test_action_execute_now.py -q
+        env:
+          APP_ENV: dev
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: anon-test
+          SUPABASE_SERVICE_ROLE_KEY: service-role-test
+          SUPABASE_JWT_SECRET: jwt-secret-test
+          OPENAI_API_KEY: sk-test-openai
+
+      - name: Install PostgreSQL server (write invoke idempotency gate)
+        run: |
+          sudo apt-get update -y -q
+          sudo apt-get install -y -q postgresql postgresql-client
+          PGVER="$(ls /usr/lib/postgresql | sort -V | tail -1)"
+          echo "GRAVITRE_PG_BIN=/usr/lib/postgresql/${PGVER}/bin" >> "$GITHUB_ENV"
+
+      - name: Write invoke idempotency Postgres acceptance (must not skip)
+        run: python -m pytest tests/db/test_write_invoke_idempotency_pg.py -q --no-header
+        env:
+          APP_ENV: dev
+          GRAVITRE_REQUIRE_PG: "1"
+
+      - name: Founder billing safety PostgreSQL acceptance (must not skip)
+        run: python -m pytest tests/db/test_founder_billing_safety_pg.py tests/billing/test_billing_safety_controls.py -q --no-header
+        env:
+          APP_ENV: dev
+          GRAVITRE_REQUIRE_PG: "1"
+
+      - name: Assistant atomic usage Postgres acceptance (must not skip)
+        run: python -m pytest tests/db/test_assistant_usage_atomic_pg.py -q --no-header
+        env:
+          APP_ENV: dev
+          GRAVITRE_REQUIRE_PG: "1"
+
+      - name: Mixed-source atomic usage Postgres acceptance (must not skip)
+        run: python -m pytest tests/db/test_atomic_usage_all_sources_pg.py -q --no-header
+        env:
+          APP_ENV: dev
+          GRAVITRE_REQUIRE_PG: "1"
+
+      - name: Durable assistant recovery Postgres acceptance (must not skip)
+        run: |
+          python -m pytest tests/db/test_assistant_billing_recovery_pg.py -q --no-header
+          python -m pytest tests/services/test_assistant_billing_contract.py tests/billing/test_usage_scheduler.py -q --no-header
+        env:
+          APP_ENV: dev
+          GRAVITRE_REQUIRE_PG: "1"
+
+      - name: Stripe outbox PostgreSQL acceptance (must not skip)
+        run: |
+          python -m pytest tests/db/test_stripe_meter_outbox_pg.py -q --no-header
+          python -m pytest tests/billing/test_stripe_meter_outbox.py tests/billing/test_stripe_meter_intents.py -q --no-header
+        env:
+          APP_ENV: dev
+          GRAVITRE_REQUIRE_PG: "1"
+
+      - name: Company intelligence source revocation contract
+        run: python -m pytest tests/services/test_company_intelligence_memory_lineage.py tests/test_company_intelligence_prompt_injection.py -q --no-header
+        env:
+          APP_ENV: dev
+
+      - name: Workflow model comparison contract (no provider requests)
+        run: |
+          python -m pytest tests/services/test_llm_workflow_evaluation.py -q --no-header
+          python ../scripts/evaluate_llm_workflows.py --models gpt-5.4-mini
+        env:
+          APP_ENV: dev
+
+      - name: Memory lineage write integrity contract
+        run: >-
+          python -m pytest -q --no-header
+          tests/services/test_memory_source_lineage.py
+          tests/services/test_memory_lineage_coverage.py
+          tests/services/test_memory_source_liveness.py
+        env:
+          APP_ENV: dev
+
+      - name: Workflow approval projection contract
+        run: >-
+          python -m pytest -q tests/services/test_react_canvas_write_gate.py
+          tests/services/test_workflow_approval_scope_audit.py
+          tests/services/test_write_authority_spine.py
+          tests/services/test_write_approval_fingerprints.py
+
+      - name: Resolved MCP approval and verification contract
+        run: >-
+          python -m pytest -q --no-header
+          tests/services/test_mcp_approval_decision.py
+          tests/services/test_mcp_approval_binding.py
+          tests/routers/test_admin_queue_approval_binding.py
+          tests/test_mcp_tool_layer.py
+          tests/capabilities/test_portable_mcp_write_verification.py
+        env:
+          APP_ENV: dev
+
+      - name: Connector credential tenant-scope contract
+        run: >-
+          python -m pytest
+          tests/connectors/test_connector_secret_org_scope.py
+          tests/routers/test_connectors_list_secrets_batch.py
+          tests/connectors/test_twilio_api_key_auth.py
+          tests/connectors/test_semrush_api.py
+          tests/connectors/test_segment_api.py
+          tests/services/test_source_lifecycle.py
+          -q --no-header
+        env:
+          APP_ENV: dev
+
+      - name: Assistant crash-gap recovery contract
+        working-directory: .
+        run: python -m pytest scripts/tests/test_reconcile_assistant_billing.py -q --no-header
+        env:
+          APP_ENV: dev
+
+      - name: Install and start Redis (workflow queue integration)
+        run: |
+          sudo apt-get install -y -q redis-server
+          sudo systemctl start redis-server
+
+      - name: Workflow queue Redis integration
+        run: python -m pytest tests/workers/test_workflow_queue_redis_integration.py -q --no-header
+        env:
+          APP_ENV: dev
+          REDIS_URL: redis://127.0.0.1:6379/15
+          GRAVITRE_REQUIRE_REDIS: "1"
+
+      - name: Assistant stream contract
+        run: python -m pytest tests/test_assistant_unified_pipeline.py -q --no-header
         env:
           APP_ENV: dev
           SUPABASE_URL: https://test.supabase.co
@@ -370,3 +503,4 @@ jobs:
           FASTAPI_BASE_URL: http://127.0.0.1:8000
           PLAYWRIGHT_BASE_URL: http://localhost:3000
           NEXT_PUBLIC_PLAYWRIGHT_E2E: "1"
+

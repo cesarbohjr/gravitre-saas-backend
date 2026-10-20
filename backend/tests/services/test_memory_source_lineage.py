@@ -159,17 +159,16 @@ def test_promote_writes_nothing_new_when_disabled():
     assert "source_record_ref" not in client.inserted[0]
 
 
-def test_promote_retries_without_lineage_when_columns_are_missing():
+def test_promote_refuses_untagged_retry_when_columns_are_missing():
     client = _Client(missing_lineage_columns=True)
     written = _promote(client, ON, {"content": "Acme renews in March", "category": "episodic", "connector_id": CONN})
-    assert len(written) == 1
-    assert len(client.attempts) == 2
-    # The hardened columns survive; only the lineage columns are dropped.
-    assert "source_connector_id" not in client.inserted[0]
-    assert client.inserted[0]["is_current"] is True and "source_class" in client.inserted[0]
+    assert written == []
+    assert len(client.attempts) == 1
+    assert client.inserted == []
+    assert client.attempts[0]["source_connector_id"] == CONN_LOWER
 
 
-def test_temporal_memory_carries_lineage_and_retries_without_it():
+def test_temporal_memory_carries_lineage_and_refuses_untagged_retry():
     memory = {"content": "ICP: 10-50 employees", "category": "preference", "connector_id": CONN}
     client = _Client()
     _promote(client, ON, memory)
@@ -180,15 +179,15 @@ def test_temporal_memory_carries_lineage_and_retries_without_it():
         missing,
         {"org_id": ORG, "content": "ICP: 10-50", "category": "preference", "source_connector_id": CONN_LOWER},
     )
-    assert row is not None
-    assert len(missing.attempts) == 2 and "source_connector_id" not in missing.inserted[0]
+    assert row is None
+    assert len(missing.attempts) == 1 and missing.inserted == []
 
 
 # ------------------------------------------------------------------ create_agent_memory
 
 
 @patch("app.services.agent_memory_service.get_embedding", return_value=None)
-def test_create_agent_memory_tags_and_falls_back(_embed):
+def test_create_agent_memory_never_discards_required_lineage(_embed):
     from app.services.agent_memory_service import create_agent_memory
 
     client = _Client()
@@ -204,12 +203,12 @@ def test_create_agent_memory_tags_and_falls_back(_embed):
     assert "source_connector_id" not in off.inserted[0]
 
     missing = _Client(missing_lineage_columns=True)
-    create_agent_memory(
-        ON, missing, ORG, None, user_id=None, content="Acme renews in March", source_connector_id=CONN,
-    )
-    assert len(missing.attempts) == 2
-    assert "source_connector_id" not in missing.inserted[0]
-    assert missing.inserted[0]["source_class"]  # kept: only lineage was missing
+    with pytest.raises(RuntimeError, match="source_connector_id"):
+        create_agent_memory(
+            ON, missing, ORG, None, user_id=None, content="Acme renews in March", source_connector_id=CONN,
+        )
+    assert len(missing.attempts) == 1
+    assert missing.inserted == []
 
 
 # ------------------------------------------------- confirmed connector actions
@@ -306,3 +305,64 @@ def test_execution_result_round_trips_connector_id():
 
     restored = ExecutionResult.from_dict(dict(_execution().__dict__))
     assert restored.connector_id == CONN
+
+
+@pytest.mark.parametrize("writer", ["workspace", "temporal", "agent"])
+def test_timeout_after_tagged_insert_never_retries_without_source(writer, monkeypatch):
+    """A provider/DB timeout may follow commit; do not turn it into untagged data."""
+    from app.services.agent_memory_service import create_agent_memory
+    from app.services.memory_temporal_service import _insert_memory
+    from app.services.workspace_memory_service import _insert_memory_row
+
+    client = _Client()
+    attempts = []
+
+    def commit_then_timeout(query):
+        if query.op == "insert":
+            attempts.append(dict(query.payload))
+            raise TimeoutError("connection timed out after commit")
+        return SimpleNamespace(data=[])
+
+    monkeypatch.setattr(_Query, "execute", commit_then_timeout)
+    monkeypatch.setattr("app.services.agent_memory_service.get_embedding", lambda *a, **k: None)
+    payload = {"org_id": ORG, "content": "external fact", "source_connector_id": CONN_LOWER}
+    if writer == "workspace":
+        assert _insert_memory_row(client, payload) is None
+    else:
+        with pytest.raises(TimeoutError):
+            if writer == "temporal":
+                _insert_memory(client, payload)
+            else:
+                create_agent_memory(ON, client, ORG, None, user_id=None, content="external fact", source_connector_id=CONN)
+    assert len(attempts) == 1
+    assert attempts[0]["source_connector_id"] == CONN_LOWER
+
+
+@pytest.mark.parametrize("connector_id", [None, "hubspot", "not-a-uuid"])
+def test_external_agent_memory_without_lineage_is_refused_before_embedding(connector_id, monkeypatch):
+    from fastapi import HTTPException
+    from unittest.mock import Mock
+    from app.services.agent_memory_service import create_agent_memory
+
+    embedding = Mock()
+    monkeypatch.setattr("app.services.agent_memory_service.get_embedding", embedding)
+    client = _Client()
+    with pytest.raises(HTTPException) as error:
+        create_agent_memory(
+            ON, client, ORG, None, user_id=None, content="external fact",
+            provenance="connector:hubspot", source_connector_id=connector_id,
+        )
+    assert error.value.status_code == 400
+    embedding.assert_not_called()
+    assert client.attempts == []
+
+
+def test_user_direct_agent_memory_stays_untagged_with_lineage_on():
+    from app.services.agent_memory_service import create_agent_memory
+    from app.services.memory_contamination_guard import SOURCE_USER_DIRECT
+
+    client = _Client()
+    with patch("app.services.agent_memory_service.get_embedding", return_value=None):
+        create_agent_memory(ON, client, ORG, None, user_id="user", content="My standing preference")
+    assert client.inserted[0]["source_class"] == SOURCE_USER_DIRECT
+    assert "source_connector_id" not in client.inserted[0]

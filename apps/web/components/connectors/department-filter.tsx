@@ -43,7 +43,7 @@ export const CONNECTOR_DEPARTMENTS: readonly ConnectorDepartment[] = [
     label: "Finance",
     sentence: "Track payments, spend and cash.",
     illustration: "dept-finance",
-    categories: ["Payments / Finance"],
+    categories: ["Payments / Finance", "Analytics / Data"],
   },
   {
     id: "support",
@@ -57,7 +57,7 @@ export const CONNECTOR_DEPARTMENTS: readonly ConnectorDepartment[] = [
     label: "Engineering",
     sentence: "Ship code and fix incidents fast.",
     illustration: "dept-engineering",
-    categories: ["DevOps / Incidents", "Storage / Dev / Infra"],
+    categories: ["DevOps / Incidents", "Storage / Dev / Infra", "Analytics / Data"],
   },
 ]
 

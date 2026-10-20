@@ -428,6 +428,47 @@ def build_agent_roi_report(
     }
 
 
+def _read_report_pages(query: Any, *, page_size: int = 500, max_rows: int = 10_000) -> tuple[list[dict[str, Any]], bool]:
+    """Bounded ordered pages below PostgREST's row cap, with explicit coverage.
+
+    Reports use a fixed end timestamp. A repeated page fails coverage instead
+    of counting the same evidence twice if a backend ignores range parameters.
+    """
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    while len(rows) < max_rows:
+        batch = query.order("id").range(len(rows), min(len(rows) + page_size, max_rows) - 1).execute().data or []
+        for row in batch:
+            identity = str(row.get("id") or "")
+            if not identity or identity in seen:
+                return rows, False
+            seen.add(identity)
+        rows.extend(batch)
+        if len(batch) < page_size:
+            return rows, True
+    # Conservatively incomplete at the configured bound; never advertise an
+    # ROI multiple derived from a potentially truncated denominator.
+    return rows, False
+
+
+def _apply_report_coverage(report: dict[str, Any], coverage: dict[str, bool]) -> dict[str, Any]:
+    report["dataCoverage"] = coverage
+    report["honesty"]["dataComplete"] = all(coverage.values())
+    for summary in [report.get("orgTotals", {}), *report.get("agents", [])]:
+        affected = []
+        if not coverage.get("model_calls", False):
+            affected += ["agentCostUsd", "roiMultiple"]
+        if not coverage.get("agent_jobs", False):
+            affected += ["tasksCompleted", "estimatedHoursSaved", "estimatedLaborValueUsd", "roiMultiple"]
+        if not coverage.get("outcomes", False):
+            affected += ["actionsExecuted", "revenueInfluencedUsd"]
+        for key in affected:
+            metric = summary.get(key)
+            if isinstance(metric, dict):
+                metric.update(value=None, provenance="insufficient_data", note="Report evidence is incomplete; narrow the reporting period or resolve the source error.")
+    return report
+
+
 def fetch_agent_roi(
     client: Any,
     org_id: str,
@@ -489,7 +530,7 @@ def fetch_agent_roi(
     )
     if agent_id:
         model_q = model_q.eq("agent_id", agent_id)
-    model_rows = model_q.limit(5000).execute().data or []
+    model_rows, models_complete = _read_report_pages(model_q)
 
     jobs_q = (
         client.table("agent_jobs")
@@ -498,26 +539,27 @@ def fetch_agent_roi(
         .gte("created_at", start_iso)
         .lt("created_at", end_iso)
     )
-    job_rows = jobs_q.limit(5000).execute().data or []
+    job_rows, jobs_complete = _read_report_pages(jobs_q)
     if agent_id:
         job_rows = [r for r in job_rows if _agent_id_from_job(r) == agent_id]
 
     outcome_rows: list[dict[str, Any]] = []
+    outcomes_complete = False
     try:
         out_q = (
             client.table("intelligence_outcome_events")
-            .select("id,agent_id,outcome_event,event_type,metadata,payload,created_at")
+            .select("id,agent_id,outcome_event,metadata,created_at")
             .eq("org_id", org_id)
             .gte("created_at", start_iso)
             .lt("created_at", end_iso)
         )
         if agent_id:
             out_q = out_q.eq("agent_id", agent_id)
-        outcome_rows = out_q.limit(5000).execute().data or []
+        outcome_rows, outcomes_complete = _read_report_pages(out_q)
     except Exception:
         outcome_rows = []
 
-    return build_agent_roi_report(
+    report = build_agent_roi_report(
         org_id=org_id,
         agents=agents,
         model_call_rows=model_rows,
@@ -528,3 +570,4 @@ def fetch_agent_roi(
         period_start=start,
         period_end=end,
     )
+    return _apply_report_coverage(report, {"model_calls": models_complete, "agent_jobs": jobs_complete, "outcomes": outcomes_complete})

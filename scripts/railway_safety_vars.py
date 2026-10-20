@@ -39,13 +39,15 @@ APPROVED_VALUES: dict[str, str] = {
 }
 
 # Default-off flags the owner approved switching on (2026-10-13, "safe subset"):
-# read-path context ranking only, no customer data and no writes. On is reported,
-# not a problem; absent is still fine.
+# read-path context ranking only, no customer data and no writes; plus memory
+# lineage once its migration was verified. On is reported, not a problem; absent
+# is still fine.
 APPROVED_ON: frozenset[str] = frozenset(
     {
         "CROSS_SOURCE_CONTEXT_LIVENESS_V1",
         "CROSS_SOURCE_CONTEXT_FRESHNESS_V1",
         "CONTEXT_ENGINE_WORK_STATE_V1",
+        "MEMORY_SOURCE_LINEAGE_ENABLED",  # owner-approved 2026-10-13 after migration 20261012070000 was verified
     }
 )
 
@@ -77,9 +79,13 @@ DEFAULT_OFF: tuple[str, ...] = (
     # and the memory/observation purge (PR #374). Needs migration 20261012070000
     # first: before it, recall returns no memories (the filter fails closed).
     "MEMORY_SOURCE_LINEAGE_ENABLED",
-    # Storage PR (needs migration 20261013090000): archive audit batches before delete,
-    # daily per-org storage snapshot, plan storage quota (402 on new syncs/uploads at
-    # 100%), enterprise bring-your-own file storage.
+)
+
+# On by default in config.py (owner decision 2026-10-20, migration 20261020081535):
+# archive audit batches before delete, daily per-org storage snapshot, plan storage
+# quota (402 on new syncs/uploads at 100%), enterprise bring-your-own file storage.
+# Reported with their values; false is the owner's to choose, never a problem.
+DEFAULT_ON: tuple[str, ...] = (
     "AUDIT_RETENTION_ARCHIVE_ENABLED",
     "STORAGE_METER_ENABLED",
     "STORAGE_QUOTA_ENFORCEMENT_ENABLED",
@@ -108,11 +114,11 @@ KILL_SWITCH = "DISABLE_INGESTION"
 # Data retention settings: reported with their values, never pinned and never a
 # problem (the age is an owner decision; 0 keeps rows forever and any other value is
 # raised to the compliance floor in code). Only a value that would stop startup is a
-# problem. AUDIT_RETENTION_DRY_RUN defaults to true (count only).
+# problem. AUDIT_RETENTION_DRY_RUN defaults to false (archive, then delete).
 RETENTION_REPORTED: dict[str, str] = {
-    "AUDIT_RETENTION_DAYS": "0 (keep forever)",
-    "TELEMETRY_RETENTION_DAYS": "0 (keep forever)",
-    "AUDIT_RETENTION_DRY_RUN": "true (count only)",
+    "AUDIT_RETENTION_DAYS": "365",
+    "TELEMETRY_RETENTION_DAYS": "365",
+    "AUDIT_RETENTION_DRY_RUN": "false (archive, then delete)",
 }
 
 # Context delivery settings (pre-3.0 Plus): reported with their values, never
@@ -178,6 +184,14 @@ def audit(env: dict[str, str]) -> tuple[list[str], list[str], list[str]]:
             continue
         elif parsed:
             problems.append(f"{key} is on; 3.0 Plus features stay off until acceptance")
+        lines.append(f"{key}={env[key]!r}")
+
+    for key in DEFAULT_ON:
+        if key not in env:
+            lines.append(f"{key}: absent (on)")
+            continue
+        if _bool(env[key]) is None:
+            problems.append(f"{key}={env[key]!r} is not a boolean; startup would fail")
         lines.append(f"{key}={env[key]!r}")
 
     kill = env.get(KILL_SWITCH)

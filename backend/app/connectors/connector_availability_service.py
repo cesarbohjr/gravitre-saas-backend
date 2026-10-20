@@ -149,6 +149,10 @@ def evaluate_connector_availability(
     from app.connectors.nango_registry import get_nango_connector_spec
     from app.connectors.nango_client import nango_configured
     managed_spec = get_nango_connector_spec(vendor)
+    if managed_spec and managed_spec.native_fallback:
+        from app.core.safe_dict import safe_normalize_stored_dict
+        if safe_normalize_stored_dict(row, key="config").get("auth_provider") != "managed":
+            managed_spec = None
     if managed_spec:
         configured = nango_configured(settings) and bool(settings.nango_webhook_signing_key.strip())
 
@@ -220,7 +224,7 @@ def evaluate_connector_availability(
 
     if normalize_hubspot_vendor(vendor) == "hubspot":
         configured = _hubspot_oauth_configured(settings, env)
-        tokens = load_oauth_tokens(client, connector_id, settings) if configured else None
+        tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id) if configured else None
         if configured and not tokens:
             authenticated = False
             token_valid = False
@@ -253,10 +257,11 @@ def evaluate_connector_availability(
         else:
             write_available = False
 
-    if managed_spec:
+    if managed_spec and not managed_spec.native_fallback:
         from app.services.managed_service_desk_tools import MANAGED_SERVICE_DESK_TOOL_EXECUTORS
         from app.services.managed_security_tools import MANAGED_SECURITY_TOOL_EXECUTORS
-        managed_actions = {a for a in (set(MANAGED_SERVICE_DESK_TOOL_EXECUTORS) | set(MANAGED_SECURITY_TOOL_EXECUTORS)) if a.startswith(vendor + ".")}
+        from app.services.managed_business_tools import MANAGED_BUSINESS_TOOL_EXECUTORS
+        managed_actions = {a for a in (set(MANAGED_SERVICE_DESK_TOOL_EXECUTORS) | set(MANAGED_SECURITY_TOOL_EXECUTORS) | set(MANAGED_BUSINESS_TOOL_EXECUTORS)) if a.startswith(vendor + ".")}
         if action_key and action_key not in managed_actions:
             execution_available = read_available = write_available = False
             if authenticated:

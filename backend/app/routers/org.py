@@ -1,4 +1,5 @@
 """Organization and membership management endpoints."""
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from uuid import UUID, uuid4
@@ -10,12 +11,18 @@ from supabase import create_client
 from app.core.db import shared_service_client
 from app.core.org_state_cache import invalidate_org_and_users, invalidate_org_state, invalidate_user_state
 
-from app.auth.dependencies import get_current_user, require_admin
+from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.auth.platform_admin import is_org_admin_role
 from app.auth.org_role_permissions import get_org_role_permissions_matrix
 from app.config import Settings, get_settings
-from app.services.org_member_invite_service import invite_org_member_by_email, normalize_org_member_role
+from app.billing.service import DEFAULT_PLANS, PLAN_CODE_ALIASES
+from app.services.org_member_invite_service import (
+    _invite_redirect_url as invite_redirect_url,
+    invite_org_member_by_email,
+    normalize_org_member_role,
+)
 from app.workflows.audit import write_audit_event
+from app.services.org_member_guard import assert_member_change_allowed, load_member
 
 router = APIRouter(prefix="/api/org", tags=["org"])
 organizations_router = APIRouter(prefix="/api/organizations", tags=["organizations"])
@@ -25,6 +32,7 @@ AUDIT_ORG_MEMBER_LISTED = "org.member.listed"
 AUDIT_ORG_MEMBER_INVITED = "org.member.invited"
 AUDIT_ORG_MEMBER_UPDATED = "org.member.updated"
 AUDIT_ORG_MEMBER_REMOVED = "org.member.removed"
+AUDIT_ORG_MEMBER_INVITE_RESENT = "org.member.invite_resent"
 
 
 class PatchMemberRequest(BaseModel):
@@ -160,12 +168,159 @@ def list_members(
     return {"members": members}
 
 
+def _member_role_counts(client, org_id: str) -> dict[str, int] | None:
+    """People per membership role in one org (owner kept apart from admin)."""
+    try:
+        rows = client.table("organization_members").select("role").eq("org_id", org_id).execute()
+    except Exception:  # noqa: BLE001
+        return None
+    counts = {"owner": 0, "admin": 0, "member": 0, "viewer": 0}
+    for row in rows.data or []:
+        role = str(row.get("role") or "member").strip().lower()
+        counts[role if role in counts else "member"] += 1
+    return counts
+
+
 @router.get("/role-permissions")
 def get_role_permissions(
     _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    """Return org role capability matrix for Settings → Permissions."""
-    return get_org_role_permissions_matrix()
+    """Return org role capability matrix for Settings → Permissions, plus people per role."""
+    matrix = get_org_role_permissions_matrix()
+    matrix["member_counts"] = (
+        _member_role_counts(shared_service_client(settings, create_client), org_id) if org_id else None
+    )
+    return matrix
+
+
+def _auth_invite_state(client, user_id: str) -> dict | None:
+    """Invite state of one auth user: pending until the invite link is accepted."""
+    try:
+        response = client.auth.admin.get_user_by_id(user_id)
+    except Exception:  # noqa: BLE001
+        return None
+    user = getattr(response, "user", None)
+    if user is None and isinstance(response, dict):
+        user = response.get("user", response)
+    if user is None:
+        return None
+
+    def _get(name: str):
+        return user.get(name) if isinstance(user, dict) else getattr(user, name, None)
+
+    def _iso(value):
+        if isinstance(value, datetime):
+            return value.isoformat()
+        return value if isinstance(value, str) and value else None
+
+    invited_at = _iso(_get("invited_at"))
+    confirmed_at = _iso(_get("email_confirmed_at")) or _iso(_get("confirmed_at"))
+    last_sign_in_at = _iso(_get("last_sign_in_at"))
+    return {
+        "user_id": user_id,
+        "email": _get("email") if isinstance(_get("email"), str) else None,
+        "invited_at": invited_at,
+        "last_sign_in_at": last_sign_in_at,
+        "pending": bool(invited_at) and not confirmed_at and not last_sign_in_at,
+    }
+
+
+MAX_INVITE_STATE_LOOKUPS = 200
+
+
+@router.get("/invites")
+def list_pending_invites(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Members of this org who were invited and have not accepted yet.
+
+    Invites attach the membership right away (org_member_invite_service), so
+    "pending" is read from the invited auth user: invited, never confirmed and
+    never signed in.
+    """
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = shared_service_client(settings, create_client)
+    _require_org_member(client, org_id, current_user["user_id"])
+    rows = (
+        client.table("organization_members")
+        .select("user_id, role, created_at")
+        .eq("org_id", org_id)
+        .execute()
+    ).data or []
+    members = [row for row in rows if row.get("user_id")]
+    checked = members[:MAX_INVITE_STATE_LOOKUPS]
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        states = list(pool.map(lambda row: _auth_invite_state(client, str(row["user_id"])), checked))
+    invites = []
+    unknown = 0
+    for row, state in zip(checked, states):
+        if state is None:
+            unknown += 1
+            continue
+        if state["pending"]:
+            invites.append(
+                {
+                    "user_id": str(row["user_id"]),
+                    "email": state["email"],
+                    "role": normalize_org_member_role(row.get("role")),
+                    "invited_at": state["invited_at"] or row.get("created_at"),
+                }
+            )
+    return {
+        "invites": invites,
+        "checked": len(checked) - unknown,
+        "unchecked": unknown + max(0, len(members) - len(checked)),
+    }
+
+
+@router.post("/invites/{user_id}/resend")
+def resend_invite(
+    user_id: UUID,
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Send the invite email again to a member who has not accepted yet. Admin only."""
+    _user, org_id = _admin
+    target_id = str(user_id)
+    client = shared_service_client(settings, create_client)
+    member = load_member(client, org_id, user_id=target_id)
+    if member is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+    state = _auth_invite_state(client, target_id)
+    if state is None or not state.get("email"):
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unable to read this invite. Try again.")
+    if not state["pending"]:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This person already accepted the invite")
+    try:
+        client.auth.admin.invite_user_by_email(
+            state["email"],
+            {
+                "redirect_to": invite_redirect_url(settings),
+                "data": {
+                    "invited_org_id": org_id,
+                    "invited_role": member.role,
+                    "invite_context": "organization_members_invite_resend",
+                    "invited_by": _user["user_id"],
+                },
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Unable to send invite email: {exc}") from exc
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=_user["user_id"],
+        action=AUDIT_ORG_MEMBER_INVITE_RESENT,
+        resource_type=RESOURCE_TYPE_ORG_MEMBER,
+        resource_id=member.id,
+        metadata={"email": state["email"], "role": member.role},
+    )
+    return {"ok": True, "email": state["email"]}
 
 
 @router.post("/members/invite")
@@ -197,41 +352,19 @@ def update_member(
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    """Update member role. Admin only. Cannot demote self if last admin."""
+    """Update member role. Owner/admin only; owners change only by an owner; the org keeps an owner and an admin."""
     _user, org_id = _admin
     mid = str(member_id)
     client = shared_service_client(settings, create_client)
-
-    existing = (
-        client.table("organization_members")
-        .select("id, user_id, role")
-        .eq("id", mid)
-        .eq("org_id", org_id)
-        .limit(1)
-        .execute()
+    target = load_member(client, org_id, member_id=mid)
+    if target is not None and target.role == body.role:
+        return {"id": mid, "user_id": target.user_id, "role": body.role}
+    target = assert_member_change_allowed(
+        client, org_id, actor_user_id=_user["user_id"], target=target, new_role=body.role
     )
-    if not existing.data or len(existing.data) == 0:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
-    row = existing.data[0]
-    if row["role"] == body.role:
-        return {"id": mid, "user_id": str(row["user_id"]), "role": body.role}
 
-    if str(row["user_id"]) == _user["user_id"] and body.role != "admin":
-        admins = (
-            client.table("organization_members")
-            .select("id")
-            .eq("org_id", org_id)
-            .eq("role", "admin")
-            .execute()
-        )
-        if len(admins.data or []) <= 1:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot demote yourself; you are the only admin",
-            )
-
-    client.table("organization_members").update({"role": body.role}).eq("id", mid).execute()
-    invalidate_org_and_users(org_id, [str(row["user_id"])])
+    client.table("organization_members").update({"role": body.role}).eq("id", mid).eq("org_id", org_id).execute()
+    invalidate_org_and_users(org_id, [target.user_id])
     write_audit_event(
         client,
         org_id=org_id,
@@ -239,9 +372,9 @@ def update_member(
         action=AUDIT_ORG_MEMBER_UPDATED,
         resource_type=RESOURCE_TYPE_ORG_MEMBER,
         resource_id=mid,
-        metadata={"old_role": row["role"], "new_role": body.role},
+        metadata={"old_role": target.role, "new_role": body.role},
     )
-    return {"id": mid, "user_id": str(row["user_id"]), "role": body.role}
+    return {"id": mid, "user_id": target.user_id, "role": body.role}
 
 
 @router.delete("/members/{member_id}")
@@ -250,38 +383,20 @@ def remove_member(
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    """Remove member from org. Admin only. Cannot remove self if last admin."""
+    """Remove member from org. Owner/admin only; owners removed only by an owner; the org keeps an owner and an admin."""
     _user, org_id = _admin
     mid = str(member_id)
     client = shared_service_client(settings, create_client)
-
-    existing = (
-        client.table("organization_members")
-        .select("id, user_id")
-        .eq("id", mid)
-        .eq("org_id", org_id)
-        .limit(1)
-        .execute()
+    target = assert_member_change_allowed(
+        client,
+        org_id,
+        actor_user_id=_user["user_id"],
+        target=load_member(client, org_id, member_id=mid),
+        new_role=None,
     )
-    if not existing.data or len(existing.data) == 0:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
-    row = existing.data[0]
-    if str(row["user_id"]) == _user["user_id"]:
-        admins = (
-            client.table("organization_members")
-            .select("id")
-            .eq("org_id", org_id)
-            .eq("role", "admin")
-            .execute()
-        )
-        if len(admins.data or []) <= 1:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot remove yourself; you are the only admin",
-            )
 
-    client.table("organization_members").delete().eq("id", mid).execute()
-    invalidate_org_and_users(org_id, [str(row["user_id"])])
+    client.table("organization_members").delete().eq("id", mid).eq("org_id", org_id).execute()
+    invalidate_org_and_users(org_id, [target.user_id])
     write_audit_event(
         client,
         org_id=org_id,
@@ -289,9 +404,9 @@ def remove_member(
         action=AUDIT_ORG_MEMBER_REMOVED,
         resource_type=RESOURCE_TYPE_ORG_MEMBER,
         resource_id=mid,
-        metadata={"removed_user_id": str(row["user_id"])},
+        metadata={"removed_user_id": target.user_id, "role": target.role},
     )
-    return {"id": mid, "message": "Member removed"}
+    return {"removed": True, "id": mid}
 
 
 @organizations_router.get("")
@@ -313,9 +428,78 @@ def list_organizations(
     org_ids = list(roles_by_org.keys())
     orgs = client.table("organizations").select("id, name, slug, settings, created_at").in_("id", org_ids).execute()
     rows = [_normalize_org_row(row) for row in (orgs.data or [])]
+    plans = _org_plans(client, [row["id"] for row in rows])
+    counts = _org_counts(client, [row["id"] for row in rows])
     for row in rows:
         row["role"] = roles_by_org.get(row["id"], "member")
+        plan = plans.get(row["id"])
+        if plan:
+            row.update(plan)
+        else:
+            row.update({"plan_code": None, "plan_name": None, "plan_status": None})
+        row.update(counts.get(row["id"], {}))
     return {"organizations": rows}
+
+
+ORG_COUNT_TABLES: tuple[tuple[str, str], ...] = (
+    ("member_count", "organization_members"),
+    ("agent_count", "agents"),
+    ("workflow_count", "workflows"),
+)
+MAX_COUNTED_ORGS = 50
+
+
+def _plan_name(plan_code: str | None) -> str | None:
+    code = str(plan_code or "").strip().lower()
+    if not code:
+        return None
+    plan = DEFAULT_PLANS.get(code) or DEFAULT_PLANS.get(PLAN_CODE_ALIASES.get(code, ""))
+    return str(plan["name"]) if plan and plan.get("name") else code.title()
+
+
+def _org_plans(client, org_ids: list[str]) -> dict[str, dict]:
+    """Plan on record per org from org_billing, in one query."""
+    if not org_ids:
+        return {}
+    try:
+        resp = client.table("org_billing").select("org_id, plan_code, billing_status").in_("org_id", org_ids).execute()
+    except Exception:  # noqa: BLE001
+        return {}
+    plans: dict[str, dict] = {}
+    for row in resp.data or []:
+        code = str(row.get("plan_code") or "").strip().lower() or None
+        plans[str(row.get("org_id"))] = {
+            "plan_code": code,
+            "plan_name": _plan_name(code),
+            "plan_status": row.get("billing_status"),
+        }
+    return plans
+
+
+def _exact_count(client, table: str, org_id: str) -> int | None:
+    try:
+        resp = client.table(table).select("id", count="exact").eq("org_id", org_id).limit(1).execute()
+    except Exception:  # noqa: BLE001
+        return None
+    count = getattr(resp, "count", None)
+    return int(count) if isinstance(count, int) else None
+
+
+def _org_counts(client, org_ids: list[str]) -> dict[str, dict]:
+    """Members, agents and workflows per org as exact counts (no rows fetched).
+
+    None means the count could not be read, never zero. Counts run in parallel
+    and only for the first MAX_COUNTED_ORGS orgs.
+    """
+    jobs = [(org_id, key, table) for org_id in org_ids[:MAX_COUNTED_ORGS] for key, table in ORG_COUNT_TABLES]
+    result: dict[str, dict] = {org_id: {key: None for key, _ in ORG_COUNT_TABLES} for org_id in org_ids}
+    if not jobs:
+        return result
+    with ThreadPoolExecutor(max_workers=min(8, len(jobs))) as pool:
+        values = list(pool.map(lambda job: _exact_count(client, job[2], job[0]), jobs))
+    for (org_id, key, _table), value in zip(jobs, values):
+        result[org_id][key] = value
+    return result
 
 
 @organizations_router.get("/{org_id}")
@@ -383,6 +567,8 @@ def update_organization(
     _require_org_admin(client, org_id_str, current_user["user_id"])
 
     payload = {k: v for k, v in body.model_dump().items() if v is not None}
+    # The plan is set by billing, never by an org admin through this endpoint.
+    payload.pop("plan", None)
     if "slug" in payload:
         payload["slug"] = _slugify(payload["slug"])
     if not payload:
@@ -421,7 +607,10 @@ def delete_organization(
 ) -> dict:
     org_id_str = str(org_id)
     client = shared_service_client(settings, create_client)
-    _require_org_admin(client, org_id_str, current_user["user_id"])
+    # Deleting the organization is an owner decision, not an admin one.
+    actor = load_member(client, org_id_str, user_id=current_user["user_id"])
+    if actor is None or actor.role != "owner":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only an owner can delete the organization")
     client.table("organizations").delete().eq("id", org_id_str).execute()
     invalidate_org_and_users(org_id_str, [current_user["user_id"]])
     return {"ok": True}
@@ -552,20 +741,26 @@ def update_organization_member_role(
     org_id_str = str(org_id)
     member_user_id = str(user_id)
     client = shared_service_client(settings, create_client)
-    _require_org_admin(client, org_id_str, current_user["user_id"])
-    # Bug fix: .update() returns SyncFilterRequestBuilder, which has no
-    # .select()/.limit() — chaining them raised AttributeError -> HTTP 500.
-    # .update() already returns the full updated row(s) by default.
-    updated = (
-        client.table("organization_members")
-        .update({"role": body.role})
-        .eq("org_id", org_id_str)
-        .eq("user_id", member_user_id)
-        .execute()
+    target = assert_member_change_allowed(
+        client,
+        org_id_str,
+        actor_user_id=current_user["user_id"],
+        target=load_member(client, org_id_str, user_id=member_user_id),
+        new_role=body.role,
     )
+    client.table("organization_members").update({"role": body.role}).eq("org_id", org_id_str).eq(
+        "user_id", member_user_id
+    ).execute()
     invalidate_org_and_users(org_id_str, [member_user_id])
-    if not updated.data:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+    write_audit_event(
+        client,
+        org_id=org_id_str,
+        actor_id=current_user["user_id"],
+        action=AUDIT_ORG_MEMBER_UPDATED,
+        resource_type=RESOURCE_TYPE_ORG_MEMBER,
+        resource_id=target.id,
+        metadata={"old_role": target.role, "new_role": body.role},
+    )
     return {"ok": True}
 
 
@@ -579,9 +774,24 @@ def remove_organization_member(
     org_id_str = str(org_id)
     member_user_id = str(user_id)
     client = shared_service_client(settings, create_client)
-    _require_org_admin(client, org_id_str, current_user["user_id"])
+    target = assert_member_change_allowed(
+        client,
+        org_id_str,
+        actor_user_id=current_user["user_id"],
+        target=load_member(client, org_id_str, user_id=member_user_id),
+        new_role=None,
+    )
     client.table("organization_members").delete().eq("org_id", org_id_str).eq("user_id", member_user_id).execute()
     invalidate_org_and_users(org_id_str, [member_user_id])
+    write_audit_event(
+        client,
+        org_id=org_id_str,
+        actor_id=current_user["user_id"],
+        action=AUDIT_ORG_MEMBER_REMOVED,
+        resource_type=RESOURCE_TYPE_ORG_MEMBER,
+        resource_id=target.id,
+        metadata={"removed_user_id": member_user_id, "role": target.role},
+    )
     return {"ok": True}
 
 
@@ -592,17 +802,38 @@ def transfer_organization_ownership(
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
+    """An owner hands ownership to another member: they become owner, the caller becomes admin.
+
+    Previously any admin could call this, and it set the new "owner" to admin and
+    the caller to member, so ownership never moved and an admin could demote
+    themselves while promoting someone else to admin.
+    """
     org_id_str = str(org_id)
     client = shared_service_client(settings, create_client)
-    _require_org_admin(client, org_id_str, current_user["user_id"])
-    _require_org_member(client, org_id_str, body.new_owner_id)
+    actor = load_member(client, org_id_str, user_id=current_user["user_id"])
+    if actor is None or actor.role != "owner":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only an owner can transfer ownership")
+    new_owner = load_member(client, org_id_str, user_id=body.new_owner_id)
+    if new_owner is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+    if new_owner.user_id == actor.user_id:
+        return {"ok": True}
 
-    client.table("organization_members").update({"role": "admin"}).eq("org_id", org_id_str).eq(
-        "user_id", body.new_owner_id
+    client.table("organization_members").update({"role": "owner"}).eq("org_id", org_id_str).eq(
+        "user_id", new_owner.user_id
     ).execute()
-    if body.new_owner_id != current_user["user_id"]:
-        client.table("organization_members").update({"role": "member"}).eq("org_id", org_id_str).eq(
-            "user_id", current_user["user_id"]
-        ).execute()
-    invalidate_org_and_users(org_id_str, [body.new_owner_id, current_user["user_id"]])
+    client.table("organization_members").update({"role": "admin"}).eq("org_id", org_id_str).eq(
+        "user_id", actor.user_id
+    ).execute()
+    invalidate_org_and_users(org_id_str, [new_owner.user_id, actor.user_id])
+    write_audit_event(
+        client,
+        org_id=org_id_str,
+        actor_id=actor.user_id,
+        action=AUDIT_ORG_MEMBER_UPDATED,
+        resource_type=RESOURCE_TYPE_ORG_MEMBER,
+        resource_id=new_owner.id,
+        metadata={"ownership_transfer": True, "from_user_id": actor.user_id, "to_user_id": new_owner.user_id},
+    )
     return {"ok": True}
+

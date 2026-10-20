@@ -1,0 +1,42 @@
+name: Release 1 live memory source revocation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/verify_release1_live_memory_liveness.py"
+      - ".github/workflows/release1-live-memory-liveness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  memory-liveness:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r backend/requirements-dev.txt
+      - name: Mint verified smoke session
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python3 scripts/mint_smoke_org_session.py --github-env
+      - name: Prove live and revoked memory behavior across recall readers
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python3 scripts/verify_release1_live_memory_liveness.py
+      - name: Upload safe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release1-live-memory-liveness
+          path: docs/delivery/release1-live-memory-liveness.json
+          if-no-files-found: ignore

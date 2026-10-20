@@ -9,7 +9,7 @@ export const SURFACE_COPY = {
     title: "Intelligence",
     shortTitle: "Intelligence",
     description:
-      "Watch Gravitre learn. Every interaction flows in, strengthens a connection, and comes back as a better prediction.",
+      "What is changing across your business, read from your connected tools and the work your agents finish. Every number links back to where it came from.",
     emptyTitle: "Collecting signals",
     emptyDescription:
       "Outcome events and confidence scores appear here as agents finish work with measurable results.",
@@ -133,8 +133,8 @@ export const SURFACE_COPY = {
       route: APP_ROUTES.intelligenceMemory,
     },
     predictive: {
-      title: "Predictive ops",
-      summary: "SLA, deal-loss, capacity, and workflow risk by domain.",
+      title: "Forecasts",
+      summary: "Risks Gravitre expects next: missed SLAs, lost deals, capacity, and workflow failures.",
       route: APP_ROUTES.intelligencePredictive,
     },
     agents: {
@@ -240,6 +240,12 @@ export const SURFACE_COPY = {
       title: "Forecasts",
       description:
         "Risks and opportunities Gravitre expects next, how sure it is, and why. Nothing changes until you act on one.",
+    },
+    accounts: {
+      title: "Accounts",
+      eyebrow: "Understand / Accounts",
+      description:
+        "How each customer account is doing, judged from what customers say and do, with the evidence quoted. Nothing changes until you act on it.",
     },
     assignments: {
       title: "Assignments",

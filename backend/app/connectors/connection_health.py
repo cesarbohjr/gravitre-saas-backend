@@ -105,9 +105,26 @@ def _resolve_connector_auth_status_uncached(
     validate_remote: bool = False,
 ) -> str | None:
     from app.connectors.nango_registry import get_nango_connector_spec
-    if get_nango_connector_spec(vendor):
+    spec = get_nango_connector_spec(vendor)
+    managed_row = None
+    if spec and spec.native_fallback:
+        from app.connectors.managed_oauth import managed_oauth_row
+        managed_row = managed_oauth_row(client, org_id, connector_id, environment_name=environment_name)
+    if spec and (not spec.native_fallback or managed_row is not None):
         from app.connectors.managed_health import managed_auth_status
-        return managed_auth_status(client, org_id, connector_id, settings, environment_name=environment_name, validate_remote=validate_remote)
+        result = managed_auth_status(client, org_id, connector_id, settings, environment_name=environment_name, validate_remote=validate_remote)
+        if result == "connected" and managed_row:
+            if vendor == "google_analytics":
+                from app.connectors.google_vendor_oauth import _connector_property_id
+                if not _connector_property_id(client, org_id, connector_id):
+                    return "pending_property"
+            if vendor == "google_ads":
+                from app.connectors.google_vendor_oauth import _connector_ads_customer_id
+                if not (settings.google_ads_developer_token or "").strip():
+                    return "misconfigured"
+                if not _connector_ads_customer_id(client, org_id, connector_id):
+                    return "pending_customer"
+        return result
     if vendor == "odoo":
         return odoo_connection_auth_status(
             client, org_id, connector_id, settings, environment_name=environment_name

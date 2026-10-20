@@ -129,7 +129,15 @@ from app.routers import (
     workday_sync,
     voice_gateway,
 )
-from app.routers.webhooks import hubspot_inbound, pagerduty_inbound, salesforce_inbound, segment_inbound
+from app.routers.webhooks import (
+    freshservice_inbound,
+    hubspot_inbound,
+    pagerduty_inbound,
+    salesforce_inbound,
+    segment_inbound,
+)
+from app.routers import freshservice_triggers, run_cost
+from app.routers import settings_api_keys, settings_security
 from app.routers.webhooks import stripe as stripe_webhooks
 from app.samples.stripe_connect_v2.router import router as stripe_connect_sample_router
 from app.routers.webhooks import workflow_triggers
@@ -324,6 +332,10 @@ async def lifespan(app: FastAPI):
         start_domain_event_relay_scheduler,
         stop_domain_event_relay_scheduler,
     )
+    from app.schedulers.stale_run_recovery_scheduler import (
+        start_stale_run_recovery_scheduler,
+        stop_stale_run_recovery_scheduler,
+    )
     from app.schedulers.knowledge_retention_scheduler import (
         start_knowledge_retention_scheduler,
         stop_knowledge_retention_scheduler,
@@ -425,6 +437,7 @@ async def lifespan(app: FastAPI):
     # Daily per-org storage snapshot; returns None unless STORAGE_METER_ENABLED=true.
     app.state.storage_meter_task = start_storage_meter_scheduler()
     app.state.prediction_labeling_task = start_prediction_labeling_scheduler()
+    app.state.stale_run_recovery_task = start_stale_run_recovery_scheduler()
     # Customer ingestion stays inert until source lifecycle is enforced; log what is held back.
     try:
         from app.config import get_settings as _ingestion_settings
@@ -514,6 +527,7 @@ async def lifespan(app: FastAPI):
         await stop_audit_retention_scheduler(getattr(app.state, "audit_retention_task", None))
         await stop_storage_meter_scheduler(getattr(app.state, "storage_meter_task", None))
         await stop_prediction_labeling_scheduler(getattr(app.state, "prediction_labeling_task", None))
+        await stop_stale_run_recovery_scheduler(getattr(app.state, "stale_run_recovery_task", None))
         await stop_entity_behavior_signals_scheduler(getattr(app.state, "entity_behavior_signals_task", None))
         await stop_rag_ingest_pilot_scheduler(getattr(app.state, "rag_ingest_pilot_task", None))
         await stop_memory_scheduler(getattr(app.state, "memory_promotion_task", None))
@@ -730,7 +744,16 @@ app.include_router(auth.router)
 app.include_router(sso.router)
 app.include_router(org.router)
 app.include_router(org.organizations_router)
+# MSP grants are storage-only until tenant isolation acceptance; no inherited access.
+from app.routers import msp_delegations
+app.include_router(msp_delegations.router)
+# MSP partner program: wholesale billing, client workspaces, rebilling.
+from app.routers import msp_program
+app.include_router(msp_program.router)
 app.include_router(billing.router)
+# Public promo codes + founder-offer ops (platform admin), same /api/billing prefix.
+from app.routers import billing_promotions
+app.include_router(billing_promotions.router)
 app.include_router(billing_sync.internal_router)
 app.include_router(billing_sync.admin_router)
 app.include_router(business_outcomes.router)
@@ -772,6 +795,8 @@ app.include_router(department_pipelines.router)
 app.include_router(entitlements.router)
 app.include_router(extension.router)
 app.include_router(environments.router)
+app.include_router(settings_security.router)
+app.include_router(settings_api_keys.router)
 app.include_router(settings.router)
 app.include_router(storage_settings.router)
 app.include_router(entity_observations.router)
@@ -799,6 +824,9 @@ app.include_router(google_search_console.router)
 app.include_router(google_ads.router)
 app.include_router(segment_triggers.router)
 app.include_router(segment_inbound.router)
+app.include_router(freshservice_triggers.router)
+app.include_router(freshservice_inbound.router)
+app.include_router(run_cost.router)
 app.include_router(decisions.router)
 app.include_router(agent_council.router)
 app.include_router(agent_collaboration.router)

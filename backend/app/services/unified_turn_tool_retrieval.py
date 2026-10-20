@@ -191,6 +191,10 @@ def embed_narrow_tools_for_turn(
         platform_tools = [t for t in tools if _is_platform_tool(t)]
         connector_tools = [t for t in tools if not _is_platform_tool(t)]
 
+        from app.services.action_intent import is_native_work_request
+        if is_native_work_request(query):
+            connector_tools = []
+
         focus = _mentioned_connectors(query, classification, connected)
         if not focus and connected:
             from app.services.agent_platform_optimizer import connectors_matching_query

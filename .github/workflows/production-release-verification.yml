@@ -1,0 +1,68 @@
+name: Production release verification
+
+# Existing CI and hosting integrations build/deploy; this job independently
+# confirms that production is serving the successfully tested main commit.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-release-verification
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Determine current production target
+        id: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(git rev-parse HEAD)"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Verifying main commit $SHA"
+
+      - name: Verify web and backend production
+        shell: bash
+        env:
+          EXPECT_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          set -euo pipefail
+          echo "Verifying https://gravitre.app and https://api.gravitre.app/health"
+          web_ok=0
+          api_ok=0
+          for attempt in $(seq 1 60); do
+            # Don't expose response bodies or secrets in action logs.
+            if curl -fsSL --retry 2 --connect-timeout 10 --max-time 20 -o /dev/null https://gravitre.app/; then
+              web_ok=1
+            fi
+            if curl -fsS --connect-timeout 10 --max-time 20 https://api.gravitre.app/health -o /tmp/gravitre-health.json; then
+              if python3 scripts/verify_backend_deploy_revision.py --health-json /tmp/gravitre-health.json --expected-sha "$EXPECT_SHA"
+              then
+                api_ok=1
+              fi
+            fi
+            if [ "$web_ok" = 1 ] && [ "$api_ok" = 1 ]; then
+              echo "Web responds successfully and API backend revision is verified against main."
+              exit 0
+            fi
+            echo "Attempt $attempt/60: web=$web_ok api_commit_matches=$api_ok"
+            sleep 15
+          done
+          echo "::error::Production not verified against main commit $EXPECT_SHA (web=$web_ok api_commit_matches=$api_ok)"
+          exit 1

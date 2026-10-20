@@ -85,7 +85,7 @@ def main() -> int:
     secret_key = None
     plaintext = None
     for key_name in ("api_token", "api_key", "oauth_tokens", "APOLLO_API_KEY"):
-        plaintext = get_decrypted_secret(client, SOURCE_APOLLO_ID, key_name, settings)
+        plaintext = get_decrypted_secret(client, SOURCE_APOLLO_ID, key_name, settings, org_id=FORBIDDEN_OPERATOR_ORG_ID)
         if plaintext:
             secret_key = key_name
             break

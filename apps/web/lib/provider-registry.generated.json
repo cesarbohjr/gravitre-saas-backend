@@ -1,5 +1,305 @@
 {
   "providers": {
+    "aircall": {
+      "id": "aircall",
+      "name": "Aircall",
+      "category": "communication",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/aircall.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "bitbucket": {
+      "id": "bitbucket",
+      "name": "Bitbucket",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/bitbucket.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "cal_com": {
+      "id": "cal_com",
+      "name": "Cal.com",
+      "category": "productivity",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/cal_com.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "digitalocean": {
+      "id": "digitalocean",
+      "name": "DigitalOcean",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/digitalocean.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "discourse": {
+      "id": "discourse",
+      "name": "Discourse",
+      "category": "support",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/discourse.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "drata": {
+      "id": "drata",
+      "name": "Drata",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/drata.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "factorial": {
+      "id": "factorial",
+      "name": "Factorial",
+      "category": "hr",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/factorial.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "harvest": {
+      "id": "harvest",
+      "name": "Harvest",
+      "category": "finance",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/harvest.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "humaans": {
+      "id": "humaans",
+      "name": "Humaans",
+      "category": "hr",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/humaans.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "ironclad": {
+      "id": "ironclad",
+      "name": "Ironclad",
+      "category": "productivity",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/ironclad.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "klaviyo": {
+      "id": "klaviyo",
+      "name": "Klaviyo",
+      "category": "marketing",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/klaviyo.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "lemlist": {
+      "id": "lemlist",
+      "name": "Lemlist",
+      "category": "sales",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/lemlist.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "metabase": {
+      "id": "metabase",
+      "name": "Metabase",
+      "category": "analytics",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/metabase.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "ninjaone": {
+      "id": "ninjaone",
+      "name": "NinjaOne",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/ninjaone.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "pandadoc": {
+      "id": "pandadoc",
+      "name": "PandaDoc",
+      "category": "productivity",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/pandadoc.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "productboard": {
+      "id": "productboard",
+      "name": "Productboard",
+      "category": "productivity",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/productboard.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "recharge": {
+      "id": "recharge",
+      "name": "Recharge",
+      "category": "finance",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/recharge.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "smartsheet": {
+      "id": "smartsheet",
+      "name": "Smartsheet",
+      "category": "productivity",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/smartsheet.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "teamwork": {
+      "id": "teamwork",
+      "name": "Teamwork",
+      "category": "productivity",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/teamwork.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "typeform": {
+      "id": "typeform",
+      "name": "Typeform",
+      "category": "marketing",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/typeform.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "webflow": {
+      "id": "webflow",
+      "name": "Webflow",
+      "category": "marketing",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/webflow.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "wrike": {
+      "id": "wrike",
+      "name": "Wrike",
+      "category": "productivity",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/wrike.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "toggl": {
+      "id": "toggl",
+      "name": "Toggl Track",
+      "category": "productivity",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/toggl.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "todoist": {
+      "id": "todoist",
+      "name": "Todoist",
+      "category": "productivity",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/todoist.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "sentry": {
+      "id": "sentry",
+      "name": "Sentry",
+      "category": "devops",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/sentry.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "freshsales": {
+      "id": "freshsales",
+      "name": "Freshsales",
+      "category": "sales",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/freshsales.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "miro": {
+      "id": "miro",
+      "name": "Miro",
+      "category": "design",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/miro.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "pennylane": {
+      "id": "pennylane",
+      "name": "Pennylane",
+      "category": "finance",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/pennylane.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "talentlms": {
+      "id": "talentlms",
+      "name": "TalentLMS",
+      "category": "design",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/talentlms.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
+    "contentful": {
+      "id": "contentful",
+      "name": "Contentful",
+      "category": "design",
+      "aliases": [],
+      "source": "official-asset",
+      "src": "/vendor-logos/contentful.svg",
+      "darkPlate": true,
+      "lightPlate": false
+    },
     "salesforce": {
       "id": "salesforce",
       "name": "Salesforce",

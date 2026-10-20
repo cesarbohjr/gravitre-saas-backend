@@ -46,17 +46,21 @@ def _client(candidates: dict[str, dict[str, int]] | None = None, holds: tuple[st
     return client
 
 
-def test_config_defaults_keep_everything():
+def test_config_defaults_retain_365_days_and_archive_before_delete():
+    # Owner decision 2026-10-20: 365-day floor, archive, then delete.
     s = Settings(
         supabase_url="https://test.supabase.co",
         supabase_anon_key="a",
         supabase_service_role_key="s",
         supabase_jwt_secret="j",
     )
-    assert s.audit_retention_days == 0
-    assert s.telemetry_retention_days == 0
-    assert s.audit_retention_dry_run is True
-    assert s.audit_retention_archive_enabled is False
+    assert s.audit_retention_days == 365
+    assert s.telemetry_retention_days == 365
+    assert s.audit_retention_dry_run is False
+    assert s.audit_retention_archive_enabled is True
+    assert dr.retention_plan(s) != []
+    s.audit_retention_days = 0
+    s.telemetry_retention_days = 0
     assert dr.retention_plan(s) == []
 
 

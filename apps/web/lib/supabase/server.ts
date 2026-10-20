@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
-import type { NextRequest } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 
 import { getSupabaseDataUrl, getSupabaseServiceUrl } from "@/lib/supabase/url"
 
@@ -16,11 +16,23 @@ function getSupabaseServiceRoleKey() {
   return value || null
 }
 
+/**
+ * Local development only: lets a route handler without a bearer token run with
+ * the service role key, as it used to. Never set this in a deployed environment;
+ * the service role bypasses row level security, so any anonymous caller naming
+ * an org id would read and write that org's rows.
+ */
+function unauthenticatedServiceRoleAllowed() {
+  if (process.env.NODE_ENV === "production") return false
+  return process.env.GRAVITRE_DEV_UNAUTHENTICATED_SERVICE_ROLE === "1"
+}
+
 export function getRouteClientAuthMode(request: NextRequest) {
   const authHeaderPresent = Boolean(request.headers.get("authorization"))
   const serviceRoleAvailable = Boolean(getSupabaseServiceRoleKey())
-  const usingServiceRole = !authHeaderPresent && serviceRoleAvailable
-  const usingAnonKey = authHeaderPresent || !serviceRoleAvailable
+  const usingServiceRole =
+    !authHeaderPresent && serviceRoleAvailable && unauthenticatedServiceRoleAllowed()
+  const usingAnonKey = !usingServiceRole
   return {
     authHeaderPresent,
     serviceRoleAvailable,
@@ -29,10 +41,21 @@ export function getRouteClientAuthMode(request: NextRequest) {
   }
 }
 
+/**
+ * Supabase client for a route handler, acting as the caller.
+ *
+ * With a bearer token the client uses the anon key plus that token, so row level
+ * security scopes every query to the caller's orgs. Without one it uses the anon
+ * key alone, which RLS gives no org rows. It never falls back to the service
+ * role key: that bypasses RLS, and route handlers take the org id from the
+ * caller (query string or x-org-id header), so a fallback would let anyone read
+ * or write any org they can name.
+ */
 export function createSupabaseRouteClient(request: NextRequest): SupabaseClient {
   const authHeader = request.headers.get("authorization")
   const serviceRoleKey = getSupabaseServiceRoleKey()
-  const accessKey = authHeader ? getSupabaseAnonKey() : (serviceRoleKey ?? getSupabaseAnonKey())
+  const useServiceRole = !authHeader && Boolean(serviceRoleKey) && unauthenticatedServiceRoleAllowed()
+  const accessKey = useServiceRole && serviceRoleKey ? serviceRoleKey : getSupabaseAnonKey()
   // Data plane must hit the project host. Branded getSupabasePublicUrl() only
   // proxies /auth/v1 on gravitre.app — /rest/v1 is not rewritten, so using it
   // here breaks org resolution + table queries (e.g. /api/workflows → 403).
@@ -56,6 +79,82 @@ export function createSupabaseServiceRoleClient(): SupabaseClient | null {
       autoRefreshToken: false,
     },
   })
+}
+
+export type AuthenticatedOrgContext = {
+  userId: string
+  orgId: string
+  role: string
+}
+
+export type AuthenticatedOrgResult =
+  | { ok: true; context: AuthenticatedOrgContext }
+  | { ok: false; response: NextResponse }
+
+/** Require a signed-in user and org membership before using org-scoped data APIs. */
+export async function requireAuthenticatedOrg(
+  supabase: SupabaseClient,
+  request: NextRequest,
+): Promise<AuthenticatedOrgResult> {
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  const userId = userData.user?.id
+  if (userError || !userId) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    }
+  }
+
+  const queryOrgId = request.nextUrl.searchParams.get("org_id")?.trim() || null
+  const headerOrgId = request.headers.get("x-org-id")?.trim() || null
+  const explicitOrgId = queryOrgId || headerOrgId
+
+  if (explicitOrgId) {
+    const { data: membership, error } = await supabase
+      .from("organization_members")
+      .select("org_id, role")
+      .eq("user_id", userId)
+      .eq("org_id", explicitOrgId)
+      .maybeSingle()
+    if (error || !membership?.org_id) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+      }
+    }
+    return {
+      ok: true,
+      context: {
+        userId,
+        orgId: String(membership.org_id),
+        role: String(membership.role ?? "member"),
+      },
+    }
+  }
+
+  const { data: membership, error } = await supabase
+    .from("organization_members")
+    .select("org_id, role")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !membership?.org_id) {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "Organization context required" }, { status: 403 }),
+    }
+  }
+
+  return {
+    ok: true,
+    context: {
+      userId,
+      orgId: String(membership.org_id),
+      role: String(membership.role ?? "member"),
+    },
+  }
 }
 
 export async function resolveOrgId(

@@ -174,7 +174,7 @@ def items_from_proposals(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 },
                 href="/activity?tab=objects",
                 actions=["accept", "dismiss"],
-                extra={"workObjectId": r.get("id"), "goalId": r.get("goal_id"), "businessEntityId": r.get("business_entity_id")},
+                extra={"workObjectId": r.get("id"), "goalId": r.get("goal_id"), "businessEntityId": r.get("business_entity_id"), "playKey": proposal.get("play_key")},
             )
         )
     return out
@@ -647,6 +647,9 @@ async def build_feed(client: Any, settings: Any, *, org_id: str, user_id: str | 
         if it["id"] in seen:
             continue
         seen.add(it["id"])
+        from app.services.intelligence_remedies import remedies_for_recommendation
+
+        it["remedies"] = remedies_for_recommendation(it)
         ranked.append(it)
     return {"items": ranked[:MAX_ITEMS], "sources": sources, "generatedAt": datetime.now(UTC).isoformat()}
 

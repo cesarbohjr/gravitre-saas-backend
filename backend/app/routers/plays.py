@@ -131,6 +131,30 @@ def _load_installation(
     return dict(rows[0]) if rows else None
 
 
+def _installations_by_play(client: Any, *, org_id: str, environment_name: str) -> dict[str, dict[str, Any]]:
+    """Every Play installation for this org and environment, keyed by Play key (one read)."""
+    try:
+        rows = (
+            client.table("play_installations")
+            .select("*")
+            .eq("org_id", org_id)
+            .eq("environment_name", environment_name)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:  # noqa: BLE001 - the catalog stays readable without installation state
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        key = str(row.get("play_key") or "").strip().lower()
+        if key:
+            out[key] = _installation_public(dict(row))
+    return out
+
+
 def _earned_modes(readiness: Any) -> set[str]:
     earned: set[str] = set()
     if readiness.observe_ready:
@@ -189,6 +213,7 @@ def list_plays(
     metric_keys = org_metric_keys(client, org_id)
     observed_signals = _observed_signals(settings, client, org_id)
     bindings_by_play = list_all_play_workflow_bindings(client, org_id)
+    installations = _installations_by_play(client, org_id=org_id, environment_name=environment_name)
     items = []
     for play in platform_play_templates():
         readiness = resolve_play_readiness(
@@ -207,6 +232,9 @@ def list_plays(
                 "readiness": readiness.as_dict(),
                 "workflowBindings": bindings,
                 "workflowBindingCount": len(bindings),
+                # The authority this org has actually switched on (None until set up);
+                # readiness above is what it has earned.
+                "installation": installations.get(play.key.strip().lower()),
             }
         )
     return {

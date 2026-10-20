@@ -10,7 +10,7 @@ from typing import Any
 from fastapi import HTTPException, status
 from supabase import Client, create_client
 
-from app.config import Settings
+from app.config import Settings, get_settings
 from app.core.errors import error_detail
 from app.core.logging import get_logger
 from app.core.safe_dict import safe_normalize_stored_dict
@@ -477,18 +477,25 @@ def _sum_usage(
     period_end: date,
     environment: str | None = None,
 ) -> int:
-    q = (
-        client.table("usage_tracking")
-        .select("quantity")
-        .eq("org_id", org_id)
-        .eq("metric_type", metric_type)
-        .eq("period_start", period_start.isoformat())
-        .eq("period_end", period_end.isoformat())
-    )
-    if environment:
-        q = q.eq("environment", environment)
-    rows = q.execute().data or []
-    return sum(int(row.get("quantity") or 0) for row in rows)
+    total = 0
+    offset = 0
+    page_size = 500  # below the common PostgREST max_rows limit
+    while True:
+        q = (
+            client.table("usage_tracking")
+            .select("id,quantity")
+            .eq("org_id", org_id)
+            .eq("metric_type", metric_type)
+            .eq("period_start", period_start.isoformat())
+            .eq("period_end", period_end.isoformat())
+        )
+        if environment:
+            q = q.eq("environment", environment)
+        rows = q.order("id").range(offset, offset + page_size - 1).execute().data or []
+        total += sum(int(row.get("quantity") or 0) for row in rows)
+        if len(rows) < page_size:
+            return total
+        offset += page_size
 
 
 def get_usage_totals(
@@ -536,10 +543,9 @@ def _idempotent_insert(
 ) -> bool:
     """INSERT ... ON CONFLICT (org_id, idempotency_key) DO NOTHING.
 
-    Returns True if a row was inserted, False if it was a duplicate. Falls back
-    to a plain insert (still records usage, without dedupe) if the idempotency
-    column/index is not present yet — so billing keeps working if the migration
-    has not been applied. Returns True for the fallback insert.
+    Returns True if a row was inserted, False if it was a duplicate. A failed
+    upsert must never fall back to a plain insert: a timeout after commit or
+    a missing uniqueness constraint would otherwise double-charge a retry.
     """
     try:
         resp = (
@@ -553,12 +559,9 @@ def _idempotent_insert(
         )
         # With ignore-duplicates, a conflicting row is skipped and not returned.
         return bool(resp.data)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "idempotent insert fallback table=%s org_id=%s error=%s", table, org_id, str(exc)
-        )
-        client.table(table).insert(payload).execute()
-        return True
+    except Exception:
+        logger.exception("idempotent usage insert failed table=%s org_id=%s", table, org_id)
+        raise
 
 
 def record_usage(
@@ -632,10 +635,24 @@ def apply_usage_with_overage(
 ) -> None:
     if quantity <= 0:
         return
+    settings = get_settings()
+    if settings.assistant_billing_recovery_enabled is True and not settings.usage_atomic_enabled:
+        raise RuntimeError("Recovery billing requires USAGE_ATOMIC_ENABLED")
     # Shared idempotency anchor so usage + its overage dedupe together. On a
     # duplicate (retry / re-processed event), record_usage is a no-op and we
     # skip the overage entirely to avoid double-counting.
     base_key = derive_idempotency_key(org_id, metric_type, period_start, metadata)
+    included = 0
+    if metric_type == "ai_credits":
+        included = int(plan.get("ai_credits_included") or 0)
+    if metric_type == "workflow_runs":
+        included = int(plan.get("workflow_runs_included") or 0)
+    if settings.usage_atomic_enabled:
+        record_usage_with_overage_atomic(
+            client, org_id, environment, metric_type, quantity, period_start,
+            period_end, included, base_key, metadata,
+        )
+        return
     total_before = _sum_usage(client, org_id, metric_type, period_start, period_end, environment)
     inserted = record_usage(
         client, org_id, environment, metric_type, quantity, period_start, period_end,
@@ -644,11 +661,6 @@ def apply_usage_with_overage(
     if not inserted:
         return
     total_after = total_before + quantity
-    included = 0
-    if metric_type == "ai_credits":
-        included = int(plan.get("ai_credits_included") or 0)
-    if metric_type == "workflow_runs":
-        included = int(plan.get("workflow_runs_included") or 0)
     if included <= 0:
         return
     overage_key = f"{base_key}:overage"
@@ -662,6 +674,73 @@ def apply_usage_with_overage(
             client, org_id, environment, metric_type, total_after - included, period_start, period_end,
             idempotency_key=overage_key,
         )
+
+
+def record_usage_with_overage_atomic(
+    client: Client, org_id: str, environment: str, metric_type: str,
+    quantity: int, period_start: date, period_end: date, included: int,
+    idempotency_key: str, metadata: dict[str, Any] | None = None,
+) -> str:
+    """Commit usage and overage together; a timeout must never fall back."""
+    meta = metadata or {}
+    rpc_name = ("record_usage_with_allowance_contract"
+                if get_settings().assistant_billing_recovery_enabled is True
+                else "record_usage_with_overage_atomic")
+    response = client.rpc(rpc_name, {
+        "p_org_id": org_id, "p_environment": environment,
+        "p_metric_type": metric_type, "p_quantity": quantity,
+        "p_period_start": period_start.isoformat(),
+        "p_period_end": period_end.isoformat(), "p_included": included,
+        "p_idempotency_key": idempotency_key,
+        "p_model_name": meta.get("model_name"),
+        "p_input_tokens": meta.get("input_tokens"),
+        "p_output_tokens": meta.get("output_tokens"),
+        "p_credits": meta.get("credits"), "p_source": meta.get("source"),
+        "p_source_id": meta.get("source_id"),
+    }).execute()
+    if response.data not in {"inserted", "duplicate"}:
+        raise ValueError(f"Unexpected usage billing RPC result: {response.data!r}")
+    return str(response.data)
+
+
+def settle_assistant_model_usage(client: Client, org_id: str, model_call_id: str) -> str:
+    """Settle using the immutable evidence on model_calls, never today's plan."""
+    response = client.rpc("settle_assistant_model_usage", {
+        "p_org_id": org_id, "p_model_call_id": model_call_id,
+    }).execute()
+    if response.data not in {"inserted", "duplicate", "zero_tokens"}:
+        raise ValueError("Unexpected assistant settlement RPC result")
+    return str(response.data)
+
+
+def recover_assistant_model_usage(client: Client) -> dict[str, Any]:
+    response = client.rpc("recover_assistant_model_usage", {"p_limit": 100}).execute()
+    result = safe_normalize_stored_dict(response.data)
+    if not {"scanned", "settled", "errors"}.issubset(result):
+        raise ValueError("Unexpected assistant recovery RPC result")
+    return result
+
+
+def record_assistant_model_usage_atomic(
+    client: Client, org_id: str, model_call_id: str, quantity: int,
+    included: int, environment: str = "production",
+) -> str:
+    """Record one persisted assistant model call and its overage atomically.
+
+    The database derives the UTC billing period and token/model identity from
+    model_calls. No fallback to a separate usage insert is safe after an RPC
+    timeout: the transaction may already have committed.
+    """
+    if get_settings().assistant_billing_recovery_enabled is True:
+        return settle_assistant_model_usage(client, org_id, model_call_id)
+    response = client.rpc("record_assistant_model_usage", {
+        "p_org_id": org_id, "p_model_call_id": model_call_id,
+        "p_quantity": quantity, "p_included": included,
+        "p_environment": environment,
+    }).execute()
+    if response.data not in {"inserted", "duplicate", "zero_tokens"}:
+        raise ValueError(f"Unexpected assistant billing RPC result: {response.data!r}")
+    return str(response.data)
 
 
 def require_feature(plan: dict[str, Any], feature: str) -> None:

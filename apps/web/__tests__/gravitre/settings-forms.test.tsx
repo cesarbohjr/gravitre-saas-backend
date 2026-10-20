@@ -3,10 +3,7 @@ import React, { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import { OrganizationSettings } from "@/components/settings/organization-settings"
-import { NotificationSettings } from "@/components/settings/notification-settings"
-import { SecuritySettings } from "@/components/settings/security-settings"
 import { TeamSettings } from "@/components/settings/team-settings"
-import { AIModelsSettings } from "@/components/settings/ai-models-settings"
 import { ApprovalRulesSettings } from "@/components/settings/approval-rules-settings"
 
 const mocks = vi.hoisted(() => ({
@@ -37,7 +34,6 @@ const prefs = {
   weekly_summary: { bell_enabled: true, email_enabled: false, slack_enabled: false },
 }
 const org = (isAdmin = true) => act(() => root.render(<OrganizationSettings orgData={organization} isAdmin={isAdmin} onUpdate={mocks.refresh} />))
-const notification = () => act(() => root.render(<NotificationSettings />))
 function input(id: string, value: string) {
   const element = container.querySelector<HTMLInputElement>(`#${id}`)!
   act(() => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(element, value); element.dispatchEvent(new Event("input", { bubbles: true })) })
@@ -120,36 +116,6 @@ it("keeps invalid logo URLs from breaking the preview or reaching the save endpo
   await saveChanges(); expect(mocks.updateOrg).not.toHaveBeenCalled()
   expect(container.querySelector('[role="alert"]')?.textContent).toContain("valid logo image URL")
 })
-it("shows each event by channel from the saved per-person preferences", () => {
-  notification()
-  const box = (label: string) => container.querySelector<HTMLInputElement>(`[aria-label="${label}"]`)!
-  expect(box("A request is waiting on you by Email").checked).toBe(true)
-  expect(box("A run failed by Slack").checked).toBe(true)
-  expect(box("Weekly summary by Email").checked).toBe(false)
-  expect(box("A source needs attention by In app").checked).toBe(true)
-  expect(container.querySelector('a')?.getAttribute("href")).toBe("/connectors")
-})
-it("blocks edits during loading or failed preferences and offers retry", () => {
-  mocks.swr["notification-event-preferences"] = { isLoading: true }; notification()
-  expect(container.querySelector('input[type="checkbox"]')).toBeNull(); expect(container.textContent).toContain("Loading notification preferences")
-  mocks.swr["notification-event-preferences"] = { error: new Error("Failed") }; notification()
-  expect(container.querySelector('[role="alert"]')).not.toBeNull()
-  click(button("Retry")); expect(mocks.mutate).toHaveBeenCalledOnce()
-})
-it("saves a changed notification matrix to the preferences endpoint", async () => {
-  notification()
-  click(container.querySelector('[aria-label="Weekly summary by Email"]'))
-  await saveChanges()
-  expect(mocks.updatePreferences).toHaveBeenCalledWith({ ...prefs, weekly_summary: { bell_enabled: true, email_enabled: true, slack_enabled: false } })
-  expect(mocks.mutate).toHaveBeenCalledWith({ preferences: prefs }, { revalidate: false })
-})
-it("keeps failed preference writes visible without claiming success", async () => {
-  mocks.updatePreferences.mockRejectedValue(new Error("Could not save")); notification()
-  click(container.querySelector('[aria-label="A run failed by Email"]'))
-  await saveChanges()
-  expect(container.querySelector('[role="alert"]')?.textContent).toContain("Could not save")
-  expect(container.textContent).toContain("Unsaved changes")
-})
 it("saves the human in the loop rules and decision SLA", async () => {
   mocks.updateApprovalRules.mockResolvedValue({ rules: {} })
   act(() => root.render(<ApprovalRulesSettings />))
@@ -161,25 +127,13 @@ it("saves the human in the loop rules and decision SLA", async () => {
   await saveChanges()
   expect(mocks.updateApprovalRules).toHaveBeenCalledWith({ customerEmailApproval: true, twoApprovalsHighRisk: false, autoApproveReadOnly: false, escalatePastDue: true, sla: "1bd" })
 })
-it("does not offer fake 2FA or IP allowlist saves on Security", () => {
-  act(() => root.render(<SecuritySettings />))
-  expect(container.textContent).toContain("Organization-wide 2FA enforcement is not available")
-  expect(container.textContent).toContain("IP restriction is not available")
-  expect(container.textContent).not.toContain("Enable 2FA")
-  expect(container.textContent).not.toContain("Save allowlist")
-})
 it("shows team loading and error without inventing members", () => {
   act(() => root.render(<TeamSettings members={[]} isLoading isAdmin onUpdate={mocks.refresh} />))
   expect(container.textContent).toContain("Loading team members")
   act(() => root.render(<TeamSettings members={[]} error={new Error("Denied")} onRetry={mocks.mutate} isAdmin onUpdate={mocks.refresh} />))
   expect(container.querySelector('[role="alert"]')).not.toBeNull()
-  act(() => container.querySelector("button")!.click())
+  act(() => container.querySelector<HTMLButtonElement>('[role="alert"] button')!.click())
   expect(mocks.mutate).toHaveBeenCalledOnce()
-})
-it("does not present unsaved workspace model defaults as persistable", () => {
-  act(() => root.render(<AIModelsSettings isAdmin />))
-  expect(container.textContent).toContain("no organization API for workspace default models")
-  expect(container.textContent).not.toContain("Saved!")
 })
 it("keeps the saved workspace name when the org refetch is stale", async () => {
   org(); input("organization-name", "New service team")

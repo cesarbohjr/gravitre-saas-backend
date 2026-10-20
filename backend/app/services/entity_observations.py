@@ -238,15 +238,8 @@ def record_observations(
     if not rows:
         return 0
     on_conflict = "org_id,entity_id,dimension,source_system,source_record_id,extractor_version"
-    try:
-        client.table(TABLE).upsert(rows, on_conflict=on_conflict, ignore_duplicates=True).execute()
-    except Exception as exc:
-        if not lineage:
-            raise
-        # source_connector_id arrives with 20261012070000; keep observing without it.
-        logger.warning("entity_observation_insert_without_lineage error=%s", type(exc).__name__)
-        rows = [{k: v for k, v in r.items() if k != "source_connector_id"} for r in rows]
-        client.table(TABLE).upsert(rows, on_conflict=on_conflict, ignore_duplicates=True).execute()
+    # No untagged retry: a flagged observation must keep its revocable source.
+    client.table(TABLE).upsert(rows, on_conflict=on_conflict, ignore_duplicates=True).execute()
     return len(rows)
 
 

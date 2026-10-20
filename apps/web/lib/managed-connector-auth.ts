@@ -2,6 +2,10 @@
 
 import { connectorsApi } from "./api"
 
+export function managedProviderAvailable(catalog: Awaited<ReturnType<typeof connectorsApi.managedCatalog>> | undefined, vendor: string): boolean {
+  return catalog?.configured === true && catalog.connectors.some((entry) => entry.vendor === vendor && entry.available === true)
+}
+
 /** Server webhook confirmation is authoritative; SDK events are only a prompt to poll. */
 export async function waitForManagedConnection(connectorId: string, attemptId: string): Promise<void> {
   for (let attempt = 0; attempt < 30; attempt++) {
@@ -14,7 +18,7 @@ export async function waitForManagedConnection(connectorId: string, attemptId: s
 
 export async function openManagedConnector(vendor: string, data: { name: string; connectorId?: string }): Promise<boolean> {
   const catalog = await connectorsApi.managedCatalog()
-  if (!catalog.configured) throw new Error("Secure connector authorization needs administrator setup before accounts can connect.")
+  if (!managedProviderAvailable(catalog, vendor)) throw new Error("This provider needs administrator setup before accounts can connect.")
   const { default: Nango } = await import("@nangohq/frontend")
   const session = await connectorsApi.startManagedAuth(vendor, data)
   return new Promise<boolean>((resolve, reject) => {

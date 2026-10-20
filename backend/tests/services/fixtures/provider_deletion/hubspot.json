@@ -1,0 +1,70 @@
+{
+  "_source": "HubSpot CRM API v3 reference (developers.hubspot.com/docs/api/crm): POST /crm/v3/objects/{type}/search, GET /crm/v3/objects/{type}?archived=true, GET /crm/v3/objects/{type}/{id}[?archived=true]. Response shapes follow the published schema and HubSpot's error envelope; ids and text are synthetic.",
+  "search_empty": {"status": 200, "body": {"total": 0, "results": []}},
+  "notes_archived_listing": {
+    "status": 200,
+    "body": {
+      "results": [
+        {
+          "id": "201",
+          "properties": {"hs_createdate": "2026-09-01T10:00:00Z", "hs_lastmodifieddate": "2026-10-02T10:00:00Z", "hs_object_id": "201"},
+          "createdAt": "2026-09-01T10:00:00Z",
+          "updatedAt": "2026-10-02T10:00:00Z",
+          "archived": true,
+          "archivedAt": "2026-10-02T10:00:00Z"
+        }
+      ]
+    }
+  },
+  "emails_archived_listing": {"status": 200, "body": {"results": []}},
+  "object_not_found": {
+    "status": 404,
+    "body": {
+      "status": "error",
+      "message": "Object not found.  objectId are usually numeric.",
+      "correlationId": "5f3c0a1e-0000-4000-8000-000000000001",
+      "context": {"id": ["0"]},
+      "category": "OBJECT_NOT_FOUND"
+    }
+  },
+  "note_201_archived": {
+    "status": 200,
+    "body": {
+      "id": "201",
+      "properties": {"hs_object_id": "201"},
+      "createdAt": "2026-09-01T10:00:00Z",
+      "updatedAt": "2026-10-02T10:00:00Z",
+      "archived": true,
+      "archivedAt": "2026-10-02T10:00:00Z"
+    }
+  },
+  "note_203_live": {
+    "status": 200,
+    "body": {
+      "id": "203",
+      "properties": {"hs_object_id": "203"},
+      "createdAt": "2026-09-01T10:00:00Z",
+      "updatedAt": "2026-10-01T10:00:00Z",
+      "archived": false
+    }
+  },
+  "unauthorized": {
+    "status": 401,
+    "body": {
+      "status": "error",
+      "message": "Authentication credentials not found. This API supports OAuth 2.0 authentication.",
+      "correlationId": "5f3c0a1e-0000-4000-8000-000000000002",
+      "category": "INVALID_AUTHENTICATION"
+    }
+  },
+  "rate_limited": {
+    "status": 429,
+    "body": {
+      "status": "error",
+      "message": "You have reached your secondly limit.",
+      "errorType": "RATE_LIMIT",
+      "correlationId": "5f3c0a1e-0000-4000-8000-000000000003",
+      "policyName": "SECONDLY"
+    }
+  }
+}

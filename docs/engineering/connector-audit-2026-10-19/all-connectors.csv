@@ -1,0 +1,168 @@
+vendor,catalog_actions,registered_actions,inferred_routes,vendor_live_validated_actions,native_oauth_configured,nango_setup,account_health,owner_authorization_test,frontend_option
+absorb_lms,8,8,8,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+adp,8,8,8,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+ahrefs,12,12,0,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+ai_visibility_ui,4,4,0,0,NOT_APPLICABLE,NOT_APPLICABLE,"{""NOT_CHECKED"": 1}",NOT_RUN,True
+aircall,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+airtable,8,8,8,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+apollo,17,17,0,0,True,NOT_APPLICABLE,"{""connected"": 2}",NOT_RUN,True
+asana,12,12,0,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+ashby,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+attio,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+autotask,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+aws_s3,8,8,8,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+bamboohr,8,8,4,0,NOT_APPLICABLE,NOT_APPLICABLE,"{""NOT_CHECKED"": 1}",NOT_RUN,True
+bitbucket,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+box,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+braintree,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+brevo,5,5,0,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,False
+brex,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+cal_com,1,1,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+canva,11,11,0,0,True,NOT_APPLICABLE,"{""connected"": 1}",NOT_RUN,True
+chargebee,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+cisa_kev,3,3,2,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+clay,7,7,0,0,NOT_APPLICABLE,NOT_APPLICABLE,"{""NOT_CHECKED"": 2}",NOT_RUN,True
+clickup,13,13,0,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+clio,8,8,3,0,True,NOT_APPLICABLE,"{""pending_auth"": 1}",NOT_RUN,False
+close,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+confluence,12,12,9,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+connectsecure,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+connectwise,3,3,0,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,False
+constant_contact,12,12,0,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+contentful,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+copper,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+crowdstrike,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+deel,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+digitalocean,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+discord,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+discourse,1,1,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+docusign,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+drata,1,1,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+dropbox,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+dropbox_sign,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+duo,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+email,5,5,0,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+engagebay,6,6,0,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,False
+factorial,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+fhir,5,5,1,0,NOT_APPLICABLE,NOT_APPLICABLE,"{""NOT_CHECKED"": 1}",NOT_RUN,False
+figma,11,11,0,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+finseo,6,6,0,0,NOT_APPLICABLE,NOT_APPLICABLE,"{""NOT_CHECKED"": 1}",NOT_RUN,True
+fred,3,3,2,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+freshdesk,9,9,9,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+freshsales,1,1,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+freshservice,4,4,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+front,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+github,15,15,0,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+gitlab,5,5,0,0,False,NOT_APPLICABLE,{},NOT_RUN,False
+gmail,9,9,0,0,True,NOT_APPLICABLE,"{""connected"": 1, ""pending_auth"": 1}",NOT_RUN,True
+gong,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+google_ads,10,0,0,0,True,provider_credentials_required,"{""auth_expired"": 1, ""connected"": 2}",NOT_RUN,True
+google_analytics,7,4,0,0,True,provider_credentials_required,"{""auth_expired"": 1, ""connected"": 1, ""pending_auth"": 2, ""pending_property"": 1}",NOT_RUN,True
+google_calendar,9,5,0,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+google_docs,7,5,0,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+google_drive,12,9,0,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+google_search_console,4,2,2,0,True,NOT_APPLICABLE,"{""connected"": 1, ""pending_auth"": 1}",NOT_RUN,True
+google_sheets,9,6,0,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+gorgias,9,9,9,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+greenhouse,5,5,2,0,NOT_APPLICABLE,NOT_APPLICABLE,"{""NOT_CHECKED"": 2}",NOT_RUN,True
+gusto,8,8,5,0,True,NOT_APPLICABLE,"{""NOT_CHECKED"": 1}",NOT_RUN,True
+halo_psa,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+harvest,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+helpscout,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+hibob,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+highlevel,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+hootsuite,8,8,8,0,False,NOT_APPLICABLE,{},NOT_RUN,True
+hubspot,36,36,0,0,True,NOT_APPLICABLE,"{""connected"": 2, ""pending_auth"": 2}",NOT_RUN,True
+humaans,1,1,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+huntress,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+instantly,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+intercom,12,12,0,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+ironclad,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+jamf_pro,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+jira,10,10,0,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+jumpcloud,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+klaviyo,1,1,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+kustomer,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+lemlist,1,1,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+lever,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+linear,5,5,0,0,False,NOT_APPLICABLE,{},NOT_RUN,False
+linkedin,8,8,7,0,NOT_APPLICABLE,NOT_APPLICABLE,"{""NOT_CHECKED"": 1}",NOT_RUN,True
+linkedin_sales_navigator,0,0,0,0,NOT_APPLICABLE,NOT_APPLICABLE,"{""NOT_CHECKED"": 1}",NOT_RUN,True
+mailchimp,9,9,9,0,True,NOT_APPLICABLE,"{""connected"": 1}",NOT_RUN,True
+marketo,10,10,4,0,False,NOT_APPLICABLE,{},NOT_RUN,True
+meta_marketing,5,5,0,0,False,NOT_APPLICABLE,{},NOT_RUN,False
+metabase,1,1,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+microsoft365,25,25,0,0,True,NOT_APPLICABLE,"{""connected"": 2}",NOT_RUN,True
+microsoft_intune,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+microsoft_teams,8,8,0,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+miro,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+mixpanel,8,8,8,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+monday,11,11,0,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+mongodb,8,8,8,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+motion,8,8,8,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+n8n,8,8,8,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+netsuite,9,9,0,0,False,NOT_APPLICABLE,{},NOT_RUN,True
+ninjaone,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+notion,12,12,9,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+nvd,3,3,2,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+odoo,12,12,0,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+oecd,0,0,0,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+okta,5,5,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+onepassword,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+opencorporates,0,0,0,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+outlook,3,0,0,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+pagerduty,10,10,0,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+pandadoc,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+pax8,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+paypal,5,5,0,0,False,NOT_APPLICABLE,{},NOT_RUN,False
+pdl,4,4,2,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+pennylane,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+personio,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+pipedrive,11,11,0,0,True,NOT_APPLICABLE,"{""connected"": 1}",NOT_RUN,True
+plaid,8,8,5,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+platform,3,3,2,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,False
+postgresql,8,8,8,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+productboard,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+quickbooks,16,16,0,0,True,NOT_APPLICABLE,"{""pending_auth"": 1}",NOT_RUN,True
+ramp,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+real_estate,4,4,2,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,False
+recharge,1,1,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+recurly,0,0,0,0,NOT_APPLICABLE,provider_not_supported,{},NOT_RUN,True
+rippling,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+sage_intacct,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+salesforce,14,14,0,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+sap_s4hana_cloud,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+sec_edgar,3,3,2,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+segment,9,9,6,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+semrush,8,8,0,0,NOT_APPLICABLE,NOT_APPLICABLE,"{""NOT_CHECKED"": 1}",NOT_RUN,True
+sendgrid,8,8,8,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+sentinelone,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+sentry,1,1,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+servicenow,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+sharepoint_online,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+shopify,5,5,0,0,False,NOT_APPLICABLE,{},NOT_RUN,False
+slack,14,14,0,0,True,provider_credentials_required,"{""auth_expired"": 1}",NOT_RUN,True
+smartsheet,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+snowflake,8,8,8,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+stackadapt,8,8,8,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+stripe,9,9,6,0,NOT_APPLICABLE,NOT_APPLICABLE,"{""NOT_CHECKED"": 1}",NOT_RUN,True
+syncro,0,0,0,0,NOT_APPLICABLE,provider_not_supported,{},NOT_RUN,True
+talentlms,1,1,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+teamwork,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+todoist,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+toggl,1,1,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+twilio,10,10,3,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+typeform,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+ukg_pro,0,0,0,0,NOT_APPLICABLE,ready_for_account_authorization,{},NOT_RUN,True
+vapi,4,4,4,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,False
+webflow,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+webhook,3,1,0,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,False
+workday,8,8,4,0,False,NOT_APPLICABLE,{},NOT_RUN,True
+world_bank,0,0,0,0,NOT_APPLICABLE,NOT_APPLICABLE,{},NOT_RUN,True
+wrike,1,1,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+xero,9,9,6,0,True,NOT_APPLICABLE,{},NOT_RUN,True
+zapier,8,8,8,0,False,NOT_APPLICABLE,{},NOT_RUN,True
+zendesk,10,10,0,0,True,NOT_APPLICABLE,"{""pending_auth"": 1}",NOT_RUN,True
+zoho_crm,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+zoom,0,0,0,0,NOT_APPLICABLE,provider_credentials_required,{},NOT_RUN,True
+zoominfo,0,0,0,0,NOT_APPLICABLE,NOT_APPLICABLE,"{""NOT_CHECKED"": 1}",NOT_RUN,True

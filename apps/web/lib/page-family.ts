@@ -7,6 +7,17 @@
  */
 export type PageFamily = "operating" | "expert" | "immersive" | "standard"
 
+/** Help is a scrollable document, even though it lives under the chat URL. */
+export function isAiHelpRoute(pathname: string): boolean {
+  return /^\/ai\/help(?:\/|$)/.test(pathname.split("?")[0] ?? "")
+}
+
+/** Conversation surfaces exclude the help documents beneath the same URL. */
+export function isAiConversationRoute(pathname: string): boolean {
+  const path = pathname.split("?")[0] ?? ""
+  return (path === "/ai" || path.startsWith("/ai/")) && !isAiHelpRoute(path)
+}
+
 const IMMERSIVE: RegExp[] = [
   /^\/ai(\/|$)/,
   /^\/agents\/[^/]+\/chat\/?$/,
@@ -43,6 +54,7 @@ const OPERATING: RegExp[] = [
 
 export function resolvePageFamily(pathname: string): PageFamily {
   const path = (pathname.split("?")[0] ?? "").replace(/\/+$/, "") || "/"
+  if (isAiHelpRoute(path)) return "standard"
   if (IMMERSIVE.some((re) => re.test(path))) return "immersive"
   if (EXPERT.some((re) => re.test(path))) return "expert"
   if (OPERATING.some((re) => re.test(path))) return "operating"

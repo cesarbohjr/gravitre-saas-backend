@@ -144,6 +144,16 @@ class TestPhase3ExecutingSpeech:
 
 
 class TestPhase3ConfirmedSpeech:
+    def test_vendor_qualified_write_keeps_acceptance_and_proof_distinct(self):
+        tool = "freshservice.tickets.update_status"
+        assert is_write_shaped_tool_name(tool)
+        accepted = narrate_tool_completed(tool, {"success": True, "id": "ticket-1"})
+        assert "accepted" in accepted and "confirming" in accepted
+        assert "sent" not in accepted.lower() and "done" not in accepted.lower()
+        verified = narrate_tool_completed(tool, {"success": True, "verification": {
+            "verified": True, "method": "entity_get", "read_action": "freshservice.tickets.get"}})
+        assert verified == "Done, that went through."
+
     def test_write_success_with_real_stage_field_is_narrated_honestly(self) -> None:
         out = narrate_tool_completed(
             "moveDealStage", {"success": True, "stage": "Negotiation", "verification": {"verified": True, "method": "entity_get", "read_action": "crm.deals.get"}}

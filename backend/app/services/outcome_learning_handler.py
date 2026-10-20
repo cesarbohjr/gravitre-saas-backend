@@ -56,6 +56,113 @@ def handler_enabled(settings: Any) -> bool:
     return getattr(settings, "outcome_learning_handler_enabled", False) is True
 
 
+def learning_delivery_status(client: Any, settings: Any, *, org_id: str) -> dict[str, Any]:
+    """Expose effective runtime gates and this tenant's undelivered outcomes.
+
+    Delivery is not model improvement: a handler may legitimately skip a run
+    without verified business results. Do not label queued rows as learned.
+    Payloads and raw error messages are intentionally excluded.
+    """
+    from app.services.domain_events import EVENT_EXECUTION_OUTCOME_FINALIZED
+
+    if not org_id:
+        raise ValueError("Organization context required")
+    relay_enabled = getattr(settings, "domain_event_relay_enabled", False) is True
+    enabled = handler_enabled(settings)
+    registered = any(r.name == HANDLER_NAME for r in handlers_for(EVENT_EXECUTION_OUTCOME_FINALIZED))
+    response = (
+        client.table("domain_event_outbox")
+        .select("event_id,aggregate_id,status,attempts,created_at", count="exact")
+        .eq("org_id", org_id)
+        .eq("event_type", EVENT_EXECUTION_OUTCOME_FINALIZED)
+        .in_("status", ["pending", "processing", "retrying", "dead"])
+        .order("created_at")
+        .limit(20)
+        .execute()
+    )
+    rows = response.data or []
+    blockers = []
+    if not relay_enabled:
+        blockers.append("relay_disabled")
+    if not enabled:
+        blockers.append("outcome_handler_disabled")
+    elif not registered:
+        blockers.append("outcome_handler_not_registered")
+    return {
+        "status": "blocked" if blockers else "queued" if rows else "idle",
+        "relay_enabled": relay_enabled,
+        "handler_enabled": enabled,
+        "handler_registered": registered,
+        "blockers": blockers,
+        "undelivered_count": response.count,
+        "events": rows,
+        "delivery_is_not_verified_learning": True,
+    }
+
+
+def assignment_outcome_trace(client: Any, *, org_id: str, job_id: str) -> dict[str, Any]:
+    """Read-only chain for one assignment: job, its outcome run, that run's outbox events.
+
+    A finished assignment gets a ``workflow_runs`` row (``parameters.job_id``); the
+    run's terminal status emits ``execution.outcome_finalized`` keyed by the run id.
+    ``learning_delivered`` means this handler took the event, not that a model
+    improved. Every read is scoped to ``org_id``; payloads are not returned.
+    """
+    org_id = str(org_id or "").strip()
+    job_id = str(job_id or "").strip()
+    if not org_id or not job_id:
+        raise ValueError("Organization and job are required")
+    jobs = (
+        client.table("agent_jobs")
+        .select("id,status,finished_at")
+        .eq("org_id", org_id)
+        .eq("id", job_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not jobs:
+        return {"found": False, "job": None, "runs": [], "events": []}
+    runs = (
+        client.table("workflow_runs")
+        .select("id,status,completed_at")
+        .eq("org_id", org_id)
+        .contains("parameters", {"source": "assignment", "job_id": job_id})
+        .order("created_at")
+        .limit(5)
+        .execute()
+        .data
+        or []
+    )
+    run_ids = [str(r["id"]) for r in runs if r.get("id")]
+    events: list[dict[str, Any]] = []
+    if run_ids:
+        rows = (
+            client.table("domain_event_outbox")
+            .select("event_id,aggregate_id,status,attempts,delivered_handlers,created_at")
+            .eq("org_id", org_id)
+            .eq("event_type", EVENT_EXECUTION_OUTCOME_FINALIZED)
+            .in_("aggregate_id", run_ids)
+            .order("created_at")
+            .limit(20)
+            .execute()
+            .data
+            or []
+        )
+        for row in rows:
+            handlers = list(row.get("delivered_handlers") or [])
+            events.append({
+                "event_id": row.get("event_id"),
+                "run_id": row.get("aggregate_id"),
+                "status": row.get("status"),
+                "attempts": row.get("attempts"),
+                "delivered_handlers": handlers,
+                "learning_delivered": row.get("status") == "delivered" and HANDLER_NAME in handlers,
+            })
+    return {"found": True, "job": jobs[0], "runs": runs, "events": events}
+
+
 def _parse(ts: Any) -> datetime | None:
     if not ts:
         return None

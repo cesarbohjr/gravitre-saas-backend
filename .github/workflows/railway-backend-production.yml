@@ -13,6 +13,8 @@ on:
     branches: [main]
     paths:
       - "backend/**"
+      - "scripts/verify-agent-roi-live.py"
+      - "apps/web/lib/supabase/memberships.ts"
       - ".github/workflows/railway-backend-production.yml"
   workflow_dispatch:
     inputs:
@@ -53,7 +55,8 @@ jobs:
             echo "Single-commit checkout — assume backend deploy required."
             exit 0
           fi
-          if python3 scripts/railway_commit_touches_backend.py --base HEAD~1 --head HEAD; then
+          if python3 scripts/railway_commit_touches_backend.py --base HEAD~1 --head HEAD || \
+             git diff --name-only HEAD~1 HEAD | grep -Eq '^(scripts/verify-agent-roi-live[.]py|apps/web/lib/supabase/memberships[.]ts|[.]github/workflows/railway-backend-production[.]yml)$'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"

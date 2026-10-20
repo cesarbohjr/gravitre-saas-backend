@@ -1861,6 +1861,9 @@ async def execute_workflow(
                 )
             raise
         run_id = str(run["id"])
+        from app.services.workflow_approval_scope import persist_run_approval_scope
+
+        persist_run_approval_scope(client, run_id, definition)
         _record_workflow_run_usage(client, org_id, environment_name, plan)
         if approval_floor_applied:
             write_audit_event(
@@ -2177,6 +2180,9 @@ def _open_pending_approval_run(
             )
         raise
     run_id = str(run["id"])
+    from app.services.workflow_approval_scope import persist_run_approval_scope
+
+    persist_run_approval_scope(client, run_id, definition)
     _record_workflow_run_usage(client, org_id, environment_name, plan)
     if approval_floor_applied:
         write_audit_event(
@@ -3623,7 +3629,7 @@ def list_approvals_alias(
             "definition_snapshot": snapshot,
         }
     # Chat connector writes queued for org admins (not workflow_runs).
-    if not type or type in {"connector", "connector_chat"}:
+    if not type or type in {"connector", "connector_chat", "mcp_tool"}:
         try:
             chat_q = (
                 client.table("approvals")
@@ -3632,7 +3638,7 @@ def list_approvals_alias(
                     "requested_at, reviewed_by, reviewed_at, context, run_id"
                 )
                 .eq("org_id", org_id)
-                .eq("type", "connector_chat")
+                .in_("type", ["connector_chat", "mcp_tool"])
                 .order("requested_at", desc=True)
                 .limit(50)
             )
@@ -3738,6 +3744,11 @@ def list_approvals_alias(
                         "entity": ctx.get("entity") or ctx.get("integration") or "Connector",
                         "action": ctx.get("action") or ctx.get("invoke_action") or ctx.get("label") or "Execute write",
                         "approval_id": str(row["id"]),
+                        **({"args": safe_normalize_stored_dict(ctx, key="parameters"),
+                            "tool": ctx.get("tool_name"),
+                            "entity": ctx.get("server_name") or "MCP server",
+                            "action": ctx.get("tool_name") or "MCP write"}
+                           if row.get("type") == "mcp_tool" else {}),
                         "conversation_id": ctx.get("conversation_id"),
                         "run_id": run_link or ctx.get("run_id"),
                     },
@@ -3849,7 +3860,7 @@ async def approve_run_alias(
     try:
         chat_rows = (
             client.table("approvals")
-            .select("id, type, status, context, parameters, requested_by")
+            .select("id, type, status, context, requested_by, reviewed_at")
             .eq("id", str(run_id))
             .eq("org_id", org_id)
             .limit(1)
@@ -3859,6 +3870,13 @@ async def approve_run_alias(
         )
     except Exception:  # noqa: BLE001 — workflow-run mocks may not expose approvals table
         chat_rows = []
+    if chat_rows and str(chat_rows[0].get("type") or "") == "mcp_tool":
+        from app.services.mcp_approval_service import decide_mcp_approval
+
+        return await decide_mcp_approval(
+            client, settings, org_id=org_id, approval_id=str(run_id),
+            reviewer_id=str(current_user.get("user_id") or ""), approve=True,
+        )
     if chat_rows and str(chat_rows[0].get("type") or "") == "connector_chat":
         from app.auth.platform_admin import is_org_admin_role
         from app.services.chat_connector_execution_service import (
@@ -3876,11 +3894,8 @@ async def approve_run_alias(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin approval required")
 
         ctx = chat_rows[0].get("context") if isinstance(chat_rows[0].get("context"), dict) else {}
-        params = (
-            chat_rows[0].get("parameters")
-            if isinstance(chat_rows[0].get("parameters"), dict)
-            else {}
-        )
+        params = ctx.get("parameters") if isinstance(ctx.get("parameters"), dict) else {}
+        binding = ctx.get("binding") if isinstance(ctx.get("binding"), dict) else {}
         conversation_id = str(ctx.get("conversation_id") or "")
         if not conversation_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing conversation")
@@ -3896,9 +3911,54 @@ async def approve_run_alias(
         plan = service.plan_action("", connected_integrations=[], task_state=task_state)
         if not plan:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Pending write is incomplete")
+
+        # Execute only what was approved: same tool, action, integration and exact
+        # arguments. Rows queued before the binding existed are refused (ask again).
+        from app.services.approval_action_binding import digest_plan_args
+
+        actual = {
+            "tool_name": plan.tool_name,
+            "invoke_action": plan.invoke_action,
+            "integration": plan.integration,
+            "args_digest": digest_plan_args(plan.args),
+        }
+        if not binding or any(str(binding.get(k) or "") != str(v or "") for k, v in actual.items()):
+            write_audit_event(
+                client,
+                org_id=org_id,
+                actor_id=str(current_user.get("user_id") or ""),
+                action="connector.approval.action_mismatch",
+                resource_type="approval",
+                resource_id=str(run_id),
+                metadata={"approved": binding or None, "requested": actual},
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This approval no longer matches the requested action. Ask for approval again.",
+            )
+
+        # Claim once: concurrent approvals of the same row run the write at most once.
+        reviewer = str(current_user.get("user_id") or "")
+        claimed = (
+            client.table("approvals")
+            .update({"reviewed_by": reviewer, "reviewed_at": datetime.now(timezone.utc).isoformat()})
+            .eq("id", str(run_id))
+            .eq("org_id", org_id)
+            .eq("status", "pending")
+            .is_("reviewed_at", "null")
+            .execute()
+            .data
+            or []
+        )
+        if not claimed:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Approval already being decided")
+
+        from app.services.write_authority import declare_write_authority
+
+        declare_write_authority("human", f"approval:{run_id}")  # an admin approved this queued write
         execution = await service.execute_plan(
             org_id=org_id,
-            user_id=str(chat_rows[0].get("requested_by") or current_user.get("user_id") or ""),
+            user_id=str(chat_rows[0].get("requested_by") or reviewer),
             conversation_id=conversation_id,
             plan=plan,
             client=client,
@@ -3906,12 +3966,26 @@ async def approve_run_alias(
             environment_name=environment_name,
         )
         client.table("approvals").update(
-            {
-                "status": "approved" if execution.success else "rejected",
-                "reviewed_by": str(current_user.get("user_id") or ""),
-                "reviewed_at": datetime.now(timezone.utc).isoformat(),
-            }
+            {"status": "approved" if execution.success else "rejected"}
         ).eq("id", str(run_id)).eq("org_id", org_id).execute()
+        write_audit_event(
+            client,
+            org_id=org_id,
+            actor_id=reviewer,
+            action="connector.approval.decided",
+            resource_type="approval",
+            resource_id=str(run_id),
+            metadata={
+                "decision": "approved",
+                "executed": True,
+                "success": bool(execution.success),
+                "tool_name": actual["tool_name"],
+                "invoke_action": actual["invoke_action"],
+                "integration": actual["integration"],
+                "args_digest": actual["args_digest"],
+                "requested_by": chat_rows[0].get("requested_by"),
+            },
+        )
         from app.services.conversation_state_service import get_conversation_state_service
 
         await get_conversation_state_service(settings).update_task_state(
@@ -3969,6 +4043,13 @@ async def reject_run_alias(
         )
     except Exception:  # noqa: BLE001 — workflow-run mocks may not expose approvals table
         chat_rows = []
+    if chat_rows and str(chat_rows[0].get("type") or "") == "mcp_tool":
+        from app.services.mcp_approval_service import decide_mcp_approval
+
+        return await decide_mcp_approval(
+            client, settings, org_id=org_id, approval_id=str(run_id),
+            reviewer_id=str(current_user.get("user_id") or ""), approve=False,
+        )
     if chat_rows and str(chat_rows[0].get("type") or "") == "connector_chat":
         from app.auth.platform_admin import is_org_admin_role
         from app.workflows.policy import PolicyResolutionError, get_user_role
@@ -4554,56 +4635,56 @@ def list_workflows_route(
         )
         workflows = [w for w in workflows if str(w.get("id")) in allowed]
     workflow_ids = [str(w["id"]) for w in workflows if w.get("id")]
-    counts: dict[str, int] = {}
-    success_counts: dict[str, int] = {}
-    last_runs: dict[str, str] = {}
-    if workflow_ids:
-        r = (
-            client.table("workflow_runs")
-            .select("workflow_id, status, created_at")
-            .eq("org_id", org_id)
-            .eq("environment", environment_name)
-            .in_("workflow_id", workflow_ids)
-            .execute()
-        )
-        for row in list(r.data or []):
-            key = str(row.get("workflow_id"))
-            counts[key] = counts.get(key, 0) + 1
-            if row.get("status") == "completed":
-                success_counts[key] = success_counts.get(key, 0) + 1
-            created_at = row.get("created_at")
-            if created_at and key not in last_runs:
-                last_runs[key] = created_at
-    return {
-        "workflows": [
-            {
-                "id": str(w["id"]),
-                "name": w["name"],
-                "goal": w.get("goal") or _generate_goal(w.get("name") or "", w.get("description")),
-                "description": w.get("description"),
-                "status": w.get("status") or "draft",
-                "stage": w.get("stage") or "build",
-                "version": w.get("version") or "v1.0.0",
-                "schema_version": w["schema_version"],
-                "updated_at": w["updated_at"],
-                "runCount": w.get("run_count") or counts.get(str(w["id"]), 0),
-                "successRate": float(w.get("success_rate") or 0)
-                if w.get("success_rate") is not None
-                else (
-                    round(
-                        (success_counts.get(str(w["id"]), 0) / counts.get(str(w["id"]), 1)) * 100,
-                        2,
-                    )
-                    if counts.get(str(w["id"]), 0)
-                    else 0
-                ),
-                "lastRun": w.get("last_run_at") or last_runs.get(str(w["id"])),
-                "nextRunAt": w.get("next_run_at"),
-                "environment": environment_name,
-            }
-            for w in workflows
-        ],
-    }
+    from app.services.workflow_fleet import read_run_history, summarize_runs, workflow_department_names
+
+    run_rows, history_truncated = read_run_history(
+        client, org_id=org_id, environment_name=environment_name, workflow_ids=workflow_ids
+    )
+    runs_by_workflow = summarize_runs(run_rows)
+    departments = workflow_department_names(client, org_id, workflow_ids)
+
+    def _row(w: dict) -> dict:
+        wid = str(w["id"])
+        runs = runs_by_workflow.get(wid) or {}
+        count = int(runs.get("count") or 0)
+        # Stored totals (maintained by the runtime) are complete whatever the
+        # read ceiling; counts derived from the paged history are only trusted
+        # when the whole history was read.
+        stored_count = w.get("run_count")
+        stored_rate = w.get("success_rate")
+        derived_complete = not history_truncated
+        if stored_rate is not None:
+            success_rate: float | None = float(stored_rate or 0)
+        elif derived_complete:
+            success_rate = round((int(runs.get("completed") or 0) / count) * 100, 2) if count else 0
+        else:
+            success_rate = None
+        run_count = stored_count if stored_count is not None else count
+        return {
+            "id": wid,
+            "name": w["name"],
+            "goal": w.get("goal") or _generate_goal(w.get("name") or "", w.get("description")),
+            "description": w.get("description"),
+            "status": w.get("status") or "draft",
+            "stage": w.get("stage") or "build",
+            "version": w.get("version") or "v1.0.0",
+            "schema_version": w["schema_version"],
+            "updated_at": w["updated_at"],
+            "runCount": run_count,
+            "successRate": success_rate,
+            # False when the run history hit the read ceiling and no stored
+            # totals exist, so runCount is a lower bound and successRate is null.
+            "runStatsComplete": derived_complete or (stored_count is not None and stored_rate is not None),
+            "lastRun": w.get("last_run_at") or runs.get("lastRun"),
+            "lastRunStatus": runs.get("lastRunStatus"),
+            "isRunning": bool(runs.get("isRunning")),
+            "recentRuns": list(runs.get("recentRuns") or []),
+            "departments": departments.get(wid, []),
+            "nextRunAt": w.get("next_run_at"),
+            "environment": environment_name,
+        }
+
+    return {"workflows": [_row(w) for w in workflows], "runHistoryTruncated": history_truncated}
 
 
 @router.get("/stats")

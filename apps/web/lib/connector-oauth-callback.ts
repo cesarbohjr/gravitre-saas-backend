@@ -12,7 +12,12 @@ export async function completeConnectorOAuthCallback(
   provider: string,
 ): Promise<NextResponse> {
   const backendUrl = backendBaseUrl()
-  const target = new URL(`${backendUrl}/api/connectors/oauth/${provider}/callback`)
+  // Provider names are slugs; anything else (e.g. a decoded "../") is refused so
+  // the callback cannot be pointed at another backend path.
+  if (!/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(provider)) {
+    return NextResponse.redirect(`${publicAppUrl()}/connectors?oauth=error&reason=invalid_provider`, 302)
+  }
+  const target = new URL(`${backendUrl}/api/connectors/oauth/${encodeURIComponent(provider)}/callback`)
   request.nextUrl.searchParams.forEach((value, key) => {
     target.searchParams.set(key, value)
   })

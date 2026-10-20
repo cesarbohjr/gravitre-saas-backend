@@ -186,6 +186,16 @@ def evaluate_connector_tool_proposal(
     name = str(tool_name or "").strip()
     invoke = str(invoke_action or "").strip()
     merged_args = dict(args or {})
+    from app.services.action_intent import is_native_work_request
+
+    if is_native_work_request(message) and not (name.startswith("assistant_") or invoke.startswith("assistant.")):
+        return ToolProposalReview(
+            action="clarify",
+            clarify_message=(
+                "This request is for work inside Gravitre. I won't substitute a connected-app action. "
+                "Use Assignments to assign a task, Plays to review a remedy, or Workflows to build an automation."
+            ),
+        )
     proposed_family = _gmail_family_for_tool(name, invoke)
     if proposed_family == "none":
         return ToolProposalReview(

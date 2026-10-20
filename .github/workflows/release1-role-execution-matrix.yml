@@ -1,0 +1,63 @@
+name: Release 1 role and execution security matrix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/release1-role-execution-matrix.yml"
+      - "backend/tests/db/test_emergency_membership_lockdown_pg.py"
+      - "backend/tests/db/test_governance_member_write_lockdown_pg.py"
+      - "backend/tests/services/test_mcp_stdio_and_network_policy.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  role-and-execution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      APP_ENV: test
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test
+      SUPABASE_JWT_SECRET: jwt-secret-test
+      OPENAI_API_KEY: sk-test-openai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install PostgreSQL tooling
+        run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+      - name: Install isolated security test dependencies
+        run: pip install -r backend/requirements-dev.txt
+      - name: Execute member/admin database authorization tests and MCP execution-denial tests
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          python -m pytest -q \
+            tests/db/test_emergency_membership_lockdown_pg.py \
+            tests/db/test_governance_member_write_lockdown_pg.py \
+            tests/services/test_mcp_stdio_and_network_policy.py \
+            --junitxml=../docs/delivery/release1-role-execution-matrix.xml
+      - name: Upload attributable matrix result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release1-role-execution-matrix
+          path: docs/delivery/release1-role-execution-matrix.xml
+          if-no-files-found: error

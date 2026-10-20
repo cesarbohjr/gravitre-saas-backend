@@ -71,7 +71,9 @@ export function deriveMissionStages(input: {
   const approvalOpen = runtimeState === "needs_approval" || runtimeState === "blocked"
   const failed = runtimeState === "failed" || executionResult?.success === false
   const partial = runtimeState === "partial"
-  const delivered = executionResult?.success === true && !partial
+  const unconfirmed = runtimeState === "verifying" || runtimeState === "uncertain"
+  const cancelled = runtimeState === "cancelled"
+  const delivered = executionResult?.success === true && !partial && !unconfirmed && !cancelled
   const pendingStatus = String(pendingTask?.status || "").toLowerCase()
   const approvalWasRequired = pendingTask?.params?.requires_approval === true
   const approvalResolved =
@@ -116,7 +118,11 @@ export function deriveMissionStages(input: {
           : approvalResolved
             ? { state: "complete", detail: "Resolved" }
             : { state: "not_needed", detail: "Not requested" },
-    result: failed
+    result: unconfirmed
+      ? { state: runtimeState === "uncertain" ? "blocked" : "waiting", detail: runtimeState === "uncertain" ? "Outcome unconfirmed" : "Checking the result" }
+      : cancelled
+        ? { state: "blocked", detail: "Cancelled" }
+      : failed
       ? { state: "failed", detail: "Did not complete" }
       : partial
         ? { state: "blocked", detail: "Partly completed" }

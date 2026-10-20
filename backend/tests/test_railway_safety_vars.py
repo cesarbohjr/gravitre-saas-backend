@@ -107,28 +107,31 @@ def test_approved_on_flags_are_default_off_and_carry_no_customer_data():
     assert not any("OBSERVATIONS" in k or "SIGNALS" in k or "ENTITY" in k for k in rsv.APPROVED_ON)
 
 
-def test_storage_flags_are_default_off_and_reported():
+def test_storage_flags_are_default_on_and_reported():
+    # Owner decision 2026-10-20: the storage features ship on.
     for key in (
         "AUDIT_RETENTION_ARCHIVE_ENABLED",
         "STORAGE_METER_ENABLED",
         "STORAGE_QUOTA_ENFORCEMENT_ENABLED",
         "BYO_STORAGE_ENABLED",
     ):
-        assert key in rsv.DEFAULT_OFF
-        assert _default(key) is False
+        assert key in rsv.DEFAULT_ON and key not in rsv.DEFAULT_OFF
+        assert _default(key) is True
     lines, problems, _pins = rsv.audit({})
     assert problems == []
-    assert "STORAGE_METER_ENABLED: absent (off)" in lines
-    _lines, problems, _pins = rsv.audit({"BYO_STORAGE_ENABLED": "true"})
-    assert any("BYO_STORAGE_ENABLED" in p for p in problems)
+    assert "STORAGE_METER_ENABLED: absent (on)" in lines
+    lines, problems, _pins = rsv.audit({"BYO_STORAGE_ENABLED": "false"})
+    assert problems == [] and "BYO_STORAGE_ENABLED='false'" in lines
+    _lines, problems, _pins = rsv.audit({"BYO_STORAGE_ENABLED": "maybe"})
+    assert any("BYO_STORAGE_ENABLED" in p and "startup" in p for p in problems)
 
 
 def test_retention_settings_are_reported_never_pinned():
-    assert _default("AUDIT_RETENTION_DAYS") == 0
-    assert _default("TELEMETRY_RETENTION_DAYS") == 0
-    assert _default("AUDIT_RETENTION_DRY_RUN") is True
+    assert _default("AUDIT_RETENTION_DAYS") == 365
+    assert _default("TELEMETRY_RETENTION_DAYS") == 365
+    assert _default("AUDIT_RETENTION_DRY_RUN") is False
     lines, problems, pins = rsv.audit({})
-    assert "AUDIT_RETENTION_DAYS: absent (code default 0 (keep forever))" in lines
+    assert "AUDIT_RETENTION_DAYS: absent (code default 365)" in lines
     assert not any(p.startswith(("AUDIT_RETENTION", "TELEMETRY_RETENTION")) for p in pins)
     lines, problems, pins = rsv.audit(
         {"AUDIT_RETENTION_DAYS": "365", "AUDIT_RETENTION_DRY_RUN": "false", "TELEMETRY_RETENTION_DAYS": "0"}

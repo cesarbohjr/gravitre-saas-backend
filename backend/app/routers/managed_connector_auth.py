@@ -63,15 +63,8 @@ def managed_auth_catalog(
     _member: Annotated[tuple, Depends(require_org_member)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    from app.services.managed_service_desk_tools import MANAGED_SERVICE_DESK_TOOL_EXECUTORS
-    from app.services.managed_security_tools import MANAGED_SECURITY_TOOL_EXECUTORS
-    actions = set(MANAGED_SERVICE_DESK_TOOL_EXECUTORS) | set(MANAGED_SECURITY_TOOL_EXECUTORS)
-    return {
-        "configured": nango_configured(settings) and bool(settings.nango_webhook_signing_key.strip()),
-        "connectors": [{"vendor": spec.vendor, "actions": sorted(a for a in actions if a.startswith(spec.vendor + ".")),
-                        "support": "actions_supported" if any(a.startswith(spec.vendor + ".") for a in actions) else "authorization_only"}
-                       for spec in NANGO_CONNECTOR_REGISTRY.values()],
-    }
+    from app.connectors.managed_setup import managed_setup_catalog
+    return managed_setup_catalog(settings)
 
 
 @router.get("/{connector_id}/status")
@@ -113,6 +106,15 @@ def create_managed_auth_session(
             detail=error_detail("Managed connector authorization is not configured", "MANAGED_AUTH_NOT_CONFIGURED"),
         )
 
+    # Check the specific provider before creating or modifying any tenant row.
+    from app.connectors.managed_setup import integration_inventory, provider_readiness
+    try:
+        available, reason = provider_readiness(spec, integration_inventory(settings))
+    except (httpx.HTTPError, ValueError) as exc:
+        raise HTTPException(status_code=503, detail="Secure authorization setup could not be checked; retry shortly") from exc
+    if not available:
+        raise HTTPException(status_code=503, detail=error_detail(
+            "This provider needs administrator setup before accounts can connect", str(reason).upper()))
     client = shared_service_client(settings, create_client)
     connector_id = body.connector_id
     reconnect = bool(connector_id)
@@ -144,8 +146,10 @@ def create_managed_auth_session(
                 connector_id = str(found.data[0]["id"])
                 reconnect, is_new = True, False
             else:
+                from app.connectors.nango_registry import BUSINESS_CONNECTORS
+                storage_type = "custom" if any(r["vendor"] == spec.vendor for r in BUSINESS_CONNECTORS) else spec.vendor
                 created = client.table("connectors").insert({
-                    "org_id": org_id, "vendor": spec.vendor, "type": spec.vendor,
+                    "org_id": org_id, "vendor": spec.vendor, "type": storage_type,
                     "name": body.name.strip(), "environment": environment_name,
                     "status": "pending_auth", "sync_frequency": "1h",
                     "description": spec.description, "config": {"auth_provider": "managed"},
@@ -188,9 +192,17 @@ def create_managed_auth_session(
     config = safe_normalize_stored_dict(dict(stored.data[0]), key="config")
     attempt_id = str(uuid4())
     config["managed_auth_attempt_id"] = attempt_id
-    config.update({"auth_type": "oauth", "auth_provider": "managed",
-                   "managed_integration_id": spec.integration_id})
+    config.update({"managed_auth_pending": True, "managed_integration_id": spec.integration_id})
+    if not spec.native_fallback or config.get("auth_provider") == "managed":
+        config.update({"auth_type": "oauth", "auth_provider": "managed"})
     connection_id = str(config.get("managed_connection_id") or "").strip() or None
+    if connection_id:
+        from app.connectors.nango_client import scoped_connection
+        try:
+            scoped_connection(settings, connection_id=connection_id, integration_id=spec.integration_id,
+                              org_id=str(org_id), connector_id=str(connector_id))
+        except (httpx.HTTPError, ValueError) as exc:
+            raise HTTPException(status_code=502, detail="Managed account ownership could not be verified") from exc
     client.table("connectors").update({"config": config}).eq(
         "id", str(connector_id)).eq("org_id", org_id).eq(
         "environment", environment_name).execute()
@@ -317,7 +329,7 @@ async def handle_nango_auth_webhook(
         or ""
     ).strip()
     spec = get_nango_connector_spec(str(row.get("vendor") or row.get("type") or ""))
-    if config.get("auth_provider") != "managed" or spec is None:
+    if spec is None or (config.get("auth_provider") != "managed" and not config.get("managed_auth_pending")):
         raise HTTPException(status_code=400, detail="Connector is not managed")
     expected_integration_id = spec.integration_id
     if integration_id != expected_integration_id:
@@ -337,6 +349,7 @@ async def handle_nango_auth_webhook(
 
     config["auth_type"] = "oauth"
     config["auth_provider"] = "managed"
+    config["managed_auth_pending"] = False
     config["managed_connection_id"] = connection_id
     if integration_id:
         config["managed_integration_id"] = integration_id

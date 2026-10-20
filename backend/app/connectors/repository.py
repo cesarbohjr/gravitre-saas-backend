@@ -40,7 +40,7 @@ def _connector_data_region(client: Client, org_id: str, connector_id: str) -> st
         .execute()
     )
     if not row.data:
-        return None
+        raise ValueError("Connector does not belong to the requested organization")
     config = row.data[0].get("config") or {}
     if not isinstance(config, dict):
         return None
@@ -88,6 +88,14 @@ def get_connector_by_type(
 ) -> dict | None:
     """Get first usable connector of type for org (active, healthy, connected, syncing)."""
     from app.intelligence_packs.shared.auth_mode import connector_type_lookup_keys
+
+    from app.connectors.nango_registry import BUSINESS_CONNECTORS
+    if any(row["vendor"] == connector_type for row in BUSINESS_CONNECTORS):
+        result = (client.table("connectors").select("id,org_id,vendor,type,status,config,environment")
+                  .eq("org_id", org_id).eq("environment", environment_name).eq("vendor", connector_type)
+                  .eq("type", "custom").in_("status", sorted(ACTIVE_CONNECTOR_STATUSES))
+                  .is_("deleted_at", "null").order("updated_at", desc=True).limit(1).execute())
+        return result.data[0] if result.data else None
 
     usable = sorted(ACTIVE_CONNECTOR_STATUSES)
     for type_key in connector_type_lookup_keys(connector_type):
@@ -238,13 +246,15 @@ def set_secret(
     existing = (
         client.table("connector_secrets")
         .select("id")
+        .eq("org_id", org_id)
         .eq("connector_id", connector_id)
         .eq("key_name", key_name)
         .limit(1)
         .execute()
     )
     if existing.data and len(existing.data) > 0:
-        client.table("connector_secrets").update({"encrypted_value": enc}).eq("id", existing.data[0]["id"]).execute()
+        (client.table("connector_secrets").update({"encrypted_value": enc})
+         .eq("id", existing.data[0]["id"]).eq("org_id", org_id).execute())
     else:
         client.table("connector_secrets").insert({
             "org_id": org_id,
@@ -259,11 +269,16 @@ def get_decrypted_secret(
     connector_id: str,
     key_name: str,
     settings: Settings,
+    *,
+    org_id: str,
 ) -> str | None:
-    """Decrypt and return secret. Backend-only; never expose to API response."""
+    """Decrypt one secret only within the caller's authorized organization."""
+    if not org_id:
+        return None
     r = (
         client.table("connector_secrets")
         .select("encrypted_value")
+        .eq("org_id", org_id)
         .eq("connector_id", connector_id)
         .eq("key_name", key_name)
         .limit(1)
@@ -288,6 +303,8 @@ def get_decrypted_secrets_bulk(
     connector_ids: list[str],
     key_name: str,
     settings: Settings,
+    *,
+    org_id: str,
 ) -> dict[str, str | None]:
     """Batched get_decrypted_secret: one read per chunk of connector ids.
 
@@ -297,11 +314,14 @@ def get_decrypted_secrets_bulk(
     """
     ids = list(dict.fromkeys(str(cid) for cid in connector_ids if cid))
     out: dict[str, str | None] = {cid: None for cid in ids}
+    if not org_id:
+        return out
     for start in range(0, len(ids), _SECRETS_BULK_CHUNK):
         chunk = ids[start : start + _SECRETS_BULK_CHUNK]
         r = (
             client.table("connector_secrets")
             .select("connector_id, encrypted_value")
+            .eq("org_id", org_id)
             .in_("connector_id", chunk)
             .eq("key_name", key_name)
             .execute()

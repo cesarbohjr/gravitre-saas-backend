@@ -1868,6 +1868,10 @@ class AgentIntelligence:
         _canonical_task_state: dict[str, Any] = (
             dict(gateway_state) if isinstance(gateway_state, dict) else {}
         )
+        from app.services.cognitive_trace_engine import unify_turn_id
+        from app.services.cost_attribution import attribution_fields, bind_turn_attribution
+
+        bind_turn_attribution(attribution_fields().get("turn_id") or unify_turn_id(_canonical_task_state))
         task_state: dict[str, Any] | None = (
             dict(gateway_state) if isinstance(gateway_state, dict) else None
         )
@@ -1986,7 +1990,9 @@ class AgentIntelligence:
             if _cognitive_trace_builder is not None:
                 return
             st = state if isinstance(state, dict) else {}
-            turn_id = unify_turn_id(st)
+            from app.services.cost_attribution import attribution_fields
+
+            turn_id = attribution_fields().get("turn_id") or unify_turn_id(st)
             _cognitive_trace_builder = CognitiveTraceBuilder(
                 turn_id=turn_id,
                 conversation_id=conversation_id,
@@ -2901,10 +2907,7 @@ class AgentIntelligence:
                 return
 
         from app.services.task_classifier import get_task_classifier
-        from app.services.chat_dialogue_settings import load_chat_dialogue_settings
-        from app.services.contextual_understanding_service import get_contextual_understanding_service
         from app.services.clarification_engine import get_clarification_engine
-        from app.services.sentiment_friction_service import get_sentiment_friction_service
         from app.services.dialogue_policy_engine import get_dialogue_policy_engine
         from app.services.persona_service import get_persona_service
         from app.services.conversation_state_service import get_conversation_state_service
@@ -3082,7 +3085,7 @@ class AgentIntelligence:
                 )
                 yield sse_intelligence_metadata(
                     message_id=message_id,
-                    confidence={"score": 0.9, "needs_clarification": False},
+                    confidence={"needs_clarification": False},
                     answer_explanation="Continuing the offered inspection",
                     dialogue_mode="answer",
                     effective_mode=mode_key,
@@ -3122,7 +3125,7 @@ class AgentIntelligence:
                 tool_results = executed.get("tool_results") if isinstance(executed.get("tool_results"), list) else []
                 yield sse_intelligence_metadata(
                     message_id=message_id,
-                    confidence={"score": 0.9, "needs_clarification": False},
+                    confidence={"needs_clarification": False},
                     answer_explanation="Offered READ continuation",
                     dialogue_mode="answer",
                     effective_mode=mode_key,
@@ -3317,35 +3320,15 @@ class AgentIntelligence:
         )
         _mark("spoken_lite_decided")
 
+        # Every route uses the same perception, including conversational shortcuts.
+        from app.services.contextual_understanding_service import perceive_turn
+
+        dialogue_settings, sentiment, understanding = await perceive_turn(
+            org_id, task_text, conversation_history, settings=active_settings,
+            client=client, spoken_mode=bool(spoken_mode),
+        )
+        _mark("perception")
         if spoken_lite_path or _compiled_read_ingress:
-            # Defaults only — dialogue_settings are unused on the lite path before
-            # LIVE returns; a DB round-trip here was pure critical-path waste.
-            dialogue_settings = {
-                "sentiment_detection_enabled": False,
-                "spoken_lite_defaults": True,
-            }
-            _mark("dialogue_settings_lite")
-            sentiment = {"recommended_adaptation": "none"}
-            understanding = {
-                "goal": None,
-                "constraints": [],
-                "model_attempted": False,
-                "model_ran": False,
-                "domain": {
-                    "source": (
-                        "compiled_read_ingress"
-                        if _compiled_read_ingress
-                        else "spoken_lite_skip"
-                    ),
-                    "confidence": 0.0,
-                    "routing_active": False,
-                },
-                "skipped": (
-                    "compiled_read_ingress"
-                    if _compiled_read_ingress
-                    else "spoken_conversational_lite"
-                ),
-            }
             pipeline_classification = {
                 "intent": "informational",
                 "requires_action": False,
@@ -3365,21 +3348,6 @@ class AgentIntelligence:
             router_enrichments: dict[str, Any] = {}
             classification_confidence = 0.7
         else:
-            dialogue_settings = await load_chat_dialogue_settings(org_id, active_settings, client=client)
-            _mark("dialogue_settings_full")
-            sentiment = (
-                get_sentiment_friction_service().analyze(task_text, conversation_history)
-                if dialogue_settings.get("sentiment_detection_enabled", True)
-                else {"recommended_adaptation": "none"}
-            )
-            _mark("sentiment")
-            understanding = await get_contextual_understanding_service(active_settings).understand(
-                task_text,
-                conversation_history,
-                org_id,
-                spoken_mode=bool(spoken_mode),
-            )
-            _mark("understanding")
             # Sites 9/10 were dormant with no production signal at all: an empty goal
             # and a low-confidence domain look identical whether the model ran or
             # threw. modelRan and domainSource are what separate those.
@@ -3531,6 +3499,16 @@ class AgentIntelligence:
             _raw_classification_confidence = pipeline_classification.get("classification_confidence")
             classification_confidence = (
                 float(_raw_classification_confidence) if _raw_classification_confidence is not None else 0.55
+            )
+
+        # Carry the same closed-set perception result into LIVE and speech.
+        _adaptation = str(sentiment.get("recommended_adaptation") or "none")
+        pipeline_classification["sentiment_adaptation"] = _adaptation
+        routing_sse = {**routing_sse, "conversationalAdaptation": _adaptation}
+        if spoken_mode:
+            yield sse_intelligence_metadata(
+                message_id=message_id, confidence=None, answer_explanation=None,
+                routing={"conversationalAdaptation": _adaptation},
             )
 
         # Complexity routing Phase 1 — post-classification risk floor (escalate-only).
@@ -4424,12 +4402,32 @@ class AgentIntelligence:
                     if isinstance(live_turn.get("latency_breakdown"), dict)
                     else {}
                 )
+                from app.services.context_sources_summary import build_user_context_sources
+
+                # LIVE has no calibrated confidence score: send only the real
+                # clarification flag rather than a made-up number.
+                live_confidence = {"needs_clarification": dialogue_mode == "confirm"}
+                try:
+                    live_context_sources = build_user_context_sources(
+                        lat_bd.get("unifiedTurnKnowledge")
+                        if isinstance(lat_bd.get("unifiedTurnKnowledge"), dict)
+                        else None
+                    )
+                except Exception as exc:  # noqa: BLE001 - explanation is optional
+                    logger.debug("live_context_sources_skipped: %s", exc)
+                    live_context_sources = None
                 yield sse_intelligence_metadata(
                     message_id=message_id,
-                    confidence={"score": 0.9, "needs_clarification": dialogue_mode == "confirm"},
+                    confidence=live_confidence,
                     answer_explanation=str(
                         live_turn.get("answer_explanation") or "Unified turn live"
                     ),
+                    context_explanation=(
+                        str(live_context_sources.get("summary") or "") or None
+                        if live_context_sources
+                        else None
+                    ),
+                    context_sources=live_context_sources,
                     dialogue_mode=dialogue_mode,
                     persona_key=str(persona.get("persona_key") or ""),
                     task_state=task_state,
@@ -4558,7 +4556,7 @@ class AgentIntelligence:
                     react_result=None,
                     model=str(live_turn.get("model") or "unified_turn_live"),
                     message_id=message_id,
-                    confidence={"score": 0.9, "needs_clarification": dialogue_mode == "confirm"},
+                    confidence=live_confidence,
                     answer_explanation=str(
                         live_turn.get("answer_explanation") or "Unified turn live"
                     ),
@@ -4773,6 +4771,7 @@ class AgentIntelligence:
             task_state=task_state,
             client=client,
             connected_integrations=list(connected_early or []),
+            environment_name=environment_name,
         )
         _mark("conversational_execution")
         if conv_turn and conv_turn.get("stop_pipeline"):
@@ -5860,6 +5859,9 @@ class AgentIntelligence:
         generation_started = time.monotonic()
 
         _mark("react_entry")
+        from app.services.cost_attribution import attribution_fields
+
+        bind_turn_attribution(attribution_fields().get("turn_id") or unify_turn_id(_canonical_task_state))
         # From here tools can run, so nothing is served from the turn memo.
         end_turn_memo()
         from app.services.canonical_cognitive_resolution import try_compiled_operational_read_turn

@@ -16,6 +16,8 @@ import { AuthIllustration } from "@/components/marketing/nodus/auth-illustration
 import { Container } from "@/components/marketing/nodus/container"
 import { Heading } from "@/components/marketing/nodus/heading"
 import { SubHeading } from "@/components/marketing/nodus/subheading"
+import { PromoCodeField } from "@/components/billing/promo-code-field"
+import { promoCodeFromSearch, withPromoParam } from "@/lib/promotions"
 
 // Human-readable error messages
 function humanizeAuthError(message: string): string {
@@ -63,6 +65,14 @@ export default function GetStartedPage() {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  // ?promo=CODE (from /pricing or a campaign link) is remembered and carried to
+  // checkout after signup; the plan picker prefills it.
+  const [promoContext, setPromoContext] = useState<{ code: string | null; plan: string | null } | null>(null)
+  const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    setPromoContext({ code: promoCodeFromSearch(params), plan: params.get("plan") })
+  }, [])
 
   // Auth guard: redirect logged-in users based on billing status
   useEffect(() => {
@@ -79,7 +89,12 @@ export default function GetStartedPage() {
           router.replace(APP_ROUTES.welcome)
         } else {
           // User exists but no access - send to billing
-          router.replace("/settings/billing?reason=subscription_required")
+          router.replace(
+            withPromoParam(
+              "/settings/billing?reason=subscription_required",
+              promoCodeFromSearch(new URLSearchParams(window.location.search)),
+            ),
+          )
         }
       } catch {
         // On error, allow through to welcome (fail open for new signups)
@@ -353,6 +368,20 @@ export default function GetStartedPage() {
                   </Link>
                 </label>
               </div>
+
+              {promoContext ? (
+                <PromoCodeField
+                  tone="marketing"
+                  plan={promoContext.plan}
+                  initialCode={promoContext.code}
+                  onApplied={(applied) => setAppliedPromoCode(applied?.code ?? null)}
+                />
+              ) : null}
+              {appliedPromoCode ? (
+                <p className="text-xs text-gray-600">
+                  Your free trial starts now. The code is saved and applied when you choose a paid plan.
+                </p>
+              ) : null}
 
               {/* Submit button */}
               <button

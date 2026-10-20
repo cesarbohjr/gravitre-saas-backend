@@ -7,7 +7,6 @@ import hmac
 import logging
 import time
 from typing import Any
-from urllib.parse import unquote
 
 import httpx
 
@@ -48,10 +47,39 @@ def hubspot_inbound_webhook_url(settings: Settings) -> str | None:
 
 
 def decode_hubspot_request_uri(uri: str) -> str:
+    """Decode exactly the characters HubSpot's v3 rules list, nothing more.
+
+    A blanket unquote also decoded characters HubSpot leaves encoded (for example
+    %3D or %20), which would change the signed string.
+    """
     decoded = uri
     for encoded, plain in _HUBSPOT_URI_DECODE.items():
-        decoded = decoded.replace(encoded, plain)
-    return unquote(decoded)
+        decoded = decoded.replace(encoded, plain).replace(encoded.lower(), plain)
+    return decoded
+
+
+def hubspot_signed_uri_candidates(
+    settings: Settings,
+    *,
+    path: str,
+    query: str,
+    host: str | None,
+) -> list[str]:
+    """Full request URIs HubSpot may have signed (scheme + host + path + query).
+
+    HubSpot v3 signs the complete URL it called, not the path. The registered
+    target is ``{API_PUBLIC_URL}/api/webhooks/hubspot/inbound``; behind Railway's
+    edge the request host seen here can differ, so that configured URL comes
+    first and the Host header (always https) is the fallback.
+    """
+    suffix = f"?{query}" if query else ""
+    out: list[str] = []
+    configured = hubspot_inbound_webhook_url(settings)
+    if configured:
+        out.append(f"{configured}{suffix}")
+    if host:
+        out.append(f"https://{host}{path}{suffix}")
+    return list(dict.fromkeys(out))
 
 
 def verify_hubspot_signature_v3(

@@ -1,4 +1,4 @@
-"""20261013090000_storage_retention_metering against a real, throwaway PostgreSQL cluster.
+"""The storage migration (20261020081535_storage_retention_metering and its parts) against a real, throwaway PostgreSQL cluster.
 
 Minimal shapes of the tables the functions read (audit, telemetry, RAG, memories,
 conversations, storage), the migration applied unchanged, then: floors, legal hold,
@@ -13,7 +13,19 @@ from tests.db.pg_harness import MIGRATIONS, pg_cluster, requires_pg
 
 pytestmark = requires_pg
 
-MIGRATION = MIGRATIONS / "20261013090000_storage_retention_metering.sql"
+# Prod stamped the storage migration in parts; applied here in version order.
+MIGRATION_FILES = [
+    "20261020081535_storage_retention_metering.sql",
+    "20261020081624_storage_retention_receipts.sql",
+    "20261020081826_storage_retention_floor.sql",
+    "20261020081844_storage_retention_candidates.sql",
+    "20261020081902_storage_retention_fetch_batch.sql",
+    "20261020082113_storage_usage_snapshots.sql",
+    "20261020082133_storage_usage_meter.sql",
+    "20261020082154_storage_byo_targets.sql",
+    "20261020090000_storage_retention_delete_batch.sql",
+]
+MIGRATION_SQL = "\n".join((MIGRATIONS / name).read_text() for name in MIGRATION_FILES)
 
 ORG = "11111111-1111-4111-8111-111111111111"
 OTHER_ORG = "33333333-3333-4333-8333-333333333333"
@@ -76,7 +88,7 @@ INSERT INTO public.organization_members VALUES ('{ORG}', '{MEMBER}');
 
 @pytest.fixture(scope="module")
 def pg():
-    with pg_cluster(BOOTSTRAP_SQL, MIGRATION.read_text()) as server:
+    with pg_cluster(BOOTSTRAP_SQL, MIGRATION_SQL) as server:
         yield server
 
 
@@ -120,7 +132,7 @@ def _int(pg, sql: str) -> int:
 
 
 def test_migration_is_idempotent(pg):
-    pg.psql(MIGRATION.read_text())
+    pg.psql(MIGRATION_SQL)
     assert _int(pg, "SELECT count(*) FROM storage.buckets WHERE id = 'audit-archive' AND NOT public") == 1
 
 

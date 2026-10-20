@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.mcp_client_service import MCPClientService, mcp_input_sha256
+from app.services.mcp_client_service import MCPClientService, mcp_input_sha256, mcp_approval_target_digest
 
 _WRITE_TOOL = {
     "id": "tool-write",
@@ -15,7 +15,7 @@ _WRITE_TOOL = {
     "capability_tier": "write",
     "enabled": True,
 }
-_SERVER = {"id": "srv-1", "server_url": "echo test", "transport": "stdio", "enabled": True, "auth_config": {}}
+_SERVER = {"id": "srv-1", "server_url": "https://93.184.216.34/mcp", "transport": "streamable_http", "enabled": True, "auth_config": {}}
 
 
 class _Approvals:
@@ -95,7 +95,7 @@ def _approval(args: dict, **extra) -> dict:
         "id": "appr-1",
         "status": "approved",
         "consumed_at": None,
-        "context": {"mcp_tool_id": "tool-write", "input_sha256": mcp_input_sha256(args), **extra},
+        "context": {"mcp_tool_id": "tool-write", "input_sha256": mcp_input_sha256(args), "target_digest": mcp_approval_target_digest(_WRITE_TOOL, _SERVER), **extra},
     }
 
 
@@ -126,6 +126,7 @@ async def test_pending_approval_records_input_hash(service) -> None:
     with (
         patch.object(service, "_client", return_value=client),
         patch.object(service, "_load_tool", new=AsyncMock(return_value=_WRITE_TOOL)),
+        patch.object(service, "_load_server", new=AsyncMock(return_value=_SERVER)),
         patch(
             "app.services.mcp_client_service.create_contract_approval",
             return_value={"id": "appr-1"},
@@ -140,7 +141,7 @@ async def test_pending_approval_records_input_hash(service) -> None:
 async def test_approved_matching_input_executes_and_consumes(service) -> None:
     approvals = _Approvals(_approval({"name": "x"}))
     result, call = await _run(service, _client(approvals), {"name": "x"})
-    assert result["status"] == "completed"
+    assert result["status"] == "verification_inconclusive"
     call.assert_awaited_once()
     assert approvals.row["consumed_at"]
 
@@ -158,7 +159,7 @@ async def test_approval_replayed_with_different_input_rejected(service) -> None:
 async def test_approval_cannot_be_reused(service) -> None:
     approvals = _Approvals(_approval({"name": "x"}))
     first, _ = await _run(service, _client(approvals), {"name": "x"})
-    assert first["status"] == "completed"
+    assert first["status"] == "verification_inconclusive"
     second, call = await _run(service, _client(approvals), {"name": "x"})
     assert second["status"] == "rejected"
     call.assert_not_awaited()
@@ -208,7 +209,7 @@ async def test_server_error_keeps_approval_consumed(service) -> None:
     """The remote write may have landed before the error, so no second run on this approval."""
     approvals = _Approvals(_approval({"name": "x"}))
     result = await _run_with(service, approvals, call=AsyncMock(side_effect=RuntimeError("boom")))
-    assert result["status"] == "failed"
+    assert result["status"] == "verification_inconclusive"
     assert approvals.row["consumed_at"] is not None
 
 
@@ -222,7 +223,7 @@ async def test_remote_success_then_transport_error_cannot_replay(service) -> Non
         raise ConnectionResetError("connection dropped after the write")
 
     first = await _run_with(service, approvals, call=AsyncMock(side_effect=write_then_drop))
-    assert first["status"] == "failed"
+    assert first["status"] == "verification_inconclusive"
     second, call = await _run(service, _client(approvals), {"name": "x"})
     assert second["status"] == "rejected"
     call.assert_not_awaited()
@@ -234,7 +235,7 @@ async def test_approval_stays_consumed_when_logging_fails_after_server_returned(
     approvals = _Approvals(_approval({"name": "x"}))
     log = AsyncMock(side_effect=[RuntimeError("log insert failed"), None])
     result = await _run_with(service, approvals, log=log)
-    assert result["status"] == "failed"
+    assert result["status"] == "verification_inconclusive"
     assert approvals.row["consumed_at"] is not None
 
 
@@ -242,7 +243,7 @@ async def test_approval_stays_consumed_when_logging_fails_after_server_returned(
 async def test_approval_stays_consumed_on_timeout(service) -> None:
     approvals = _Approvals(_approval({"name": "x"}))
     result = await _run_with(service, approvals, call=AsyncMock(side_effect=TimeoutError()))
-    assert result["status"] == "failed"
+    assert result["status"] == "verification_inconclusive"
     assert approvals.row["consumed_at"] is not None
 
 
@@ -270,4 +271,26 @@ async def test_release_cannot_undo_another_callers_claim(service) -> None:
         await service._release_approval("appr-1", "org-1", "2000-01-01T00:00:00+00:00")
         assert approvals.row["consumed_at"] == token
         await service._release_approval("appr-1", "org-1", token)
+    assert approvals.row["consumed_at"] is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("change", ["tool_name", "server_url", "auth_config", "input_schema", "missing_digest"])
+async def test_changed_target_or_legacy_contract_never_reaches_server(service, change):
+    tool, server = dict(_WRITE_TOOL), dict(_SERVER)
+    row = _approval({"name": "x"})
+    if change == "tool_name": tool["tool_name"] = "delete_record"
+    elif change == "server_url": server["server_url"] = "https://93.184.216.35/mcp"
+    elif change == "auth_config": server["auth_config"] = {"token": "synthetic-rotated-credential"}
+    elif change == "input_schema": tool["input_schema"] = {"type": "object", "properties": {"admin": {"type": "boolean"}}}
+    else: row["context"].pop("target_digest")
+    approvals = _Approvals(row)
+    call = AsyncMock()
+    with (patch.object(service, "_client", return_value=_client(approvals)),
+          patch.object(service, "_load_tool", new=AsyncMock(return_value=tool)),
+          patch.object(service, "_load_server", new=AsyncMock(return_value=server)),
+          patch.object(service, "_call_mcp_server", new=call)):
+        with pytest.raises(ValueError, match="fresh approval"):
+            await service.execute_tool("tool-write", "org-1", {"name": "x"}, approval_id="appr-1")
+    call.assert_not_awaited()
     assert approvals.row["consumed_at"] is None

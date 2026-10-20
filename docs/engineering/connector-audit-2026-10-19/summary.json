@@ -1,0 +1,24 @@
+{
+  "audited_vendors": 167,
+  "catalog_vendors": 117,
+  "managed_catalog_options": 77,
+  "managed_native_fallbacks": 3,
+  "nango_setup": {
+    "provider_credentials_required": 42,
+    "ready_for_account_authorization": 36,
+    "provider_not_supported": 2
+  },
+  "native_oauth_configured": 34,
+  "native_oauth_audited": 44,
+  "accounts": 41,
+  "account_health": {
+    "NOT_CHECKED": 14,
+    "connected": 14,
+    "pending_auth": 9,
+    "auth_expired": 3,
+    "pending_property": 1
+  },
+  "new_business_connectors": 30,
+  "owner_authorization_acceptance": "NOT_RUN",
+  "frontend_options": 153
+}

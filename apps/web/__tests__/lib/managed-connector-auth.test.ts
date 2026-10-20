@@ -12,7 +12,7 @@ afterEach(() => { vi.useRealTimers() })
 
 it("maps every managed display name without changing native auth", () => {
   const managed = CONNECTOR_CATALOG.filter((c) => isManagedConnectorVendor(c.vendorKey))
-  expect(managed).toHaveLength(47)
+  expect(managed).toHaveLength(77)
   for (const c of managed) { expect(connectorVendorKey(c.type)).toBe(c.vendorKey); expect(isOAuthVendorKey(c.vendorKey)).toBe(true) }
   expect(isManagedConnectorVendor("HubSpot")).toBe(false)
 })
@@ -43,7 +43,7 @@ it("blocks before creating a session when server setup is missing", async () => 
 
 describe("Connect UI", () => {
   beforeEach(() => {
-    vi.mocked(connectorsApi.managedCatalog).mockResolvedValue({configured:true,connectors:[]})
+    vi.mocked(connectorsApi.managedCatalog).mockResolvedValue({configured:true,connectors:[{vendor:"freshservice",available:true,actions:[],support:"actions_supported"}]})
     vi.mocked(connectorsApi.startManagedAuth).mockResolvedValue({connectorId:"c1",sessionToken:"session",attemptId:"attempt"})
   })
   async function start() {
@@ -69,4 +69,14 @@ describe("Connect UI", () => {
     ui.onEvent?.({type:"error"}); await assertion
     expect(ui.close).toHaveBeenCalledOnce()
   })
+})
+
+
+it("blocks a provider with missing app setup even when the platform key is configured", async () => {
+  vi.mocked(connectorsApi.managedCatalog).mockResolvedValue({configured:true,connectors:[
+    {vendor:"freshservice",available:true,actions:[],support:"authorization_only"},
+    {vendor:"okta",available:false,setupReason:"provider_credentials_required",actions:[],support:"actions_supported"},
+  ]})
+  await expect(openManagedConnector("okta",{name:"identity"})).rejects.toThrow("administrator setup")
+  expect(connectorsApi.startManagedAuth).not.toHaveBeenCalled()
 })

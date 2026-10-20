@@ -1,0 +1,54 @@
+/* Billing and plan (design p16). Scoped under .gv-set, kit tokens only. */
+.gv-set .bl-hero { display: flex; flex-wrap: wrap; gap: 20px; align-items: stretch; padding: 22px 24px; background: linear-gradient(120deg, var(--gs-card) 40%, var(--gs-hero-a)); }
+.gv-set .bl-hero-main { flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.gv-set .bl-plan { display: flex; gap: 14px; align-items: center; }
+.gv-set .bl-plan-ico { width: 52px; height: 52px; border-radius: 14px; background: var(--gs-green); color: #ffffff; display: grid; place-items: center; flex: 0 0 auto; box-shadow: 0 10px 24px -12px rgba(11, 138, 92, 0.7); }
+.gv-set .bl-plan h2 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
+.gv-set .bl-plan-title { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.gv-set .bl-plan-sub { font-size: 14px; color: var(--gs-ink-3); margin-top: 2px; }
+.gv-set .bl-renew { display: flex; align-items: center; gap: 14px; padding-top: 14px; border-top: 1px solid var(--gs-line); }
+.gv-set .bl-renew > div { flex: 1; min-width: 0; }
+.gv-set .bl-renew b { display: block; font-weight: 500; font-size: 14px; }
+.gv-set .bl-renew span { display: block; font-size: 13px; color: var(--gs-muted); }
+.gv-set .bl-hero-side { flex: 0 1 260px; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 14px; text-align: right; }
+.gv-set .bl-price b { font-size: 44px; font-weight: 600; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.gv-set .bl-price span { font-size: 15px; color: var(--gs-muted); }
+.gv-set .bl-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.gv-set .bl-actions .gs-btn.text { color: var(--gs-muted); }
+@media (max-width: 640px) {
+  .gv-set .bl-hero-side { align-items: flex-start; text-align: left; flex-basis: 100%; }
+  .gv-set .bl-actions { justify-content: flex-start; }
+  .gv-set .bl-price b { font-size: 36px; }
+}
+.gv-set .bl-card-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--gs-line); }
+.gv-set .bl-card-head h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.gv-set .bl-card-head .t { display: flex; gap: 10px; align-items: center; color: var(--gs-green); }
+.gv-set .bl-card-head .t h3 { color: var(--gs-ink); }
+.gv-set .bl-card-head .m { font-size: 13px; color: var(--gs-muted); }
+.gv-set .bl-usage { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.gv-set .bl-tile { padding: 18px 20px; border-right: 1px solid var(--gs-line-faint); border-bottom: 1px solid var(--gs-line-faint); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.gv-set .bl-tile-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.gv-set .bl-tile-top span:first-child { font-size: 14px; font-weight: 500; }
+.gv-set .bl-tile-top .gs-mono { font-size: 12px; color: var(--gs-muted); }
+.gv-set .bl-tile-top .gs-mono.warn { color: var(--gs-amber-ink); }
+.gv-set .bl-tile-top .gs-mono.bad { color: var(--gs-red-ink); }
+.gv-set .bl-tile-val b { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.gv-set .bl-tile-val span { font-size: 14px; color: var(--gs-muted); }
+.gv-set .bl-tile-note { font-size: 12px; color: var(--gs-muted); }
+.gv-set .bl-tile-over { font-size: 12px; color: var(--gs-amber-ink); font-weight: 500; }
+.gv-set .bl-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: stretch; }
+.gv-set .bl-invoices { flex: 999 1 420px; min-width: 0; }
+.gv-set .bl-pay { flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; }
+.gv-set .bl-pay .gs-art { border-radius: 0; border: 0; border-bottom: 1px solid var(--gs-line); }
+.gv-set .bl-pay-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.gv-set .bl-pay-body h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.gv-set .bl-cardline { display: flex; gap: 12px; align-items: center; border: 1px solid var(--gs-line); border-radius: 12px; padding: 12px; }
+.gv-set .bl-cardline > div { flex: 1; min-width: 0; }
+.gv-set .bl-cardline b { display: block; font-size: 14px; font-weight: 500; }
+.gv-set .bl-cardline span { display: block; font-size: 12px; color: var(--gs-muted); }
+.gv-set .bl-pay-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: auto; }
+.gv-set .bl-voice-figs { display: flex; flex-wrap: wrap; gap: 12px 32px; margin: 0; }
+.gv-set .bl-voice-figs dt { font-size: 12px; color: var(--gs-muted); }
+.gv-set .bl-voice-figs dd { margin: 2px 0 0; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.gv-set .bl-foot-note { text-align: center; font-size: 12px; color: var(--gs-muted); padding: 12px 20px; border-top: 1px solid var(--gs-line); }
+.gv-set .bl-foot-note a { color: var(--gs-green); font-weight: 500; }

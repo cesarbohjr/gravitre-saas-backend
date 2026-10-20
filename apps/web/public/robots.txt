@@ -1,4 +1,4 @@
-# https://gravitre.com robots
+# https://gravitre.app robots
 User-agent: *
 Allow: /
 Disallow: /api/
@@ -21,4 +21,4 @@ Disallow: /connectors
 Disallow: /runs
 Disallow: /onboarding
 
-Sitemap: https://gravitre.com/sitemap.xml
+Sitemap: https://gravitre.app/sitemap.xml

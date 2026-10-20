@@ -3,19 +3,21 @@
 import { useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import useSWR from "swr"
+import useSWR, { mutate as globalMutate } from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Illustration } from "@/components/gravitre/illustration"
 import { ConnectorLinkage } from "@/components/connectors/connector-linkage"
+import { FreshserviceTriggersPanel } from "@/components/connectors/freshservice-triggers-panel"
 import { KnowledgeSyncButton } from "@/components/connectors/knowledge-sync-button"
+import { DATA_REMOVAL_KEY, DisconnectImpact, useDataRemoval } from "@/components/connectors/data-removal"
 import { NucleoConnector } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
-import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { fetcher as apiFetcher, formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
-import { lookupConnectorCategory, resolveConnectorDisplayStatus } from "@/lib/connectors"
+import { formatVendorLabel, lookupConnectorCategory, resolveConnectorDisplayStatus } from "@/lib/connectors"
 import { connectorsApi } from "@/lib/api"
 import type { Connector, Workflow, WorkflowListResponse } from "@/types/api"
 import type { VendorActionCatalog, ConnectorActionCatalogResponse } from "@/lib/connector-actions"
@@ -134,6 +136,9 @@ export default function ConnectorDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showConfigDialog, setShowConfigDialog] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
+  const [confirmText, setConfirmText] = useState("")
+  const [isDeleting, setIsDeleting] = useState(false)
+  const { data: removal } = useDataRemoval(showDeleteDialog)
 
   if (!user || connectorLoading || !connector) {
     return (
@@ -193,9 +198,20 @@ export default function ConnectorDetailPage() {
     setTimeout(() => setCopied(null), 2000)
   }
 
-  const handleDelete = () => {
-    toast.success("Connector removed", { description: `${connector.name} has been disconnected` })
-    router.push("/connectors")
+  // The dialog used to toast success and navigate away without calling the API.
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      await connectorsApi.delete(connector.id, confirmText)
+      toast.success("Connector removed", { description: `${connector.name} has been disconnected` })
+      void globalMutate(DATA_REMOVAL_KEY)
+      setShowDeleteDialog(false)
+      router.push("/connectors")
+    } catch (err) {
+      toast.error("Failed to remove connector", { description: formatUnknownError(err) })
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -377,22 +393,30 @@ export default function ConnectorDetailPage() {
                   </div>
                 </div>
           </section>
+
+          {vendorKey.toLowerCase() === "freshservice" ? (
+            <FreshserviceTriggersPanel connectorId={connectorId} />
+          ) : null}
         </div>
 
         {/* Delete Dialog */}
-        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <Dialog
+          open={showDeleteDialog}
+          onOpenChange={(open) => {
+            setShowDeleteDialog(open)
+            if (!open) setConfirmText("")
+          }}
+        >
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-destructive">
                 <Trash2 className="h-5 w-5" />
                 Remove connector
               </DialogTitle>
-              <DialogDescription>
-                This will disconnect {connector.name} and remove all associated configurations. 
-                This action cannot be undone.
-              </DialogDescription>
+              <DialogDescription>Disconnecting {connector.name} cannot be undone. Here is what happens:</DialogDescription>
             </DialogHeader>
-            <div className="py-4">
+            <div className="space-y-4 py-4">
+              <DisconnectImpact policy={removal?.policy} vendorLabel={formatVendorLabel(connector.type)} vendor={connector.type} />
               <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50 border border-border">
                 <ConnectorIcon vendor={connector.type} size="sm" />
                 <div>
@@ -400,12 +424,29 @@ export default function ConnectorDetailPage() {
                   <p className="text-xs text-muted-foreground">{connector.type} - {connector.environment}</p>
                 </div>
               </div>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Type <span className="font-mono text-foreground">{connector.name}</span> to confirm removal.
+                </p>
+                <Input
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder={connector.name}
+                  className="bg-secondary"
+                  aria-label="Connector name"
+                />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
-              <Button variant="destructive" onClick={handleDelete} className="gap-2">
-                <Trash2 className="h-4 w-4" />
-                Remove connector
+              <Button
+                variant="destructive"
+                onClick={() => void handleDelete()}
+                disabled={confirmText !== connector.name || isDeleting}
+                className="gap-2"
+              >
+                {isDeleting ? <Spinner className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+                {isDeleting ? "Removing..." : "Remove connector"}
               </Button>
             </DialogFooter>
           </DialogContent>

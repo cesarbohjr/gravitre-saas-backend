@@ -7,6 +7,8 @@ import { measuringAiRoiPost } from "./content/measuring-ai-roi"
 import { enterpriseAiGovernancePost } from "./content/enterprise-ai-governance"
 import { aiAgentBestPracticesPost } from "./content/ai-agent-best-practices"
 import { governedAiForMspsPost } from "./content/governed-ai-for-msps"
+import { aiAgentsForBusinessPost } from "./content/ai-agents-for-business-types"
+import { aiDecisionMakingPost } from "./content/ai-in-decision-making"
 import { SITE_URL, type BlogFAQ, type BlogPost } from "./types"
 
 export { GRAVITRE_BLOG_AUTHOR } from "./authors"
@@ -25,6 +27,7 @@ function Cite({ children }: { children: ReactNode }) {
 const aiWontTakeYourJob: BlogPost = {
   slug: "ai-wont-take-your-job-your-resistance-might",
   title: "AI Won't Take Your Job. Your Resistance to It Might.",
+  seoTitle: "Will AI Take Your Job? Risks and Adoption",
   description:
     "40% of workers now fear AI will make their job obsolete, but adoption data shows AI replaces tasks, not people. Here is how to adopt AI as a force multiplier.",
   excerpt:
@@ -32,7 +35,7 @@ const aiWontTakeYourJob: BlogPost = {
   category: "Perspective",
   author: cesar,
   datePublished: "2026-06-22",
-  dateModified: "2026-06-22",
+  dateModified: "2026-10-14",
   displayDate: "June 22, 2026",
   readTime: "7 min read",
   heroImage: "/images/blog/ai-wont-take-your-job.png",
@@ -52,7 +55,7 @@ const aiWontTakeYourJob: BlogPost = {
   takeaways: [
     "40% of workers worldwide now fear AI will make their job obsolete, up from 28% two years ago (Mercer Global Talent Trends 2026).",
     "88% of organizations already use AI in at least one business function, yet only 17% of those seeing productivity gains reduced headcount.",
-    "Generative AI saves workers an average of 2.2 hours per week, and frequent users save over 9 hours.",
+    "Surveyed generative AI users reported average time savings of 5.4% of working hours, or about 2.2 hours in a 40-hour week.",
     "AI replaces tasks, not people. The most exposed roles involve the least human judgment.",
     "The biggest barrier is not the technology. Over half the global workforce reports no recent AI training.",
   ],
@@ -70,7 +73,7 @@ const aiWontTakeYourJob: BlogPost = {
     {
       question: "How much time does AI actually save workers?",
       answer:
-        "Federal Reserve research found generative AI saves workers an average of 5.4% of work hours, about 2.2 hours per week, or roughly a full workday reclaimed each month. Frequent users report saving over 9 hours per week.",
+        "Federal Reserve research found generative AI saves workers an average of 5.4% of work hours, about 2.2 hours per week, or roughly a full workday reclaimed each month. Time saved varies substantially by frequency and job.",
     },
     {
       question: "What does it mean to adopt AI properly?",
@@ -98,7 +101,7 @@ const aiWontTakeYourJob: BlogPost = {
 
       <h2>The fear is real, and it&apos;s growing fast</h2>
       <p>
-        This isn&apos;t a fringe anxiety. According to <Cite>Mercer&apos;s Global Talent Trends 2026</Cite> report, a
+        Fear of AI-related job loss is widespread. According to <Cite>Mercer&apos;s Global Talent Trends 2026</Cite> report, a
         survey of 12,000 workers and HR leaders, 40% of workers worldwide now fear AI will make their job obsolete, up
         from 28% just two years ago. That&apos;s a 12-point jump in two years, and the trend line is accelerating, not
         leveling off.
@@ -110,7 +113,15 @@ const aiWontTakeYourJob: BlogPost = {
         spread, either: workers in data entry, customer service, and administrative support report the highest levels of
         concern, while those in healthcare, skilled trades, and creative leadership feel more insulated.
       </p>
-      <p>That distinction matters, and it&apos;s really the heart of my argument.</p>
+      <p>The different levels of AI exposure across occupations are central to this argument.</p>
+
+      <p>
+        The <a href="https://hai.stanford.edu/ai-index/2026-ai-index-report/economy" target="_blank" rel="noopener noreferrer">Stanford AI Index 2026</a>
+        reports that 88% of surveyed organizations used AI in 2025. In a separate survey, the
+        <a href="https://www.stlouisfed.org/on-the-economy/2025/feb/impact-generative-ai-work-productivity" target="_blank" rel="noopener noreferrer">Federal Reserve Bank of St. Louis</a>
+        estimated that generative AI users saved an average of 5.4% of their working hours.
+        Neither finding guarantees a particular outcome for one worker or business.
+      </p>
 
       <h2>Adoption is already the baseline, not the edge case</h2>
       <p>
@@ -127,7 +138,7 @@ const aiWontTakeYourJob: BlogPost = {
         well.
       </p>
       <p>
-        This is the same arc I watched with social media. The tools changed. The skill required to use them well
+        AI adoption resembles the earlier shift toward social media in business. The tools changed. The skill required to use them well
         didn&apos;t disappear. It shifted.
       </p>
 
@@ -139,7 +150,7 @@ const aiWontTakeYourJob: BlogPost = {
         more: nearly 27% of regular AI users report saving over 9 hours a week.
       </p>
       <p>
-        That reclaimed time is the entire point. It&apos;s time that can go back into strategy, creative ideation, and the
+        Time reclaimed through AI-assisted tasks can support strategy, creative work, and human judgment. It&apos;s time that can go back into strategy, creative ideation, and the
         human judgment calls that AI still can&apos;t make, instead of being swallowed by administrative drag.
       </p>
       <p>
@@ -164,7 +175,7 @@ const aiWontTakeYourJob: BlogPost = {
         of that human judgment, not because AI has become &quot;smarter&quot; than people in any meaningful sense.
       </p>
       <p>
-        This is also where AI hallucination still matters. Models get things confidently wrong. Human talent has to be in
+        AI hallucinations make human review essential for consequential outputs. Models get things confidently wrong. Human talent has to be in
         the loop to catch what AI can&apos;t catch about itself.
       </p>
 
@@ -176,7 +187,7 @@ const aiWontTakeYourJob: BlogPost = {
         while still keeping a human in the loop to catch what the model gets wrong.
       </p>
       <p>
-        It also means being honest about the gap that&apos;s currently undermining a lot of AI investment: more than half
+        Responsible AI adoption must also address the workforce training gap: more than half
         the global workforce reports receiving no recent AI training, according to{" "}
         <Cite>ManpowerGroup&apos;s 2026 Global Talent Barometer</Cite>. You can&apos;t expect a team to feel empowered by a
         tool nobody taught them to use. That training gap, not the technology itself, is where I think most of the real
@@ -191,7 +202,7 @@ const aiWontTakeYourJob: BlogPost = {
         outpace the ones who either ignore it or use it purely to cut headcount.
       </p>
       <p>
-        It sounds easier than it is. But when AI is used properly, it doesn&apos;t make your team smaller. It makes the
+        Putting AI to effective use requires more than installing tools. But when AI is used properly, it doesn&apos;t make your team smaller. It makes the
         work your team was always meant to do finally possible to get to. That&apos;s exactly the problem we built{" "}
         <a href="/get-started">Gravitre</a> to solve, giving teams AI agents that absorb the administrative drag so the
         humans can get back to the work only they can do. If that&apos;s the kind of adoption you&apos;re after, you can{" "}
@@ -208,6 +219,8 @@ export const BLOG_LISTING_EXCLUDED_SLUGS = new Set([
 ])
 
 export const blogPosts: BlogPost[] = [
+  aiDecisionMakingPost,
+  aiAgentsForBusinessPost,
   aiWontTakeYourJob,
   aiTransparencyApprovalPost,
   measuringAiRoiPost,

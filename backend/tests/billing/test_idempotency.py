@@ -3,11 +3,13 @@ from __future__ import annotations
 
 from datetime import date
 from unittest.mock import MagicMock
+import pytest
 
 import app.billing.service as billing
 from app.billing.service import (
     apply_usage_with_overage,
     derive_idempotency_key,
+    record_assistant_model_usage_atomic,
     record_usage,
 )
 
@@ -58,6 +60,51 @@ def test_derive_key_stable_with_source_id():
     assert k1 == "org-1:model_call:mc-1:2026-05-01"
 
 
+def test_atomic_assistant_usage_does_not_fall_back_after_rpc_timeout():
+    client = MagicMock()
+    client.rpc.return_value.execute.side_effect = TimeoutError("commit result lost")
+    with pytest.raises(TimeoutError):
+        record_assistant_model_usage_atomic(client, "org-1", "call-1", 7, 100)
+    client.table.assert_not_called()
+
+
+def test_atomic_assistant_usage_replays_are_reported():
+    client = MagicMock()
+    client.rpc.return_value.execute.return_value.data = "duplicate"
+    assert record_assistant_model_usage_atomic(client, "org-1", "call-1", 7, 100) == "duplicate"
+    client.rpc.assert_called_once_with("record_assistant_model_usage", {
+        "p_org_id": "org-1", "p_model_call_id": "call-1", "p_quantity": 7,
+        "p_included": 100, "p_environment": "production",
+    })
+
+
+def test_generic_atomic_usage_routes_to_rpc_and_never_falls_back(monkeypatch):
+    monkeypatch.setattr(billing, "get_settings", lambda: MagicMock(usage_atomic_enabled=True))
+    client = MagicMock()
+    client.rpc.return_value.execute.side_effect = TimeoutError("commit result lost")
+    with pytest.raises(TimeoutError):
+        apply_usage_with_overage(
+            client, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "production",
+            "workflow_runs", 2, {"workflow_runs_included": 3},
+            PERIOD_START, PERIOD_END, {"source": "workflow", "source_id": "run-1"},
+        )
+    client.rpc.assert_called_once()
+    args = client.rpc.call_args.args
+    assert args[0] == "record_usage_with_overage_atomic"
+    assert args[1]["p_included"] == 3
+    client.table.assert_not_called()
+
+
+def test_generic_atomic_rejects_unrecognized_rpc_result():
+    client = MagicMock()
+    client.rpc.return_value.execute.return_value.data = None
+    with pytest.raises(ValueError, match="Unexpected usage billing RPC result"):
+        billing.record_usage_with_overage_atomic(
+            client, "org-1", "production", "ai_credits", 1,
+            PERIOD_START, PERIOD_END, 3, "key-1",
+        )
+
+
 def test_derive_key_unique_without_source_id():
     k1 = derive_idempotency_key("org-1", "ai_credits", PERIOD_START, {"source": "x"})
     k2 = derive_idempotency_key("org-1", "ai_credits", PERIOD_START, {"source": "x"})
@@ -101,3 +148,37 @@ def test_apply_usage_with_overage_is_idempotent(monkeypatch):
     overage_rows = [k for k in client.store if k[0] == "overage_usage"]
     assert len(usage_rows) == 1, "usage double-counted on retry"
     assert len(overage_rows) == 1, "overage double-counted on retry"
+
+
+def test_failed_upsert_cannot_fall_back_to_non_idempotent_insert():
+    client = MagicMock()
+    client.table.return_value.upsert.return_value.execute.side_effect = TimeoutError("commit unknown")
+    with pytest.raises(TimeoutError, match="commit unknown"):
+        record_usage(client, "org-1", "production", "ai_credits", 3,
+                     PERIOD_START, PERIOD_END,
+                     metadata={"source": "assistant", "source_id": "mc-1"})
+    client.table.return_value.insert.assert_not_called()
+
+
+def test_usage_total_reads_all_pages_beyond_postgrest_row_limit():
+    class Page:
+        def __init__(self, entries):
+            self.entries = entries
+            self.start = 0
+            self.end = 0
+
+        def select(self, _columns): return self
+        def eq(self, *_args): return self
+        def order(self, _column): return self
+
+        def range(self, start, end):
+            self.start, self.end = start, end
+            return self
+
+        def execute(self):
+            return MagicMock(data=self.entries[self.start:self.end + 1])
+
+    entries = [{"id": str(i), "quantity": 2} for i in range(1201)]
+    client = MagicMock()
+    client.table.side_effect = lambda _name: Page(entries)
+    assert billing._sum_usage(client, "org-1", "ai_credits", PERIOD_START, PERIOD_END) == 2402

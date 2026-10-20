@@ -21,6 +21,7 @@ export const ADMIN_APP_NAV_ITEMS: AppNavItem[] = [
   { name: "Activity", href: "/activity", expectedPathPrefix: "/activity" },
   { name: "Schedules", href: "/schedules", expectedPathPrefix: "/schedules" },
   { name: "Approvals", href: "/approvals", expectedPathPrefix: "/approvals" },
+  { name: "Governance", href: "/audit", expectedPathPrefix: "/audit" },
   { name: "Deliverables", href: "/lite/deliverables", expectedPathPrefix: "/lite/deliverables", optional: true },
   { name: "Intelligence", href: "/intelligence", expectedPathPrefix: "/intelligence" },
   { name: "Results", href: "/lite/results", expectedPathPrefix: "/lite/results", optional: true },

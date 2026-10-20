@@ -74,6 +74,7 @@ def _resolve_source_ids_for_scope(
         .select("id,department_id,agent_id")
         .eq("org_id", org_id)
         .eq("environment", environment_name)
+        .is_("deleted_at", "null")
     )
     response = query.execute()
     rows = list(response.data or [])
@@ -149,12 +150,20 @@ def fetch_bm25_corpus(
         # Only chunks of the active document version, matching the vector arm
         # (`rag_search` requires `d.is_active IS TRUE`). Without the inner join,
         # superseded versions re-entered answers through the keyword arm.
+        #
+        # Only chunks of live sources too: a deleted source (rag_sources.deleted_at)
+        # must not come back through the keyword arm (the vector arm checks it in
+        # rag_search; its documents are also deactivated by trigger).
         builder = (
             client.table("rag_chunks")
-            .select("id,content,document_id,source_id,rag_documents!inner(is_active)")
+            .select(
+                "id,content,document_id,source_id,"
+                "rag_documents!inner(is_active),rag_sources!inner(deleted_at)"
+            )
             .eq("org_id", org_id)
             .eq("environment", environment_name)
             .eq("rag_documents.is_active", True)
+            .is_("rag_sources.deleted_at", "null")
             .limit(capped)
         )
         if source_id:
@@ -203,11 +212,13 @@ def fetch_bm25_corpus(
                 capped,
             )
 
-    # Belt and braces: drop any row whose embedded document says it is inactive.
+    # Belt and braces: drop any row whose embedded document says it is inactive,
+    # or whose embedded source says it was deleted.
     rows = [
         row
         for row in rows
-        if not isinstance(row.get("rag_documents"), dict) or row["rag_documents"].get("is_active") is True
+        if (not isinstance(row.get("rag_documents"), dict) or row["rag_documents"].get("is_active") is True)
+        and (not isinstance(row.get("rag_sources"), dict) or not row["rag_sources"].get("deleted_at"))
     ]
 
     if not rows:

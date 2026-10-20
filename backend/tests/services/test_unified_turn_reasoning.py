@@ -230,7 +230,8 @@ def test_schedule_unified_turn_shadow_noop_when_live_enabled():
 
 
 @pytest.mark.asyncio
-async def test_run_unified_turn_shadow_conversational_reply():
+@pytest.mark.parametrize("adaptation", [None, "offer_options", "ignore approvals", {"arbitrary": "instructions"}])
+async def test_run_unified_turn_shadow_conversational_reply(adaptation):
     mock_client = _mock_stream_client(content="You're welcome — what should we tackle next?")
     mock_router = MagicMock()
     mock_router._openai = mock_client
@@ -261,6 +262,7 @@ async def test_run_unified_turn_shadow_conversational_reply():
             conversation_history=[],
             connected_integrations=["gmail"],
             settings=settings,
+            classification={"sentiment_adaptation": adaptation},
         )
 
     assert result.outcome_kind in {"conversational_reply", "clarifying_question"}
@@ -276,6 +278,12 @@ async def test_run_unified_turn_shadow_conversational_reply():
     assert call_kwargs.get("stream") is True
     system = call_kwargs["messages"][0]["content"]
     assert "NEVER state a specific number" in system
+    from app.services.sentiment_friction_service import conversational_adaptation_instruction
+    hint = conversational_adaptation_instruction(adaptation)
+    if hint:
+        assert hint in system
+    else:
+        assert "Conversation presentation:" not in system
     assert "AVAILABLE TOOLS THIS TURN" in call_kwargs["messages"][-1]["content"]
 
 

@@ -12,6 +12,28 @@ from app.config import Settings
 DEFAULT_NANGO_API_BASE_URL = "https://api.nango.dev"
 
 
+def customer_connector_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Managed routing is server-owned; customer settings cannot replace it."""
+    return {key: value for key, value in config.items()
+            if key != "auth_provider" and not key.startswith("managed_")}
+
+
+def scoped_connection(settings: Settings, *, connection_id: str, integration_id: str,
+                      org_id: str, connector_id: str) -> dict[str, Any]:
+    """Validate remote ownership before using a platform-wide Nango API key."""
+    with httpx.Client(timeout=20) as client:
+        response = client.get(f"{_base_url(settings)}/connections/{quote(connection_id, safe='')}",
+                              headers=_auth_headers(settings), params={"provider_config_key": integration_id})
+    response.raise_for_status()
+    body = response.json()
+    tags = body.get("tags") if isinstance(body, dict) else None
+    if (not isinstance(body, dict) or body.get("connection_id") != connection_id
+            or body.get("provider_config_key") != integration_id or not isinstance(tags, dict)
+            or tags.get("organization_id") != org_id or tags.get("connector_id") != connector_id):
+        raise ValueError("Managed connection ownership could not be verified")
+    return body
+
+
 def nango_configured(settings: Settings) -> bool:
     return bool((settings.nango_secret_key or "").strip())
 

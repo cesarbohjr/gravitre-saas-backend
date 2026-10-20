@@ -8,6 +8,7 @@ from typing import Any
 from app.config import Settings
 from app.connectors.confluence import (
     ConfluenceAPIError,
+    get_page_status,
     get_page_view_text,
     list_space_pages,
     search_spaces,
@@ -19,6 +20,35 @@ from app.core.safe_dict import safe_normalize_stored_dict
 logger = logging.getLogger(__name__)
 
 STALE_SYNC_HOURS = 24
+# Page statuses for content that is no longer live but that a space admin can still
+# restore (unarchive, restore from trash): excluded from retrieval, never deleted.
+EXCLUDED_PAGE_STATUSES = frozenset({"archived", "trashed"})
+# Status of content purged for good. With a 404 on a by-id read that asks for every
+# status, the only signals that permanently remove a page's documents.
+DELETED_PAGE_STATUSES = frozenset({"deleted"})
+REMOVED_PAGE_STATUSES = EXCLUDED_PAGE_STATUSES | DELETED_PAGE_STATUSES
+# Check-by-id of indexed pages, for pages purged from the trash (in no listing).
+VERIFY_POSITION_CONFIG_KEY = "confluence_verify_position"
+VERIFY_BATCH_PER_SYNC = 25
+
+
+def _page_gone_checker(token: str, cloud_id: str):
+    """``is_gone`` for the check-by-id pass.
+
+    True (purge) only on 404 or a ``deleted`` status; ``EXCLUDE`` for archived/trashed;
+    False for anything else (live, which also restores an excluded page).
+    """
+    from app.services.source_lifecycle import EXCLUDE
+
+    def is_gone(external_id: str) -> bool | str:
+        status = get_page_status(token, cloud_id, external_id.removeprefix("confluence:page:"))
+        if status is None or status in DELETED_PAGE_STATUSES:
+            return True
+        if status in EXCLUDED_PAGE_STATUSES:
+            return EXCLUDE
+        return False
+
+    return is_gone
 
 
 def _now_iso() -> str:
@@ -228,6 +258,19 @@ def run_confluence_sync(
     job_ids: list[str] = []
     pages_synced = 0
     errors: list[str] = []
+    from app.services.source_lifecycle import (
+        deletion_propagation_enabled,
+        exclude_source_documents,
+        remove_source_documents,
+        restore_source_documents,
+        verify_source_documents,
+    )
+
+    propagate = deletion_propagation_enabled(settings)
+    # Archived/trashed pages: excluded from retrieval (reversible). Deleted: removed.
+    excluded_external_ids: set[str] = set()
+    removed_external_ids: set[str] = set()
+    live_external_ids: set[str] = set()
 
     for target in targets:
         space_id = str(target.get("id") or "")
@@ -238,11 +281,23 @@ def run_confluence_sync(
         except ConfluenceAPIError as exc:
             errors.append(f"space {space_id}: {exc}")
             continue
+        if propagate:
+            # Trashed pages are not in the default listing; ask for them by status.
+            try:
+                pages = pages + list_space_pages(token, cloud_id, space_id, status="trashed")
+            except ConfluenceAPIError as exc:
+                errors.append(f"space {space_id} trashed: {exc}")
 
         for page in pages:
             page_id = str(page.get("id") or "")
             if not page_id:
                 continue
+            status = str(page.get("status") or "").lower()
+            if propagate and status in REMOVED_PAGE_STATUSES:
+                bucket = removed_external_ids if status in DELETED_PAGE_STATUSES else excluded_external_ids
+                bucket.add(f"confluence:page:{page_id}")
+                continue
+            live_external_ids.add(f"confluence:page:{page_id}")
             try:
                 title, body, version_created_at = get_page_view_text(token, cloud_id, page_id)
                 job_id = _queue_page_ingest(
@@ -262,7 +317,69 @@ def run_confluence_sync(
             except ConfluenceAPIError as exc:
                 errors.append(f"page {page_id}: {exc}")
 
+    documents_removed = 0
+    documents_excluded = 0
+    documents_restored = 0
+    removed_external_ids -= live_external_ids
+    excluded_external_ids -= live_external_ids | removed_external_ids
+    if removed_external_ids:
+        try:
+            documents_removed = remove_source_documents(
+                client,
+                settings,
+                org_id=org_id,
+                source_id=source_id,
+                external_ids=removed_external_ids,
+                signal="confluence_page_status",
+            )
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"removed pages: {exc}")
+    if excluded_external_ids:
+        try:
+            documents_excluded = exclude_source_documents(
+                client,
+                settings,
+                org_id=org_id,
+                source_id=source_id,
+                external_ids=excluded_external_ids,
+                signal="confluence_page_status",
+            )
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"excluded pages: {type(exc).__name__}: {exc}")
+    if propagate and live_external_ids:
+        # A page unarchived or restored from the trash is live again: undo its exclusion.
+        try:
+            documents_restored = restore_source_documents(
+                client,
+                settings,
+                org_id=org_id,
+                source_id=source_id,
+                external_ids=live_external_ids,
+                signal="confluence_page_status",
+            )
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"restored pages: {type(exc).__name__}: {exc}")
+
     config = safe_normalize_stored_dict(connector, key="config")
+    if propagate:
+        position = config.get(VERIFY_POSITION_CONFIG_KEY)
+        position = dict(position) if isinstance(position, dict) else {}
+        try:
+            documents_removed += verify_source_documents(
+                client,
+                settings,
+                org_id=org_id,
+                source_id=source_id,
+                external_id_prefix="confluence:page:",
+                is_gone=_page_gone_checker(token, cloud_id),
+                position=position,
+                batch_size=VERIFY_BATCH_PER_SYNC,
+                errors=errors,
+                signal="confluence_page_by_id",
+            )
+            config[VERIFY_POSITION_CONFIG_KEY] = position
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"verify pages: {type(exc).__name__}: {exc}")
     config["confluence_last_synced_at"] = _now_iso()
     config["confluence_rag_source_id"] = source_id
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
@@ -279,6 +396,9 @@ def run_confluence_sync(
         "source_id": source_id,
         "pages_synced": pages_synced,
         "jobs_queued": len(job_ids),
+        "documents_removed": documents_removed,
+        "documents_excluded": documents_excluded,
+        "documents_restored": documents_restored,
         "job_ids": job_ids[:20],
         "errors": errors,
         "last_synced_at": config["confluence_last_synced_at"],

@@ -18,7 +18,7 @@ Credentials (access key id and secret) are encrypted with the connector secrets 
 (``app.connectors.crypto``, CONNECTOR_SECRETS_ENCRYPTION_KEY) and are never returned
 by the API or logged. The endpoint must be HTTPS on a public address (checked on save
 and before every connection, so a name cannot later point at an internal address).
-Needs migration 20261013090000_storage_retention_metering.sql.
+Needs migration 20261020081535_storage_retention_metering.sql (and its parts).
 """
 from __future__ import annotations
 

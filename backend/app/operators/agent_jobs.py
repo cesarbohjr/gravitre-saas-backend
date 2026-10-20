@@ -11,6 +11,8 @@ for safe multi-instance workers; falls back to optimistic updates when RPCs are 
 """
 from __future__ import annotations
 
+from app.services.write_authority import authorized as _write_authorized
+
 import asyncio
 import json
 from datetime import datetime, timedelta, timezone
@@ -527,6 +529,8 @@ def update_job_deliverable(
     return upd.data[0] if upd.data else None
 
 
+# A person pushed this approved deliverable.
+@_write_authorized("human", "agent_job_push")
 def push_job_deliverable(
     client: Any,
     org_id: str,

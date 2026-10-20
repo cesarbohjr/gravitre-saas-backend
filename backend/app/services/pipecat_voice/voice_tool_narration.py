@@ -151,12 +151,12 @@ def is_write_shaped_tool_name(tool_name: str) -> bool:
     decide whether a success/failure claim may be spoken — that decision is
     always gated on the real ``tool-output-available`` observation.
     """
-    key = re.sub(r"[^a-z]", "", (tool_name or "").lower())
+    key = re.sub(r"[^a-z]", "", (tool_name or "").rsplit(".", 1)[-1].lower())
     return any(key.startswith(verb) for verb in _WRITE_VERB_GERUNDS)
 
 
 def _gerund_phrase(tool_name: str) -> str:
-    key = re.sub(r"[^a-z]", "", (tool_name or "").lower())
+    key = re.sub(r"[^a-z]", "", (tool_name or "").rsplit(".", 1)[-1].lower())
     for verb, phrase in _WRITE_VERB_GERUNDS.items():
         if key.startswith(verb):
             return phrase
@@ -260,7 +260,7 @@ def narrate_tool_completed(tool_name: str, output: Any) -> str | None:
 
         if not evidence_is_verified(output):
             # Provider acceptance only: say exactly that, never "done".
-            return "I've sent that over. I'm still confirming it stuck."
+            return "The provider accepted that change. I'm still confirming the result."
         for key in _CONFIRMED_DETAIL_KEYS:
             val = output.get(key)
             if isinstance(val, str) and val.strip():

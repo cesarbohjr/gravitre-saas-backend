@@ -6473,6 +6473,246 @@
         "POST /crm/v3/objects/emails/search",
         "GET /crm/v4/objects/contacts/{contact_id}/associations/emails"
       ]
+    },
+    "aircall.users.list": {
+      "api_reference": "GET /v1/users",
+      "provenance": "explicit_definition",
+      "source": "https://developers.aircall.io/api-references",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "bitbucket.profile.get": {
+      "api_reference": "GET /2.0/user",
+      "provenance": "explicit_definition",
+      "source": "https://developer.atlassian.com/cloud/bitbucket/rest/api-group-users/",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "cal_com.profile.get": {
+      "api_reference": "GET /v2/me",
+      "provenance": "explicit_definition",
+      "source": "https://cal.com/docs/api-reference/v2/me/get-my-profile",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "digitalocean.account.get": {
+      "api_reference": "GET /v2/account",
+      "provenance": "explicit_definition",
+      "source": "https://docs.digitalocean.com/reference/api/reference/account/",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "discourse.categories.list": {
+      "api_reference": "GET /categories.json",
+      "provenance": "explicit_definition",
+      "source": "https://docs.discourse.org/",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "drata.personnel.list": {
+      "api_reference": "GET /public/personnel",
+      "provenance": "explicit_definition",
+      "source": "https://developers.drata.com/",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "factorial.employees.list": {
+      "api_reference": "GET /api/2026-10-01/resources/employees/employees",
+      "provenance": "explicit_definition",
+      "source": "https://apidoc.factorialhr.com/reference/get_api-2026-10-01-resources-employees-employees",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "harvest.profile.get": {
+      "api_reference": "GET /v2/users/me",
+      "provenance": "explicit_definition",
+      "source": "https://help.getharvest.com/api-v2/users-api/users/users/",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "humaans.people.list": {
+      "api_reference": "GET /api/people",
+      "provenance": "explicit_definition",
+      "source": "https://docs.humaans.io/api/",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "ironclad.workflows.list": {
+      "api_reference": "GET /public/api/v1/workflows",
+      "provenance": "explicit_definition",
+      "source": "https://developer.ironcladapp.com/reference/list-all-workflows",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "klaviyo.lists.list": {
+      "api_reference": "GET /api/lists/",
+      "provenance": "explicit_definition",
+      "source": "https://developers.klaviyo.com/en/reference/get_lists",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "lemlist.campaigns.list": {
+      "api_reference": "GET /api/campaigns",
+      "provenance": "explicit_definition",
+      "source": "https://developer.lemlist.com/api-reference/endpoints/campaigns/get-many-campaigns",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "metabase.profile.get": {
+      "api_reference": "GET /api/user/current",
+      "provenance": "explicit_definition",
+      "source": "https://www.metabase.com/docs/latest/api/user",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "ninjaone.devices.list": {
+      "api_reference": "GET /v2/devices",
+      "provenance": "explicit_definition",
+      "source": "https://app.ninjarmm.com/apidocs/",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "pandadoc.documents.list": {
+      "api_reference": "GET /public/v1/documents",
+      "provenance": "explicit_definition",
+      "source": "https://developers.pandadoc.com/reference/list-documents",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "productboard.features.list": {
+      "api_reference": "GET /v2/entities",
+      "provenance": "explicit_definition",
+      "source": "https://developer.productboard.com/reference/listentities",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "recharge.customers.list": {
+      "api_reference": "GET /customers",
+      "provenance": "explicit_definition",
+      "source": "https://developer.rechargepayments.com/2021-11/customers/customers_list",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "smartsheet.profile.get": {
+      "api_reference": "GET /2.0/users/me",
+      "provenance": "explicit_definition",
+      "source": "https://developers.smartsheet.com/api/smartsheet/openapi/users/get-current-user",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "teamwork.projects.list": {
+      "api_reference": "GET /projects.json",
+      "provenance": "explicit_definition",
+      "source": "https://apidocs.teamwork.com/docs/teamwork/v1/projects/get-projects-json",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "typeform.forms.list": {
+      "api_reference": "GET /forms",
+      "provenance": "explicit_definition",
+      "source": "https://www.typeform.com/developers/create/reference/retrieve-forms",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "webflow.sites.list": {
+      "api_reference": "GET /v2/sites",
+      "provenance": "explicit_definition",
+      "source": "https://developers.webflow.com/data/reference/sites/list",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "wrike.contacts.list": {
+      "api_reference": "GET /api/v4/contacts",
+      "provenance": "explicit_definition",
+      "source": "https://developers.wrike.com/reference/getcontactsempty",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "toggl.profile.get": {
+      "api_reference": "GET /api/v9/me",
+      "provenance": "explicit_definition",
+      "source": "https://engineering.toggl.com/docs/api/me/",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "todoist.projects.list": {
+      "api_reference": "GET /api/v1/projects",
+      "provenance": "explicit_definition",
+      "source": "https://developer.todoist.com/api/v1/",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "sentry.organizations.list": {
+      "api_reference": "GET /api/0/organizations/",
+      "provenance": "explicit_definition",
+      "source": "https://docs.sentry.io/api/organizations/list-your-organizations/",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "miro.boards.list": {
+      "api_reference": "GET /v2/boards",
+      "provenance": "explicit_definition",
+      "source": "https://developers.miro.com/reference/get-boards",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "pennylane.customers.list": {
+      "api_reference": "GET /api/external/v2/customers",
+      "provenance": "explicit_definition",
+      "source": "https://pennylane.readme.io/reference/getcustomers",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "talentlms.users.list": {
+      "api_reference": "GET /api/v2/users",
+      "provenance": "explicit_definition",
+      "source": "https://developers.talentlms.io/api/get-users/",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "contentful.spaces.list": {
+      "api_reference": "GET /spaces",
+      "provenance": "explicit_definition",
+      "source": "https://www.contentful.com/developers/docs/references/content-management-api/#/reference/spaces",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "freshsales.contacts.get": {
+      "api_reference": "GET /api/contacts/{contact_id}",
+      "provenance": "explicit_definition",
+      "source": "https://developers.freshworks.com/crm/api/",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
     }
   }
 }

@@ -147,3 +147,8 @@ def test_managed_ticket_path_cannot_be_injected(ticket_id):
     from app.services.tool_types import ToolValidationError
     with pytest.raises(ToolValidationError):
         _freshservice_tickets_get(_ctx(),{'ticket_id':ticket_id})
+
+
+@pytest.fixture(autouse=True)
+def managed_remote_ownership(monkeypatch):
+    monkeypatch.setattr("app.services.managed_service_desk_tools.scoped_connection", lambda *a, **kw: {"errors": []})

@@ -1,6 +1,7 @@
 import { marketingMetadata } from "@/lib/seo"
 
 export const metadata = marketingMetadata({
+  canonical: "/support",
   title: "Support",
   description:
     "Search Gravitre help articles, FAQs, and documentation links for agents, workflows, connectors, billing, and security.",

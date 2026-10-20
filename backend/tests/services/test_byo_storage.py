@@ -32,6 +32,8 @@ def _settings(**overrides) -> Settings:
         supabase_jwt_secret="jwt-secret-test",
         connector_secrets_encryption_key=KEY,
     )
+    # Ships on; tests start from off so each one says what it turns on.
+    s.byo_storage_enabled = False
     for k, v in overrides.items():
         setattr(s, k, v)
     return s
@@ -70,8 +72,9 @@ def entitled(monkeypatch):
 # --------------------------------------------------------------------------- validation
 
 
-def test_default_flag_is_off():
-    assert _settings().byo_storage_enabled is False
+def test_default_flag_is_on():
+    # Owner decision 2026-10-20: bring-your-own storage ships on (still entitlement-gated).
+    assert Settings.model_fields["byo_storage_enabled"].default is True
 
 
 @pytest.mark.parametrize(

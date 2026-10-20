@@ -171,12 +171,15 @@ def find_existing_oauth_connector(
     return None
 
 
-def clear_connector_oauth_tokens(client, connector_id: str) -> None:
+def clear_connector_oauth_tokens(client, connector_id: str, *, org_id: str) -> None:
     """Drop stored OAuth tokens so auth status cannot stay 'connected' after delete/re-auth."""
+    if not org_id:
+        return
     try:
         (
             client.table("connector_secrets")
             .delete()
+            .eq("org_id", org_id)
             .eq("connector_id", connector_id)
             .eq("key_name", "oauth_tokens")
             .execute()
@@ -196,7 +199,7 @@ def mark_connector_pending_oauth(
 ) -> None:
     # Clear prior tokens before OAuth so a failed HubSpot authorize (or soft-delete
     # resurrection) cannot leave the UI showing "connected" from stale secrets.
-    clear_connector_oauth_tokens(client, connector_id)
+    clear_connector_oauth_tokens(client, connector_id, org_id=org_id)
     client.table("connectors").update(
         {
             "status": "pending_auth",
@@ -309,12 +312,16 @@ def read_masked_api_key(
     row: dict,
     settings: Settings,
     *,
+    org_id: str,
     preloaded_secret: Any = _NOT_PRELOADED,
 ) -> str | None:
     """Plain API key for masking. ``preloaded_secret`` (from
     get_decrypted_secrets_bulk) skips the per-connector connector_secrets read."""
+    if (not org_id or str(row.get("org_id") or "") != str(org_id)
+            or str(row.get("id") or "") != str(connector_id)):
+        return None
     if preloaded_secret is _NOT_PRELOADED:
-        secret = get_decrypted_secret(client, connector_id, "api_key", settings)
+        secret = get_decrypted_secret(client, connector_id, "api_key", settings, org_id=org_id)
     else:
         secret = preloaded_secret
     if secret:
@@ -334,8 +341,9 @@ def masked_api_key_for_response(
     row: dict,
     settings: Settings,
     *,
+    org_id: str,
     preloaded_secret: Any = _NOT_PRELOADED,
 ) -> str | None:
     return mask_value(
-        read_masked_api_key(client, connector_id, row, settings, preloaded_secret=preloaded_secret)
+        read_masked_api_key(client, connector_id, row, settings, preloaded_secret=preloaded_secret, org_id=org_id)
     )

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { TYPE } from "@/lib/design-system"
 import { ApiRequestError } from "@/lib/api"
 import { startPlanCheckout } from "@/lib/billing-checkout"
+import { forgetPromoCode, normalizePromoCode } from "@/lib/promotions"
 import {
   getPlan,
   formatPlanPrice,
@@ -28,9 +29,11 @@ type CheckoutFormProps = {
   planCode: PlanCode
   billingInterval: BillingInterval
   returnUrl: string
+  /** e.g. "LAUNCH30: 30% off for 3 months", already attached to the subscription. */
+  discountLine?: string | null
 }
 
-function CheckoutForm({ planCode, billingInterval, returnUrl }: CheckoutFormProps) {
+function CheckoutForm({ planCode, billingInterval, returnUrl, discountLine }: CheckoutFormProps) {
   const stripe = useStripe()
   const elements = useElements()
   const router = useRouter()
@@ -75,6 +78,11 @@ function CheckoutForm({ planCode, billingInterval, returnUrl }: CheckoutFormProp
             )}
           </div>
         </div>
+        {discountLine ? (
+          <p className="mb-4 rounded-lg border border-success/30 bg-success/5 px-3 py-2 text-xs text-foreground" data-testid="checkout-discount">
+            Promo code applied: <strong>{discountLine}</strong>. Stripe shows the discounted amount when you confirm.
+          </p>
+        ) : null}
         <PaymentElement onReady={() => setElementReady(true)} options={{ layout: "tabs" }} />
       </div>
 
@@ -166,6 +174,8 @@ function BillingCheckoutPageInner() {
   const { resolvedTheme } = useTheme()
   const planCode = parsePlanCode(searchParams.get("plan"))
   const billingInterval = parseBillingInterval(searchParams.get("interval"))
+  const promoCode = normalizePromoCode(searchParams.get("promo"))
+  const [discountLine, setDiscountLine] = useState<string | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
@@ -182,8 +192,13 @@ function BillingCheckoutPageInner() {
     let cancelled = false
     void (async () => {
       try {
-        const result = await startPlanCheckout(planCode, billingInterval)
+        const result = await startPlanCheckout(planCode, billingInterval, promoCode)
         if (cancelled) return
+        if (result.promotion_code_ignored && result.notice) toast.message(result.notice)
+        if (result.discount_source === "promotion_code" && result.discount_summary) {
+          setDiscountLine(`${result.promotion_code}: ${result.discount_summary}`)
+          forgetPromoCode()
+        }
 
         if (result.mode === "redirect") {
           window.location.assign(result.url)
@@ -207,7 +222,7 @@ function BillingCheckoutPageInner() {
     return () => {
       cancelled = true
     }
-  }, [planCode, billingInterval, reloadKey])
+  }, [planCode, billingInterval, promoCode, reloadKey])
 
   // Match the Stripe Payment Element to the app's active light/dark theme and
   // brand corner radius so it doesn't render as a light card on a dark page.
@@ -286,7 +301,12 @@ function BillingCheckoutPageInner() {
                 appearance: stripeAppearance,
               }}
             >
-              <CheckoutForm planCode={planCode} billingInterval={billingInterval} returnUrl={returnUrl} />
+              <CheckoutForm
+                planCode={planCode}
+                billingInterval={billingInterval}
+                returnUrl={returnUrl}
+                discountLine={discountLine}
+              />
             </Elements>
           )}
         </div>

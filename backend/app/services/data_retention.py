@@ -2,7 +2,7 @@
 
 Off unless AUDIT_RETENTION_DAYS or TELEMETRY_RETENTION_DAYS is above 0 (0 keeps rows
 forever). AUDIT_RETENTION_DRY_RUN (default true) only counts what would go and writes
-the receipt. Needs migration 20261013090000_storage_retention_metering.sql.
+the receipt. Needs migration 20261020081535_storage_retention_metering.sql (and its parts).
 
 Compliance rules, enforced here and again in the SQL functions:
 

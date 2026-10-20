@@ -48,6 +48,7 @@ from app.services.connector_session_state import (
     sync_legacy_resolved_entities,
 )
 from app.core.safe_dict import safe_normalize_stored_dict
+from app.services.action_intent import action_intent_text, actionable_clauses
 
 logger = get_logger(__name__)
 
@@ -230,7 +231,11 @@ class ChatOrchestrationService:
             status = str(pending.get("status") or "")
             if status in {"awaiting_plan_confirm", "awaiting_step_confirm"}:
                 return True
-        text = message.strip()
+        text = action_intent_text(message)
+        from app.services.action_intent import is_native_work_request
+
+        if is_native_work_request(message):
+            return False
         if len(text) < 12:
             return False
         integrations = ChatOrchestrationService._mentioned_integrations(text, connected_integrations)
@@ -964,6 +969,10 @@ class ChatOrchestrationService:
         user_id: str,
         classification: dict[str, Any],
     ) -> list[OrchestrationStep]:
+        from app.services.action_intent import is_native_work_request
+
+        if is_native_work_request(message):
+            return []
         # Google Ads multi-campaign structure must stay one executable action
         # (structure.create). Fragmenting into "set up campaigns / keywords / …"
         # steps yields no_executable_action skips + a misleading plan confirm.
@@ -1471,17 +1480,21 @@ class ChatOrchestrationService:
                 ),
                 execution_context={"strategy": "SEQUENTIAL"},
             )
-        result = await self._connector.execute_plan(
-            org_id=org_id,
-            user_id=user_id,
-            conversation_id=conversation_id,
-            plan=plan,
-            client=client,
-            classification=classification,
-            environment_name=environment_name,
-            # Orchestration owns the single Module A terminal for the whole run.
-            own_terminal_outcome=False,
-        )
+        from app.services.write_authority import write_authority
+
+        # Reached only after the user confirmed this step (awaiting_step_confirm).
+        with write_authority("human", f"orchestration_step:{conversation_id}"):
+            result = await self._connector.execute_plan(
+                org_id=org_id,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                plan=plan,
+                client=client,
+                classification=classification,
+                environment_name=environment_name,
+                # Orchestration owns the single Module A terminal for the whole run.
+                own_terminal_outcome=False,
+            )
         step_results = list(params.get("step_results") or [])
         step_results.append(_step_result_row(step, result))
         completed = list(task_state.get("completed_steps") or [])
@@ -1818,16 +1831,20 @@ class ChatOrchestrationService:
                 }
 
             plan = self._enrich_plan_with_context(step.plan, params.get("step_results") or [])
-            result = await self._connector.execute_plan(
-                org_id=org_id,
-                user_id=user_id,
-                conversation_id=conversation_id,
-                plan=plan,
-                client=client,
-                classification=classification,
-                environment_name=environment_name,
-                own_terminal_outcome=False,
-            )
+            from app.services.write_authority import write_authority
+
+            # Steps that needed approval stopped above; this one did not need it.
+            with write_authority("policy", f"orchestration:{conversation_id}"):
+                result = await self._connector.execute_plan(
+                    org_id=org_id,
+                    user_id=user_id,
+                    conversation_id=conversation_id,
+                    plan=plan,
+                    client=client,
+                    classification=classification,
+                    environment_name=environment_name,
+                    own_terminal_outcome=False,
+                )
             if not result.success:
                 if run_id:
                     sync_orchestration_step(
@@ -2314,7 +2331,7 @@ class ChatOrchestrationService:
     @staticmethod
     def _split_segments(message: str) -> list[str]:
         text = message.strip()
-        parts = [text]
+        parts = actionable_clauses(text)
         for pattern in (SEGMENT_COMMA, MULTI_STEP_SPLIT):
             next_parts: list[str] = []
             for part in parts:
@@ -2390,13 +2407,14 @@ class ChatOrchestrationService:
 
     @staticmethod
     def _mentioned_integrations(message: str, connected_integrations: list[str]) -> list[str]:
-        return resolve_all_connectors_from_text(message, exclude_generic=False)
+        return resolve_all_connectors_from_text(action_intent_text(message), exclude_generic=True)
 
     @staticmethod
     def _mentioned_integrations_ordered(message: str, connected_integrations: list[str]) -> list[str]:
         """Same as _mentioned_integrations but ordered by first appearance in text."""
+        message = action_intent_text(message)
         lowered = message.lower()
-        found = ordered_connectors_from_text(message, exclude_generic=False)
+        found = ordered_connectors_from_text(message, exclude_generic=True)
 
         def first_pos(integration: str) -> int:
             aliases = get_connector_aliases(integration)

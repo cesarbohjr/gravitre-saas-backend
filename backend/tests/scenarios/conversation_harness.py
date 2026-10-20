@@ -71,6 +71,8 @@ def _json_path_get(row: dict[str, Any], path: str) -> Any:
         if not isinstance(value, dict):
             return None
         value = value.get(part.strip())
+    if "->>" in path and value is not None:
+        return value if isinstance(value, str) else json.dumps(value, separators=(",", ":"))
     return value
 
 
@@ -128,10 +130,12 @@ class _Q:
 
     def is_(self, col: str, val: Any) -> _Q:
         if str(val).lower() == "null":
-            return self._add(lambda r: r.get(col) is None)
+            return self._add(lambda r: _json_path_get(r, col) is None)
         return self
 
     def filter(self, col: str, op: str, val: Any) -> _Q:
+        if op == "is" and str(val).lower() == "null":
+            return self.is_(col, val)
         if op == "eq":
             return self._add(lambda r: str(_json_path_get(r, col)) == str(val))
         return self

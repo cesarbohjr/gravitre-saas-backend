@@ -12,7 +12,7 @@ snapshot with the plan's ``storage_bytes`` limit: 80% and above is a warning, 10
 and above refuses *new* connector syncs and uploads with HTTP 402
 STORAGE_QUOTA_EXCEEDED. Nothing is ever deleted. Without a snapshot from the last
 three days the quota does not act (unknown is never a block). Needs migration
-20261013090000_storage_retention_metering.sql.
+20261020081535_storage_retention_metering.sql (and its parts).
 """
 from __future__ import annotations
 

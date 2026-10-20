@@ -41,7 +41,10 @@ const SURFACES = [
   { id: "settings_personal_profile", path: "/settings/profile", tier: "personal", mustHave: [/profile|name|email|account/i] },
   { id: "settings_personal_orgs", path: "/settings/organizations", tier: "personal", mustHave: [/organization|workspace|member/i] },
   { id: "settings_org", path: "/settings?section=organization", tier: "organization", mustHave: [/organization|brand|workspace/i] },
-  { id: "settings_ai_models", path: "/settings?section=ai-models", tier: "organization", mustHave: [/model|ai|memory/i] },
+  { id: "settings_ai_models", path: "/settings?section=ai-models", tier: "organization", mustHave: [/model|ai|memory/i], heading: "Customer data", readOnly: true },
+  { id: "context_help", path: "/ai/help/context", mustHave: [/context/i], heading: "How Gravitre uses your context", readOnly: true },
+  { id: "customer_accounts", path: "/intelligence/accounts", mustHave: [/account/i], heading: "Accounts", readOnly: true },
+  { id: "msp_clients", path: "/settings/clients", tier: "admin", mustHave: [/client|partner/i], heading: "Resell Gravitre to your clients", readOnly: true },
   { id: "settings_admin_audit", path: "/settings?section=audit", tier: "admin", mustHave: [/audit|event|log|admin|permission|empty/i] },
   { id: "settings_admin_enterprise", path: "/settings/enterprise", tier: "admin", mustHave: [/enterprise|sso|federation|admin|empty/i] },
   { id: "connectors", path: "/connectors", mustHave: [/connector|integrat|connect|hubspot|apollo|empty/i] },
@@ -268,6 +271,16 @@ async function auditSurface(page, origin, surface) {
       await page.waitForTimeout(10_000)
       await dismissBlockers(page)
     }
+    if (surface.heading) {
+      await page.getByRole("heading", { name: surface.heading, exact: true }).waitFor({ state: "visible", timeout: 30_000 })
+      if (surface.id === "context_help") {
+        // A visible heading alone passed while a full chat rendered below it.
+        await page.locator(".ai-chat-surface").waitFor({ state: "hidden", timeout: 30_000 })
+      }
+      const dir = path.join(path.dirname(OUT), "release-surface-screenshots")
+      fs.mkdirSync(dir, { recursive: true })
+      await page.screenshot({ path: path.join(dir, `${surface.id}.png`), fullPage: true })
+    }
   } catch (err) {
     loadError = err instanceof Error ? err.message : String(err)
   }
@@ -279,7 +292,7 @@ async function auditSurface(page, origin, surface) {
   const blankEmpty = empty && (empty.blank || (!empty.helpful && empty.textLen < 40))
 
   let interactives = []
-  if (!loadError) {
+  if (!loadError && !surface.readOnly) {
     interactives = await sampleInteractives(page, { max: 6 })
   }
 
@@ -382,7 +395,14 @@ async function auditSidebarIsolated(page, origin) {
     let reason
     try {
       await link.click({ timeout: 8_000 })
-      await page.waitForTimeout(1200)
+      // A fixed 1.2s sleep classified a slow /workflows transition as a dead
+      // link. Require the actual destination, with a bounded navigation wait.
+      if (targetPath) {
+        await page.waitForURL(
+          (url) => (url.pathname.replace(/\/+$/, "") || "/") === targetPath,
+          { timeout: 30_000 },
+        )
+      }
     } catch (err) {
       status = "FAIL"
       reason = err instanceof Error ? err.message : String(err)
@@ -395,6 +415,40 @@ async function auditSidebarIsolated(page, origin) {
     results.push({ label: item.text, href: item.href, before, after, status, reason })
   }
   return results
+}
+
+async function loginPageNotice(page) {
+  // The login form shows its own error text; surface it so a failed sign-in
+  // says why instead of only "timeout".
+  const text = await page
+    .locator("[role=alert], form p")
+    .allInnerTexts()
+    .catch(() => [])
+  return text.map((t) => t.trim()).filter(Boolean).join(" | ").slice(0, 300)
+}
+
+// Production sign-in is a live dependency: retry a failed attempt from a clean
+// cookie jar before failing the audit, and record every attempt in the report.
+async function loginWithRetry(page, context, origin, email, password, report, attempts = 3) {
+  report.login_attempts = []
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      await login(page, origin, email, password)
+      report.login_attempts.push({ attempt, ok: true })
+      return
+    } catch (err) {
+      const message = err instanceof Error ? err.message.split("\n")[0] : String(err)
+      const notice = await loginPageNotice(page)
+      report.login_attempts.push({ attempt, ok: false, url: page.url(), error: message, notice })
+      console.warn(`Login attempt ${attempt}/${attempts} failed at ${page.url()}: ${message}${notice ? ` (${notice})` : ""}`)
+      if (attempt === attempts) {
+        report.login_error = message
+        throw err
+      }
+      await context.clearCookies().catch(() => undefined)
+      await page.waitForTimeout(5000 * attempt)
+    }
+  }
 }
 
 ;(async () => {
@@ -420,7 +474,7 @@ async function auditSidebarIsolated(page, origin) {
   }
 
   try {
-    await login(page, origin, EMAIL, PASSWORD)
+    await loginWithRetry(page, context, origin, EMAIL, PASSWORD, report)
     console.log(`Logged in -> ${page.url()}`)
 
     for (const surface of SURFACES) {
@@ -457,7 +511,11 @@ async function auditSidebarIsolated(page, origin) {
     }
     // Authoritative: surface FAIL or sidebar FAIL → overall FAIL; WARN-only → PARTIAL
     report.verdict =
-      surfaceFail > 0 || sideFail > 0 ? "FAIL" : surfaceWarn > 0 ? "PARTIAL" : "PASS"
+      report.login_error || surfaceFail > 0 || sideFail > 0
+        ? "FAIL"
+        : surfaceWarn > 0
+          ? "PARTIAL"
+          : "PASS"
     fs.mkdirSync(path.dirname(OUT), { recursive: true })
     fs.writeFileSync(OUT, JSON.stringify(report, null, 2))
     console.log(`Wrote ${OUT} verdict=${report.verdict}`)

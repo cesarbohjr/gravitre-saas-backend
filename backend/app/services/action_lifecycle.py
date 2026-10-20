@@ -50,11 +50,9 @@ def _observation_verified(obs: dict[str, Any] | None) -> bool:
     if not isinstance(obs, dict):
         return False
     structured = obs.get("structured") if isinstance(obs.get("structured"), dict) else {}
-    return bool(
-        obs.get("verification_status") == "verified"
-        or structured.get("verification_status") == "verified"
-        or (isinstance(structured.get("verification"), dict) and structured["verification"].get("verified"))
-    )
+    from app.services.outcome_verification import evidence_is_verified
+
+    return evidence_is_verified(obs) or evidence_is_verified(structured)
 
 
 def semantic_stage_from_state(task_state: dict[str, Any] | None) -> SemanticStage:
@@ -233,7 +231,9 @@ def observation_from_write(
     step_id = step.step_id if step else "connector_primary"
     record_id = provider_record_id(structured)
     verify_status = "unverified"
-    if verification and verification.get("verified"):
+    from app.services.outcome_verification import evidence_is_verified
+
+    if evidence_is_verified(verification):
         verify_status = "verified"
     elif verification and verification.get("follow_up_attempted"):
         verify_status = "verification_pending"
@@ -446,14 +446,16 @@ def persist_write_outcome_patch(
     if pending_superseded_by_newer_task(state, connector_plan, pending_at_start=pending_at_start):
         return _outcome_only_patch(state, obs)
     exec_plan = apply_observations_to_plan(exec_plan, [obs])
-    if success and verification and verification.get("verified"):
+    from app.services.outcome_verification import evidence_is_verified
+
+    if success and evidence_is_verified(verification):
         exec_plan.terminal_status = "completed"
     elif success:
         exec_plan.terminal_status = "partial"
     pending = pending_task if isinstance(pending_task, dict) else safe_normalize_stored_dict(state, key="pending_task")
     pending = dict(pending)
     pending["type"] = "connector_action"
-    if success and verification and verification.get("verified"):
+    if success and evidence_is_verified(verification):
         pending["status"] = "executed"
         pending["lifecycle"] = "COMPLETED"
     elif success and verification and verification.get("terminal_inconclusive"):
@@ -850,3 +852,68 @@ def recent_write_status_turn(
             "The app accepted the request, but I haven't confirmed the result yet."
         )
     return _reply("I can't confirm that it went through from what I have here.")
+
+
+def background_verification_patch(
+    task_state: dict[str, Any] | None,
+    *,
+    invoke_action: str,
+    provider_record: str | None,
+    terminal: str,
+    verification: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Patch for a conversation whose write was still VERIFYING when the turn ended.
+
+    Background read-back used to update only workflow_runs, so the conversation
+    stayed VERIFYING and "did it go through?" kept answering "can't confirm"
+    after the source system had confirmed it. Returns None (change nothing) when
+    the stored task is not that write any more: a different action, a different
+    provider record, or no longer verifying (the user moved on).
+    """
+    state = task_state if isinstance(task_state, dict) else {}
+    pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
+    if not pending:
+        return None
+    status = str(pending.get("status") or "").strip().lower()
+    lifecycle = str(pending.get("lifecycle") or "").strip().upper()
+    if status != "verifying" and lifecycle != "VERIFYING":
+        return None
+    params = pending.get("params") if isinstance(pending.get("params"), dict) else {}
+    stored_invoke = str(params.get("invoke_action") or pending.get("invoke_action") or "").strip()
+    if not stored_invoke or stored_invoke != str(invoke_action or "").strip():
+        return None
+    stored_record = str(params.get("provider_record_id") or "").strip()
+    if provider_record and stored_record and stored_record != str(provider_record).strip():
+        return None
+
+    from app.services.outcome_verification import evidence_is_verified
+
+    verified = terminal == "completed" and evidence_is_verified(verification)
+    new_pending = dict(pending)
+    if verified:
+        new_pending["status"] = "executed"
+        new_pending["lifecycle"] = "COMPLETED"
+        lifecycle_out = "COMPLETED"
+    elif terminal == "failed":
+        new_pending["status"] = "failed"
+        new_pending["lifecycle"] = "FAILED"
+        lifecycle_out = "FAILED"
+    else:
+        new_pending["status"] = "executed"
+        new_pending["lifecycle"] = "EXECUTED_UNVERIFIED"
+        lifecycle_out = "EXECUTED_UNVERIFIED"
+
+    patch: dict[str, Any] = {"pending_task": new_pending, "action_lifecycle": lifecycle_out}
+    rows = state.get("execution_observations")
+    if isinstance(rows, list) and rows and isinstance(rows[-1], dict):
+        last = dict(rows[-1])
+        structured = dict(safe_normalize_stored_dict(last, key="structured"))
+        status_word = "verified" if verified else ("failed" if terminal == "failed" else "inconclusive")
+        structured["verification"] = {**verification, "verified": verified, "async": True}
+        structured["verification_status"] = status_word
+        last["structured"] = structured
+        last["verification_status"] = status_word
+        if terminal == "failed":
+            last["success"] = False
+        patch["execution_observations"] = [*rows[:-1], last]
+    return patch

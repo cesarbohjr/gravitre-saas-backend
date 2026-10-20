@@ -130,7 +130,7 @@ def refresh_marketo_tokens_if_needed(
     if not munchkin_id:
         return None, "Marketo munchkin_id not configured on connector"
 
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if tokens and tokens.get("access_token") and not token_needs_refresh(tokens, TOKEN_REFRESH_BUFFER_SEC):
         return tokens, None
 
@@ -250,7 +250,7 @@ def marketo_connection_auth_status(
     )
     if not row.data or not get_connector_munchkin_id(dict(row.data[0])):
         return "pending_auth"
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if not tokens:
         return "pending_auth"
     _, _, err = ensure_marketo_session(client, org_id, connector_id, settings, environment_name=env)

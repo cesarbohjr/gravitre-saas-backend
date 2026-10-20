@@ -148,7 +148,8 @@ def test_plan_from_subscription_items_skips_metered_and_reads_command():
     assert stripe_webhook_router._plan_from_subscription_items(settings, data) == "command"
 
 
-def test_checkout_completed_writes_plan_code_from_metadata(monkeypatch):
+@pytest.mark.parametrize("remote_status,expected_status", [("active", "active"), ("trialing", "trialing"), ("incomplete_expired", "inactive")])
+def test_checkout_completed_writes_plan_code_from_metadata(monkeypatch, remote_status, expected_status):
     import sys
     import types
 
@@ -162,6 +163,8 @@ def test_checkout_completed_writes_plan_code_from_metadata(monkeypatch):
         "subscription": "sub_cmd",
         "metadata": metadata,
     }
+    monkeypatch.setattr(stripe_webhook_router.stripe.Subscription, "retrieve",
+                        lambda _id: {"id": "sub_cmd", "customer": "cus_cmd", "status": remote_status})
     fake_entitlements = types.ModuleType("app.marketplace.entitlements")
     fake_entitlements.fulfill_entitlement_from_checkout = lambda *_a, **_k: None
     monkeypatch.setitem(sys.modules, "app.marketplace.entitlements", fake_entitlements)
@@ -178,6 +181,8 @@ def test_checkout_completed_writes_plan_code_from_metadata(monkeypatch):
 
     assert client._store["subscriptions"][0]["tier"] == "command"
     assert client._store["org_billing"][0]["plan_code"] == "command"
+    assert client._store["subscriptions"][0]["status"] == expected_status
+    assert client._store["org_billing"][0]["billing_status"] == remote_status
 
 
 def test_subscription_deleted_writes_complete_terminal_state():
@@ -318,3 +323,31 @@ async def test_billing_webhook_health_endpoint(monkeypatch):
     assert result["status"] == "healthy"
     assert result["webhook_secret_set"] is True
     assert result["idempotency_table"]["reachable"] is True
+
+
+@pytest.mark.parametrize("remote_status", ["trialing", "active", "past_due"])
+def test_billing_page_reconciliation_preserves_stripe_status_and_trial_end(monkeypatch, remote_status):
+    from app.routers import billing as billing_router
+
+    client = _FakeClient()
+    org_id = "44444444-4444-4444-4444-444444444444"
+    trial_end, period_end = 2000000000, 2001000000
+    subscription = {"org_id": org_id, "stripe_subscription_id": "sub_reconcile", "current_period_end": "stale"}
+    client._store["subscriptions"] = [subscription.copy()]
+    client._store["org_billing"] = [{"org_id": org_id, "billing_status": remote_status}]
+    remote = {
+        "id": "sub_reconcile", "status": remote_status, "customer": "cus_reconcile",
+        "trial_end": trial_end, "current_period_end": period_end,
+        "metadata": {"plan_code": "node"},
+        "items": {"data": [{"price": {"id": "price_node_m", "recurring": {"usage_type": "licensed"}}}]},
+    }
+    monkeypatch.setattr(billing_router, "init_stripe", lambda *_args: None)
+    monkeypatch.setattr(billing_router.stripe.Subscription, "retrieve", lambda _id: remote)
+    monkeypatch.setattr(billing_router, "invalidate_org_state", lambda *_args: None)
+
+    assert billing_router._reconcile_plan_from_stripe(client, _settings(), org_id, subscription) == "node"
+    billing = client._store["org_billing"][0]
+    assert billing["billing_status"] == remote_status
+    assert client._store["subscriptions"][0]["status"] == remote_status
+    expected_end = trial_end if remote_status == "trialing" else period_end
+    assert billing["current_period_end"] == datetime.fromtimestamp(expected_end, tz=timezone.utc).isoformat()

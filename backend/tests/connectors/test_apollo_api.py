@@ -64,7 +64,7 @@ def test_is_apollo_plan_limit_error():
 @patch("app.connectors.apollo_api.get_connector")
 def test_resolve_apollo_api_key(mock_get, mock_secret):
     mock_get.return_value = {"id": "c1"}
-    mock_secret.side_effect = lambda _c, _id, key, _s: "token" if key == "api_token" else None
+    mock_secret.side_effect = lambda _c, _id, key, _s, *, org_id: "token" if key == "api_token" else None
     settings = MagicMock()
     cid, key = resolve_apollo_api_key(MagicMock(), "org", "c1", settings)
     assert cid == "c1"

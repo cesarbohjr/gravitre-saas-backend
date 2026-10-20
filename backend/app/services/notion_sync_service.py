@@ -10,7 +10,9 @@ from app.connectors.notion import (
     NotionAPIError,
     collect_database_page_ids,
     export_page_text,
+    get_page,
     normalize_search_result,
+    page_is_removed,
     search,
 )
 from app.connectors.notion_oauth import ensure_notion_session
@@ -20,6 +22,31 @@ from app.core.safe_dict import safe_normalize_stored_dict
 logger = logging.getLogger(__name__)
 
 STALE_SYNC_HOURS = 24
+# Rotation position of the reconcile's check-by-id of unseen pages (deletion propagation).
+RECONCILE_POSITION_CONFIG_KEY = "notion_reconcile_position"
+
+
+def _page_gone_checker(token: str):
+    """``is_gone`` for reconcile.
+
+    True (purge) only on 404: Notion answers 404 once a page is deleted for good (emptied
+    from the trash) or no longer shared with the integration. ``EXCLUDE`` when the page
+    object is ``archived`` or ``in_trash``: still restorable from Notion's trash, so it
+    is excluded from retrieval, not deleted. False when live.
+    """
+    from app.services.source_lifecycle import EXCLUDE
+
+    def is_gone(external_id: str) -> bool | str:
+        page_id = external_id.removeprefix("notion:page:")
+        try:
+            page = get_page(token, page_id)
+        except NotionAPIError as exc:
+            if exc.status_code == 404:
+                return True
+            raise
+        return EXCLUDE if page_is_removed(page if isinstance(page, dict) else {}) else False
+
+    return is_gone
 
 
 def _now_iso() -> str:
@@ -231,6 +258,16 @@ def run_notion_sync(
     pages_synced = 0
     errors: list[str] = []
     seen_external_ids: set[str] = set()
+    from app.services.source_lifecycle import (
+        deletion_propagation_enabled,
+        exclude_source_documents,
+        reconcile_source_documents,
+        restore_source_documents,
+    )
+
+    propagate = deletion_propagation_enabled(settings)
+    # Archived / in-trash pages: excluded from retrieval, never deleted (restorable).
+    excluded_external_ids: set[str] = set()
 
     for target in targets:
         target_id = str(target.get("id") or "")
@@ -247,7 +284,22 @@ def run_notion_sync(
 
         for page_id in page_ids:
             try:
-                title, body, edited = export_page_text(token, page_id)
+                if propagate:
+                    # The page object says whether Notion archived or trashed it.
+                    try:
+                        page = get_page(token, page_id)
+                    except NotionAPIError as exc:
+                        if exc.status_code == 404:
+                            # Deleted or unshared. Not an error that blocks the sweep, and
+                            # not seen: reconcile re-checks it by id under the safety cap.
+                            continue
+                        raise
+                    if page_is_removed(page):
+                        excluded_external_ids.add(f"notion:page:{page_id}")
+                        continue
+                    title, body, edited = export_page_text(token, page_id, page=page)
+                else:
+                    title, body, edited = export_page_text(token, page_id)
                 job_id = _queue_page_ingest(
                     client,
                     org_id=org_id,
@@ -266,20 +318,63 @@ def run_notion_sync(
                 errors.append(f"page {page_id}: {exc}")
 
     documents_removed = 0
-    if not errors:
-        # Only a complete sweep may remove documents: a page we failed to read still exists.
-        from app.services.source_lifecycle import reconcile_source_documents
-
-        documents_removed = reconcile_source_documents(
-            client,
-            settings,
-            org_id=org_id,
-            source_id=source_id,
-            external_id_prefix="notion:page:",
-            seen_external_ids=seen_external_ids,
-        )
-
+    documents_excluded = 0
+    documents_restored = 0
+    excluded_external_ids -= seen_external_ids
+    if excluded_external_ids:
+        # Pages Notion itself flags as archived or in the trash: excluded from retrieval
+        # even after a partial sweep, since the signal is per page. Nothing is deleted;
+        # restoring the page in Notion brings the document back.
+        try:
+            documents_excluded = exclude_source_documents(
+                client,
+                settings,
+                org_id=org_id,
+                source_id=source_id,
+                external_ids=excluded_external_ids,
+                signal="notion_page_flag",
+            )
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"excluded pages: {type(exc).__name__}: {exc}")
+    if propagate and seen_external_ids:
+        try:
+            documents_restored = restore_source_documents(
+                client,
+                settings,
+                org_id=org_id,
+                source_id=source_id,
+                external_ids=seen_external_ids,
+                signal="notion_page_flag",
+            )
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"restored pages: {type(exc).__name__}: {exc}")
     config = safe_normalize_stored_dict(connector, key="config")
+    position = config.get(RECONCILE_POSITION_CONFIG_KEY)
+    position = dict(position) if isinstance(position, dict) else {}
+    if not errors:
+        # Only a complete sweep (every database listing well formed and fully paged, every
+        # page read) nominates anything. A nominated page is removed only when Notion
+        # answers 404 for it, and excluded (not removed) when it is archived or in the
+        # trash. A page that still exists but is no longer under a configured target is
+        # out of scope and kept for an explicit purge.
+        try:
+            documents_removed += reconcile_source_documents(
+                client,
+                settings,
+                org_id=org_id,
+                source_id=source_id,
+                external_id_prefix="notion:page:",
+                seen_external_ids=seen_external_ids,
+                is_gone=_page_gone_checker(token),
+                sweep_complete=True,
+                position=position,
+                errors=errors,
+            )
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"reconcile: {type(exc).__name__}: {exc}")
+    if propagate:
+        config[RECONCILE_POSITION_CONFIG_KEY] = position
+
     config["notion_last_synced_at"] = _now_iso()
     config["notion_rag_source_id"] = source_id
     client.table("connectors").update({"config": config}).eq("id", connector_id).eq("org_id", org_id).execute()
@@ -297,6 +392,8 @@ def run_notion_sync(
         "pages_synced": pages_synced,
         "jobs_queued": len(job_ids),
         "documents_removed": documents_removed,
+        "documents_excluded": documents_excluded,
+        "documents_restored": documents_restored,
         "job_ids": job_ids[:20],
         "errors": errors,
         "last_synced_at": config["notion_last_synced_at"],

@@ -133,6 +133,10 @@ async def run_connector_fallback_turn(
     Wave 1: when ReAct already produced structured connector tool_calls with args,
     pass those into ``process_turn`` so NL ``chat_action_mapper`` is skipped.
     """
+    from app.services.action_intent import is_native_work_request
+
+    if is_native_work_request(message):
+        return None
     from app.services.chat_orchestration_service import (
         ChatOrchestrationService,
         get_chat_orchestration_service,

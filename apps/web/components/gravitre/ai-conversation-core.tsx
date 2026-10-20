@@ -58,6 +58,7 @@ import type {
   ChatExecutionResult,
   ChatPendingTask,
 } from "@/components/gravitre/assistant/chat-execution-panel"
+import type { ContextSourcesSummary } from "@/lib/context-sources"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
 
@@ -74,6 +75,7 @@ export type GravitreAIConversationTranscriptProps = {
     missing_context?: string[]
   } | null
   contextExplanation?: string | null
+  contextSources?: ContextSourcesSummary | null
   dialogueMode?: string | null
   executionResult?: ChatExecutionResult | null
   pendingTask?: ChatPendingTask | null
@@ -110,6 +112,7 @@ export function GravitreAIConversationTranscript({
   showWaiting,
   explainability,
   contextExplanation,
+  contextSources,
   dialogueMode,
   executionResult,
   pendingTask,
@@ -165,6 +168,7 @@ export function GravitreAIConversationTranscript({
       showWaiting={showWaiting}
       explainability={explainability}
       contextExplanation={contextExplanation}
+      contextSources={contextSources}
       dialogueMode={dialogueMode}
       executionResult={executionResult}
       pendingTask={pendingTask}

@@ -80,6 +80,13 @@ def refresh_google_analytics_tokens_if_needed(
     *,
     environment_name: str | None = None,
 ) -> tuple[dict[str, Any] | None, str | None]:
+    from app.connectors.managed_oauth import managed_oauth_tokens
+    try:
+        managed = managed_oauth_tokens(client, org_id, connector_id, settings, environment_name=environment_name)
+    except ValueError:
+        return None, "Managed authorization unavailable; reconnect this account"
+    if managed is not None:
+        return managed, None
     env = environment_name or _connector_environment(client, org_id, connector_id)
     client_id, client_secret = google_analytics_credentials(settings, env)
     if not client_id or not client_secret:
@@ -87,7 +94,7 @@ def refresh_google_analytics_tokens_if_needed(
     if not settings.connector_secrets_encryption_key:
         return None, "Connector secrets encryption is not configured"
 
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if not tokens or not tokens.get("access_token"):
         return None, "OAuth not completed"
 
@@ -288,7 +295,7 @@ def google_analytics_connection_auth_status(
     env = environment_name or _connector_environment(client, org_id, connector_id)
     if not google_analytics_oauth_configured(settings, env):
         return "misconfigured"
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if not tokens:
         return "pending_auth"
     if token_needs_refresh(tokens, TOKEN_REFRESH_BUFFER_SEC) and not tokens.get("refresh_token"):

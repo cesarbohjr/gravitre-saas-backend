@@ -1,11 +1,13 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import useSWR from "swr"
 import { Check, Info, Loader2, Save, Shield } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { accountIntelligenceApi, type SourceDataGovernance } from "@/lib/api"
+import { CONTEXT_HELP_HREF } from "@/lib/context-sources"
 
 /** Customer-facing systems the customer-context paths can read (mirrors the backend list). */
 const CUSTOMER_SOURCES = [
@@ -19,9 +21,6 @@ const CUSTOMER_SOURCES = [
   { id: "gmail", label: "Gmail" },
   { id: "microsoft365", label: "Microsoft 365" },
 ] as const
-
-/** Shown only with NEXT_PUBLIC_SOURCE_GOVERNANCE_UI=true until the customer-context paths ship. */
-export const SOURCE_GOVERNANCE_UI_ENABLED = process.env.NEXT_PUBLIC_SOURCE_GOVERNANCE_UI === "true"
 
 function sorted(values: string[]) {
   return [...values].map(String).sort()
@@ -53,7 +52,7 @@ export function SourceGovernanceSettings({ isAdmin }: { isAdmin: boolean }) {
       const days = Number.parseInt(raw, 10)
       if (Number.isFinite(days) && days > 0) retentionDays[vendor] = days
     }
-    return { customerContext: { enabled, connectors: enabled ? connectors : [] }, retentionDays }
+    return { customerContext: { enabled, connectors }, retentionDays }
   }, [enabled, connectors, retention])
 
   const dirty = useMemo(() => {
@@ -92,7 +91,11 @@ export function SourceGovernanceSettings({ isAdmin }: { isAdmin: boolean }) {
   }
 
   return (
-    <section aria-labelledby="source-governance-heading" className="space-y-4 border-t border-divide pt-6">
+    <section
+      id="customer-data"
+      aria-labelledby="source-governance-heading"
+      className="scroll-mt-24 space-y-4 border-t border-divide pt-6"
+    >
       <div>
         <h3 id="source-governance-heading" className="text-sm font-medium text-foreground">Customer data</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
@@ -111,6 +114,13 @@ export function SourceGovernanceSettings({ isAdmin }: { isAdmin: boolean }) {
           </p>
           <p>Internal chat and messages from your own colleagues are never read for this.</p>
           <p>Disconnecting a system removes what Gravitre kept from it.</p>
+          <p>
+            Readings appear in Accounts after a permitted source is connected and synced. Findings can suggest
+            a Gravitre Play or review assignment. Suggestions do not start work or contact customers.{" "}
+            <Link href={CONTEXT_HELP_HREF} className="text-foreground underline underline-offset-2">
+              How Gravitre uses your context
+            </Link>
+          </p>
         </div>
       </div>
 
@@ -135,7 +145,7 @@ export function SourceGovernanceSettings({ isAdmin }: { isAdmin: boolean }) {
         />
       </label>
 
-      {enabled ? (
+      {(
         <div className="flex flex-wrap gap-2" role="group" aria-label="Customer context systems">
           {CUSTOMER_SOURCES.map((source) => {
             const active = connectors.includes(source.id)
@@ -157,7 +167,7 @@ export function SourceGovernanceSettings({ isAdmin }: { isAdmin: boolean }) {
             )
           })}
         </div>
-      ) : null}
+      )}
 
       <div className="space-y-2">
         <p className="text-xs font-medium text-foreground">Keep indexed documents for (days)</p>

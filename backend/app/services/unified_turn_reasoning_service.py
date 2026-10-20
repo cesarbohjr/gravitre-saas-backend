@@ -191,6 +191,7 @@ class _StreamedCompletion:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     cached_tokens: int = 0
+    cache_write_tokens: int = 0
 
 
 async def _complete_unified_turn_stream(
@@ -356,6 +357,9 @@ async def _complete_unified_turn(
 
     provider = resolve_provider_for_model(model)
     if provider == "openai":
+        from app.services.tool_model_metering import authorize_tool_model_call
+
+        await authorize_tool_model_call(router, model=model)
         return await _complete_unified_turn_stream(
             openai_client,
             kwargs=kwargs,
@@ -392,6 +396,10 @@ async def _complete_unified_turn(
             latency_ms=latency_ms,
             model_total_ms=model_total_ms,
             streamed=False,
+            prompt_tokens=int(getattr(getattr(resp, "usage", None), "prompt_tokens", 0) or 0),
+            completion_tokens=int(getattr(getattr(resp, "usage", None), "completion_tokens", 0) or 0),
+            cached_tokens=int(getattr(getattr(getattr(resp, "usage", None), "prompt_tokens_details", None), "cached_tokens", 0) or 0),
+            cache_write_tokens=int(getattr(getattr(getattr(resp, "usage", None), "prompt_tokens_details", None), "cache_write_tokens", 0) or 0),
         )
 
     try:
@@ -885,6 +893,13 @@ async def run_unified_turn_shadow(
             spoken_user_text=message,
         )
     )
+    from app.services.sentiment_friction_service import conversational_adaptation_instruction
+
+    adaptation_hint = conversational_adaptation_instruction(
+        (classification or {}).get("sentiment_adaptation")
+    )
+    if adaptation_hint:
+        system += "\n\nConversation presentation: " + adaptation_hint
     user_parts: list[str] = []
     context_parts: list[tuple[str, str]] = []
 
@@ -1356,16 +1371,27 @@ async def run_unified_turn_shadow(
                 breakdown["conversational_no_tools"] = True
                 breakdown["voice_conversational_model"] = model
             round_start = time.perf_counter()
-            completion = await _complete_unified_turn(
-                router,
-                openai_client,
-                model=model,
-                kwargs=kwargs,
-                wall_start=wall_start,
-                model_start=model_start if prog_round == 0 else time.perf_counter(),
-                timeout_s=stream_timeout_s,
-                on_text_delta=on_text_delta if prog_round == 0 else None,
-                on_tool_call_delta=on_tool_call_delta if prog_round == 0 else None,
+            from app.services.cost_attribution import attribution
+
+            with attribution(org_id=org_id):
+                completion = await _complete_unified_turn(
+                    router,
+                    openai_client,
+                    model=model,
+                    kwargs=kwargs,
+                    wall_start=wall_start,
+                    model_start=model_start if prog_round == 0 else time.perf_counter(),
+                    timeout_s=stream_timeout_s,
+                    on_text_delta=on_text_delta if prog_round == 0 else None,
+                    on_tool_call_delta=on_tool_call_delta if prog_round == 0 else None,
+                )
+            from app.services.tool_model_metering import record_tool_model_call
+
+            await record_tool_model_call(
+                router, org_id=org_id, model=model,
+                elapsed_ms=completion.model_total_ms,
+                input_tokens=completion.prompt_tokens, output_tokens=completion.completion_tokens,
+                cached_tokens=completion.cached_tokens, cache_write_tokens=completion.cache_write_tokens,
             )
             progressive_round_ms.append(int((time.perf_counter() - round_start) * 1000))
             breakdown["progressive_round_ms"] = list(progressive_round_ms)
@@ -1610,16 +1636,26 @@ async def run_unified_turn_shadow(
                     if _supports_custom_temperature(model):
                         retry_kwargs["temperature"] = 0.2
                     retry_start = time.perf_counter()
-                    completion = await _complete_unified_turn(
-                        router,
-                        openai_client,
-                        model=model,
-                        kwargs=retry_kwargs,
-                        wall_start=wall_start,
-                        model_start=time.perf_counter(),
-                        timeout_s=stream_timeout_s,
-                        on_text_delta=on_text_delta,
-                        on_tool_call_delta=on_tool_call_delta,
+                    from app.services.cost_attribution import attribution
+
+                    with attribution(org_id=org_id):
+                        completion = await _complete_unified_turn(
+                            router,
+                            openai_client,
+                            model=model,
+                            kwargs=retry_kwargs,
+                            wall_start=wall_start,
+                            model_start=time.perf_counter(),
+                            timeout_s=stream_timeout_s,
+                            on_text_delta=on_text_delta,
+                            on_tool_call_delta=on_tool_call_delta,
+                        )
+                    from app.services.tool_model_metering import record_tool_model_call
+
+                    await record_tool_model_call(
+                        router, org_id=org_id, model=model, elapsed_ms=completion.model_total_ms,
+                        input_tokens=completion.prompt_tokens, output_tokens=completion.completion_tokens,
+                        cached_tokens=completion.cached_tokens, cache_write_tokens=completion.cache_write_tokens,
                     )
                     breakdown["auto_schema_retry_ms"] = int(
                         (time.perf_counter() - retry_start) * 1000
@@ -2005,6 +2041,29 @@ async def apply_unified_turn_live(
     Write tool proposals stage ``awaiting_confirm`` — never bypass approval.
     """
     active = settings or get_settings()
+    from app.services.conversational_execution_service import (
+        ASSIGNMENT_CREATE, get_conversational_execution_service,
+    )
+    from app.services.action_intent import action_intent_text
+
+    pending_native = safe_normalize_stored_dict(task_state or {}, key="pending_task")
+    native_status = str(pending_native.get("status") or "")
+    native_service = get_conversational_execution_service(active)
+    if conversation_id and (
+        (str(pending_native.get("type") or "") == "create_assignment" and (
+            native_status in {"collecting", "awaiting_confirm"} or native_service.is_confirmation(message)
+        ))
+        or ((not pending_native or native_status in {"completed", "executed", "cancelled", "failed"})
+            and ASSIGNMENT_CREATE.search(action_intent_text(message)))
+    ):
+        native_turn = await native_service.process_turn(
+            org_id=org_id, user_id=user_id, conversation_id=conversation_id,
+            message=message, understanding={}, classification=classification or {},
+            task_state=task_state or {}, client=client,
+            connected_integrations=list(connected_integrations or []), environment_name=environment_name,
+        )
+        if native_turn:
+            return native_turn
     from app.services.capability_evidence_plan import looks_like_ceo_ops_question
 
     if looks_like_ceo_ops_question(message or ""):

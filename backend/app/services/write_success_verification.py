@@ -385,6 +385,65 @@ def _dispatch_background(work: Any, name: str) -> None:
         threading.Thread(target=work, name=name, daemon=True).start()
 
 
+def _update_conversation_after_verification(
+    *,
+    client: Any,
+    org_id: str,
+    conversation_id: str | None,
+    invoke_action: str,
+    provider_record: str | None,
+    terminal: str,
+    verification: dict[str, Any],
+) -> None:
+    """Carry a background read-back result into the conversation (never raises).
+
+    Runs on the background thread, so it uses the state service's lock-holding
+    save through a private event loop. The patch builder skips the save when the
+    conversation has moved on to another task.
+    """
+    if not conversation_id:
+        return
+    try:
+        from app.services.action_lifecycle import background_verification_patch
+        from app.services.conversation_state_service import get_conversation_state_service
+
+        def _build(state: dict[str, Any]) -> dict[str, Any] | None:
+            return background_verification_patch(
+                state,
+                invoke_action=invoke_action,
+                provider_record=provider_record,
+                terminal=terminal,
+                verification=verification,
+            )
+
+        service = get_conversation_state_service()
+        save = service.update_task_state_from(
+            conversation_id, org_id, _build, client=client, effect_record=True
+        )
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop is not None:
+            # Called on an event loop thread: schedule the save instead of blocking.
+            loop.create_task(save)
+        else:
+            asyncio.run(save)
+        logger.info(
+            "write_verify_conversation_updated conversation_id=%s action=%s terminal=%s",
+            conversation_id,
+            invoke_action,
+            terminal,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "write_verify_conversation_update_failed conversation_id=%s action=%s err=%s",
+            conversation_id,
+            invoke_action,
+            exc,
+        )
+
+
 def _verification_terminal_status(*, verified: bool, effect: str | None, detail: str | None) -> str:
     """Map proof to a truthful terminal. Only positive source proof may complete."""
     if verified:
@@ -490,6 +549,18 @@ def _finalize_verified_write_run(
             "verification": verification_payload,
             "outcome_effect": effect or params.get("outcome_effect"),
         },
+    )
+
+    _update_conversation_after_verification(
+        client=client,
+        org_id=org_id,
+        conversation_id=str(params.get("conversation_id") or "").strip() or None,
+        invoke_action=invoke_action,
+        provider_record=str(
+            verification.get("entity_id") or params.get("provider_record_id") or ""
+        ).strip() or None,
+        terminal=terminal,
+        verification=verification_payload,
     )
 
     if not owns_terminal:

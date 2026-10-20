@@ -4,328 +4,769 @@
     "type": "ServiceNow",
     "integrationId": "servicenow",
     "category": "Customer Support",
-    "description": "IT service management and enterprise workflows"
+    "description": "IT service management and enterprise workflows",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "connectsecure",
     "type": "ConnectSecure",
     "integrationId": "connectsecure",
     "category": "DevOps / Incidents",
-    "description": "Cybersecurity posture and vulnerability management"
+    "description": "Cybersecurity posture and vulnerability management",
+    "authMode": "BASIC",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "sage_intacct",
     "type": "Sage Intacct",
     "integrationId": "sage-intacct",
     "category": "Payments / Finance",
-    "description": "Cloud financial management and accounting"
+    "description": "Cloud financial management and accounting",
+    "authMode": "TWO_STEP",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "front",
     "type": "Front",
     "integrationId": "front",
     "category": "Customer Support",
-    "description": "Shared inbox and customer operations"
+    "description": "Shared inbox and customer operations",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "gong",
     "type": "Gong",
     "integrationId": "gong",
     "category": "Sales / Prospecting",
-    "description": "Revenue intelligence and conversation insights"
+    "description": "Revenue intelligence and conversation insights",
+    "authMode": "BASIC",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "highlevel",
     "type": "HighLevel",
     "integrationId": "highlevel",
     "category": "CRM / Marketing",
-    "description": "CRM, marketing automation, and customer engagement"
+    "description": "CRM, marketing automation, and customer engagement",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "instantly",
     "type": "Instantly",
     "integrationId": "instantly",
     "category": "Sales / Prospecting",
-    "description": "Outbound email and lead engagement"
+    "description": "Outbound email and lead engagement",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "attio",
     "type": "Attio",
     "integrationId": "attio",
     "category": "CRM / Marketing",
-    "description": "Flexible CRM and relationship intelligence"
+    "description": "Flexible CRM and relationship intelligence",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "close",
     "type": "Close",
     "integrationId": "close",
     "category": "CRM / Marketing",
-    "description": "Sales CRM and communication"
+    "description": "Sales CRM and communication",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "ashby",
     "type": "Ashby",
     "integrationId": "ashby",
     "category": "HR / People",
-    "description": "Recruiting and talent operations"
+    "description": "Recruiting and talent operations",
+    "authMode": "BASIC",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "hibob",
     "type": "HiBob",
     "integrationId": "hibob",
     "category": "HR / People",
-    "description": "HRIS and people operations"
+    "description": "HRIS and people operations",
+    "authMode": "BASIC",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "ukg_pro",
     "type": "UKG Pro",
     "integrationId": "ukg-pro",
     "category": "HR / People",
-    "description": "Enterprise HR, payroll, and workforce management"
+    "description": "Enterprise HR, payroll, and workforce management",
+    "authMode": "BASIC",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "box",
     "type": "Box",
     "integrationId": "box",
     "category": "Storage / Dev / Infra",
-    "description": "Cloud content management and file storage"
+    "description": "Cloud content management and file storage",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "dropbox",
     "type": "Dropbox",
     "integrationId": "dropbox",
     "category": "Storage / Dev / Infra",
-    "description": "Cloud file storage and collaboration"
+    "description": "Cloud file storage and collaboration",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "zoom",
     "type": "Zoom",
     "integrationId": "zoom",
     "category": "Communication",
-    "description": "Meetings, webinars, and communications"
+    "description": "Meetings, webinars, and communications",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "discord",
     "type": "Discord",
     "integrationId": "discord",
     "category": "Communication",
-    "description": "Community messaging and collaboration"
+    "description": "Community messaging and collaboration",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "sap_s4hana_cloud",
     "type": "SAP S/4HANA Cloud",
     "integrationId": "sap-s4hana-cloud",
     "category": "Operations / Workflow",
-    "description": "Enterprise ERP and business operations"
+    "description": "Enterprise ERP and business operations",
+    "authMode": "BASIC",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "sharepoint_online",
     "type": "SharePoint Online",
     "integrationId": "sharepoint-online",
     "category": "Storage / Dev / Infra",
-    "description": "Microsoft content, sites, and document collaboration"
+    "description": "Microsoft content, sites, and document collaboration",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "freshservice",
     "type": "Freshservice",
     "integrationId": "freshservice",
     "category": "Customer Support",
-    "description": "IT service management and service desk"
+    "description": "IT service management and service desk",
+    "authMode": "BASIC",
+    "providerSupported": true,
+    "hasReadActions": true
   },
   {
     "vendorKey": "kustomer",
     "type": "Kustomer",
     "integrationId": "kustomer",
     "category": "Customer Support",
-    "description": "Customer service CRM and support operations"
+    "description": "Customer service CRM and support operations",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "helpscout",
     "type": "Help Scout",
     "integrationId": "help-scout",
     "category": "Customer Support",
-    "description": "Customer support and shared inbox"
+    "description": "Customer support and shared inbox",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "copper",
     "type": "Copper",
     "integrationId": "copper",
     "category": "CRM / Marketing",
-    "description": "CRM for Google Workspace teams"
+    "description": "CRM for Google Workspace teams",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "zoho_crm",
     "type": "Zoho CRM",
     "integrationId": "zoho-crm",
     "category": "CRM / Marketing",
-    "description": "CRM and sales automation"
+    "description": "CRM and sales automation",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "lever",
     "type": "Lever",
     "integrationId": "lever",
     "category": "HR / People",
-    "description": "Applicant tracking and recruiting"
+    "description": "Applicant tracking and recruiting",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "deel",
     "type": "Deel",
     "integrationId": "deel",
     "category": "HR / People",
-    "description": "Global payroll, HR, and contractor management"
+    "description": "Global payroll, HR, and contractor management",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "rippling",
     "type": "Rippling",
     "integrationId": "rippling",
     "category": "HR / People",
-    "description": "HR, payroll, identity, and device operations"
+    "description": "HR, payroll, identity, and device operations",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "personio",
     "type": "Personio",
     "integrationId": "personio",
     "category": "HR / People",
-    "description": "HRIS and recruiting for SMBs"
+    "description": "HRIS and recruiting for SMBs",
+    "authMode": "OAUTH2_CC",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "ramp",
     "type": "Ramp",
     "integrationId": "ramp",
     "category": "Payments / Finance",
-    "description": "Corporate cards, spend, and expense management"
+    "description": "Corporate cards, spend, and expense management",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "brex",
     "type": "Brex",
     "integrationId": "brex",
     "category": "Payments / Finance",
-    "description": "Corporate cards, spend, and cash management"
+    "description": "Corporate cards, spend, and cash management",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "chargebee",
     "type": "Chargebee",
     "integrationId": "chargebee",
     "category": "Payments / Finance",
-    "description": "Subscription billing and revenue operations"
+    "description": "Subscription billing and revenue operations",
+    "authMode": "BASIC",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "docusign",
     "type": "DocuSign",
     "integrationId": "docusign",
     "category": "Operations / Workflow",
-    "description": "Electronic signatures and agreement workflows"
+    "description": "Electronic signatures and agreement workflows",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "dropbox_sign",
     "type": "Dropbox Sign",
     "integrationId": "dropbox-sign",
     "category": "Operations / Workflow",
-    "description": "Electronic signatures and document workflows"
+    "description": "Electronic signatures and document workflows",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "pax8",
     "type": "Pax8",
     "integrationId": "pax8",
     "category": "Operations / Workflow",
-    "description": "Cloud marketplace and MSP operations"
+    "description": "Cloud marketplace and MSP operations",
+    "authMode": "OAUTH2_CC",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "autotask",
     "type": "Autotask PSA",
     "integrationId": "autotask",
     "category": "Operations / Workflow",
-    "description": "PSA, ticketing, projects, and MSP operations"
+    "description": "PSA, ticketing, projects, and MSP operations",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "halo_psa",
     "type": "HaloPSA",
     "integrationId": "halopsa",
     "category": "Operations / Workflow",
-    "description": "PSA and service management for MSPs"
+    "description": "PSA and service management for MSPs",
+    "authMode": "OAUTH2_CC",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "syncro",
     "type": "Syncro",
     "integrationId": "syncro",
     "category": "Operations / Workflow",
-    "description": "RMM and PSA for MSPs"
+    "description": "RMM and PSA for MSPs",
+    "authMode": "OAUTH2",
+    "providerSupported": false,
+    "hasReadActions": false
   },
   {
     "vendorKey": "huntress",
     "type": "Huntress",
     "integrationId": "huntress",
     "category": "DevOps / Incidents",
-    "description": "Managed cybersecurity and threat operations"
+    "description": "Managed cybersecurity and threat operations",
+    "authMode": "BASIC",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "sentinelone",
     "type": "SentinelOne",
     "integrationId": "sentinelone",
     "category": "DevOps / Incidents",
-    "description": "Endpoint security and threat detection"
+    "description": "Endpoint security and threat detection",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "crowdstrike",
     "type": "CrowdStrike",
     "integrationId": "crowdstrike",
     "category": "DevOps / Incidents",
-    "description": "Endpoint protection and threat intelligence"
+    "description": "Endpoint protection and threat intelligence",
+    "authMode": "OAUTH2_CC",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "okta",
     "type": "Okta",
     "integrationId": "okta",
     "category": "Storage / Dev / Infra",
-    "description": "Identity and access management"
+    "description": "Identity and access management",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
   },
   {
     "vendorKey": "jumpcloud",
     "type": "JumpCloud",
     "integrationId": "jumpcloud",
     "category": "Storage / Dev / Infra",
-    "description": "Directory, identity, and device management"
+    "description": "Directory, identity, and device management",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "duo",
     "type": "Duo",
     "integrationId": "duo",
     "category": "Storage / Dev / Infra",
-    "description": "Multi-factor authentication and access security"
+    "description": "Multi-factor authentication and access security",
+    "authMode": "BASIC",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "onepassword",
     "type": "1Password",
     "integrationId": "1password",
     "category": "Storage / Dev / Infra",
-    "description": "Secrets and workforce credential management"
+    "description": "1Password Events API authorization for audit events",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "microsoft_intune",
     "type": "Microsoft Intune",
     "integrationId": "microsoft-intune",
     "category": "Storage / Dev / Infra",
-    "description": "Endpoint and mobile device management"
+    "description": "Endpoint and mobile device management",
+    "authMode": "OAUTH2_CC",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "jamf_pro",
     "type": "Jamf Pro",
     "integrationId": "jamf-pro",
     "category": "Storage / Dev / Infra",
-    "description": "Apple device management"
+    "description": "Apple device management",
+    "authMode": "OAUTH2_CC",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "braintree",
     "type": "Braintree",
     "integrationId": "braintree",
     "category": "Payments / Finance",
-    "description": "Payment processing"
+    "description": "Payment processing",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": false
   },
   {
     "vendorKey": "recurly",
     "type": "Recurly",
     "integrationId": "recurly",
     "category": "Payments / Finance",
-    "description": "Subscription management and recurring billing"
+    "description": "Subscription management and recurring billing",
+    "authMode": "OAUTH2",
+    "providerSupported": false,
+    "hasReadActions": false
+  },
+  {
+    "vendorKey": "aircall",
+    "type": "Aircall",
+    "integrationId": "aircall",
+    "category": "Communication",
+    "description": "List Aircall users",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "bitbucket",
+    "type": "Bitbucket",
+    "integrationId": "bitbucket",
+    "category": "Storage / Dev / Infra",
+    "description": "Get Bitbucket profile",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "cal_com",
+    "type": "Cal.com",
+    "integrationId": "cal-com",
+    "category": "Operations / Workflow",
+    "description": "Get Cal.com profile",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "digitalocean",
+    "type": "DigitalOcean",
+    "integrationId": "digitalocean",
+    "category": "Storage / Dev / Infra",
+    "description": "Get DigitalOcean account",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "discourse",
+    "type": "Discourse",
+    "integrationId": "discourse",
+    "category": "Customer Support",
+    "description": "List Discourse categories",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "drata",
+    "type": "Drata",
+    "integrationId": "drata",
+    "category": "DevOps / Incidents",
+    "description": "List Drata personnel",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "factorial",
+    "type": "Factorial",
+    "integrationId": "factorial",
+    "category": "HR / People",
+    "description": "List Factorial employees",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "harvest",
+    "type": "Harvest",
+    "integrationId": "harvest",
+    "category": "Payments / Finance",
+    "description": "Get Harvest profile",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "humaans",
+    "type": "Humaans",
+    "integrationId": "humaans",
+    "category": "HR / People",
+    "description": "List Humaans people",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "ironclad",
+    "type": "Ironclad",
+    "integrationId": "ironclad",
+    "category": "Operations / Workflow",
+    "description": "List Ironclad workflows",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "klaviyo",
+    "type": "Klaviyo",
+    "integrationId": "klaviyo",
+    "category": "CRM / Marketing",
+    "description": "List Klaviyo lists",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "lemlist",
+    "type": "Lemlist",
+    "integrationId": "lemlist",
+    "category": "Sales / Prospecting",
+    "description": "List Lemlist campaigns",
+    "authMode": "BASIC",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "metabase",
+    "type": "Metabase",
+    "integrationId": "metabase",
+    "category": "Analytics / Data",
+    "description": "Get Metabase profile",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "ninjaone",
+    "type": "NinjaOne",
+    "integrationId": "ninjaone",
+    "category": "DevOps / Incidents",
+    "description": "List NinjaOne devices",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "pandadoc",
+    "type": "PandaDoc",
+    "integrationId": "pandadoc",
+    "category": "Operations / Workflow",
+    "description": "List PandaDoc documents",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "productboard",
+    "type": "Productboard",
+    "integrationId": "productboard",
+    "category": "Operations / Workflow",
+    "description": "List Productboard features",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "recharge",
+    "type": "Recharge",
+    "integrationId": "recharge",
+    "category": "Payments / Finance",
+    "description": "List Recharge customers",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "smartsheet",
+    "type": "Smartsheet",
+    "integrationId": "smartsheet",
+    "category": "Operations / Workflow",
+    "description": "Get Smartsheet profile",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "teamwork",
+    "type": "Teamwork",
+    "integrationId": "teamwork",
+    "category": "Operations / Workflow",
+    "description": "List Teamwork projects",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "typeform",
+    "type": "Typeform",
+    "integrationId": "typeform",
+    "category": "CRM / Marketing",
+    "description": "List Typeform forms",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "webflow",
+    "type": "Webflow",
+    "integrationId": "webflow",
+    "category": "CRM / Marketing",
+    "description": "List Webflow sites",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "wrike",
+    "type": "Wrike",
+    "integrationId": "wrike",
+    "category": "Operations / Workflow",
+    "description": "List Wrike contacts",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "toggl",
+    "type": "Toggl Track",
+    "integrationId": "toggl",
+    "category": "Operations / Workflow",
+    "description": "Get Toggl profile",
+    "authMode": "BASIC",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "todoist",
+    "type": "Todoist",
+    "integrationId": "todoist",
+    "category": "Operations / Workflow",
+    "description": "List Todoist projects",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "sentry",
+    "type": "Sentry",
+    "integrationId": "sentry",
+    "category": "DevOps / Incidents",
+    "description": "List Sentry organizations",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "freshsales",
+    "type": "Freshsales",
+    "integrationId": "freshsales",
+    "category": "Sales / Prospecting",
+    "description": "Get Freshsales contact",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "miro",
+    "type": "Miro",
+    "integrationId": "miro",
+    "category": "Learning / Creative",
+    "description": "List Miro boards",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "pennylane",
+    "type": "Pennylane",
+    "integrationId": "pennylane",
+    "category": "Payments / Finance",
+    "description": "List Pennylane customers",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "talentlms",
+    "type": "TalentLMS",
+    "integrationId": "talentlms",
+    "category": "Learning / Creative",
+    "description": "List TalentLMS users",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "contentful",
+    "type": "Contentful",
+    "integrationId": "contentful",
+    "category": "Learning / Creative",
+    "description": "List Contentful spaces",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
   }
 ]

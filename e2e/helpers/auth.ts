@@ -12,6 +12,8 @@ export type BillingFixtureUser = {
 }
 
 export type BillingFixtures = {
+  founder?: BillingFixtureUser | null
+  founderTrialCustomer?: BillingFixtureUser | null
   generatedAt: string
   expiredTrial: BillingFixtureUser
   activeTrial: BillingFixtureUser
@@ -24,33 +26,68 @@ export function loadBillingFixtures(): BillingFixtures {
 }
 
 export async function loginWithPassword(page: Page, email: string, password: string) {
+  const pageErrors: string[] = []
+  const recordError = (error: Error) => pageErrors.push(error.message)
+  page.on("pageerror", recordError)
   await page.goto("/login?intent=login")
+  // A cold Next dev server can expose SSR inputs before React attaches handlers.
+  // Wait for the existing E2E AuthProvider effect before filling the real form.
+  try {
+    await page.waitForFunction(() => Boolean((window as Window & { __GRAVITRE_AUTH_TEST?: unknown }).__GRAVITRE_AUTH_TEST), undefined, { timeout: 30_000 })
+  } catch {
+    throw new Error(`Login did not hydrate: ${pageErrors.join("; ").slice(0, 2000)}`)
+  } finally {
+    page.off("pageerror", recordError)
+  }
   await page.getByPlaceholder("you@company.com").fill(email)
   await page.getByPlaceholder("Enter your password").fill(password)
+  // MarketingProviders performs a document reload when sign-in enters the app.
+  // Wait for that bridge to finish before another protected-page navigation.
+  const appDocumentReady = page.waitForEvent("domcontentloaded", { timeout: 90_000 })
+    .then(() => true, () => false)
+  const authenticated = page.waitForResponse(response => new URL(response.url()).pathname === "/auth/v1/token" && response.request().method() === "POST", { timeout: 30_000 })
   await page.getByRole("button", { name: "Sign in" }).click()
-  await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 90_000 })
+  const response = await authenticated.catch(async () => {
+    throw new Error(`Supabase sign-in sent no completed token response: ${(await page.locator("body").innerText()).slice(-6000)}`)
+  })
+  if (!response.ok()) {
+    const error = await response.json()
+    throw new Error(`Supabase password sign-in failed (${response.status()}): ${error.error_code || error.code || "unknown"}`)
+  }
+  try {
+    if (!await appDocumentReady) throw new Error("Post-login app document did not load")
+    await page.waitForLoadState("load")
+    await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 90_000 })
+  } catch {
+    // Text excludes password input values and auth response bodies/tokens.
+    throw new Error(`Sign-in returned ${response.status()} but stayed at ${new URL(page.url()).pathname}: ${(await page.locator("body").innerText()).slice(-6000)}`)
+  }
 }
 
 export async function openProductPage(page: Page, orgId: string, path = "/assistant") {
   await setSelectedOrg(page, orgId)
   await clearTrialBannerDismiss(page)
-  const billingStatus = page.waitForResponse(
-    (response) => response.url().includes("/api/billing/status") && response.status() === 200,
-  )
   await page.goto(path)
-  const response = await billingStatus
-  return (await response.json()) as Record<string, unknown>
+  await page.waitForFunction(() => Boolean(window.__gravitreApiFetch))
+  // Read in the current document: CDP response handles can be invalidated by
+  // the /assistant redirect before response.json() is consumed by the runner.
+  return afterNavigationSettles(page, () => page.evaluate(async (selectedOrgId) => {
+    const apiFetch = window.__gravitreApiFetch
+    if (!apiFetch) throw new Error("Authenticated E2E helper required")
+    const response = await apiFetch("/api/billing/status", { headers: { "x-org-id": selectedOrgId } })
+    if (response.status !== 200) throw new Error(`Billing status returned ${response.status}`)
+    return (await response.json()) as Record<string, unknown>
+  }, orgId))
 }
 
 const ORG_STORAGE_KEY = "gravitre:selectedOrg"
 
 /** Post-login client redirects can destroy the execution context mid-evaluate; settle and retry. */
-async function afterNavigationSettles(page: Page, run: () => Promise<unknown>, attempts = 4) {
+async function afterNavigationSettles<T>(page: Page, run: () => Promise<T>, attempts = 4): Promise<T> {
   for (let attempt = 1; ; attempt++) {
     await page.waitForLoadState("domcontentloaded").catch(() => undefined)
     try {
-      await run()
-      return
+      return await run()
     } catch (error) {
       const destroyed = error instanceof Error && /Execution context was destroyed|navigation/i.test(error.message)
       if (!destroyed || attempt >= attempts) throw error

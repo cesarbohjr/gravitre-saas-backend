@@ -52,6 +52,13 @@ class _Query:
     def limit(self, _n):
         return self
 
+    def order(self, _col):
+        return self
+
+    def range(self, start, end):
+        self.window = (start, end + 1)
+        return self
+
     def _match(self, row: dict[str, Any]) -> bool:
         for kind, col, val in self.filters:
             v = row.get(col)
@@ -68,6 +75,8 @@ class _Query:
     def execute(self):
         rows = self.client.tables.setdefault(self.table, [])
         hits = [r for r in rows if self._match(r)]
+        if self.op == "select" and getattr(self, "window", None):
+            hits = hits[self.window[0] : self.window[1]]
         if self.op == "delete":
             self.client.tables[self.table] = [r for r in rows if r not in hits]
             self.client.deletes.append((self.table, list(self.filters)))
@@ -335,7 +344,7 @@ def test_google_revoke_skipped_when_another_google_connector_is_live(monkeypatch
         }
     )
     monkeypatch.setattr(
-        "app.connectors.hubspot_oauth.load_oauth_tokens", lambda *a: {"refresh_token": "r", "access_token": "a"}
+        "app.connectors.hubspot_oauth.load_oauth_tokens", lambda *a, org_id: {"refresh_token": "r", "access_token": "a"}
     )
     sent: list[Any] = []
     monkeypatch.setattr(pr, "_post", lambda *a, **k: sent.append(a))
@@ -350,7 +359,7 @@ def test_google_revoke_skipped_when_another_google_connector_is_live(monkeypatch
 
 
 def test_revoke_never_raises(monkeypatch):
-    def boom(*_a):
+    def boom(*_a, org_id):
         raise RuntimeError("secrets table down")
 
     monkeypatch.setattr("app.connectors.hubspot_oauth.load_oauth_tokens", boom)
@@ -465,24 +474,53 @@ def _docs_client() -> _Client:
     )
 
 
-def test_reconcile_removes_only_unseen_documents_in_that_source():
+_LIVE = SimpleNamespace(source_deletion_propagation_enabled=True, source_purge_dry_run=False)
+
+
+def test_reconcile_removes_only_unseen_documents_in_that_source(_reset):
     client = _docs_client()
+    checked: list[str] = []
     removed = sl.reconcile_source_documents(
         client,
-        SimpleNamespace(source_deletion_propagation_enabled=True),
+        _LIVE,
         org_id=ORG,
         source_id="s1",
         external_id_prefix="notion:page:",
         seen_external_ids={"notion:page:p1"},
+        is_gone=lambda ext: checked.append(ext) or True,
+        sweep_complete=True,
     )
-    assert removed == 1
+    assert removed == 1 and checked == ["notion:page:p2"]
     assert sorted(r["id"] for r in client.tables["rag_documents"]) == ["d1", "d3", "d4"]
+    assert [a["action"] for a in _reset] == ["source.documents_removed"]
+
+
+def test_reconcile_keeps_unseen_documents_the_provider_says_still_exist():
+    client = _docs_client()
+    removed = sl.reconcile_source_documents(
+        client,
+        _LIVE,
+        org_id=ORG,
+        source_id="s1",
+        external_id_prefix="notion:page:",
+        seen_external_ids=set(),
+        is_gone=lambda ext: False,
+        sweep_complete=True,
+    )
+    assert removed == 0 and len(client.tables["rag_documents"]) == 4
 
 
 def test_reconcile_off_by_default():
     client = _docs_client()
     removed = sl.reconcile_source_documents(
-        client, SimpleNamespace(), org_id=ORG, source_id="s1", external_id_prefix="notion:page:", seen_external_ids=set()
+        client,
+        SimpleNamespace(),
+        org_id=ORG,
+        source_id="s1",
+        external_id_prefix="notion:page:",
+        seen_external_ids=set(),
+        is_gone=lambda ext: True,
+        sweep_complete=True,
     )
     assert removed == 0 and len(client.tables["rag_documents"]) == 4
 
@@ -550,9 +588,12 @@ async def test_disconnect_revokes_before_tokens_are_dropped(monkeypatch):
         "revoke_on_disconnect",
         lambda *a, **k: order.append("revoke") or pr.RevokeOutcome("revoked", "hubspot"),
     )
-    monkeypatch.setattr(
-        "app.connectors.platform.clear_connector_oauth_tokens", lambda *a: order.append("clear")
-    )
+    def clear_tokens(_client, connector_id, *, org_id):
+        assert str(connector_id) == str(cid)
+        assert org_id == ORG
+        order.append("clear")
+
+    monkeypatch.setattr("app.connectors.platform.clear_connector_oauth_tokens", clear_tokens)
     settings = SimpleNamespace(supabase_url="https://example.supabase.co", supabase_service_role_key="service")
     out = await _delete_connector_impl(cid, ConnectorDeleteRequest(confirmName="desk"), ({"user_id": "u1"}, ORG), settings)
     assert out == {"success": True}

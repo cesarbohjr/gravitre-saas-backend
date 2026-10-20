@@ -16,6 +16,18 @@ import { AI_RUNTIME_STATE_COPY, type AiRuntimeState } from "@/lib/gravitre-ai-ru
 /** States that describe a settled turn worth inspecting. Live states change too fast to read. */
 const INSPECTABLE: ReadonlySet<AiRuntimeState> = new Set(["completed", "failed", "partial", "needs_approval", "blocked"])
 
+const ACTION_LABELS: Record<string, string> = {
+  create_assignment: "Create Gravitre assignment", create_agent: "Create agent",
+  create_workflow: "Create draft workflow", execute_workflow: "Run workflow",
+  run_agent_task: "Run agent task", connector_orchestration: "Multi-step plan",
+  connector_action: "Connected-app action",
+}
+const STATUS_LABELS: Record<string, string> = {
+  awaiting_plan_confirm: "Waiting for plan approval", awaiting_step_confirm: "Waiting for step approval",
+  awaiting_confirm: "Waiting for approval", collecting: "Needs more detail", executing: "Running",
+  completed: "Completed", cancelled: "Cancelled", failed: "Failed",
+}
+
 export function runtimeInspectorKind(state: AiRuntimeState): GravitreInspectorKind {
   if (state === "failed") return "error"
   if (state === "needs_approval" || state === "blocked") return "approval"
@@ -70,9 +82,9 @@ export function runtimeInspectorFields({
     : []
   const task = pendingTask
     ? present([
-        { label: "Action", value: pendingTask.params?.label ?? pendingTask.params?.invoke_action ?? pendingTask.type },
-        { label: "Integration", value: pendingTask.params?.integration },
-        { label: "Status", value: pendingTask.status },
+        { label: "Action", value: pendingTask.params?.label ?? ACTION_LABELS[pendingTask.type ?? ""] ?? "Requested action" },
+        { label: "Integration", value: pendingTask.params?.integration === "platform" ? "Gravitre" : pendingTask.params?.integration },
+        { label: "Status", value: STATUS_LABELS[pendingTask.status ?? ""] ?? pendingTask.status?.replaceAll("_", " ") },
         { label: "Risk", value: pendingTask.params?.risk_level },
         { label: "Reason", value: pendingTask.params?.approval_reason },
         { label: "Approval", value: pendingTask.params?.approval_id, mono: true },

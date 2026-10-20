@@ -43,11 +43,13 @@ class _FakeQuery:
         self._is_update = False
         self._payload = None
         self._in_ids = None
+        self._filters = []
 
     def select(self, *a, **k):
         return self
 
     def eq(self, *a, **k):
+        self._filters.append((a[0], a[1]))
         return self
 
     def is_(self, *a, **k):
@@ -69,13 +71,16 @@ class _FakeQuery:
         if self._is_update:
             self.client.updates.append((self.table, self._payload, self._in_ids))
             return _FakeResp([])
-        return _FakeResp(list(self.client.data.get(self.table, [])))
+        self.client.select_filters.append((self.table, list(self._filters)))
+        rows = list(self.client.data.get(self.table, []))
+        return _FakeResp([row for row in rows if all(col not in row or row[col] == value for col, value in self._filters)])
 
 
 class _FakeClient:
     def __init__(self, data):
         self.data = data
         self.updates: list = []
+        self.select_filters: list = []
 
     def table(self, name):
         return _FakeQuery(self, name)
@@ -117,6 +122,24 @@ def test_report_usage_reports_and_marks_rows(monkeypatch):
     # rows marked reported
     assert client.updates and client.updates[0][0] == "usage_tracking"
     assert client.updates[0][2] == ["u1", "u2"]
+
+
+def test_stripe_ai_usage_excludes_nonproduction_ledger_rows(monkeypatch):
+    create = MagicMock()
+    monkeypatch.setattr(stripe.billing.MeterEvent, "create", create)
+    client = _FakeClient({
+        "usage_tracking": [
+            {"id": "prod", "environment": "production", "quantity": 4},
+            {"id": "stage", "environment": "staging", "quantity": 90},
+        ],
+        "subscriptions": [{"stripe_customer_id": "cus_123"}],
+    })
+    result = report_usage_to_stripe("org-1", PERIOD_START, PERIOD_END, _settings(), client=client)
+    assert result["credits"] == 4
+    assert result["reported_rows"] == 1
+    assert client.updates[0][2] == ["prod"]
+    assert ("environment", "production") in client.select_filters[0][1]
+    assert create.call_args.kwargs["payload"]["value"] == "4"
 
 
 def test_dry_run_does_not_call_stripe(monkeypatch):

@@ -3,6 +3,7 @@
 import type { ReactNode } from "react"
 import { PAGE_FRAME } from "@/lib/design-system"
 import { useState } from "react"
+import Link from "next/link"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
@@ -140,6 +141,12 @@ export default function AdminIntelligencePage() {
             </Button>
           }
         />
+
+        <div className="flex justify-end">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/admin/commercial">Commercial accounts and founder offers</Link>
+          </Button>
+        </div>
 
         {error ? (
           <ErrorState

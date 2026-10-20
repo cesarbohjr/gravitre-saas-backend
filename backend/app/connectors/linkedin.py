@@ -169,10 +169,12 @@ def load_linkedin_access_token(
     client: Any,
     connector_id: str,
     settings: Settings,
+    *,
+    org_id: str,
 ) -> str | None:
     if not (settings.connector_secrets_encryption_key or "").strip():
         return None
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if not tokens:
         return None
     token = str(tokens.get("access_token") or "").strip()
