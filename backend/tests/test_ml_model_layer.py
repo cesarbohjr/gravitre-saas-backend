@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import inspect
+from unittest.mock import patch
 
 import pytest
 
@@ -41,9 +42,26 @@ def test_all_14_model_types_in_catalog():
 @pytest.mark.asyncio
 async def test_planned_models_return_structured_response():
     analyzer = CausalImpactAnalyzer()
-    result = await analyzer.predict_structured(org_id="org-1", metric_name="deal_amount")
+    with patch.object(analyzer, "_load_pairs", return_value=[]) as load:
+        result = await analyzer.predict_structured(org_id="org-1", metric_name="deal_amount")
     assert result["status"] == "not_available"
-    assert "observations" in result["reason"].lower() or "pre" in result["reason"].lower()
+    assert result["reason"] == "insufficient_measured_pairs"
+    assert result["data_gate"] == {"current": 0, "required": 30, "met": False}
+    assert result["advisory_only"] is True
+    assert "estimated_effect" not in result
+    assert load.call_args.args[:2] == ("org-1", "deal_amount")
+
+
+@pytest.mark.asyncio
+async def test_measurement_read_failure_is_not_mistaken_for_insufficient_data():
+    analyzer = CausalImpactAnalyzer()
+    with patch.object(analyzer, "_load_pairs", side_effect=RuntimeError("measurement store unavailable")):
+        result = await analyzer.predict_structured(org_id="org-1", metric_name="deal_amount")
+    assert result["status"] == "not_available"
+    assert result["reason"] == "measurement_read_failed"
+    assert result["advisory_only"] is True
+    assert "data_gate" not in result
+    assert "estimated_effect" not in result
 
 
 @pytest.mark.asyncio
