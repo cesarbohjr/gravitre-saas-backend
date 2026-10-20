@@ -3403,19 +3403,6 @@ class AgentIntelligence:
                 }
             from app.services.canonical_cognitive_resolution import should_skip_unified_live_for_compiled_read
 
-            if should_skip_unified_live_for_compiled_read(
-                task_text,
-                task_state if isinstance(task_state, dict) else _canonical_task_state,
-                list(connected_early or []),
-            ):
-                router_enrichments = {}
-            else:
-                router_enrichments = await chat_facade.run_router_enrichments(
-                    org_id,
-                    task_text,
-                    pipeline_classification,
-                )
-            _mark("router_enrichments")
             _boot_cognitive_trace(
                 task_state if isinstance(task_state, dict) else _canonical_task_state
             )
@@ -3504,11 +3491,23 @@ class AgentIntelligence:
         # Carry the same closed-set perception result into LIVE and speech.
         _adaptation = str(sentiment.get("recommended_adaptation") or "none")
         pipeline_classification["sentiment_adaptation"] = _adaptation
+        router_enrichments = await chat_facade.run_router_enrichments(
+            org_id, task_text, pipeline_classification,
+            context={"understanding": understanding, "sentiment": sentiment,
+                     "defer_optional": bool(spoken_lite_path or _compiled_read_ingress)},
+        )
+        pipeline_classification["intelligence_context"] = router_enrichments
+        _mark("router_enrichments")
         routing_sse = {**routing_sse, "conversationalAdaptation": _adaptation}
+        routing_sse["intelligenceCapabilities"] = {
+            key: value.get("status") for key, value in
+            (router_enrichments.get("capabilities") or {}).items()
+        }
         if spoken_mode:
             yield sse_intelligence_metadata(
                 message_id=message_id, confidence=None, answer_explanation=None,
-                routing={"conversationalAdaptation": _adaptation},
+                routing={"conversationalAdaptation": _adaptation,
+                         "intelligenceCapabilities": routing_sse["intelligenceCapabilities"]},
             )
 
         # Complexity routing Phase 1 — post-classification risk floor (escalate-only).
@@ -3528,6 +3527,7 @@ class AgentIntelligence:
                 "routingTier": routing_control.tier,
                 "maxToolRounds": routing_control.max_iterations,
                 "complexityRiskFloor": True,
+                "intelligenceCapabilities": routing_sse.get("intelligenceCapabilities", {}),
             }
 
         if spoken_lite_path and isinstance(early_state, dict):
@@ -3766,6 +3766,7 @@ class AgentIntelligence:
                 "maxToolRounds": routing_control.max_iterations,
                 "consequentialEscalation": True,
                 "spokenConsequentialEscalation": bool(spoken_mode),
+                "intelligenceCapabilities": routing_sse.get("intelligenceCapabilities", {}),
             }
         reasoning_depth = "full"
         if spoken_mode:
@@ -5569,6 +5570,11 @@ class AgentIntelligence:
             ).section,
         )
         _mark("system_prompt_built")
+        from app.services.intelligence_router import intelligence_context_block
+
+        _intelligence_block = intelligence_context_block(router_enrichments)
+        if _intelligence_block:
+            system_prompt += "\n\n" + _intelligence_block
         if isinstance(task_state, dict) and task_state.get("honest_pending_auth_prose"):
             system_prompt = (
                 f"{system_prompt}\n\nHONEST SOURCE GAPS:\n"

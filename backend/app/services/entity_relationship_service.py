@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.config import Settings, get_settings
+from app.core.io_pool import run_io
 from app.core.logging import get_logger
 from app.services.entity_relationship_builder import (
     BUSINESS_ENTITY_TYPES,
@@ -37,7 +38,7 @@ async def get_related_entities(
     db = client or get_supabase_client(active_settings)
     limit = max(1, min(int(max_results), 25))
 
-    outgoing = (
+    outgoing_result = await run_io(lambda: (
         db.table("org_entity_relationships")
         .select("*")
         .eq("org_id", org_id)
@@ -45,10 +46,9 @@ async def get_related_entities(
         .eq("source_entity_id", entity_id)
         .is_("archived_at", "null")
         .execute()
-        .data
-        or []
-    )
-    incoming = (
+    ))
+    outgoing = outgoing_result.data or []
+    incoming_result = await run_io(lambda: (
         db.table("org_entity_relationships")
         .select("*")
         .eq("org_id", org_id)
@@ -56,9 +56,8 @@ async def get_related_entities(
         .eq("target_entity_id", entity_id)
         .is_("archived_at", "null")
         .execute()
-        .data
-        or []
-    )
+    ))
+    incoming = incoming_result.data or []
 
     from app.services.confidence_honesty import (
         CONFIDENCE_SOURCE_EDGE_HEURISTIC,

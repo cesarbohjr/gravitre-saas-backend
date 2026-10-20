@@ -47,8 +47,9 @@ def test_registry_has_all_required_fields():
 async def test_planned_systems_return_structured_response():
     model = WorldModelScaffold()
     result = await model.predict_structured()
-    assert result["status"] == "not_available"
-    assert result.get("reason") or result.get("scope_note")
+    assert result["status"] == "dormant"
+    assert result["reason"] == "validated_transition_artifact_required"
+    assert "predictions" not in result
     assert result["advisory_only"] is True
 
 
@@ -211,10 +212,13 @@ def test_no_system_executes_write_without_approval():
 
 
 @pytest.mark.asyncio
-async def test_world_model_returns_planned_not_simulation():
+async def test_world_model_refuses_inference_without_validated_artifact():
     model = WorldModelScaffold()
-    preds, _ = await model.predict([])
-    assert preds[0]["status"] == "not_available"
+    with pytest.raises(ValueError, match="No validated transition artifact loaded"):
+        await model.predict([])
+    payload = await model.predict_structured()
+    assert payload["status"] == "dormant"
+    assert "predictions" not in payload
 
 
 @pytest.mark.asyncio

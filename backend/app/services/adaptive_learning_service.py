@@ -6,6 +6,7 @@ from typing import Any
 from uuid import uuid4
 
 from app.config import Settings, get_settings
+from app.core.io_pool import run_io
 from app.core.logging import get_logger
 from app.services.learning_confidence_service import get_learning_confidence_service
 from app.services.learning_strategy_keys import parse_base_segment_key_from_segment
@@ -52,7 +53,7 @@ class AdaptiveLearningService:
 
     async def load_segment_state(self, org_id: str, segment_key: str) -> dict[str, Any]:
         try:
-            rows = (
+            result = await run_io(lambda: (
                 self._client()
                 .table(TABLE)
                 .select("*")
@@ -60,9 +61,8 @@ class AdaptiveLearningService:
                 .eq("segment_key", segment_key)
                 .limit(1)
                 .execute()
-                .data
-                or []
-            )
+            ))
+            rows = result.data or []
             if rows:
                 return rows[0]
         except Exception as exc:  # noqa: BLE001

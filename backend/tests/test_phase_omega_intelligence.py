@@ -248,20 +248,29 @@ async def test_federated_learning_remains_disabled():
 
 
 @pytest.mark.asyncio
-async def test_activation_checklist_auto_checked():
+@pytest.mark.parametrize("artifact_loaded,approved", [(False, False), (False, True), (True, False), (True, True)])
+async def test_activation_checklist_auto_checked(artifact_loaded, approved):
+    """Current #522 contract: loaded artifact AND reviewed consent, not counts."""
     scaffold = WorldModelScaffold()
-    with patch.object(scaffold, "_count_measured_outcomes", new=AsyncMock(return_value=10)):
+    with patch("app.ml.model_catalog.get_org_model_status", AsyncMock(return_value={"artifact_loaded": artifact_loaded})) as status_read, patch(
+        "app.ml.training_consent.training_is_approved", AsyncMock(return_value=approved),
+    ) as consent:
         status = await scaffold.check_activation_status("org-1")
-    assert status["all_prerequisites_met"] is False
-    assert "prerequisites" in status
+    assert status["all_prerequisites_met"] is (artifact_loaded and approved)
+    assert status["artifact_loaded"] is artifact_loaded
+    assert status["training_permission_approved"] is approved
+    assert status["activation_status"] == ("ready_for_inference" if artifact_loaded and approved else "dormant")
+    status_read.assert_awaited_once_with("org-1", "world_model")
+    assert consent.await_args.args[:2] == ("org-1", "world_model")
 
 
 @pytest.mark.asyncio
 async def test_not_available_when_prerequisites_unmet():
-    scaffold = WorldModelScaffold()
-    with patch.object(scaffold, "_count_measured_outcomes", new=AsyncMock(return_value=0)):
-        payload = await scaffold.predict_structured(org_id="org-1")
-    assert payload["status"] == "not_available"
+    payload = await WorldModelScaffold().predict_structured(org_id="org-1")
+    assert payload["status"] == "dormant"
+    assert payload["reason"] == "validated_transition_artifact_required"
+    assert payload["advisory_only"] is True
+    assert "predictions" not in payload
 
 
 @pytest.mark.asyncio
