@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Check isolated-tenant configuration
+      - name: Run isolated authenticated synthetic lifecycle probe\n        env:\n          GRAVITRE_E2E_BEARER_TOKEN: ${{ secrets.GRAVITRE_E2E_BEARER_TOKEN }}\n          ORG_ID: ${{ vars.GRAVITRE_E2E_ORG_ID }}\n        run: |\n          python3 scripts/run-intelligence-isolated-live.py \\\n            --org-id \"$ORG_ID\" \\\n            --allow-synthetic-write \\\n            --out \"$RUNNER_TEMP/intelligence-scenario-probe.json\"\n      - name: Check isolated-tenant configuration
         env:
           ORG_ID: ${{ vars.GRAVITRE_E2E_ORG_ID }}
           EVIDENCE_JSON: ${{ secrets.GRAVITRE_E2E_EVIDENCE_JSON }}
