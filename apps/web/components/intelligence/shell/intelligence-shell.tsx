@@ -1,5 +1,6 @@
 "use client"
 
+import { TrainingPermissionDialog } from "@/components/intelligence/training-permission-dialog"
 import { motion, useReducedMotion } from "framer-motion"
 import {
   IntelligenceHubTabs,
@@ -47,6 +48,7 @@ export function IntelligenceShell({
 
   return (
     <div className={cn("space-y-4", className)}>
+      <TrainingPermissionDialog />
       {chrome === "full" ? (
         <div className="flex flex-col gap-2 border-b border-[color:var(--g-border-subtle)] sm:flex-row sm:items-end sm:justify-between">
           <IntelligenceHubTabs active={activeTab} />

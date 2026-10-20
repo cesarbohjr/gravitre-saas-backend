@@ -449,3 +449,11 @@ async def test_advisory_gives_a_deployed_entity_model_its_features_only_with_fla
             continue
         sent = scorer.predict_structured.await_args.kwargs["customer_features"]
         assert ("obs_sentiment_mean" in sent) is expect_enriched
+
+
+@pytest.fixture(autouse=True)
+def _approved_training_scope_for_artifact_tests():
+    """These tests exercise artifact/promotion behavior after consent is granted."""
+    from unittest.mock import AsyncMock, patch
+    with patch("app.ml.training_consent.training_is_approved", new_callable=AsyncMock, return_value=True):
+        yield

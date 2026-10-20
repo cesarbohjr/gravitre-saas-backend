@@ -57,6 +57,8 @@ CATALOG_MODEL_NAMES = {
     "sla_breach_predictor": "catalog-sla-breach",
     "deal_loss_scorer": "catalog-deal-loss",
     "capacity_forecaster": "catalog-capacity-forecast",
+    "world_model": "catalog-world-model",
+    "agentic_planning": "catalog-agentic-planning",
 }
 
 MIN_QUERY_ROWS = 50
@@ -210,6 +212,12 @@ async def register_trained_artifact_detailed(
     Returns ``{"model_id", "version", "deployed", "reason", "evaluation"}``.
     ``model_id`` is None when the artifact could not be stored.
     """
+    from app.ml.automatic_training import CONSENT_MANAGED_MODELS
+    from app.ml.training_consent import training_is_approved
+    catalog_name = next((key for key, value in CATALOG_MODEL_NAMES.items() if value == name), base_model)
+    if catalog_name in CONSENT_MANAGED_MODELS and not await training_is_approved(org_id, catalog_name, get_settings()):
+        return {"model_id": None, "version": None, "deployed": False,
+                "reason": "training_consent_required", "evaluation": {}}
     registry = get_model_registry()
     existing_models = await registry.list_models(org_id=org_id, model_type=model_type)
     existing = next((model for model in existing_models if model.name == name), None)
@@ -985,28 +993,17 @@ async def train_causal_impact_analyzer(
     structured = await analyzer.predict_structured(org_id=org_id, metric_name="deal_amount", settings=active)
     if structured.get("status") != "ok":
         return {"trained": False, **structured}
-    raw_accuracy = structured.get("confidence")
-    metrics = ModelMetrics(
-        accuracy=float(raw_accuracy) if raw_accuracy is not None else None,
-        custom_metrics={
-            "sample_size": structured.get("sample_size"),
-            "estimated_effect": structured.get("estimated_effect"),
-            "method": structured.get("method"),
-        },
-    )
-    registration = await register_trained_artifact_detailed(
-        org_id,
-        name="catalog-causal-impact",
-        model_type=ModelType.CAUSAL_MODEL,
-        base_model="causal_impact_analyzer",
-        artifact=str(structured).encode("utf-8"),
-        metrics=metrics,
-        description="Org-scoped pre/post causal impact analyzer",
-    )
-    return {**registration_summary(registration), **structured}
+    # An observational estimate is not a trained predictor or held-out accuracy.
+    # Never register a rendered dictionary as a loadable model artifact.
+    return {"trained": False, "reason": "on_demand_observational_estimator", **structured}
+
+
+from app.ml.advanced_training import train_world_model, train_agentic_planning
 
 
 TRAINING_DISPATCH: dict[str, Any] = {
+    "world_model": train_world_model,
+    "agentic_planning": train_agentic_planning,
     "intent_classifier": train_v2_intent_classifier,
     "query_clusterer": train_v3_query_clusterer,
     "memory_promotion_scorer": train_v4_memory_promotion_scorer,
@@ -1035,5 +1032,9 @@ async def train_catalog_model(
     if trainer is None:
         raise ValueError(f"No training pipeline registered for {model_name}")
     active = settings or get_settings()
+    from app.ml.automatic_training import CONSENT_MANAGED_MODELS
+    from app.ml.training_consent import training_is_approved
+    if model_name in CONSENT_MANAGED_MODELS and not await training_is_approved(org_id, model_name, active):
+        return {"model_name": model_name, "org_id": org_id, "trained": False, "reason": "training_consent_required"}
     result = await trainer(org_id, settings=active)
     return {"model_name": model_name, "org_id": org_id, **result}

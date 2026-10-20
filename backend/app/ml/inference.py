@@ -38,7 +38,10 @@ class InferenceService:
             return self._cache[key]
         registry = get_model_registry()
         artifact = await registry.load_model_artifact(model_id=model_id, version=version)
-        if base_model == "success_predictor":
+        from app.ml.model_catalog import GRAVITRE_ML_CATALOG, get_model_instance
+        if base_model in GRAVITRE_ML_CATALOG:
+            runtime = get_model_instance(base_model)
+        elif base_model == "success_predictor":
             runtime = WorkflowSuccessPredictor()
         elif model_type == ModelType.CLASSIFIER:
             runtime = SklearnClassifier()
@@ -69,6 +72,16 @@ class InferenceService:
             raise ValueError(f"Model {model_id} not found")
         if model.org_id != org_id:
             raise ValueError("Model does not belong to organization")
+        from app.config import get_settings
+        from app.ml.automatic_training import CONSENT_MANAGED_MODELS
+        from app.ml.training_consent import training_is_approved
+        from app.ml.intelligence_training import CATALOG_MODEL_NAMES
+        base = next((name for name, registry_name in CATALOG_MODEL_NAMES.items()
+                     if registry_name == getattr(model, "name", None)), getattr(model, "base_model", None))
+        if base in CONSENT_MANAGED_MODELS and not await training_is_approved(org_id, base, get_settings()):
+            raise ValueError("Model training permission is inactive")
+        if base in CONSENT_MANAGED_MODELS and (not model.deployed_version or version is not None and version != model.deployed_version):
+            raise ValueError("A validated deployed model version is required")
         selected_version = version or model.deployed_version or model.current_version
         if not selected_version:
             raise ValueError("No model version available for inference")
