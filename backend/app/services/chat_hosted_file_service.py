@@ -391,11 +391,21 @@ class ChatHostedFileService:
         bucket = (getattr(settings, "chat_artifacts_bucket", None) or "chat-artifacts").strip()
         if not bucket or not data or client is None:
             return None
+        from app.services.byo_storage import put_org_file, resolve_download_url
+
+        org_id = path.split("/", 1)[0]
         try:
-            client.storage.from_(bucket).upload(
-                path,
-                data,
-                file_options={"upsert": "true", "content-type": content_type},
+            # Supabase Storage as before; the org's own bucket only with BYO_STORAGE_ENABLED,
+            # the enterprise entitlement and a verified target (services/byo_storage.py).
+            meta = put_org_file(
+                client,
+                settings,
+                org_id=org_id,
+                logical_bucket=bucket,
+                path=path,
+                data=data,
+                content_type=content_type,
+                purpose="chat_artifact",
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("chat_hosted_upload_failed path=%s error=%s", path, str(exc)[:200])
@@ -403,24 +413,29 @@ class ChatHostedFileService:
 
         download_url: str | None = None
         try:
-            signed = client.storage.from_(bucket).create_signed_url(path, _SIGNED_TTL_SECONDS)
-            if isinstance(signed, dict):
-                download_url = (
-                    signed.get("signedURL")
-                    or signed.get("signedUrl")
-                    or signed.get("signed_url")
-                )
-            elif isinstance(signed, str):
-                download_url = signed
+            if meta.get("storage_location") == "byo":
+                download_url = resolve_download_url(
+                    client,
+                    settings,
+                    org_id=org_id,
+                    logical_bucket=bucket,
+                    path=path,
+                    ttl=_SIGNED_TTL_SECONDS,
+                ).get("url")
+            else:
+                signed = client.storage.from_(bucket).create_signed_url(path, _SIGNED_TTL_SECONDS)
+                if isinstance(signed, dict):
+                    download_url = (
+                        signed.get("signedURL")
+                        or signed.get("signedUrl")
+                        or signed.get("signed_url")
+                    )
+                elif isinstance(signed, str):
+                    download_url = signed
         except Exception as exc:  # noqa: BLE001
             logger.warning("chat_hosted_sign_failed path=%s error=%s", path, str(exc)[:200])
 
-        return {
-            "storage_bucket": bucket,
-            "storage_path": path,
-            "storage_bytes": len(data),
-            "download_url": download_url,
-        }
+        return {**meta, "download_url": download_url}
 
 
 _service: ChatHostedFileService | None = None

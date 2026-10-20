@@ -9,9 +9,9 @@ import { apiFetch, fetcher } from "@/lib/fetcher"
 import { extractApiErrorMessage } from "@/lib/api-error-message"
 import type { IntegrationHealthGrade } from "@/types/api"
 
-export type EnterpriseSectionId = "command-center" | "workforce" | "cost" | "agent-roi"
+export type EnterpriseSectionId = "command-center" | "workforce" | "cost" | "agent-roi" | "file-storage"
 
-export const ENTERPRISE_SECTION_IDS: EnterpriseSectionId[] = ["command-center", "workforce", "cost", "agent-roi"]
+export const ENTERPRISE_SECTION_IDS: EnterpriseSectionId[] = ["command-center", "workforce", "cost", "agent-roi", "file-storage"]
 
 /**
  * Sections that moved out of Enterprise, by their old ?section= id and old
@@ -33,6 +33,7 @@ const LEGACY_TABS: Record<string, EnterpriseSectionId> = {
   workforce: "workforce",
   cost: "cost",
   roi: "agent-roi",
+  files: "file-storage",
 }
 
 export function resolveEnterpriseSection(section: string | null, legacyTab: string | null): EnterpriseSectionId {
