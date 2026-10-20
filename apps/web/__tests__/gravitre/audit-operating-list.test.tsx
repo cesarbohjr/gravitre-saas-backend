@@ -3,9 +3,9 @@ import React, { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import { AuditTrail as AuditPage_ } from "@/components/settings/audit-trail"
+import type { AuditListPayload, AuditSummaryPayload } from "@/lib/settings-api/audit"
 // Audit trail moved to Trust & Safety hub. Tests use the component directly (standalone mode).
 const AuditPage = () => <AuditPage_ standalone />
-import type { AuditListPayload, AuditSummaryPayload } from "@/lib/settings-api/audit"
 
 const mocks = vi.hoisted(() => ({
   list: {

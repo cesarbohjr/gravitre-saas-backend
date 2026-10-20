@@ -8,7 +8,7 @@ export const PRIVATE_ROUTE_ROOTS = [
   "chat", "connectors", "environments", "goals", "home", "intelligence",
   "lite", "marketplace", "metrics", "models", "multi-agent-run",
   "notifications", "objectives", "platform", "plays", "runs", "schedules",
-  "search", "settings", "sources", "training", "workflows",
+  "search", "settings", "sources", "training", "trust-safety", "workflows",
 ] as const
 
 export const PUBLIC_MARKETING_ROUTE_ROOTS = [
