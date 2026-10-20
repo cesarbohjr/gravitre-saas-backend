@@ -104,6 +104,9 @@ test("customer completes real sandbox checkout and signed webhook persists subsc
   evidence.checkout = persisted
   await expect.poll(async () => (await api(page, "/api/billing/status")).body.billingStatus, { timeout: 45_000 }).toBe("trialing")
   await page.reload()
+  // The helper is installed again by the reloaded document; calling before it
+  // hydrates races the reload.
+  await page.waitForFunction(() => Boolean(window.__gravitreApiFetch))
   const invoices = await api(page, "/api/billing/invoices")
   expect(invoices.status).toBe(200)
   expect(invoices.body.invoices).toEqual(expect.arrayContaining([expect.objectContaining({ id: persisted.invoice_id, status: "paid", amount_cents: 0 })]))
