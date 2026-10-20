@@ -38,6 +38,18 @@ AUDIT_METRIC_B = "voice.slo.metric_b"
 # first-audio critical path (that import was a measured 1s+ stall).
 EARLY_PERCEIVE_DRAFT = ""
 
+# Honest first words for a plan-without-execute operator turn. Must stay identical
+# to cognitive_loop_controller.speakable_loop_stage("PLAN") on a plan-hold turn:
+# the voice turn speaks it before the kernel runs (Metric A) and drops the
+# kernel's own copy when it arrives. True from the first millisecond: the user
+# withheld execution, so nothing runs and the reply is the plan.
+EARLY_PLAN_HOLD_DRAFT = "I'll show the plan first. Nothing has run yet."
+
+
+def standing_spoken_drafts() -> tuple[str, ...]:
+    """Fixed sentences spoken ahead of the kernel; safe to pre-synthesize and cache."""
+    return tuple(d for d in (EARLY_PERCEIVE_DRAFT, EARLY_PLAN_HOLD_DRAFT) if (d or "").strip())
+
 # Do not use these as a blended "voice latency" headline.
 INTERNAL_DUPLEX_E2E_ACTION = "voice.turn_latency.e2e"
 

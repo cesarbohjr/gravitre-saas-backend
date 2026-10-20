@@ -40,7 +40,13 @@ jobs:
         run: pip install -r backend/requirements.txt httpx PyJWT python-dotenv supabase
 
       # Fails the job if any turn did not stream to voice.turn.complete, since
-      # then the server did not write that turn's samples.
+      # then the server did not write that turn's samples. Also runs two
+      # judged cases on the same org: a refusal-style (guard-withheld) plan-hold
+      # prompt that must never hear the cached plan acknowledgement, and a
+      # plan-hold turn interrupted through POST /api/voice/session/cancel that
+      # must be observed cancelled. Every turn fails the job if an early
+      # acknowledgement precedes the safety verdict or the plan sentence is
+      # spoken twice.
       - name: Generate synthetic samples (live HTTP Talk on isolated smoke org)
         env:
           LIVE_API_BASE: https://api.gravitre.app
