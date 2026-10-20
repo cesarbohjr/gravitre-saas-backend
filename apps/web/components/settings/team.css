@@ -1,0 +1,19 @@
+/* Team members (Settings redesign p13). Scoped under .gv-set, kit tokens only. */
+.gv-set .team-invite { padding: 18px 20px; border-color: var(--gs-green-ring); }
+.gv-set .team-invite-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.gv-set .team-invite-row .gs-field:first-child { flex: 2 1 260px; }
+.gv-set .team-invite-row .gs-field:nth-child(2) { flex: 1 1 150px; }
+.gv-set .team-invite-opts { margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--gs-ink-3); }
+.gv-set .team-tbl { --cols: minmax(0, 1fr) 130px 120px 150px; }
+.gv-set .team-member { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.gv-set .team-member > div { min-width: 0; }
+.gv-set .team-actions { display: flex; justify-content: flex-end; gap: 4px; align-items: center; }
+.gv-set .team-promo { padding: 20px; display: flex; flex-wrap: wrap; gap: 24px; align-items: center; }
+.gv-set .team-promo .gs-art { flex: 0 1 260px; }
+.gv-set .team-promo > div:last-child { flex: 1 1 300px; min-width: 0; }
+.gv-set .team-promo h3 { margin: 6px 0 0; font-size: 18px; font-weight: 600; }
+.gv-set .team-promo p { margin: 6px 0 0; font-size: 14px; color: var(--gs-ink-3); line-height: 1.5; }
+@media (max-width: 720px) {
+  .gv-set .team-tbl .gs-row .gs-td.team-actions-cell { grid-column: 1 / -1; }
+  .gv-set .team-actions { justify-content: flex-start; }
+}

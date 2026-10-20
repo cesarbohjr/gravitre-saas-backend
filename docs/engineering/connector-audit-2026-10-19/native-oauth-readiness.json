@@ -1,0 +1,310 @@
+[
+  {
+    "vendor": "airtable",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/airtable/callback"
+  },
+  {
+    "vendor": "apollo",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/apollo/callback"
+  },
+  {
+    "vendor": "asana",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/asana/callback"
+  },
+  {
+    "vendor": "canva",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/canva/callback"
+  },
+  {
+    "vendor": "clickup",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app"
+  },
+  {
+    "vendor": "clio",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/clio/callback"
+  },
+  {
+    "vendor": "confluence",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/confluence/callback"
+  },
+  {
+    "vendor": "constant_contact",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/constant_contact/callback"
+  },
+  {
+    "vendor": "figma",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/figma/callback"
+  },
+  {
+    "vendor": "freshdesk",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/freshdesk/callback"
+  },
+  {
+    "vendor": "github",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/github/callback"
+  },
+  {
+    "vendor": "gitlab",
+    "http_status": 200,
+    "configured": false,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/gitlab/callback"
+  },
+  {
+    "vendor": "gmail",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/google/callback"
+  },
+  {
+    "vendor": "google_ads",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/google/callback"
+  },
+  {
+    "vendor": "google_analytics",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/google/callback"
+  },
+  {
+    "vendor": "google_calendar",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/google/callback"
+  },
+  {
+    "vendor": "google_docs",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/google/callback"
+  },
+  {
+    "vendor": "google_drive",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/google/callback"
+  },
+  {
+    "vendor": "google_search_console",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/google/callback"
+  },
+  {
+    "vendor": "google_sheets",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/google/callback"
+  },
+  {
+    "vendor": "gusto",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/gusto/callback"
+  },
+  {
+    "vendor": "hootsuite",
+    "http_status": 200,
+    "configured": false,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/hootsuite/callback"
+  },
+  {
+    "vendor": "hubspot",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/hubspot/callback"
+  },
+  {
+    "vendor": "intercom",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/intercom/callback"
+  },
+  {
+    "vendor": "jira",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/jira/callback"
+  },
+  {
+    "vendor": "linear",
+    "http_status": 200,
+    "configured": false,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/linear/callback"
+  },
+  {
+    "vendor": "mailchimp",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/mailchimp/callback"
+  },
+  {
+    "vendor": "marketo",
+    "http_status": 200,
+    "configured": false,
+    "encryptionConfigured": true,
+    "redirectUri": null
+  },
+  {
+    "vendor": "meta_marketing",
+    "http_status": 200,
+    "configured": false,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/meta_marketing/callback"
+  },
+  {
+    "vendor": "microsoft365",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/microsoft365/callback"
+  },
+  {
+    "vendor": "monday",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/monday/callback"
+  },
+  {
+    "vendor": "netsuite",
+    "http_status": 200,
+    "configured": false,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/netsuite/callback"
+  },
+  {
+    "vendor": "notion",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/notion/callback"
+  },
+  {
+    "vendor": "pagerduty",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/auth/callback/pagerduty"
+  },
+  {
+    "vendor": "paypal",
+    "http_status": 200,
+    "configured": false,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/paypal/callback"
+  },
+  {
+    "vendor": "pipedrive",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/pipedrive/callback"
+  },
+  {
+    "vendor": "quickbooks",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/quickbooks/callback"
+  },
+  {
+    "vendor": "salesforce",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/salesforce/callback"
+  },
+  {
+    "vendor": "shopify",
+    "http_status": 200,
+    "configured": false,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/shopify/callback"
+  },
+  {
+    "vendor": "slack",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/slack/callback"
+  },
+  {
+    "vendor": "workday",
+    "http_status": 200,
+    "configured": false,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/workday/callback"
+  },
+  {
+    "vendor": "xero",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/xero/callback"
+  },
+  {
+    "vendor": "zapier",
+    "http_status": 200,
+    "configured": false,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/zapier/callback"
+  },
+  {
+    "vendor": "zendesk",
+    "http_status": 200,
+    "configured": true,
+    "encryptionConfigured": true,
+    "redirectUri": "https://gravitre.app/api/connectors/oauth/zendesk/callback"
+  }
+]

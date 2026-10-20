@@ -43,8 +43,9 @@ def resolve_bamboohr_credentials(
     subdomain = (config.get("subdomain") or config.get("company_domain") or "").strip()
     if not subdomain:
         raise BambooHRAPIError("BambooHR subdomain missing on connector config")
-    api_key = get_decrypted_secret(client, cid, "api_key", settings) or get_decrypted_secret(
-        client, cid, "token", settings
+    api_key = get_decrypted_secret(client, cid, "api_key", settings, org_id=org_id) or get_decrypted_secret(
+        client, cid, "token", settings,
+        org_id=org_id,
     )
     if not api_key:
         raise BambooHRAPIError("BambooHR API key missing", status_code=401)

@@ -25,6 +25,7 @@ class ToolCompletionResult:
     # report it leave this None, which is distinct from a measured 0 (prefix
     # present but not reused).
     cached_tokens: int | None = None
+    cache_write_tokens: int = 0
     raw_response: Any = field(default=None, repr=False)
 
 
@@ -53,7 +54,7 @@ def make_openai_compatible_response(result: ToolCompletionResult) -> Any:
     usage = SimpleNamespace(
         prompt_tokens=result.prompt_tokens,
         completion_tokens=result.completion_tokens,
-        prompt_tokens_details=SimpleNamespace(cached_tokens=result.cached_tokens),
+        prompt_tokens_details=SimpleNamespace(cached_tokens=result.cached_tokens, cache_write_tokens=result.cache_write_tokens),
     )
     return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=usage)
 

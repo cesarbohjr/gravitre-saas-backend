@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseRouteClient, resolveOrgId } from "@/lib/supabase/server"
 import { ensureDemoDataForOrg } from "@/lib/supabase/demo-bootstrap"
-import { proxyToFastApi } from "@/lib/backend-proxy"
+import { callFastApiAsCaller, proxyToFastApi } from "@/lib/backend-proxy"
 import { camelToSnake, snakeToCamel } from "@/lib/supabase/transforms"
 
 function normalizeUserRole(role: unknown): "owner" | "admin" | "member" | "viewer" {
@@ -157,6 +157,53 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "No updatable fields provided" }, { status: 400 })
     }
 
+    // Role changes are an admin action. The membership row is the source of
+    // truth for permissions, so it is changed by the backend (admin check, last
+    // admin guard, audit) before the display copy in public.users is touched.
+    // Members used to be able to promote themselves here.
+    if (updates.role !== undefined) {
+      const { data: authData } = await supabase.auth.getUser()
+      const callerId = authData.user?.id
+      if (!callerId) {
+        return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+      }
+      const { data: callerMembership } = await supabase
+        .from("organization_members")
+        .select("role")
+        .eq("org_id", orgId)
+        .eq("user_id", callerId)
+        .maybeSingle()
+      const callerRole = String(callerMembership?.role ?? "").toLowerCase()
+      if (callerRole !== "owner" && callerRole !== "admin") {
+        return NextResponse.json({ error: "Only an org admin can change roles" }, { status: 403 })
+      }
+      if (updates.role === "owner") {
+        return NextResponse.json({ error: "Ownership cannot be assigned here" }, { status: 400 })
+      }
+
+      let target = supabase.from("users").select("auth_user_id").eq("org_id", orgId)
+      target = id ? target.eq("id", id) : target.eq("email", email ?? "")
+      const { data: targetUser } = await target.maybeSingle()
+      if (!targetUser?.auth_user_id) {
+        return NextResponse.json({ error: "Member not found" }, { status: 404 })
+      }
+      // Keyed by the member's auth user id: RLS lets a caller read only their
+      // own membership row, so the web app cannot look up someone else's
+      // membership id. The backend resolves it within the org.
+      const roleChange = await callFastApiAsCaller(
+        request,
+        `/api/organizations/${encodeURIComponent(orgId)}/members/${encodeURIComponent(String(targetUser.auth_user_id))}`,
+        "PATCH",
+        { role: updates.role },
+        orgId,
+      )
+      if (!roleChange.ok) {
+        return NextResponse.json(roleChange.payload ?? { error: "Role change failed" }, {
+          status: roleChange.status,
+        })
+      }
+    }
+
     let query = supabase
       .from("users")
       .update(updates)
@@ -170,16 +217,6 @@ export async function PATCH(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    // Keep organization_members.role in sync when role changes — that is the
-    // membership source of truth used by GET /api/settings/team.
-    if (updates.role !== undefined && data?.auth_user_id) {
-      await supabase
-        .from("organization_members")
-        .update({ role: updates.role })
-        .eq("org_id", orgId)
-        .eq("user_id", data.auth_user_id)
     }
 
     return NextResponse.json({ member: snakeToCamel<Record<string, unknown>>(data) })
@@ -206,6 +243,50 @@ export async function DELETE(request: NextRequest) {
 
     if (!id && !email) {
       return NextResponse.json({ error: "id or email is required" }, { status: 400 })
+    }
+
+    // Removing someone is an admin action. Members used to be able to delete
+    // any teammate's row here. The membership is removed by the backend
+    // (owner/admin check, owner protection, keep-an-owner rule, audit) before
+    // the display copy in public.users is touched.
+    const { data: authData } = await supabase.auth.getUser()
+    const callerId = authData.user?.id
+    if (!callerId) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    }
+    const { data: callerMembership } = await supabase
+      .from("organization_members")
+      .select("role")
+      .eq("org_id", orgId)
+      .eq("user_id", callerId)
+      .maybeSingle()
+    const callerRole = String(callerMembership?.role ?? "").toLowerCase()
+    if (callerRole !== "owner" && callerRole !== "admin") {
+      return NextResponse.json({ error: "Only an org admin can remove members" }, { status: 403 })
+    }
+
+    let target = supabase.from("users").select("auth_user_id").eq("org_id", orgId)
+    target = id ? target.eq("id", id) : target.eq("email", email ?? "")
+    const { data: targetUser } = await target.maybeSingle()
+    if (!targetUser) {
+      return NextResponse.json({ error: "Member not found" }, { status: 404 })
+    }
+    if (targetUser.auth_user_id) {
+      // Keyed by auth user id (the caller cannot read others' membership rows).
+      const removal = await callFastApiAsCaller(
+        request,
+        `/api/organizations/${encodeURIComponent(orgId)}/members/${encodeURIComponent(String(targetUser.auth_user_id))}`,
+        "DELETE",
+        {},
+        orgId,
+      )
+      // 404: no membership in this org (e.g. an invited user row); the display
+      // row can still be removed. Any other refusal stops here.
+      if (!removal.ok && removal.status !== 404) {
+        return NextResponse.json(removal.payload ?? { error: "Member removal failed" }, {
+          status: removal.status,
+        })
+      }
     }
 
     let query = supabase.from("users").delete().eq("org_id", orgId)

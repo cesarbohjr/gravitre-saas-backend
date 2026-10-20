@@ -1,6 +1,8 @@
 "use client"
 
 import Link from "next/link"
+import { Linkedin, Instagram, AtSign } from "lucide-react"
+import { GRAVITRE_SOCIAL_PROFILES } from "@/lib/company-social-profiles"
 import { Button } from "./button"
 import { Container } from "./container"
 import { Logo } from "./logo"
@@ -69,6 +71,29 @@ function FooterColumn({
   )
 }
 
+function SocialProfiles() {
+  return (
+    <nav className="flex flex-wrap items-center gap-3" aria-label="Gravitre social media">
+      {GRAVITRE_SOCIAL_PROFILES.map((profile) => (
+        <a
+          key={profile.name}
+          href={profile.url}
+          target="_blank"
+          rel="noopener noreferrer me"
+          aria-label={`Gravitre on ${profile.name}`}
+          title={`Gravitre on ${profile.name}`}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-divide text-charcoal-700 transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal-700"
+        >
+          {profile.name === "LinkedIn" ? <Linkedin aria-hidden="true" size={18} /> :
+           profile.name === "Instagram" ? <Instagram aria-hidden="true" size={18} /> :
+           profile.name === "Threads" ? <AtSign aria-hidden="true" size={18} /> :
+           <span aria-hidden="true" className="text-base font-semibold">𝕏</span>}
+        </a>
+      ))}
+    </nav>
+  )
+}
+
 function SlimFooter() {
   return (
     <footer
@@ -77,7 +102,7 @@ function SlimFooter() {
     >
       <Container className="relative">
         <div className="flex flex-col items-center justify-between gap-4 px-4 py-8 md:flex-row">
-          <Logo />
+          <div className="flex flex-col items-center gap-3 md:items-start"><Logo /><SocialProfiles /></div>
           <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2" aria-label="Legal">
             {legal.map((item) => (
               <Link
@@ -123,6 +148,7 @@ export function Footer({ variant = "full" }: { variant?: "full" | "slim" }) {
             <SubHeading as="p" className="mt-4 max-w-sm text-left">
               One AI brain for your entire business.
             </SubHeading>
+            <div className="mt-4"><SocialProfiles /></div>
             <Button as={Link} href="/get-started" className="mt-5">
               Put Gravitre to work
             </Button>

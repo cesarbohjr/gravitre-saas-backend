@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+import uuid
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -9,7 +10,7 @@ from pydantic import BaseModel, Field
 from app.config import get_settings
 from app.core.logging import get_logger
 from app.rag.embedding import EmbeddingDimensionMismatchError, embed_with_failover
-from app.rag.ingest import chunk_document_text, replace_chunks_and_embeddings, upsert_document
+from app.rag.ingest import chunk_document_text, get_source, replace_chunks_and_embeddings, upsert_document
 from app.rag.department import resolve_department_id_for_agent
 from app.rag.hybrid_rerank import (
     bm25_rank_rows,
@@ -40,6 +41,22 @@ CHUNK_OVERLAP = 200
 EMBEDDING_MODEL = "text-embedding-3-small"
 
 
+class IngestionDisabledError(RuntimeError):
+    """DISABLE_INGESTION is on."""
+
+
+class SourceNotFoundError(LookupError):
+    """The source does not belong to the caller's org (or environment)."""
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        uuid.UUID(str(value))
+    except (ValueError, TypeError, AttributeError):
+        return False
+    return True
+
+
 class Document(BaseModel):
     source_id: str
     external_id: str | None = None
@@ -68,7 +85,20 @@ class RAGService:
         self.model_router = get_model_router()
 
     async def ingest_document(self, org_id: str, document: Document) -> list[Chunk]:
+        """Index ``document`` synchronously into ``org_id``.
+
+        Raises IngestionDisabledError under DISABLE_INGESTION, and SourceNotFoundError
+        unless ``source_id`` is a source of this org in ``document.environment`` (the
+        service-role client bypasses RLS, so the org check has to be explicit).
+        """
+        if getattr(self.settings, "disable_ingestion", False) is True:
+            raise IngestionDisabledError("Ingestion is disabled")
+        if not _is_uuid(document.source_id):
+            # A malformed id cannot name a source of this org; answer like any other miss.
+            raise SourceNotFoundError("Source not found")
         client = get_supabase_client(self.settings)
+        if not get_source(client, org_id, document.source_id, environment_name=document.environment):
+            raise SourceNotFoundError("Source not found")
         doc = upsert_document(
             client=client,
             org_id=org_id,
@@ -119,7 +149,12 @@ class RAGService:
         top_k = top_k or self.settings.rag_top_k or 8
         client = get_supabase_client(self.settings)
         cache = get_cache_service(self.settings)
-        cache_parts = retrieval_cache_parts(org_id, query, scope, top_k, filters)
+        from app.services.memory_source_liveness import epoch_parts
+
+        # epoch_parts is empty unless a source of the org was revoked (lineage on).
+        cache_parts = retrieval_cache_parts(org_id, query, scope, top_k, filters) + epoch_parts(
+            org_id, self.settings
+        )
         cached_payload = cache.get_sync("retrieval", *cache_parts)
         if isinstance(cached_payload, dict) and cached_payload.get("rows") is not None:
             await cache.record_hit("retrieval")

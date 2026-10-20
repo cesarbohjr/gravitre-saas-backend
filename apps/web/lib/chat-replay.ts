@@ -69,7 +69,6 @@ export function applyChatReplay(messages: UIMessage[], replay: ChatReplayPayload
   const text = (replay.assistant_text || "").trim()
   if (!text || looksLikeToolJson(text)) return messages
   const last = messages[messages.length - 1]
-  if (last?.role === "assistant" && uiMessageText(last).trim()) return messages
   // The replay is the server's last completed turn. After a failed turn that is
   // usually the previous prompt's answer; showing it under the new prompt made
   // Gravitre look like it answered a different question. Only apply a replay
@@ -78,6 +77,13 @@ export function applyChatReplay(messages: UIMessage[], replay: ChatReplayPayload
   const replayPrompt = normalizePrompt(replay.user_text)
   if (!replayPrompt || !lastUser || replayPrompt !== normalizePrompt(uiMessageText(lastUser))) {
     return messages
+  }
+  // A dropped stream can leave non-empty partial prose. Recover only the
+  // identical server message, never replace a different answer to a repeated
+  // prompt (or a regenerated answer) using stale replay data.
+  if (last?.role === "assistant" && uiMessageText(last).trim()) {
+    if (!replay.assistant_message_id || replay.assistant_message_id !== last.id) return messages
+    if (uiMessageText(last).trim() === text) return messages
   }
   const assistant = conversationMessageToUI({
     id: replay.assistant_message_id || replay.event_id || `replay-${Date.now()}`,

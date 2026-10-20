@@ -33,3 +33,9 @@ async def test_mcp_http_factory_does_not_follow_redirects() -> None:
         assert client.follow_redirects is False
     finally:
         await client.aclose()
+
+def test_modern_mcp_client_accepts_restricted_http_injection() -> None:
+    import inspect
+    from mcp.client.streamable_http import streamable_http_client
+
+    assert "http_client" in inspect.signature(streamable_http_client).parameters

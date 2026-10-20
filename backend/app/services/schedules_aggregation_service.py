@@ -22,6 +22,14 @@ RUN_STATUS_TO_SCHEDULED = {
     "rejected": "failed",
     "cancelled": "failed",
 }
+# Runs are read in pages of RUN_PAGE_SIZE. A windowed read keeps paging until the
+# window is exhausted or RUN_WINDOW_CEILING rows have been read; hitting the
+# ceiling is reported (runsTruncated) instead of silently showing part of a month.
+RUN_PAGE_SIZE = 1000
+RUN_WINDOW_CEILING = 10_000
+# Unwindowed reads keep the old "latest N" behaviour.
+RUN_WINDOW_LIMIT = 200
+ERROR_SNIPPET_LIMIT = 200
 JOB_STATUS_TO_SCHEDULED = {
     "queued": "queued",
     "training": "running",
@@ -139,23 +147,22 @@ def _task_run_items(
     *,
     workflow_id: str | None,
     workflow_names: dict[str, str],
-    limit: int = 200,
+    runs: list[dict[str, Any]] | None = None,
+    window_start: datetime | None = None,
+    window_end: datetime | None = None,
 ) -> list[dict[str, Any]]:
-    q = (
-        client.table("workflow_runs")
-        .select("id, workflow_id, status, run_type, created_at, completed_at, trigger_type")
-        .eq("org_id", org_id)
-        .eq("environment", environment_name)
-        .order("created_at", desc=True)
-        .limit(limit)
-    )
-    if workflow_id:
-        q = q.eq("workflow_id", workflow_id)
-    try:
-        response = q.execute()
-    except Exception:  # noqa: BLE001
-        return []
-    runs = list(response.data or [])
+    if runs is None:
+        try:
+            runs, _truncated = _windowed_runs(
+                client,
+                org_id,
+                environment_name,
+                workflow_id=workflow_id,
+                window_start=window_start,
+                window_end=window_end,
+            )
+        except Exception:  # noqa: BLE001
+            return []
     items: list[dict[str, Any]] = []
     for run in runs:
         wf_id = str(run.get("workflow_id") or "")
@@ -179,8 +186,109 @@ def _task_run_items(
             item["startedAt"] = run.get("created_at")
         if run.get("completed_at"):
             item["completedAt"] = run.get("completed_at")
+        duration = run.get("duration_ms")
+        if isinstance(duration, (int, float)) and not isinstance(duration, bool) and duration >= 0:
+            item["durationMs"] = int(duration)
+        if mapped == "failed" and run.get("error_message"):
+            item["error"] = _short_error(run.get("error_message"))
+        if wf_id and workflow_names.get(wf_id):
+            item["workflowName"] = workflow_names[wf_id]
+        if run.get("trigger_type"):
+            item["triggerType"] = str(run.get("trigger_type"))
         items.append(item)
     return items
+
+
+def _short_error(value: Any, limit: int = ERROR_SNIPPET_LIMIT) -> str:
+    text = " ".join(str(value or "").split())
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+
+def _windowed_runs(
+    client: Any,
+    org_id: str,
+    environment_name: str,
+    *,
+    workflow_id: str | None,
+    window_start: datetime | None,
+    window_end: datetime | None,
+    page_size: int = RUN_PAGE_SIZE,
+    ceiling: int = RUN_WINDOW_CEILING,
+) -> tuple[list[dict[str, Any]], bool]:
+    """Runs started inside the requested window, newest first, and whether the read was cut short.
+
+    With a window, pages through every run in it (so a month view shows the
+    whole month) up to ``ceiling`` rows; ``True`` means the ceiling was hit and
+    older runs in the window were left out. Without a window this is the latest
+    ``RUN_WINDOW_LIMIT`` runs, as before, and is never reported as cut short.
+    """
+
+    def _query():
+        q = (
+            client.table("workflow_runs")
+            .select(
+                "id, workflow_id, status, run_type, created_at, completed_at, trigger_type, duration_ms, error_message"
+            )
+            .eq("org_id", org_id)
+            .eq("environment", environment_name)
+        )
+        if window_start is not None:
+            q = q.gte("created_at", window_start.isoformat())
+        if window_end is not None:
+            q = q.lt("created_at", window_end.isoformat())
+        if workflow_id:
+            q = q.eq("workflow_id", workflow_id)
+        # id breaks created_at ties so pages never skip or repeat a run.
+        return q.order("created_at", desc=True).order("id", desc=True)
+
+    if window_start is None and window_end is None:
+        return list(_query().limit(RUN_WINDOW_LIMIT).execute().data or []), False
+
+    rows, truncated = _page_all(_query, page_size=page_size, ceiling=ceiling)
+
+    # A run that started before the window and is still going is "running now"
+    # today, so live runs are always included whatever window was asked for.
+    live_q = (
+        client.table("workflow_runs")
+        .select(
+            "id, workflow_id, status, run_type, created_at, completed_at, trigger_type, duration_ms, error_message"
+        )
+        .eq("org_id", org_id)
+        .eq("environment", environment_name)
+        .eq("status", "running")
+    )
+    if workflow_id:
+        live_q = live_q.eq("workflow_id", workflow_id)
+    seen = {str(row.get("id")) for row in rows}
+    for row in list(live_q.order("created_at", desc=True).limit(page_size).execute().data or []):
+        if str(row.get("id")) not in seen:
+            rows.append(row)
+            seen.add(str(row.get("id")))
+    return rows, truncated
+
+
+def _page_all(make_query: Any, *, page_size: int, ceiling: int) -> tuple[list[dict[str, Any]], bool]:
+    """Read every row of a newest-first query in pages, up to ``ceiling``.
+
+    Returns the rows and whether more rows exist beyond them. Reaching the
+    ceiling alone is not truncation: one more row is probed, so a window of
+    exactly ``ceiling`` runs is reported complete.
+    """
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    while len(rows) < ceiling:
+        start = len(rows)
+        want = min(page_size, ceiling - start)
+        page = list(make_query().range(start, start + want - 1).execute().data or [])
+        fresh = [row for row in page if str(row.get("id")) not in seen]
+        for row in fresh:
+            seen.add(str(row.get("id")))
+        rows.extend(fresh)
+        if len(page) < want or not fresh:
+            return rows[:ceiling], False
+    probe = list(make_query().range(ceiling, ceiling).execute().data or [])
+    more = any(str(row.get("id")) not in seen for row in probe)
+    return rows[:ceiling], more
 
 
 def _training_job_items(
@@ -236,8 +344,12 @@ def list_scheduled_items(
     window_start: datetime | None = None,
     window_end: datetime | None = None,
     kinds: frozenset[str] | None = None,
+    meta: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
+    """Scheduled items in the window. Pass ``meta`` to learn whether runs were cut short (``runsTruncated``)."""
     selected_kinds = kinds or SCHEDULE_KINDS
+    if meta is not None:
+        meta["runsTruncated"] = False
     if window_start is None or window_end is None:
         default_start, default_end = default_projection_window()
         window_start = window_start or default_start
@@ -258,17 +370,16 @@ def list_scheduled_items(
 
     runs: list[dict[str, Any]] = []
     if "task" in selected_kinds:
-        runs_q = (
-            client.table("workflow_runs")
-            .select("workflow_id")
-            .eq("org_id", org_id)
-            .eq("environment", environment_name)
-            .order("created_at", desc=True)
-            .limit(200)
+        runs, truncated = _windowed_runs(
+            client,
+            org_id,
+            environment_name,
+            workflow_id=workflow_id,
+            window_start=window_start,
+            window_end=window_end,
         )
-        if workflow_id:
-            runs_q = runs_q.eq("workflow_id", workflow_id)
-        runs = list(runs_q.execute().data or [])
+        if meta is not None:
+            meta["runsTruncated"] = truncated
         workflow_ids.update(str(row.get("workflow_id") or "") for row in runs if row.get("workflow_id"))
 
     workflow_names = workflow_names_for_ids(client, org_id, sorted(workflow_ids))
@@ -295,6 +406,7 @@ def list_scheduled_items(
                 environment_name,
                 workflow_id=workflow_id,
                 workflow_names=workflow_names,
+                runs=runs,
             )
         )
 

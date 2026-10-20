@@ -122,7 +122,7 @@ def main() -> int:
     scopes: list[str] = []
     if hub_id:
         ensure_hubspot_access_token(sb, ORG, hub_id, settings, environment_name="production")
-        tokens = load_oauth_tokens(sb, hub_id, settings) or {}
+        tokens = load_oauth_tokens(sb, hub_id, settings, org_id=ORG) or {}
         raw = tokens.get("scopes") or tokens.get("scope") or []
         if isinstance(raw, str):
             scopes = [s for s in raw.replace(",", " ").split() if s]

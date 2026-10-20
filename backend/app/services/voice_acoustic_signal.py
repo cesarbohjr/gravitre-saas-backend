@@ -1,9 +1,4 @@
-"""Async acoustic/prosody signal for GIBE — never blocks the realtime turn loop.
-
-Honesty (Module C): short clear emotional speech literature reports ~78–91%
-accuracy; longer complex conversational speech ~54–60%. Insights MUST be labeled
-with real confidence and surfaced as flagged-for-review, never autonomous actions.
-"""
+"""Non-blocking acoustic observations; no calibrated emotion or outcome claims."""
 from __future__ import annotations
 
 import asyncio
@@ -14,20 +9,12 @@ from io import BytesIO
 from typing import Any
 
 from app.core.logging import get_logger
-from app.services.confidence_honesty import (
-    CONFIDENCE_SOURCE_HEURISTIC,
-    label_confidence,
-)
 
 logger = get_logger(__name__)
 
-# Documented accuracy bands for honest labeling.
-ACCURACY_BAND_SHORT_CLEAR = (0.78, 0.91)
-ACCURACY_BAND_LONG_COMPLEX = (0.54, 0.60)
-
 
 def _pcm_from_wav_or_raw(audio_bytes: bytes) -> tuple[list[float], int]:
-    """Best-effort PCM float samples. Supports WAV; otherwise treats as s16le @16k."""
+    """Decode PCM16 WAV only; unknown/compressed formats are insufficient data."""
     if len(audio_bytes) >= 12 and audio_bytes[:4] == b"RIFF":
         try:
             with wave.open(BytesIO(audio_bytes), "rb") as wf:
@@ -36,15 +23,11 @@ def _pcm_from_wav_or_raw(audio_bytes: bytes) -> tuple[list[float], int]:
                 width = wf.getsampwidth()
                 nch = wf.getnchannels()
         except Exception:  # noqa: BLE001
-            rate = 16000
-            frames = audio_bytes
-            width = 2
-            nch = 1
+            return [], 16000
     else:
-        rate = 16000
-        frames = audio_bytes
-        width = 2
-        nch = 1
+        # Compressed uploads are not PCM. Live capture is wrapped as WAV by
+        # AcousticTapProcessor; unsupported uploads produce no observations.
+        return [], 16000
     if width != 2:
         # Downsample unsupported widths to empty → insufficient_data path
         return [], rate
@@ -61,9 +44,8 @@ def _pcm_from_wav_or_raw(audio_bytes: bytes) -> tuple[list[float], int]:
 def extract_acoustic_features(audio_bytes: bytes) -> dict[str, Any]:
     """Lightweight prosody features (pitch proxy, pace, pauses, intensity).
 
-    Uses signal-processing heuristics (zero-crossing + energy envelope) as a
-    deployable stand-in for Wav2Vec/HuBERT embeddings when those models are not
-    loaded. Same honesty labeling applies.
+    Uses signal-processing heuristics (zero-crossing + energy envelope).
+    These observations are not calibrated emotion predictions.
     """
     samples, rate = _pcm_from_wav_or_raw(audio_bytes)
     if len(samples) < rate // 4:
@@ -86,6 +68,8 @@ def extract_acoustic_features(audio_bytes: bytes) -> dict[str, Any]:
     if not energies:
         return {"ok": False, "reason": "no_frames", "duration_secs": duration}
     mean_e = sum(energies) / len(energies)
+    if mean_e <= 0.000001:
+        return {"ok": False, "reason": "no_speech_energy", "duration_secs": duration}
     var_e = sum((e - mean_e) ** 2 for e in energies) / len(energies)
     mean_z = sum(zcrs) / len(zcrs)
     # Pause: frames below 15% of mean energy
@@ -108,16 +92,9 @@ def extract_acoustic_features(audio_bytes: bytes) -> dict[str, Any]:
         flags.append("rapid_pace")
     if pace < 0.35:
         flags.append("slow_pace")
-    band = ACCURACY_BAND_SHORT_CLEAR if duration <= 8.0 else ACCURACY_BAND_LONG_COMPLEX
-    # Midpoint of documented band as estimate; Module C labels it heuristic.
-    estimated = (band[0] + band[1]) / 2.0
-    labeled = label_confidence(estimated, source=CONFIDENCE_SOURCE_HEURISTIC, is_estimate=True)
-    honesty_note = (
-        f"Acoustic/prosody heuristic on {duration:.1f}s audio. Literature accuracy "
-        f"~{int(band[0]*100)}–{int(band[1]*100)}% for "
-        f"{'short clear' if duration <= 8 else 'longer conversational'} speech — "
-        "not a certain fact."
-    )
+    # Energy/zero-crossing features have no calibrated emotion accuracy.
+    # Literature results for other models cannot supply this extractor's score.
+    honesty_note = "Uncalibrated acoustic heuristics; not emotion recognition or causal evidence."
     return {
         "ok": True,
         "duration_secs": round(duration, 3),
@@ -130,8 +107,9 @@ def extract_acoustic_features(audio_bytes: bytes) -> dict[str, Any]:
             "intensity_shift_mean": round(intensity_shift, 4),
         },
         "signal_flags": flags,
-        "accuracy_band": {"low": band[0], "high": band[1]},
-        "confidence": labeled,
+        "accuracy_band": None,
+        "confidence": None,
+        "calibration_status": "unvalidated",
         "honesty_note": honesty_note,
         "model_family": "lightweight_energy_zcr_heuristic",
         "model_note": (
@@ -152,7 +130,7 @@ def schedule_acoustic_analysis(
     conversation_id: str | None,
     audio_bytes: bytes,
     agent_id: str | None = None,
-) -> None:
+) -> asyncio.Task[None] | None:
     """Fire-and-forget background analysis — never awaited on the turn path."""
 
     async def _run() -> None:
@@ -172,7 +150,7 @@ def schedule_acoustic_analysis(
 
     try:
         loop = asyncio.get_running_loop()
-        loop.create_task(_run())
+        return loop.create_task(_run())
     except RuntimeError:
         # No loop (sync context) — run inline in a thread from caller if needed
         logger.debug("voice_acoustic_schedule_no_loop org_id=%s", org_id)
@@ -199,6 +177,7 @@ def _persist_acoustic_signal(
         "surface": "voice",
         "flagged_for_review": bool(result.get("review_required")),
         "confidence": result.get("confidence"),
+        "calibration_status": "unvalidated",
         "features": result.get("features"),
         "signal_flags": result.get("signal_flags") or [],
         "accuracy_band": result.get("accuracy_band"),
@@ -225,27 +204,8 @@ def _persist_acoustic_signal(
         ).execute()
     except Exception as exc:  # noqa: BLE001
         logger.warning("voice_acoustic_persist_failed org_id=%s error=%s", org_id, str(exc)[:200])
-    try:
-        from app.services.learning_signal_aggregator import LearningSignalAggregator
-
-        # Sync bridge: schedule async ingest when a loop exists.
-        async def _ingest() -> None:
-            agg = LearningSignalAggregator(client)
-            await agg.ingest(
-                org_id,
-                "voice_acoustic_prosody",
-                "neutral",
-                surface="voice",
-                metadata=payload,
-            )
-
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(_ingest())
-        except RuntimeError:
-            pass
-    except Exception:  # noqa: BLE001
-        pass
+    # Unvalidated acoustic observations are audit evidence only. They are not
+    # business outcomes, feedback labels or eligible adaptive-learning signals.
 
 
 def other_missing_ml_capabilities_report() -> list[dict[str, Any]]:

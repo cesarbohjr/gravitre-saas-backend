@@ -2,6 +2,7 @@ import { marketingMetadata } from "@/lib/seo"
 import { ExtensionPage } from "@/components/marketing/features/extension-page"
 
 export const metadata = marketingMetadata({
+  canonical: "/features/extension",
   title: "Browser extension — Overlay and approve",
   description:
     "Gravitre Chrome extension: enrich LinkedIn, Gmail, Outlook, and company pages, approve governed catalog writes, and see them in Outcomes — same path as chat.",

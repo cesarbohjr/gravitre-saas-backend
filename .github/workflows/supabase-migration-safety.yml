@@ -1,0 +1,409 @@
+name: Supabase migration safety
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/workflows/supabase-migration-safety.yml'
+      - 'docs/delivery/AI_RELEASE_INSTRUCTIONS.md'
+      - 'backend/app/billing/**'
+      - 'backend/app/routers/billing.py'
+      - 'backend/app/routers/webhooks/stripe.py'
+      - 'apps/web/app/(app)/admin/commercial/**'
+      - 'apps/web/app/(app)/settings/billing/**'
+      - 'e2e/*billing*.spec.ts'
+      - 'e2e/helpers/auth.ts'
+      - 'e2e/global-setup.ts'
+      - 'e2e/load-env.ts'
+      - 'scripts/*billing*.py'
+      - 'playwright.billing.acceptance.config.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-migration-safety-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  validate-migrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Check migration version uniqueness and file format
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib, re, sys
+          root = pathlib.Path("supabase/migrations")
+          if not root.is_dir():
+              sys.exit("Missing supabase/migrations")
+          versions = {}
+          bad = []
+          for f in root.iterdir():
+              if not f.is_file() or f.suffix != ".sql":
+                  continue
+              m = re.fullmatch(r"(\d{8,14})_[A-Za-z0-9_]+\.sql", f.name)
+              if not m:
+                  bad.append(f"Invalid filename: {f.name}")
+                  continue
+              v = m.group(1)
+              if v in versions:
+                  bad.append(f"Duplicate version {v}: {versions[v]} and {f.name}")
+              versions[v] = f.name
+              if not f.read_text(encoding="utf-8").strip():
+                  bad.append(f"Empty migration: {f.name}")
+          if bad:
+              sys.exit("\n".join(bad))
+          print(f"Validated {len(versions)} migration filenames (no database touched).")
+          PY
+
+      - name: List migrations changed in this pull request
+        if: github.event_name == 'pull_request'
+        id: changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          mapfile -t files < <(git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- 'supabase/migrations/*.sql' || true)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No migration SQL files changed in this PR."
+            exit 0
+          fi
+          printf '%s\n' "${files[@]}" > /tmp/changed-migrations.txt
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "Changed migration files:"
+          cat /tmp/changed-migrations.txt
+
+      - name: Security scan on changed migration files
+        if: github.event_name == 'pull_request' && steps.changed.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib, re, sys
+          files = [pathlib.Path(p.strip()) for p in open("/tmp/changed-migrations.txt") if p.strip()]
+          if not files:
+              sys.exit(0)
+          blocked = [
+              (re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"), "embedded private key material"),
+              (re.compile(r"\bAKIA[0-9A-Z]{16}\b"), "possible AWS access key id"),
+              (
+                  re.compile(r"\bGRANT\b[^;]*\bTO\s+(PUBLIC|anon)\b", re.I),
+                  "GRANT to PUBLIC/anon (same statement)",
+              ),
+              (re.compile(r"\bpg_read_file\s*\(", re.I), "pg_read_file()"),
+              (re.compile(r"\\copy\b.*\bprogram\b", re.I), "\\copy PROGRAM"),
+              (re.compile(r"\blo_import\s*\(", re.I), "lo_import()"),
+              (re.compile(r"postgresql://[^\s'\"]+:[^\s'\"]+@", re.I), "postgres URL with embedded password"),
+          ]
+          risky = re.compile(
+              r"\b(drop\s+(?:table|schema|column)|truncate|delete\s+from|alter\s+table[\s\S]{0,120}drop\s+column|revoke|create\s+policy|drop\s+policy)\b",
+              re.I,
+          )
+          errors = []
+          warnings = []
+          for f in files:
+              if not f.is_file():
+                  errors.append(f"Missing changed migration file: {f}")
+                  continue
+              text = f.read_text(encoding="utf-8")
+              for pat, label in blocked:
+                  if pat.search(text):
+                      errors.append(f"{f.name}: blocked pattern ({label})")
+              if risky.search(text):
+                  warnings.append(f.name)
+          if warnings:
+              print("Changed migrations flagged for human review (destructive/RLS): " + ", ".join(warnings))
+          if errors:
+              sys.exit("\n".join(errors))
+          print(f"Security scan passed for {len(files)} changed migration file(s).")
+          PY
+
+      - name: Show potential destructive statements for review (repository-wide, informational)
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import pathlib, re
+          root=pathlib.Path("supabase/migrations")
+          risky=re.compile(r"\b(drop\s+(?:table|schema|column)|truncate|delete\s+from|alter\s+table[\s\S]{0,120}drop\s+column|revoke|create\s+policy|drop\s+policy)\b", re.I)
+          matched=[]
+          for f in root.glob("*.sql"):
+              if risky.search(f.read_text(encoding="utf-8")):
+                  matched.append(f.name)
+          print(f"Historical migrations flagged for human review: {len(matched)} (informational; not executing SQL).")
+          PY
+
+  staging-validate:
+    name: Local migration and billing acceptance
+    needs: validate-migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Select migration and billing acceptance
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          billing=false
+          if ! git diff --quiet "origin/${{ github.base_ref }}...HEAD" -- '.github/workflows/supabase-migration-safety.yml' 'backend/app/billing/**' 'backend/app/routers/billing.py' 'backend/app/routers/webhooks/stripe.py' 'apps/web/app/(app)/admin/commercial/**' 'apps/web/app/(app)/settings/billing/**' 'e2e/*billing*.spec.ts' 'e2e/helpers/auth.ts' 'e2e/global-setup.ts' 'e2e/load-env.ts' 'scripts/*billing*.py' 'playwright.billing.acceptance.config.ts'; then
+            billing=true
+          fi
+          echo "billing=$billing" >> "$GITHUB_OUTPUT"
+          if [ "$billing" = false ] && git diff --quiet "origin/${{ github.base_ref }}...HEAD" -- 'supabase/migrations/*.sql'; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No migration or billing changes — skipping isolated acceptance."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: supabase/setup-cli@v3
+        if: steps.gate.outputs.run == 'true'
+        with:
+          version: 2.121.0
+
+      - name: supabase db reset (local only)
+        if: steps.gate.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Historical migration 20250220000006 changes two function
+          # signatures. PostgreSQL cannot CREATE OR REPLACE the old return
+          # type. Preserve immutable applied files: repair only a throwaway
+          # workspace used to replay ALL migrations in this CI job.
+          replay_dir="$(mktemp -d)"
+          cp -a supabase "$replay_dir/supabase"
+          echo "BILLING_REPLAY_DIR=$replay_dir" >> "$GITHUB_ENV"
+          python3 - "$replay_dir/supabase/migrations/20250220000006_phase7_multi_environment.sql" <<'PY'
+          import pathlib
+          import sys
+          path = pathlib.Path(sys.argv[1])
+          sql = path.read_text()
+          replacements = (
+              ("CREATE OR REPLACE FUNCTION public.rag_search(", "DROP FUNCTION IF EXISTS public.rag_search(uuid, text, int, uuid, uuid);\nCREATE OR REPLACE FUNCTION public.rag_search("),
+              ("CREATE OR REPLACE FUNCTION public.claim_rag_ingest_job()", "DROP FUNCTION IF EXISTS public.claim_rag_ingest_job();\nCREATE OR REPLACE FUNCTION public.claim_rag_ingest_job()"),
+          )
+          for before, after in replacements:
+              if sql.count(before) != 1:
+                  raise SystemExit(f"Unexpected historical SQL shape: {before}")
+              sql = sql.replace(before, after, 1)
+          path.write_text(sql)
+          print("CI-only historical return-type compatibility replay; tracked migration bytes unchanged.")
+          # A May 29 signup migration references billing tables only created
+          # by the May 31 active migration. Stage those exact table DDL
+          # statements earlier in this disposable replay, never in production.
+          billing_source = pathlib.Path("supabase/migrations/20260531000400_activate_billing_core.sql")
+          # The runner is at the repository root before cd into replay_dir.
+          source_sql = billing_source.read_text()
+          table_start = source_sql.index("CREATE TABLE IF NOT EXISTS public.billing_plans")
+          table_end = source_sql.index("-- billing_events", table_start)
+          bootstrap_ddl = source_sql[table_start:table_end]
+          onboarding = path.parent / "20260529120000_auth_onboarding_bootstrap.sql"
+          original_onboarding = onboarding.read_text()
+          if not original_onboarding.startswith("-- Phase A: Auto-provision"):
+              raise SystemExit("Unexpected onboarding migration content")
+          onboarding.write_text("-- CI-only dependency prelude from active May 31 billing DDL.\n" + bootstrap_ddl + "\n" + original_onboarding)
+          print("CI-only billing table dependency ordering; tracked migration bytes unchanged.")
+          # July 3 references notifications, defined by the active July 8 migration.
+          notifications_sql = pathlib.Path("supabase/migrations/20260708150000_notifications.sql").read_text()
+          first = notifications_sql.index("CREATE TABLE IF NOT EXISTS public.notifications (")
+          last = notifications_sql.index("ALTER TABLE public.notifications", first)
+          notifications_table_ddl = notifications_sql[first:last]
+          notifications_early = path.parent / "20260703170000_chat_execution_notifications.sql"
+          notifications_original = notifications_early.read_text()
+          if not notifications_original.startswith("-- Extend notification types"):
+              raise SystemExit("Unexpected early notifications migration")
+          notifications_early.write_text(
+              "-- CI-only historical dependency prelude from July 8 migration.\n"
+              + notifications_table_ddl + "\n" + notifications_original
+          )
+          print("CI-only notifications dependency ordering; original files untouched.")
+          # The July 5 conformance ALTER precedes the July 9 inventory CREATE.
+          inventory_source = pathlib.Path("supabase/migrations/20260709200000_extended_intelligence_engine.sql").read_text()
+          inventory_start = inventory_source.index("CREATE TABLE IF NOT EXISTS public.organization_process_inventory (")
+          inventory_end = inventory_source.index("CREATE INDEX IF NOT EXISTS idx_organization_process_inventory_org", inventory_start)
+          inventory_ddl = inventory_source[inventory_start:inventory_end]
+          inventory_early = path.parent / "20260705050000_process_inventory_conformance_columns.sql"
+          if not inventory_early.read_text().startswith("-- Process mining"):
+              raise SystemExit("Unexpected process inventory migration")
+          inventory_early.write_text(
+              "-- CI-only historical inventory dependency prelude.\n"
+              + inventory_ddl + "\n" + inventory_early.read_text()
+          )
+          print("CI-only process inventory table ordering; original files untouched.")
+          # The production test-credential allowlist contains a real org id
+          # which intentionally does not exist in an empty local database.
+          # Retain the security trigger and schema; omit only the missing-org
+          # fixture row in this disposable replay.
+          guard = path.parent / "20260719180000_test_credential_isolated_org_guard.sql"
+          guard_sql = guard.read_text()
+          old_seed = "\n".join([
+              "INSERT INTO public.test_credential_org_allowlist (org_id, note)",
+              "VALUES (",
+              "  'f07e57c0-1501-4000-8000-c04e57a00001',",
+              "  'gravitre-isolated-conversation-smoke'",
+              ")",
+              "ON CONFLICT (org_id) DO NOTHING;",
+          ])
+          new_seed = "\n".join([
+              "INSERT INTO public.test_credential_org_allowlist (org_id, note)",
+              "SELECT 'f07e57c0-1501-4000-8000-c04e57a00001'::uuid,",
+              "       'gravitre-isolated-conversation-smoke'",
+              "WHERE EXISTS (",
+              "    SELECT 1 FROM public.organizations",
+              "    WHERE id='f07e57c0-1501-4000-8000-c04e57a00001'::uuid",
+              ")",
+              "ON CONFLICT (org_id) DO NOTHING;",
+          ])
+          if guard_sql.count(old_seed) != 1:
+              raise SystemExit("Unexpected isolated-org seed shape")
+          guard.write_text(guard_sql.replace(old_seed, new_seed))
+          print("CI-only conditional test-org seed; production guard unchanged.")
+          # PostgreSQL advisor indexes were created against a live schema
+          # that had out-of-band columns. Retain each index where its real
+          # target column exists; an absent column must not abort the
+          # remaining functional migrations in a disposable fresh database.
+          import re
+          perf = path.parent / "20260805221000_perf_advisor_fk_indexes.sql"
+          perf_sql = perf.read_text()
+          index_pat = re.compile(
+              r"^CREATE INDEX IF NOT EXISTS ([A-Za-z0-9_]+) ON public[.]([A-Za-z0-9_]+) [(]([A-Za-z0-9_]+)[)];$",
+              re.MULTILINE,
+          )
+          def guarded_index(match):
+              name, table, column = match.groups()
+              sql = (
+                  "DO $ci_index$ BEGIN "
+                  "IF EXISTS (SELECT 1 FROM information_schema.columns "
+                  "WHERE table_schema='public' AND table_name='" + table + "' "
+                  "AND column_name='" + column + "') THEN "
+                  "EXECUTE 'CREATE INDEX IF NOT EXISTS " + name + " ON public."
+                  + table + " (" + column + ")'; "
+                  "END IF; END $ci_index$;"
+              )
+              return sql
+          perf_sql, index_count = index_pat.subn(guarded_index, perf_sql)
+          if index_count != 11:
+              raise SystemExit(f"Unexpected historical advisor index count: {index_count}")
+          perf.write_text(perf_sql)
+          print("CI-only guarded advisor indexes; original migration unchanged.")
+          # CI-local replay: metadata ALTER predates the knowledge table CREATE.
+          fabric_sql = pathlib.Path("supabase/migrations/20260811180000_platform_knowledge_fabric.sql").read_text()
+          begin = fabric_sql.index("CREATE TABLE IF NOT EXISTS public.knowledge_sources (")
+          finish = fabric_sql.index("CREATE TABLE IF NOT EXISTS public.knowledge_documents", begin)
+          source_ddl = fabric_sql[begin:finish]
+          license_migration = path.parent / "20260811175745_knowledge_sources_license_metadata.sql"
+          license_sql = license_migration.read_text()
+          if not license_sql.startswith("-- Extend knowledge_sources"):
+              raise SystemExit("Unexpected license-metadata migration")
+          license_migration.write_text(source_ddl + "\n" + license_sql)
+          print("CI replay: knowledge_sources DDL ordered before license metadata.")
+
+
+
+
+          PY
+          cd "$replay_dir"
+          supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+          supabase db reset --no-seed
+          echo "Local Supabase replayed all migrations with the two declared historical DROP FUNCTION compatibility statements (production not touched)."
+
+      - name: Set up isolated billing browser acceptance
+        if: steps.gate.outputs.billing == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v4
+        if: steps.gate.outputs.billing == 'true'
+        with:
+          version: 10.11.0
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.billing == 'true'
+        with:
+          python-version: '3.12'
+      - name: Install billing acceptance dependencies
+        if: steps.gate.outputs.billing == 'true'
+        run: |
+          npm ci --ignore-scripts
+          pnpm --dir apps/web install --frozen-lockfile
+          pip install --no-cache-dir -r backend/requirements-dev.txt
+          npx playwright install --with-deps chromium
+      - name: Configure disposable authenticated role acceptance
+        if: steps.gate.outputs.billing == 'true'
+        run: |
+          umask 077
+          supabase status --workdir "$BILLING_REPLAY_DIR" -o json > "$RUNNER_TEMP/billing-supabase.json"
+          python scripts/configure-billing-acceptance.py --supabase-status "$RUNNER_TEMP/billing-supabase.json" --auth-only
+      - name: Genuine founder and organization-owner browser authorization
+        if: steps.gate.outputs.billing == 'true'
+        env:
+          CI: 'true'
+          PYTHON: python
+        run: npx playwright test --config playwright.billing.acceptance.config.ts --grep 'signed-in organization owner|founder can read controls'
+      - name: Upload sanitized authenticated role evidence
+        if: always() && steps.gate.outputs.billing == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: billing-authenticated-roles
+          path: |
+            test-results/billing-acceptance-summary.json
+            test-results/**/*.png
+      - name: Configure disposable Supabase and Stripe sandbox only
+        env:
+          BILLING_REQUIRE_STRIPE_TEST_KEYS: '1'
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+          STRIPE_TEST_PUBLISHABLE_KEY: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
+          STRIPE_EXISTING_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_EXISTING_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+        if: steps.gate.outputs.billing == 'true'
+        run: |
+          umask 077
+          supabase status --workdir "$BILLING_REPLAY_DIR" -o json > "$RUNNER_TEMP/billing-supabase.json"
+          python scripts/configure-billing-acceptance.py --supabase-status "$RUNNER_TEMP/billing-supabase.json"
+      - name: Authenticated billing browser and sandbox invoice acceptance
+        if: steps.gate.outputs.billing == 'true'
+        env:
+          CI: 'true'
+          PYTHON: python
+        run: npx playwright test --config playwright.billing.acceptance.config.ts
+      - name: Upload sanitized billing acceptance evidence
+        if: always() && startsWith(github.head_ref, 'fix/billing-acceptance')
+        uses: actions/upload-artifact@v4
+        with:
+          name: billing-isolated-acceptance
+          path: |
+            test-results/billing-acceptance-summary.json
+            test-results/**/*.png
+          if-no-files-found: warn
+
+      - name: Remote staging reconcile (when configured)
+        if: steps.gate.outputs.run == 'true' && vars.SUPABASE_STAGING_PROJECT_REF != ''
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          STAGING_REF: ${{ vars.SUPABASE_STAGING_PROJECT_REF }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            echo "::error::SUPABASE_STAGING_PROJECT_REF is set but SUPABASE_ACCESS_TOKEN is missing."
+            exit 1
+          fi
+          supabase link --project-ref "$STAGING_REF" --password "${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}"
+          supabase migration list
+          echo "Staging project linked for history reconciliation (no db push — human-approved deploy only)."

@@ -3,14 +3,16 @@ from __future__ import annotations
 
 import base64
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
 from supabase import create_client
 from app.core.db import shared_service_client
+from app.core.safe_dict import safe_normalize_stored_dict
 
 from app.auth.dependencies import get_current_user, get_org_context
+from app.auth.jwt_verify import decode_supabase_jwt
 from app.billing.entitlements import compute_app_access, normalize_billing_status
 from app.billing.service import DEFAULT_PLAN_CODE, UNSET, get_org_billing
 from app.config import Settings, get_settings
@@ -27,15 +29,105 @@ from app.core.supabase_response import response_error
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
+class ProfilePreferences(BaseModel):
+    """Per-person display preferences, kept on the Supabase auth user."""
+
+    theme: Literal["light", "dark", "system"] | None = None
+    compact_tables: bool | None = None
+
+
 class UserProfileUpdateRequest(BaseModel):
     full_name: str | None = None
     avatar_url: str | None = None
-    phone: str | None = None
+    phone: str | None = Field(default=None, max_length=40)
     job_title: str | None = None
     department: str | None = None
-    location: str | None = None
-    timezone: str | None = None
-    bio: str | None = None
+    location: str | None = Field(default=None, max_length=120)
+    timezone: str | None = Field(default=None, max_length=64)
+    bio: str | None = Field(default=None, max_length=280)
+    preferences: ProfilePreferences | None = None
+
+
+# Profile fields with no public.users column live in the auth user's
+# user_metadata under one namespaced key, so OAuth metadata (name, picture,
+# phone from a provider) is never overwritten and no migration is needed.
+PROFILE_METADATA_KEY = "gravitre_profile"
+PROFILE_METADATA_FIELDS: tuple[str, ...] = ("phone", "location", "timezone", "bio")
+PROFILE_PREFERENCE_DEFAULTS: dict = {"theme": None, "compact_tables": False}
+
+
+def _auth_user_object(response):
+    user = getattr(response, "user", None)
+    if user is None and isinstance(response, dict):
+        user = response.get("user", response)
+    return user
+
+
+def _attr(obj, name: str):
+    if obj is None:
+        return None
+    if isinstance(obj, dict):
+        return obj.get(name)
+    return getattr(obj, name, None)
+
+
+def _load_auth_profile(client, auth_user_id: str) -> dict | None:
+    """Namespaced profile metadata and email confirmation from the auth user.
+
+    Returns None when the auth admin API is unavailable (callers then report the
+    fields as unknown instead of guessing).
+    """
+    try:
+        response = client.auth.admin.get_user_by_id(auth_user_id)
+    except Exception:  # noqa: BLE001
+        return None
+    user = _auth_user_object(response)
+    if user is None:
+        return None
+    metadata = _attr(user, "user_metadata")
+    stored = metadata.get(PROFILE_METADATA_KEY) if isinstance(metadata, dict) else None
+    confirmed_at = _attr(user, "email_confirmed_at") or _attr(user, "confirmed_at")
+    return {
+        "profile": dict(stored) if isinstance(stored, dict) else {},
+        "email_confirmed": bool(confirmed_at) if isinstance(confirmed_at, (str, datetime)) else False,
+    }
+
+
+def _profile_fields(stored: dict | None) -> dict:
+    stored = stored if isinstance(stored, dict) else {}
+    prefs = stored.get("preferences") if isinstance(stored.get("preferences"), dict) else {}
+    theme = prefs.get("theme")
+    return {
+        **{field: (stored.get(field) or None) for field in PROFILE_METADATA_FIELDS},
+        "preferences": {
+            "theme": theme if theme in ("light", "dark", "system") else PROFILE_PREFERENCE_DEFAULTS["theme"],
+            "compact_tables": bool(prefs.get("compact_tables", PROFILE_PREFERENCE_DEFAULTS["compact_tables"])),
+        },
+    }
+
+
+def _save_auth_profile(client, auth_user_id: str, fields: dict, preferences: dict | None) -> dict:
+    """Merge profile fields and preferences into the auth user's metadata."""
+    current = _load_auth_profile(client, auth_user_id)
+    if current is None:
+        # Never overwrite what we could not read.
+        raise HTTPException(status_code=502, detail="Unable to load your profile to update it. Try again.")
+    merged = safe_normalize_stored_dict(current, key="profile")
+    for field, value in fields.items():
+        cleaned = value.strip() if isinstance(value, str) else value
+        if cleaned:
+            merged[field] = cleaned
+        else:
+            merged.pop(field, None)
+    if preferences:
+        prefs = safe_normalize_stored_dict(merged, key="preferences")
+        prefs.update(preferences)
+        merged["preferences"] = prefs
+    try:
+        client.auth.admin.update_user_by_id(auth_user_id, {"user_metadata": {PROFILE_METADATA_KEY: merged}})
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Unable to save your profile: {exc}") from exc
+    return merged
 
 
 class PasswordChangeRequest(BaseModel):
@@ -235,6 +327,7 @@ def _compute_me(client, current_user: dict, org_id: str | None) -> dict:
     else:
         role = _resolve_role(client, resolved_org_id, auth_user_id)
 
+    auth_profile = _load_auth_profile(client, auth_user_id)
     merged_user = {
         "id": auth_user_id,
         "email": user_row.get("email") or current_user.get("email"),
@@ -245,6 +338,9 @@ def _compute_me(client, current_user: dict, org_id: str | None) -> dict:
         "role": user_row.get("role") or role,
         "created_at": user_row.get("created_at"),
         "updated_at": user_row.get("updated_at"),
+        **_profile_fields(auth_profile["profile"] if auth_profile else None),
+        # None when the auth admin API could not be read: the UI then shows no badge.
+        "email_confirmed": auth_profile["email_confirmed"] if auth_profile else None,
     }
 
     org_name_by_id = {org["id"]: org.get("name") for org in organizations}
@@ -286,15 +382,24 @@ def update_me(
 ) -> dict:
     client = shared_service_client(settings, create_client)
     payload = {k: v for k, v in body.model_dump().items() if v is not None}
-    if not payload:
+    preferences = {k: v for k, v in (payload.pop("preferences", None) or {}).items() if v is not None}
+    if not payload and not preferences:
         return {"id": current_user["user_id"], "email": current_user.get("email")}
 
-    # Only persist columns that exist on public.users. Phone/location/timezone/bio
-    # remain client-local until they get dedicated columns.
+    base = {"id": current_user["user_id"], "email": current_user.get("email")}
+    # Phone, location, time zone, bio and preferences have no public.users
+    # column: they are kept on the auth user's metadata (merged, never replaced).
+    meta_fields = {k: payload.pop(k) for k in PROFILE_METADATA_FIELDS if k in payload}
+    if meta_fields or preferences:
+        stored = _save_auth_profile(client, current_user["user_id"], meta_fields, preferences)
+        invalidate_user_state(current_user["user_id"])
+        base.update(_profile_fields(stored))
+
+    # Only persist columns that exist on public.users.
     allowed = {"full_name", "avatar_url", "job_title", "department"}
     db_payload = {k: v for k, v in payload.items() if k in allowed}
     if not db_payload:
-        return {"id": current_user["user_id"], "email": current_user.get("email"), **payload}
+        return {**base, **payload}
 
     # Bug fix: .update() returns SyncFilterRequestBuilder, which has no
     # .select()/.limit() — chaining them raised AttributeError -> HTTP 500.
@@ -308,15 +413,11 @@ def update_me(
     invalidate_user_state(current_user["user_id"])
     update_error = response_error(update_resp)
     if _is_missing_error(update_error):
-        return {
-            "id": current_user["user_id"],
-            "email": current_user.get("email"),
-            **payload,
-        }
+        return {**base, **payload}
     if update_error:
         raise HTTPException(status_code=500, detail=str(update_error))
     row = (update_resp.data or [{}])[0]
-    return dict(row)
+    return {**base, **dict(row)}
 
 
 @router.post("/change-password")
@@ -348,6 +449,26 @@ def change_password(
     return {"ok": True}
 
 
+def _current_session_id(request: Request, settings: Settings) -> str | None:
+    """Supabase session id (the access token's session_id claim) for this request."""
+    header = request.headers.get("authorization") or ""
+    if not header.lower().startswith("bearer "):
+        return None
+    try:
+        claims = decode_supabase_jwt(header[7:].strip(), settings)
+    except Exception:  # noqa: BLE001
+        return None
+    session_id = claims.get("session_id")
+    return str(session_id) if session_id else None
+
+
+def _request_ip(request: Request) -> str:
+    forwarded = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    if forwarded:
+        return forwarded
+    return request.client.host if request.client else "unknown"
+
+
 @router.get("/sessions")
 def list_sessions(
     request: Request,
@@ -355,6 +476,7 @@ def list_sessions(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     client = shared_service_client(settings, create_client)
+    current_session_id = _current_session_id(request, settings)
     sessions: list[dict] = []
     try:
         sessions_resp = (
@@ -368,26 +490,32 @@ def list_sessions(
         )
         if sessions_resp.data:
             for idx, row in enumerate(sessions_resp.data):
+                session_id = str(row.get("id") or "")
                 sessions.append(
                     {
-                        "id": str(row.get("id") or ""),
+                        "id": session_id,
                         "device": str(row.get("user_agent") or "Unknown device"),
+                        "user_agent": row.get("user_agent"),
                         "ip": str(row.get("ip") or "Unknown IP"),
+                        "created_at": row.get("created_at"),
                         "last_active": str(row.get("updated_at") or row.get("created_at") or ""),
-                        "current": idx == 0,
+                        # The token names its own session; without that claim the
+                        # most recently active session is the best guess.
+                        "current": session_id == current_session_id if current_session_id else idx == 0,
                     }
                 )
     except Exception:
         sessions = []
 
     if not sessions:
-        user_agent = request.headers.get("user-agent") or "Current browser"
-        ip = request.headers.get("x-forwarded-for") or request.client.host if request.client else "unknown"
+        user_agent = request.headers.get("user-agent")
         sessions = [
             {
                 "id": "current",
-                "device": user_agent,
-                "ip": ip,
+                "device": user_agent or "Current browser",
+                "user_agent": user_agent,
+                "ip": _request_ip(request),
+                "created_at": None,
                 "last_active": datetime.now(timezone.utc).isoformat(),
                 "current": True,
             }
@@ -413,17 +541,21 @@ def revoke_session(
 
 @router.post("/sessions/revoke-all")
 def revoke_all_sessions(
+    request: Request,
     current_user: Annotated[dict, Depends(get_current_user)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
+    """Sign out every other session; the session making the request stays signed in."""
     client = shared_service_client(settings, create_client)
+    current_session_id = _current_session_id(request, settings)
     try:
-        client.schema("auth").table("sessions").delete().eq(
-            "user_id", current_user["user_id"]
-        ).execute()
+        query = client.schema("auth").table("sessions").delete().eq("user_id", current_user["user_id"])
+        if current_session_id:
+            query = query.neq("id", current_session_id)
+        query.execute()
     except Exception:
         pass
-    return {"ok": True}
+    return {"ok": True, "kept_current": bool(current_session_id)}
 
 
 @router.delete("/avatar")

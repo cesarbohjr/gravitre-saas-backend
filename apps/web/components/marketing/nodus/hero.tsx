@@ -18,11 +18,10 @@ export const Hero = () => {
     <Container className="border-divide flex flex-col items-center justify-center md:border-x px-4 pt-10 pb-10 md:pt-32 md:pb-20">
       <span className="text-sm font-normal text-brand">One AI brain for your entire business</span>
       <Heading className="mt-4 max-w-full px-1 text-balance">
-        Manage agents, workflows, and{" "}
-        <span className="text-brand">operations</span>
+        The AI operations platform for <span className="text-brand">ops teams</span>
       </Heading>
 
-      <SubHeading className="mx-auto mt-6 max-w-lg px-1">{h.subhead}</SubHeading>
+      <SubHeading className="mx-auto mt-6 max-w-lg px-1">Connect Salesforce, HubSpot, Slack, and Outlook. Gravitre&apos;s agents execute governed work across departments — with human approval where it matters.</SubHeading>
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
         <Button as={Link} href="/get-started">
@@ -32,7 +31,7 @@ export const Hero = () => {
           View pricing
         </Button>
       </div>
-      <p className="mt-6 max-w-md text-center text-sm text-gray-600">{h.benefitLine}</p>
+      <p className="mt-6 max-w-md text-center text-sm text-gray-600">7-day free trial, no card required. 30-day money-back guarantee.</p>
     </Container>
   )
 }

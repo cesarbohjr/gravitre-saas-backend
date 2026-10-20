@@ -37,6 +37,8 @@ class _Query:
         self._op = "select"
         self._payload: Any = None
         self._on_conflict: str | None = None
+        self._start = 0
+        self._end: int | None = None
 
     # read builders
     def select(self, *_a, **_k):
@@ -61,6 +63,10 @@ class _Query:
         return self
 
     def limit(self, *_a):
+        return self
+
+    def range(self, start: int, end: int):
+        self._start, self._end = start, end
         return self
 
     # writes
@@ -113,7 +119,7 @@ class _Query:
             for r in matches:
                 rows.remove(r)
             return _Resp(matches)
-        return _Resp([dict(r) for r in matches])
+        return _Resp([dict(r) for r in matches[self._start:self._end + 1 if self._end is not None else None]])
 
 
 class _FakeClient:
@@ -280,11 +286,11 @@ def test_stripe_webhook_write_invalidates_org_caches_and_billing_gate(treat_fake
     stripe_webhook_router._process_stripe_event(
         client,
         mock_settings,
-        "invoice.payment_failed",
-        {"id": "in_1"},
+        "customer.subscription.updated",
+        {"id": "sub_1", "customer": "cus_1", "status": "past_due", "items": {"data": []}},
         {"org_id": ORG},
         ORG,
-        {"id": "evt_1", "type": "invoice.payment_failed"},
+        {"id": "evt_1", "type": "customer.subscription.updated"},
     )
 
     assert client.store["org_billing"][0]["billing_status"] == "past_due"

@@ -22,6 +22,9 @@ class WatcherAgentRequest(BaseModel):
     source: str = Field(default="webhook", pattern="^(webhook|cron|external_signal)$")
     agent_id: str | None = Field(default=None, alias="agentId")
     proposed_action: str | None = Field(default=None, alias="proposedAction")
+    # Accepted for compatibility and ignored: a caller cannot assert its own
+    # approval. A proposed write is refused here and goes through the normal
+    # approval flow when the job's agent attempts it.
     approval_granted: bool = Field(default=False, alias="approvalGranted")
     metadata: dict[str, Any] | None = None
 
@@ -56,7 +59,7 @@ async def create_watcher_agent_job(
             agent_id=body.agent_id,
             created_by=actor_id,
             proposed_action=body.proposed_action,
-            approval_granted=body.approval_granted,
+            approval_granted=False,
             metadata=body.metadata,
         )
     except WatcherAgentError as exc:
@@ -98,7 +101,7 @@ async def create_watcher_agent_job_from_signal(
             source=body.source,
             agent_id=body.agent_id,
             proposed_action=body.proposed_action,
-            approval_granted=body.approval_granted,
+            approval_granted=False,
             metadata=body.metadata,
         )
     except WatcherAgentError as exc:

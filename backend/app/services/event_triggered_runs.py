@@ -105,6 +105,23 @@ def release_webhook_event(client: Any, *, org_id: str, provider: str, event_id: 
         )
 
 
+# Postgres rejected the statement, so no row exists: check, not-null, foreign key,
+# unique (another receipt path already created it is handled by the receipt),
+# invalid text representation, string too long.
+_REJECTED_SQLSTATES = frozenset({"23514", "23502", "23503", "22P02", "22001"})
+
+
+def _definitely_not_written(exc: BaseException) -> bool:
+    """True when the run insert was refused by the database (the row was not created)."""
+    code = str(getattr(exc, "code", "") or "")
+    if code in _REJECTED_SQLSTATES:
+        return True
+    text = str(exc)
+    return any(f"'{c}'" in text or f'"{c}"' in text or f"code: {c}" in text for c in _REJECTED_SQLSTATES) or (
+        "violates check constraint" in text
+    )
+
+
 async def start_event_triggered_run(
     settings: Settings,
     client: Any,
@@ -162,8 +179,10 @@ async def start_event_triggered_run(
             environment_name=environment_name,
             progress=progress,
         )
-    except Exception:
-        if receipt_id and not progress["run_write_attempted"]:
+    except Exception as exc:
+        if receipt_id and (not progress["run_write_attempted"] or _definitely_not_written(exc)):
+            # Nothing was created, so a provider retry must be able to start the
+            # run. (A rejected insert used to keep the receipt and lose the event.)
             release_webhook_event(client, org_id=org_id, provider=trigger_type, event_id=receipt_id)
         raise
     if receipt_id and not progress["run_write_attempted"] and not result.get("run_id"):
@@ -256,6 +275,38 @@ async def _start_event_triggered_run(
         trigger_type=trigger_type,
     )
     run_id = str(created_run["id"])
+    use_queue = bool(getattr(settings, "event_trigger_use_workflow_queue", False))
+    if use_queue:
+        from app.workers.workflow_dispatch import try_enqueue_workflow_run
+
+        try:
+            queued = await try_enqueue_workflow_run(
+                settings,
+                client,
+                org_id=org_id,
+                workflow_id=workflow_id,
+                run_id=run_id,
+            )
+        except RuntimeError as exc:
+            logger.error("%s_queue_enqueue_failed workflow_id=%s run_id=%s error=%s", source, workflow_id, run_id, exc)
+            return {
+                "workflow_id": workflow_id,
+                "run_id": run_id,
+                "status": "failed",
+                "reason": "workflow_queue_unavailable",
+                "retryable": True,
+            }
+        if queued:
+            logger.info("%s_run_queued workflow_id=%s run_id=%s", source, workflow_id, run_id)
+            return {"workflow_id": workflow_id, "run_id": run_id, "status": "queued"}
+        if bool(getattr(settings, "workflow_queue_fail_closed", False)):
+            return {
+                "workflow_id": workflow_id,
+                "run_id": run_id,
+                "status": "failed",
+                "reason": "workflow_queue_unavailable",
+                "retryable": True,
+            }
     svc = execution_service or get_execution_service()
     try:
         result = await svc.execute_workflow(

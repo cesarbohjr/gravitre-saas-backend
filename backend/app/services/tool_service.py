@@ -263,6 +263,56 @@ def is_ambiguous_delivery_failure(exc: BaseException, tool_exc: ToolError | None
     return any(h in msg for h in _TIMEOUT_HINTS) or any(h in msg for h in _TRANSPORT_HINTS)
 
 
+_SERVER_ERROR_HINTS = (
+    "server error",
+    "internal server error",
+    "bad gateway",
+    "service unavailable",
+    "gateway timeout",
+    " 500",
+    " 502",
+    " 503",
+    " 504",
+)
+_SERVER_ERROR_CODES = frozenset({"server_error", "provider_error", "upstream_error", "http_5xx"})
+
+
+def _provider_server_error(exc: BaseException, tool_exc: ToolError | None = None) -> bool:
+    """True for a 5xx from the provider: it may have committed before failing."""
+    import httpx
+
+    if isinstance(exc, httpx.HTTPStatusError):
+        try:
+            return int(exc.response.status_code) >= 500
+        except Exception:  # noqa: BLE001
+            return True
+    if tool_exc is not None and str(tool_exc.code or "") in _SERVER_ERROR_CODES:
+        return True
+    msg = f" {str(exc).lower()}"
+    return any(h in msg for h in _SERVER_ERROR_HINTS)
+
+
+def write_retry_is_safe(exc: BaseException, tool_exc: ToolError | None = None) -> bool:
+    """A failed write may be retried only when the provider cannot have applied it.
+
+    Safe: rate limited (429 is a refusal), a failure before the request was sent
+    (connection refused, DNS), or Postgres rolling the statement back. Anything
+    else (a 5xx, a timeout, a dropped connection, an unknown error) may have
+    landed at the provider, and without a provider idempotency key a retry can
+    send the email or create the record twice.
+    """
+    import httpx
+
+    if isinstance(tool_exc, ToolRateLimitedError):
+        return True
+    if (tool_exc is not None and tool_exc.code == "statement_timeout") or _is_statement_timeout(exc):
+        return True
+    msg = str(exc).lower()
+    if isinstance(exc, httpx.ConnectError) or any(h in msg for h in _PRE_SEND_HINTS):
+        return True
+    return False
+
+
 def _is_write_invoke(action: str) -> bool:
     from app.services.outcome_verification import is_write_action
 
@@ -430,7 +480,7 @@ def _hubspot_hub_id(ctx: ToolContext, connector_id: str) -> str | None:
     conn = get_connector(ctx.client, ctx.org_id, connector_id, environment_name=ctx.environment_name)
     tokens = None
     try:
-        tokens = load_oauth_tokens(ctx.client, connector_id, ctx.settings)
+        tokens = load_oauth_tokens(ctx.client, connector_id, ctx.settings, org_id=ctx.org_id)
     except Exception:  # noqa: BLE001
         tokens = None
     return extract_hub_id((conn or {}).get("config"), tokens, conn)
@@ -2919,7 +2969,7 @@ def _slack_connector_and_token(ctx: ToolContext, params: dict[str, Any]) -> tupl
     conn = _connector_by_type(ctx, "slack", params)
     cid = str(conn["id"])
     _enforce_tool_rate_limit(ctx, "slack", cid)
-    token = resolve_slack_bot_token(ctx.client, ctx.org_id, cid, ctx.settings)
+    token = resolve_slack_bot_token(ctx.client, ctx.org_id, cid, ctx.settings, environment_name=ctx.environment_name)
     if not token:
         raise ToolAuthExpiredError("Slack connector missing bot token")
     return cid, token
@@ -3116,11 +3166,11 @@ def _exec_email_send(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResu
         content_type = "text/plain"
     conn_config = conn.get("config") or {}
     use_tls = conn_config.get("use_tls", True)
-    smtp_host = get_decrypted_secret(ctx.client, cid, "SMTP_HOST", ctx.settings)
-    smtp_port = get_decrypted_secret(ctx.client, cid, "SMTP_PORT", ctx.settings)
-    smtp_user = get_decrypted_secret(ctx.client, cid, "SMTP_USERNAME", ctx.settings)
-    smtp_pass = get_decrypted_secret(ctx.client, cid, "SMTP_PASSWORD", ctx.settings)
-    smtp_from = get_decrypted_secret(ctx.client, cid, "SMTP_FROM", ctx.settings)
+    smtp_host = get_decrypted_secret(ctx.client, cid, "SMTP_HOST", ctx.settings, org_id=ctx.org_id)
+    smtp_port = get_decrypted_secret(ctx.client, cid, "SMTP_PORT", ctx.settings, org_id=ctx.org_id)
+    smtp_user = get_decrypted_secret(ctx.client, cid, "SMTP_USERNAME", ctx.settings, org_id=ctx.org_id)
+    smtp_pass = get_decrypted_secret(ctx.client, cid, "SMTP_PASSWORD", ctx.settings, org_id=ctx.org_id)
+    smtp_from = get_decrypted_secret(ctx.client, cid, "SMTP_FROM", ctx.settings, org_id=ctx.org_id)
     if not smtp_host:
         raise ToolValidationError("Email connector missing SMTP_HOST secret")
     if not smtp_from:
@@ -3241,12 +3291,13 @@ def _exec_webhook_post(ctx: ToolContext, params: dict[str, Any]) -> NormalizedRe
     sanitize_headers(step_headers)
     ips = resolve_and_validate_host(target_host)
     connect_ip = ips[0]
-    bearer_token = get_decrypted_secret(ctx.client, cid, "WEBHOOK_BEARER_TOKEN", ctx.settings)
-    hmac_secret = get_decrypted_secret(ctx.client, cid, "WEBHOOK_HMAC_SECRET", ctx.settings)
+    bearer_token = get_decrypted_secret(ctx.client, cid, "WEBHOOK_BEARER_TOKEN", ctx.settings, org_id=ctx.org_id)
+    hmac_secret = get_decrypted_secret(ctx.client, cid, "WEBHOOK_HMAC_SECRET", ctx.settings, org_id=ctx.org_id)
     secret_headers: dict[str, str] = {}
     rows = (
         ctx.client.table("connector_secrets")
         .select("key_name, encrypted_value")
+        .eq("org_id", ctx.org_id)
         .eq("connector_id", cid)
         .execute()
     )
@@ -3381,7 +3432,7 @@ def _google_vendor_token(ctx: ToolContext, vendor: str, params: dict[str, Any]) 
     if oauth_token:
         return cid, oauth_token
     if vendor == "google_calendar":
-        legacy = get_decrypted_secret(ctx.client, cid, "access_token", ctx.settings)
+        legacy = get_decrypted_secret(ctx.client, cid, "access_token", ctx.settings, org_id=ctx.org_id)
         if legacy:
             return cid, legacy
     raise ToolAuthExpiredError(oauth_err or f"{vendor} not connected")
@@ -4861,6 +4912,7 @@ from app.services.platform_health_tools import PLATFORM_HEALTH_TOOL_EXECUTORS
 from app.services.connectwise_tools import CONNECTWISE_TOOL_EXECUTORS
 from app.services.managed_service_desk_tools import MANAGED_SERVICE_DESK_TOOL_EXECUTORS
 from app.services.managed_security_tools import MANAGED_SECURITY_TOOL_EXECUTORS
+from app.services.managed_business_tools import MANAGED_BUSINESS_TOOL_EXECUTORS
 
 _TOOL_REGISTRY.update(NETSUITE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(WORKDAY_TOOL_EXECUTORS)
@@ -4898,6 +4950,7 @@ _TOOL_REGISTRY.update(PLATFORM_HEALTH_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(CONNECTWISE_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(MANAGED_SERVICE_DESK_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(MANAGED_SECURITY_TOOL_EXECUTORS)
+_TOOL_REGISTRY.update(MANAGED_BUSINESS_TOOL_EXECUTORS)
 
 from app.services.priority_connector_tools import PRIORITY_CONNECTOR_TOOLS
 from app.services.intelligence_pack_tools import INTELLIGENCE_PACK_TOOL_EXECUTORS
@@ -5034,6 +5087,28 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
         action = resolve_registry_action(cap_resolution.resolved_action, registered)
         params["_capability_resolved_from"] = cap_resolution.capability_id
         params["_capability_resolved_vendor"] = cap_resolution.resolved_vendor
+
+    # One write-authority check for every caller (shadow by default; see write_authority).
+    from app.services.write_authority import WriteAuthorityError, check_write_authority
+
+    try:
+        declared_authority = check_write_authority(
+            action,
+            settings=getattr(ctx, "settings", None),
+            org_id=ctx.org_id,
+            actor_id=getattr(ctx, "actor_id", None),
+        )
+    except WriteAuthorityError as exc:
+        raise ToolValidationError(str(exc), code=WriteAuthorityError.code) from exc
+
+    approved_authority_run = None
+    if declared_authority is not None and declared_authority.kind == "run":
+        from app.services.canvas_write_gate import require_approved_authority_run
+
+        approved_authority_run = require_approved_authority_run(
+            client=ctx.client, org_id=ctx.org_id, run_id=ctx.run_id,
+            authority_ref=declared_authority.ref,
+        )
 
     # Module 0 — credential/isolation guard on the shared write spine (chat/ReAct/canvas).
     from app.services.conversation_write_guard import (
@@ -5184,6 +5259,27 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
             )
     _write_tool_audit(ctx, action, cid, "tool.invoke.requested")
 
+    if _is_write_invoke(action) and ctx.run_id and ctx.client:
+        from app.services.canvas_write_gate import load_run_for_write_gate
+        from app.services.workflow_approval_scope import block_invoke_by_approval_scope
+
+        run_row = approved_authority_run if approved_authority_run is not None else load_run_for_write_gate(ctx.client, ctx.org_id, str(ctx.run_id))
+        if run_row is not None:
+            definition = run_row.get("definition_snapshot") or run_row.get("definition")
+            params_raw = run_row.get("parameters") if isinstance(run_row.get("parameters"), dict) else {}
+            scope_block = block_invoke_by_approval_scope(
+                invoke_action=action,
+                run_row=run_row,
+                run_parameters=params_raw,
+                definition=definition if isinstance(definition, dict) else None,
+                invoke_params={**(params if isinstance(params, dict) else {}), **({"connector_id": cid} if cid else {})},
+            )
+            if scope_block is not None:
+                raise ToolValidationError(
+                    str(scope_block.get("reason") or scope_block.get("error_code") or "approval_scope_blocked"),
+                    code=str(scope_block.get("error_code") or "APPROVAL_SCOPE_BLOCKED"),
+                )
+
     compensation_snapshot = None
     if ctx.run_id:
         from app.services.compensation_service import prepare_forward_snapshot, record_compensatable_action, should_track_compensation
@@ -5193,6 +5289,50 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
 
     from app.services.voice_barge_in_write import begin_write_effect, finish_write_effect
 
+    write_idempotency_key: str | None = None
+    write_logical_action_id: str | None = None
+    write_claim_token: str | None = None
+    idempotency_enabled = _is_write_invoke(action) and bool(
+        getattr(ctx.settings, "write_invoke_idempotency_enabled", False)
+    )
+    if idempotency_enabled:
+        from app.services.write_invoke_idempotency import (
+            WriteIdempotencyUnavailable,
+            build_write_idempotency_key,
+            claim_write_invoke,
+            inject_provider_idempotency,
+        )
+
+        write_idempotency_key, write_logical_action_id = build_write_idempotency_key(ctx, action, params)
+        claim = claim_write_invoke(
+            ctx.client,
+            org_id=ctx.org_id,
+            idempotency_key=write_idempotency_key,
+            invoke_action=action,
+            logical_action_id_value=write_logical_action_id,
+        )
+        if claim.outcome == "replay" and claim.replay is not None:
+            _write_tool_audit(
+                ctx,
+                action,
+                cid,
+                "tool.invoke.completed",
+                {"idempotency_replay": True, "idempotency_key": write_idempotency_key[:16]},
+            )
+            return claim.replay
+        if claim.outcome == "blocked":
+            raise WriteIdempotencyUnavailable(
+                f"Write already in progress or requires reconciliation ({claim.status or claim.reason})",
+                code="write_idempotency_blocked",
+            )
+        if claim.outcome == "error":
+            raise WriteIdempotencyUnavailable(
+                "Write idempotency ledger unavailable; refusing duplicate-risk invoke",
+                code="write_idempotency_unavailable",
+            )
+        write_claim_token = claim.claim_token
+        params = inject_provider_idempotency(params, write_idempotency_key)
+
     # Last stop check before the provider call, and the record a cancelled
     # voice turn reads to say what had already been done.
     write_effect = begin_write_effect(ctx, action)
@@ -5201,6 +5341,13 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     for attempt in range(attempts):
         started = time.perf_counter()
         try:
+            if _is_write_invoke(action):
+                from app.workers.workflow_queue import assert_current_workflow_claim_live
+
+                try:
+                    assert_current_workflow_claim_live()
+                except Exception as exc:
+                    raise ToolValidationError("Workflow execution ownership was lost; write refused", code="workflow_claim_lost") from exc
             result = executor(ctx, params)
             finish_write_effect(write_effect, "completed" if result.success else "failed")
             result.latency_ms = result.latency_ms or int((time.perf_counter() - started) * 1000)
@@ -5268,6 +5415,17 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                         connector_id=result.connector_id or cid,
                         snapshot=compensation_snapshot,
                     )
+            if result.success and write_idempotency_key and idempotency_enabled:
+                from app.services.write_invoke_idempotency import finalize_write_invoke
+
+                finalize_write_invoke(
+                    ctx.client,
+                    org_id=ctx.org_id,
+                    idempotency_key=write_idempotency_key,
+                    claim_token=write_claim_token,
+                    status="completed",
+                    result=result,
+                )
             try:
                 from app.services.post_publish_marketing_metrics_service import (
                     maybe_record_post_publish_marketing_baseline,
@@ -5321,6 +5479,21 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                     },
                 )
                 break
+            if _is_write_invoke(action) and _provider_server_error(exc, tool_exc):
+                # A 5xx after the request reached the provider: it may have
+                # committed. Same rule as an ambiguous delivery: reconcile, do not
+                # replay.
+                last_error = ToolOutcomeUncertainError(
+                    f"{action} failed at the provider and may have been applied: {exc}",
+                    details={
+                        "requires_reconciliation": True,
+                        "underlying_code": tool_exc.code,
+                        "attempt": attempt + 1,
+                    },
+                )
+                break
+            if _is_write_invoke(action) and not write_retry_is_safe(exc, tool_exc):
+                break
             retryable = isinstance(tool_exc, ToolRateLimitedError) or (
                 not isinstance(tool_exc, (ToolValidationError, ToolAuthExpiredError, ToolNotFoundError))
                 and attempt < attempts - 1
@@ -5329,6 +5502,17 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                 break
             if attempt < len(_RETRY_BACKOFF_SEC):
                 time.sleep(_RETRY_BACKOFF_SEC[attempt])
+
+    if write_idempotency_key and idempotency_enabled and last_error is not None:
+        from app.services.write_invoke_idempotency import finalize_write_invoke
+
+        finalize_write_invoke(
+            ctx.client,
+            org_id=ctx.org_id,
+            idempotency_key=write_idempotency_key,
+            claim_token=write_claim_token,
+            status="uncertain" if isinstance(last_error, ToolOutcomeUncertainError) else "failed",
+        )
 
     finish_write_effect(
         write_effect,

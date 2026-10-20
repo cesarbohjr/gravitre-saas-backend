@@ -1,0 +1,176 @@
+{
+  "project_id": "smyeexlrqdpymwjmgzqu",
+  "approved_code_sha": "eacb3d57c77a9a0e5481f2ceb509a208260561f9",
+  "status": "APPLIED_AND_SCHEMA_VERIFIED",
+  "historical_billing_backfill_run": false,
+  "production_flags_changed": false,
+  "mapping": [
+    {
+      "old": "20261014060000_msp_parent_org_scaffold.sql",
+      "new": "20261016032007_msp_parent_org_scaffold.sql",
+      "version": "20261016032007",
+      "name": "msp_parent_org_scaffold",
+      "sql_sha256": "09f071a515230b8b5c309ccff3628108a8985d88453f4f5d9bb243b7871cf19f"
+    },
+    {
+      "old": "20261014100000_write_invoke_idempotency.sql",
+      "new": "20261016032018_write_invoke_idempotency.sql",
+      "version": "20261016032018",
+      "name": "write_invoke_idempotency",
+      "sql_sha256": "55c0f0f68daf0055aa5035b37b2438a4c6700cca7c69e306406eb243d4fef418"
+    },
+    {
+      "old": "20261014100001_write_invoke_idempotency_grants.sql",
+      "new": "20261016032029_write_invoke_idempotency_grants.sql",
+      "version": "20261016032029",
+      "name": "write_invoke_idempotency_grants",
+      "sql_sha256": "2f1798b3ba3e407845e66b9b8d7686c05887b302d4ba182bb55e9eed5c12ac5d"
+    },
+    {
+      "old": "20261015032117_assistant_usage_atomic.sql",
+      "new": "20261016032039_assistant_usage_atomic.sql",
+      "version": "20261016032039",
+      "name": "assistant_usage_atomic",
+      "sql_sha256": "1cf346686a905075597f46266d71ad609db086f3a35916516d29c91488348dd5"
+    },
+    {
+      "old": "20261015222156_atomic_usage_all_sources.sql",
+      "new": "20261016032048_atomic_usage_all_sources.sql",
+      "version": "20261016032048",
+      "name": "atomic_usage_all_sources",
+      "sql_sha256": "c0b005d450f03b66e913e5d0757a4475117ec21108e7a25e69657202cd40e5ab"
+    },
+    {
+      "old": "20261015232327_assistant_billing_recovery_contract.sql",
+      "new": "20261016032109_assistant_billing_recovery_contract.sql",
+      "version": "20261016032109",
+      "name": "assistant_billing_recovery_contract",
+      "sql_sha256": "4fba34a05ebbd60feb8f6cb68c579fe436c15143780c81ff1072d18d5c83cb6c"
+    }
+  ],
+  "postflight": {
+    "functions": [
+      {
+        "name": "claim_write_invoke_idempotency",
+        "anon_execute": false,
+        "member_execute": false,
+        "service_execute": true,
+        "security_definer": true
+      },
+      {
+        "name": "finalize_write_invoke_idempotency",
+        "anon_execute": false,
+        "member_execute": false,
+        "service_execute": true,
+        "security_definer": true
+      },
+      {
+        "name": "lock_billing_allowance",
+        "anon_execute": false,
+        "member_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      },
+      {
+        "name": "reconcile_write_invoke_idempotency",
+        "anon_execute": false,
+        "member_execute": false,
+        "service_execute": true,
+        "security_definer": true
+      },
+      {
+        "name": "record_assistant_model_usage",
+        "anon_execute": false,
+        "member_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      },
+      {
+        "name": "record_usage_with_allowance_contract",
+        "anon_execute": false,
+        "member_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      },
+      {
+        "name": "record_usage_with_overage_atomic",
+        "anon_execute": false,
+        "member_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      },
+      {
+        "name": "recover_assistant_model_usage",
+        "anon_execute": false,
+        "member_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      },
+      {
+        "name": "settle_assistant_model_usage",
+        "anon_execute": false,
+        "member_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      }
+    ],
+    "migrations": [
+      {
+        "name": "msp_parent_org_scaffold",
+        "version": "20261016032007"
+      },
+      {
+        "name": "write_invoke_idempotency",
+        "version": "20261016032018"
+      },
+      {
+        "name": "write_invoke_idempotency_grants",
+        "version": "20261016032029"
+      },
+      {
+        "name": "assistant_usage_atomic",
+        "version": "20261016032039"
+      },
+      {
+        "name": "atomic_usage_all_sources",
+        "version": "20261016032048"
+      },
+      {
+        "name": "assistant_billing_recovery_contract",
+        "version": "20261016032109"
+      }
+    ],
+    "allowance_rls": true,
+    "allowance_rows": 0,
+    "billing_columns": [
+      "billing_credits",
+      "billing_included",
+      "billing_environment",
+      "billing_settled_at",
+      "billing_attempts",
+      "billing_retry_at",
+      "billing_last_error"
+    ],
+    "idempotency_rows": 0,
+    "tagged_model_calls": 0,
+    "allowance_anon_select": false,
+    "allowance_member_insert": false,
+    "model_calls_member_insert": false,
+    "model_calls_member_update": false,
+    "old_manage_policy_present": false,
+    "model_calls_service_insert": true
+  },
+  "application_acceptance": "NOT RUN; application CI has one model-evaluation logging guard failure; clean reset has historical 20250220000006 failure",
+  "isolated_pg_tests": {
+    "ci_run": 38843113730,
+    "result": "PASS",
+    "tests": 24,
+    "coverage": [
+      "idempotency claims/fencing/grants",
+      "atomic assistant usage",
+      "mixed-source atomic usage",
+      "durable assistant recovery"
+    ],
+    "local_after_rename": "24 skipped: PostgreSQL server binaries unavailable; SQL hashes unchanged and test paths verified"
+  }
+}

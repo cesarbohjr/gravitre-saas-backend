@@ -13,13 +13,12 @@ FRUSTRATION_PHRASES = (
     "doesn't work",
     "doesnt work",
     "still not",
-    "again",
     "still wrong",
     "forget it",
     "never mind",
     "this is broken",
 )
-URGENCY_PHRASES = ("urgent", "asap", "immediately", "right now", "today")
+URGENCY_PHRASES = ("urgent", "asap", "immediately", "right now", "by today", "due today")
 UNCERTAINTY_PHRASES = ("not sure", "maybe", "i think", "i'm confused", "dont understand", "don't understand")
 
 
@@ -45,16 +44,16 @@ class SentimentFrictionService:
         if text == text.upper() and len(text) > 10 and re.search(r"[A-Z]", text):
             signals.append("all_caps")
             frustration += 0.3
-        if any(phrase in lowered for phrase in FRUSTRATION_PHRASES):
+        if self._has_phrase(lowered, FRUSTRATION_PHRASES):
             signals.append("frustration_phrase")
             frustration += 0.4
         if self._is_repeated_question(text, history):
             signals.append("repeated_question")
             frustration += 0.3
-        if any(phrase in lowered for phrase in URGENCY_PHRASES):
+        if self._has_phrase(lowered, URGENCY_PHRASES):
             signals.append("urgency_phrase")
             urgency += 0.5
-        if any(phrase in lowered for phrase in UNCERTAINTY_PHRASES):
+        if self._has_phrase(lowered, UNCERTAINTY_PHRASES):
             signals.append("uncertainty_phrase")
             uncertainty += 0.4
 
@@ -71,6 +70,10 @@ class SentimentFrictionService:
             "signals": signals,
             "recommended_adaptation": self._select_adaptation(frustration, uncertainty, urgency),
         }
+
+    @staticmethod
+    def _has_phrase(text: str, phrases: tuple[str, ...]) -> bool:
+        return any(re.search(rf"\b{re.escape(phrase)}\b", text) for phrase in phrases)
 
     @staticmethod
     def _normalize_for_compare(text: str) -> str:
@@ -91,7 +94,7 @@ class SentimentFrictionService:
     def _select_adaptation(frustration: float, uncertainty: float, urgency: float) -> str:
         if frustration >= 0.6:
             return "acknowledge_briefly"
-        if uncertainty >= 0.5:
+        if uncertainty >= 0.4:
             return "offer_options"
         if urgency >= 0.5:
             return "reduce_verbosity"
@@ -99,6 +102,17 @@ class SentimentFrictionService:
 
 
 _sentiment_friction_service: SentimentFrictionService | None = None
+
+
+def conversational_adaptation_instruction(adaptation: str | None) -> str:
+    """Closed-set presentation hints; never instructions from retrieved text."""
+    if not isinstance(adaptation, str):
+        return ""
+    return {
+        "acknowledge_briefly": "The user may be frustrated. Acknowledge briefly, then help. Do not claim to know their feelings.",
+        "offer_options": "The user may be uncertain. Explain clearly and offer a small number of useful options.",
+        "reduce_verbosity": "Be concise and action-first. Preserve uncertainty, evidence and approval requirements.",
+    }.get(adaptation or "", "")
 
 
 def get_sentiment_friction_service() -> SentimentFrictionService:

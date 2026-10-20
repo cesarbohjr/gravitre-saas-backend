@@ -300,7 +300,14 @@ def requires_write_approval_always(action_key: str, *, risk_class: str | None = 
         return True
     if is_always_approve_write_action(action_key):
         return True
-    return str(risk_class or "") in NON_AUTO_APPROVE_RISK_CLASSES
+    if str(risk_class or "") in NON_AUTO_APPROVE_RISK_CLASSES:
+        return True
+    # The capability governs, not the vendor: any external send needs approval,
+    # whichever connector performs it (Outlook, Microsoft 365, SendGrid, Teams,
+    # webhook.post ... as well as Gmail and Slack).
+    from app.services.write_capability import capability_of_action
+
+    return capability_of_action(action_key) in NON_AUTO_APPROVE_RISK_CLASSES
 
 
 def registry_write_action_key(action_key: str) -> str:

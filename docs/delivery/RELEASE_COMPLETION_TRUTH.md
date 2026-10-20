@@ -1,0 +1,138 @@
+> Production schema update: all six approved migrations were applied on
+> 2026-10-16 UTC. Exact old/new filename mapping and schema/permission verification:
+> [apply receipt](./supabase-migrations-applied-2026-10-16.json). Older unapplied
+> labels below are superseded for those six files only. Production flags were
+> unchanged. Application acceptance, full CI and remaining engineering stay open.
+
+# Master plan implementation and shipping truth — 2026-10-14
+
+Implementation continues on `codex/master-plan-completion-20261014`, based on draft #429 at `7fd10c4a`. This branch is reviewable engineering; no merge, production migration, deployment, or flag activation has been performed here.
+
+**Current evidence (2026-10-15):** #431 at `7ad397d` passed the full backend
+suite (11,006 passed, 7 skipped), web suite/lint/typecheck/build, shared text/voice,
+integration smoke and required real PostgreSQL/Redis gates in run 38817159040.
+Historical failed-run notes below are superseded by that run. The clean migration
+reset still fails at historical `20250220000006`; Billing Playwright skipped.
+
+**Current recovery draft:** migration `20261015232327` adds durable assistant
+billing evidence and bounded scheduler settlement, default off behind
+`ASSISTANT_BILLING_RECOVERY_ENABLED`. It requires both atomic billing flags and
+the prior atomic migrations. Its required PostgreSQL recovery gate passed on
+`8038f11b` in CI run 38823949550; context/scheduler and full regression acceptance
+remain separate. See `MASTER_PLAN_CLOSEOUT_2026-10-15.md` for the
+remaining engineering queue, rollout order and limitations. No production
+charge, backfill, migration or flag change has been performed.
+
+**Intelligence follow-on:** existing critical-path audit/latency reporting already
+exists. Read-only production aggregates are recorded in
+`latency-production-baseline-2026-10-15.json`; these compose checkpoints are not
+browser/first-audio SLO acceptance. The new company-memory snapshot guard filters
+revoked memories before synthesis and revalidates their exact fingerprints,
+active state and connector liveness at the shared prompt reader. With lineage
+enabled, legacy snapshots containing unprovenanced memory text are suppressed
+until regeneration. No lineage flag was enabled. This closes that snapshot route
+only; document-derived memories, summaries and other caches still need review.
+
+## Current implementation increment
+
+- Redis workflow claims move atomically from queued to owned processing. Ownership tokens, leases, heartbeat, bounded recovery and dead-letter transitions prevent lost jobs and fence stale acknowledgements. Concurrent deliveries for the same org/run share a single owner. Subsequent provider writes require a live claim and enabled write idempotency.
+- Workflow approval fingerprints seal the full JSON provider payload, including connector, webhook path/headers, CC/BCC, attachments and extension arguments. Dynamic parameter templates remain unsealed and require review after resolution. Existing narrower approvals may require renewed approval.
+- Conversation persistence adds server-owned revisions and compare-and-set retries. UI rejects stale revisions, presents uncertainty without a completion claim, and carries the existing lifecycle envelope through desktop/mobile runtime and mission status.
+- Provider acceptance without verifier evidence is unverified in the existing business-outcome projection. Its accepted confidence remains visible.
+- ReAct and unified LIVE/shadow tool-calling rounds use the existing ModelRouter model_calls writer and attribution context. Synthetic handoffs are not charged as model calls. This does not close all failure/cancellation metering or historical billing reconciliation.
+- The deterministic agent-roster response no longer creates estimated AI credits when no provider model ran. Streamed turns still need per-model-call billing reconciliation; the current whole-turn text-length estimate is not actual token usage.
+
+## Streamed billing follow-on (draft)
+
+The assistant stream now captures persisted `model_calls` ids and measured provider tokens for each model round, including tool-calling, and charges each id separately through the existing idempotent usage writer. A same-process model cache hit records zero provider tokens/cost and is excluded from billing. A stream without persisted model-call evidence is logged as unmetered rather than charged from text length. Cancellation and early error paths attempt to settle captured calls before completion, with a final attempt on stream close. This augments the existing billing ledger and intelligence stack; it adds no second cost store.
+
+The usage writer now fails closed if its idempotent upsert errors. It no longer retries the charge with a plain INSERT, which could double-charge after a commit followed by timeout. This requires the already defined billing-idempotency migration `20260531000100` to be applied in each target environment before deployment.
+The writer also pages usage totals past PostgREST's default row limit, avoids a minimum credit for a measured zero-token call, and attributes a model call to its database creation month when the provider reply crosses a billing boundary.
+The assistant stream mints one `assistant:<uuid>` turn identifier and shares it with its cognitive trace and model-call attribution, including across voice task resumption. This avoids reusing an old conversation trace as the next billing turn. `scripts/report_assistant_billing_gap.py --since <UTC timestamp>` reports aggregate new-stream calls without matching assistant usage by model-call id, with no customer identifiers in output. It is read-only and **must not** be used as an automatic charge or historical backfill. Production currently has no turn-attributed `model_calls` rows; the draft has not been deployed.
+
+**Production baseline, read-only on 2026-10-14:** `20260531000000`, `20260531000100` and `20261013080000` are recorded as applied; the usage and overage uniqueness indexes and org/turn index exist. The last 30 days contain 5,093 `model_calls` (zero with `turn_id` or `run_id`) and 11 assistant usage rows (five estimated-turn sources). These are aggregate counts, not a safe basis to infer which historical calls should be charged. The two `20261014100000/100001` idempotency migrations are not recorded in production. No production write was performed.
+
+**Remaining billing gate:** a process crash or database billing failure after `model_calls` insert can leave an unbilled call. A durable reconciler and a historical credit backfill decision are still required before calling billing complete. The current per-call usage writer also performs sequential plan reads/writes; high-volume load and overage correctness need a real-database concurrency proof. A persistent billing-scope marker on `model_calls` plus an atomic reconciler is the next schema increment. The local Supabase CLI is unavailable for generating and validating a new migration, and no production schema change has been applied. This draft remains unmerged and unactivated.
+- Haiku 5.5 joins the existing catalog/selector/registry; its 100,000-token price threshold and cache rates are accounted for. Sonnet 5.5 cache reads use the vendor's October 7 price. No routing defaults or customer credit multipliers change.
+- MSP parent links cannot grant child access by themselves. Explicit child membership remains required until client-specific delegation, role enforcement and RLS are delivered.
+- A follow-on draft increment fixes the scenario fake database's PostgREST revision comparison, carries model attribution across voice task resumption, uses verifier evidence before lifecycle completion, and requires a runtime-equivalent backend SHA at deployment. Its direct provider model gate reuses existing policy and budget checks, which are not yet fail-closed or atomic.
+
+## Gates and configuration
+
+Existing #429 migrations remain separate from this increment: `20261014100000` then `20261014100001`; `20261014060000` requires link-management review. **`20261014110000` is withdrawn and must not be applied.** No new migration is added here.
+
+Keep `WRITE_INVOKE_IDEMPOTENCY_ENABLED`, `EVENT_TRIGGER_USE_WORKFLOW_QUEUE`, `MSP_PARENT_ORG_ENABLED` and the domain relay off in production until their staging and authenticated acceptance gates pass. Queued writes require the idempotency ledger to be active. `WORKFLOW_QUEUE_LEASE_SECONDS` defaults to 60; leases renew every third of that interval. The existing fail-closed queue setting remains part of the production runbook.
+
+The new claim hash/lease/owner keys coexist with the old processing list. Before rollout, inspect old `gravitre:workflow-runs:processing` entries and reconcile their run/provider evidence; do not blindly replay them. Atomic scripts currently target Gravitre's single Redis deployment, not Redis Cluster.
+
+## Remaining master-plan work
+
+The completion matrix remains open for authenticated Release 1 acceptance, staging migration application, durable verification recovery and production activation; full argument-approval flows for resolved dynamic tasks; complete billing/failure attribution and PSA baselines/ROI; Freshservice/HubSpot live proofs; intelligence latency and complete document-memory lineage/resurfacing; client-scoped MSP delegation and switching; external MCP/API-key/OAuth distribution; model quality evaluations and adaptive routing; and third-party verification and marketplace reviews.
+
+Draft #431 CI has green focused Postgres, Redis and web gates, but its full backend run was red on scenario fake-database behavior and approval fixture expectations. The historical migration `20250220000006` also blocks a clean staging replay through a function return-type change. These are acceptance blockers until the corrected backend suite and clean replay pass; they do not justify activation of any production flags.
+
+The restored increment passed 83 focused lifecycle, approval, voice, model metering and attribution tests and a local Git-history deploy-revision test. Automatic approval review blocked its broader scenario run after detecting attempted external provider storage traffic; the suite has no completed verdict in this environment. CI must prove provider calls are intercepted before replaying it. The draft branch has not been merged or deployed.
+
+These remain implementation or external acceptance work. Passing local tests does not close those rows or authorize a production flag flip. Source privacy and Memory Option B retain the existing owner/consent requirements.
+
+## Evidence
+
+See `CODEX_IMPLEMENTATION_2026-10-14.md` for executed checks and limitations, and `MASTER_PLAN_COMPLETION_MATRIX.md` for the full scope.
+## Assistant billing transaction (draft #431, 2026-10-15)
+
+The new `20261015032117_assistant_usage_atomic.sql` is **unapplied**. With
+`ASSISTANT_BILLING_ATOMIC_ENABLED=true` and that exact migration reviewed and
+applied, a namespaced assistant model call can record its usage and overage in
+one transaction, serialized with other calls using this RPC for the same org,
+period and environment. The flag defaults off. The real-Postgres test in CI
+checks concurrent allowance use, replay, tenant boundary, grants and rollback
+on overage failure; its result must be checked before a rollout. The legacy
+writer and other usage sources do not share the advisory lock, so mixed-source
+concurrency and historical billing still require separate reconciliation.
+The read-only gap report does not charge customers.
+The default-off `20261015222156_atomic_usage_all_sources.sql` adds a
+service-role-only RPC for other allowance-bearing app writers. With
+`USAGE_ATOMIC_ENABLED=true`, they share the assistant RPC's advisory lock and
+commit usage and overage in one transaction. Assistant-specific atomic billing
+requires this generic flag; misconfiguration fails closed with a billing
+guardrail event. The mixed-source real-Postgres gate covers concurrency,
+replay, tenant separation, grants and rollback. Both migrations and flags need
+staging acceptance before production rollout. Historical partial rows, plan
+changes within a period, and writers outside this app still need audit.
+`scripts/reconcile_assistant_billing.py` is a separate bounded recovery command:
+it defaults to read-only, requires an explicit window in the current UTC month
+ending at least ten minutes ago, and requires `--apply` plus the enabled atomic
+flag to write. It compares existing assistant usage against persisted model
+identity and token counts, reports missing versus already billed calls, and
+refuses a truncated or mismatched preflight before writing. The RPC also
+rejects a duplicate with changed model identity. It replays through the same
+RPC. This does not verify that historical overage rows were correctly written,
+and plan changes within a billing period still need manual review. It is not an automatic sweep;
+an operator must review plan changes and the window before running it. No
+production recovery has been run.
+
+## Read-only Railway snapshot (2026-10-15 UTC)
+
+The last successful backend deployment in Railway is `b642dd156`, created
+2026-10-14. More recent `main` deployments were marked SKIPPED. The connected
+Railway API returned variable **names only**, so values of existing flags have
+not been verified. `ASSISTANT_BILLING_ATOMIC_ENABLED`,
+`WRITE_INVOKE_IDEMPOTENCY_ENABLED`, `WRITE_AUTHORITY_MODE`,
+`EVENT_TRIGGER_USE_WORKFLOW_QUEUE`, `WORKFLOW_QUEUE_FAIL_CLOSED` and
+`MSP_PARENT_ORG_ENABLED` were absent by name. Their code defaults apply if/when
+the new code is deployed. `DOMAIN_EVENT_RELAY_ENABLED`,
+`OUTCOME_LEARNING_HANDLER_ENABLED`, `MEMORY_SOURCE_LINEAGE_ENABLED`,
+`UNIFIED_TURN_LIVE_ENABLED`, `CROSS_SOURCE_CONTEXT_ENGINE_ENABLED`, Redis,
+Temporal and the Supabase service key were present by name. **Presence does not
+establish a flag's value or a feature's live status.** Nothing was changed.
+
+CI on draft commit `dbbbfc2a` (run `38678073767`) passed the dedicated
+real-PostgreSQL assistant usage gate and the web suite. Full backend pytest
+reported 10,994 passes, 7 skips and one row-cap boundary failure; #431
+contains its fix, pending a complete CI rerun. Migration safety validated the changed SQL
+but clean local replay still failed at the old `20250220000006` function return
+type mismatch; that historical replay requires a separate baseline repair.
+The run-cost summary now reads model and step rows in bounded pages; if it
+cannot cover the whole run, it returns unknown cost/counts instead of a low
+but apparently precise total. This is a draft code change, not production
+evidence of MSP ROI.

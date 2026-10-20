@@ -398,6 +398,12 @@ async def get_org_model_status(org_id: str, model_name: str, *, settings: Settin
                 None,
             )
             if match:
+                # A registry pointer is deployment metadata, not evidence that
+                # the artifact is readable or compatible with this runtime.
+                payload["deployed_version"] = match.deployed_version
+                artifact = await registry.load_model_artifact(match.id, match.deployed_version)
+                instance = get_model_instance(model_name)
+                instance.load(artifact)
                 payload["artifact_loaded"] = True
                 payload["live_inference_path"] = "loaded_model_artifact"
                 payload["runtime_status"] = "trained"
@@ -434,6 +440,8 @@ async def get_org_model_status(org_id: str, model_name: str, *, settings: Settin
             )
             payload["live_inference_path"] = str(fallback)
             payload["runtime_status"] = "heuristic"
+            if payload.get("deployed_version"):
+                payload["artifact_load_failed"] = True
     elif status == ModelStatus.PLANNED and model_name in {
         "sla_breach_predictor",
         "deal_loss_scorer",

@@ -123,3 +123,9 @@ describe("deriveAiRuntimeState — every state comes from a real bridge prop", (
     }
   })
 })
+
+
+it("provider success cannot override unconfirmed lifecycle evidence", () => {
+  expect(deriveAiRuntimeState({ status: "ready", executionResult: { success: true, lifecycle_envelope: { customer_stage: "uncertain", semantic_stage: "OUTCOME_UNCERTAIN" } } })).toBe("uncertain")
+  expect(deriveAiRuntimeState({ status: "ready", executionResult: { success: true, lifecycle_envelope: { customer_stage: "verifying", semantic_stage: "VERIFYING" } } })).toBe("verifying")
+})

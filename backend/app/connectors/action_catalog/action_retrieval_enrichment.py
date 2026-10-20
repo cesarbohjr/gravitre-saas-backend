@@ -190,6 +190,15 @@ ACTION_RETRIEVAL_ENRICHMENT: dict[str, dict[str, Any]] = {
 }
 
 
+from app.connectors.nango_registry import BUSINESS_CONNECTORS
+for _row in BUSINESS_CONNECTORS:
+    ACTION_RETRIEVAL_ENRICHMENT[_row["vendor"] + "." + _row["read_action"]] = {
+        "examples": [_row["description"], "Show " + _row["display_name"] + " " + _row["read_action"].split(".")[0],
+                     "Retrieve " + _row["display_name"] + " records for review"],
+        "tags": [_row["vendor"], _row["department"], _row["read_action"].split(".")[0], "read"],
+    }
+
+
 @lru_cache(maxsize=1)
 def _load_full_catalog() -> dict[str, dict[str, Any]]:
     if not _DATA_PATH.is_file():

@@ -122,6 +122,7 @@ def check_connector_health(
         vendor,
         settings,
         environment_name=environment_name,
+        **({"validate_remote": True} if safe_normalize_stored_dict(row, key="config").get("auth_provider") == "managed" else {}),
     )
     latency_ms = max(int((time.perf_counter() - started) * 1000), 0)
 

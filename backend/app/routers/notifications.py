@@ -15,7 +15,10 @@ from app.core.db import shared_service_client
 from app.auth.dependencies import get_current_user, get_org_context
 from app.config import Settings, get_settings
 from app.services.notification_preference_service import (
+    QUIET_HOURS_KEY,
+    default_structured_preferences,
     flatten_structured_preferences,
+    normalize_quiet_hours,
     structured_preferences,
 )
 
@@ -258,10 +261,13 @@ def get_notification_preferences(
         .eq("user_id", user_id)
         .limit(1)
     )
-    if response is None or not response.data:
-        return {"preferences": structured_preferences({})}
-    raw = response.data[0].get("preferences") or {}
-    return {"preferences": structured_preferences(raw if isinstance(raw, dict) else {})}
+    raw = (response.data[0].get("preferences") if response is not None and response.data else None) or {}
+    raw = raw if isinstance(raw, dict) else {}
+    return {
+        "preferences": structured_preferences(raw),
+        "quietHours": normalize_quiet_hours(raw.get(QUIET_HOURS_KEY)),
+        "defaults": default_structured_preferences(),
+    }
 
 
 @router.patch("/preferences")
@@ -283,14 +289,16 @@ def update_notification_preferences(
         .limit(1)
     )
     stored = (existing.data[0].get("preferences") if existing is not None and existing.data else None) or {}
-    payload = {
-        "org_id": org_id,
-        "user_id": user_id,
-        "preferences": flatten_structured_preferences(
-            preferences, stored if isinstance(stored, dict) else {}
-        ),
-    }
+    try:
+        flat = flatten_structured_preferences(preferences, stored if isinstance(stored, dict) else {})
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    payload = {"org_id": org_id, "user_id": user_id, "preferences": flat}
     _execute(
         client.table("notification_preferences").upsert(payload, on_conflict="org_id,user_id")
     )
-    return {"ok": True, "preferences": structured_preferences(payload["preferences"])}
+    return {
+        "ok": True,
+        "preferences": structured_preferences(flat),
+        "quietHours": normalize_quiet_hours(flat.get(QUIET_HOURS_KEY)),
+    }

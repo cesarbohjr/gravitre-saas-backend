@@ -20,6 +20,8 @@ export type BlogFAQ = {
 export type BlogPost = {
   slug: string
   title: string
+  /** Explicit search-result title when the full article headline exceeds 60 characters with suffix. */
+  seoTitle?: string
   /** <=160 chars, written as a direct answer for AEO/meta description. */
   description: string
   excerpt: string

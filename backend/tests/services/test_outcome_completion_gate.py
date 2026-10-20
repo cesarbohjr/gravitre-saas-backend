@@ -80,12 +80,21 @@ def test_verified_readback_allows_completion_claim() -> None:
         summary="provider accepted create",
         structured={"id": "123"},
         pending_task=_state()["pending_task"],
-        verification={"verified": True, "provider_record_id": "123"},
+        verification={"verified": True, "method": "entity_get", "provider_record_id": "123"},
     )
     claim = outcome_claim_from_state(state)
     assert claim.may_claim_complete is True
     assert claim.needs_verification is False
     require_verified_completion(state)
+
+
+def test_provider_supplied_verified_boolean_is_not_readback_proof() -> None:
+    state = persist_write_outcome_patch(
+        task_state=_state(), connector_plan=_plan(), success=True,
+        summary="provider accepted create", structured={"id": "123"},
+        pending_task=_state()["pending_task"], verification={"verified": True},
+    )
+    assert outcome_claim_from_state(state).may_claim_complete is False
 
 
 def test_approval_is_not_completion() -> None:

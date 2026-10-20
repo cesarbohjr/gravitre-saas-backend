@@ -21,10 +21,12 @@ async def test_portable_mcp_runtime_rejects_private_dns_resolution(monkeypatch) 
 
 
 @pytest.mark.asyncio
-async def test_manual_mcp_runtime_keeps_legacy_network_policy() -> None:
-    await _validate_portable_mcp_runtime_endpoint(
-        {
-            "source_capability_package_id": None,
-            "server_url": "http://localhost:3000",
-        }
-    )
+async def test_manual_mcp_runtime_refuses_loopback_by_default() -> None:
+    # Admin-added servers used to skip this check; they no longer may reach loopback.
+    with pytest.raises(ValueError, match="private or reserved"):
+        await _validate_portable_mcp_runtime_endpoint(
+            {
+                "source_capability_package_id": None,
+                "server_url": "http://localhost:3000",
+            }
+        )

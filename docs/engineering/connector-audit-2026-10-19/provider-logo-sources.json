@@ -1,0 +1,152 @@
+[
+  {
+    "vendor": "aircall",
+    "source": "https://app.nango.dev/images/template-logos/aircall.svg",
+    "bytes": 1705
+  },
+  {
+    "vendor": "bitbucket",
+    "source": "https://app.nango.dev/images/template-logos/bitbucket.svg",
+    "bytes": 851
+  },
+  {
+    "vendor": "cal_com",
+    "source": "https://app.nango.dev/images/template-logos/cal-com-v2.svg",
+    "bytes": 1668
+  },
+  {
+    "vendor": "digitalocean",
+    "source": "https://app.nango.dev/images/template-logos/digitalocean.svg",
+    "bytes": 516
+  },
+  {
+    "vendor": "discourse",
+    "source": "https://app.nango.dev/images/template-logos/discourse.svg",
+    "bytes": 1128
+  },
+  {
+    "vendor": "drata",
+    "source": "https://app.nango.dev/images/template-logos/drata.svg",
+    "bytes": 773
+  },
+  {
+    "vendor": "factorial",
+    "source": "https://app.nango.dev/images/template-logos/factorial.svg",
+    "bytes": 870
+  },
+  {
+    "vendor": "harvest",
+    "source": "https://app.nango.dev/images/template-logos/harvest.svg",
+    "bytes": 756
+  },
+  {
+    "vendor": "humaans",
+    "source": "https://app.nango.dev/images/template-logos/humaans-io.svg",
+    "bytes": 3777
+  },
+  {
+    "vendor": "ironclad",
+    "source": "https://app.nango.dev/images/template-logos/ironclad.svg",
+    "bytes": 1180
+  },
+  {
+    "vendor": "klaviyo",
+    "source": "https://app.nango.dev/images/template-logos/klaviyo.svg",
+    "bytes": 3128
+  },
+  {
+    "vendor": "lemlist",
+    "source": "https://app.nango.dev/images/template-logos/lemlist.svg",
+    "bytes": 1387
+  },
+  {
+    "vendor": "metabase",
+    "source": "https://app.nango.dev/images/template-logos/metabase.svg",
+    "bytes": 1629
+  },
+  {
+    "vendor": "ninjaone",
+    "source": "https://app.nango.dev/images/template-logos/ninjaone-rmm-oauth2.svg",
+    "bytes": 924
+  },
+  {
+    "vendor": "pandadoc",
+    "source": "https://app.nango.dev/images/template-logos/pandadoc.svg",
+    "bytes": 1845
+  },
+  {
+    "vendor": "productboard",
+    "source": "https://app.nango.dev/images/template-logos/productboard.svg",
+    "bytes": 302
+  },
+  {
+    "vendor": "recharge",
+    "source": "https://app.nango.dev/images/template-logos/recharge.svg",
+    "bytes": 634
+  },
+  {
+    "vendor": "smartsheet",
+    "source": "https://app.nango.dev/images/template-logos/smartsheet.svg",
+    "bytes": 587
+  },
+  {
+    "vendor": "teamwork",
+    "source": "https://app.nango.dev/images/template-logos/teamwork.svg",
+    "bytes": 705
+  },
+  {
+    "vendor": "typeform",
+    "source": "https://app.nango.dev/images/template-logos/typeform.svg",
+    "bytes": 481
+  },
+  {
+    "vendor": "webflow",
+    "source": "https://app.nango.dev/images/template-logos/webflow.svg",
+    "bytes": 321
+  },
+  {
+    "vendor": "wrike",
+    "source": "https://app.nango.dev/images/template-logos/wrike.svg",
+    "bytes": 718
+  },
+  {
+    "vendor": "toggl",
+    "source": "https://app.nango.dev/images/template-logos/toggl.svg",
+    "bytes": 1530
+  },
+  {
+    "vendor": "todoist",
+    "source": "https://app.nango.dev/images/template-logos/todoist.svg",
+    "bytes": 972
+  },
+  {
+    "vendor": "sentry",
+    "source": "https://app.nango.dev/images/template-logos/sentry.svg",
+    "bytes": 1330
+  },
+  {
+    "vendor": "freshsales",
+    "source": "https://app.nango.dev/images/template-logos/freshsales.svg",
+    "bytes": 479
+  },
+  {
+    "vendor": "miro",
+    "source": "https://app.nango.dev/images/template-logos/miro.svg",
+    "bytes": 463
+  },
+  {
+    "vendor": "pennylane",
+    "source": "https://app.nango.dev/images/template-logos/pennylane.svg",
+    "bytes": 1752
+  },
+  {
+    "vendor": "talentlms",
+    "source": "https://app.nango.dev/images/template-logos/talentlms.svg",
+    "bytes": 1160
+  },
+  {
+    "vendor": "contentful",
+    "source": "https://app.nango.dev/images/template-logos/contentful.svg",
+    "bytes": 1111
+  }
+]

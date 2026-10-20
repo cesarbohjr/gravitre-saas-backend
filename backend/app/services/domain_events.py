@@ -77,6 +77,11 @@ def handlers_for(event_type: str) -> list[_Registration]:
     return list(_handlers.get(event_type, []))
 
 
+def handled_event_types() -> list[str]:
+    """Event types with at least one registered handler; the relay claims only these."""
+    return sorted(t for t, regs in _handlers.items() if regs)
+
+
 def reset_domain_event_handlers_for_tests() -> None:
     _handlers.clear()
 
@@ -139,6 +144,7 @@ class RelayTickResult:
     retried: int = 0
     dead: int = 0
     lease_lost: int = 0
+    released: int = 0
     errors: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
@@ -148,6 +154,7 @@ class RelayTickResult:
             "retried": self.retried,
             "dead": self.dead,
             "lease_lost": self.lease_lost,
+            "released": self.released,
             "errors": self.errors[:5],
         }
 
@@ -167,15 +174,29 @@ class DomainEventRelay:
         self.lease_seconds = lease_seconds
 
     def _claim(self) -> list[dict[str, Any]]:
+        # Only types with a registered handler. An event whose handler is off
+        # (e.g. OUTCOME_LEARNING_HANDLER_ENABLED=false) stays pending, attempts
+        # untouched, instead of being marked delivered with nothing run.
+        event_types = handled_event_types()
+        if not event_types:
+            return []
         res = self._client.rpc(
             "claim_domain_events",
             {
                 "p_worker": self.worker_id,
                 "p_limit": self.batch_size,
                 "p_lease_seconds": self.lease_seconds,
+                "p_event_types": event_types,
             },
         ).execute()
         return [r for r in (res.data or []) if isinstance(r, dict)]
+
+    def _release(self, event: dict[str, Any]) -> bool:
+        res = self._client.rpc(
+            "release_domain_event",
+            {"p_id": event.get("id"), "p_worker": self.worker_id},
+        ).execute()
+        return res.data is True
 
     def _dispatch(self, event: dict[str, Any]) -> tuple[list[str], str | None]:
         """Run handlers not yet delivered. Returns (delivered handler names, first error)."""
@@ -206,6 +227,21 @@ class DomainEventRelay:
         result.claimed = len(events)
         for event in events:
             event_pk = event.get("id")
+            if not handlers_for(str(event.get("event_type") or "")):
+                # Claimed but nothing would run (a handler was unregistered, or an
+                # older claim function ignored the type filter). Never complete it.
+                try:
+                    if self._release(event):
+                        result.released += 1
+                    else:
+                        result.lease_lost += 1
+                except Exception as exc:  # noqa: BLE001
+                    # The lease expires and the event returns to pending on its own.
+                    result.errors.append(f"release: {exc}")
+                    logger.warning(
+                        "domain_event_release_failed event_id=%s error=%s", event.get("event_id"), exc
+                    )
+                continue
             done, error = self._dispatch(event)
             try:
                 if error is None:

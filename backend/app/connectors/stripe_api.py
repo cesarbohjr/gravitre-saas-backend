@@ -64,7 +64,7 @@ def resolve_stripe_credentials(
     stripe_account = str(stripe_account).strip() if stripe_account else None
 
     for key_name in ("secret_key", "api_key", "stripe_secret_key"):
-        value = get_decrypted_secret(client, connector_id, key_name, settings)
+        value = get_decrypted_secret(client, connector_id, key_name, settings, org_id=org_id)
         if value and value.strip():
             return value.strip(), stripe_account
 

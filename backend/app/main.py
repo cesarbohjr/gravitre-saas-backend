@@ -14,10 +14,12 @@ from fastapi.responses import JSONResponse
 from app.config import SettingsNotConfiguredError
 from app.core.errors import (
     http_exception_handler,
+    ingestion_held_handler,
     settings_not_configured_handler,
     validation_exception_handler,
 )
 from app.core.logging import get_logger, request_id_ctx
+from app.services.ingestion_interlock import IngestionHeldError
 from app.operator_module import router as operator_router
 from app.operators import router as operators_router
 from app.routers import (
@@ -124,7 +126,15 @@ from app.routers import (
     workday_sync,
     voice_gateway,
 )
-from app.routers.webhooks import hubspot_inbound, pagerduty_inbound, salesforce_inbound, segment_inbound
+from app.routers.webhooks import (
+    freshservice_inbound,
+    hubspot_inbound,
+    pagerduty_inbound,
+    salesforce_inbound,
+    segment_inbound,
+)
+from app.routers import freshservice_triggers, run_cost
+from app.routers import settings_api_keys, settings_security
 from app.routers.webhooks import stripe as stripe_webhooks
 from app.samples.stripe_connect_v2.router import router as stripe_connect_sample_router
 from app.routers.webhooks import workflow_triggers
@@ -319,6 +329,10 @@ async def lifespan(app: FastAPI):
         start_domain_event_relay_scheduler,
         stop_domain_event_relay_scheduler,
     )
+    from app.schedulers.stale_run_recovery_scheduler import (
+        start_stale_run_recovery_scheduler,
+        stop_stale_run_recovery_scheduler,
+    )
     from app.schedulers.knowledge_retention_scheduler import (
         start_knowledge_retention_scheduler,
         stop_knowledge_retention_scheduler,
@@ -407,6 +421,15 @@ async def lifespan(app: FastAPI):
     # Phase 2C retention prune; returns None unless KNOWLEDGE_RETENTION_PRUNE_ENABLED=true.
     app.state.knowledge_retention_task = start_knowledge_retention_scheduler()
     app.state.prediction_labeling_task = start_prediction_labeling_scheduler()
+    app.state.stale_run_recovery_task = start_stale_run_recovery_scheduler()
+    # Customer ingestion stays inert until source lifecycle is enforced; log what is held back.
+    try:
+        from app.config import get_settings as _ingestion_settings
+        from app.services.ingestion_interlock import log_ingestion_interlock
+
+        log_ingestion_interlock(_ingestion_settings())
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("customer_ingestion_interlock_check_failed error=%s", type(exc).__name__)
     app.state.entity_behavior_signals_task = start_entity_behavior_signals_scheduler()
     # Phase 2D indexing pilot; returns None unless RAG_WORKER_PILOT_ENABLED=true with org ids.
     app.state.rag_ingest_pilot_task = start_rag_ingest_pilot_scheduler()
@@ -486,6 +509,7 @@ async def lifespan(app: FastAPI):
         await stop_domain_event_relay_scheduler(getattr(app.state, "domain_event_relay_task", None))
         await stop_knowledge_retention_scheduler(getattr(app.state, "knowledge_retention_task", None))
         await stop_prediction_labeling_scheduler(getattr(app.state, "prediction_labeling_task", None))
+        await stop_stale_run_recovery_scheduler(getattr(app.state, "stale_run_recovery_task", None))
         await stop_entity_behavior_signals_scheduler(getattr(app.state, "entity_behavior_signals_task", None))
         await stop_rag_ingest_pilot_scheduler(getattr(app.state, "rag_ingest_pilot_task", None))
         await stop_memory_scheduler(getattr(app.state, "memory_promotion_task", None))
@@ -544,6 +568,7 @@ def root() -> dict:
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(SettingsNotConfiguredError, settings_not_configured_handler)
+app.add_exception_handler(IngestionHeldError, ingestion_held_handler)
 
 
 @app.exception_handler(Exception)
@@ -699,7 +724,16 @@ app.include_router(auth.router)
 app.include_router(sso.router)
 app.include_router(org.router)
 app.include_router(org.organizations_router)
+# MSP grants are storage-only until tenant isolation acceptance; no inherited access.
+from app.routers import msp_delegations
+app.include_router(msp_delegations.router)
+# MSP partner program: wholesale billing, client workspaces, rebilling.
+from app.routers import msp_program
+app.include_router(msp_program.router)
 app.include_router(billing.router)
+# Public promo codes + founder-offer ops (platform admin), same /api/billing prefix.
+from app.routers import billing_promotions
+app.include_router(billing_promotions.router)
 app.include_router(billing_sync.internal_router)
 app.include_router(billing_sync.admin_router)
 app.include_router(business_outcomes.router)
@@ -741,6 +775,8 @@ app.include_router(department_pipelines.router)
 app.include_router(entitlements.router)
 app.include_router(extension.router)
 app.include_router(environments.router)
+app.include_router(settings_security.router)
+app.include_router(settings_api_keys.router)
 app.include_router(settings.router)
 app.include_router(entity_observations.router)
 app.include_router(recommendation_feed.router)
@@ -767,6 +803,9 @@ app.include_router(google_search_console.router)
 app.include_router(google_ads.router)
 app.include_router(segment_triggers.router)
 app.include_router(segment_inbound.router)
+app.include_router(freshservice_triggers.router)
+app.include_router(freshservice_inbound.router)
+app.include_router(run_cost.router)
 app.include_router(decisions.router)
 app.include_router(agent_council.router)
 app.include_router(agent_collaboration.router)

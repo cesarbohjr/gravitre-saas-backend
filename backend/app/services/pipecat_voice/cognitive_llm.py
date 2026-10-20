@@ -568,7 +568,7 @@ class GravitreCognitiveLLMService(LLMService):
         # history reads in the order it was said; the task adds only its reply.
         self._turn_request_stored = False
 
-    async def _apply_tier_voice(self, tier: str | None) -> None:
+    async def _apply_tier_voice(self, tier: str | None, adaptation: str | None = None) -> None:
         """Livelier delivery for light turns, steadier for deep (stability only).
 
         Sent only when the tier's value differs from what is applied, so
@@ -589,13 +589,16 @@ class GravitreCognitiveLLMService(LLMService):
                 else float(CONVERSATIONAL_VOICE_SETTINGS["stability"])
             )
             target = voice_stability_for_tier(tier)
+            # Bounded control supported by the current synthesizer. Presentation
+            # changes only: never forward model-generated delivery tags as policy.
+            if isinstance(adaptation, str) and adaptation in {"acknowledge_briefly", "offer_options", "reduce_verbosity"}:
+                target = max(target, voice_stability_for_tier("deep"))
             if target == current:
                 return
             from pipecat.services.elevenlabs.tts import ElevenLabsTTSService
 
-            await self.push_frame(
-                TTSUpdateSettingsFrame(delta=ElevenLabsTTSService.Settings(stability=target))
-            )
+            settings_type = getattr(self, "_voice_tts_settings_type", ElevenLabsTTSService.Settings)
+            await self.push_frame(TTSUpdateSettingsFrame(delta=settings_type(stability=target)))
             self._voice_stability = target
         except Exception:  # noqa: BLE001 - delivery tuning must never break a turn
             logger.debug("pipecat_voice_tier_voice_skipped", exc_info=True)
@@ -1760,6 +1763,8 @@ class GravitreCognitiveLLMService(LLMService):
                     trace.attach_intelligence(data)
                 if isinstance(data, dict):
                     routing = data.get("routing") if isinstance(data.get("routing"), dict) else {}
+                    if "conversationalAdaptation" in routing:
+                        await self._apply_tier_voice(voice_tier.tier, routing.get("conversationalAdaptation"))
                     logger.info(
                         "pipecat_voice_turn_latency org_id=%s pre_llm_ms=%s conversation_tier=%s "
                         "reasoning_depth=%s routing_tier=%s effective_mode=%s model_ttft_ms=%s "

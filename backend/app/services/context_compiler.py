@@ -419,11 +419,26 @@ async def compile_unified_reasoning_context(
     else:
         _record("cognitive_kernel", "EXCLUDE", "no_cognitive_context")
 
+    # "What changed in my workspace since yesterday?": read the workspace's own
+    # dated records instead of searching documents (and the web) for them.
+    from app.services.workspace_changes import is_workspace_change_question
+
+    workspace_changes_task: asyncio.Task[Any] | None = None
+    if client is not None and org_id and not remind_me and is_workspace_change_question(message):
+        from app.services.workspace_changes import read_workspace_changes
+
+        workspace_changes_task = asyncio.create_task(
+            read_workspace_changes(client, org_id, message or "", user_id=user_id)
+        )
+
     knowledge_meta: dict[str, Any] | None = None
     rag_enabled = registry_plan.slice_enabled("rag") or registry_plan.slice_enabled("pack_state")
     if remind_me:
         knowledge_meta = {"skipped": "remind_me_turn"}
         _record("knowledge_fabric", "EXCLUDE", "remind_me_turn")
+    elif workspace_changes_task is not None:
+        knowledge_meta = {"skipped": "workspace_changes_read"}
+        _record("knowledge_fabric", "EXCLUDE", "workspace_changes_read")
     elif client is not None and org_id and rag_enabled:
         from app.services.capability_evidence_plan import build_capability_evidence_plan
 
@@ -455,6 +470,7 @@ async def compile_unified_reasoning_context(
                 reasoning_depth=reasoning_depth,
                 actor_id=user_id,
                 conversation_id=conversation_id,
+                spoken_mode=bool(spoken_mode),
             )
             if knowledge_block:
                 _add_part("knowledge_fabric", knowledge_block)
@@ -470,7 +486,17 @@ async def compile_unified_reasoning_context(
         cards_enabled,
     )
 
-    if cards_enabled(active) and not remind_me and client is not None and org_id:
+    _ranking = (knowledge_meta or {}).get("contextRanking") if isinstance(knowledge_meta, dict) else None
+    account_cards_managed = bool(
+        isinstance(_ranking, dict)
+        and _ranking.get("mode") == "active"
+        and _ranking.get("accountSourcesManaged") is True
+    )
+    if account_cards_managed:
+        # The engine ranked the account's observations inside the budget
+        # (CONTEXT_ENGINE_OBSERVATIONS_V1); a second, unbudgeted copy would repeat them.
+        _record("account_context", "DEFER", "knowledge_fabric_managed_account_sources")
+    elif cards_enabled(active) and not remind_me and client is not None and org_id:
         try:
             # Account cards are extra context: a slow read must not hold up the turn.
             card_block, card_meta = await asyncio.wait_for(
@@ -493,6 +519,16 @@ async def compile_unified_reasoning_context(
             _record("account_context", "EXCLUDE", str(card_meta.get("skipped") or "empty"))
     else:
         _record("account_context", "EXCLUDE", "disabled_or_remind_me")
+
+    if workspace_changes_task is not None:
+        try:
+            changes = await workspace_changes_task
+            _add_part("workspace_changes", changes.to_prompt_block())
+            _record("workspace_changes", "RETRIEVE", f"sources_read:{len(changes.read)}")
+            knowledge_meta = {**(knowledge_meta or {}), "workspaceChanges": changes.to_meta()}
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("context_compiler_workspace_changes_failed org_id=%s error=%s", org_id, exc)
+            _record("workspace_changes", "DEFER", "read_failed")
 
     if cognitive_context is not None and not remind_me:
         try:

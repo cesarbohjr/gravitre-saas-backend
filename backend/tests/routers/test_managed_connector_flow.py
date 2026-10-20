@@ -37,6 +37,12 @@ def row(**kwargs):
 
 @pytest.fixture
 def flow(monkeypatch):
+    monkeypatch.setattr("app.connectors.nango_client.scoped_connection", lambda *a, **kw: {})
+    from app.connectors import managed_setup
+    from app.connectors.nango_registry import NANGO_CONNECTOR_REGISTRY, NANGO_FALLBACK_REGISTRY
+    inventory = [{"key": s.integration_id, "provider": s.provider, "missing_fields": []}
+                 for s in (*NANGO_CONNECTOR_REGISTRY.values(), *NANGO_FALLBACK_REGISTRY.values())]
+    monkeypatch.setattr(managed_setup, "integration_inventory", lambda *a, **kw: inventory)
     store = [row()]
     settings = SimpleNamespace(nango_secret_key='secret',nango_webhook_signing_key='signing',
                                supabase_url='https://example.supabase.co',supabase_service_role_key='service')
@@ -106,6 +112,20 @@ async def test_missing_signing_key_blocks_session_before_mutation(flow):
 
 
 @pytest.mark.asyncio
+async def test_foreign_remote_account_cannot_start_reconnect(flow, monkeypatch):
+    app, store, _, session = flow
+    def reject(*args, **kwargs):
+        assert kwargs["org_id"] == "o1" and kwargs["connector_id"] == "c1"
+        raise ValueError("ownership mismatch")
+    monkeypatch.setattr("app.connectors.nango_client.scoped_connection", reject)
+    before = deepcopy(store)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
+        response = await client.post('/api/connectors/managed-auth/freshservice/session', json={'name': 'desk', 'connectorId': 'c1'})
+    assert response.status_code == 502 and store == before
+    session.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_new_session_never_reuses_staging_row(flow):
     app,store,_,session = flow; store[0]['environment'] = 'staging'
     async with AsyncClient(transport=ASGITransport(app=app),base_url='http://test') as client:
@@ -137,7 +157,51 @@ async def test_catalog_exposes_only_registered_action_support(flow):
         result = (await client.get('/api/connectors/managed-auth/catalog')).json()
     assert result['configured']
     providers = {r['vendor']:r for r in result['connectors']}
-    assert len(providers) == 47
+    assert len(providers) == 80
     assert len(providers['freshservice']['actions']) == 4
     assert len(providers['okta']['actions']) == 5
     assert providers['halo_psa']['support'] == 'authorization_only'
+
+
+@pytest.mark.asyncio
+async def test_missing_provider_setup_does_not_mutate_or_start_session(flow,monkeypatch):
+    from app.connectors import managed_setup
+    monkeypatch.setattr(managed_setup,'integration_inventory',lambda *a,**kw: [])
+    app,store,_,session=flow
+    before=deepcopy(store)
+    async with AsyncClient(transport=ASGITransport(app=app),base_url='http://test') as client:
+        result=await client.post('/api/connectors/managed-auth/freshservice/session',json={'name':'desk','connectorId':'c1'})
+    assert result.status_code==503 and store==before
+    session.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_native_reconnect_keeps_native_auth_until_signed_confirmation(flow):
+    app,store,_,session=flow
+    store[0].update(vendor='slack',type='slack',config={'auth_type':'oauth','slack_team_id':'T1'})
+    async with AsyncClient(transport=ASGITransport(app=app),base_url='http://test') as client:
+        result=await client.post('/api/connectors/managed-auth/slack/session',json={'name':'desk','connectorId':'c1'})
+        assert result.status_code==200
+        assert store[0]['config'].get('auth_provider')!='managed'
+        assert store[0]['status']=='active' and store[0]['config']['slack_team_id']=='T1'
+        assert session.call_args.kwargs['connection_id'] is None
+        payload={'type':'auth','success':True,'operation':'creation','connectionId':'managed-slack','providerConfigKey':'gravitre-slack',
+                 'tags':{'organization_id':'o1','connector_id':'c1','auth_attempt_id':result.json()['attemptId']}}
+        assert (await post_webhook(client,payload)).status_code==200
+        assert store[0]['config']['auth_provider']=='managed'
+        assert store[0]['config']['slack_team_id']=='T1'
+
+
+@pytest.mark.asyncio
+async def test_business_connector_custom_kind_has_exact_vendor_and_scoped_activation(flow):
+    app,store,_,_=flow
+    async with AsyncClient(transport=ASGITransport(app=app),base_url='http://test') as client:
+        result=await client.post('/api/connectors/managed-auth/discourse/session',json={'name':'Community'})
+        assert result.status_code==200
+        created=store[-1]
+        assert created['type']=='custom' and created['vendor']=='discourse' and created['environment']=='production'
+        assert created['status']=='pending_auth'
+        payload={'type':'auth','success':True,'operation':'creation','connectionId':'community','providerConfigKey':'discourse',
+                 'tags':{'organization_id':'o1','connector_id':created['id'],'auth_attempt_id':result.json()['attemptId']}}
+        assert (await post_webhook(client,payload)).status_code==200
+        assert store[-1]['status']=='active'

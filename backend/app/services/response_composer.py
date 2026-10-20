@@ -114,7 +114,13 @@ _SUCCESS_CLAIM = re.compile(r"\b(?:is confirmed|I created|successfully created|a
 _COMPLETION_CLAIM = re.compile(
     r"\b(?:done|completed|complete|finished|is confirmed|I(?:'ve| have)? (?:created|updated|sent|posted|added)|"
     r"successfully (?:created|updated|sent|posted|completed|added)|all set|it's done|"
-    r"it is done|went through|has been (?:created|updated|sent|completed|added|posted))\b",
+    r"it is done|went through|has been (?:created|updated|sent|completed|added|posted)|"
+    # Passive and state forms: "The email was sent.", "Message delivered.",
+    # "Your contact is now in HubSpot." used to pass while still verifying.
+    r"(?:was|were|got|have been|had been) (?:sent|created|updated|added|posted|delivered|saved|scheduled|booked)|"
+    r"(?:sent|delivered|posted|created|saved|scheduled|booked) (?:successfully|to\b)|"
+    r"(?:message|email|e-mail|contact|ticket|task|record|invite|reply) (?:sent|delivered|created|posted|added|updated)|"
+    r"is now (?:in|on|live|created|saved|scheduled)|are now (?:in|on|live))\b",
     re.I,
 )
 # A claim word governed by one of these is not a completion claim
@@ -397,17 +403,34 @@ def _prompt_safe_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _history_excerpt(history: Iterable[dict[str, Any]] | None, *, limit: int = 4) -> str:
+def _history_excerpt(history: Iterable[dict[str, Any]] | None, *, limit: int = 12, max_chars: int = 24000) -> str:
+    """Preserve complete recent turns; never silently cut a quote at 240 chars.
+
+    Budget by conversation, newest first. Oversized individual turns explicitly
+    identify the omitted middle so the composer cannot mistake a prefix for the
+    full message or infer that a deadline was never supplied.
+    """
     rows: list[str] = []
-    for row in list(history or [])[-limit:]:
+    remaining = max_chars
+    for row in reversed(list(history or [])[-limit:]):
         if not isinstance(row, dict):
             continue
         role = str(row.get("role") or row.get("speaker") or "").strip() or "turn"
         text = str(row.get("content") or row.get("text") or row.get("task") or row.get("summary") or "").strip()
         if not text:
             continue
-        rows.append(f"{role}: {text[:240]}")
-    return "\n".join(rows)
+        rendered = f"{role}: {text}"
+        if len(rendered) > remaining:
+            if rows:
+                break
+            marker = "\n[Middle omitted to fit context; this is not the complete message.]\n"
+            half = max(0, (remaining - len(role) - 2 - len(marker)) // 2)
+            rendered = f"{role}: {text[:half]}{marker}{text[-half:]}" if half else marker.strip()
+        rows.append(rendered)
+        remaining -= len(rendered) + 1
+        if remaining <= 0:
+            break
+    return "\n".join(reversed(rows))
 
 
 def _system_prompt(*, spoken: bool) -> str:
@@ -432,6 +455,15 @@ def _system_prompt(*, spoken: bool) -> str:
         + "\n## Response Composer (mandatory)\n"
         "You are writing the only text the user will see for this turn's outcome.\n"
         "Describe the structured result in natural, register-correct language.\n"
+        "Use complete recent user messages for literal quotes, dates, names, and constraints; "
+        "summaries and excerpts must not override them. An explicitly omitted excerpt is not "
+        "evidence that a fact was never stated. Analysis of text supplied in chat is possible "
+        "without a source-system read; label it as analysis of supplied text. Never call such "
+        "analysis stored sentiment, organization memory, or learned model behaviour unless "
+        "this turn has a corresponding durable result. Recommend a relevant Gravitre Play, "
+        "workflow, agent, or assignment when evidence supports a remedy, and distinguish "
+        "suggesting, approving, starting, and verified completion. Never substitute an external "
+        "tracker for an internal Gravitre assignment.\n"
         "Write like a friendly colleague: use contractions and everyday words. Name the "
         "product (HubSpot, Google Analytics, QuickBooks) instead of words like connector, "
         "provider, system, read, record, verified, or observation.\n"

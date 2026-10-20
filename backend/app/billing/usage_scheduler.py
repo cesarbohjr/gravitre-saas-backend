@@ -12,14 +12,23 @@ GitHub Action / a Railway cron service instead). The sync work runs in a thread
 (report_usage_for_active_orgs uses a sync Supabase client) so it never blocks the
 event loop.
 """
+
 from __future__ import annotations
 
 import asyncio
 
-from app.billing.service import get_current_period
+from app.billing.service import (
+    get_current_period,
+    get_supabase_client,
+    recover_assistant_model_usage,
+)
 from app.billing.stripe_metering import report_usage_for_active_orgs
-from app.billing.stripe_research_lookup_metering import report_research_lookup_overage_for_active_orgs
-from app.billing.stripe_voice_minutes_metering import report_voice_minutes_overage_for_active_orgs
+from app.billing.stripe_research_lookup_metering import (
+    report_research_lookup_overage_for_active_orgs,
+)
+from app.billing.stripe_voice_minutes_metering import (
+    report_voice_minutes_overage_for_active_orgs,
+)
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 
@@ -29,13 +38,38 @@ _INITIAL_DELAY_S = 60  # report shortly after boot, then every interval
 
 
 def _sync_all_usage(period_start, period_end, settings: Settings) -> dict:
+    recovery = None
+    if settings.assistant_billing_recovery_enabled:
+        if (
+            not settings.usage_atomic_enabled
+            or not settings.assistant_billing_atomic_enabled
+        ):
+            raise RuntimeError("Recovery billing requires both atomic billing flags")
+        recovery = recover_assistant_model_usage(get_supabase_client(settings))
+    reconciliation = None
+    if getattr(settings, "billing_reconciliation_enabled", False) is True:
+        from app.billing.safety import run_billing_reconciliation
+
+        try:
+            reconciliation = run_billing_reconciliation(
+                get_supabase_client(settings), settings
+            )
+        except Exception:
+            logger.exception("billing_reconciliation_tick_failed")
+            reconciliation = {"status": "failed"}
     ai_summary = report_usage_for_active_orgs(period_start, period_end, settings)
-    research_summary = report_research_lookup_overage_for_active_orgs(period_start, period_end, settings)
-    voice_summary = report_voice_minutes_overage_for_active_orgs(period_start, period_end, settings)
+    research_summary = report_research_lookup_overage_for_active_orgs(
+        period_start, period_end, settings
+    )
+    voice_summary = report_voice_minutes_overage_for_active_orgs(
+        period_start, period_end, settings
+    )
     return {
         "ai_credits": ai_summary,
         "research_lookups": research_summary,
         "voice_minutes": voice_summary,
+        "assistant_recovery": recovery,
+        "reconciliation": reconciliation,
         "error": ai_summary.get("error")
         or research_summary.get("error")
         or voice_summary.get("error"),
@@ -55,6 +89,8 @@ async def _run_once(settings: Settings) -> None:
             summary.get("research_lookups", {}).get("reported_orgs"),
             summary.get("error"),
         )
+        if summary.get("assistant_recovery") is not None:
+            logger.info("assistant_billing_recovery %s", summary["assistant_recovery"])
     except Exception as exc:  # noqa: BLE001 - never let a tick kill the loop
         logger.warning("usage_sync_tick failed: %s", str(exc))
 

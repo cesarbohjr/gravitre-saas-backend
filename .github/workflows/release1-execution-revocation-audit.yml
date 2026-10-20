@@ -1,0 +1,66 @@
+name: Release 1 execution revocation credential contracts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/release1-execution-revocation-audit.yml"
+      - "scripts/audit_release1_browser_credentials.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-credential-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Scan browser paths for credential exposure
+        run: python scripts/audit_release1_browser_credentials.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release1-browser-credential-source-audit
+          path: docs/delivery/release1-browser-credential-audit.json
+          if-no-files-found: error
+
+  execution-and-revocation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP_ENV: test
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test
+      SUPABASE_JWT_SECRET: jwt-secret-test
+      OPENAI_API_KEY: sk-test-openai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r backend/requirements-dev.txt
+      - name: Test approval bypass, source revocation, and MCP safety contracts
+        working-directory: backend
+        run: |
+          python -m pytest -q \
+            tests/operators/test_agent_intelligence.py::test_shared_runtime_write_approval_does_not_invoke_provider \
+            tests/services/test_company_intelligence_memory_lineage.py \
+            tests/services/test_memory_source_lineage.py \
+            tests/services/test_memory_lineage_coverage.py \
+            tests/services/test_memory_source_liveness.py \
+            tests/services/test_mcp_stdio_and_network_policy.py \
+            tests/services/test_mcp_approval_binding.py \
+            tests/services/test_write_approval_fingerprints.py \
+            --junitxml=../docs/delivery/release1-execution-revocation.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release1-execution-revocation-junit
+          path: docs/delivery/release1-execution-revocation.xml
+          if-no-files-found: error

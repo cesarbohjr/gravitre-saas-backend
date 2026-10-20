@@ -1,11 +1,13 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import useSWR from "swr"
 import { ChevronDown, ChevronUp, HelpCircle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { assistantApi } from "@/lib/api"
+import { CONTEXT_HELP_HREF } from "@/lib/context-sources"
 
 const DISMISS_KEY = "gravitre:assistantOrgContextDismissed"
 
@@ -79,10 +81,17 @@ export function OrgContextPill({ enabled }: { enabled: boolean }) {
             <p className="mb-1 font-medium text-foreground">Connectors</p>
             <ul className="space-y-0.5 text-muted-foreground">
               {connectors.slice(0, 5).map((c) => (
-                <li key={c.id}>{c.type || c.name}</li>
+                <li key={c.id} className="capitalize">
+                  {(c.type || c.name).replace(/[_-]+/g, " ")}
+                </li>
               ))}
             </ul>
           </div>
+          <p className="md:col-span-3">
+            <Link href={CONTEXT_HELP_HREF} className="underline underline-offset-2 hover:text-foreground">
+              How Gravitre uses your context
+            </Link>
+          </p>
         </div>
       ) : null}
     </div>

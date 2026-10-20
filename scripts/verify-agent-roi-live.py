@@ -36,6 +36,11 @@ def load_env() -> dict[str, str]:
                 key, val = key.strip(), val.strip().strip('"').strip("'")
                 if key and val:
                     merged[key] = val
+    # GitHub Actions supplies protected values in the process environment.
+    # Prefer those over local operator files; never include values in reports.
+    merged.update({key: os.environ[key] for key in (
+        "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_JWT_SECRET",
+    ) if os.environ.get(key)})
     return merged
 
 
@@ -109,17 +114,33 @@ def main() -> int:
         # Cross-check measured cost against model_calls for this org (last 30d window from response).
         start = body.get("periodStart")
         end = body.get("periodEnd")
-        mc = (
-            sb.table("model_calls")
-            .select("cost_usd,agent_id")
-            .eq("org_id", org_id)
-            .gte("created_at", start)
-            .lt("created_at", end)
-            .limit(5000)
-            .execute()
-            .data
-            or []
-        )
+        # Match the API's paginated evidence window; a single .limit(5000)
+        # silently omitted calls and produced a false cost mismatch.
+        mc: list[dict] = []
+        offset = 0
+        page_size = 500
+        while offset < 10_000:
+            batch = (
+                sb.table("model_calls")
+                .select("id,cost_usd,agent_id")
+                .eq("org_id", org_id)
+                .gte("created_at", start)
+                .lt("created_at", end)
+                .order("id")
+                .range(offset, offset + page_size - 1)
+                .execute()
+                .data
+                or []
+            )
+            mc.extend(batch)
+            offset += len(batch)
+            if len(batch) < page_size:
+                break
+        if len(mc) >= 10_000:
+            report["verdict"] = "FAIL — cost evidence exceeds verified pagination boundary"
+            report["model_call_count"] = len(mc)
+            OUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
+            return 1
         measured_sum = round(sum(float(r.get("cost_usd") or 0) for r in mc), 6)
         api_cost = float((totals.get("agentCostUsd") or {}).get("value") or 0)
         report["model_calls_sum_usd"] = measured_sum
@@ -141,29 +162,30 @@ def main() -> int:
             }
 
     totals = report["org_totals"]
-    ok = (
-        report["roi_http"] == 200
-        and report["methodology_present"]
-        and report["cost_match"]
-        and totals["agentCostUsd"]["provenance"] == "measured"
-        and totals["tasksCompleted"]["provenance"] == "operational"
-        and totals["estimatedHoursSaved"]["provenance"] == "estimate"
-        and totals["estimatedLaborValueUsd"]["provenance"] == "estimate"
-        and totals["revenueInfluencedUsd"]["provenance"]
-        in {"not_configured", "measured"}
-        and (
+    checks = {
+        "roi_http": report["roi_http"] == 200,
+        "methodology_present": report["methodology_present"],
+        "model_cost_matches_ledger": report["cost_match"],
+        "agent_cost_measured": totals["agentCostUsd"]["provenance"] == "measured",
+        "tasks_operational": totals["tasksCompleted"]["provenance"] == "operational",
+        "hours_estimated": totals["estimatedHoursSaved"]["provenance"] == "estimate",
+        "labor_estimated": totals["estimatedLaborValueUsd"]["provenance"] == "estimate",
+        "revenue_provenance": totals["revenueInfluencedUsd"]["provenance"] in {"not_configured", "measured"},
+        "unconfigured_revenue_is_null": (
             totals["revenueInfluencedUsd"]["provenance"] != "not_configured"
             or totals["revenueInfluencedUsd"]["value"] is None
-        )
-        and (report.get("honesty") or {}).get("moduleC") is True
-        and (report.get("honesty") or {}).get("sta286") is True
-    )
-    # ROI multiple must be estimate when present
-    roi_p = totals["roiMultiple"]["provenance"]
-    if totals["roiMultiple"]["value"] is not None and roi_p != "estimate":
-        ok = False
-    if totals["roiMultiple"]["value"] is None and roi_p not in {"insufficient_data", "estimate"}:
-        ok = False
+        ),
+        "module_c_honesty": (report.get("honesty") or {}).get("moduleC") is True,
+        "sta286_honesty": (report.get("honesty") or {}).get("sta286") is True,
+        "roi_multiple_provenance": (
+            totals["roiMultiple"]["provenance"] == "estimate"
+            if totals["roiMultiple"]["value"] is not None
+            else totals["roiMultiple"]["provenance"] in {"insufficient_data", "estimate"}
+        ),
+    }
+    report["checks"] = checks
+    report["failed_checks"] = [name for name, passed in checks.items() if not passed]
+    ok = all(checks.values())
 
     report["verdict"] = (
         "PASS — agent ROI honesty + measured cost match"
@@ -172,7 +194,7 @@ def main() -> int:
     )
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    print(json.dumps({"verdict": report["verdict"], "api_git_sha": report.get("api_git_sha"), "out": str(OUT)}, indent=2))
+    print(json.dumps({"verdict": report["verdict"], "api_git_sha": report.get("api_git_sha"), "failed_checks": report["failed_checks"], "out": str(OUT)}, indent=2))
     return 0 if ok else 1
 
 

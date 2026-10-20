@@ -35,6 +35,7 @@ TIER_AGNOSTIC_PREFIXES: tuple[str, ...] = (
     "/api/webhooks/salesforce",
     "/api/webhooks/pagerduty",
     "/api/webhooks/segment",
+    "/api/webhooks/freshservice",
     "/api/internal",
     "/api/ops/",
     "/api/platform/cs/",
@@ -42,6 +43,7 @@ TIER_AGNOSTIC_PREFIXES: tuple[str, ...] = (
     "/api/knowledge-sync/internal",
     "/api/workflow-schedules/internal",
     "/api/billing/checkout/public",
+    "/api/billing/promo-codes/validate",
 )
 
 TIER_AGNOSTIC_EXACT: frozenset[str] = frozenset(

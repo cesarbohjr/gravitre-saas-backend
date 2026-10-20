@@ -1,0 +1,924 @@
+[
+  {
+    "vendor": "servicenow",
+    "integration_id": "servicenow",
+    "provider": "servicenow",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "connectsecure",
+    "integration_id": "connectsecure",
+    "provider": "connectsecure",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "BASIC"
+  },
+  {
+    "vendor": "sage_intacct",
+    "integration_id": "sage-intacct",
+    "provider": "sage-intacct",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "TWO_STEP"
+  },
+  {
+    "vendor": "front",
+    "integration_id": "front",
+    "provider": "front",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "gong",
+    "integration_id": "gong",
+    "provider": "gong",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "BASIC"
+  },
+  {
+    "vendor": "highlevel",
+    "integration_id": "highlevel",
+    "provider": "highlevel",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "instantly",
+    "integration_id": "instantly",
+    "provider": "instantly",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "attio",
+    "integration_id": "attio",
+    "provider": "attio",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "close",
+    "integration_id": "close",
+    "provider": "close",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "ashby",
+    "integration_id": "ashby",
+    "provider": "ashby",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "BASIC"
+  },
+  {
+    "vendor": "hibob",
+    "integration_id": "hibob",
+    "provider": "hibob-service-user",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "BASIC"
+  },
+  {
+    "vendor": "ukg_pro",
+    "integration_id": "ukg-pro",
+    "provider": "ukg-pro",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "BASIC"
+  },
+  {
+    "vendor": "box",
+    "integration_id": "box",
+    "provider": "box",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "dropbox",
+    "integration_id": "dropbox",
+    "provider": "dropbox",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "zoom",
+    "integration_id": "zoom",
+    "provider": "zoom",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "discord",
+    "integration_id": "discord",
+    "provider": "discord",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "sap_s4hana_cloud",
+    "integration_id": "sap-s4hana-cloud",
+    "provider": "sap-odata-basic",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "BASIC"
+  },
+  {
+    "vendor": "sharepoint_online",
+    "integration_id": "sharepoint-online",
+    "provider": "sharepoint-online",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "freshservice",
+    "integration_id": "freshservice",
+    "provider": "freshservice",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "BASIC"
+  },
+  {
+    "vendor": "kustomer",
+    "integration_id": "kustomer",
+    "provider": "kustomer",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "helpscout",
+    "integration_id": "help-scout",
+    "provider": "helpscout-mailbox",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "copper",
+    "integration_id": "copper",
+    "provider": "copper",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "zoho_crm",
+    "integration_id": "zoho-crm",
+    "provider": "zoho-crm",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "lever",
+    "integration_id": "lever",
+    "provider": "lever",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "deel",
+    "integration_id": "deel",
+    "provider": "deel",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "rippling",
+    "integration_id": "rippling",
+    "provider": "rippling",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "personio",
+    "integration_id": "personio",
+    "provider": "personio",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "OAUTH2_CC"
+  },
+  {
+    "vendor": "ramp",
+    "integration_id": "ramp",
+    "provider": "ramp",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "brex",
+    "integration_id": "brex",
+    "provider": "brex",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "chargebee",
+    "integration_id": "chargebee",
+    "provider": "chargebee",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "BASIC"
+  },
+  {
+    "vendor": "docusign",
+    "integration_id": "docusign",
+    "provider": "docusign",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "dropbox_sign",
+    "integration_id": "dropbox-sign",
+    "provider": "dropbox-sign",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "pax8",
+    "integration_id": "pax8",
+    "provider": "pax8",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "OAUTH2_CC"
+  },
+  {
+    "vendor": "autotask",
+    "integration_id": "autotask",
+    "provider": "autotask",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "halo_psa",
+    "integration_id": "halopsa",
+    "provider": "halo-psa",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "OAUTH2_CC"
+  },
+  {
+    "vendor": "syncro",
+    "integration_id": "syncro",
+    "provider": "",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_not_supported"
+  },
+  {
+    "vendor": "huntress",
+    "integration_id": "huntress",
+    "provider": "huntress",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "BASIC"
+  },
+  {
+    "vendor": "sentinelone",
+    "integration_id": "sentinelone",
+    "provider": "sentinelone",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "crowdstrike",
+    "integration_id": "crowdstrike",
+    "provider": "crowdstrike",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "OAUTH2_CC"
+  },
+  {
+    "vendor": "okta",
+    "integration_id": "okta",
+    "provider": "okta",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "jumpcloud",
+    "integration_id": "jumpcloud",
+    "provider": "jumpcloud",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "duo",
+    "integration_id": "duo",
+    "provider": "cisco-duo-admin",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "BASIC"
+  },
+  {
+    "vendor": "onepassword",
+    "integration_id": "1password",
+    "provider": "1password-events",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "microsoft_intune",
+    "integration_id": "microsoft-intune",
+    "provider": "microsoft-intune",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "OAUTH2_CC"
+  },
+  {
+    "vendor": "jamf_pro",
+    "integration_id": "jamf-pro",
+    "provider": "jamf",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "OAUTH2_CC"
+  },
+  {
+    "vendor": "braintree",
+    "integration_id": "braintree",
+    "provider": "braintree",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "recurly",
+    "integration_id": "recurly",
+    "provider": "",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_not_supported"
+  },
+  {
+    "vendor": "aircall",
+    "integration_id": "aircall",
+    "provider": "aircall",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "bitbucket",
+    "integration_id": "bitbucket",
+    "provider": "bitbucket",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "cal_com",
+    "integration_id": "cal-com",
+    "provider": "cal-com-v2",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "digitalocean",
+    "integration_id": "digitalocean",
+    "provider": "digitalocean",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "discourse",
+    "integration_id": "discourse",
+    "provider": "discourse",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "drata",
+    "integration_id": "drata",
+    "provider": "drata",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "factorial",
+    "integration_id": "factorial",
+    "provider": "factorial",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "harvest",
+    "integration_id": "harvest",
+    "provider": "harvest",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "humaans",
+    "integration_id": "humaans",
+    "provider": "humaans-io",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "ironclad",
+    "integration_id": "ironclad",
+    "provider": "ironclad",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "klaviyo",
+    "integration_id": "klaviyo",
+    "provider": "klaviyo",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "lemlist",
+    "integration_id": "lemlist",
+    "provider": "lemlist",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "BASIC"
+  },
+  {
+    "vendor": "metabase",
+    "integration_id": "metabase",
+    "provider": "metabase",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "ninjaone",
+    "integration_id": "ninjaone",
+    "provider": "ninjaone-rmm-oauth2",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "pandadoc",
+    "integration_id": "pandadoc",
+    "provider": "pandadoc",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "productboard",
+    "integration_id": "productboard",
+    "provider": "productboard",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "recharge",
+    "integration_id": "recharge",
+    "provider": "recharge",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "smartsheet",
+    "integration_id": "smartsheet",
+    "provider": "smartsheet",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "teamwork",
+    "integration_id": "teamwork",
+    "provider": "teamwork",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "typeform",
+    "integration_id": "typeform",
+    "provider": "typeform",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "webflow",
+    "integration_id": "webflow",
+    "provider": "webflow",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "wrike",
+    "integration_id": "wrike",
+    "provider": "wrike",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "toggl",
+    "integration_id": "toggl",
+    "provider": "toggl",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "BASIC"
+  },
+  {
+    "vendor": "todoist",
+    "integration_id": "todoist",
+    "provider": "todoist",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "sentry",
+    "integration_id": "sentry",
+    "provider": "sentry",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "freshsales",
+    "integration_id": "freshsales",
+    "provider": "freshsales",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "miro",
+    "integration_id": "miro",
+    "provider": "miro",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "pennylane",
+    "integration_id": "pennylane",
+    "provider": "pennylane",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "talentlms",
+    "integration_id": "talentlms",
+    "provider": "talentlms",
+    "native_fallback": false,
+    "created": false,
+    "state": "ready_for_account_authorization",
+    "missing_fields": [],
+    "auth_mode": "API_KEY"
+  },
+  {
+    "vendor": "contentful",
+    "integration_id": "contentful",
+    "provider": "contentful",
+    "native_fallback": false,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "slack",
+    "integration_id": "gravitre-slack",
+    "provider": "slack",
+    "native_fallback": true,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "google_ads",
+    "integration_id": "gravitre-google-ads",
+    "provider": "google-ads",
+    "native_fallback": true,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  },
+  {
+    "vendor": "google_analytics",
+    "integration_id": "gravitre-google-analytics",
+    "provider": "google-analytics",
+    "native_fallback": true,
+    "created": false,
+    "state": "provider_credentials_required",
+    "missing_fields": [
+      "oauth_client_id",
+      "oauth_client_secret"
+    ],
+    "auth_mode": "OAUTH2"
+  }
+]

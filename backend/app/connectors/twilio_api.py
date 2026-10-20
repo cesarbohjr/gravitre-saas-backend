@@ -40,7 +40,7 @@ def _account_sid(conn: dict[str, Any], ctx: ToolContext, cid: str) -> str:
     cfg = conn.get("config") or {}
     sid = str(cfg.get("account_sid") or cfg.get("AccountSid") or "").strip()
     if not sid:
-        sid = (get_decrypted_secret(ctx.client, cid, "account_sid", ctx.settings) or "").strip()
+        sid = (get_decrypted_secret(ctx.client, cid, "account_sid", ctx.settings, org_id=ctx.org_id) or "").strip()
     if not sid:
         raise ToolValidationError("Twilio account_sid is required on the connector")
     return sid
@@ -49,14 +49,14 @@ def _account_sid(conn: dict[str, Any], ctx: ToolContext, cid: str) -> str:
 def _auth_header(ctx: ToolContext, cid: str, account_sid: str, conn: dict[str, Any] | None = None) -> str:
     cfg = (conn or {}).get("config") or {}
     api_key_sid = (
-        get_decrypted_secret(ctx.client, cid, "api_key_sid", ctx.settings)
+        get_decrypted_secret(ctx.client, cid, "api_key_sid", ctx.settings, org_id=ctx.org_id)
         or str(cfg.get("api_key_sid") or "").strip()
     )
     api_key_secret = (
-        get_decrypted_secret(ctx.client, cid, "api_key_secret", ctx.settings)
-        or get_decrypted_secret(ctx.client, cid, "auth_token", ctx.settings)
-        or get_decrypted_secret(ctx.client, cid, "api_token", ctx.settings)
-        or get_decrypted_secret(ctx.client, cid, "token", ctx.settings)
+        get_decrypted_secret(ctx.client, cid, "api_key_secret", ctx.settings, org_id=ctx.org_id)
+        or get_decrypted_secret(ctx.client, cid, "auth_token", ctx.settings, org_id=ctx.org_id)
+        or get_decrypted_secret(ctx.client, cid, "api_token", ctx.settings, org_id=ctx.org_id)
+        or get_decrypted_secret(ctx.client, cid, "token", ctx.settings, org_id=ctx.org_id)
         or ""
     ).strip()
     if api_key_sid and api_key_secret:

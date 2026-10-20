@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { familyHidesTopBar, resolvePageFamily } from "@/lib/page-family"
+import { familyHidesTopBar, isAiConversationRoute, isAiHelpRoute, resolvePageFamily } from "@/lib/page-family"
 
 describe("page families (G-STRUCT A1)", () => {
   it("resolves operating surfaces", () => {
@@ -41,5 +41,23 @@ describe("page families (G-STRUCT A1)", () => {
   it("falls back to standard", () => {
     expect(resolvePageFamily("/marketplace/assets")).toBe("standard")
     expect(resolvePageFamily("/settings")).toBe("standard")
+  })
+
+  it("keeps chat help documents scrollable without changing conversation routes", () => {
+    for (const path of ["/ai/help/context", "/ai/help/control", "/ai/help/context?from=chat"]) {
+      expect(isAiHelpRoute(path)).toBe(true)
+      expect(resolvePageFamily(path)).toBe("standard")
+    }
+    expect(isAiHelpRoute("/ai/helpful")).toBe(false)
+    expect(resolvePageFamily("/ai")).toBe("immersive")
+  })
+
+  it("does not mount a conversation for a help document", () => {
+    for (const path of ["/ai/help", "/ai/help/", "/ai/help/context", "/ai/help/control?from=chat", "/settings", "/aide"]) {
+      expect(isAiConversationRoute(path), path).toBe(false)
+    }
+    for (const path of ["/ai", "/ai?c=existing", "/ai/", "/ai/conversation", "/ai/helpful"]) {
+      expect(isAiConversationRoute(path), path).toBe(true)
+    }
   })
 })

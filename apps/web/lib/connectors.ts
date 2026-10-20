@@ -7,6 +7,7 @@
 import managedConnectors from "./managed-connectors.json"
 
 export const MANAGED_CONNECTOR_VENDOR_KEYS = new Set(managedConnectors.map((entry) => entry.vendorKey))
+export const MANAGED_OAUTH_FALLBACK_VENDOR_KEYS = new Set(["slack", "google_ads", "google_analytics"])
 
 export function isManagedConnectorVendor(vendor: string): boolean {
   return MANAGED_CONNECTOR_VENDOR_KEYS.has(connectorVendorKey(vendor))
@@ -64,6 +65,7 @@ export const CONNECTOR_CATEGORY_META: Record<string, { color: string; label: str
   "HR / People": { color: "cyan", label: "HR / People" },
   "Storage / Dev / Infra": { color: "orange", label: "Storage / Dev / Infra" },
   "Learning / Creative": { color: "indigo", label: "Learning / Creative" },
+  "Analytics / Data": { color: "blue", label: "Analytics / Data" },
 }
 
 /** Tier 1–3 + verified generic OAuth providers with working backend routes. */
@@ -353,9 +355,9 @@ export const CONNECTOR_CATALOG: CatalogConnectorEntry[] = [
   ...CATALOG_ENTRIES,
   ...managedConnectors.map((entry): CatalogConnectorEntry => ({
     type: entry.type, vendorKey: entry.vendorKey, category: entry.category,
-    description: `${entry.description}. ${entry.vendorKey === "freshservice" ? "Ticket actions supported." : entry.vendorKey === "okta" ? "Identity read actions supported." : "Authorization supported; workflow actions pending."}`,
-    authType: "oauth", credentialModel: "oauth2", oauthReady: true,
-    shipped: ["freshservice", "okta"].includes(entry.vendorKey), authMode: "customer_owned",
+    description: `${entry.description}. ${!entry.providerSupported ? "Managed authorization is not available yet." : entry.hasReadActions ? "Read actions available after connection." : "Account authorization only; workflow actions pending."}`,
+    authType: "oauth", credentialModel: "oauth2", oauthReady: entry.providerSupported,
+    shipped: entry.hasReadActions, authMode: "customer_owned",
   })),
 ]
 

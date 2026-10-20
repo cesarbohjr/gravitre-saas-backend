@@ -218,18 +218,21 @@ def maybe_emit_crm_outcome_from_hubspot_event(
     return result
 
 
-def _resolve_triggered_by(client: Any, org_id: str) -> str:
-    membership = (
-        client.table("organization_members")
-        .select("user_id")
-        .eq("org_id", org_id)
-        .in_("role", ["owner", "admin", "member"])
-        .limit(1)
-        .execute()
+def _resolve_triggered_by(
+    client: Any,
+    org_id: str,
+    *,
+    parameters: dict[str, Any] | None = None,
+    workflow: dict[str, Any] | None = None,
+) -> str | None:
+    from app.services.automation_actor import configured_by_from_parameters, resolve_automation_actor
+
+    return resolve_automation_actor(
+        client,
+        org_id,
+        configured_by=configured_by_from_parameters(parameters),
+        workflow_created_by=(workflow or {}).get("created_by"),
     )
-    if membership.data:
-        return str(membership.data[0]["user_id"])
-    return org_id
 
 
 def hubspot_event_id(event: dict[str, Any]) -> str | None:
@@ -245,16 +248,21 @@ def find_hubspot_connector_by_portal(client: Any, portal_id: int | str) -> dict[
     is connected in more than one org the event is ambiguous and is not fired.
     """
     from app.connectors.constants import is_connector_usable
+    from app.core.sql_aggregates import fetch_all_rows
 
     hub_key = str(portal_id)
-    result = (
-        client.table("connectors")
+    # Every live HubSpot connector, paged in id order: a single select stops at the
+    # PostgREST row cap (~1000), which could hide the match or a second org's
+    # match and route the event to the wrong org instead of failing closed.
+    rows = fetch_all_rows(
+        lambda: client.table("connectors")
         .select("id,org_id,type,status,config,environment,deleted_at")
         .eq("type", "hubspot")
-        .execute()
+        .is_("deleted_at", "null")
+        .order("id")
     )
     matches: list[dict[str, Any]] = []
-    for row in result.data or []:
+    for row in rows:
         if row.get("deleted_at") or not is_connector_usable(row.get("status")):
             continue
         config = row.get("config") or {}
@@ -303,7 +311,7 @@ def set_hubspot_triggers(
 def _load_active_workflow(client: Any, org_id: str, workflow_id: str) -> dict[str, Any] | None:
     result = (
         client.table("workflow_defs")
-        .select("id,name,org_id,status,definition")
+        .select("id,name,org_id,status,definition,created_by")
         .eq("id", workflow_id)
         .eq("org_id", org_id)
         .limit(1)
@@ -359,7 +367,11 @@ async def start_workflow_from_hubspot(
         return {"workflow_id": workflow_id, "status": "skipped", "reason": "workflow_not_active"}
 
     definition = workflow.get("definition") or {"schema_version": "v1", "steps": []}
-    triggered_by = _resolve_triggered_by(client, org_id)
+    triggered_by = _resolve_triggered_by(client, org_id, parameters=parameters, workflow=workflow)
+    if not triggered_by:
+        from app.services.automation_actor import NO_ACTOR_REASON
+
+        return {"workflow_id": workflow_id, "status": "skipped", "reason": NO_ACTOR_REASON}
     from app.services.event_triggered_runs import start_event_triggered_run
 
     outcome = await start_event_triggered_run(

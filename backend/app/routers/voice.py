@@ -1,4 +1,5 @@
 """Voice HTTP surface — streaming session, library, custom design, TTS/STT."""
+
 from __future__ import annotations
 
 import json
@@ -33,6 +34,7 @@ from app.services.voice_qa_hooks import (
     resolve_qa_force_voice_error,
 )
 
+
 # Plan-included voice (2026-08-08): no Meson $49 purchase gate.
 # Org admin may disable via subscriptions.voice_enabled.
 # B1: Lite USE vs full/manager CONFIGURE unchanged.
@@ -41,9 +43,18 @@ async def _require_voice_org_enabled(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     if not org_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
     client = get_supabase_client(settings)
-    return assert_voice_org_enabled(client, org_id=org_id)
+    voice = assert_voice_org_enabled(client, org_id=org_id) or {}
+    if voice.get("trial_quota_reserved"):
+        raise HTTPException(
+            status_code=402,
+            detail="Trial voice requires the browser session with quota enforcement",
+        )
+    return voice
 
 
 router = APIRouter(
@@ -73,11 +84,15 @@ class MicDiagnosticsRequest(BaseModel):
 
     session_id: str | None = None
     orchestration: str | None = Field(default=None, description="pipecat | http")
-    mic_profile: str | None = Field(default=None, description="near_field | far_field | auto")
+    mic_profile: str | None = Field(
+        default=None, description="near_field | far_field | auto"
+    )
     device_label: str | None = None
     effective_settings: dict[str, Any] | None = None
     metrics: dict[str, Any] = Field(default_factory=dict)
-    event: str | None = Field(default="periodic", description="session_start | periodic | session_end")
+    event: str | None = Field(
+        default="periodic", description="session_start | periodic | session_end"
+    )
 
 
 class OutputDiagnosticsRequest(BaseModel):
@@ -197,7 +212,10 @@ def post_mic_diagnostics(
 ) -> dict[str, str]:
     """Best-effort mic level telemetry for Voice 3.0 Phase 1 (no raw recordings)."""
     if not org_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization context required",
+        )
     if not bool(getattr(settings, "voice_mic_telemetry_v1", False)):
         return {"status": "disabled"}
     user_id = str(user.get("sub") or user.get("id") or "").strip()
@@ -226,7 +244,6 @@ def post_mic_diagnostics(
     except Exception:
         pass
     return {"status": "ok"}
-
 
 
 @router.post("/output-diagnostics")
@@ -260,7 +277,9 @@ def post_output_diagnostics(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Unsupported voice output diagnostic event",
         )
-    user_id = str(user.get("sub") or user.get("id") or user.get("user_id") or "").strip()
+    user_id = str(
+        user.get("sub") or user.get("id") or user.get("user_id") or ""
+    ).strip()
     if not user_id:
         return {"status": "skipped"}
     try:
@@ -367,7 +386,9 @@ def _maybe_qa_force_voice_error(request: Request, settings: Settings) -> None:
             header_value=request.headers.get(QA_FORCE_VOICE_ERROR_HEADER),
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
     if forced:
         raise forced_voice_provider_error(forced)
 
@@ -635,8 +656,12 @@ async def post_turn_taking_event(
         state.provisional_user_text = str(body.state.get("provisional_user_text") or "")
         state.pending_finalize = bool(body.state.get("pending_finalize"))
         state.agent_speaking = bool(body.state.get("agent_speaking"))
-        sens = parse_sensitivity(str(body.state.get("sensitivity") or body.sensitivity or "normal"))
-        state.sensitivity = sens if isinstance(sens, TurnSensitivity) else TurnSensitivity.NORMAL
+        sens = parse_sensitivity(
+            str(body.state.get("sensitivity") or body.sensitivity or "normal")
+        )
+        state.sensitivity = (
+            sens if isinstance(sens, TurnSensitivity) else TurnSensitivity.NORMAL
+        )
     state, finalized = apply_stt_event_to_turn_state(state, event=body.event)
     return {
         "state": turn_state_snapshot(state),
@@ -671,7 +696,9 @@ async def post_session_turn(
 
         try:
             skipped_perceive = False
-            forced = resolve_qa_force_voice_error(settings, header_value=qa_force_header)
+            forced = resolve_qa_force_voice_error(
+                settings, header_value=qa_force_header
+            )
             if forced:
                 raise forced_voice_provider_error(forced)
 
@@ -696,7 +723,9 @@ async def post_session_turn(
 
             from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
 
-            client_task = asyncio.create_task(asyncio.to_thread(get_supabase_client, settings))
+            client_task = asyncio.create_task(
+                asyncio.to_thread(get_supabase_client, settings)
+            )
             voice_key = (body.voice or "sarah").strip() or "sarah"
             cached_audio = peek_cached_perceive_chunks(voice_key=voice_key)
             skipped_perceive = False
@@ -712,9 +741,27 @@ async def post_session_turn(
                     )
                     + "\n"
                 ).encode("utf-8")
-                yield (json.dumps({"type": "voice.ttft", "ms": 0, "turn_id": body.turn_id}) + "\n").encode("utf-8")
-                yield (json.dumps({"type": "voice.ttfa", "ms": 0, "metric": "A", "turn_id": body.turn_id}) + "\n").encode("utf-8")
-                yield (json.dumps({"type": "voice.agent_speech.start", "turn_id": body.turn_id}) + "\n").encode("utf-8")
+                yield (
+                    json.dumps({"type": "voice.ttft", "ms": 0, "turn_id": body.turn_id})
+                    + "\n"
+                ).encode("utf-8")
+                yield (
+                    json.dumps(
+                        {
+                            "type": "voice.ttfa",
+                            "ms": 0,
+                            "metric": "A",
+                            "turn_id": body.turn_id,
+                        }
+                    )
+                    + "\n"
+                ).encode("utf-8")
+                yield (
+                    json.dumps(
+                        {"type": "voice.agent_speech.start", "turn_id": body.turn_id}
+                    )
+                    + "\n"
+                ).encode("utf-8")
                 first = True
                 for piece in cached_audio:
                     if not piece:
@@ -763,7 +810,11 @@ async def post_session_turn(
                     agent_id=body.agent_id,
                 )
             except HTTPException as exc:
-                detail = exc.detail if isinstance(exc.detail, str) else json.dumps(exc.detail)
+                detail = (
+                    exc.detail
+                    if isinstance(exc.detail, str)
+                    else json.dumps(exc.detail)
+                )
                 yield (
                     json.dumps(
                         {
@@ -780,17 +831,15 @@ async def post_session_turn(
             agent: dict[str, Any] | None = None
             if body.agent_id:
                 try:
-                    rows = (
-                        await asyncio.to_thread(
-                            lambda: client.table("agents")
-                            .select("*")
-                            .eq("org_id", org_id)
-                            .eq("id", body.agent_id)
-                            .limit(1)
-                            .execute()
-                            .data
-                            or []
-                        )
+                    rows = await asyncio.to_thread(
+                        lambda: client.table("agents")
+                        .select("*")
+                        .eq("org_id", org_id)
+                        .eq("id", body.agent_id)
+                        .limit(1)
+                        .execute()
+                        .data
+                        or []
                     )
                     agent = rows[0] if rows else {"id": body.agent_id}
                 except Exception:  # noqa: BLE001
@@ -817,9 +866,9 @@ async def post_session_turn(
                     pass
                 yield (json.dumps(event) + "\n").encode("utf-8")
         except VoiceProviderError as exc:
-            yield (json.dumps({"type": "voice.error", **error_public_payload(exc)}) + "\n").encode(
-                "utf-8"
-            )
+            yield (
+                json.dumps({"type": "voice.error", **error_public_payload(exc)}) + "\n"
+            ).encode("utf-8")
         except Exception as exc:  # noqa: BLE001
             yield (
                 json.dumps(
@@ -874,9 +923,9 @@ def put_agent_voice_profile(
         )
         if not existing:
             raise HTTPException(status_code=404, detail="Agent not found")
-        client.table("agents").update({"voice_profile": profile}).eq("org_id", org_id).eq(
-            "id", agent_id
-        ).execute()
+        client.table("agents").update({"voice_profile": profile}).eq(
+            "org_id", org_id
+        ).eq("id", agent_id).execute()
     except HTTPException:
         raise
     except Exception as exc:  # noqa: BLE001

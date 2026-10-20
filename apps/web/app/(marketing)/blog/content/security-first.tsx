@@ -12,7 +12,7 @@ export const securityFirstPost: BlogPost = {
   category: "Security",
   author: GRAVITRE_BLOG_AUTHOR,
   datePublished: "2026-03-28",
-  dateModified: "2026-07-13",
+  dateModified: "2026-10-14",
   displayDate: "March 28, 2026",
   readTime: "6 min read",
   heroImage: "/images/blog/security-first-hero.jpg",
@@ -69,7 +69,14 @@ export const securityFirstPost: BlogPost = {
         know because we&apos;ve run that review on ourselves.
       </p>
 
-      <h2>Least privilege for agents and connectors</h2>
+      <p>
+        The <a href="https://airc.nist.gov/airmf-resources/airmf/" target="_blank" rel="noopener noreferrer">NIST AI Risk Management Framework</a>
+        treats AI risk management as an ongoing process across the system lifecycle.
+        The <a href="https://genai.owasp.org/resource/owasp-top-10-for-llm-applications-2025/" target="_blank" rel="noopener noreferrer">OWASP Top 10 for LLM Applications</a>
+        documents application-level risks, including giving an agent more authority than it needs.
+        Both are useful references when reviewing connector permissions and approval gates.
+      </p>
+      <h2>How does Gravitre limit agent and connector access?</h2>
       <p>
         Every connector uses OAuth or scoped API keys stored server-side — never embedded in prompts. Agents receive
         only the actions your policy allows for the active environment. We show{" "}
@@ -85,22 +92,22 @@ export const securityFirstPost: BlogPost = {
         system needed to guarantee.
       </p>
       <p>
-        We found it by auditing our own internal action surface with the same scrutiny we&apos;d apply to a
+        Gravitre&apos;s engineering team found the approval exception by auditing the platform&apos;s internal action surface with the same scrutiny we&apos;d apply to a
         customer&apos;s connector, closed it the same day, and added a permanent automated test that fails the build if
         any write-capable action is ever registered without going through the approval path again. We&apos;re telling
         you this not because it makes us look good — it&apos;s a gap we should have caught sooner — but because
         &ldquo;we audit ourselves this hard&rdquo; is a claim that only means something if we show our work.
       </p>
 
-      <h2>Human approval on high-impact actions</h2>
+      <h2>Which AI actions need human approval?</h2>
       <p>
-        Autonomy without accountability is how teams lose trust in AI. Every write — a CRM update, a workflow execution,
+        High-impact AI writes require human approval before execution. Every write — a CRM update, a workflow execution,
         a list created in a connected tool — shows you exactly what&apos;s about to happen before it happens: the
         action, the target, and anything Gravitre inferred rather than was explicitly told. If we filled in a default
         because you didn&apos;t specify one, we say so in the approval card. We don&apos;t present a guess as a fact.
       </p>
       <p>
-        We derive <strong>which</strong> actions require this gate from a single schema catalog — not from checking
+        Gravitre derives <strong>which</strong> actions require human approval from a single schema catalog — not from checking
         whether an action&apos;s name contains a word like &ldquo;create&rdquo; or &ldquo;delete.&rdquo; That
         distinction sounds pedantic until you&apos;ve watched a pattern-based check silently miss an action because it
         was named a way nobody anticipated. We rebuilt this to read authority from the same structured catalog every
@@ -117,12 +124,12 @@ export const securityFirstPost: BlogPost = {
         for one.
       </p>
       <p>
-        We built a standing test for this: a write can&apos;t be marked complete unless it satisfies that bar. Where a
+        Gravitre built a standing test for verified write outcomes: a write can&apos;t be marked complete unless it satisfies that bar. Where a
         vendor genuinely doesn&apos;t expose a way to verify the result, we say so plainly instead of guessing at a link
         that might be wrong.
       </p>
 
-      <h2>Auditability that auditors actually use</h2>
+      <h2>What can an auditor see after an AI workflow runs?</h2>
       <p>
         History captures administrative and security-relevant events — who triggered it, what executed, what was
         skipped, and why. Enterprise customers can export to SIEM. Run detail shows step-level status with connector

@@ -24,6 +24,7 @@ from pipecat.turns.user_stop.external_user_turn_stop_strategy import (
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 
 from app.core.logging import get_logger
+from app.services.pipecat_voice.acoustic_tap import AcousticTapProcessor
 from app.services.pipecat_voice.backchannel_turn_strategy import (
     BackchannelAwareUserTurnStartStrategy,
 )
@@ -56,7 +57,7 @@ from app.services.pipecat_voice.voice_latency_tuning import (
     effective_voice_settings,
     resolve_voice_tts_ab_eval,
 )
-from app.services.tier1_voice_service import CONVERSATIONAL_VOICE_SETTINGS, resolve_voice_id
+from app.services.tier1_voice_service import resolve_voice_id
 
 logger = get_logger(__name__)
 
@@ -268,22 +269,14 @@ def build_pipecat_voice_task(
         durable_context_provider=llm.speculative_durable_context,
         turn_inputs_provider=llm.shared_turn_inputs,
     )
-    tts = tts_service if tts_service is not None else ElevenLabsTTSService(
-        api_key=el_key,
-        voice_id=voice_id,
-        model=str(model),
+    from app.services.pipecat_voice.tts_factory import build_live_tts_service
+
+    tts = tts_service if tts_service is not None else build_live_tts_service(
+        api_key=el_key, voice_id=voice_id, model=str(model),
         sample_rate=LIVE_VOICE_OUTPUT_SAMPLE_RATE,
-        # auto_mode has the lowest latency but expects full sentences. The
-        # cognitive bridge now preserves partial phrases until sentence
-        # boundaries, so we get the latency benefit without fragmentary prosody.
-        auto_mode=True,
-        params=ElevenLabsTTSService.InputParams(
-            stability=float(CONVERSATIONAL_VOICE_SETTINGS["stability"]),
-            similarity_boost=float(CONVERSATIONAL_VOICE_SETTINGS["similarity_boost"]),
-            style=float(CONVERSATIONAL_VOICE_SETTINGS["style"]),
-            use_speaker_boost=bool(CONVERSATIONAL_VOICE_SETTINGS["use_speaker_boost"]),
-        ),
     )
+    # Runtime updates must use the selected protocol's own settings type.
+    llm._voice_tts_settings_type = getattr(tts, "Settings", ElevenLabsTTSService.Settings)
     polish_flags = resolve_conversational_polish_flags(settings)
     # The reporter sits upstream of tts (it needs LLMTextFrame), so it cannot see
     # TTSTextFrame. The tap below transport.output() feeds it real spoken text.
@@ -372,6 +365,14 @@ def build_pipecat_voice_task(
         [
             transport.input(),
             stt,
+            # STT forwards PCM; observe without adding work to synthesis or
+            # changing transcript/approval handling. Raw audio is turn-bounded.
+            AcousticTapProcessor(
+                settings=settings, org_id=org_id, user_id=user_id,
+                conversation_id_getter=lambda: getattr(llm, "_conversation_id", None) or conversation_id,
+                audio_origin_getter=lambda: voice_session.origin,
+                agent_id=str(agent.get("id")) if isinstance(agent, dict) and agent.get("id") else None,
+            ),
             # Before anything reads a final transcript: a cough, breath or "uh"
             # Flux finalizes as a turn must never reach the brain.
             UtteranceGateProcessor(app_settings=settings, org_id=org_id, voice_session=voice_session),
@@ -471,6 +472,7 @@ def build_pipecat_voice_task(
         "conversation_id": conversation_id,
         "tts_model": str(model),
         "tts_transport": "websocket",
+        "tts_protocol": "text_to_dialogue" if str(model).startswith("eleven_v3") else "text_to_speech",
         "tts_output_sample_rate": LIVE_VOICE_OUTPUT_SAMPLE_RATE,
         "tts_warmup": "elevenlabs_ws_preconnect",
         "tts_idle_expiry_s": 45,
@@ -479,7 +481,11 @@ def build_pipecat_voice_task(
         "media_transport": "websocket_pcm16_json",
         "webrtc_eval_production": False,
         "speak_v2": False,
-        "speak_v2_note": "N/A — live TTS is ElevenLabs Flash, not Deepgram Speak v2",
+        "speak_v2_note": "N/A — live TTS uses the selected ElevenLabs model, not Deepgram Speak v2",
+        "acoustic_observation": {
+            "enabled": True, "origin": "user_mic", "max_seconds": 8,
+            "calibration_status": "unvalidated", "learning_eligible": False,
+        },
         "speculative_prefetch": "read_only_embed_knowledge_tool_docs",
         "speculative_generation": "probable_eot_cancelable_adopt_on_match" if use_flux else "disabled_non_flux_stt",
         **stt_info,

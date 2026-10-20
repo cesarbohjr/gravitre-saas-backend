@@ -35,8 +35,9 @@ def resolve_greenhouse_api_key(
     if not conn:
         raise GreenhouseAPIError("No active Greenhouse connector found for org")
     cid = str(conn["id"])
-    api_key = get_decrypted_secret(client, cid, "api_key", settings) or get_decrypted_secret(
-        client, cid, "harvest_api_key", settings
+    api_key = get_decrypted_secret(client, cid, "api_key", settings, org_id=org_id) or get_decrypted_secret(
+        client, cid, "harvest_api_key", settings,
+        org_id=org_id,
     )
     if not api_key:
         raise GreenhouseAPIError("Greenhouse Harvest API key missing", status_code=401)

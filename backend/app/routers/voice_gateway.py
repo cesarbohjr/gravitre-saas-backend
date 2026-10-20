@@ -1,4 +1,5 @@
 """Voice Gateway HTTP + Twilio PSTN webhooks."""
+
 from __future__ import annotations
 
 import asyncio
@@ -8,7 +9,15 @@ import hmac
 import json
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from fastapi.responses import PlainTextResponse, Response
 from pydantic import BaseModel, Field
 
@@ -49,9 +58,16 @@ async def _voice_org(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> str:
     if not org_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Organization required"
+        )
     client = get_supabase_client(settings)
-    assert_voice_org_enabled(client, org_id=org_id)
+    voice = assert_voice_org_enabled(client, org_id=org_id) or {}
+    if voice.get("trial_quota_reserved"):
+        raise HTTPException(
+            status_code=402,
+            detail="Trial voice requires the browser voice session with quota enforcement",
+        )
     return org_id
 
 
@@ -95,7 +111,9 @@ def get_voice_session_route(
     return {"session": session}
 
 
-twilio_router = APIRouter(prefix="/api/webhooks/twilio/voice", tags=["twilio-voice-webhooks"])
+twilio_router = APIRouter(
+    prefix="/api/webhooks/twilio/voice", tags=["twilio-voice-webhooks"]
+)
 
 
 def _verify_twilio_signature(
@@ -109,12 +127,16 @@ def _verify_twilio_signature(
         return False
     url = str(request.url)
     params: dict[str, str] = {}
-    if request.headers.get("content-type", "").startswith("application/x-www-form-urlencoded"):
+    if request.headers.get("content-type", "").startswith(
+        "application/x-www-form-urlencoded"
+    ):
         from urllib.parse import parse_qsl
 
         params = dict(parse_qsl(body.decode("utf-8"), keep_blank_values=True))
     sorted_params = "".join(k + params[k] for k in sorted(params))
-    digest = hmac.new(auth_token.encode(), (url + sorted_params).encode(), hashlib.sha1).digest()
+    digest = hmac.new(
+        auth_token.encode(), (url + sorted_params).encode(), hashlib.sha1
+    ).digest()
     expected = base64.b64encode(digest).decode()
     return hmac.compare_digest(expected, signature)
 
@@ -124,13 +146,19 @@ async def _twilio_auth_token(settings: Settings, org_id: str | None = None) -> s
     if token:
         return token
     if org_id:
-        from app.connectors.repository import get_connector_by_type, get_decrypted_secret
+        from app.connectors.repository import (
+            get_connector_by_type,
+            get_decrypted_secret,
+        )
 
         client = get_supabase_client(settings)
         conn = get_connector_by_type(client, org_id, "twilio")
         if conn:
             return (
-                get_decrypted_secret(client, str(conn["id"]), "auth_token", settings) or ""
+                get_decrypted_secret(
+                    client, str(conn["id"]), "auth_token", settings, org_id=org_id
+                )
+                or ""
             ).strip()
     return ""
 
@@ -142,7 +170,11 @@ def twilio_connect_twiml(
 ) -> PlainTextResponse:
     client = get_supabase_client(settings)
     session = (
-        client.table("voice_pstn_sessions").select("*").eq("id", session_id).limit(1).execute()
+        client.table("voice_pstn_sessions")
+        .select("*")
+        .eq("id", session_id)
+        .limit(1)
+        .execute()
     )
     rows = session.data or []
     if not rows:
@@ -152,9 +184,13 @@ def twilio_connect_twiml(
         )
     row = rows[0]
     policy_raw = row.get("policy") or {}
-    disclosure = policy_raw.get("disclosure_script") if isinstance(policy_raw, dict) else None
+    disclosure = (
+        policy_raw.get("disclosure_script") if isinstance(policy_raw, dict) else None
+    )
     twiml = build_connect_twiml(settings, session_id, disclosure=disclosure)
-    update_voice_pstn_session(client, session_id=session_id, patch={"status": "answered"})
+    update_voice_pstn_session(
+        client, session_id=session_id, patch={"status": "answered"}
+    )
     return PlainTextResponse(twiml, media_type="application/xml")
 
 
@@ -218,7 +254,11 @@ async def twilio_inbound_voice(
         update_voice_pstn_session(
             client,
             session_id=str(session["id"]),
-            patch={"twilio_call_sid": call_sid, "status": "ringing", "started_at": session.get("created_at")},
+            patch={
+                "twilio_call_sid": call_sid,
+                "status": "ringing",
+                "started_at": session.get("created_at"),
+            },
         )
     twiml = build_connect_twiml(settings, str(session["id"]))
     return PlainTextResponse(twiml, media_type="application/xml")
@@ -232,7 +272,13 @@ async def pstn_media_stream_ws(
     settings = get_settings()
     await websocket.accept()
     client = get_supabase_client(settings)
-    resp = client.table("voice_pstn_sessions").select("*").eq("id", session_id).limit(1).execute()
+    resp = (
+        client.table("voice_pstn_sessions")
+        .select("*")
+        .eq("id", session_id)
+        .limit(1)
+        .execute()
+    )
     rows = resp.data or []
     if not rows:
         await websocket.close(code=4404)
@@ -266,7 +312,9 @@ async def pstn_media_stream_ws(
         agent=agent,
         policy=policy,
     )
-    update_voice_pstn_session(client, session_id=session_id, patch={"status": "in_progress"})
+    update_voice_pstn_session(
+        client, session_id=session_id, patch={"status": "in_progress"}
+    )
 
     dg_task = asyncio.create_task(bridge.run_deepgram_relay())
     outbound_task = asyncio.create_task(_pump_outbound(websocket, bridge))

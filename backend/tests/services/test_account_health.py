@@ -159,7 +159,7 @@ def test_routes_are_404_when_off():
 def test_behaviour_signal_pass_runs_once_per_recent_org():
     from app.schedulers.entity_behavior_signals_scheduler import run_behavior_signals
 
-    db = FakeSupabaseDB()
+    db = FakeSupabaseDB(range_filters=True)
     db.tables["entity_observations"] = [
         {"org_id": ORG, "observed_at": NOW.isoformat()},
         {"org_id": ORG, "observed_at": NOW.isoformat()},

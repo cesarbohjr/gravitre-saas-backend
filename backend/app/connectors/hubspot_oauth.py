@@ -149,8 +149,8 @@ def refresh_hubspot_token(
         return payload
 
 
-def load_oauth_tokens(client: Any, connector_id: str, settings: Settings) -> dict[str, Any] | None:
-    raw = get_decrypted_secret(client, connector_id, OAUTH_TOKEN_KEY, settings)
+def load_oauth_tokens(client: Any, connector_id: str, settings: Settings, *, org_id: str) -> dict[str, Any] | None:
+    raw = get_decrypted_secret(client, connector_id, OAUTH_TOKEN_KEY, settings, org_id=org_id)
     if not raw:
         return None
     try:
@@ -286,7 +286,7 @@ def refresh_hubspot_tokens_if_needed(
     if not settings.connector_secrets_encryption_key:
         return None, "Connector secrets encryption is not configured"
 
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if not tokens or not tokens.get("access_token"):
         return None, "OAuth not completed"
 
@@ -389,7 +389,7 @@ def hubspot_connection_auth_status(
     env = environment_name or _connector_environment(client, org_id, connector_id)
     if not hubspot_oauth_configured(settings, env):
         return "misconfigured"
-    tokens = load_oauth_tokens(client, connector_id, settings)
+    tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if not tokens:
         return "pending_auth"
     if token_needs_refresh(tokens) and not tokens.get("refresh_token"):

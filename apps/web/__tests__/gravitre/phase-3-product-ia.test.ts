@@ -141,29 +141,25 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
       resolve(webRoot, "components/settings/notification-settings.tsx"),
       "utf8",
     )
-    expect(notifications).toMatch(/aria-label=\{`\$\{event\.label\} by \$\{channel\.label\}`\}/)
-    expect(notifications).toMatch(/className="st-card"/)
+    expect(notifications).toMatch(/label=\{`\$\{event\.label\} \$\{channel\.aria\}`\}/)
+    expect(notifications).toMatch(/className="gs-card clip"/)
     expect(notifications).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
 
     const security = readFileSync(
       resolve(webRoot, "components/settings/security-settings.tsx"),
       "utf8",
     )
-    const ssoIdx = security.indexOf("Single sign-on")
-    expect(ssoIdx).toBeGreaterThan(0)
-    const ssoWindow = security.slice(Math.max(0, ssoIdx - 450), ssoIdx + 1800)
-    expect(ssoWindow).toMatch(/border-b border-divide py-3/)
-    expect(ssoWindow).toMatch(/ssoConfig\?\.is_enabled \? "Disable" : "Enable"/)
-    expect(ssoWindow).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
-    expect(security).toMatch(/Organization-wide 2FA enforcement is not available/)
-    expect(security).toMatch(/IP restriction is not available/)
+    expect(security).toMatch(/<b>Single sign on<\/b>/)
+    expect(security).toMatch(/config\.is_enabled \? "Disable" : "Enable"/)
+    expect(security).toMatch(/Sign in does not enforce it yet/)
+    expect(security).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
 
     const models = readFileSync(
       resolve(webRoot, "components/settings/ai-models-settings.tsx"),
       "utf8",
     )
     expect(models).toMatch(/<MemoryEntityEmbeddingsSettings/)
-    expect(models).toMatch(/no organization API for workspace default models/)
+    expect(models).toMatch(/Workspace level overrides are not available yet/)
     expect(models).not.toMatch(/AI Operator/)
     expect(models).not.toMatch(/ModelSelector/)
     expect(models).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)

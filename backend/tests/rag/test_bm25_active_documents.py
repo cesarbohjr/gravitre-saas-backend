@@ -87,3 +87,36 @@ async def test_glossary_extraction_reads_only_active_documents(monkeypatch):
     select = next(a for name, a in client.chunk_calls if name == "select")
     assert "rag_documents!inner(is_active)" in select[0]
     assert ("eq", ("rag_documents.is_active", True)) in client.chunk_calls
+
+
+@pytest.mark.parametrize("query_text", ["payroll policy", ""])
+def test_keyword_arm_excludes_deleted_sources(monkeypatch, query_text):
+    """A soft-deleted source (rag_sources.deleted_at) must not return through BM25."""
+    rows = [
+        {
+            "id": "c1",
+            "content": "payroll policy live",
+            "document_id": "d-active",
+            "rag_documents": {"is_active": True},
+            "rag_sources": {"deleted_at": None},
+        },
+        {
+            "id": "c2",
+            "content": "payroll policy deleted source",
+            "document_id": "d-active",
+            "rag_documents": {"is_active": True},
+            "rag_sources": {"deleted_at": "2026-10-13T00:00:00Z"},
+        },
+    ]
+    client = _Client(rows)
+    monkeypatch.setattr(rag_retrieval, "create_client", lambda *a, **k: client)
+    monkeypatch.setattr(rag_retrieval, "_resolve_source_ids_for_scope", lambda *a, **k: None)
+
+    out, _reach = rag_retrieval.fetch_bm25_corpus(
+        SimpleNamespace(supabase_url="u", supabase_service_role_key="k"), "org-1", query_text=query_text
+    )
+
+    select = next(a for name, a in client.chunk_calls if name == "select")
+    assert "rag_sources!inner(deleted_at)" in select[0]
+    assert ("is_", ("rag_sources.deleted_at", "null")) in client.chunk_calls
+    assert [r["id"] for r in out] == ["c1"]

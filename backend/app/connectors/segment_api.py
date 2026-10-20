@@ -44,7 +44,7 @@ def resolve_segment_write_key(
         raise SegmentAPIError("Not a Segment connector", status_code=400)
 
     for key_name in ("write_key", "api_key", "segment_write_key"):
-        value = get_decrypted_secret(client, connector_id, key_name, settings)
+        value = get_decrypted_secret(client, connector_id, key_name, settings, org_id=org_id)
         if value and value.strip():
             return value.strip()
 
@@ -114,6 +114,8 @@ def _request(
 
 
 def identify(write_key: str, *, user_id: str, traits: dict[str, Any] | None = None) -> dict[str, Any]:
+    if not isinstance(user_id, str) or not user_id.strip():
+        raise SegmentAPIError("user_id required")
     body: dict[str, Any] = {"userId": user_id}
     if traits:
         body["traits"] = traits
@@ -150,6 +152,10 @@ def group(
     group_id: str,
     traits: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    if not isinstance(user_id, str) or not user_id.strip():
+        raise SegmentAPIError("user_id required")
+    if not isinstance(group_id, str) or not group_id.strip():
+        raise SegmentAPIError("group_id required")
     body: dict[str, Any] = {"userId": user_id, "groupId": group_id}
     if traits:
         body["traits"] = traits

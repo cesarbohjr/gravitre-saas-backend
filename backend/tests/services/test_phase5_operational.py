@@ -194,7 +194,7 @@ def test_proposal_routes_are_hidden_when_off():
     from app.routers.work_objects import ProposalDecisionRequest, accept_proposal_route
 
     with pytest.raises(HTTPException) as e:
-        accept_proposal_route("00000000-0000-4000-8000-000000000001", ProposalDecisionRequest(), {"user_id": "u"}, ORG, SimpleNamespace())
+        accept_proposal_route("00000000-0000-4000-8000-000000000001", ProposalDecisionRequest(), {"user_id": "u"}, ORG, SimpleNamespace(), "production")
     assert e.value.status_code == 404
 
 
@@ -213,9 +213,9 @@ def test_signal_readiness_unchanged_without_evidence_and_partial_with_it():
 
     play = _play(("workflow_completed", "observation.sentiment", "not_a_signal"))
     legacy = resolve_play_readiness(play, connected_vendors=set(), policy_authorized_actions=set(), metric_keys=set())
-    # Legacy name check: workflow_completed is absent from the event taxonomy
-    # and observation signals are unknown without evidence.
-    assert [r["status"] for r in legacy.signals] == ["MISSING", "MISSING", "MISSING"]
+    # Legacy name check: workflow_completed is a known taxonomy name (like
+    # workflow_failed); observation signals are unknown without evidence.
+    assert [r["status"] for r in legacy.signals] == ["AVAILABLE", "MISSING", "MISSING"]
     evaluated = resolve_play_readiness(
         play, connected_vendors=set(), policy_authorized_actions=set(), metric_keys=set(),
         observed_signals={"observation.sentiment"},

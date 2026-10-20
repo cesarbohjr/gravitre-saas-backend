@@ -1,0 +1,88 @@
+---
+title: How Gravitre uses your context
+description: What Gravitre reads to answer you, how it handles old and disconnected sources, what it never reads, and how to switch each part off.
+audience: public
+depth: high
+tier: all
+status: published
+category: Core Concepts
+readTime: 4 min
+prev:
+  title: How Gravitre keeps you in control
+  href: /docs/concepts/control
+next:
+  title: Security
+  href: /docs/concepts/security
+---
+
+Gravitre answers from **your** context: the tools you connected, the knowledge you added, and what it remembers. This page explains what that means in practice and how to control it.
+
+## What Gravitre reads
+
+For each question, Gravitre picks the most relevant pieces from three places:
+
+- **Connected tools** — only the [connectors](/docs/concepts/sources) you set up, with the access you granted.
+- **Knowledge** — documents you uploaded or synced.
+- **Memory** — what Gravitre remembers from the current conversation, your agents, and your organization.
+
+It searches the web only when a question needs it.
+
+### Why this answer?
+
+Under a chat reply, **Why this answer?** lists the sources that reply used (for example *Pricing FAQ · Your knowledge · updated 2 hours ago*), what it left out and why, and the tools it checked. **Sources** under the reply shows the same list next to any links from tool results.
+
+## Old and disconnected sources
+
+- When a document has been replaced or has passed its end date, Gravitre leaves it out and prefers the newer one.
+- Knowledge that came from a tool you have not connected is left out.
+- Documents that were deleted are left out, even if a recent search still remembered them.
+
+Some of these checks are still rolling out. Why this answer? only lists the checks that actually ran for that reply; it never claims a check that did not happen.
+
+**"Updated" vs "Refreshed":** *updated 2 hours ago* next to a source is when that source last changed. *Refreshed* at the top of a page is when the page last loaded its data.
+
+## What Gravitre never reads
+
+- Internal chat between colleagues is never used to judge customers.
+- Email written by your own colleagues is left out of customer sentiment.
+- Tools you did not connect, or data outside the access a connection allows.
+
+## Organization memory
+
+When the same fact keeps showing up across agent runs and teams, Gravitre proposes it as a shared memory. In **Intelligence › Knowledge › Memory**, each memory shows where it came from: the kind of source, the agents and teams that saw it, and the connected tool it was learned from when that was recorded. Admins approve or reject proposed memories, and can roll back one that was shared automatically.
+
+## Customer sentiment
+
+Customer sentiment is **off by default**. When an admin switches on customer context, email from your customers in the systems you choose is judged for:
+
+- tone
+- urgency
+- churn-risk language (talk of cancelling or switching)
+- interest in buying more
+- support problems
+
+Every reading quotes the customer's own words as evidence, and a trend needs several messages before Gravitre calls it one. Results appear in **Intelligence › Accounts**. Nothing is read until customer context is on.
+
+## From a finding to useful work
+
+**Accounts** and **Forecasts** show evidence-backed recommendations. Review a relevant Gravitre Play, such as **Customer Rescue**, or prepare a review assignment with the finding and evidence in its brief. Check readiness and approve the work before starting it. Accepting a proposal adds planned work; it does not start a Play or contact a customer. Connected-app writes keep their normal approval gates.
+
+Sentiment describes customer language; a forecast estimates a future result. If they disagree, compare both sources before acting. Verified business results feed outcome learning. A chat reply, accepted proposal, or completed draft does not prove that a model learned or a customer was retained. Analyzing text pasted into chat does not create a stored customer reading by itself.
+
+## Turning things on and off
+
+| What | Where |
+|---|---|
+| Customer context, and how long indexed documents are kept | **Settings › AI models › Customer data** (admins) |
+| Which tools Gravitre can read | **Connectors** — disconnecting a tool removes what Gravitre kept from it |
+| A single memory | **Intelligence › Knowledge › Memory** — reject or roll it back |
+
+## In-app one-pager
+
+Signed-in users can open the short version from any chat reply: [/ai/help/context](/ai/help/context).
+
+## Next steps
+
+- [How Gravitre keeps you in control](/docs/concepts/control)
+- [Data storage and LLM transmission](/docs/concepts/data-storage-and-llm)
+- [Gravitre AI](/docs/concepts/assistant)

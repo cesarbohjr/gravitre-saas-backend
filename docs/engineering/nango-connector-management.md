@@ -1,6 +1,6 @@
 # Nango connector management implementation and activation
 
-Status on 2026-10-05: implementation verified locally; production activation NOT RUN.
+Current status (2026-10-19): see the [connector/OAuth audit](connector-audit-2026-10-19/README.md) for 77 managed options, 78 live provider configurations and remaining app credentials/account acceptance. The notes below record the original October 5 implementation and its activation prerequisites.
 
 Gravitre owns permissions, approvals, audit and workflow execution. Nango handles authorization, credential storage/refresh and authenticated proxy requests. Existing native OAuth providers keep their current auth paths.
 

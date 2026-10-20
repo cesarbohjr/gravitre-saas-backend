@@ -6,23 +6,24 @@ import { backendBaseUrl } from "@/lib/public-urls"
 
 import MarketingLayout from "./(marketing)/layout"
 import MarketingHomePage from "./(marketing)/page"
+import { GRAVITRE_SOCIAL_PROFILES } from "@/lib/company-social-profiles"
 
 export const metadata: Metadata = {
-  title: "Gravitre — One AI brain for your entire business",
+  title: "Gravitre - One AI brain for your entire business",
   description:
     "Connect your tools, teams, and data. Run Gravitre AI, agents, and workflows with live connector checks, human approvals, and learning from verified outcomes.",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     siteName: "Gravitre",
-    title: "Gravitre — One AI brain for your entire business",
+    title: "Gravitre - One AI brain for your entire business",
     description:
       "One shared intelligence across agents, workflows, connectors, and approvals — governed execution, not another AI silo.",
     images: [{ url: "/og-get-started.png", width: 1200, height: 630, alt: "Gravitre — One AI brain for your business" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Gravitre — One AI brain for your entire business",
+    title: "Gravitre - One AI brain for your entire business",
     description: "Connect your stack. Coordinate the work. Measure whether it worked.",
     images: ["/og-get-started.png"],
   },
@@ -43,8 +44,18 @@ export default async function RootPage({ searchParams }: RootPageProps) {
     redirect(target.toString())
   }
 
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Gravitre",
+    url: "https://gravitre.app",
+    logo: "https://gravitre.app/images/gravitre-logo-black.png",
+    sameAs: GRAVITRE_SOCIAL_PROFILES.map((profile) => profile.url),
+  }
+
   return (
     <MarketingLayout>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
       <MarketingHomePage />
     </MarketingLayout>
   )

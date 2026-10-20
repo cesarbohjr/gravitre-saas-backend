@@ -111,6 +111,11 @@ _STARTS_AFFIRM_RE = re.compile(r"(?i)^\s*(?:yes|yeah|yep|sure|ok(?:ay)?|alright|
 
 def _is_new_request(message: str) -> bool:
     """A self-contained new ask ("Draft a follow-up email to Stephanie")."""
+    text = (message or "").strip()
+    if text.endswith("?") and not _STARTS_AFFIRM_RE.match(text) and user_requested_read(text):
+        # "What changed in my workspace since yesterday?" asks its own
+        # question; it is not a reply accepting an earlier offer to check.
+        return True
     try:
         from app.services.conversation_tier import _content_tier
 
@@ -198,6 +203,48 @@ def is_decline_utterance(message: str) -> bool:
 
 def claims_future_action(text: str) -> bool:
     return bool(_CLAIMS_FUTURE_RE.search(text or ""))
+
+
+def user_requested_read(message: str) -> bool:
+    """True when the user's own message already asks for a workspace read.
+
+    Promising to check ("I'll look into it") is a non-answer to a question
+    like "what changed in my workspace yesterday?": the read was the request.
+    """
+    from app.services.adaptive_research_cascade import is_tenant_local_question
+
+    text = (message or "").strip()
+    if not text or is_confirm_utterance(text) or _WRITE_OFFER_RE.search(text):
+        return False
+    return is_tenant_local_question(text)
+
+
+# Words that tie a message to whatever is waiting (an email draft, a staged
+# write): "what happened to my email?", "change the subject", "send it".
+_PENDING_ITEM_REF_RE = re.compile(
+    r"(?i)\b(?:drafts?|e-?mails?|messages?|subject|recipients?|send|sent|sending|"
+    r"it|that|this\s+one)\b"
+)
+_STARTS_EDIT_RE = re.compile(
+    r"(?i)^\s*(?:change|make|set|update|add|remove|replace|use|switch|cancel|hold|"
+    r"don'?t|do\s+not|no\b|nope|nah)"
+)
+
+
+def is_unrelated_read_question(message: str) -> bool:
+    """A workspace read question that is not about the item waiting for a yes.
+
+    While an email draft waits, "What changed in my workspace since
+    yesterday?" is its own question: answer it and leave the draft waiting.
+    Anything naming the draft, the email or "it", accepting, declining or
+    editing stays with the pending-reply classifier.
+    """
+    text = (message or "").strip()
+    if not text or _STARTS_AFFIRM_RE.match(text) or _STARTS_EDIT_RE.match(text):
+        return False
+    if _PENDING_ITEM_REF_RE.search(text):
+        return False
+    return user_requested_read(text)
 
 
 def last_assistant_text(history: list[dict[str, Any]] | None) -> str:

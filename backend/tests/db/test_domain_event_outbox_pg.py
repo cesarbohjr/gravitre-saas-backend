@@ -18,6 +18,8 @@ import pytest
 from tests.db.pg_harness import MIGRATIONS, PG_BIN, Pg, pg_cluster, requires_pg
 
 MIGRATION = MIGRATIONS / "20261012024141_domain_event_outbox.sql"
+# The relay passes p_event_types, added by this follow-up migration.
+CLAIM_TYPES_MIGRATION = MIGRATIONS / "20261013020000_domain_event_claim_handled_types.sql"
 
 ORG = "11111111-1111-4111-8111-111111111111"
 USER = "22222222-2222-4222-8222-222222222222"
@@ -64,7 +66,7 @@ INSERT INTO auth.users VALUES ('{USER}');
 
 @pytest.fixture(scope="module")
 def pg():
-    with pg_cluster(BOOTSTRAP_SQL, MIGRATION.read_text()) as server:
+    with pg_cluster(BOOTSTRAP_SQL, MIGRATION.read_text(), CLAIM_TYPES_MIGRATION.read_text()) as server:
         yield server
 
 
@@ -91,6 +93,7 @@ def _events(pg, event_type: str | None = None) -> list[dict]:
 
 def test_migration_is_idempotent(pg):
     pg.psql(MIGRATION.read_text())  # second apply must not fail
+    pg.psql(CLAIM_TYPES_MIGRATION.read_text())  # and the follow-up re-applies on top of it
     assert pg.value("SELECT count(*) FROM pg_trigger WHERE tgname = 'workflow_runs_emit_terminal_event';") == "1"
 
 
@@ -418,3 +421,75 @@ def test_relay_failure_is_persisted_and_retried_on_real_db(pg):
     assert second.delivered == 1 and attempts == [1, 2]
     row = json.loads(pg.value("SELECT row_to_json(o) FROM public.domain_event_outbox o;"))
     assert row["status"] == "delivered" and row["delivered_handlers"] == ["ok", "flaky"]
+
+
+# ------------------------------------------- unhandled event types stay pending
+# Release 1 gate: with the outcome-learning handler off, turning the relay on
+# must not consume pending execution.outcome_finalized events.
+
+
+def test_relay_leaves_unhandled_outcome_events_pending(pg):
+    from app.services import domain_events as de
+
+    for _ in range(12):
+        run_id = _new_run(pg)
+        pg.psql(f"UPDATE public.workflow_runs SET status = 'completed' WHERE id = '{run_id}';")
+    cid = pg.value(f"INSERT INTO public.connectors (org_id, type) VALUES ('{ORG}', 'gmail') RETURNING id;")
+    pg.psql(f"UPDATE public.connectors SET deleted_at = now(), status = 'disconnected' WHERE id = '{cid}';")
+
+    purged: list[str] = []
+    de.reset_domain_event_handlers_for_tests()
+    # Only the source purge handler is on (OUTCOME_LEARNING_HANDLER_ENABLED=false).
+    de.register_domain_event_handler(de.EVENT_SOURCE_DISCONNECTED, "purge", lambda c, e: purged.append(e["event_id"]))
+    try:
+        relay = de.DomainEventRelay(_PsqlRpcClient(pg), worker_id="w", batch_size=50)
+        for _ in range(3):
+            relay.run_once()
+    finally:
+        de.reset_domain_event_handlers_for_tests()
+
+    assert len(purged) == 1
+    outcome = pg.value(
+        "SELECT string_agg(DISTINCT status || ':' || attempts, ',') FROM public.domain_event_outbox "
+        "WHERE event_type = 'execution.outcome_finalized';"
+    )
+    assert outcome == "pending:0"
+    assert pg.value(
+        "SELECT count(*) FROM public.domain_event_outbox WHERE event_type = 'execution.outcome_finalized' AND status = 'pending';"
+    ) == "12"
+    stats = json.loads(pg.value("SELECT public.domain_event_outbox_stats();"))
+    assert stats["pending_by_type"] == {"execution.outcome_finalized": 12}
+
+
+def test_relay_with_no_handlers_does_not_touch_the_outbox(pg):
+    from app.services import domain_events as de
+
+    run_id = _new_run(pg)
+    pg.psql(f"UPDATE public.workflow_runs SET status = 'completed' WHERE id = '{run_id}';")
+    de.reset_domain_event_handlers_for_tests()
+    result = de.DomainEventRelay(_PsqlRpcClient(pg), worker_id="w").run_once()
+    assert result.claimed == 0
+    assert pg.value("SELECT status || ':' || attempts FROM public.domain_event_outbox;") == "pending:0"
+
+
+def test_claim_type_filter_and_empty_list(pg):
+    run_id = _new_run(pg)
+    pg.psql(f"UPDATE public.workflow_runs SET status = 'completed' WHERE id = '{run_id}';")
+    assert pg.value("SELECT count(*) FROM public.claim_domain_events('w', 10, 60, ARRAY['source.disconnected']);") == "0"
+    assert pg.value("SELECT count(*) FROM public.claim_domain_events('w', 10, 60, ARRAY[]::text[]);") == "0"
+    assert pg.value("SELECT status FROM public.domain_event_outbox;") == "pending"
+    # NULL keeps the old any-type behaviour for callers not yet passing types.
+    assert pg.value("SELECT count(*) FROM public.claim_domain_events('w', 10, 60);") == "1"
+
+
+def test_release_returns_event_without_spending_an_attempt(pg):
+    run_id = _new_run(pg)
+    pg.psql(f"UPDATE public.workflow_runs SET status = 'completed' WHERE id = '{run_id}';")
+    eid = pg.value("SELECT id FROM public.claim_domain_events('w', 1, 60);")
+    assert pg.value(f"SELECT attempts FROM public.domain_event_outbox WHERE id = {eid};") == "1"
+    assert pg.value(f"SELECT public.release_domain_event({eid}, 'someone-else');") == "f"
+    assert pg.value(f"SELECT public.release_domain_event({eid}, 'w');") == "t"
+    row = pg.value(f"SELECT status || ':' || attempts || ':' || (lease_owner IS NULL) FROM public.domain_event_outbox WHERE id = {eid};")
+    assert row == "pending:0:true"
+    denied = pg.psql(f"SET ROLE authenticated; SELECT public.release_domain_event({eid}, 'w');", check=False)
+    assert denied.returncode != 0 and "permission denied" in denied.stderr

@@ -62,7 +62,7 @@ def main() -> int:
         if vendor not in {"google_analytics", "google_search_console", "gmail"}:
             continue
         connector_id = str(row.get("id") or "")
-        tokens = load_oauth_tokens(sb, connector_id, settings) or {}
+        tokens = load_oauth_tokens(sb, connector_id, settings, org_id=org_id) or {}
         print(
             {
                 "vendor": vendor,

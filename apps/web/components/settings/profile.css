@@ -1,0 +1,45 @@
+/* Profile page (Settings redesign p07). Scoped under .gv-set, kit tokens only. */
+.gv-set .profile-hero { border-radius: 20px; overflow: hidden; }
+.gv-set .profile-banner { height: 96px; position: relative; overflow: hidden; background: linear-gradient(120deg, var(--gs-hero-a) 0%, var(--gs-canvas) 55%, var(--gs-hero-b) 100%); }
+.gv-set .profile-banner svg { position: absolute; inset: 0; }
+.gv-set .profile-banner path { stroke: var(--gs-green-bright); }
+.gv-set .profile-id { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; padding: 0 24px 22px; margin-top: -44px; position: relative; }
+.gv-set .profile-avatar { position: relative; flex: 0 0 auto; }
+.gv-set .profile-avatar-ring { width: 104px; height: 104px; border-radius: 50%; border: 4px solid var(--gs-card); box-shadow: 0 8px 24px -10px var(--gs-shadow); overflow: hidden; display: grid; place-items: center; background: var(--gs-dark); color: var(--gs-on-dark); }
+.gv-set .profile-avatar-ring > * { width: 100% !important; height: 100% !important; }
+.gv-set .profile-avatar .profile-photo-btn { position: absolute; right: -6px; bottom: 2px; width: 36px; min-height: 36px; padding: 0; border-radius: 50%; }
+.gv-set .profile-who { flex: 1 1 300px; min-width: 0; padding-bottom: 4px; }
+.gv-set .profile-who h2 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.gv-set .profile-name-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.gv-set .profile-meta { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px; font-size: 13px; color: var(--gs-ink-3); }
+.gv-set .profile-meta span { display: inline-flex; gap: 6px; align-items: center; min-width: 0; }
+.gv-set .profile-save { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.gv-set .profile-dirty { font-size: 13px; color: var(--gs-amber-ink); }
+.gv-set .profile-saved { font-size: 13px; color: var(--gs-green-ink); display: inline-flex; gap: 6px; align-items: center; }
+.gv-set .profile-cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.gv-set .profile-col-main { flex: 999 1 460px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.gv-set .profile-col-side { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.gv-set .profile-card-title { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.gv-set .profile-card-title h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.gv-set .profile-card-title .gs-sub { margin-top: 2px; }
+.gv-set .profile-pref { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 0; border-top: 1px solid var(--gs-line); }
+.gv-set .profile-pref:first-of-type { border-top: 0; }
+.gv-set .profile-pref > div:first-child { flex: 1 1 240px; min-width: 0; }
+.gv-set .profile-pref b { display: block; font-weight: 500; font-size: 14px; }
+.gv-set .profile-pref span.gs-sub { display: block; }
+.gv-set .profile-bio { margin-top: 14px; }
+.gv-set .profile-bio-count { font-size: 12px; color: var(--gs-faint); text-align: right; }
+.gv-set .profile-chips { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.gv-set .profile-session { display: flex; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--gs-line); border-radius: 12px; }
+.gv-set .profile-session + .profile-session { margin-top: 8px; }
+.gv-set .profile-session-body { min-width: 0; flex: 1; }
+.gv-set .profile-session-body b { display: block; font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gv-set .profile-session-body span { display: block; font-size: 12px; color: var(--gs-muted); overflow-wrap: anywhere; }
+.gv-set .profile-sessions-list { margin-top: 14px; }
+.gv-set .profile-side-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.gv-set .profile-side-head h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.gv-set .profile-password { display: grid; gap: 12px; margin-top: 14px; }
+@media (max-width: 640px) {
+  .gv-set .profile-id { padding: 0 16px 18px; }
+  .gv-set .profile-who h2 { font-size: 22px; }
+}

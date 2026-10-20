@@ -27,6 +27,7 @@ from app.connectors.repository import (
 )
 from app.core.crypto import decrypt_value, encrypt_value
 from app.core.errors import error_detail
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.core.supabase_response import response_error
 from app.billing.service import ADVANCED_CONNECTORS, get_plan_for_org, require_feature
 from app.middleware.entitlements import resolve_entitlements
@@ -306,9 +307,10 @@ def _connector_response_item(
                 row,
                 settings,
                 preloaded_secret=preloaded_api_key_secrets[connector_id],
+                org_id=org_id,
             )
         else:
-            api_key = masked_api_key_for_response(client, connector_id, row, settings)
+            api_key = masked_api_key_for_response(client, connector_id, row, settings, org_id=org_id)
     except Exception:  # noqa: BLE001
         logger.exception("connector api key mask failed id=%s", connector_id)
         api_key = None
@@ -564,7 +566,7 @@ def list_connectors_route_alias(
         q = (
             client.table("connectors")
             .select(
-                "id, name, vendor, type, description, status, environment, config, sync_frequency, "
+                "id, org_id, name, vendor, type, description, status, environment, config, sync_frequency, "
                 "last_sync_at, records_synced, docs_url, api_key_encrypted, webhook_url"
             )
             .eq("org_id", org_id)
@@ -605,6 +607,7 @@ def list_connectors_route_alias(
             [str(row["id"]) for row in visible_rows if row.get("id") is not None],
             "api_key",
             settings,
+            org_id=org_id,
         )
     except Exception:  # noqa: BLE001
         logger.exception("connector api key bulk read failed org_id=%s", org_id)
@@ -756,6 +759,22 @@ def get_connector_action_catalog_vendor(
     return payload
 
 
+@connectors_router.get("/data-removal")
+def connector_data_removal_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """What a disconnect removes under the current switches, and recent removal receipts."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    from app.services.data_removal_status import list_removals, removal_policy
+
+    policy = removal_policy(settings)
+    client = shared_service_client(settings, create_client)
+    return {"policy": policy, "removals": list_removals(client, org_id, policy["dataRemoval"])}
+
+
 @connectors_router.get("/{connector_id}")
 async def get_connector_route_alias(
     connector_id: UUID,
@@ -771,7 +790,7 @@ async def get_connector_route_alias(
     row = (
         client.table("connectors")
         .select(
-            "id, name, vendor, type, description, status, environment, config, sync_frequency, "
+                "id, org_id, name, vendor, type, description, status, environment, config, sync_frequency, "
             "last_sync_at, records_synced, docs_url, api_key_encrypted, webhook_url"
         )
         .eq("org_id", org_id)
@@ -809,7 +828,7 @@ def test_connector_route(
     client = shared_service_client(settings, create_client)
     row = (
         client.table("connectors")
-        .select("id, vendor, name, environment")
+        .select("id, vendor, name, environment, config")
         .eq("org_id", org_id)
         .eq("id", str(connector_id))
         .is_("deleted_at", "null")
@@ -822,7 +841,9 @@ def test_connector_route(
     vendor = normalize_vendor(data.get("vendor") or "")
     connector_env = data.get("environment") or environment_name
     from app.connectors.nango_registry import get_nango_connector_spec
-    if get_nango_connector_spec(vendor):
+    managed_spec = get_nango_connector_spec(vendor)
+    managed_config = safe_normalize_stored_dict(data, key="config")
+    if managed_spec and (not managed_spec.native_fallback or managed_config.get("auth_provider") == "managed"):
         from app.connectors.managed_health import managed_auth_status
         auth = managed_auth_status(client, org_id, str(connector_id), settings,
                                    environment_name=environment_name, validate_remote=True)
@@ -914,7 +935,7 @@ def test_connector_route(
                     }
                 return {"success": True, "message": f"{vendor} connection is valid"}
             if vendor == "google_calendar":
-                legacy = get_decrypted_secret(client, str(connector_id), "access_token", settings)
+                legacy = get_decrypted_secret(client, str(connector_id), "access_token", settings, org_id=org_id)
                 if legacy:
                     return {"success": True, "message": "Google Calendar access_token configured (legacy)"}
             return {"success": False, "message": err or f"{vendor} not connected"}
@@ -945,6 +966,8 @@ async def sync_connector_route_alias(
     """Manual sync — runs knowledge sync for Notion; legacy status for other connectors."""
     import asyncio
 
+    from app.core.ingestion_kill_switch import INGESTION_DISABLED_DETAIL, IngestionDisabledError
+    from app.services.ingestion_interlock import IngestionHeldError
     from app.services.knowledge_sync_service import SOURCE_REGISTRY, trigger_connector_knowledge_sync
 
     _user, org_id = _admin
@@ -978,6 +1001,12 @@ async def sync_connector_route_alias(
             )
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        except IngestionDisabledError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=INGESTION_DISABLED_DETAIL
+            ) from exc
+        except IngestionHeldError:
+            raise  # answered 503 INGESTION_HELD by the app-level handler
         except Exception as exc:  # noqa: BLE001
             # Surface PostgREST/schema errors (e.g. missing rag_sources.created_by) instead of opaque 500.
             raise HTTPException(
@@ -1020,6 +1049,8 @@ def create_connector_route(
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
+    from app.connectors.nango_client import customer_connector_config
+    body.config = customer_connector_config(body.config or {})
     _user, org_id = _admin
     entitlements = resolve_entitlements(settings, org_id)
     connector_limit = (entitlements.get("limits") or {}).get("connectors")
@@ -1330,8 +1361,9 @@ async def update_connector_route(
         )
         current_config = {}
         if existing_row.data:
-            current_config = existing_row.data[0].get("config") or {}
-        payload["config"] = {**current_config, **body.config}
+            current_config = safe_normalize_stored_dict(existing_row.data[0], key="config")
+        from app.connectors.nango_client import customer_connector_config
+        payload["config"] = {**current_config, **customer_connector_config(body.config)}
     api_key_plain = (body.api_key or "").strip() or None
     if api_key_plain:
         encrypted = store_connector_api_key(client, org_id, str(connector_id), api_key_plain, settings)
@@ -1428,6 +1460,13 @@ async def _delete_connector_impl(
         if spec is None or config.get("managed_integration_id") != spec.integration_id:
             raise HTTPException(status_code=400, detail="Managed integration mismatch")
         try:
+            from app.connectors.nango_client import scoped_connection
+            try:
+                scoped_connection(settings, connection_id=str(config["managed_connection_id"]),
+                                  integration_id=spec.integration_id, org_id=org_id, connector_id=str(connector_id))
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code != 404:
+                    raise
             delete_managed_connection(settings, connection_id=str(config["managed_connection_id"]),
                                       integration_id=spec.integration_id)
         except (httpx.HTTPError, ValueError) as exc:
@@ -1444,6 +1483,16 @@ async def _delete_connector_impl(
     )
     if not updated.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
+    # Context built from this connector must stop being served now, not when the
+    # disconnect purge runs (no-op unless MEMORY_SOURCE_LINEAGE_ENABLED).
+    from app.services.memory_source_liveness import invalidate_org_derived_context
+
+    invalidate_org_derived_context(org_id, settings=settings, reason="connector.deleted")
+    # Always on: retrieval cached before the delete stops matching. The documents
+    # were deactivated in the same transaction by a database trigger.
+    from app.services.memory_source_liveness import invalidate_org_retrieval_cache
+
+    invalidate_org_retrieval_cache(org_id, reason="connector.deleted")
     # Ask the provider to revoke the grant while we still hold the token (off by default).
     from app.services.source_lifecycle import revoke_on_disconnect
 
@@ -1460,7 +1509,7 @@ async def _delete_connector_impl(
     try:
         from app.connectors.platform import clear_connector_oauth_tokens
 
-        clear_connector_oauth_tokens(client, str(connector_id))
+        clear_connector_oauth_tokens(client, str(connector_id), org_id=org_id)
     except Exception:  # noqa: BLE001
         pass
     write_audit_event(

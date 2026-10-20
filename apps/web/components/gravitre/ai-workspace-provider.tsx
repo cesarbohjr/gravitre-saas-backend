@@ -49,6 +49,7 @@ import {
   type ReactNode,
 } from "react"
 import { usePathname, useParams } from "next/navigation"
+import { isAiHelpRoute } from "@/lib/page-family"
 import { GRAVITRE_AI_FLOAT_ENABLED } from "@/lib/ai-workspace-flags"
 import { modeToRemember, restoreTargetMode } from "@/lib/chat-window-state"
 import {
@@ -354,7 +355,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
 
   const onAiRoute =
     pathname === "/ai" ||
-    pathname.startsWith("/ai/") ||
+    (pathname.startsWith("/ai/") && !isAiHelpRoute(pathname)) ||
     (process.env.NEXT_PUBLIC_PLAYWRIGHT_E2E === "1" && pathname === "/e2e/shots/ai")
 
   const canonicalPresentation = deriveCanonicalPresentation({
@@ -400,6 +401,12 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
 
   // Direct `/ai` is fullscreen of the canonical workspace (UX Reset 1.0),
   // not a second runtime and not compact overlay by default.
+  useEffect(() => {
+    // Following a help link from an open chat must reveal the document. Keep
+    // the conversation and preferred mode so returning to chat can reopen it.
+    if (isAiHelpRoute(pathname)) setFloatWorkspaceOpenState(false)
+  }, [pathname])
+
   useEffect(() => {
     if (!GRAVITRE_AI_FLOAT_ENABLED) return
     if (!onAiRoute) return

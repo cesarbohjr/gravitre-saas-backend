@@ -8,6 +8,7 @@ from typing import Any
 TTS_AB_EVAL_MODELS: frozenset[str] = frozenset(
     {
         "eleven_v3",
+        "eleven_v3_conversational",
         "eleven_turbo_v2_5",
         "eleven_multilingual_v2",
     }

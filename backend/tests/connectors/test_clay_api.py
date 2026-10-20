@@ -45,7 +45,7 @@ def test_push_to_webhook_posts_json():
 @patch("app.connectors.clay_api.get_connector")
 def test_resolve_clay_api_key(mock_get, mock_secret):
     mock_get.return_value = {"id": "c1", "config": {}}
-    mock_secret.side_effect = lambda _c, _id, key, _s: "token" if key == "api_key" else None
+    mock_secret.side_effect = lambda _c, _id, key, _s, *, org_id: "token" if key == "api_key" else None
     settings = MagicMock()
     cid, key = resolve_clay_api_key(MagicMock(), "org", "c1", settings)
     assert cid == "c1"

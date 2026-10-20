@@ -6,11 +6,13 @@ verification remain owned by Gravitre.
 """
 from __future__ import annotations
 
+from app.core.safe_dict import safe_normalize_stored_dict
+
 from typing import Any
 
 import httpx
 
-from app.connectors.nango_client import proxy_request
+from app.connectors.nango_client import proxy_request, scoped_connection
 from app.connectors.repository import get_connector, get_connector_by_type
 from app.connectors.rate_limit import enforce_rate_limit
 from app.services.tool_types import (
@@ -37,16 +39,11 @@ def _managed_connector(
             environment_name=ctx.environment_name,
         )
     else:
-        conn = get_connector_by_type(
-            ctx.client,
-            ctx.org_id,
-            vendor,
-            environment_name=ctx.environment_name,
-        )
+        conn = get_connector_by_type(ctx.client, ctx.org_id, vendor, environment_name=ctx.environment_name)
     if not conn:
         raise ToolValidationError(f"No active {vendor} connector found for org")
 
-    stored_vendor = str(conn.get("type") or conn.get("vendor") or "").strip().lower()
+    stored_vendor = str(conn.get("vendor") or conn.get("type") or "").strip().lower()
     if stored_vendor != vendor:
         raise ToolValidationError("Connector vendor mismatch")
 
@@ -55,7 +52,7 @@ def _managed_connector(
     if conn.get("status") not in {"active", "connected", "healthy", "syncing"}:
         raise ToolAuthExpiredError("Connector is not active; reconnect the connector")
     cid = str(conn["id"])
-    config = conn.get("config") if isinstance(conn.get("config"), dict) else {}
+    config = safe_normalize_stored_dict(conn, key="config")
     if str(config.get("auth_provider") or "").strip().lower() != "managed":
         raise ToolValidationError(f"{vendor} connector is not using managed authorization")
 
@@ -71,6 +68,13 @@ def _managed_connector(
         )
 
     enforce_rate_limit(ctx.client, ctx.org_id, vendor, vendor, cid)
+    try:
+        remote = scoped_connection(ctx.settings, connection_id=connection_id, integration_id=integration_id,
+                                   org_id=ctx.org_id, connector_id=cid)
+        if remote.get("error") or remote.get("errors"):
+            raise ValueError("Invalid managed credentials")
+    except (httpx.HTTPError, ValueError) as exc:
+        raise ToolAuthExpiredError("Managed account ownership or authorization could not be verified") from exc
     return cid, connection_id, integration_id
 
 

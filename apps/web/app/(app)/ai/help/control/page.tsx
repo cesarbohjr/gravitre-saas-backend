@@ -62,6 +62,16 @@ export default function HowGravitreKeepsYouInControlPage() {
               assumption note or inferred field — not as silent certainty.
             </p>
           </li>
+          <li className="space-y-1.5">
+            <h2 className="text-sm font-semibold text-foreground">Every answer says what it used</h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Why this answer? under a reply lists the sources it drew on and anything it left out.{" "}
+              <Link href="/ai/help/context" className="text-foreground underline-offset-2 hover:underline">
+                How Gravitre uses your context
+              </Link>{" "}
+              explains what is read, what never is, and how to switch it off.
+            </p>
+          </li>
         </ol>
 
         <div className="flex flex-wrap gap-2 border-t border-border pt-6">

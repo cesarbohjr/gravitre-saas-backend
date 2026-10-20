@@ -17,12 +17,16 @@ describe("reported values stay reported", () => {
   })
 
   it("environments do not invent health, resource counts, or timestamps", () => {
-    const src = read("app/(app)/environments/page.tsx")
-    expect(src).toMatch(/health: parseReportedCount/)
-    expect(src).toMatch(/Not reported/)
-    expect(src).not.toMatch(/health: 100/)
-    expect(src).not.toMatch(/createdAt: "Recently created"/)
-    expect(src).not.toMatch(/lastActivity: "Just now"/)
+    const model = read("lib/settings-api/environments.ts")
+    const page = read("components/settings/env-pipeline.tsx")
+    // Counts are parsed from the payload and stay null when missing; the page shows "None yet".
+    expect(model).toMatch(/workflows: count\(/)
+    expect(model).toMatch(/return null/)
+    expect(page).toMatch(/None yet/)
+    expect(page).not.toMatch(/Not reported/)
+    expect(model + page).not.toMatch(/health: 100/)
+    expect(model + page).not.toMatch(/"Recently created"/)
+    expect(model + page).not.toMatch(/"Just now"/)
   })
 
   it("play evidence does not treat missing approvals as zero", () => {

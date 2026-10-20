@@ -670,13 +670,13 @@ class ChatConnectorExecutionService:
     def is_connector_intent(message: str, task_state: dict[str, Any]) -> bool:
         pending = task_state.get("pending_task") or {}
         pending_type = str(pending.get("type") or "")
-        exec_plan = task_state.get("execution_plan") if isinstance(task_state.get("execution_plan"), dict) else {}
-        if exec_plan.get("plan_id") and pending_type == "connector_orchestration":
-            return False
-        if exec_plan.get("execution_strategy") in {"SEQUENTIAL"} and pending_type == "connector_orchestration":
-            return False
         if pending_type == "connector_orchestration":
-            return False
+            # Only a live orchestration owns continuation. A blocked/finished
+            # plan must not permanently suppress a new single-connector ask.
+            if str(pending.get("status") or "") in {
+                "awaiting_plan_confirm", "awaiting_step_confirm", "executing", "claimed",
+            }:
+                return False
         if pending_type == "connector_action":
             return True
         params = pending.get("params") if isinstance(pending, dict) else None
@@ -1997,6 +1997,21 @@ class ChatConnectorExecutionService:
             )
 
     async def execute_plan(self, **kwargs: Any) -> ExecutionResult:
+        """Execute a plan under a declared write authority (see write_authority).
+
+        A confirmed write (``approved_params``) is a person's approval; otherwise
+        the HITL policy decided no approval was needed. An outer caller that
+        already declared authority (approval queue, orchestration) keeps it.
+        """
+        from app.services.write_authority import current_write_authority, write_authority
+
+        if current_write_authority() is not None:
+            return await self._execute_plan_shielded(**kwargs)
+        kind = "human" if kwargs.get("approved_params") is not None else "policy"
+        with write_authority(kind, f"chat:{kwargs.get('conversation_id') or ''}"):
+            return await self._execute_plan_shielded(**kwargs)
+
+    async def _execute_plan_shielded(self, **kwargs: Any) -> ExecutionResult:
         """Execute a connector plan; a WRITE finishes even if its turn is cancelled.
 
         A barge-in or stop cancels the turn that awaits this. Before the
@@ -2512,6 +2527,7 @@ class ChatConnectorExecutionService:
             structured=structured_payload or None,
             assumption_notes=_assumption_notes_from_plan(plan),
             outcome_verified=bool(observation.get("outcome_verified")) if plan.kind == "write" else True,
+            connector_id=connector_id or None,
         )
         if plan.kind == "write":
             from app.services.connector_output_contract import assert_execution_result_verifiable
@@ -3743,15 +3759,38 @@ class ChatConnectorExecutionService:
                         }
                     ]
             if typed:
+                lineage = self._connector_memory_lineage(execution)
+                if not lineage and getattr(self.settings, "memory_source_lineage_enabled", False) is True:
+                    # Learned from a connector action we cannot name, so a disconnect
+                    # could never purge it: do not store it at all.
+                    logger.info(
+                        "confirmed_workspace_memory_skipped_no_lineage org_id=%s integration=%s",
+                        org_id,
+                        getattr(plan, "integration", None),
+                    )
+                    return
                 promote_turn_memories(
                     client,
                     org_id=org_id,
-                    memories=typed,
+                    memories=[{**lineage, **m} for m in typed],
                     conversation_id=conversation_id,
                     provenance="connector_confirm",
+                    settings=self.settings,
                 )
         except Exception:  # noqa: BLE001
             pass
+
+    @staticmethod
+    def _connector_memory_lineage(execution: ExecutionResult | None) -> dict[str, str]:
+        """source_connector_id / source_record_ref for memories learned from this action."""
+        connector_id = str(getattr(execution, "connector_id", None) or "").strip()
+        if not connector_id:
+            return {}
+        lineage = {"source_connector_id": connector_id}
+        record_ref = str(getattr(execution, "entity_id", None) or "").strip()
+        if record_ref and record_ref != connector_id:
+            lineage["source_record_ref"] = record_ref
+        return lineage
 
     def _turn_from_execution(
         self,
@@ -4039,6 +4078,7 @@ class ChatConnectorExecutionService:
         hitl: Any | None = None,
     ) -> str | None:
         """Persist a Decision Queue row and notify configured approvers — not a polite no-op."""
+        from app.services.approval_action_binding import digest_plan_args
         from app.services.approval_record_service import create_contract_approval
 
         vendor = (plan.integration or "connector").replace("_", " ").title()
@@ -4077,6 +4117,14 @@ class ChatConnectorExecutionService:
                 or ("high" if plan.destructive else "low"),
                 "approval_reason": plan.approval_reason
                 or pending_params.get("approval_reason"),
+                # What the approver approves: this tool, action and integration with
+                # exactly these arguments. The approve route refuses anything else.
+                "binding": {
+                    "tool_name": plan.tool_name,
+                    "invoke_action": plan.invoke_action,
+                    "integration": plan.integration,
+                    "args_digest": digest_plan_args(plan.args),
+                },
             },
             parameters=dict(pending_params),
             payload={"args": dict(plan.args or {})},

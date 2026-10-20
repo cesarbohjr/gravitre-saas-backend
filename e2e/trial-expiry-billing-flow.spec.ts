@@ -102,6 +102,7 @@ test.describe("Trial expiry billing flow", () => {
       modal.getByTestId("upgrade-continue-checkout").click(),
     ])
 
+    await expect(modal).not.toBeVisible()
     await expect(page.getByTestId("payment-element-form")).toBeVisible({ timeout: 60_000 })
     await expect(page.getByRole("heading", { name: "Complete your subscription" })).toBeVisible()
   })
@@ -123,10 +124,11 @@ test.describe("Trial expiry billing flow", () => {
     const billingStatus = await openProductPage(page, user.orgId, "/assistant")
     expect(billingStatus.trialExpired).toBe(false)
     expect(billingStatus.billingStatus).toBe("trialing")
+    expect(billingStatus.planCode).toBe("node")
 
     await expect(page.getByTestId("active-trial-banner")).toBeVisible()
     await expect(page.getByTestId("active-trial-banner")).toContainText(
-      "You're on a 7-day free trial of Node",
+      "You're on a free trial.",
     )
     await expect(page.getByTestId("trial-expired-banner")).not.toBeVisible()
     await expect(

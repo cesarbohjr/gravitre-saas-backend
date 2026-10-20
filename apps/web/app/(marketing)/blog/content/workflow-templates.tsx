@@ -40,13 +40,14 @@ function BlogFigure({
 export const workflowTemplatesPost: BlogPost = {
   slug: "workflow-templates-library",
   title: "Introducing 60+ Marketplace templates and department packs",
+  seoTitle: "AI Workflow Templates and Packs",
   description:
-    "Gravitre Marketplace ships 60+ starter assets — workflow templates, department packs, agents, and knowledge — with connector checks before install and human approval on writes.",
+    "Explore Gravitre Marketplace workflow templates, department packs, agents, and knowledge assets, with connector checks and governed execution.",
   excerpt:
     "Most automation projects die before they ship. Not because the tech is wrong. Because the starting point is. Gravitre's Marketplace template library fixes that.",
   category: "Product",
   author: GRAVITRE_BLOG_AUTHOR,
-  ...createBlogDates("2026-07-15"),
+  ...createBlogDates("2026-07-15", "2026-10-14"),
   readTime: "12 min read",
   heroImage: "/images/blog/workflow-templates-hero.jpg",
   heroGradient: "from-warning/10 via-[color:var(--g-marketing-canvas)] to-primary/10",
@@ -112,6 +113,14 @@ export const workflowTemplatesPost: BlogPost = {
         hardening.
       </p>
 
+      <p>
+        A useful template needs a way to test its connections before anything changes in a live system.
+        <a href="https://learn.microsoft.com/en-us/power-automate/get-started-with-cloud-flows" target="_blank" rel="noopener noreferrer"> Microsoft&apos;s Power Automate tutorial</a>
+        demonstrates creating, testing, and running a cloud flow. The
+        <a href="https://developers.hubspot.com/docs/api/overview" target="_blank" rel="noopener noreferrer"> HubSpot CRM API reference</a>
+        describes the records and authenticated operations behind CRM integration. Both show why a template
+        still needs correct connector permissions and a real test before use.
+      </p>
       <h2>What a template actually is</h2>
       <p>Not a mockup. Not a skeleton you rebuild. In Marketplace terms, you will install one of:</p>
       <ul>

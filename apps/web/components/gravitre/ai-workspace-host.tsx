@@ -14,6 +14,7 @@ import dynamic from "next/dynamic"
 import { LayoutGroup } from "framer-motion"
 import { GRAVITRE_AI_FLOAT_ENABLED } from "@/lib/ai-workspace-flags"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
+import { isAiConversationRoute } from "@/lib/page-family"
 
 // Loaded on first arm only. The workspace (chat runtime, AI SDK, markdown,
 // voice/Pipecat client) is most of the signed-in shell's JavaScript, and a
@@ -26,7 +27,7 @@ const AiWorkspace = dynamic(
 
 function isWorkspaceArmPath(pathname: string): boolean {
   const path = pathname.split("?")[0] ?? ""
-  if (path === "/ai" || path.startsWith("/ai/")) return true
+  if (isAiConversationRoute(path)) return true
   return /^\/agents\/[^/]+\/chat\/?$/.test(path)
 }
 

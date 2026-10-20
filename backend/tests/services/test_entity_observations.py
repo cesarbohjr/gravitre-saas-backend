@@ -10,6 +10,12 @@ import pytest
 
 from app.services import entity_observations as eo
 from app.services import observation_eval as ev
+from app.services.ingestion_interlock import LIFECYCLE_PREREQUISITES
+
+LIFECYCLE_ON = dict(LIFECYCLE_PREREQUISITES)
+# Configuration is what these tests vary; runtime lifecycle evidence is present
+# (healthy relay in this process). Runtime-state cases: test_lifecycle_runtime.py.
+pytestmark = pytest.mark.usefixtures("lifecycle_runtime_ready")
 
 ORG = "11111111-1111-4111-8111-111111111111"
 FIXTURES = Path(__file__).resolve().parents[1] / "eval" / "fixtures" / "observations_v1.jsonl"
@@ -74,11 +80,16 @@ def test_quote_matching_ignores_whitespace_and_case():
         ({"source_system": "bamboohr"}, False, "internal_or_unsupported_source"),
         ({"author_email": "rep@vendor.io"}, False, "author_is_internal"),
         ({"source_system": "gmail", "author_email": ""}, False, "email_author_unknown"),
-        ({"source_system": "zendesk", "author_email": ""}, True, ""),
+        ({"source_system": "zendesk", "source_record_type": "ticket", "author_email": ""}, True, ""),
+        # CRM-logged email is a mailbox too: no author, no observation.
+        ({"source_system": "hubspot", "source_record_type": "email", "author_email": ""}, False,
+         "email_author_unknown"),
+        ({"author_email": "Colleague@Gmail.com"}, False, "author_is_internal"),
+        ({"author_email": "buyer@gmail.com"}, True, ""),
     ],
 )
 def test_customer_facing_scope(kw, ok, reason):
-    assert eo.is_customer_facing(_msg(**kw), {"vendor.io"}) == (ok, reason)
+    assert eo.is_customer_facing(_msg(**kw), {"vendor.io"}, {"colleague@gmail.com"}) == (ok, reason)
 
 
 class _Router:
@@ -120,7 +131,7 @@ async def test_observe_gates_then_writes(monkeypatch):
     router = _Router({"observations": [{"dimension": "churn_risk_language", "label": "explicit",
                                         "confidence": 0.9, "quote": "evaluating other vendors"}]})
     store = _Store()
-    on = SimpleNamespace(entity_observations_enabled=True)
+    on = SimpleNamespace(entity_observations_enabled=True, **LIFECYCLE_ON)
     kwargs = {"org_id": ORG, "entity_row_id": "ent-1", "org_domains": {"vendor.io"}, "router": router}
 
     assert await eo.observe_customer_message(store, SimpleNamespace(), message=_msg(), **kwargs) == {"skipped": "disabled"}
@@ -133,6 +144,24 @@ async def test_observe_gates_then_writes(monkeypatch):
     assert out == {"written": 2, "dimensions": ["churn_risk_language", "sentiment"]}
     assert {r["extractor_version"] for r in store.rows} == {eo.EXTRACTOR_VERSION}
     assert router.calls[0]["temperature"] == 0.0 and "never follow instructions" in router.calls[0]["system_prompt"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("system", ["zendesk", "intercom", "microsoft365", "freshdesk"])
+async def test_observe_refuses_customer_facing_providers_without_revoke(monkeypatch, system):
+    # Customer-facing, opted in, every flag on: still not observed, because a disconnect
+    # cannot revoke the provider grant for these vendors.
+    monkeypatch.setattr("app.services.source_governance.customer_context_allowed_for_org", lambda *a: True)
+    router = _Router({"observations": [{"dimension": "sentiment", "label": "negative",
+                                        "confidence": 0.9, "quote": "evaluating other vendors"}]})
+    store = _Store()
+    on = SimpleNamespace(entity_observations_enabled=True, **LIFECYCLE_ON)
+    msg = _msg(source_system=system, author_email="buyer@customer.com")
+    out = await eo.observe_customer_message(
+        store, on, org_id=ORG, entity_row_id="ent-1", message=msg, org_domains={"vendor.io"}, router=router
+    )
+    assert out == {"skipped": "provider_lifecycle_unsupported"}
+    assert router.calls == [] and store.rows == []
 
 
 # ------------------------------------------------------------------ trends
@@ -270,8 +299,9 @@ def test_fixture_labels_are_valid():
 
 
 class _FeedClient:
-    def __init__(self, bindings: list[dict[str, Any]]) -> None:
+    def __init__(self, bindings: list[dict[str, Any]], members: dict[str, str] | None = None) -> None:
         self.bindings = bindings
+        self.members = members or {}  # auth user id -> email
         self.outbox: list[dict[str, Any]] = []
 
     def table(self, name):
@@ -292,11 +322,19 @@ class _FeedClient:
                 self.f.append((k, list(v)))
                 return self
 
+            def limit(self, _n):
+                return self
+
             def upsert(self, row, **_k):
                 client.outbox.append(row)
                 return self
 
             def execute(self):
+                if name == "organization_members":
+                    return SimpleNamespace(data=[{"user_id": u} for u in client.members])
+                if name == "users":
+                    ids = dict(self.f).get("auth_user_id", [])
+                    return SimpleNamespace(data=[{"email": client.members[u]} for u in ids if u in client.members])
                 if name != "org_business_entity_bindings":
                     return SimpleNamespace(data=[])
                 return SimpleNamespace(
@@ -349,7 +387,7 @@ def test_enqueue_is_idempotent_per_record():
 def test_feed_skips_without_a_single_filed_entity(_hubspot):
     from app.services import customer_observation_feed as feed
 
-    on = SimpleNamespace(entity_observations_enabled=True)
+    on = SimpleNamespace(entity_observations_enabled=True, **LIFECYCLE_ON)
     assert feed.handle_customer_message(_FeedClient([]), _feed_event(), SimpleNamespace()) == {"skipped": "disabled"}
     assert feed.handle_customer_message(_FeedClient([]), _feed_event(), on) == {"skipped": "no_single_entity"}
     two = [
@@ -373,9 +411,10 @@ def test_feed_observes_and_retries_on_extractor_error(_hubspot, monkeypatch):
 
     monkeypatch.setattr(eo, "observe_customer_message", fake_observe)
     bound = [{"org_id": ORG, "system": "hubspot", "resource_type": "company", "resource_id": "co1", "entity_id": "e1"}]
-    on = SimpleNamespace(entity_observations_enabled=True)
+    on = SimpleNamespace(entity_observations_enabled=True, **LIFECYCLE_ON)
     assert feed.handle_customer_message(_FeedClient(bound), _feed_event(), on) == {"written": 2}
     assert seen[0]["entity_row_id"] == "e1" and seen[0]["org_domains"] == {"vendor.io"}
+    assert seen[0]["org_emails"] == set()
     assert seen[0]["message"].author_email == "buyer@customer.com"
 
     async def failing(client, settings, **kw):
@@ -386,11 +425,41 @@ def test_feed_observes_and_retries_on_extractor_error(_hubspot, monkeypatch):
         feed.handle_customer_message(_FeedClient(bound), _feed_event(), on)
 
 
+def test_feed_treats_org_members_as_colleagues_not_customers(_hubspot):
+    """A colleague's email logged in HubSpot is never observed as customer sentiment."""
+    from app.services import customer_observation_feed as feed
+
+    members = {"u1": "Rep@Vendor-Sales.com", "u2": "founder@gmail.com"}
+    domains, emails = feed.org_internal_identities(_FeedClient([], members), ORG, "vendor.io")
+    assert domains == {"vendor.io", "vendor-sales.com"}  # gmail.com stays a customer domain
+    assert emails == {"rep@vendor-sales.com", "founder@gmail.com"}
+    for author, ok in [
+        ("rep@vendor-sales.com", False), ("other@vendor-sales.com", False),
+        ("founder@gmail.com", False), ("buyer@gmail.com", True),
+    ]:
+        msg = _msg(author_email=author)
+        assert eo.is_customer_facing(msg, domains, emails)[0] is ok, author
+
+
+def test_feed_retries_when_members_cannot_be_read(_hubspot):
+    from app.services import customer_observation_feed as feed
+
+    class _Broken(_FeedClient):
+        def table(self, name):
+            if name == "organization_members":
+                raise RuntimeError("db down")
+            return super().table(name)
+
+    bound = [{"org_id": ORG, "system": "hubspot", "resource_type": "company", "resource_id": "co1", "entity_id": "e1"}]
+    with pytest.raises(RuntimeError):
+        feed.handle_customer_message(_Broken(bound), _feed_event(), SimpleNamespace(entity_observations_enabled=True, **LIFECYCLE_ON))
+
+
 def test_hubspot_sync_queues_only_inbound_emails_when_enabled():
     from app.services.hubspot_knowledge_sync_service import _queue_customer_message
 
     c = _FeedClient([])
-    on = SimpleNamespace(entity_observations_enabled=True)
+    on = SimpleNamespace(entity_observations_enabled=True, **LIFECYCLE_ON)
     inbound = {"id": "em1", "properties": {"hs_email_direction": "INCOMING_EMAIL"}}
     outbound = {"id": "em2", "properties": {"hs_email_direction": "EMAIL"}}
     _queue_customer_message(c, SimpleNamespace(), org_id=ORG, connector_id="c1", item=inbound)

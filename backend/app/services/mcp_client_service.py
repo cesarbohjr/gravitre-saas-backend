@@ -17,7 +17,7 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.connectors.crypto import decrypt_secret, encrypt_secret
-from app.connectors.rate_limit import RateLimitError, enforce_rate_limit
+from app.connectors.rate_limit import RateLimitError, enforce_mcp_rate_limit
 from app.core.logging import get_logger
 from app.services.approval_record_service import create_contract_approval
 from app.workflows.audit import write_audit_event
@@ -43,6 +43,18 @@ def mcp_input_sha256(input_data: dict[str, Any] | None) -> str:
         default=str,
     )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def mcp_approval_target_digest(tool: dict[str, Any], server: dict[str, Any]) -> str:
+    """Bind review to tool/schema, endpoint and credential version without exposing secrets."""
+    return mcp_input_sha256({
+        "tool_id": tool.get("id"), "tool_name": tool.get("tool_name"),
+        "server_id": tool.get("server_id"), "schema": tool.get("input_schema"),
+        "capability_tier": tool.get("capability_tier"),
+        "requires_approval": tool.get("requires_approval"),
+        "server_url": server.get("server_url"), "transport": server.get("transport"),
+        "auth_type": server.get("auth_type"), "auth_version": mcp_input_sha256(server.get("auth_config") or {}),
+    })
 
 
 def classify_mcp_tool_capability(tool_name: str, tool_description: str | None = None) -> str:
@@ -72,6 +84,11 @@ def resolve_mcp_tool_authority(
     )
 
     read_only, destructive = mcp_hints_from_schema(input_schema)
+    from app.services.write_capability import capability_of_mcp_tool
+
+    if capability_of_mcp_tool(tool_name):
+        # A send is a write whatever the server's readOnlyHint says.
+        return "write", True, read_only, destructive
     if read_only is True:
         return "read", False, read_only, destructive
     if destructive is True:
@@ -117,65 +134,135 @@ def mcp_openai_tool_name(server_name: str, tool_name: str) -> str:
     return f"mcp_{safe_server}_{safe_tool}"[:128]
 
 
+from contextlib import asynccontextmanager
+
+
 def _streamable_http_client():
-    """Return the Streamable HTTP client for the installed MCP SDK line.
-
-    Gravitre currently pins mcp<2. MCP 1.x uses streamablehttp_client;
-    MCP 2.x renamed it to streamable_http_client. Prefer the modern symbol
-    when present so the runtime is migration-ready without changing behavior.
-    """
+    """Retain the SDK factory accessor used by compatibility contract tests."""
     try:
-        from mcp.client.streamable_http import streamable_http_client
-
-        return streamable_http_client
-    except ImportError:
         from mcp.client.streamable_http import streamablehttp_client
-
         return streamablehttp_client
+    except ImportError:
+        from mcp.client.streamable_http import streamable_http_client
+        return streamable_http_client
 
 
-async def _validate_portable_mcp_runtime_endpoint(server: dict[str, Any]) -> None:
-    """Re-resolve package-managed MCP endpoints immediately before network use.
+@asynccontextmanager
+async def _secure_streamable_http_client(url: str, headers: dict[str, str]):
+    """Inject no-redirect transport through the current MCP SDK API.
+
+    The pinned MCP >=1.27 client uses the modern `http_client` keyword;
+    passing the legacy `headers` keyword fails before reaching the server.
+    Endpoint DNS/SSRF checks still execute before entering this context.
+    """
+    from mcp.client.streamable_http import streamable_http_client
+
+    async with _restricted_mcp_httpx_client_factory(
+        headers=headers,
+        timeout=httpx.Timeout(30.0, read=300.0),
+    ) as restricted_client:
+        async with streamable_http_client(url, http_client=restricted_client) as streams:
+            yield streams
+
+
+class MCPTransportNotAllowedError(ValueError):
+    """Raised when a server's transport is switched off for this deployment."""
+
+
+def mcp_stdio_allowed(settings: Any) -> bool:
+    """stdio launches a process on the backend host; operator opt-in only."""
+    return bool(getattr(settings, "mcp_stdio_transport_enabled", False))
+
+
+def assert_mcp_transport_allowed(transport: str | None, settings: Any) -> None:
+    normalized = str(transport or "stdio").strip().lower().replace("-", "_")
+    if normalized == "stdio" and not mcp_stdio_allowed(settings):
+        raise MCPTransportNotAllowedError(
+            "stdio MCP servers are disabled on this deployment; use an HTTPS MCP endpoint"
+        )
+
+
+def _is_blocked_address(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    mapped = getattr(address, "ipv4_mapped", None)
+    if mapped is not None:
+        address = mapped
+    return bool(
+        address.is_private
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_multicast
+        or address.is_reserved
+        or address.is_unspecified
+    )
+
+
+async def _resolve_host_addresses(host: str, port: int) -> set[ipaddress.IPv4Address | ipaddress.IPv6Address]:
+    try:
+        return {ipaddress.ip_address(host)}
+    except ValueError:
+        pass
+    try:
+        rows = await asyncio.to_thread(socket.getaddrinfo, host, port, type=socket.SOCK_STREAM)
+    except OSError as exc:
+        raise ValueError("MCP endpoint DNS resolution failed") from exc
+    addresses: set[ipaddress.IPv4Address | ipaddress.IPv6Address] = set()
+    for row in rows:
+        sockaddr = row[4]
+        if not sockaddr:
+            continue
+        try:
+            addresses.add(ipaddress.ip_address(str(sockaddr[0])))
+        except ValueError:
+            continue
+    if not addresses:
+        raise ValueError("MCP endpoint resolved to no usable address")
+    return addresses
+
+
+async def _validate_mcp_runtime_endpoint(
+    server: dict[str, Any],
+    *,
+    allow_private_network: bool = False,
+) -> None:
+    """Re-resolve a remote MCP endpoint immediately before network use.
 
     Registration-time URL checks are insufficient because DNS can later resolve
     a public hostname to loopback/private/link-local space.
+
+    Package-managed servers must be HTTPS and public, always. Admin-added servers
+    may be HTTP or HTTPS and must resolve to public addresses unless the operator
+    set ``MCP_ALLOW_PRIVATE_NETWORK_SERVERS`` for a single-tenant deployment.
     """
-    if not bool(server.get("source_capability_package_id")):
-        return
+    package_managed = bool(server.get("source_capability_package_id"))
     raw_url = str(server.get("server_url") or "").strip()
     parsed = urlparse(raw_url)
     host = (parsed.hostname or "").strip().lower()
-    if parsed.scheme != "https" or not host or parsed.username or parsed.password:
-        raise ValueError("Portable MCP endpoint is no longer a valid reviewed HTTPS URL")
+    if package_managed:
+        if parsed.scheme != "https" or not host or parsed.username or parsed.password:
+            raise ValueError("Portable MCP endpoint is no longer a valid reviewed HTTPS URL")
+    else:
+        if parsed.scheme not in {"http", "https"} or not host:
+            raise ValueError("MCP endpoint must be an http(s) URL")
+        if parsed.username or parsed.password:
+            raise ValueError("MCP endpoint URL must not embed credentials; use the server auth settings")
+        if allow_private_network:
+            return
+    default_port = 443 if parsed.scheme == "https" else 80
     try:
-        literal = ipaddress.ip_address(host)
-        addresses = {literal}
-    except ValueError:
-        try:
-            rows = await asyncio.to_thread(socket.getaddrinfo, host, parsed.port or 443, type=socket.SOCK_STREAM)
-        except OSError as exc:
-            raise ValueError("Portable MCP endpoint DNS resolution failed") from exc
-        addresses = set()
-        for row in rows:
-            sockaddr = row[4]
-            if not sockaddr:
-                continue
-            try:
-                addresses.add(ipaddress.ip_address(str(sockaddr[0])))
-            except ValueError:
-                continue
-        if not addresses:
-            raise ValueError("Portable MCP endpoint resolved to no usable address")
+        addresses = await _resolve_host_addresses(host, parsed.port or default_port)
+    except ValueError as exc:
+        if package_managed:
+            raise ValueError(str(exc).replace("MCP endpoint", "Portable MCP endpoint")) from exc
+        raise
     for address in addresses:
-        if (
-            address.is_private
-            or address.is_loopback
-            or address.is_link_local
-            or address.is_multicast
-            or address.is_reserved
-            or address.is_unspecified
-        ):
-            raise ValueError("Portable MCP endpoint resolved to private or reserved network space")
+        if _is_blocked_address(address):
+            prefix = "Portable MCP endpoint" if package_managed else "MCP endpoint"
+            raise ValueError(f"{prefix} resolved to private or reserved network space")
+
+
+async def _validate_portable_mcp_runtime_endpoint(server: dict[str, Any]) -> None:
+    """Backward-compatible name: same check with the private-network opt-in off."""
+    await _validate_mcp_runtime_endpoint(server, allow_private_network=False)
 
 
 def _restricted_mcp_httpx_client_factory(
@@ -383,6 +470,20 @@ class MCPClientService:
     def _now(self) -> str:
         return datetime.now(timezone.utc).isoformat()
 
+    async def _preflight_server(self, server: dict[str, Any]) -> None:
+        transport = str(server.get("transport") or "stdio").strip().lower().replace("-", "_")
+        assert_mcp_transport_allowed(transport, self.settings)
+        if transport != "stdio":
+            await self._validate_endpoint(server)
+
+    async def _validate_endpoint(self, server: dict[str, Any]) -> None:
+        await _validate_mcp_runtime_endpoint(
+            server,
+            allow_private_network=bool(
+                getattr(self.settings, "mcp_allow_private_network_servers", False)
+            ),
+        )
+
     def _encryption_key(self) -> str:
         key = getattr(self.settings, "connector_secrets_encryption_key", None) or ""
         if not key:
@@ -522,6 +623,7 @@ class MCPClientService:
         agent_id: str | None = None,
         workflow_run_id: str | None = None,
         approval_id: str | None = None,
+        actor_id: str | None = None,
     ) -> dict[str, Any]:
         tool = await self._load_tool(tool_id, org_id)
         if not tool.get("enabled", True):
@@ -539,41 +641,35 @@ class MCPClientService:
             requires_approval=bool(tool.get("requires_approval")),
             read_only_hint=read_only_hint,
             destructive_hint=destructive_hint,
+            tool_name=str(tool.get("tool_name") or ""),
         )
         if not (requires_write and not approval_id):
             # Throttle before an approval is consumed, so a refused call keeps it.
             try:
-                enforce_rate_limit(self._client(), org_id, "mcp", "mcp", str(tool["server_id"]))
+                enforce_mcp_rate_limit(self._client(), org_id, str(tool["server_id"]))
             except RateLimitError:
                 return {"status": "rate_limited", "error": "MCP tool rate limit exceeded, try again shortly"}
+        if requires_write and not approval_id:
+            pending = await self._create_pending_execution(
+                tool_id=tool_id, org_id=org_id, agent_id=agent_id,
+                workflow_run_id=workflow_run_id, input_data=input_data, tool=tool, actor_id=actor_id,
+            )
+            return {
+                "status": "pending_approval", "execution_id": pending.get("execution_id"),
+                "approval_id": pending.get("approval_id"),
+                "message": "This write action requires approval. Check the Approvals queue to proceed.",
+            }
+
+        # Check transport before consuming approval, then bind the exact snapshots
+        # used below. Re-loading between review validation and dispatch can change
+        # a tool or endpoint after the approval was checked.
+        server = await self._load_server(str(tool["server_id"]), org_id)
+        await self._preflight_server(server)
         claim_token: str | None = None
         if requires_write:
-            if not approval_id:
-                pending = await self._create_pending_execution(
-                    tool_id=tool_id,
-                    org_id=org_id,
-                    agent_id=agent_id,
-                    workflow_run_id=workflow_run_id,
-                    input_data=input_data,
-                    tool=tool,
-                )
-                return {
-                    "status": "pending_approval",
-                    "execution_id": pending.get("execution_id"),
-                    "approval_id": pending.get("approval_id"),
-                    "message": (
-                        "This write action requires approval. Check the Approvals queue to proceed."
-                    ),
-                }
-            claim_token = await self._verify_approval(approval_id, tool_id, org_id, input_data)
-
-        try:
-            server = await self._load_server(str(tool["server_id"]), org_id)
-        except Exception:
-            # Nothing was sent to the MCP server, so the approval can be used again.
-            if claim_token:
-                await self._release_approval(approval_id, org_id, claim_token)
-            raise
+            claim_token = await self._verify_approval(
+                approval_id, tool_id, org_id, input_data, tool=tool, server=server,
+            )
         started = time.perf_counter()
         try:
             # From here the request may reach the server. Any outcome, including an
@@ -584,7 +680,7 @@ class MCPClientService:
             source_package_id = str(server.get("source_capability_package_id") or "").strip()
             execution_status = "completed"
             verification = None
-            if source_package_id and requires_write:
+            if requires_write:
                 # A portable package does not get to define terminal success by
                 # returning a successful MCP response. Until Gravitre has an
                 # independent source-of-record verifier for this dynamic MCP
@@ -595,7 +691,7 @@ class MCPClientService:
                     "verified": False,
                     "providerAccepted": True,
                     "providerAcceptanceIsTerminalSuccess": False,
-                    "reason": "portable_mcp_write_has_no_independent_source_verifier",
+                    "reason": "mcp_write_has_no_independent_source_verifier",
                 }
             await self._log_execution(
                 tool_id=tool_id,
@@ -632,20 +728,22 @@ class MCPClientService:
             return response
         except Exception as exc:  # noqa: BLE001
             latency_ms = int((time.perf_counter() - started) * 1000)
-            await self._log_execution(
-                tool_id=tool_id,
-                org_id=org_id,
-                agent_id=agent_id,
-                workflow_run_id=workflow_run_id,
-                input_data=input_data,
-                output=None,
-                status="failed",
-                approval_id=approval_id,
-                latency_ms=latency_ms,
-                error=str(exc),
-                capability_tier=str(tool.get("capability_tier") or ""),
-            )
-            return {"status": "failed", "error": str(exc), "latency_ms": latency_ms}
+            outcome = "verification_inconclusive" if requires_write else "failed"
+            try:
+                await self._log_execution(
+                    tool_id=tool_id, org_id=org_id, agent_id=agent_id,
+                    workflow_run_id=workflow_run_id, input_data=input_data, output=None,
+                    status=outcome, approval_id=approval_id, latency_ms=latency_ms,
+                    error=type(exc).__name__, capability_tier=str(tool.get("capability_tier") or ""),
+                )
+            except Exception as log_error:  # noqa: BLE001
+                logger.warning("mcp_execution_evidence_failed error=%s", type(log_error).__name__)
+            logger.warning("mcp_tool_dispatch_failed tool_id=%s error=%s", tool_id, type(exc).__name__)
+            response = {"status": outcome, "error": "The MCP request outcome could not be confirmed.", "latency_ms": latency_ms}
+            if requires_write:
+                response["verification"] = {"verified": False, "providerAcceptanceIsTerminalSuccess": False,
+                                             "providerAccepted": False, "reason": "remote_effect_unknown"}
+            return response
 
     async def get_enabled_tools_for_org(self, org_id: str) -> list[dict[str, Any]]:
         # Read up to five times per chat turn before the model runs; one turn
@@ -694,6 +792,7 @@ class MCPClientService:
                 requires_approval=bool(row.get("requires_approval")),
                 read_only_hint=read_only_hint,
                 destructive_hint=destructive_hint,
+                tool_name=str(row.get("tool_name") or ""),
             )
             tools.append(
                 {
@@ -761,6 +860,7 @@ class MCPClientService:
         tool_id: str,
         org_id: str,
         input_data: dict[str, Any] | None = None,
+        *, tool: dict[str, Any] | None = None, server: dict[str, Any] | None = None,
     ) -> str:
         """Check the approval matches this tool and input, then claim it (single use).
 
@@ -793,6 +893,10 @@ class MCPClientService:
         approved_hash = str(context.get("input_sha256") or "")
         if not approved_hash or approved_hash != mcp_input_sha256(input_data):
             raise ValueError("Approval does not match MCP tool input")
+        reviewed_tool = tool if tool is not None else await self._load_tool(tool_id, org_id)
+        reviewed_server = server if server is not None else await self._load_server(str(reviewed_tool["server_id"]), org_id)
+        if context.get("target_digest") != mcp_approval_target_digest(reviewed_tool, reviewed_server):
+            raise ValueError("Approval does not match current MCP tool, server or credentials; request fresh approval")
         claim_token = datetime.now(timezone.utc).isoformat()
         try:
             claimed = (
@@ -852,7 +956,10 @@ class MCPClientService:
         workflow_run_id: str | None,
         input_data: dict[str, Any],
         tool: dict[str, Any],
+        actor_id: str | None = None,
     ) -> dict[str, Any]:
+        server = await self._load_server(str(tool["server_id"]), org_id)
+        target_digest = mcp_approval_target_digest(tool, server)
         client = self._client()
         inserted = (
             client.table("mcp_tool_executions")
@@ -876,13 +983,18 @@ class MCPClientService:
             title=f"Approve MCP write: {tool.get('tool_name')}",
             description="MCP write tool execution requires human approval.",
             approval_type="mcp_tool",
+            requested_by=actor_id,
             priority="high",
             status="pending",
             context={
                 "mcp_tool_id": tool_id,
                 "mcp_execution_id": execution_id,
                 "tool_name": tool.get("tool_name"),
+                "server_name": server.get("server_name"),
+                "server_id": tool.get("server_id"),
+                "integration": "mcp",
                 "input_sha256": mcp_input_sha256(input_data),
+                "target_digest": target_digest,
             },
             parameters=input_data,
         )
@@ -985,6 +1097,7 @@ class MCPClientService:
     async def _list_remote_tools(self, server: dict[str, Any]) -> list[dict[str, Any]]:
         """List tools from MCP server; override in tests via patch."""
         transport = str(server.get("transport") or "stdio")
+        assert_mcp_transport_allowed(transport, self.settings)
         if transport == "stdio":
             return await self._list_tools_stdio(server)
         if transport in {"sse", "http"}:
@@ -1000,6 +1113,7 @@ class MCPClientService:
         input_data: dict[str, Any],
     ) -> dict[str, Any]:
         transport = str(server.get("transport") or "stdio")
+        assert_mcp_transport_allowed(transport, self.settings)
         if transport == "stdio":
             return await self._call_stdio(server, tool_name, input_data)
         if transport in {"sse", "http"}:
@@ -1009,6 +1123,7 @@ class MCPClientService:
         raise ValueError(f"Unsupported MCP transport: {transport}")
 
     async def _list_tools_stdio(self, server: dict[str, Any]) -> list[dict[str, Any]]:
+        assert_mcp_transport_allowed("stdio", self.settings)
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
 
@@ -1034,7 +1149,7 @@ class MCPClientService:
         from mcp.client.sse import sse_client
 
         url = str(server.get("server_url") or "")
-        await _validate_portable_mcp_runtime_endpoint(server)
+        await self._validate_endpoint(server)
         headers = self._auth_headers(server)
         async with sse_client(
             url,
@@ -1059,14 +1174,9 @@ class MCPClientService:
         from mcp import ClientSession
 
         url = str(server.get("server_url") or "")
-        await _validate_portable_mcp_runtime_endpoint(server)
+        await self._validate_endpoint(server)
         headers = self._auth_headers(server)
-        client_factory = _streamable_http_client()
-        async with client_factory(
-            url,
-            headers=headers,
-            httpx_client_factory=_restricted_mcp_httpx_client_factory,
-        ) as streams:
+        async with _secure_streamable_http_client(url, headers) as streams:
             read, write = streams[0], streams[1]
             async with ClientSession(read, write) as session:
                 await session.initialize()
@@ -1086,6 +1196,7 @@ class MCPClientService:
         tool_name: str,
         input_data: dict[str, Any],
     ) -> dict[str, Any]:
+        assert_mcp_transport_allowed("stdio", self.settings)
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
 
@@ -1108,7 +1219,7 @@ class MCPClientService:
         from mcp.client.sse import sse_client
 
         url = str(server.get("server_url") or "")
-        await _validate_portable_mcp_runtime_endpoint(server)
+        await self._validate_endpoint(server)
         headers = self._auth_headers(server)
         async with sse_client(
             url,
@@ -1129,14 +1240,9 @@ class MCPClientService:
         from mcp import ClientSession
 
         url = str(server.get("server_url") or "")
-        await _validate_portable_mcp_runtime_endpoint(server)
+        await self._validate_endpoint(server)
         headers = self._auth_headers(server)
-        client_factory = _streamable_http_client()
-        async with client_factory(
-            url,
-            headers=headers,
-            httpx_client_factory=_restricted_mcp_httpx_client_factory,
-        ) as streams:
+        async with _secure_streamable_http_client(url, headers) as streams:
             read, write = streams[0], streams[1]
             async with ClientSession(read, write) as session:
                 await session.initialize()

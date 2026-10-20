@@ -12,7 +12,7 @@ export const measuringAiRoiPost: BlogPost = {
     "Every AI vendor shows you a slick ROI chart. Here is what we show you instead: the real thing.",
   category: "Product",
   author: GRAVITRE_BLOG_AUTHOR,
-  ...createBlogDates("2026-07-17", "2026-07-18"),
+  ...createBlogDates("2026-07-17", "2026-10-14"),
   readTime: "6 min read",
   heroImage: "",
   heroGradient: "from-[color:var(--g-marketing-surface)] via-primary/5/40 to-muted",
@@ -72,6 +72,14 @@ export const measuringAiRoiPost: BlogPost = {
         </p>
       </aside>
 
+      <p>
+        External adoption statistics are not evidence of a particular customer&apos;s return. The
+        <a href="https://hai.stanford.edu/ai-index/2026-ai-index-report" target="_blank" rel="noopener noreferrer"> Stanford AI Index 2026</a>
+        tracks adoption and economic trends across the wider market, while the
+        <a href="https://airc.nist.gov/airmf-resources/airmf/" target="_blank" rel="noopener noreferrer"> NIST AI Risk Management Framework</a>
+        emphasizes ongoing measurement and risk oversight. A Gravitre ROI claim still needs a documented
+        baseline, a measured result, and an explanation of its limitations.
+      </p>
       <h2>Does Gravitre publish before and after ROI numbers?</h2>
       <p>
         You have seen the slide. Some case study with a big arrow going from &ldquo;40 hours&rdquo; to &ldquo;10 hours
@@ -129,7 +137,7 @@ export const measuringAiRoiPost: BlogPost = {
         ourselves. The two numbers live side by side, but they never get confused with each other.
       </p>
       <p>
-        This same pattern shows up across the teams using Gravitre. Marketing teams get live signal on what is
+        Gravitre&apos;s approach to reporting estimates alongside observed outcomes applies across different teams. Marketing teams get live signal on what is
         happening with their connected tools alongside estimated savings on pre-built campaign workflows. Sales teams get
         clear visibility into what their connected tools are actually returning, without any guesswork about plan limits
         or data gaps. IT and security teams get a steady, current feed of real threat intelligence. Support and success
@@ -148,13 +156,13 @@ export const measuringAiRoiPost: BlogPost = {
         another to hand off real tasks and need to know, with certainty, what was actually done and what it produced.
       </p>
       <p>
-        That is really what this is about. Not a reporting feature bolted onto the side of the product, but the same
+        Gravitre&apos;s approach to AI ROI is about evidence behind business outcomes. Not a reporting feature bolted onto the side of the product, but the same
         principle that shapes how Gravitre approaches automation generally: visibility first, so trust can follow.
       </p>
 
       <h2>What is next</h2>
       <p>
-        We are building toward fully verified, real-dollar ROI: the kind backed by actual measured outcomes rather than
+        Gravitre is building toward fully verified, real-dollar ROI: the kind backed by actual measured outcomes rather than
         estimates. As that rolls out, it will sit right alongside the activity data you already see today, following
         the same rule: nothing gets shown until it means what it says.
       </p>

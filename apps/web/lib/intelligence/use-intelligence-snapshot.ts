@@ -3,6 +3,7 @@
 import { useMemo, useRef } from "react"
 import useSWR from "swr"
 import { intelligenceApi, type IntelligencePageContextResponse } from "@/lib/api"
+import { getQuickOrgId } from "@/lib/org-context"
 import {
   deriveSnapshotLoadState,
   type SnapshotLoadState,
@@ -36,12 +37,20 @@ export function useIntelligenceSnapshot({
   windowHours = 24,
   swrKeySuffix,
 }: UseIntelligenceSnapshotOptions = {}): IntelligenceSnapshotResult {
+  const organizationId = getQuickOrgId()
+  const scope = organizationId ?? swrKeySuffix
   const hadDataRef = useRef(false)
+  const scopeRef = useRef(scope)
+  if (scopeRef.current !== scope) {
+    scopeRef.current = scope
+    hadDataRef.current = false
+  }
 
   const swrKey =
     enabled
       ? [
           "intelligence/page-context",
+          organizationId,
           activeLens ?? "default",
           windowHours,
           swrKeySuffix,
@@ -52,8 +61,11 @@ export function useIntelligenceSnapshot({
     swrKey,
     () => intelligenceApi.pageContext({ windowHours, activeLens }),
     {
-      revalidateOnFocus: false,
-      keepPreviousData: true,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      refreshInterval: 120_000,
+      // Never carry an old tenant snapshot into a new tenant's key.
+      keepPreviousData: false,
     },
   )
   // Consumers read `snapshot.*` directly; a body without a snapshot is no data.

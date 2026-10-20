@@ -111,6 +111,7 @@ def update_hubspot_triggers(
                 "property": item.property,
                 "active": item.active,
                 "label": item.label,
+                "configured_by": str(_user.get("user_id") or "") or None,
             }
         )
 

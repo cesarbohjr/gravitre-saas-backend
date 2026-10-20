@@ -96,6 +96,15 @@ def _copy_to_history(
         )
 
 
+def _insert_memory(client: Any, payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Preserve source lineage on every insert; callers handle failures.
+
+    A tagged write must never be retried as untagged: recall keeps legacy rows,
+    which would defeat revocation. Flag-off payloads still use the same schema.
+    """
+    return client.table("agent_memories").insert(payload).execute().data or []
+
+
 def get_current_by_key(client: Any, org_id: str, memory_key: str) -> dict[str, Any] | None:
     if not client or not org_id or not memory_key:
         return None
@@ -174,7 +183,7 @@ def upsert_temporal_memory(
     current = get_current_by_key(client, str(payload["org_id"]), memory_key)
     if not current:
         try:
-            inserted = client.table("agent_memories").insert(payload).execute().data or []
+            inserted = _insert_memory(client, payload)
             return inserted[0] if inserted else payload
         except Exception as exc:  # noqa: BLE001
             logger.debug("memory_temporal_insert_failed error=%s", _format_exc(exc))
@@ -189,7 +198,7 @@ def upsert_temporal_memory(
     payload["superseded_by"] = None
 
     try:
-        inserted = client.table("agent_memories").insert(payload).execute().data or []
+        inserted = _insert_memory(client, payload)
         new_row = inserted[0] if inserted else payload
         client.table("agent_memories").update(
             {

@@ -51,6 +51,19 @@ export function memorySourceLabel(sourceTable: unknown): string {
   return SOURCE_LABELS[raw] ?? raw.replace(/^v4:/, "").replace(/[_:]+/g, " ").replace(/^\w/, (c) => c.toUpperCase())
 }
 
+/**
+ * The connected tool a memory was learned from, when the backend recorded it
+ * (memory source lineage). Null otherwise; never guessed from other fields.
+ */
+export function sourceConnectorLabel(candidate: PromotionCandidate): string | null {
+  const raw = readRecord((candidate as { sourceConnector?: unknown }).sourceConnector)
+  const name = typeof raw.name === "string" ? raw.name.trim() : ""
+  if (!name) return null
+  const type = typeof raw.type === "string" ? raw.type.trim() : ""
+  const base = type && type.toLowerCase() !== name.toLowerCase() ? `${name} (${type})` : name
+  return raw.connected === false ? `From ${base}, now disconnected` : `From ${base}`
+}
+
 function readRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
 }
@@ -85,7 +98,10 @@ export function candidateToMemoryItem(
   const agentName = agentId ? agentNames[agentId] ?? null : null
   const sampleSize = readNumber(meta.sample_size, null)
 
-  const sources: MemorySourceRow[] = [{ label: memorySourceLabel(candidate.source_table), role: "source" }]
+  const sources: MemorySourceRow[] = []
+  const connector = sourceConnectorLabel(candidate)
+  if (connector) sources.push({ label: connector, role: "source" })
+  sources.push({ label: memorySourceLabel(candidate.source_table), role: "source" })
   if (agentName) {
     sources.push({ label: sampleSize != null ? `${agentName} · ${plural(sampleSize, "run")}` : agentName, role: "observed" })
   }

@@ -41,6 +41,7 @@ import {
 } from "@/lib/department-context"
 import { resolveOperatorActiveContext } from "@/lib/operator-context"
 import { parseChatError } from "@/lib/chat-errors"
+import { lifecycleStatusLabel, mergeTaskStateMonotonic } from "@/lib/lifecycle-envelope"
 import { isUserChatAbort, recoverCompletedChatTurn, writeLastEventId } from "@/lib/chat-replay"
 import { stopChatTurn } from "@/lib/chat-stop"
 import { CONTINUE_AFTER_STOP_TEXT } from "@/lib/chat-continue"
@@ -52,6 +53,9 @@ import {
   CHAT_USER_BUBBLE_CLASS,
 } from "@/lib/chat-typography"
 import { endChatPerf, startChatPerf } from "@/lib/chat-performance"
+import { parseContextSources, type ContextSourcesSummary } from "@/lib/context-sources"
+import { isAiConversationRoute } from "@/lib/page-family"
+import { OrgContextPill } from "@/components/gravitre/assistant/org-context-pill"
 import { buildConversationTranscript, mergeTranscriptWithLiveMessages } from "@/lib/conversation-transcript"
 import { uiMessageText } from "@/lib/chat-messages"
 import { messageCreatedAt } from "@/lib/chat-message-time"
@@ -223,7 +227,7 @@ function parseWorkspaceMode(value: string | null): ModeId {
 
 function isAiWorkspacePath(pathname: string): boolean {
   const path = pathname.split("?")[0] ?? ""
-  if (path === "/ai" || path.startsWith("/ai/")) return true
+  if (isAiConversationRoute(path)) return true
   // Mirrors the /e2e/shots layout gate (404 in production unless the E2E flag
   // is set), so plain dev capture can deep-link `?c=` like Playwright can.
   const captureAllowed =
@@ -448,10 +452,16 @@ export function AiWorkspace({
     risks?: Array<{ title?: string; summary?: string; severity?: string }>
   } | null>(null)
   const [taskState, setTaskState] = useState<{
+    task_revision?: number
+    lifecycle_envelope?: Record<string, unknown>
     current_plan?: { steps?: Array<{ step_id?: string; description?: string }> }
     completed_steps?: Array<{ step_id?: string; description?: string }>
     pending_steps?: Array<{ step_id?: string; description?: string }>
   } | null>(null)
+  const lifecycleExecutionResult = useMemo(() => executionResult ? {
+    ...executionResult,
+    lifecycle_envelope: taskState?.lifecycle_envelope ?? executionResult.lifecycle_envelope,
+  } : null, [executionResult, taskState?.lifecycle_envelope])
   const [explainability, setExplainability] = useState<{
     summary?: string
     evidence?: Array<{ label?: string; kind?: string; relevance?: number }>
@@ -459,6 +469,7 @@ export function AiWorkspace({
     missing_context?: string[]
   } | null>(null)
   const [contextExplanation, setContextExplanation] = useState<string | null>(null)
+  const [contextSources, setContextSources] = useState<ContextSourcesSummary | null>(null)
   const [executionGate, setExecutionGate] = useState<{
     confidence?: number
     can_proceed?: boolean
@@ -628,7 +639,7 @@ export function AiWorkspace({
     }
   }, [user])
 
-  const { messages, sendMessage, status, setMessages, stop, regenerate } = useChat({
+  const { messages, sendMessage, status, setMessages, stop, regenerate, clearError } = useChat({
     transport,
     onError: (error) => {
       connectedFileRefsRef.current = []
@@ -636,12 +647,19 @@ export function AiWorkspace({
       setSessionBusy(false)
       if (!isUserChatAbort(error)) {
         const conversationId = activeConversationIdRef.current
-        void recoverCompletedChatTurn(conversationId, messagesRef.current).then((recovered) => {
-          if (!recovered) return
+        const interruptedMessages = messagesRef.current
+        const interruptedTail = interruptedMessages.at(-1)?.id
+        void recoverCompletedChatTurn(conversationId, interruptedMessages).then((recovered) => {
+          // A late replay must not replace a newer turn or another workspace.
+          if (activeConversationIdRef.current !== conversationId || messagesRef.current.at(-1)?.id !== interruptedTail) return
+          if (!recovered) {
+            toast.error(parseChatError(error instanceof Error ? error : new Error(String(error))))
+            return
+          }
           setMessages(recovered)
+          clearError()
           if (conversationId) writeCachedConversationMessages(conversationId, recovered)
         })
-        toast.error(parseChatError(error instanceof Error ? error : new Error(String(error))))
       }
     },
     onFinish: ({ messages: finishedMessages }) => {
@@ -673,6 +691,7 @@ export function AiWorkspace({
       if (conversationId && lastEmpty) {
         void recoverCompletedChatTurn(conversationId, stamped).then((recovered) => {
           if (!recovered) return
+          if (activeConversationIdRef.current !== conversationId || messagesRef.current.at(-1)?.id !== last?.id) return
           setMessages(recovered)
           writeCachedConversationMessages(conversationId, recovered)
         })
@@ -694,6 +713,7 @@ export function AiWorkspace({
         explainability?: typeof explainability
         executionGate?: typeof executionGate
         contextExplanation?: string
+        contextSources?: unknown
         taskState?: typeof taskState
         researchCascade?: ResearchCascadePayload
         progressSteps?: string[]
@@ -707,11 +727,17 @@ export function AiWorkspace({
       // never ran. They are reset when the next prompt is sent instead.
       if (payload.dialogueMode) setDialogueMode(payload.dialogueMode)
       if (payload.pendingTask) setPendingTask(payload.pendingTask)
-      if (payload.taskState) setTaskState(payload.taskState)
+      if (payload.taskState) {
+        setTaskState((prev) =>
+          mergeTaskStateMonotonic(prev as Record<string, unknown> | null, payload.taskState as Record<string, unknown>) as typeof prev,
+        )
+      }
       if (payload.strategicPlan) setStrategicPlan(payload.strategicPlan)
       if (payload.advisorBrief) setAdvisorBrief(payload.advisorBrief)
       if (payload.explainability) setExplainability(payload.explainability)
       if (payload.contextExplanation) setContextExplanation(payload.contextExplanation)
+      const parsedSources = parseContextSources(payload.contextSources)
+      if (parsedSources) setContextSources(parsedSources)
       if (payload.executionGate) setExecutionGate(payload.executionGate)
       if (payload.researchCascade) setResearchCascade(payload.researchCascade)
       if (Array.isArray(payload.progressSteps) && payload.progressSteps.length > 0) {
@@ -806,7 +832,9 @@ export function AiWorkspace({
       revalidateOnFocus: false,
       onSuccess: (data) => {
         if (data?.task_state) {
-          setTaskState(data.task_state as typeof taskState)
+          setTaskState((prev) =>
+            mergeTaskStateMonotonic(prev as Record<string, unknown> | null, data.task_state as Record<string, unknown>) as typeof prev,
+          )
         }
         const stored = data?.execution_result as ChatExecutionResult | null | undefined
         if (stored && (stored.artifacts?.length || stored.body || stored.title)) {
@@ -1733,6 +1761,11 @@ export function AiWorkspace({
       setResearchCascade(null)
       setResearchProgressSteps([])
       setAgentStatusExplanation(null)
+      // "Why this answer?" belongs to one answer; a new question starts clean
+      // so the last turn's sources never show under the next reply.
+      setExplainability(null)
+      setContextExplanation(null)
+      setContextSources(null)
       await ensureConversation(effectivePrompt)
       const engine = await resolveEngine(effectivePrompt, mode)
       setInput("")
@@ -2475,7 +2508,7 @@ export function AiWorkspace({
           isBusy={sessionBusy || isChatBusy}
           agentStatusLabel={agentStatusLabel}
           dialogueMode={dialogueMode}
-          executionResult={executionResult}
+          executionResult={lifecycleExecutionResult}
           pendingTask={pendingTask}
           progressSteps={researchProgressSteps}
           confirmExecuting={confirmExecuting}
@@ -2574,7 +2607,7 @@ export function AiWorkspace({
           isBusy={sessionBusy || isChatBusy}
           agentStatusLabel={agentStatusLabel}
           dialogueMode={dialogueMode}
-          executionResult={executionResult}
+          executionResult={lifecycleExecutionResult}
           pendingTask={pendingTask}
           confirmExecuting={confirmExecuting}
           onConfirmExecution={() => void handleConfirmExecution()}
@@ -2623,7 +2656,7 @@ export function AiWorkspace({
         isBusy={sessionBusy || isChatBusy}
         agentStatusLabel={agentStatusLabel}
         dialogueMode={dialogueMode}
-        executionResult={executionResult}
+        executionResult={lifecycleExecutionResult}
         pendingTask={pendingTask}
         confirmExecuting={confirmExecuting}
         onConfirmExecution={() => void handleConfirmExecution()}
@@ -2860,6 +2893,8 @@ export function AiWorkspace({
                 duplex={duplexControls}
               />
             ) : null}
+            {/* What org context the next reply can draw on (documented in concepts/assistant). */}
+            <OrgContextPill enabled={showLanding} />
 
             {conversationLoading && !sessionBusy && !isChatBusy ? (
               <div className="space-y-4 py-4">
@@ -2899,6 +2934,11 @@ export function AiWorkspace({
                     />
                   ) : null}
                   <ResearchCascadePanel cascade={researchCascade} className="mb-4" />
+                  {lifecycleStatusLabel(taskState) ? (
+                    <p role="status" aria-live="polite" className="mb-3 text-sm text-muted-foreground">
+                      {lifecycleStatusLabel(taskState)}
+                    </p>
+                  ) : null}
                   <GravitreAIConversationTranscript
                     routeKey="/ai"
                     messages={messages}
@@ -2909,8 +2949,9 @@ export function AiWorkspace({
                     agentStatusLabel={agentStatusLabel}
                     explainability={explainability}
                     contextExplanation={contextExplanation}
+                    contextSources={contextSources}
                     dialogueMode={dialogueMode}
-                    executionResult={executionResult}
+                    executionResult={lifecycleExecutionResult}
                     pendingTask={pendingTask}
                     confirmExecuting={confirmExecuting}
                     onConfirmExecution={() => void handleConfirmExecution()}

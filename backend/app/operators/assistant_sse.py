@@ -83,6 +83,7 @@ def sse_intelligence_metadata(
     connected_integrations: list[str] | None = None,
     visualization: dict[str, Any] | None = None,
     plan_ready: bool | None = None,
+    context_sources: dict[str, Any] | None = None,
 ) -> AssistantStreamEvent:
     from app.services.user_facing_activity import sanitize_user_activity_label, user_status_payload
 
@@ -135,6 +136,9 @@ def sse_intelligence_metadata(
                 "connectedIntegrations": list(connected_integrations or []),
                 "visualization": visualization or None,
                 "planReady": True if plan_ready else None,
+                # User-safe "which sources were used / skipped" (see
+                # context_sources_summary). Absent when nothing was recorded.
+                "contextSources": context_sources or None,
             },
         }
     )

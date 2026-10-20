@@ -1,4 +1,5 @@
 """BE-00: Config and environment wiring. Loads from .env; no secrets in code."""
+
 from functools import lru_cache
 
 from pydantic import AliasChoices, Field, ValidationError, field_validator
@@ -6,7 +7,11 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.connectors.secret_key import validate_connector_secrets_encryption_key
-from app.public_urls import PRODUCTION_APP_URL, is_legacy_platform_host, normalize_public_url
+from app.public_urls import (
+    PRODUCTION_APP_URL,
+    is_legacy_platform_host,
+    normalize_public_url,
+)
 
 
 class Settings(BaseSettings):
@@ -41,7 +46,9 @@ class Settings(BaseSettings):
 
     @property
     def jwt_audience(self) -> str:
-        return (self.supabase_jwt_audience or "authenticated").strip() or "authenticated"
+        return (
+            self.supabase_jwt_audience or "authenticated"
+        ).strip() or "authenticated"
 
     @property
     def embedding_model(self) -> str:
@@ -86,33 +93,55 @@ class Settings(BaseSettings):
     rag_cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     domain_retrieval_policy_enabled: bool = Field(
         default=False,
-        validation_alias=AliasChoices("DOMAIN_RETRIEVAL_POLICY_ENABLED", "domain_retrieval_policy_enabled"),
+        validation_alias=AliasChoices(
+            "DOMAIN_RETRIEVAL_POLICY_ENABLED", "domain_retrieval_policy_enabled"
+        ),
     )
     domain_adaptive_learning_enabled: bool = Field(
         default=False,
-        validation_alias=AliasChoices("DOMAIN_ADAPTIVE_LEARNING_ENABLED", "domain_adaptive_learning_enabled"),
+        validation_alias=AliasChoices(
+            "DOMAIN_ADAPTIVE_LEARNING_ENABLED", "domain_adaptive_learning_enabled"
+        ),
     )
     audio_transcription_model: str = Field(
         default="gpt-4o-mini-transcribe",
-        validation_alias=AliasChoices("AUDIO_TRANSCRIPTION_MODEL", "audio_transcription_model"),
+        validation_alias=AliasChoices(
+            "AUDIO_TRANSCRIPTION_MODEL", "audio_transcription_model"
+        ),
     )
     intelligence_visibility_enabled: bool = Field(
         default=False,
-        validation_alias=AliasChoices("INTELLIGENCE_VISIBILITY_ENABLED", "intelligence_visibility_enabled"),
+        validation_alias=AliasChoices(
+            "INTELLIGENCE_VISIBILITY_ENABLED", "intelligence_visibility_enabled"
+        ),
     )
     # Unified turn reasoning (Phase 1 shadow — parallel to classical pipeline).
     unified_turn_shadow_enabled: bool = Field(
         default=False,
-        validation_alias=AliasChoices("UNIFIED_TURN_SHADOW_ENABLED", "unified_turn_shadow_enabled"),
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_SHADOW_ENABLED", "unified_turn_shadow_enabled"
+        ),
     )
     unified_turn_shadow_max_tools: int = Field(
         default=32,
-        validation_alias=AliasChoices("UNIFIED_TURN_SHADOW_MAX_TOOLS", "unified_turn_shadow_max_tools"),
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_SHADOW_MAX_TOOLS", "unified_turn_shadow_max_tools"
+        ),
     )
     # Phase 4 cutover — when true, unified-turn outcomes serve the user (classical = rollback).
     unified_turn_live_enabled: bool = Field(
         default=False,
-        validation_alias=AliasChoices("UNIFIED_TURN_LIVE_ENABLED", "unified_turn_live_enabled"),
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_LIVE_ENABLED", "unified_turn_live_enabled"
+        ),
+    )
+    # Typed LIVE answers stream as checked sentences (typed_live_stream.py).
+    # False restores the whole-reply typed path.
+    typed_live_streaming_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "TYPED_LIVE_STREAMING_ENABLED", "typed_live_streaming_enabled"
+        ),
     )
     # Convergence P1 — LIVE proposal executes classically without a second model tool-choice.
     convergence_p1_single_selection_v1: bool = Field(
@@ -157,7 +186,9 @@ class Settings(BaseSettings):
     # CognitiveTurnKernel kill-switch — when false, pre-ACT stages return a skipped minimal context.
     cognitive_turn_kernel_enabled: bool = Field(
         default=True,
-        validation_alias=AliasChoices("COGNITIVE_TURN_KERNEL_ENABLED", "cognitive_turn_kernel_enabled"),
+        validation_alias=AliasChoices(
+            "COGNITIVE_TURN_KERNEL_ENABLED", "cognitive_turn_kernel_enabled"
+        ),
     )
     # Evidence-sufficiency replan loop: evaluate whether retrieval actually answers
     # the question, and retrieve from a different source when it does not.
@@ -180,7 +211,8 @@ class Settings(BaseSettings):
     evidence_contradiction_check_enabled: bool = Field(
         default=True,
         validation_alias=AliasChoices(
-            "EVIDENCE_CONTRADICTION_CHECK_ENABLED", "evidence_contradiction_check_enabled"
+            "EVIDENCE_CONTRADICTION_CHECK_ENABLED",
+            "evidence_contradiction_check_enabled",
         ),
     )
     # Shared cross-source ranking. Shadow computes diagnostics while preserving
@@ -207,6 +239,27 @@ class Settings(BaseSettings):
             "cross_source_context_token_budget",
         ),
     )
+    # Re-check that each org RAG chunk's document still exists and is active right
+    # before it enters the prompt, so a deleted or revoked document cannot come back
+    # from the 5-minute retrieval cache. Rows also keep document id and updated time.
+    cross_source_context_liveness_v1: bool = False
+    # Rank current evidence above stale: freshness from updated/effective dates,
+    # superseded or expired rows left out, dates shown on each source, and a
+    # near-duplicate rule (one excerpt contained in another) on top of exact dedup.
+    cross_source_context_freshness_v1: bool = False
+    # 3.0 Plus account inputs to the active engine (account_context_sources.py), one
+    # flag each; read only on active-ranking turns that name a filed account.
+    # Observations: customer quotes (text only) and Gravitre's trend reading, under
+    # the org's customer-context consent and only from still-connected vendors.
+    # Replaces the separate account card on those turns.
+    context_engine_observations_v1: bool = False
+    # Measured behaviour signals plus the rule-based health status built from them.
+    context_engine_account_signals_v1: bool = False
+    # Work linked to the account (proposals, Plays work, goals) with truthful status.
+    context_engine_work_state_v1: bool = False
+    # Unified live turns compile the unified reasoning context (agent_intelligence).
+    # Only consulted when unified_turn_live_enabled is on; false skips the compile.
+    context_compiler_unified_live_v1: bool = True
     # Task-shaped turns: semantic tool retrieval (Phase 0 Future). Social keeps keyword narrow.
     unified_turn_embedding_tool_retrieval: bool = Field(
         default=True,
@@ -217,7 +270,9 @@ class Settings(BaseSettings):
     )
     unified_turn_task_max_tools: int = Field(
         default=16,
-        validation_alias=AliasChoices("UNIFIED_TURN_TASK_MAX_TOOLS", "unified_turn_task_max_tools"),
+        validation_alias=AliasChoices(
+            "UNIFIED_TURN_TASK_MAX_TOOLS", "unified_turn_task_max_tools"
+        ),
     )
     unified_turn_tool_embed_local: bool = Field(
         default=True,
@@ -319,11 +374,31 @@ class Settings(BaseSettings):
     connector_secrets_encryption_key: str = ""
     # Phase 15: AES-256-GCM key for connector/source config (32-byte base64 or raw)
     encryption_key: str = ""
+    # Signed webhook triggers: how many X-Forwarded-For entries, counted from the
+    # right, were appended by our own proxies (0 = trust only the socket peer).
+    webhook_trusted_proxy_hops: int = 0
+
+    # MCP stdio runs a command on the backend host. Off: no org can register or run a
+    # stdio MCP server, and existing stdio rows are refused at discovery and call time.
+    # Only an operator running a single-tenant deployment should turn this on.
+    mcp_stdio_transport_enabled: bool = False
+    # Off: admin-added MCP servers must resolve to public addresses (no loopback,
+    # private, link-local or reserved ranges), checked again right before each use.
+    # Single-tenant deployments with MCP servers inside their own network can opt in.
+    mcp_allow_private_network_servers: bool = False
 
     # Gravitre core DB URL (optional; Supabase used for default storage)
     database_url: str = ""
 
     # Stripe Billing (MVP)
+    billing_reconciliation_enabled: bool = False
+    commercial_offers_enabled: bool = (
+        False  # enable only after production migration and billing QA
+    )
+    # Public promo codes only exist once a platform admin creates them (Stripe
+    # Coupon + PromotionCode), so the feature is on by default. Off: no new
+    # codes, no promo field at checkout, and Stripe's own code entry is hidden.
+    promotion_codes_enabled: bool = True
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_price_id_starter: str = ""
@@ -335,6 +410,11 @@ class Settings(BaseSettings):
     stripe_price_id_control_annual: str = ""
     stripe_price_id_command_monthly: str = ""
     stripe_price_id_command_annual: str = ""
+    # MSP partner program: wholesale Prices the MSP pays per active client
+    # (env STRIPE_PRICE_ID_MSP_{NODE,CONTROL,COMMAND}_WHOLESALE). Empty = not set up.
+    stripe_price_id_msp_node_wholesale: str = ""
+    stripe_price_id_msp_control_wholesale: str = ""
+    stripe_price_id_msp_command_wholesale: str = ""
     public_app_url: str = Field(
         default="",
         validation_alias=AliasChoices("NEXT_PUBLIC_APP_URL", "PUBLIC_APP_URL"),
@@ -345,7 +425,9 @@ class Settings(BaseSettings):
     # Nango long-tail connector infrastructure. Secret key is backend-only.
     nango_secret_key: str = Field(
         default="",
-        validation_alias=AliasChoices("NANGO_SECRET_KEY", "NANGO_API_KEY", "nango_secret_key"),
+        validation_alias=AliasChoices(
+            "NANGO_SECRET_KEY", "NANGO_API_KEY", "nango_secret_key"
+        ),
     )
     nango_api_base_url: str = Field(
         default="https://api.nango.dev",
@@ -386,6 +468,10 @@ class Settings(BaseSettings):
     # Jira Cloud OAuth (STA-36)
     jira_client_id: str = ""
     jira_client_secret: str = ""
+    # Confluence Cloud OAuth. Empty falls back to the Jira Atlassian app above
+    # (connectors/confluence_oauth.confluence_credentials).
+    confluence_client_id: str = ""
+    confluence_client_secret: str = ""
     # Generic OAuth — Xero (PKCE)
     xero_client_id: str = ""
     xero_client_secret: str = ""
@@ -480,11 +566,21 @@ class Settings(BaseSettings):
     # Google Ads API developer token (required in addition to OAuth; MCC API Center).
     google_ads_developer_token: str = Field(
         default="",
-        validation_alias=AliasChoices("GOOGLE_ADS_DEVELOPER_TOKEN", "google_ads_developer_token"),
+        validation_alias=AliasChoices(
+            "GOOGLE_ADS_DEVELOPER_TOKEN", "google_ads_developer_token"
+        ),
     )
     # Stripe usage-based (metered) billing: meter event name configured on the
     # Stripe Billing Meter that the metered price is attached to.
     stripe_meter_event_name: str = "ai_credits_used"
+    # Durable Stripe outbox is opt-in until the migration, billing
+    # reconciliation and production operator acceptance have passed.
+    stripe_meter_outbox_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "STRIPE_METER_OUTBOX_ENABLED", "stripe_meter_outbox_enabled"
+        ),
+    )
     # Per-plan metered (usage-based) price IDs tied to the AI-credits meter. When
     # set, they are added as an extra subscription/checkout line item so usage is
     # actually billed. Empty = flat-rate only (no usage billing).
@@ -530,11 +626,21 @@ class Settings(BaseSettings):
     company_intelligence_interval_seconds: int = 28800
     # Standing unprompted investigators (read-scoped advisory). 0 disables; default 8 hours.
     standing_investigator_interval_seconds: int = 28800
+    # In-process cache warming scheduler. 0 disables; default hourly.
+    cache_warming_interval_seconds: int = 3600
+    # In-process workflow failure prediction scheduler. 0 disables; default hourly.
+    workflow_failure_prediction_interval_seconds: int = 3600
     # Past-due approval escalation + Monday weekly summary (0 disables).
     ops_notifications_interval_seconds: int = 900
     # Phase 2A durable domain events: in-process relay for domain_event_outbox.
     # Off by default; events written by the outbox triggers wait as 'pending' until on.
     domain_event_relay_enabled: bool = False
+    # Stale run recovery: marks runs left "running"/"verifying" by a dead worker as
+    # failed / flagged_for_review / verification_inconclusive. Never re-runs work.
+    stale_run_recovery_enabled: bool = False
+    stale_run_recovery_interval_seconds: int = 600
+    stale_run_recovery_threshold_minutes: int = 60
+    stale_run_recovery_verifying_threshold_minutes: int = 1440
     domain_event_relay_interval_seconds: int = 15
     domain_event_relay_batch_size: int = 50
     domain_event_relay_lease_seconds: int = 120
@@ -546,6 +652,18 @@ class Settings(BaseSettings):
     connector_provider_revoke_on_disconnect: bool = False
     # Remove indexed documents a full-sweep sync no longer finds upstream (Notion).
     source_deletion_propagation_enabled: bool = False
+    # Owner switch (default false = current behaviour). When true, the pre-existing
+    # knowledge syncs (Notion, Confluence, HubSpot, Zendesk, Workday; scheduled, manual,
+    # webhook) and the standalone RAG worker also wait for the lifecycle prerequisites
+    # in services/ingestion_interlock.py, and syncs for providers without a wired revoke
+    # call are refused. New 3.0 Plus ingestion is held regardless of this switch.
+    existing_ingestion_requires_lifecycle: bool = False
+    # Tag agent_memories and entity_observations written from connector content with
+    # source_connector_id (and source_record_ref) so a disconnect can purge them
+    # (purge_connector_memories); connector-derived writes that cannot name their
+    # connector are then refused. Turn on only after
+    # 20261012070000_agent_memory_source_lineage.sql is applied.
+    memory_source_lineage_enabled: bool = False
     # Phase 2C governance. Retention prune of indexed documents per the org's
     # sourceDataGovernance.retentionDays (daily), and retrieval-side exclusion of
     # excerpts that match prompt-injection patterns.
@@ -553,7 +671,7 @@ class Settings(BaseSettings):
     knowledge_retention_interval_seconds: int = 86400
     retrieved_content_guard_enabled: bool = False
     # Phase 2D in-process indexing pilot: only these orgs (comma-separated UUIDs), only
-    # when each also opts in to customer context. Needs migration 20261012020000.
+    # when each also opts in to customer context. Needs migration 20261012024300.
     rag_worker_pilot_enabled: bool = False
     rag_worker_pilot_org_ids: str = ""
     rag_worker_pilot_interval_seconds: int = 30
@@ -573,16 +691,34 @@ class Settings(BaseSettings):
     goal_links_enabled: bool = False
     # Phase 5: AI-proposed work filed as work_objects.status='proposed' (accept/dismiss).
     work_object_proposals_enabled: bool = False
+    # Close the proposal -> Play run -> goal loop: Play runs accept workObjectId /
+    # businessEntityId (org-checked) and link the run to the work object; accepted
+    # proposals return the Play run request (nothing starts by itself); proposals
+    # inherit the Play setup's goal; work objects can be created / re-linked to a
+    # goal. Goal / entity column writes also need goal_links_enabled (its migration).
+    work_loop_links_enabled: bool = False
     # Phase 5: Play required_signals checked against this org's recent events.
     play_signal_evaluation_enabled: bool = False
     # Phase 5: one ranked recommendation feed (/api/recommendations/feed).
     recommendation_feed_enabled: bool = False
+    # The feed shows one item per account from account health, with churn advisory
+    # merged in (both bases shown when the churn model and customer language disagree).
+    account_feed_unified_v1: bool = False
     # Phase 6 (needs migration 20261012060000): log checkable predictions with a subject
     # and horizon, label them from evidence, and report realized accuracy.
     ml_prediction_outcomes_enabled: bool = False
     ml_prediction_labeling_interval_seconds: int = 86400
     # Phase 6: churn training holds out the most recent outcomes instead of a random fifth.
     ml_time_split_enabled: bool = False
+    # Churn training also builds an entity-feature challenger: churn customer_ids mapped
+    # to org_business_entities via bindings, plus windowed observation and behaviour-signal
+    # aggregates, evaluated on a time split against the 5-feature baseline. The existing
+    # champion gate refuses it unless it beats the baseline by a margin on enough labels.
+    churn_entity_features_enabled: bool = False
+    # Outcomes reach the learners: an execution.outcome_finalized relay handler records the
+    # run on its linked work object, labels workflow-run predictions and feeds verified Play
+    # results to recommendation learning. Needs DOMAIN_EVENT_RELAY_ENABLED as well.
+    outcome_learning_handler_enabled: bool = False
     # Phase 7: per-dimension account health (/api/entities/health), no composite score.
     account_health_enabled: bool = False
     # Phase 7: daily rule-based behaviour signals (compute_entity_behavior_signals) for orgs
@@ -595,6 +731,62 @@ class Settings(BaseSettings):
     account_play_proposals_enabled: bool = False
     # Shared secret for /api/watchers/agent/signal HMAC or X-Watcher-Secret header.
     watcher_agent_webhook_secret: str | None = None
+    # Write authority on the invoke spine: shadow (log missing authority), enforce, off.
+    write_authority_mode: str = Field(
+        default="shadow",
+        validation_alias=AliasChoices("WRITE_AUTHORITY_MODE", "write_authority_mode"),
+    )
+    # Release 4: allow MSP parent-org members to resolve child org context (needs migration).
+    msp_parent_org_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "MSP_PARENT_ORG_ENABLED", "msp_parent_org_enabled"
+        ),
+    )
+    # Route auto-approved event-triggered runs through the durable workflow queue.
+    event_trigger_use_workflow_queue: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "EVENT_TRIGGER_USE_WORKFLOW_QUEUE",
+            "event_trigger_use_workflow_queue",
+        ),
+    )
+    write_invoke_idempotency_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "WRITE_INVOKE_IDEMPOTENCY_ENABLED",
+            "write_invoke_idempotency_enabled",
+        ),
+    )
+    # Requires the reviewed record_assistant_model_usage migration. The legacy
+    # writer remains in place until the real-Postgres concurrency gate passes.
+    assistant_billing_atomic_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "ASSISTANT_BILLING_ATOMIC_ENABLED",
+            "assistant_billing_atomic_enabled",
+        ),
+    )
+    # Route all allowance-bearing writers through the same database lock as
+    # assistant model calls. Requires 20261015222156; default off until gates.
+    usage_atomic_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("USAGE_ATOMIC_ENABLED", "usage_atomic_enabled"),
+    )
+    assistant_billing_recovery_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "ASSISTANT_BILLING_RECOVERY_ENABLED",
+            "assistant_billing_recovery_enabled",
+        ),
+    )
+    workflow_queue_fail_closed: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "WORKFLOW_QUEUE_FAIL_CLOSED",
+            "workflow_queue_fail_closed",
+        ),
+    )
     # Memory promotion evaluation (v4). 0 disables; default 8 hours.
     memory_promotion_eval_interval_seconds: int = 28800
     # Memory expiration/decay checks (v4). 0 disables; default daily.
@@ -605,6 +797,14 @@ class Settings(BaseSettings):
     # Durable workflow run queue consumer (STA-94). Requires REDIS_URL.
     workflow_queue_enabled: bool = True
     workflow_queue_poll_seconds: int = 5
+    workflow_queue_lease_seconds: int = 60
+    workflow_queue_max_delivery_attempts: int = Field(
+        default=5,
+        validation_alias=AliasChoices(
+            "workflow_queue_max_delivery_attempts",
+            "WORKFLOW_QUEUE_MAX_DELIVERY_ATTEMPTS",
+        ),
+    )
     # White-label custom domain CNAME target (STA-84)
     enterprise_custom_domain_cname_target: str = "cname.gravitre.app"
     # Deployment region for RLS enforcement (us|eu). Set per regional Supabase/API deployment.
@@ -640,15 +840,21 @@ class Settings(BaseSettings):
     )
     elevenlabs_default_voice: str = Field(
         default="sarah",
-        validation_alias=AliasChoices("ELEVENLABS_DEFAULT_VOICE", "elevenlabs_default_voice"),
+        validation_alias=AliasChoices(
+            "ELEVENLABS_DEFAULT_VOICE", "elevenlabs_default_voice"
+        ),
     )
     elevenlabs_voice_sarah: str = Field(
         default="",
-        validation_alias=AliasChoices("ELEVENLABS_VOICE_SARAH", "elevenlabs_voice_sarah"),
+        validation_alias=AliasChoices(
+            "ELEVENLABS_VOICE_SARAH", "elevenlabs_voice_sarah"
+        ),
     )
     elevenlabs_voice_rachel: str = Field(
         default="",
-        validation_alias=AliasChoices("ELEVENLABS_VOICE_RACHEL", "elevenlabs_voice_rachel"),
+        validation_alias=AliasChoices(
+            "ELEVENLABS_VOICE_RACHEL", "elevenlabs_voice_rachel"
+        ),
     )
     elevenlabs_voice_adam: str = Field(
         default="",
@@ -709,6 +915,15 @@ class Settings(BaseSettings):
             "voice_pipecat_flux_eot",
         ),
     )
+    # Spoken medium turns wait at most this long (ms) for the parallel retrieval
+    # block; late results are dropped (services/intelligence_orchestrator.py).
+    voice_medium_retrieval_budget_ms: int = 700
+    # Short (few-word) transcripts below this STT confidence are not answered
+    # (pipecat_voice/utterance_gate.py); 0 turns the gate off.
+    voice_min_short_transcript_confidence: float = 0.45
+    # Seconds of silence during an open tool call before a spoken notice
+    # (pipecat_voice/voice_silence_guard.py); 0 turns it off.
+    voice_slow_tool_notice_seconds: float = 4.0
     # Seconds of silence on a deep spoken turn before a short "one moment"
     # acknowledgement is spoken; 0 turns it off.
     voice_deep_ack_seconds: float = Field(
@@ -776,7 +991,9 @@ class Settings(BaseSettings):
     )
     voice_mic_telemetry_v1: bool = Field(
         default=False,
-        validation_alias=AliasChoices("VOICE_MIC_TELEMETRY_V1", "voice_mic_telemetry_v1"),
+        validation_alias=AliasChoices(
+            "VOICE_MIC_TELEMETRY_V1", "voice_mic_telemetry_v1"
+        ),
     )
     voice_preroll_v2: bool = Field(
         default=False,
@@ -797,7 +1014,9 @@ class Settings(BaseSettings):
     # Voice 3.0 Phase 2 — echo / noise (default OFF except silent tap fix).
     voice_mic_silent_tap_v2: bool = Field(
         default=True,
-        validation_alias=AliasChoices("VOICE_MIC_SILENT_TAP_V2", "voice_mic_silent_tap_v2"),
+        validation_alias=AliasChoices(
+            "VOICE_MIC_SILENT_TAP_V2", "voice_mic_silent_tap_v2"
+        ),
     )
     voice_echo_test_mode: bool = Field(
         default=False,
@@ -833,7 +1052,9 @@ class Settings(BaseSettings):
     )
     voice_realtime_eval_lane: str = Field(
         default="A",
-        validation_alias=AliasChoices("VOICE_REALTIME_EVAL_LANE", "voice_realtime_eval_lane"),
+        validation_alias=AliasChoices(
+            "VOICE_REALTIME_EVAL_LANE", "voice_realtime_eval_lane"
+        ),
         description="3.0-C eval lane A/B/C. Production audio stays A regardless of B/C.",
     )
     # Voice 3.0 Phase 4 — latency tuning (default OFF).
@@ -843,7 +1064,9 @@ class Settings(BaseSettings):
     )
     voice_speculative_min_chars: int = Field(
         default=8,
-        validation_alias=AliasChoices("VOICE_SPECULATIVE_MIN_CHARS", "voice_speculative_min_chars"),
+        validation_alias=AliasChoices(
+            "VOICE_SPECULATIVE_MIN_CHARS", "voice_speculative_min_chars"
+        ),
     )
     voice_speculative_prefix_adopt: bool = Field(
         default=True,
@@ -863,7 +1086,9 @@ class Settings(BaseSettings):
     # cancelled after this long; past the buffer caps its producer pauses.
     voice_speculative_timeout_s: float = Field(
         default=5.0,
-        validation_alias=AliasChoices("VOICE_SPECULATIVE_TIMEOUT_S", "voice_speculative_timeout_s"),
+        validation_alias=AliasChoices(
+            "VOICE_SPECULATIVE_TIMEOUT_S", "voice_speculative_timeout_s"
+        ),
     )
     voice_speculative_max_buffer_chars: int = Field(
         default=2000,
@@ -883,7 +1108,9 @@ class Settings(BaseSettings):
     # always on. Kept so an existing VOICE_REQUEST_REVISIONS_V1 still parses.
     voice_request_revisions_v1: bool = Field(
         default=False,
-        validation_alias=AliasChoices("VOICE_REQUEST_REVISIONS_V1", "voice_request_revisions_v1"),
+        validation_alias=AliasChoices(
+            "VOICE_REQUEST_REVISIONS_V1", "voice_request_revisions_v1"
+        ),
     )
     voice_tts_chunk_v2: bool = Field(
         default=False,
@@ -891,7 +1118,9 @@ class Settings(BaseSettings):
     )
     voice_tts_chunk_min_chars: int = Field(
         default=12,
-        validation_alias=AliasChoices("VOICE_TTS_CHUNK_MIN_CHARS", "voice_tts_chunk_min_chars"),
+        validation_alias=AliasChoices(
+            "VOICE_TTS_CHUNK_MIN_CHARS", "voice_tts_chunk_min_chars"
+        ),
     )
     voice_tts_ab_v1: bool = Field(
         default=False,
@@ -906,7 +1135,9 @@ class Settings(BaseSettings):
     # measurements showed prompt-only ceilings were not reliably obeyed.
     voice_spoken_prompt_v2: bool = Field(
         default=True,
-        validation_alias=AliasChoices("VOICE_SPOKEN_PROMPT_V2", "voice_spoken_prompt_v2"),
+        validation_alias=AliasChoices(
+            "VOICE_SPOKEN_PROMPT_V2", "voice_spoken_prompt_v2"
+        ),
     )
     voice_response_length_adapt_v1: bool = Field(
         default=False,
@@ -1075,15 +1306,21 @@ class Settings(BaseSettings):
     )
     twilio_connect_client_id: str = Field(
         default="",
-        validation_alias=AliasChoices("TWILIO_CONNECT_CLIENT_ID", "twilio_connect_client_id"),
+        validation_alias=AliasChoices(
+            "TWILIO_CONNECT_CLIENT_ID", "twilio_connect_client_id"
+        ),
     )
     twilio_connect_client_secret: str = Field(
         default="",
-        validation_alias=AliasChoices("TWILIO_CONNECT_CLIENT_SECRET", "twilio_connect_client_secret"),
+        validation_alias=AliasChoices(
+            "TWILIO_CONNECT_CLIENT_SECRET", "twilio_connect_client_secret"
+        ),
     )
     internet_research_enabled: bool = Field(
         default=True,
-        validation_alias=AliasChoices("INTERNET_RESEARCH_ENABLED", "internet_research_enabled"),
+        validation_alias=AliasChoices(
+            "INTERNET_RESEARCH_ENABLED", "internet_research_enabled"
+        ),
     )
     # Internet research provider: serper | tavily | google (Grounded Generation)
     web_research_provider: str = Field(
@@ -1092,11 +1329,15 @@ class Settings(BaseSettings):
     )
     web_research_fallback_tavily: bool = Field(
         default=True,
-        validation_alias=AliasChoices("WEB_RESEARCH_FALLBACK_TAVILY", "web_research_fallback_tavily"),
+        validation_alias=AliasChoices(
+            "WEB_RESEARCH_FALLBACK_TAVILY", "web_research_fallback_tavily"
+        ),
     )
     web_research_google_model: str = Field(
         default="gemini-2.5-flash",
-        validation_alias=AliasChoices("WEB_RESEARCH_GOOGLE_MODEL", "web_research_google_model"),
+        validation_alias=AliasChoices(
+            "WEB_RESEARCH_GOOGLE_MODEL", "web_research_google_model"
+        ),
     )
     google_cloud_project: str = Field(
         default="",
@@ -1108,7 +1349,9 @@ class Settings(BaseSettings):
     )
     google_genai_use_vertexai: bool = Field(
         default=False,
-        validation_alias=AliasChoices("GOOGLE_GENAI_USE_VERTEXAI", "google_genai_use_vertexai"),
+        validation_alias=AliasChoices(
+            "GOOGLE_GENAI_USE_VERTEXAI", "google_genai_use_vertexai"
+        ),
     )
     # Hard per-org hourly circuit breaker on grounding calls (0 disables). Independent of
     # the 75% platform daily alert — prevents runaway cascade loops before humans respond.
@@ -1184,8 +1427,8 @@ class Settings(BaseSettings):
     figma_client_secret: str = ""
 
     # Multi-provider failover
-    gemini_api_key: str = ""          # Google Gemini (GEMINI_API_KEY)
-    voyage_api_key: str = ""          # Voyage AI embeddings fallback (VOYAGE_API_KEY)
+    gemini_api_key: str = ""  # Google Gemini (GEMINI_API_KEY)
+    voyage_api_key: str = ""  # Voyage AI embeddings fallback (VOYAGE_API_KEY)
     # Intelligence packs — Gravitre-managed sources (Phase 1). Humans provision on Railway.
     fred_api_key: str = ""
     fred_base_url: str = "https://api.stlouisfed.org/fred"
@@ -1199,7 +1442,9 @@ class Settings(BaseSettings):
     opencorporates_license_confirmed: bool = False
     nvd_api_key: str = ""
     nvd_base_url: str = "https://services.nvd.nist.gov/rest/json"
-    cisa_kev_url: str = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+    cisa_kev_url: str = (
+        "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+    )
     crunchbase_api_key: str = ""
     pdl_api_key: str = ""
     # True only after corpus is re-indexed with Voyage (1024-dim). See docs/voyage-reindex-runbook.md
@@ -1225,6 +1470,12 @@ class Settings(BaseSettings):
     def _validate_connector_secrets_key_format(cls, value: str) -> str:
         return validate_connector_secrets_encryption_key(value)
 
+    @field_validator("write_authority_mode")
+    @classmethod
+    def _normalize_write_authority_mode(cls, value: str) -> str:
+        normalized = str(value or "shadow").strip().lower()
+        return normalized if normalized in {"shadow", "enforce", "off"} else "shadow"
+
     @model_validator(mode="after")
     def _validate_required_secrets(self) -> "Settings":
         env = (self.app_env or "dev").strip().lower()
@@ -1237,7 +1488,9 @@ class Settings(BaseSettings):
             if not (self.internal_api_secret or "").strip():
                 missing.append("INTERNAL_API_SECRET")
             if missing:
-                raise ValueError(f"Missing required settings for {env}: {', '.join(missing)}")
+                raise ValueError(
+                    f"Missing required settings for {env}: {', '.join(missing)}"
+                )
             self.public_app_url = normalize_public_url(
                 self.public_app_url,
                 fallback=PRODUCTION_APP_URL,

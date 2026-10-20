@@ -64,6 +64,55 @@ def execute_workflow_steps(
     steps_exist: bool = False,
     outcome_source: str = "api",
 ) -> tuple[str, list[dict], list[str], bool]:
+    """Run the steps with model calls attributed to this run, and record execution time.
+
+    ``workflow_runs.duration_ms`` was never written (0 of 653 completed runs on
+    2026-10-13). It now holds execution time, summed across a pause and resume;
+    time spent waiting for approval is not included.
+    """
+    import time as _time
+
+    from app.services.cost_attribution import attribution
+
+    started = _time.monotonic()
+    with attribution(run_id=run_id):
+        result = _execute_workflow_steps(
+            settings,
+            org_id,
+            user_id,
+            run_id,
+            definition,
+            parameters,
+            client,
+            environment_name,
+            steps_exist,
+            outcome_source,
+        )
+    _add_run_execution_time(client, run_id, int((_time.monotonic() - started) * 1000))
+    return result
+
+
+def _add_run_execution_time(client: Any, run_id: str, elapsed_ms: int) -> None:
+    try:
+        row = client.table("workflow_runs").select("duration_ms").eq("id", run_id).limit(1).execute()
+        prior = int(((row.data or [{}])[0] or {}).get("duration_ms") or 0)
+        client.table("workflow_runs").update({"duration_ms": prior + max(elapsed_ms, 0)}).eq("id", run_id).execute()
+    except Exception as exc:  # noqa: BLE001  (timing must never fail a run)
+        logger.warning("run_duration_record_failed run_id=%s error=%s", run_id, str(exc))
+
+
+def _execute_workflow_steps(
+    settings: Settings,
+    org_id: str,
+    user_id: str,
+    run_id: str,
+    definition: dict[str, Any],
+    parameters: dict[str, Any],
+    client: Any,
+    environment_name: str = "default",
+    steps_exist: bool = False,
+    outcome_source: str = "api",
+) -> tuple[str, list[dict], list[str], bool]:
     """
     Execute steps for an approved run. Only rag_retrieve and noop.
     If steps_exist=True, use existing step records (noop approval flow).
@@ -440,6 +489,11 @@ def execute_workflow_steps(
         conversation_id = str(params.get("conversation_id") or "").strip()
         if conversation_id:
             meta["conversation_id"] = conversation_id
+        from app.services.work_loop_links import play_run_work_object_id
+
+        play_work_object_id = play_run_work_object_id(settings, params)
+        if play_work_object_id:
+            meta["work_object_id"] = play_work_object_id
         if params.get("integration"):
             meta["integration"] = params.get("integration")
         from app.services.connector_output_refs import (

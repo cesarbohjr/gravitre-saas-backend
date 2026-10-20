@@ -79,6 +79,22 @@ function mount(sink: { value: GravitreAIWorkspaceContextValue | null }) {
 }
 
 describe("useGravitreAIWorkspace", () => {
+  it("reveals help reached from chat and reopens the preserved conversation on return", () => {
+    const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }
+    mount(sink)
+    expect(sink.value?.floatWorkspaceOpen).toBe(true)
+    pathnameState.value = "/ai/help/context"
+    act(() => {
+      root!.render(createElement(GravitreAIWorkspaceProvider, null, createElement(Probe, { sink })))
+    })
+    expect(sink.value?.floatWorkspaceOpen).toBe(false)
+    pathnameState.value = "/ai"
+    act(() => {
+      root!.render(createElement(GravitreAIWorkspaceProvider, null, createElement(Probe, { sink })))
+    })
+    expect(sink.value?.floatWorkspaceOpen).toBe(true)
+  })
+
   it("throws when used outside a GravitreAIWorkspaceProvider", () => {
     const badRoot = createRoot(container)
     const sink: { value: GravitreAIWorkspaceContextValue | null } = { value: null }

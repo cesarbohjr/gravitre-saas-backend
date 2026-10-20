@@ -99,6 +99,7 @@ def _secret_payloads(client: Any, settings: Any) -> dict[str, str]:
         client.table("connector_secrets")
         .select("key_name")
         .eq("connector_id", SOURCE_ID)
+        .eq("org_id", FORBIDDEN_OPERATOR_ORG_ID)
         .execute()
         .data
         or []
@@ -108,7 +109,7 @@ def _secret_payloads(client: Any, settings: Any) -> dict[str, str]:
         key_name = str(row.get("key_name") or "").strip()
         if not key_name:
             continue
-        plaintext = get_decrypted_secret(client, SOURCE_ID, key_name, settings)
+        plaintext = get_decrypted_secret(client, SOURCE_ID, key_name, settings, org_id=FORBIDDEN_OPERATOR_ORG_ID)
         if plaintext:
             out[key_name] = plaintext
     if "oauth_tokens" not in out:

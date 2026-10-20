@@ -1,6 +1,7 @@
 import { marketingMetadata } from "@/lib/seo"
 
 export const metadata = marketingMetadata({
+  canonical: "/security",
   title: "Security",
   description:
     "How Gravitre protects your data: encryption, access controls, audit logging, and human approval on writes — for one shared AI brain across your business.",

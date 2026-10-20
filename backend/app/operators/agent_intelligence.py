@@ -1868,6 +1868,10 @@ class AgentIntelligence:
         _canonical_task_state: dict[str, Any] = (
             dict(gateway_state) if isinstance(gateway_state, dict) else {}
         )
+        from app.services.cognitive_trace_engine import unify_turn_id
+        from app.services.cost_attribution import attribution_fields, bind_turn_attribution
+
+        bind_turn_attribution(attribution_fields().get("turn_id") or unify_turn_id(_canonical_task_state))
         task_state: dict[str, Any] | None = (
             dict(gateway_state) if isinstance(gateway_state, dict) else None
         )
@@ -1986,7 +1990,9 @@ class AgentIntelligence:
             if _cognitive_trace_builder is not None:
                 return
             st = state if isinstance(state, dict) else {}
-            turn_id = unify_turn_id(st)
+            from app.services.cost_attribution import attribution_fields
+
+            turn_id = attribution_fields().get("turn_id") or unify_turn_id(st)
             _cognitive_trace_builder = CognitiveTraceBuilder(
                 turn_id=turn_id,
                 conversation_id=conversation_id,
@@ -2332,6 +2338,8 @@ class AgentIntelligence:
 
         spoken_progress_text_id: str | None = None
         spoken_progress_text = ""
+        # Typed LIVE text already shown when LIVE then handed the turn on.
+        live_typed_preamble = ""
         spoken_progress_stages: set[str] = set()
 
         async def _loop_stage_speech(
@@ -2899,10 +2907,7 @@ class AgentIntelligence:
                 return
 
         from app.services.task_classifier import get_task_classifier
-        from app.services.chat_dialogue_settings import load_chat_dialogue_settings
-        from app.services.contextual_understanding_service import get_contextual_understanding_service
         from app.services.clarification_engine import get_clarification_engine
-        from app.services.sentiment_friction_service import get_sentiment_friction_service
         from app.services.dialogue_policy_engine import get_dialogue_policy_engine
         from app.services.persona_service import get_persona_service
         from app.services.conversation_state_service import get_conversation_state_service
@@ -3080,7 +3085,7 @@ class AgentIntelligence:
                 )
                 yield sse_intelligence_metadata(
                     message_id=message_id,
-                    confidence={"score": 0.9, "needs_clarification": False},
+                    confidence={"needs_clarification": False},
                     answer_explanation="Continuing the offered inspection",
                     dialogue_mode="answer",
                     effective_mode=mode_key,
@@ -3120,7 +3125,7 @@ class AgentIntelligence:
                 tool_results = executed.get("tool_results") if isinstance(executed.get("tool_results"), list) else []
                 yield sse_intelligence_metadata(
                     message_id=message_id,
-                    confidence={"score": 0.9, "needs_clarification": False},
+                    confidence={"needs_clarification": False},
                     answer_explanation="Offered READ continuation",
                     dialogue_mode="answer",
                     effective_mode=mode_key,
@@ -3315,35 +3320,15 @@ class AgentIntelligence:
         )
         _mark("spoken_lite_decided")
 
+        # Every route uses the same perception, including conversational shortcuts.
+        from app.services.contextual_understanding_service import perceive_turn
+
+        dialogue_settings, sentiment, understanding = await perceive_turn(
+            org_id, task_text, conversation_history, settings=active_settings,
+            client=client, spoken_mode=bool(spoken_mode),
+        )
+        _mark("perception")
         if spoken_lite_path or _compiled_read_ingress:
-            # Defaults only — dialogue_settings are unused on the lite path before
-            # LIVE returns; a DB round-trip here was pure critical-path waste.
-            dialogue_settings = {
-                "sentiment_detection_enabled": False,
-                "spoken_lite_defaults": True,
-            }
-            _mark("dialogue_settings_lite")
-            sentiment = {"recommended_adaptation": "none"}
-            understanding = {
-                "goal": None,
-                "constraints": [],
-                "model_attempted": False,
-                "model_ran": False,
-                "domain": {
-                    "source": (
-                        "compiled_read_ingress"
-                        if _compiled_read_ingress
-                        else "spoken_lite_skip"
-                    ),
-                    "confidence": 0.0,
-                    "routing_active": False,
-                },
-                "skipped": (
-                    "compiled_read_ingress"
-                    if _compiled_read_ingress
-                    else "spoken_conversational_lite"
-                ),
-            }
             pipeline_classification = {
                 "intent": "informational",
                 "requires_action": False,
@@ -3363,21 +3348,6 @@ class AgentIntelligence:
             router_enrichments: dict[str, Any] = {}
             classification_confidence = 0.7
         else:
-            dialogue_settings = await load_chat_dialogue_settings(org_id, active_settings, client=client)
-            _mark("dialogue_settings_full")
-            sentiment = (
-                get_sentiment_friction_service().analyze(task_text, conversation_history)
-                if dialogue_settings.get("sentiment_detection_enabled", True)
-                else {"recommended_adaptation": "none"}
-            )
-            _mark("sentiment")
-            understanding = await get_contextual_understanding_service(active_settings).understand(
-                task_text,
-                conversation_history,
-                org_id,
-                spoken_mode=bool(spoken_mode),
-            )
-            _mark("understanding")
             # Sites 9/10 were dormant with no production signal at all: an empty goal
             # and a low-confidence domain look identical whether the model ran or
             # threw. modelRan and domainSource are what separate those.
@@ -3529,6 +3499,16 @@ class AgentIntelligence:
             _raw_classification_confidence = pipeline_classification.get("classification_confidence")
             classification_confidence = (
                 float(_raw_classification_confidence) if _raw_classification_confidence is not None else 0.55
+            )
+
+        # Carry the same closed-set perception result into LIVE and speech.
+        _adaptation = str(sentiment.get("recommended_adaptation") or "none")
+        pipeline_classification["sentiment_adaptation"] = _adaptation
+        routing_sse = {**routing_sse, "conversationalAdaptation": _adaptation}
+        if spoken_mode:
+            yield sse_intelligence_metadata(
+                message_id=message_id, confidence=None, answer_explanation=None,
+                routing={"conversationalAdaptation": _adaptation},
             )
 
         # Complexity routing Phase 1 — post-classification risk floor (escalate-only).
@@ -4276,7 +4256,13 @@ class AgentIntelligence:
 
             delta_queue: asyncio.Queue[str | None] | None = None
             on_text_delta = None
+            on_tool_call_delta = None
+            typed_release = None
             from app.services.operator_task_intent import spoken_should_stream_live_deltas
+            from app.services.typed_live_stream import (
+                TypedLiveRelease,
+                typed_should_stream_live_deltas,
+            )
 
             if spoken_should_stream_live_deltas(
                 spoken_mode=bool(spoken_mode),
@@ -4290,6 +4276,31 @@ class AgentIntelligence:
                         await delta_queue.put(piece)
 
                 on_text_delta = _on_text_delta
+            elif getattr(active_settings, "typed_live_streaming_enabled", True) and (
+                typed_should_stream_live_deltas(
+                    spoken_mode=bool(spoken_mode),
+                    message=task_text,
+                    task_state=task_state if isinstance(task_state, dict) else None,
+                    classification=pipeline_classification
+                    if isinstance(pipeline_classification, dict)
+                    else None,
+                    connected_integrations=list(connected_early or []),
+                )
+            ):
+                # Typed text is released a checked sentence at a time, so
+                # nothing LIVE would later drop or rewrite reaches the screen.
+                delta_queue = asyncio.Queue()
+                typed_release = TypedLiveRelease(
+                    connected_integrations=list(connected_early or [])
+                )
+
+                async def _on_text_delta(piece: str) -> None:
+                    ready = typed_release.feed(piece) if typed_release is not None else ""
+                    if ready and delta_queue is not None:
+                        await delta_queue.put(ready)
+
+                on_text_delta = _on_text_delta
+                on_tool_call_delta = typed_release.on_tool_call
 
             async def _run_unified_live() -> dict[str, Any] | None:
                 try:
@@ -4323,6 +4334,7 @@ class AgentIntelligence:
                         reasoning_depth=reasoning_depth,
                         cognitive_context=cognitive_ctx,
                         on_text_delta=on_text_delta,
+                        on_tool_call_delta=on_tool_call_delta,
                         compiled_reasoning_context=_compiled_unified_reasoning,
                         response_style_key=str(persona.get("persona_key") or "") or None,
                         conversation_tier=conversation_tier.tier,
@@ -4334,7 +4346,7 @@ class AgentIntelligence:
             live_turn: dict[str, Any] | None
             streamed_voice_text = False
             text_id: str | None = spoken_progress_text_id
-            if spoken_mode and delta_queue is not None:
+            if delta_queue is not None:
                 live_task = asyncio.create_task(_run_unified_live())
                 while True:
                     piece = await delta_queue.get()
@@ -4343,6 +4355,8 @@ class AgentIntelligence:
                     if text_id is None:
                         text_id, start_event = emit_text_start()
                         yield start_event
+                    if not streamed_voice_text:
+                        _mark("live_first_text_delta")
                     streamed_voice_text = True
                     yield emit_text_delta(text_id, adopt_model_delta(piece))
                 live_turn = await live_task
@@ -4350,7 +4364,24 @@ class AgentIntelligence:
                 live_turn = await _run_unified_live()
             _mark("unified_live_resolved")
 
+            typed_streamed_text = ""
+            if typed_release is not None and streamed_voice_text:
+                typed_streamed_text = typed_release.released
+                if not (live_turn and live_turn.get("stop_pipeline")):
+                    # LIVE handed the turn on after text was shown. Keep it as
+                    # the opening paragraph; the next path continues the same
+                    # text part instead of starting a second answer.
+                    _mark("typed_live_preamble_kept")
+                    yield emit_text_delta(text_id, "\n\n")
+                    spoken_progress_text_id = text_id
+                    live_typed_preamble = typed_streamed_text.rstrip()
+
             if live_turn and live_turn.get("stop_pipeline"):
+                # LIVE answered: the classical-path prefetch will never be
+                # adopted, so stop its retrieval (and any web research) now.
+                if _context_task is not None and not _context_task.done():
+                    _context_task.cancel()
+                    _mark("context_prefetch_cancelled")
                 task_state = live_turn.get("task_state") or task_state
                 if conversation_id and isinstance(task_state, dict) and (
                     task_state.get("work_artifacts") or task_state.get("durable_deliverable")
@@ -4371,12 +4402,32 @@ class AgentIntelligence:
                     if isinstance(live_turn.get("latency_breakdown"), dict)
                     else {}
                 )
+                from app.services.context_sources_summary import build_user_context_sources
+
+                # LIVE has no calibrated confidence score: send only the real
+                # clarification flag rather than a made-up number.
+                live_confidence = {"needs_clarification": dialogue_mode == "confirm"}
+                try:
+                    live_context_sources = build_user_context_sources(
+                        lat_bd.get("unifiedTurnKnowledge")
+                        if isinstance(lat_bd.get("unifiedTurnKnowledge"), dict)
+                        else None
+                    )
+                except Exception as exc:  # noqa: BLE001 - explanation is optional
+                    logger.debug("live_context_sources_skipped: %s", exc)
+                    live_context_sources = None
                 yield sse_intelligence_metadata(
                     message_id=message_id,
-                    confidence={"score": 0.9, "needs_clarification": dialogue_mode == "confirm"},
+                    confidence=live_confidence,
                     answer_explanation=str(
                         live_turn.get("answer_explanation") or "Unified turn live"
                     ),
+                    context_explanation=(
+                        str(live_context_sources.get("summary") or "") or None
+                        if live_context_sources
+                        else None
+                    ),
+                    context_sources=live_context_sources,
                     dialogue_mode=dialogue_mode,
                     persona_key=str(persona.get("persona_key") or ""),
                     task_state=task_state,
@@ -4394,7 +4445,8 @@ class AgentIntelligence:
                         ),
                         "unifiedOutcomeKind": live_turn.get("unified_outcome_kind"),
                         "reasoningDepth": reasoning_depth,
-                        "spokenStreamed": streamed_voice_text,
+                        "spokenStreamed": streamed_voice_text and bool(spoken_mode),
+                        "typedStreamed": bool(typed_streamed_text),
                         "cachedPromptTokens": lat_bd.get("cached_prompt_tokens"),
                         "cachedPromptRatio": lat_bd.get("cached_prompt_ratio"),
                         # Cold-path voice latency attribution (same keys as unified audits).
@@ -4453,7 +4505,25 @@ class AgentIntelligence:
                         },
                     ):
                         yield ev
-                if not streamed_voice_text and not (
+                if typed_streamed_text:
+                    from app.services.typed_live_stream import reconcile_final
+                    from app.services.user_facing_copy_guard import (
+                        finalize_user_facing_message,
+                    )
+
+                    try:
+                        final_text = finalize_user_facing_message(
+                            response_text, context="typed_live_stream_final"
+                        )
+                    except Exception:  # noqa: BLE001 - keep only what was shown
+                        final_text = ""
+                    if looks_like_raw_backend(final_text):
+                        final_text = ""
+                    rest, response_text = reconcile_final(typed_streamed_text, final_text)
+                    if rest:
+                        yield emit_text_delta(text_id, rest)
+                    yield emit_text_end(text_id)
+                elif not streamed_voice_text and not (
                     plan_staged and str(response_text or "").strip()
                 ):
                     live_kind = "clarify" if dialogue_mode in {"clarify", "confirm"} else "success"
@@ -4486,7 +4556,7 @@ class AgentIntelligence:
                     react_result=None,
                     model=str(live_turn.get("model") or "unified_turn_live"),
                     message_id=message_id,
-                    confidence={"score": 0.9, "needs_clarification": dialogue_mode == "confirm"},
+                    confidence=live_confidence,
                     answer_explanation=str(
                         live_turn.get("answer_explanation") or "Unified turn live"
                     ),
@@ -4701,6 +4771,7 @@ class AgentIntelligence:
             task_state=task_state,
             client=client,
             connected_integrations=list(connected_early or []),
+            environment_name=environment_name,
         )
         _mark("conversational_execution")
         if conv_turn and conv_turn.get("stop_pipeline"):
@@ -5395,6 +5466,8 @@ class AgentIntelligence:
         streamed_content = ""
         full_content_parts: list[str] = []
         post_tool_hold = False
+        if live_typed_preamble:
+            full_content_parts.append(f"{live_typed_preamble}\n\n")
         if correction_ack:
             packed = await _composed_reply(
                 correction_ack + "\n\n",
@@ -5786,6 +5859,9 @@ class AgentIntelligence:
         generation_started = time.monotonic()
 
         _mark("react_entry")
+        from app.services.cost_attribution import attribution_fields
+
+        bind_turn_attribution(attribution_fields().get("turn_id") or unify_turn_id(_canonical_task_state))
         # From here tools can run, so nothing is served from the turn memo.
         end_turn_memo()
         from app.services.canonical_cognitive_resolution import try_compiled_operational_read_turn
@@ -6177,8 +6253,17 @@ class AgentIntelligence:
         )
 
         streamed_content = "".join(full_content_parts)
+        # What the client has already been sent (a typed LIVE opening included).
+        shown_content = streamed_content
         if react_result is not None and not streamed_content.strip():
             streamed_content = react_result.answer or ""
+        elif (
+            react_result is not None
+            and live_typed_preamble
+            and streamed_content.strip() == live_typed_preamble.strip()
+        ):
+            # Only the typed LIVE opening was shown; the answer follows it.
+            streamed_content = f"{live_typed_preamble}\n\n{react_result.answer or ''}".strip()
         if post_tool_hold and react_result is not None:
             from app.services.first_token_honesty import looks_like_tool_payload
 
@@ -6516,7 +6601,20 @@ class AgentIntelligence:
         from app.services.response_envelope import envelope_kind as _envelope_kind
 
         tool_env = envelope_from_tool_results(tool_results)
-        if tool_env is not None and (
+        if (
+            live_typed_preamble
+            and text_id is not None
+            and tool_env is None
+            and not looks_like_raw_backend(full_content)
+        ):
+            # The typed LIVE opening is on screen: send only what follows it.
+            from app.services.typed_live_stream import reconcile_final
+
+            rest, full_content = reconcile_final(shown_content, full_content)
+            if rest:
+                yield emit_text_delta(text_id, rest)
+            yield emit_text_end(text_id)
+        elif tool_env is not None and (
             looks_like_tool_payload(full_content)
             or (
                 post_tool_hold

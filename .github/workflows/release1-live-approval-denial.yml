@@ -1,0 +1,42 @@
+name: Release 1 forged approval live write-denial
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/verify_release1_live_approval_bypass.py"
+      - ".github/workflows/release1-live-approval-denial.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  forged-approval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r backend/requirements-dev.txt
+      - name: Mint verified isolated smoke session
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python3 scripts/mint_smoke_org_session.py --github-env
+      - name: Assert forged approval cannot reach external provider
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python3 scripts/verify_release1_live_approval_bypass.py
+      - name: Upload proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release1-forged-approval-denial
+          path: docs/delivery/release1-live-approval-bypass.json
+          if-no-files-found: ignore

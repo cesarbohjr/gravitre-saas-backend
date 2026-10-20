@@ -26,8 +26,41 @@ describe("marketing blog content registry", () => {
     expect(existsSync(join(process.cwd(), "public", MSP_HERO_PUBLIC_PATH))).toBe(true)
   })
 
-  it("surfaces the MSP post on the blog index as the newest featured article", () => {
+  it("keeps the MSP article registered and features the newest published article", () => {
     expect(blogPosts.some((p) => p.slug === MSP_BLOG_SLUG)).toBe(true)
-    expect(getFeaturedBlogPost().slug).toBe(MSP_BLOG_SLUG)
+    const latestPublishedDate = blogPosts.reduce(
+      (latest, post) => post.datePublished > latest ? post.datePublished : latest,
+      "",
+    )
+    expect(getFeaturedBlogPost().datePublished).toBe(latestPublishedDate)
+    expect(getAllBlogSlugs()).toContain(getFeaturedBlogPost().slug)
+  })
+})
+
+describe("blog publishing metadata invariants", () => {
+  it("keeps canonical slugs and article titles unique", () => {
+    const slugs = blogPosts.map((post) => post.slug)
+    const titles = blogPosts.map((post) => post.title.trim().toLocaleLowerCase("en-US"))
+    expect(new Set(slugs).size).toBe(slugs.length)
+    expect(new Set(titles).size).toBe(titles.length)
+  })
+
+  it("keeps real author attribution, descriptions, and publication dates", () => {
+    for (const post of blogPosts) {
+      expect(post.slug, "slug").toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      expect(post.title.length, post.slug).toBeGreaterThan(10)
+      expect(post.description.trim(), post.slug).not.toBe("")
+      expect(post.description.length, `${post.slug}: meta description`).toBeGreaterThanOrEqual(110)
+      expect(post.description.length, `${post.slug}: meta description`).toBeLessThanOrEqual(160)
+      const renderedTitle = `${post.seoTitle ?? post.title} | Gravitre Blog`
+      expect(renderedTitle.length, `${post.slug}: rendered title`).toBeGreaterThanOrEqual(30)
+      expect(renderedTitle.length, `${post.slug}: rendered title`).toBeLessThanOrEqual(60)
+      expect(post.author.name.trim(), post.slug).not.toBe("")
+      expect(post.author.role.trim(), post.slug).not.toBe("")
+      expect(Number.isNaN(Date.parse(post.datePublished)), post.slug).toBe(false)
+      expect(Number.isNaN(Date.parse(post.dateModified)), post.slug).toBe(false)
+      expect(new Date(post.dateModified).getTime(), post.slug).toBeGreaterThanOrEqual(new Date(post.datePublished).getTime())
+      expect(post.heroAlt.trim(), post.slug).not.toBe("")
+    }
   })
 })

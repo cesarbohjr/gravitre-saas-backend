@@ -380,6 +380,25 @@ def saml_metadata(
     return Response(content=metadata_xml, media_type="application/samlmetadata+xml")
 
 
+@router.get("/service-provider")
+def sso_service_provider(
+    request: Request,
+    _user: Annotated[dict[str, Any], Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, str]:
+    """What an admin pastes into their IdP: the same URLs the SAML settings above use."""
+    if org_id is None:
+        raise HTTPException(status_code=403, detail="Organization context required")
+    base_url = _external_base_url(settings, request)
+    metadata_url = f"{base_url}/api/auth/sso/metadata"
+    return {
+        "metadata_url": metadata_url,
+        "entity_id": metadata_url,
+        "acs_url": f"{base_url}/api/auth/sso/callback",
+    }
+
+
 @router.post("/init")
 def init_sso(
     request: Request,

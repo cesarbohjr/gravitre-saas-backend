@@ -1,0 +1,36 @@
+/* Role permissions (Settings redesign p14). Scoped under .gv-set, kit tokens only. */
+.gv-set .roles-hero { border-radius: 20px; border: 1px solid var(--gs-green-line); padding: 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; background: linear-gradient(120deg, var(--gs-green-bg), var(--gs-sel) 60%, var(--gs-canvas)); }
+.gv-set .roles-hero > div:first-child { max-width: 640px; min-width: 0; }
+.gv-set .roles-hero h1 { margin: 12px 0 0; font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
+.gv-set .roles-hero p { margin: 8px 0 0; font-size: 15px; color: var(--gs-ink-2); line-height: 1.5; }
+.gv-set .roles-hero .gs-tabs { background: color-mix(in srgb, var(--gs-card) 60%, transparent); }
+.gv-set .roles-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.gv-set .roles-card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.gv-set .roles-card-top b { font-weight: 600; font-size: 16px; }
+.gv-set .roles-desc { font-size: 13px; color: var(--gs-ink-3); line-height: 1.45; }
+.gv-set .roles-bar { display: flex; gap: 3px; }
+.gv-set .roles-bar span { flex: 1; height: 6px; border-radius: 3px; background: var(--gs-track); }
+.gv-set .roles-bar span.on { background: var(--gs-green-bright); transform-origin: left; animation: gsGrowX 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.gv-set .roles-people { font-size: 12px; color: var(--gs-muted); }
+.gv-set .roles-matrix { min-width: 560px; --cols: minmax(0, 1fr) 110px 110px 110px; }
+.gv-set .roles-matrix .gs-tr { padding: 0 20px; }
+.gv-set .roles-matrix .gs-tr.head { background: var(--gs-band); border-bottom: 1px solid var(--gs-line); }
+.gv-set .roles-matrix .gs-tr.body { min-height: 54px; border-top: 1px solid var(--gs-line-faint); }
+.gv-set .roles-matrix .gs-tr.body:hover { background: var(--gs-hover); }
+.gv-set .roles-matrix .gs-th:first-child { padding-left: 0; }
+.gv-set .roles-cap { display: flex; gap: 10px; align-items: center; font-size: 14px; min-width: 0; padding: 10px 0; }
+.gv-set .roles-area { color: var(--gs-faint); font-family: var(--font-mono), "Geist Mono", ui-monospace, monospace; font-size: 11px; width: 74px; flex: 0 0 auto; text-transform: uppercase; letter-spacing: 0.08em; }
+.gv-set .roles-cell { display: flex; justify-content: center; }
+.gv-set .roles-yes { width: 26px; height: 26px; border-radius: 50%; background: var(--gs-green-pill); color: var(--gs-green); display: grid; place-items: center; }
+.gv-set .roles-no { width: 26px; height: 26px; display: grid; place-items: center; color: var(--gs-ghost); }
+.gv-set .roles-one { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.gv-set .roles-one > div { padding: 20px; }
+.gv-set .roles-one > div:first-child { border-right: 1px solid var(--gs-line); }
+.gv-set .roles-one h3 { font-weight: 600; margin: 0 0 10px; font-size: 15px; display: flex; gap: 8px; align-items: center; }
+.gv-set .roles-one ul { list-style: none; margin: 0; padding: 0; }
+.gv-set .roles-one li { font-size: 14px; padding: 8px 0; border-top: 1px solid var(--gs-line-faint); }
+.gv-set .roles-one .cannot li { color: var(--gs-ink-3); }
+@media (max-width: 600px) {
+  .gv-set .roles-one > div:first-child { border-right: 0; border-bottom: 1px solid var(--gs-line); }
+  .gv-set .roles-hero h1 { font-size: 26px; }
+}

@@ -13,12 +13,12 @@ def normalize_memory_entity_embeddings(raw: dict[str, Any] | None) -> dict[str, 
     if not isinstance(raw, dict):
         return dict(DEFAULT_MEMORY_ENTITY_EMBEDDINGS)
     enabled = bool(raw.get("enabled") is True)
-    connectors = [
-        str(item).strip().lower()
-        for item in (raw.get("connectors") or [])
-        if str(item).strip()
-    ]
-    return {"enabled": enabled, "connectors": connectors}
+    connectors: list[str] = []
+    for item in raw.get("connectors") or []:
+        key = str(item).strip().lower()
+        if key and len(key) <= 64 and key not in connectors:
+            connectors.append(key)
+    return {"enabled": enabled, "connectors": connectors[:50]}
 
 
 def load_memory_entity_embeddings_settings(client: Any, org_id: str) -> dict[str, Any]:

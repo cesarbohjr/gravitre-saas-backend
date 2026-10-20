@@ -14,8 +14,16 @@ from uuid import uuid4
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
-from app.services.memory_contamination_guard import attach_recall_honesty, validate_memory_write
+from app.services.memory_contamination_guard import (
+    LINEAGE_COLUMNS,
+    SOURCE_UNTRUSTED_EXTERNAL,
+    attach_recall_honesty,
+    lineage_required,
+    memory_source_lineage,
+    validate_memory_write,
+)
 from app.services.memory_extraction_service import extract_typed_memories_structured
+from app.services.memory_source_liveness import drop_memories_from_revoked_sources
 from app.services.memory_temporal_service import (
     APPEND_ONLY_CATEGORIES,
     TEMPORAL_CATEGORIES,
@@ -66,7 +74,14 @@ def _insert_memory_row(client: Any, payload: dict[str, Any]) -> dict[str, Any] |
             return inserted[0]
         return payload
     except Exception as first_exc:  # noqa: BLE001
-        legacy = {k: v for k, v in payload.items() if k not in _HARDENING_COLUMNS}
+        if any(k in payload for k in LINEAGE_COLUMNS):
+            # Lineage is emitted only after its flag is enabled. Never silently
+            # create an unrevocable memory when its required schema/write fails.
+            logger.warning("workspace_memory_lineage_write_refused error=%s", type(first_exc).__name__)
+            return None
+        legacy = {
+            k: v for k, v in payload.items() if k not in _HARDENING_COLUMNS and k not in LINEAGE_COLUMNS
+        }
         try:
             inserted = client.table("agent_memories").insert(legacy).execute().data or []
             if inserted and isinstance(inserted[0], dict):
@@ -116,7 +131,7 @@ def promote_turn_memories(
     Temporal categories supersede on ``memory_key``; append-only categories insert.
     Returns inserted row dicts (best-effort).
     """
-    _ = settings or get_settings()
+    active_settings = settings or get_settings()
     if not client or not org_id or not memories:
         return []
     from app.services.speculative_execution import defer_if_speculative
@@ -194,12 +209,24 @@ def promote_turn_memories(
         }
         if memory_key:
             payload["memory_key"] = memory_key
+        # Connector lineage (source_connector_id / source_record_ref) when the
+        # candidate names the connection it came from and the flag is on.
+        lineage = memory_source_lineage(enriched, settings=active_settings)
+        if (
+            not lineage
+            and enriched.get("source_class") == SOURCE_UNTRUSTED_EXTERNAL
+            and lineage_required(active_settings)
+        ):
+            # Connector or document content that cannot name its connection could
+            # never be removed when that connection goes: do not store it.
+            logger.info("workspace_memory_skipped_no_lineage org_id=%s category=%s", org_id, category)
+            continue
+        payload.update(lineage)
 
         try:
             from app.rag.embedding import get_embedding
 
-            active = settings or get_settings()
-            emb = get_embedding(content, active, org_id=org_id)
+            emb = get_embedding(content, active_settings, org_id=org_id)
             if emb:
                 payload["embedding"] = emb
         except Exception as exc:  # noqa: BLE001
@@ -265,6 +292,9 @@ def recall_workspace(
         from app.services.memory_temporal_service import get_memory_history
 
         history = get_memory_history(client, org_id, memory_key)
+        history = drop_memories_from_revoked_sources(
+            client, org_id, history, settings=settings, surface="workspace_memory_history"
+        )
         return [attach_recall_honesty(h) for h in history]
 
     limit = max(1, min(int(top_k), 50))
@@ -345,7 +375,13 @@ def recall_workspace(
         scored.append((score, labeled))
 
     scored.sort(key=lambda pair: pair[0], reverse=True)
-    return [item for _, item in scored[:limit]]
+    ranked = [item for _, item in scored]
+    # Never recall a memory learned from a connector that is no longer live, even
+    # before the disconnect purge has run (no-op unless lineage is on).
+    ranked = drop_memories_from_revoked_sources(
+        client, org_id, ranked, settings=settings, surface="workspace_memory_recall"
+    )
+    return ranked[:limit]
 
 
 def extract_typed_memories_from_act(

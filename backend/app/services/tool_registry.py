@@ -1125,6 +1125,7 @@ class ToolRegistry:
             agent_id=ctx.agent_id,
             workflow_run_id=ctx.run_id,
             approval_id=approval_id,
+            actor_id=ctx.actor_id,
         )
         status = str(payload.get("status") or "")
         audit_extra: dict[str, Any] = {"mcp_tool_id": tool_id, "mcp_status": status}
@@ -1168,11 +1169,12 @@ class ToolRegistry:
                 "latency_ms": payload.get("latency_ms"),
                 "verification": payload.get("verification"),
                 "verification_inconclusive": True,
-                "provider_accepted": True,
+                "provider_accepted": bool((payload.get("verification") or {}).get("providerAccepted")),
+                "outcome_uncertain": not bool((payload.get("verification") or {}).get("providerAccepted")),
                 "error_code": "verification_inconclusive",
                 "error": (
-                    "The MCP provider accepted the write, but Gravitre could not "
-                    "independently verify the final source state."
+                    "Gravitre could not independently verify the MCP write outcome. "
+                    "Check the source system before requesting another write."
                 ),
             }
         return {

@@ -52,6 +52,13 @@ class _Query:
     def limit(self, _n):
         return self
 
+    def order(self, _col):
+        return self
+
+    def range(self, start, end):
+        self.window = (start, end + 1)
+        return self
+
     def _match(self, row: dict[str, Any]) -> bool:
         for kind, col, val in self.filters:
             v = row.get(col)
@@ -68,6 +75,8 @@ class _Query:
     def execute(self):
         rows = self.client.tables.setdefault(self.table, [])
         hits = [r for r in rows if self._match(r)]
+        if self.op == "select" and getattr(self, "window", None):
+            hits = hits[self.window[0] : self.window[1]]
         if self.op == "delete":
             self.client.tables[self.table] = [r for r in rows if r not in hits]
             self.client.deletes.append((self.table, list(self.filters)))
@@ -75,11 +84,18 @@ class _Query:
 
 
 class _Client:
-    def __init__(self, tables: dict[str, list[dict[str, Any]]] | None = None, *, rpc_error: bool = False) -> None:
+    def __init__(
+        self,
+        tables: dict[str, list[dict[str, Any]]] | None = None,
+        *,
+        rpc_error: bool = False,
+        memory_rpc_error: Exception | None = None,
+    ) -> None:
         self.tables = tables or {}
         self.rpc_calls: list[tuple[str, dict[str, Any]]] = []
         self.deletes: list[tuple[str, list]] = []
         self.rpc_error = rpc_error
+        self.memory_rpc_error = memory_rpc_error
         self.events: list[dict[str, Any]] = []
 
     def table(self, name):
@@ -94,6 +110,10 @@ class _Client:
                 if client.rpc_error:
                     raise RuntimeError("db down")
                 return SimpleNamespace(data={"rag_sources": 2, "dry_run_seen": params["p_dry_run"]})
+            if name == "purge_connector_memories":
+                if client.memory_rpc_error is not None:
+                    raise client.memory_rpc_error
+                return SimpleNamespace(data={"agent_memories": 3, "agent_memories_restored": 1, "receipt_merged": True})
             if name == "claim_domain_events":
                 out, client.events = client.events, []
                 return SimpleNamespace(data=out)
@@ -135,6 +155,8 @@ def _reset(monkeypatch):
 
 # ------------------------------------------------------------------ purge handler
 
+LINEAGE_ON = SimpleNamespace(memory_source_lineage_enabled=True)
+
 
 def test_handler_plans_by_default(_reset):
     client = _Client({"connectors": [{"id": CONN, "org_id": ORG, "vendor": "HubSpot", "type": "hubspot"}]})
@@ -157,8 +179,50 @@ def test_handler_plans_by_default(_reset):
 @pytest.mark.parametrize("value", [None, "false", 0, True])
 def test_only_explicit_false_turns_dry_run_off(value):
     client = _Client()
-    sl.handle_source_disconnected(client, _event(), SimpleNamespace(source_purge_dry_run=value))
+    sl.handle_source_disconnected(
+        client, _event(), SimpleNamespace(source_purge_dry_run=value, memory_source_lineage_enabled=True)
+    )
     assert client.rpc_calls[0][1]["p_dry_run"] is True
+    assert client.rpc_calls[1][1]["p_dry_run"] is True
+
+
+@pytest.mark.parametrize("dry_run", [True, False])
+def test_memory_purge_follows_derived_purge_with_same_mode(_reset, dry_run):
+    client = _Client()
+    counts = sl.handle_source_disconnected(
+        client, _event(), SimpleNamespace(source_purge_dry_run=dry_run, memory_source_lineage_enabled=True)
+    )
+    assert [n for n, _ in client.rpc_calls] == ["purge_connector_derived_data", "purge_connector_memories"]
+    assert client.rpc_calls[1][1] == {
+        "p_org_id": ORG,
+        "p_connector_id": CONN,
+        "p_disconnected_at": "2026-10-12T10:00:00+00:00",
+        "p_dry_run": dry_run,
+        "p_vendor": "hubspot",
+    }
+    assert counts["rag_sources"] == 2 and counts["agent_memories"] == 3
+    assert _reset[0]["metadata"]["counts"]["agent_memories"] == 3
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        RuntimeError("{'code': 'PGRST202', 'message': 'Could not find the function public.purge_connector_memories'}"),
+        RuntimeError("function public.purge_connector_memories(uuid, uuid, timestamptz, boolean) does not exist"),
+    ],
+)
+def test_missing_memory_purge_function_is_logged_and_skipped(_reset, error):
+    client = _Client(memory_rpc_error=error)
+    counts = sl.handle_source_disconnected(client, _event(), LINEAGE_ON)
+    assert counts["rag_sources"] == 2
+    assert counts["agent_memories"] == "unavailable"
+    assert _reset[0]["metadata"]["counts"]["agent_memories"] == "unavailable"
+
+
+def test_memory_purge_failure_raises_so_relay_retries():
+    client = _Client(memory_rpc_error=RuntimeError("connection reset"))
+    with pytest.raises(sl.SourcePurgeError):
+        sl.handle_source_disconnected(client, _event(), LINEAGE_ON)
 
 
 def test_handler_purges_when_dry_run_off(_reset):
@@ -170,8 +234,32 @@ def test_handler_purges_when_dry_run_off(_reset):
 
 def test_hard_deleted_connector_uses_payload_vendor():
     client = _Client()  # row is gone
-    sl.handle_source_disconnected(client, _event(connector_type="gmail", hard_deleted=True), SimpleNamespace())
+    sl.handle_source_disconnected(client, _event(connector_type="gmail", hard_deleted=True), LINEAGE_ON)
     assert client.rpc_calls[0][1]["p_vendor"] == "gmail"
+    # The memory purge gets the same vendor, to scope untagged observations.
+    assert client.rpc_calls[1][1]["p_vendor"] == "gmail"
+
+
+def test_memory_purge_does_not_run_with_lineage_off(_reset):
+    """Flag off: only the derived-data purge runs, exactly as before this PR."""
+    client = _Client()
+    counts = sl.handle_source_disconnected(client, _event(), SimpleNamespace(source_purge_dry_run=False))
+    assert [n for n, _ in client.rpc_calls] == ["purge_connector_derived_data"]
+    assert counts["agent_memories"] == "lineage_off"
+
+
+def test_disconnect_handler_invalidates_derived_context_caches(_reset, monkeypatch):
+    from app.services import memory_source_liveness as msl
+
+    calls: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        msl, "invalidate_org_derived_context", lambda org_id, settings=None, reason="": calls.append((org_id, reason))
+    )
+    sl.handle_source_disconnected(_Client(), _event(), LINEAGE_ON)
+    assert calls == [(ORG, "source.disconnected")]
+    calls.clear()
+    sl.handle_source_disconnected(_Client(), _event(), SimpleNamespace())
+    assert calls == []
 
 
 def test_malformed_event_completes_without_purging():
@@ -256,7 +344,7 @@ def test_google_revoke_skipped_when_another_google_connector_is_live(monkeypatch
         }
     )
     monkeypatch.setattr(
-        "app.connectors.hubspot_oauth.load_oauth_tokens", lambda *a: {"refresh_token": "r", "access_token": "a"}
+        "app.connectors.hubspot_oauth.load_oauth_tokens", lambda *a, org_id: {"refresh_token": "r", "access_token": "a"}
     )
     sent: list[Any] = []
     monkeypatch.setattr(pr, "_post", lambda *a, **k: sent.append(a))
@@ -271,7 +359,7 @@ def test_google_revoke_skipped_when_another_google_connector_is_live(monkeypatch
 
 
 def test_revoke_never_raises(monkeypatch):
-    def boom(*_a):
+    def boom(*_a, org_id):
         raise RuntimeError("secrets table down")
 
     monkeypatch.setattr("app.connectors.hubspot_oauth.load_oauth_tokens", boom)
@@ -386,24 +474,53 @@ def _docs_client() -> _Client:
     )
 
 
-def test_reconcile_removes_only_unseen_documents_in_that_source():
+_LIVE = SimpleNamespace(source_deletion_propagation_enabled=True, source_purge_dry_run=False)
+
+
+def test_reconcile_removes_only_unseen_documents_in_that_source(_reset):
     client = _docs_client()
+    checked: list[str] = []
     removed = sl.reconcile_source_documents(
         client,
-        SimpleNamespace(source_deletion_propagation_enabled=True),
+        _LIVE,
         org_id=ORG,
         source_id="s1",
         external_id_prefix="notion:page:",
         seen_external_ids={"notion:page:p1"},
+        is_gone=lambda ext: checked.append(ext) or True,
+        sweep_complete=True,
     )
-    assert removed == 1
+    assert removed == 1 and checked == ["notion:page:p2"]
     assert sorted(r["id"] for r in client.tables["rag_documents"]) == ["d1", "d3", "d4"]
+    assert [a["action"] for a in _reset] == ["source.documents_removed"]
+
+
+def test_reconcile_keeps_unseen_documents_the_provider_says_still_exist():
+    client = _docs_client()
+    removed = sl.reconcile_source_documents(
+        client,
+        _LIVE,
+        org_id=ORG,
+        source_id="s1",
+        external_id_prefix="notion:page:",
+        seen_external_ids=set(),
+        is_gone=lambda ext: False,
+        sweep_complete=True,
+    )
+    assert removed == 0 and len(client.tables["rag_documents"]) == 4
 
 
 def test_reconcile_off_by_default():
     client = _docs_client()
     removed = sl.reconcile_source_documents(
-        client, SimpleNamespace(), org_id=ORG, source_id="s1", external_id_prefix="notion:page:", seen_external_ids=set()
+        client,
+        SimpleNamespace(),
+        org_id=ORG,
+        source_id="s1",
+        external_id_prefix="notion:page:",
+        seen_external_ids=set(),
+        is_gone=lambda ext: True,
+        sweep_complete=True,
     )
     assert removed == 0 and len(client.tables["rag_documents"]) == 4
 
@@ -471,9 +588,12 @@ async def test_disconnect_revokes_before_tokens_are_dropped(monkeypatch):
         "revoke_on_disconnect",
         lambda *a, **k: order.append("revoke") or pr.RevokeOutcome("revoked", "hubspot"),
     )
-    monkeypatch.setattr(
-        "app.connectors.platform.clear_connector_oauth_tokens", lambda *a: order.append("clear")
-    )
+    def clear_tokens(_client, connector_id, *, org_id):
+        assert str(connector_id) == str(cid)
+        assert org_id == ORG
+        order.append("clear")
+
+    monkeypatch.setattr("app.connectors.platform.clear_connector_oauth_tokens", clear_tokens)
     settings = SimpleNamespace(supabase_url="https://example.supabase.co", supabase_service_role_key="service")
     out = await _delete_connector_impl(cid, ConnectorDeleteRequest(confirmName="desk"), ({"user_id": "u1"}, ORG), settings)
     assert out == {"success": True}

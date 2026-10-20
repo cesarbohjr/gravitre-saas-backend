@@ -14,10 +14,15 @@ from app.rag.retrieval import search_chunks
 from app.services.memory_contamination_guard import (
     SOURCE_MODEL_INFERENCE,
     SOURCE_USER_DIRECT,
+    SOURCE_UNTRUSTED_EXTERNAL,
     SOURCE_WORKFLOW_OUTCOME,
     classify_memory_source,
+    memory_source_lineage,
+    lineage_required,
     validate_memory_write,
+    LINEAGE_COLUMNS,
 )
+from app.services.memory_source_liveness import drop_memories_from_revoked_sources
 
 VALID_CATEGORIES = frozenset(
     {
@@ -225,6 +230,8 @@ def create_agent_memory(
     editable: bool = True,
     share_with_department: bool = True,
     source_class: str | None = None,
+    source_connector_id: str | None = None,
+    source_record_ref: str | None = None,
 ) -> dict[str, Any]:
     """Create agent- or workspace-scoped memory. ``agent_id`` may be None (org-wide).
 
@@ -232,6 +239,10 @@ def create_agent_memory(
     the source class is ``source_class`` when given, else derived from
     ``provenance``; a write with a human ``user_id`` and no other provenance signal
     (the per-agent CRUD API) is user-direct. Confidence is capped per class.
+
+    ``source_connector_id`` (a connector row id) and ``source_record_ref`` name the
+    connection the content was learned from, so a disconnect can purge it; stored
+    only when MEMORY_SOURCE_LINEAGE_ENABLED is on.
     """
     if agent_id:
         ensure_agent_in_org(client, org_id, agent_id)
@@ -251,6 +262,18 @@ def create_agent_memory(
         # A signed-in person typing a memory through the CRUD API.
         candidate["user_direct"] = True
     guarded = validate_memory_write(candidate, provenance=prov or "")
+    lineage = memory_source_lineage(
+        {"source_connector_id": source_connector_id, "source_record_ref": source_record_ref},
+        settings=settings,
+    )
+    if (
+        guarded["source_class"] == SOURCE_UNTRUSTED_EXTERNAL
+        and lineage_required(settings)
+        and not lineage
+    ):
+        # Same rule as workspace promotion: external content must be revocable.
+        # Do this before embedding so refused content is never sent to a model.
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="External memory requires source lineage")
     embedding = get_embedding(text, settings, org_id=org_id)
     payload: dict[str, Any] = {
         "org_id": org_id,
@@ -264,6 +287,7 @@ def create_agent_memory(
         "embedding": embedding,
         "created_by": user_id,
     }
+    payload.update(lineage)
     if share_with_department and agent_id:
         dept_id, _ = resolve_department_id_for_agent(client, org_id, agent_id)
         if dept_id:
@@ -271,9 +295,12 @@ def create_agent_memory(
     try:
         r = client.table("agent_memories").insert(payload).execute()
     except Exception:  # noqa: BLE001
-        # source_class column arrives with 20260903120000; keep creating on a
-        # database that has not applied it yet.
-        legacy = {k: v for k, v in payload.items() if k != "source_class"}
+        # A tagged write must remain revocable. Preserve the original failure
+        # rather than retrying without its source identity (including timeouts).
+        if any(key in payload for key in LINEAGE_COLUMNS):
+            raise
+        # Legacy untagged databases may still lack source_class.
+        legacy = {key: value for key, value in payload.items() if key != "source_class"}
         r = client.table("agent_memories").insert(legacy).execute()
     if not r.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create memory")
@@ -373,7 +400,9 @@ def search_agent_memories(
         "p_category": _normalize_category(category) if category and category != "all" else None,
     }
     r = client.rpc("agent_memory_search", payload).execute()
-    rows = list(r.data or [])
+    rows = drop_memories_from_revoked_sources(
+        client, org_id, list(r.data or []), settings=settings, surface="agent_memory_search"
+    )
     memory_ids = [str(row["memory_id"]) for row in rows if row.get("memory_id")]
     if memory_ids:
         increment_memory_usage(client, memory_ids, org_id=org_id)
@@ -434,6 +463,9 @@ def search_department_memories(
             .data
             or []
         )
+        rows = drop_memories_from_revoked_sources(
+            client, org_id, rows, settings=settings, surface="department_memory_fallback"
+        )
         return [
             {
                 "id": str(row.get("id")),
@@ -452,6 +484,9 @@ def search_department_memories(
             }
             for row in rows
         ]
+    rows = drop_memories_from_revoked_sources(
+        client, org_id, rows, settings=settings, surface="department_memory_search"
+    )
     memory_ids = [str(row["memory_id"]) for row in rows if row.get("memory_id")]
     if memory_ids:
         increment_memory_usage(client, memory_ids, org_id=org_id)
@@ -689,7 +724,9 @@ async def get_relevant_agent_memory(
         results: list[dict[str, Any]] = []
         for category in memory_categories:
             results.extend(list_agent_memories(client, org_id, agent_id, category=category, query=query))
-        return results
+        return drop_memories_from_revoked_sources(
+            client, org_id, results, settings=settings, surface="agent_memory_list"
+        )
     return search_agent_memories(settings, client, org_id, agent_id, query)
 
 

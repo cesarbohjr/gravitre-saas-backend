@@ -129,7 +129,8 @@ def replace_document_chunks(
         document_id = inserted.data[0]["id"]
 
     pieces = chunk_document_text(content, settings=settings)
-    model_version = getattr(settings, "rag_embedding_model", None) or "text-embedding-3-small"
+    # The model get_embedding actually used (Settings.embedding_model), not a separate knob.
+    model_version = getattr(settings, "embedding_model", None) or "text-embedding-3-small"
     rows: list[dict[str, Any]] = []
     for idx, piece in enumerate(pieces):
         embedding = None

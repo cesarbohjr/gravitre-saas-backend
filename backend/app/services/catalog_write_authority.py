@@ -191,12 +191,22 @@ def mcp_tool_requires_write_approval(
     requires_approval: bool | None = None,
     read_only_hint: bool | None = None,
     destructive_hint: bool | None = None,
+    tool_name: str | None = None,
 ) -> bool:
-    """Annotation-driven MCP write gate — same authority model as native catalog."""
-    if read_only_hint is True:
-        return False
+    """MCP write gate — same authority model as the native catalog.
+
+    The remote server's readOnlyHint is advisory: it can no longer downgrade a
+    tool Gravitre classified as a write, or a tool whose name says it sends
+    something outside Gravitre (send_email, post_message, ...).
+    """
     if requires_approval is True or destructive_hint is True:
+        return True
+    from app.services.write_capability import capability_of_mcp_tool
+
+    if capability_of_mcp_tool(tool_name):
         return True
     if str(capability_tier or "").strip().lower() == "write":
         return True
+    if read_only_hint is True:
+        return False
     return False

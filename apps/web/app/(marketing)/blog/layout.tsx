@@ -1,6 +1,7 @@
 import { marketingMetadata } from "@/lib/seo"
 
 export const metadata = marketingMetadata({
+  canonical: "/blog",
   title: "Blog",
   description:
     "Product updates, engineering deep-dives, and best practices for running AI agents and workflows in production — from the Gravitre team.",

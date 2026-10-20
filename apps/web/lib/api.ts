@@ -1567,6 +1567,17 @@ export interface MCPAdminTool {
 export const mcpAdminApi = {
   listServers: () =>
     fetcher<{ servers: MCPAdminServer[] }>(apiUrl("/api/admin/mcp/servers")),
+  createServer: (body: {
+    serverName: string
+    serverUrl: string
+    authType: "none" | "bearer" | "api_key"
+    authConfig?: { bearer_token?: string; api_key?: string; header?: string }
+  }) =>
+    postJson<{ server: MCPAdminServer }>(apiUrl("/api/admin/mcp/servers"), {
+      ...body,
+      transport: "streamable_http",
+      enabled: true,
+    }),
   patchServer: (serverId: string, enabled: boolean) =>
     patchJson<{ server: MCPAdminServer }>(
       apiUrl(`/api/admin/mcp/servers/${encodeURIComponent(serverId)}`),
@@ -1980,7 +1991,7 @@ export const connectorsApi = {
     postJson<{ status: string }>(apiUrl(`/api/connectors/${id}/sync`), { fullSync }),
   testConnection: (id: string) =>
     postJson<{ success: boolean; message?: string }>(apiUrl(`/api/connectors/${id}/test`), {}),
-  managedCatalog: () => fetcher<{ configured: boolean; connectors: Array<{ vendor: string; actions: string[]; support: string }> }>(apiUrl("/api/connectors/managed-auth/catalog")),
+  managedCatalog: () => fetcher<{ configured: boolean; inventoryChecked?: boolean; connectors: Array<{ vendor: string; available: boolean; setupReason?: string | null; nativeFallback?: boolean; actions: string[]; support: string }> }>(apiUrl("/api/connectors/managed-auth/catalog")),
   startManagedAuth: (vendor: string, data: { name: string; connectorId?: string }) =>
     postJson<{ connectorId: string; sessionToken: string; attemptId: string; expiresAt?: string }>(
       apiUrl(`/api/connectors/managed-auth/${vendor}/session`), data
@@ -2550,6 +2561,15 @@ export const auditApi = {
 }
 
 // ============ Billing ============
+/** Which discount the backend applied to a checkout (see lib/promotions.ts). */
+export type CheckoutDiscountFields = {
+  discount_source?: "founder_offer" | "promotion_code" | "stripe_field" | "none"
+  promotion_code?: string
+  discount_summary?: string
+  promotion_code_ignored?: boolean
+  notice?: string | null
+}
+
 export const billingApi = {
   overview: () => fetcher<BillingOverview>(apiUrl("/api/billing")),
   status: () =>
@@ -2581,32 +2601,44 @@ export const billingApi = {
       price_id: priceId,
       quantity,
     }),
-  createCheckoutForPlan: (planCode: string, billingInterval: "monthly" | "annual" = "monthly") =>
-    postJson<{ checkout_url: string }>(apiUrl("/api/billing/checkout"), {
+  createCheckoutForPlan: (
+    planCode: string,
+    billingInterval: "monthly" | "annual" = "monthly",
+    promotionCode?: string | null,
+  ) =>
+    postJson<{ checkout_url: string } & CheckoutDiscountFields>(apiUrl("/api/billing/checkout"), {
       plan_code: planCode,
       billing_interval: billingInterval,
+      ...(promotionCode ? { promotion_code: promotionCode } : {}),
     }),
-  createSubscriptionForPlan: (planCode: string, billingInterval: "monthly" | "annual" = "monthly") =>
+  createSubscriptionForPlan: (
+    planCode: string,
+    billingInterval: "monthly" | "annual" = "monthly",
+    promotionCode?: string | null,
+  ) =>
     postJson<{
       client_secret: string
       subscription_id: string
       customer_id: string
       subscription_status?: string
-    }>(apiUrl("/api/billing/subscribe"), {
+    } & CheckoutDiscountFields>(apiUrl("/api/billing/subscribe"), {
       plan_code: planCode,
       billing_interval: billingInterval,
+      ...(promotionCode ? { promotion_code: promotionCode } : {}),
     }),
   createPublicCheckoutForPlan: (
     planCode: string,
     billingInterval: "monthly" | "annual" = "monthly",
     email: string,
     companyName?: string,
+    promotionCode?: string | null,
   ) =>
-    postJson<{ checkout_url: string }>(apiUrl("/api/billing/checkout/public"), {
+    postJson<{ checkout_url: string } & CheckoutDiscountFields>(apiUrl("/api/billing/checkout/public"), {
       plan_code: planCode,
       billing_interval: billingInterval,
       email,
       company_name: companyName,
+      ...(promotionCode ? { promotion_code: promotionCode } : {}),
     }),
   createPortalSession: () =>
     postJson<{ portal_url: string }>(apiUrl("/api/billing/portal"), {}),
@@ -2653,6 +2685,9 @@ export type PlayListItem = {
     objective: string
     executable: boolean
     executionAuthority: string
+    /** Outcome Pack department ("" for cross-department platform Plays). */
+    department?: string
+    required_connector_groups?: string[][]
   }
   readiness: PlayReadinessSummary
   workflowBindings: Array<{
@@ -2662,6 +2697,20 @@ export type PlayListItem = {
     stage?: string | null
   }>
   workflowBindingCount: number
+  /** The authority this org switched on; null until the Play is set up. */
+  installation?: PlayInstallation | null
+}
+
+export type PlayOperatingMode = "OBSERVE" | "RECOMMEND" | "ACT WITH APPROVAL" | "ACT WITHIN POLICY"
+
+export type PlayInstallation = {
+  id: string
+  playKey: string
+  playVersion: string
+  operatingMode: PlayOperatingMode
+  status: string
+  goalId?: string | null
+  updatedAt?: string | null
 }
 
 export type PlayImpactMetric = { metricKey: string; value: number; unit?: string | null; currency?: string | null }
@@ -3094,6 +3143,15 @@ export const intelligenceApi = {
       apiUrl(`/api/admin/intelligence/outcomes${suffix}`),
     )
   },
+  outcomeDelivery: () => fetcher<{
+    status: "blocked" | "queued" | "idle"
+    undelivered_count: number | null
+    blockers: string[]
+    handler_enabled: boolean
+    handler_registered: boolean
+    relay_enabled: boolean
+    delivery_is_not_verified_learning: boolean
+  }>(apiUrl("/api/admin/intelligence/outcomes/delivery")),
   intelligenceEvaluations: (params?: { periodDays?: number }) => {
     const query = new URLSearchParams()
     if (params?.periodDays != null) query.set("periodDays", String(params.periodDays))
@@ -4463,6 +4521,7 @@ export interface RecommendationFeedItem {
   actions: string[]
   advisoryOnly: boolean
   workObjectId?: string
+  remedies?: Array<{ label: string; href: string; why: string }>
 }
 
 export interface RecommendationFeed {
@@ -4484,6 +4543,17 @@ export interface SourceDataGovernance {
   retentionDays: Record<string, number>
 }
 
+/** The governed Play run an accepted proposal can start. Accepting starts nothing. */
+export interface PlayRunRequest {
+  method: "POST"
+  path: string
+  playKey: string
+  body: { installationId?: string; workObjectId: string; businessEntityId?: string }
+  approvalGated: boolean
+  operatingMode?: string | null
+  blockedReason?: string
+}
+
 export const accountIntelligenceApi = {
   healthList: (limit = 20) =>
     fetcher<{ accounts: AccountHealthListItem[]; generatedAt: string }>(
@@ -4493,10 +4563,12 @@ export const accountIntelligenceApi = {
     fetcher<AccountHealth>(apiUrl(`/api/entities/${encodeURIComponent(entityId)}/health`)),
   feed: () => fetcher<RecommendationFeed>(apiUrl("/api/recommendations/feed")),
   acceptProposal: (workObjectId: string, reason?: string) =>
-    postJson<{ workObject: { id: string; status: string } }>(
+    postJson<{ workObject: { id: string; status: string }; playRunRequest?: PlayRunRequest }>(
       apiUrl(`/api/work-objects/${encodeURIComponent(workObjectId)}/accept`),
       { reason: reason ?? null },
     ),
+  startPlayRun: (request: PlayRunRequest) =>
+    postJson<{ playRunId: string; status: string; workObjectId?: string }>(apiUrl(request.path), request.body),
   dismissProposal: (workObjectId: string, reason?: string) =>
     postJson<{ workObject: { id: string; status: string } }>(
       apiUrl(`/api/work-objects/${encodeURIComponent(workObjectId)}/dismiss`),

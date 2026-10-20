@@ -3,6 +3,20 @@ import { applyChatReplay, isUserChatAbort } from "@/lib/chat-replay"
 import type { UIMessage } from "ai"
 
 describe("applyChatReplay", () => {
+  it("recovers partial prose only for the identical server message and prompt", () => {
+    const messages: UIMessage[] = [
+      { id: "u1", role: "user", parts: [{ type: "text", text: "create a contact" }] },
+      { id: "a1", role: "assistant", parts: [{ type: "text", text: "Review" }] },
+    ]
+    const replay = { ok: true, assistant_message_id: "a1", user_text: "create a contact",
+      assistant_text: "Review this contact before approving." }
+    const recovered = applyChatReplay(messages, replay)
+    expect(recovered).not.toBe(messages)
+    expect(recovered).toHaveLength(2)
+    expect(applyChatReplay(messages, { ...replay, assistant_message_id: "older-answer" })).toBe(messages)
+    expect(applyChatReplay(messages, { ...replay, user_text: "a different request" })).toBe(messages)
+    expect(applyChatReplay(recovered, replay)).toBe(recovered)
+  })
   it("fills an empty trailing assistant bubble from a completed turn", () => {
     const messages: UIMessage[] = [
       { id: "u1", role: "user", parts: [{ type: "text", text: "hi" }] },

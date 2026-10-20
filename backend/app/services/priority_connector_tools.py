@@ -73,7 +73,7 @@ def _slack_connector_and_token(ctx: ToolContext, params: dict[str, Any]) -> tupl
     conn = _connector_by_type(ctx, "slack", params)
     cid = str(conn["id"])
     enforce_rate_limit(ctx.client, ctx.org_id, "slack", "slack", cid)
-    token = resolve_slack_bot_token(ctx.client, ctx.org_id, cid, ctx.settings)
+    token = resolve_slack_bot_token(ctx.client, ctx.org_id, cid, ctx.settings, environment_name=ctx.environment_name)
     if not token:
         raise ToolAuthExpiredError("Slack OAuth not connected")
     return cid, token

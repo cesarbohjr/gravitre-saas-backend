@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import time
+from datetime import datetime, timezone
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from enum import StrEnum
@@ -28,7 +29,10 @@ from app.services.ai_guardrails import (
     redact_pii,
 )
 from app.services.agent_security_gateway import harden_authority_system_prompt
-from app.services.model_policy_service import assert_model_allowed, load_org_model_policy
+from app.services.model_policy_service import (
+    assert_model_allowed,
+    load_org_model_policy,
+)
 from app.services.providers.anthropic_adapter import AnthropicAdapter
 from app.services.providers.base import (
     AllProvidersFailedError,
@@ -78,7 +82,7 @@ class TaskType(StrEnum):
 # normal input rate when the provider has no separate cache rate).
 _MODEL_PRICING_PER_1K: dict[str, tuple[float, float, float]] = {
     **llm_pricing_per_1k(),
-    "text-embedding-3-small": (0.00002, 0.00002, 0.0),     # $0.02 / 1M input (embeddings)
+    "text-embedding-3-small": (0.00002, 0.00002, 0.0),  # $0.02 / 1M input (embeddings)
 }
 
 
@@ -159,7 +163,9 @@ class ModelRouter:
             ),
             "anthropic": AnthropicAdapter(
                 api_key_getter=lambda: (self.settings.anthropic_api_key or "").strip(),
-                voyage_key_getter=lambda: (getattr(self.settings, "voyage_api_key", "") or "").strip(),
+                voyage_key_getter=lambda: (
+                    getattr(self.settings, "voyage_api_key", "") or ""
+                ).strip(),
                 timeout_s=OPENAI_REQUEST_TIMEOUT_S,
             ),
             "gemini": GeminiAdapter(
@@ -199,7 +205,9 @@ class ModelRouter:
         used_fallback: bool = False,
     ) -> ModelResponse:
         complexity = TASK_COMPLEXITY.get(task_type.value, "medium")
-        model = model_override or self._resolve_model(task_type)  # primary model, for cache key
+        model = model_override or self._resolve_model(
+            task_type
+        )  # primary model, for cache key
         moderation = self._start_input_moderation(f"{system_prompt or ''}\n{prompt}")
 
         if org_id:
@@ -242,7 +250,11 @@ class ModelRouter:
             except AutonomousBudgetExceededError:
                 raise
             except Exception as exc:  # noqa: BLE001
-                logger.warning("autonomous budget pre-check skipped org_id=%s error=%s", org_id, str(exc))
+                logger.warning(
+                    "autonomous budget pre-check skipped org_id=%s error=%s",
+                    org_id,
+                    str(exc),
+                )
 
         # --- Governance guardrails (chokepoint) ---------------------------------
         # Any guardrail refusal is persisted to guardrail_events (auditable),
@@ -251,19 +263,46 @@ class ModelRouter:
             if getattr(self.settings, "disable_ai", False):
                 raise AIServiceDisabledError()
             await asyncio.to_thread(self._enforce_rate_and_budget, org_id)
+            max_tokens = await asyncio.to_thread(
+                self._reserve_trial_call,
+                org_id,
+                prompt,
+                system_prompt,
+                context,
+                max_tokens,
+            )
             if moderation is not None:
                 await moderation
         except AIGuardrailError as exc:
             code = getattr(exc, "code", "AI_GUARDRAIL")
             logger.warning(
-                "AI_GUARDRAIL_BLOCK task_type=%s org_id=%s code=%s", task_type.value, org_id, code
+                "AI_GUARDRAIL_BLOCK task_type=%s org_id=%s code=%s",
+                task_type.value,
+                org_id,
+                code,
             )
             await self._log_guardrail_event(org_id, task_type, code, [], str(exc))
             raise
 
-        cache_key = self._cache_key(task_type, prompt, system_prompt, temperature, max_tokens, model, context)
+        cache_key = self._cache_key(
+            task_type,
+            prompt,
+            system_prompt,
+            temperature,
+            max_tokens,
+            model,
+            context,
+            org_id,
+        )
         if use_cache and not model_override and cache_key in self._cache:
-            cached = self._cache[cache_key].model_copy(update={"cache_hit": True})
+            cached = self._cache[cache_key].model_copy(
+                update={
+                    "cache_hit": True,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "cost_usd": 0.0,
+                }
+            )
             cached.model_call_id = await self._log_model_call(
                 org_id=org_id,
                 task_type=task_type,
@@ -272,6 +311,7 @@ class ModelRouter:
                 trained_model_id=trained_model_id,
                 trained_model_version=trained_model_version,
                 used_fallback=used_fallback,
+                billable=False,
             )
             if autonomous_run and operator_id and org_id:
                 await self._record_autonomous_llm(org_id, operator_id, cached)
@@ -297,13 +337,18 @@ class ModelRouter:
         # Build the failover priority chain.
         if model_override:
             fallback = (
-                build_priority(getattr(self.settings, "preferred_ai_provider", "openai"), complexity)
+                build_priority(
+                    getattr(self.settings, "preferred_ai_provider", "openai"),
+                    complexity,
+                )
                 if getattr(self.settings, "ai_failover_enabled", True)
                 else None
             )
             priority = _priority_for_override(model_override, fallback)
         elif getattr(self.settings, "ai_failover_enabled", True):
-            priority = build_priority(getattr(self.settings, "preferred_ai_provider", "openai"), complexity)
+            priority = build_priority(
+                getattr(self.settings, "preferred_ai_provider", "openai"), complexity
+            )
         else:
             priority = [("openai", MODEL_TIERS[complexity]["openai"])]
 
@@ -323,15 +368,23 @@ class ModelRouter:
         try:
             from app.services.ai_tracing import trace_span
 
-            with trace_span("model_router.complete", task_type=task_type.value, org_id=org_id):
-                result = await run_failover(self._adapters, priority, messages, options, self._breaker)
+            with trace_span(
+                "model_router.complete", task_type=task_type.value, org_id=org_id
+            ):
+                result = await run_failover(
+                    self._adapters, priority, messages, options, self._breaker
+                )
         except ProviderInvalidResponseError as exc:
             self._log_call_failure(task_type, model, "varied", start, exc)
-            await self._log_guardrail_event(org_id, task_type, "ai_failover_invalid", [], str(exc))
+            await self._log_guardrail_event(
+                org_id, task_type, "ai_failover_invalid", [], str(exc)
+            )
             raise
         except AllProvidersFailedError as exc:
             self._log_call_failure(task_type, model, "varied", start, exc)
-            await self._log_guardrail_event(org_id, task_type, "ai_failover_exhausted", [], str(exc))
+            await self._log_guardrail_event(
+                org_id, task_type, "ai_failover_exhausted", [], str(exc)
+            )
             raise
 
         resp = result.response
@@ -346,7 +399,9 @@ class ModelRouter:
             input_tokens = self._estimate_tokens(prompt + (system_prompt or ""))
             output_tokens = self._estimate_tokens(resp.content)
 
-        cost = self._estimate_cost(resp.model_used, input_tokens, output_tokens, cached_tokens)
+        cost = self._estimate_cost(
+            resp.model_used, input_tokens, output_tokens, cached_tokens
+        )
 
         response_text = resp.content
         parsed_payload: dict[str, Any] | None = None
@@ -391,8 +446,12 @@ class ModelRouter:
         try:
             await moderate_output(resp.content, self.settings, self._openai)
         except AIContentFlaggedError as exc:
-            logger.warning("AI_OUTPUT_FLAGGED task_type=%s org_id=%s", task_type.value, org_id)
-            await self._log_guardrail_event(org_id, task_type, "ai_output_flagged", [], str(exc))
+            logger.warning(
+                "AI_OUTPUT_FLAGGED task_type=%s org_id=%s", task_type.value, org_id
+            )
+            await self._log_guardrail_event(
+                org_id, task_type, "ai_output_flagged", [], str(exc)
+            )
             raise
         await self._log_guardrail_event(
             org_id,
@@ -427,7 +486,9 @@ class ModelRouter:
         try:
             client = get_supabase_client(self.settings)
             policy = load_org_model_policy(client, org_id)
-            assert_model_allowed(policy, provider=resolve_provider_for_model(model), model=model)
+            assert_model_allowed(
+                policy, provider=resolve_provider_for_model(model), model=model
+            )
         except AIModelPolicyError:
             raise
         except Exception:  # noqa: BLE001
@@ -436,6 +497,49 @@ class ModelRouter:
     def _enforce_rate_and_budget(self, org_id: str | None) -> None:
         enforce_rate_limit(org_id, self.settings)
         enforce_budget(org_id, self.settings)
+
+    def _reserve_trial_call(self, org_id, prompt, system_prompt, context, max_tokens):
+        if (
+            not org_id
+            or getattr(self.settings, "commercial_offers_enabled", False) is not True
+        ):
+            return max_tokens
+        import json
+        import math
+        from app.billing.safety import reserve_trial_units
+        from app.billing.service import MODEL_MULTIPLIERS, TOKENS_PER_CREDIT
+
+        # UTF-8 bytes conservatively bound prompt tokens; reserve the maximum
+        # output and provider failover capacity, rather than racing actual usage.
+        output = min(max(int(max_tokens or 4096), 1), 4096)
+        serialized = json.dumps(context or [], ensure_ascii=False, default=str)
+        input_bound = len(
+            (prompt + (system_prompt or "") + serialized).encode("utf-8")
+        ) + 128 * (len(context or []) + 2)
+        units = max(
+            1,
+            math.ceil(
+                (input_bound + output)
+                / TOKENS_PER_CREDIT
+                * max(v for _, v in MODEL_MULTIPLIERS)
+                * 4
+            ),
+        )
+        try:
+            reserved = reserve_trial_units(
+                get_supabase_client(self.settings),
+                self.settings,
+                org_id,
+                "ai_credits",
+                units,
+            )
+        except Exception as exc:
+            from app.services.ai_guardrails import AIBudgetExceededError
+
+            raise AIBudgetExceededError(
+                "Trial AI allowance exhausted or unavailable"
+            ) from exc
+        return output if reserved else max_tokens
 
     async def prepare_stream(
         self,
@@ -499,18 +603,33 @@ class ModelRouter:
             except AutonomousBudgetExceededError:
                 raise
             except Exception as exc:  # noqa: BLE001
-                logger.warning("autonomous budget pre-check skipped org_id=%s error=%s", org_id, str(exc))
+                logger.warning(
+                    "autonomous budget pre-check skipped org_id=%s error=%s",
+                    org_id,
+                    str(exc),
+                )
 
         try:
             if getattr(self.settings, "disable_ai", False):
                 raise AIServiceDisabledError()
             await asyncio.to_thread(self._enforce_rate_and_budget, org_id)
+            max_tokens = await asyncio.to_thread(
+                self._reserve_trial_call,
+                org_id,
+                prompt,
+                system_prompt,
+                context,
+                max_tokens,
+            )
             if moderation is not None:
                 await moderation
         except AIGuardrailError as exc:
             code = getattr(exc, "code", "AI_GUARDRAIL")
             logger.warning(
-                "AI_GUARDRAIL_BLOCK task_type=%s org_id=%s code=%s", task_type.value, org_id, code
+                "AI_GUARDRAIL_BLOCK task_type=%s org_id=%s code=%s",
+                task_type.value,
+                org_id,
+                code,
             )
             await self._log_guardrail_event(org_id, task_type, code, [], str(exc))
             raise
@@ -531,13 +650,18 @@ class ModelRouter:
 
         if model_override:
             fallback = (
-                build_priority(getattr(self.settings, "preferred_ai_provider", "openai"), complexity)
+                build_priority(
+                    getattr(self.settings, "preferred_ai_provider", "openai"),
+                    complexity,
+                )
                 if getattr(self.settings, "ai_failover_enabled", True)
                 else None
             )
             priority = _priority_for_override(model_override, fallback)
         elif getattr(self.settings, "ai_failover_enabled", True):
-            priority = build_priority(getattr(self.settings, "preferred_ai_provider", "openai"), complexity)
+            priority = build_priority(
+                getattr(self.settings, "preferred_ai_provider", "openai"), complexity
+            )
         else:
             priority = [("openai", MODEL_TIERS[complexity]["openai"])]
 
@@ -590,8 +714,12 @@ class ModelRouter:
                     input_tokens = resp.prompt_tokens or self._estimate_tokens(
                         prepared.prompt + (prepared.system_prompt or "")
                     )
-                    output_tokens = resp.completion_tokens or self._estimate_tokens(resp.content)
-                    cost = self._estimate_cost(resp.model_used, input_tokens, output_tokens, cached_tokens)
+                    output_tokens = resp.completion_tokens or self._estimate_tokens(
+                        resp.content
+                    )
+                    cost = self._estimate_cost(
+                        resp.model_used, input_tokens, output_tokens, cached_tokens
+                    )
                     final = ModelResponse(
                         provider=resp.provider_used,
                         model=resp.model_used,
@@ -634,8 +762,14 @@ class ModelRouter:
                         trained_model_version=prepared.trained_model_version,
                         used_fallback=prepared.used_fallback,
                     )
-                    if prepared.autonomous_run and prepared.operator_id and prepared.org_id:
-                        await self._record_autonomous_llm(prepared.org_id, prepared.operator_id, final)
+                    if (
+                        prepared.autonomous_run
+                        and prepared.operator_id
+                        and prepared.org_id
+                    ):
+                        await self._record_autonomous_llm(
+                            prepared.org_id, prepared.operator_id, final
+                        )
                     await self._log_guardrail_event(
                         prepared.org_id,
                         prepared.task_type,
@@ -647,15 +781,23 @@ class ModelRouter:
                     yield ModelStreamEvent(response=final)
                     return
         except ProviderInvalidResponseError as exc:
-            self._log_call_failure(prepared.task_type, prepared.model, "varied", start, exc)
+            self._log_call_failure(
+                prepared.task_type, prepared.model, "varied", start, exc
+            )
             await self._log_guardrail_event(
                 prepared.org_id, prepared.task_type, "ai_failover_invalid", [], str(exc)
             )
             raise
         except AllProvidersFailedError as exc:
-            self._log_call_failure(prepared.task_type, prepared.model, "varied", start, exc)
+            self._log_call_failure(
+                prepared.task_type, prepared.model, "varied", start, exc
+            )
             await self._log_guardrail_event(
-                prepared.org_id, prepared.task_type, "ai_failover_exhausted", [], str(exc)
+                prepared.org_id,
+                prepared.task_type,
+                "ai_failover_exhausted",
+                [],
+                str(exc),
             )
             raise
 
@@ -698,6 +840,7 @@ class ModelRouter:
         max_tokens: int | None,
         model: str,
         context: list[dict] | None,
+        org_id: str | None,
     ) -> str:
         payload = json.dumps(
             {
@@ -708,6 +851,7 @@ class ModelRouter:
                 "max_tokens": max_tokens,
                 "model": model,
                 "context": context or [],
+                "org_id": org_id,
             },
             sort_keys=True,
             default=str,
@@ -726,11 +870,15 @@ class ModelRouter:
             start = normalized.find("{")
             end = normalized.rfind("}")
             if start == -1 or end == -1 or end <= start:
-                raise ValueError("Model did not return valid JSON for structured output")
+                raise ValueError(
+                    "Model did not return valid JSON for structured output"
+                )
             try:
                 payload = json.loads(normalized[start : end + 1])
             except json.JSONDecodeError as exc:
-                raise ValueError("Model did not return valid JSON for structured output") from exc
+                raise ValueError(
+                    "Model did not return valid JSON for structured output"
+                ) from exc
         return schema.model_validate(payload).model_dump()
 
     def _estimate_tokens(self, text: str) -> int:
@@ -738,7 +886,9 @@ class ModelRouter:
             return 0
         return max(1, len(text) // 4)
 
-    async def _record_autonomous_llm(self, org_id: str, operator_id: str, response: ModelResponse) -> None:
+    async def _record_autonomous_llm(
+        self, org_id: str, operator_id: str, response: ModelResponse
+    ) -> None:
         try:
             from app.services.autonomous_budget_service import (
                 is_autonomous_operator,
@@ -779,14 +929,41 @@ class ModelRouter:
         input_tokens: int,
         output_tokens: int,
         cached_tokens: int = 0,
+        cache_write_tokens: int = 0,
     ) -> float:
-        in_cost, cached_cost, out_cost = _MODEL_PRICING_PER_1K.get(model, (0.002, 0.002, 0.008))
+        in_cost, cached_cost, out_cost = _MODEL_PRICING_PER_1K.get(
+            model, (0.002, 0.002, 0.008)
+        )
+        from app.services.llm_catalog import get_llm_model
+
+        entry = get_llm_model(model)
+        write_cost = in_cost
+        if entry is not None:
+            if entry.cache_write_per_1m is not None:
+                write_cost = entry.cache_write_per_1m / 1000
+            if (
+                entry.input_price_threshold is not None
+                and input_tokens > entry.input_price_threshold
+            ):
+                in_cost = (entry.long_input_per_1m or entry.input_per_1m or 0) / 1000
+                out_cost = (entry.long_output_per_1m or entry.output_per_1m or 0) / 1000
+                cached_cost = (
+                    entry.long_cached_input_per_1m or entry.cached_input_per_1m or 0
+                ) / 1000
+                write_cost = (
+                    entry.long_cache_write_per_1m
+                    or entry.cache_write_per_1m
+                    or entry.long_input_per_1m
+                    or 0
+                ) / 1000
         # cached_tokens is a subset of input_tokens; bill it at the cache rate.
         cached = max(0, min(cached_tokens, input_tokens))
-        uncached_input = input_tokens - cached
+        writes = max(0, min(cache_write_tokens, input_tokens - cached))
+        uncached_input = input_tokens - cached - writes
         return round(
             (uncached_input / 1000 * in_cost)
             + (cached / 1000 * cached_cost)
+            + (writes / 1000 * write_cost)
             + (output_tokens / 1000 * out_cost),
             6,
         )
@@ -801,6 +978,7 @@ class ModelRouter:
         trained_model_id: str | None = None,
         trained_model_version: int | None = None,
         used_fallback: bool = False,
+        billable: bool = True,
     ) -> str | None:
         """Write the model_calls row and return its id (billing idempotency anchor)."""
         if not org_id:
@@ -824,9 +1002,45 @@ class ModelRouter:
             }
             # Blocking Supabase insert after every model call, including the
             # classification calls in front of a spoken reply: off the event loop.
-            resp = await asyncio.to_thread(lambda: client.table("model_calls").insert(row).execute())
+            from app.services.cost_attribution import insert_model_call
+
+            resp = await asyncio.to_thread(
+                insert_model_call, client, row, billable=billable
+            )
             if resp.data:
-                return str(resp.data[0].get("id"))
+                model_call_id = str(resp.data[0].get("id") or "")
+                if model_call_id and billable:
+                    from app.services.cost_attribution import (
+                        MeasuredModelCall,
+                        record_measured_model_call,
+                    )
+
+                    raw_created_at = resp.data[0].get("created_at")
+                    try:
+                        created_at = (
+                            datetime.fromisoformat(
+                                raw_created_at.replace("Z", "+00:00")
+                            )
+                            if isinstance(raw_created_at, str)
+                            else datetime.now(timezone.utc)
+                        )
+                    except ValueError:
+                        created_at = datetime.now(timezone.utc)
+                    record_measured_model_call(
+                        MeasuredModelCall(
+                            id=model_call_id,
+                            org_id=org_id,
+                            provider=response.provider,
+                            model=response.model,
+                            input_tokens=response.input_tokens,
+                            output_tokens=response.output_tokens,
+                            latency_ms=response.latency_ms,
+                            cost_usd=response.cost_usd,
+                            created_at=created_at,
+                        )
+                    )
+                if model_call_id:
+                    return model_call_id
             return None
         except Exception as exc:  # noqa: BLE001
             logger.warning("model_calls insert failed: %s", str(exc))
@@ -842,7 +1056,9 @@ class ModelRouter:
         latency_ms: int | None = None,
     ) -> None:
         """Log a failover attempt to guardrail_events (best-effort) + structured log."""
-        final_provider = next((name for name, outcome in attempts if outcome == "success"), None)
+        final_provider = next(
+            (name for name, outcome in attempts if outcome == "success"), None
+        )
         logger.warning(
             "AI_FAILOVER event=%s task_type=%s attempts=%s final=%s latency_ms=%s summary=%s",
             event_type,
@@ -868,7 +1084,9 @@ class ModelRouter:
                     "summary": summary,
                 },
             }
-            await asyncio.to_thread(lambda: client.table("guardrail_events").insert(row).execute())
+            await asyncio.to_thread(
+                lambda: client.table("guardrail_events").insert(row).execute()
+            )
         except Exception as exc:  # noqa: BLE001
             logger.warning("guardrail_events insert failed: %s", str(exc))
 
@@ -896,7 +1114,9 @@ class ModelRouter:
         "anthropic": MODEL_TIERS["vision"]["anthropic"],
     }
 
-    def route_for_sensitivity(self, sensitivity: str, task_complexity: str = "medium") -> str:
+    def route_for_sensitivity(
+        self, sensitivity: str, task_complexity: str = "medium"
+    ) -> str:
         """Pick model tier with sensitivity-aware provider preference."""
         level = (sensitivity or "medium").strip().lower()
         rule = self.SENSITIVITY_ROUTING.get(level, "standard_tier")
@@ -929,7 +1149,10 @@ class ModelRouter:
         if has_image:
             return self.VISION_MODELS.get("openai") or MODEL_TIERS["vision"]["openai"]
         if has_audio:
-            audio_model = getattr(self.settings, "audio_transcription_model", None) or "gpt-4o-mini-transcribe"
+            audio_model = (
+                getattr(self.settings, "audio_transcription_model", None)
+                or "gpt-4o-mini-transcribe"
+            )
             return str(audio_model)
         return self._get_model_for_complexity("medium")
 
@@ -1006,7 +1229,9 @@ def _apply_confidence_routing_mixin() -> None:
         org_id: str,
         evaluation_service: Any,
     ) -> dict[str, Any]:
-        best = await evaluation_service.recommend_best_model_for_task(org_id, task_type, department)
+        best = await evaluation_service.recommend_best_model_for_task(
+            org_id, task_type, department
+        )
         if best.get("status") == "insufficient_data":
             model = self._get_model_for_complexity("medium")
             return {"model": model, "source": "default_routing", "task_type": task_type}
@@ -1027,8 +1252,14 @@ def _apply_confidence_routing_mixin() -> None:
         from app.services.model_selector import get_model_selector
 
         selector = get_model_selector(self.settings)
-        base = await selector.select(org_id, {"intent": task_type, "department": department})
-        model_name = str(base.get("ml_model_name") or base.get("model") or self._get_model_for_complexity("medium"))
+        base = await selector.select(
+            org_id, {"intent": task_type, "department": department}
+        )
+        model_name = str(
+            base.get("ml_model_name")
+            or base.get("model")
+            or self._get_model_for_complexity("medium")
+        )
         score_result = await outcome_service.get_model_outcome_score(org_id, model_name)
         if score_result.get("status") == "insufficient_data":
             return {**base, "routing_source": "default", "outcome_score": None}
@@ -1055,22 +1286,34 @@ def _apply_confidence_routing_mixin() -> None:
                 "attempts": attempts,
                 "max_attempts": max_attempts,
             }
-        routed = await route_with_confidence(self, task_type, confidence, context_available=attempts > 0)
+        routed = await route_with_confidence(
+            self, task_type, confidence, context_available=attempts > 0
+        )
         if routed.get("escalate_to_human") and attempts + 1 < max_attempts:
             return await route_with_multistep_fallback(
-                self, task_type, confidence + 0.1, attempts=attempts + 1, max_attempts=max_attempts
+                self,
+                task_type,
+                confidence + 0.1,
+                attempts=attempts + 1,
+                max_attempts=max_attempts,
             )
         routed["attempts"] = attempts
         routed["max_attempts"] = max_attempts
         return routed
 
-    def should_retrieve_more_context(self: ModelRouter, confidence: float, context_size: int) -> bool:
+    def should_retrieve_more_context(
+        self: ModelRouter, confidence: float, context_size: int
+    ) -> bool:
         return confidence < 0.65 and context_size < 8
 
-    def should_escalate_to_human(self: ModelRouter, confidence: float, risk_level: str) -> bool:
+    def should_escalate_to_human(
+        self: ModelRouter, confidence: float, risk_level: str
+    ) -> bool:
         return confidence < 0.40 or str(risk_level or "").lower() == "high"
 
-    def should_trigger_agent_debate(self: ModelRouter, confidence: float, task_complexity: str) -> bool:
+    def should_trigger_agent_debate(
+        self: ModelRouter, confidence: float, task_complexity: str
+    ) -> bool:
         return confidence < 0.55 and task_complexity in ("high", "critical")
 
     def explain_routing_decision(
@@ -1090,7 +1333,9 @@ def _apply_confidence_routing_mixin() -> None:
         if historical is not None:
             parts.append(f"Historical performance score: {historical:.2f}.")
         if routing_inputs.get("escalate_to_human"):
-            parts.append("Escalated to human review due to low confidence or high risk.")
+            parts.append(
+                "Escalated to human review due to low confidence or high risk."
+            )
         return " ".join(parts)
 
     ModelRouter.route_with_confidence = route_with_confidence  # type: ignore[attr-defined]

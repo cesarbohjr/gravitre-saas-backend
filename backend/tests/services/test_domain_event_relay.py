@@ -39,6 +39,8 @@ class _FakeClient:
             return self.complete_ok
         if name == "fail_domain_event":
             return self.fail_status
+        if name == "release_domain_event":
+            return True
         if name == "domain_event_outbox_stats":
             return {"pending": 0}
         if name == "prune_domain_events":
@@ -81,11 +83,37 @@ def _reset():
     de.reset_domain_event_handlers_for_tests()
 
 
-def test_claims_with_worker_lease_and_batch():
+def test_claims_with_worker_lease_batch_and_handled_types():
+    de.register_domain_event_handler(de.EVENT_SOURCE_DISCONNECTED, "purge", lambda c, e: None)
+    de.register_domain_event_handler(de.EVENT_EXECUTION_OUTCOME_FINALIZED, "learn", lambda c, e: None)
     client = _FakeClient([])
     relay = de.DomainEventRelay(client, worker_id="w1", batch_size=20, lease_seconds=90)
     relay.run_once()
-    assert client.calls[0] == ("claim_domain_events", {"p_worker": "w1", "p_limit": 20, "p_lease_seconds": 90})
+    assert client.calls[0] == (
+        "claim_domain_events",
+        {
+            "p_worker": "w1",
+            "p_limit": 20,
+            "p_lease_seconds": 90,
+            "p_event_types": [de.EVENT_EXECUTION_OUTCOME_FINALIZED, de.EVENT_SOURCE_DISCONNECTED],
+        },
+    )
+
+
+def test_no_registered_handlers_claims_nothing():
+    """With every handler off, the relay does not touch the outbox at all."""
+    client = _FakeClient([_event()])
+    result = de.DomainEventRelay(client, worker_id="w1").run_once()
+    assert client.calls == []
+    assert result.claimed == 0 and result.delivered == 0
+
+
+def test_unhandled_type_is_claimed_only_by_handled_list():
+    """outcome_finalized is not requested while only the purge handler is on."""
+    de.register_domain_event_handler(de.EVENT_SOURCE_DISCONNECTED, "purge", lambda c, e: None)
+    client = _FakeClient([])
+    de.DomainEventRelay(client, worker_id="w1").run_once()
+    assert client.calls[0][1]["p_event_types"] == [de.EVENT_SOURCE_DISCONNECTED]
 
 
 def test_runs_handlers_then_completes_with_their_names():
@@ -101,11 +129,17 @@ def test_runs_handlers_then_completes_with_their_names():
     ]
 
 
-def test_event_without_handlers_is_completed():
-    client = _FakeClient([_event(event_type="source.disconnected")])
+def test_event_without_handlers_is_released_never_completed():
+    """Used to be marked delivered with no handler run; now it goes back to pending."""
+    de.register_domain_event_handler(de.EVENT_SOURCE_DISCONNECTED, "purge", lambda c, e: None)
+    # An older claim function (or a handler unregistered mid-tick) hands us a type
+    # nothing handles.
+    client = _FakeClient([_event(event_type=de.EVENT_EXECUTION_OUTCOME_FINALIZED)])
     result = de.DomainEventRelay(client, worker_id="w1").run_once()
-    assert result.delivered == 1
-    assert client.settled("complete_domain_event")[0]["p_delivered_handlers"] == []
+    assert result.delivered == 0 and result.released == 1
+    assert client.settled("complete_domain_event") == []
+    assert client.settled("fail_domain_event") == []
+    assert client.settled("release_domain_event") == [{"p_id": 7, "p_worker": "w1"}]
 
 
 def test_failing_handler_retries_with_backoff_and_keeps_successes():
@@ -143,12 +177,14 @@ def test_dead_letter_is_counted():
 
 
 def test_lost_lease_is_reported_not_counted_delivered():
+    de.register_domain_event_handler(de.EVENT_EXECUTION_OUTCOME_FINALIZED, "ok", lambda c, e: None)
     client = _FakeClient([_event()], complete_ok=False)
     result = de.DomainEventRelay(client, worker_id="w1").run_once()
     assert result.delivered == 0 and result.lease_lost == 1
 
 
 def test_settle_error_leaves_event_for_lease_expiry():
+    de.register_domain_event_handler(de.EVENT_EXECUTION_OUTCOME_FINALIZED, "ok", lambda c, e: None)
     client = _FakeClient([_event()])
 
     def broken_rpc(name, params):

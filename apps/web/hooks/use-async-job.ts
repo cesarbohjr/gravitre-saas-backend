@@ -67,6 +67,10 @@ export interface SubmitAgentJobOptions {
   sessionId?: string
   agentId?: string
   context?: Record<string, unknown>
+  /** Goal this job counts toward (org-checked server-side; needs goal links on). */
+  goalId?: string
+  /** Work object this job serves (org-checked server-side; needs goal links on). */
+  workObjectId?: string
 }
 
 const POLL_INTERVAL_BASE = 1500 // 1.5 seconds
@@ -191,6 +195,8 @@ export function useAsyncJob(options: UseAsyncJobOptions = {}) {
     let sessionId: string | undefined
     let agentId: string | undefined
     let context: Record<string, unknown> | undefined
+    let goalId: string | undefined
+    let workObjectId: string | undefined
     if (typeof options === "string") {
       sessionId = options
       context = legacyContext as Record<string, unknown> | undefined
@@ -198,6 +204,8 @@ export function useAsyncJob(options: UseAsyncJobOptions = {}) {
       sessionId = options.sessionId
       agentId = options.agentId
       context = options.context
+      goalId = options.goalId || undefined
+      workObjectId = options.workObjectId || undefined
     }
 
     try {
@@ -209,6 +217,8 @@ export function useAsyncJob(options: UseAsyncJobOptions = {}) {
           session_id: sessionId,
           agent_id: agentId,
           context,
+          ...(goalId ? { goal_id: goalId } : {}),
+          ...(workObjectId ? { work_object_id: workObjectId } : {}),
         }),
       })
 

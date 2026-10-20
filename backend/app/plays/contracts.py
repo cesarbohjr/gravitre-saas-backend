@@ -54,6 +54,9 @@ class PlayDefinition:
     write_action_groups: tuple[tuple[str, ...], ...] = ()
     outcome_metrics: tuple[str, ...] = ()
     verification_requirements: tuple[VerificationRequirement, ...] = ()
+    # Department of the Outcome Pack that declares this Play ("" for the
+    # cross-department platform Plays in ``app.plays.catalog``).
+    department: str = ""
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)

@@ -1,14 +1,21 @@
 import {
+  Armchair,
   Bell,
-  Boxes,
-  Brain,
+  Blocks,
+  Briefcase,
+  Building,
   Building2,
   CreditCard,
-  FileText,
-  Handshake,
-  Key,
+  Hand,
+  HandCoins,
+  KeyRound,
+  Link2,
+  ListChecks,
   Lock,
-  Shield,
+  Palette,
+  PlugZap,
+  Server,
+  ShieldCheck,
   Sparkles,
   UserRound,
   Users,
@@ -18,14 +25,15 @@ import {
 
 export type SettingsTier = "personal" | "organization" | "admin"
 
-/** Left-nav groups from the v5 Settings design, plus "account" for personal pages. */
-export type SettingsGroup = "workspace" | "people" | "admin" | "account"
+/** Left-nav groups from the Settings Pages Redesign: Account, Workspace, People and plan, Advanced, Governance. */
+export type SettingsGroup = "account" | "workspace" | "people" | "advanced" | "governance"
 
 export const SETTINGS_GROUPS: { id: SettingsGroup; label: string; locked?: boolean }[] = [
+  { id: "account", label: "Account" },
   { id: "workspace", label: "Workspace" },
   { id: "people", label: "People and plan" },
-  { id: "admin", label: "Admin", locked: true },
-  { id: "account", label: "Your account" },
+  { id: "advanced", label: "Advanced" },
+  { id: "governance", label: "Governance" },
 ]
 
 export type SettingsSectionId =
@@ -48,6 +56,9 @@ export type SettingsSectionId =
   | "enterprise"
   | "federation"
   | "environments"
+  | "clients"
+  | "branding"
+  | "mcp-servers"
 
 export interface SettingsSection {
   id: SettingsSectionId
@@ -80,7 +91,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "profile",
     title: "Profile",
-    description: "Your name, avatar, and account preferences",
+    description: "Your name, photo, preferences and active sessions",
     group: "account",
     icon: UserRound,
     tier: "personal",
@@ -89,9 +100,9 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "organizations",
     title: "Organizations",
-    description: "Switch or manage workspace membership",
-    group: "account",
-    icon: Building2,
+    description: "Each organization has its own agents, workflows and billing. Pick one to see its details or switch to it.",
+    group: "workspace",
+    icon: Building,
     tier: "personal",
     href: "/settings/organizations",
   },
@@ -105,36 +116,46 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     href: "/settings?section=organization",
   },
   {
+    id: "branding",
+    title: "Branding",
+    description: "Your logo, accent color, sender name and custom domain, shown to everyone in this workspace.",
+    group: "workspace",
+    icon: Palette,
+    tier: "admin",
+    href: "/settings?section=branding",
+    adminOnly: true,
+  },
+  {
     id: "ai-models",
     title: "AI models",
-    description: "Configure default models, AI behavior, and Memory entity matching",
+    description: "How Gravitre picks models for your agents, how chat memory matches the people and channels you mention, and which customer data it may use.",
     group: "workspace",
-    icon: Brain,
+    icon: Sparkles,
     tier: "organization",
     href: "/settings?section=ai-models",
   },
   {
     id: "security",
     title: "Security",
-    description: "Authentication, SSO, and access controls",
+    description: "Sign in, single sign on, access controls, where your data is stored and SIEM export.",
     group: "workspace",
-    icon: Shield,
+    icon: Lock,
     tier: "organization",
     href: "/settings?section=security",
   },
   {
     id: "api-keys",
     title: "API keys",
-    description: "Manage API keys for integrations",
+    description: "Keys let your own systems call Gravitre. Each key only sees what its scope allows.",
     group: "workspace",
-    icon: Key,
+    icon: KeyRound,
     tier: "organization",
     href: "/settings?section=api-keys",
   },
   {
     id: "notifications",
     title: "Notifications",
-    description: "Choose where each kind of update reaches you.",
+    description: "Choose where each kind of update reaches you. Urgent things default to more places, digests to fewer.",
     group: "workspace",
     icon: Bell,
     tier: "organization",
@@ -143,7 +164,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "team",
     title: "Team members",
-    description: "Invite and manage team access",
+    description: "Invite people, set their role and see who has access.",
     group: "people",
     icon: Users,
     tier: "organization",
@@ -152,9 +173,9 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "lite-seats",
     title: "Lite seats",
-    description: "Allocate Gravitre Lite seats by department",
+    description: "Give approvers and occasional users a Lite seat by department. Lite users can run assigned workflows and approve work, but building still needs a full seat.",
     group: "people",
-    icon: Users,
+    icon: Armchair,
     tier: "organization",
     href: "/settings?section=lite-seats",
   },
@@ -163,18 +184,28 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     title: "Meson add-ons",
     description: "Enable premium AI addon capabilities",
     group: "people",
-    icon: Sparkles,
+    icon: Blocks,
     tier: "organization",
     href: "/settings?section=meson-addons",
   },
   {
     id: "billing",
     title: "Billing and plan",
-    description: "Subscription, usage, top-ups, and invoices",
+    description: "Your plan, usage this period, invoices and payment method.",
     group: "people",
     icon: CreditCard,
     tier: "organization",
     href: "/settings/billing",
+  },
+  {
+    id: "clients",
+    title: "Clients",
+    description:
+      "For MSPs reselling Gravitre. You pay Gravitre the wholesale price for each client workspace and bill them your own price. The difference is your margin.",
+    group: "people",
+    icon: HandCoins,
+    tier: "organization",
+    href: "/settings/clients",
   },
   {
     id: "webhooks",
@@ -188,9 +219,9 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "permissions",
     title: "Role permissions",
-    description: "What each workspace role can access",
-    group: "admin",
-    icon: Shield,
+    description: "What each workspace role can do. Roles come from your organization\'s role definitions.",
+    group: "people",
+    icon: ShieldCheck,
     tier: "admin",
     href: "/settings/team/permissions",
     adminOnly: true,
@@ -199,8 +230,8 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     id: "approvals",
     title: "Human in the loop",
     description: "Decide which agent actions wait for a person, and how fast someone must answer.",
-    group: "admin",
-    icon: Lock,
+    group: "governance",
+    icon: Hand,
     tier: "admin",
     href: "/settings/approvals",
     adminOnly: true,
@@ -208,29 +239,39 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "enterprise",
     title: "Enterprise",
-    description: "CS workspace, residency, white-label, and SIEM",
-    group: "admin",
-    icon: Building2,
+    description: "Reports for admins: integration health, agent work by team, cost and agent ROI.",
+    group: "advanced",
+    icon: Briefcase,
     tier: "admin",
     href: "/settings/enterprise",
     adminOnly: true,
   },
   {
     id: "federation",
-    title: "Federation",
-    description: "Cross-org grants and handoffs",
-    group: "admin",
-    icon: Handshake,
+    title: "Federation and B2B",
+    description: "Work with another company as an equal partner. Both sides must consent before any agent handoff, connector grant or delegated task crosses org boundaries. Billing is not shared.",
+    group: "advanced",
+    icon: Link2,
     tier: "admin",
     href: "/settings/federation",
     adminOnly: true,
   },
   {
+    id: "mcp-servers",
+    title: "MCP servers",
+    description: "Connect outside MCP servers so your agents can use their tools.",
+    group: "advanced",
+    icon: PlugZap,
+    tier: "admin",
+    href: "/marketplace/capabilities?filter=mcp#mcp-servers",
+    adminOnly: true,
+  },
+  {
     id: "environments",
     title: "Environments",
-    description: "Prod and staging environment controls",
-    group: "admin",
-    icon: Boxes,
+    description: "Where your agents and workflows run, and how changes move from testing to production.",
+    group: "governance",
+    icon: Server,
     tier: "admin",
     href: "/environments",
     adminOnly: true,
@@ -238,9 +279,9 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "audit",
     title: "Audit trail",
-    description: "Review security and compliance events",
-    group: "admin",
-    icon: FileText,
+    description: "Who did what, when, and how it turned out.",
+    group: "governance",
+    icon: ListChecks,
     tier: "admin",
     href: "/audit",
     adminOnly: true,
@@ -273,6 +314,8 @@ export const WIDE_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   "lite-seats",
   "meson-addons",
   "ai-models",
+  "clients",
+  "branding",
 ])
 
 export function settingsHrefForSection(section: SettingsSectionId): string {
@@ -292,14 +335,28 @@ export function settingsSectionsForTier(
 }
 
 
-/** Workspace group in the design's order: General, Security, API keys, Notifications, Webhooks. */
+/** Order inside each group, following the redesign's sidebar. */
 const GROUP_ORDER: Partial<Record<SettingsSectionId, number>> = {
-  organization: 0,
-  security: 1,
-  "api-keys": 2,
-  notifications: 3,
-  webhooks: 4,
-  "ai-models": 5,
+  organizations: 0,
+  organization: 1,
+  branding: 1.5,
+  security: 2,
+  "api-keys": 3,
+  notifications: 4,
+  webhooks: 5,
+  "ai-models": 6,
+  team: 0,
+  permissions: 1,
+  "lite-seats": 2,
+  "meson-addons": 3,
+  billing: 4,
+  clients: 5,
+  federation: 0,
+  enterprise: 1,
+  "mcp-servers": 2,
+  audit: 0,
+  environments: 1,
+  approvals: 2,
 }
 
 export function settingsSectionsForGroup(group: SettingsGroup, isAdmin: boolean): SettingsSection[] {

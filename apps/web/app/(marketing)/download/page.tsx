@@ -9,6 +9,7 @@ import {
 
 export const metadata: Metadata = {
   title: "Download Gravitre Desktop",
+  alternates: { canonical: "https://gravitre.app/download" },
   description:
     "Download Gravitre for Windows, macOS, and Linux — global-shortcut companion for chat, activity, and approvals.",
 }

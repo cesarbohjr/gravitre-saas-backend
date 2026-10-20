@@ -26,6 +26,9 @@ class _Query:
     def eq(self, *_a, **_k):
         return self
 
+    def filter(self, *_a, **_k):
+        return self
+
     def limit(self, *_a, **_k):
         return self
 
@@ -68,3 +71,28 @@ async def test_merge_reads_and_writes_off_the_loop_on_one_thread(mock_settings):
     assert db.state["clarified_params"] == {"a": 1, "b": 2}
     await svc.get_task_state("c1", "o1", client=db)
     assert db.threads[-1][1] is not loop_thread
+
+
+@pytest.mark.asyncio
+async def test_revision_conflict_reloads_and_preserves_other_replica_patch(mock_settings):
+    class RacingQuery(_Query):
+        def update(self, payload):
+            return RacingQuery(self.db, "update", payload)
+
+        def execute(self):
+            if self.op == "update" and not self.db.conflicted:
+                self.db.conflicted = True
+                self.db.state = {**self.db.state, "task_revision": 7, "other_replica": "preserved"}
+                return SimpleNamespace(data=[])
+            return super().execute()
+
+    class RacingDb(_Db):
+        conflicted = False
+        def table(self, _name):
+            return RacingQuery(self, "select")
+
+    db = RacingDb()
+    await ConversationStateService(mock_settings).update_task_state("c1", "o1", {"clarified_params": {"b": 2}}, client=db)
+    assert db.state["other_replica"] == "preserved"
+    assert db.state["task_revision"] == 8
+    assert db.state["clarified_params"] == {"a": 1, "b": 2}

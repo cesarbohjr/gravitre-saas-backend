@@ -216,6 +216,16 @@ async def _resolve_org_context_live(
     if requested_org_id:
         if requested_org_id in member_org_ids or platform_admin:
             return requested_org_id
+        if bool(getattr(settings, "msp_parent_org_enabled", False)):
+            from app.services.msp_org_context import msp_parent_grants_access
+
+            if msp_parent_grants_access(
+                client,
+                user_id=user_id,
+                requested_org_id=requested_org_id,
+                member_org_ids=member_org_ids,
+            ):
+                return requested_org_id
         # Fail loud — never silently substitute the caller's default org.
         # Shared path: every require_org_member / get_org_context caller benefits.
         logger.warning(

@@ -91,6 +91,7 @@ async def build_churn_advisory_cards(
     settings: Settings | None = None,
     client: Any | None = None,
     limit: int = 25,
+    log_predictions: bool = True,
 ) -> dict[str, Any]:
     """Score customers whose churn outcome is still unknown; suggest-only cards.
 
@@ -140,9 +141,31 @@ async def build_churn_advisory_cards(
     except Exception as exc:  # noqa: BLE001
         logger.debug("churn_advisory_load_model_skipped org_id=%s err=%s", org_id, exc)
 
+    entity_model = trained and getattr(scorer, "has_optional_features", lambda: False)() is True
+    entity_flag_on = getattr(active, "churn_entity_features_enabled", False) is True
+    if entity_model and not entity_flag_on:
+        # A model trained with entity features would score every account on
+        # imputed values with the flag off: don't use it at all.
+        logger.info("churn_advisory_entity_model_needs_flag org_id=%s", org_id)
+        scorer, trained = ChurnRiskScorer(), False
+
+    batch = rows[: max(1, int(limit))]
+    entity_features: list[dict[str, Any]] = [{} for _ in batch]
+    if trained and entity_model and entity_flag_on:
+        # The deployed model was trained with entity features: give it the same
+        # aggregates, as of now (missing stays missing).
+        from datetime import UTC, datetime
+
+        from app.ml.churn_entity_features import load_entity_features
+
+        now = datetime.now(UTC)
+        entity_features, _coverage = load_entity_features(
+            db, org_id, [(str(row.get("customer_id")), now) for row in batch]
+        )
+
     cards: list[dict[str, Any]] = []
-    for row in rows[: max(1, int(limit))]:
-        features = row.get("features") or {}
+    for row, extra in zip(batch, entity_features, strict=True):
+        features = {**(row.get("features") or {}), **extra}
         prediction = await scorer.predict_structured(customer_features=features)
         if prediction.get("status") in {"not_trained", "insufficient_data"} and not trained:
             # Still emit a review card so UI is not empty when gate is building.
@@ -168,7 +191,7 @@ async def build_churn_advisory_cards(
             )
             continue
         cards.append(_card(customer_id=str(row.get("customer_id")), prediction=prediction))
-        if trained:
+        if trained and log_predictions:
             _log_checkable_prediction(db, active, org_id, scorer, str(row.get("customer_id")), prediction)
 
     # Sort highest risk first when scores exist.

@@ -52,3 +52,56 @@ def test_an_enabled_feature_or_pilot_org_list_is_reported():
     _lines, problems, _pins = rsv.audit({"ENTITY_WRITER_ENABLED": "true", "RAG_WORKER_PILOT_ORG_IDS": "a,b"})
     assert any("ENTITY_WRITER_ENABLED" in p for p in problems)
     assert any("RAG_WORKER_PILOT_ORG_IDS" in p for p in problems)
+
+
+def test_owner_approved_value_is_reported_not_a_problem():
+    lines, problems, pins = rsv.audit({"RETRIEVED_CONTENT_GUARD_ENABLED": "true"})
+    assert problems == []
+    assert "RETRIEVED_CONTENT_GUARD_ENABLED=true" not in pins
+    assert "RETRIEVED_CONTENT_GUARD_ENABLED='true' (owner-approved)" in lines
+
+
+def test_approved_values_cover_only_safety_pins_and_never_add_pins():
+    assert set(rsv.APPROVED_VALUES) <= set(rsv.SAFETY_PINS)
+    _lines, _problems, pins = rsv.audit({})
+    assert "RETRIEVED_CONTENT_GUARD_ENABLED=false" in pins
+
+
+def test_guard_switched_back_off_is_still_clean():
+    _lines, problems, _pins = rsv.audit({"RETRIEVED_CONTENT_GUARD_ENABLED": "false"})
+    assert problems == []
+
+
+def test_kill_switch_is_reported_with_its_value_and_never_pinned():
+    lines, problems, pins = rsv.audit({})
+    assert "DISABLE_INGESTION: absent (ingestion runs)" in lines
+    assert not any(p.startswith("DISABLE_INGESTION") for p in pins)
+    lines, problems, _ = rsv.audit({"DISABLE_INGESTION": "true"})
+    assert any(line.startswith("DISABLE_INGESTION='true' ON") for line in lines)
+    assert problems == []
+    _lines, problems, _ = rsv.audit({"DISABLE_INGESTION": ""})
+    assert any("DISABLE_INGESTION" in p and "startup" in p for p in problems)
+    assert _default(rsv.KILL_SWITCH) is False
+
+
+def test_context_engine_settings_are_reported_never_problems_or_pins():
+    lines, problems, pins = rsv.audit({"CROSS_SOURCE_CONTEXT_ENGINE_ENABLED": "true"})
+    assert "CROSS_SOURCE_CONTEXT_ENGINE_ENABLED='true'" in lines
+    assert "CROSS_SOURCE_CONTEXT_TOKEN_BUDGET: absent (code default 12000)" in lines
+    assert not any("CROSS_SOURCE" in item for item in problems + pins)
+
+
+def test_owner_approved_context_flags_on_are_reported_not_problems():
+    env = {k: "true" for k in rsv.APPROVED_ON}
+    lines, problems, pins = rsv.audit(env)
+    assert problems == []
+    for key in rsv.APPROVED_ON:
+        assert f"{key}='true' (owner-approved)" in lines
+    # Customer-data flags stay a problem when on.
+    _, problems, _ = rsv.audit({"CONTEXT_ENGINE_OBSERVATIONS_V1": "true", "ENTITY_OBSERVATIONS_ENABLED": "true"})
+    assert len(problems) == 2
+
+
+def test_approved_on_flags_are_default_off_and_carry_no_customer_data():
+    assert rsv.APPROVED_ON <= set(rsv.DEFAULT_OFF)
+    assert not any("OBSERVATIONS" in k or "SIGNALS" in k or "ENTITY" in k for k in rsv.APPROVED_ON)
