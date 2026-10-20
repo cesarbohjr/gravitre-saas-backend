@@ -60,8 +60,8 @@ export const STATUS_LANGUAGE: Record<string, StatusLanguageEntry> = {
     tone: "learning",
   },
   trained: {
-    phrase: "Ready to use",
-    detail: "A trained version is available for your org.",
+    phrase: "Trained artifact available",
+    detail: "Artifact availability does not establish successful inference or improved outcomes.",
     tone: "ready",
   },
   ready: {
@@ -70,8 +70,8 @@ export const STATUS_LANGUAGE: Record<string, StatusLanguageEntry> = {
     tone: "ready",
   },
   deployed: {
-    phrase: "Actively predicting",
-    detail: "This model is live and serving real predictions.",
+    phrase: "Version deployed",
+    detail: "A deployed version is registered; inference health requires separate evidence.",
     tone: "ready",
   },
   evaluating: {

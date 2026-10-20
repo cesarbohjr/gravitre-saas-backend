@@ -37,7 +37,7 @@ function filterItems(items: BuiltInModelListItem[], filter: FilterKey, query: st
   const q = query.trim().toLowerCase()
   return items.filter((row) => {
     const tone = statusTone(row.status)
-    if (filter === "active" && !(tone === "ready" || tone === "learning")) return false
+    if (filter === "active" && tone !== "ready") return false
     if (
       filter === "needs_data" &&
       !((tone === "ready" || tone === "learning") && row.sufficiency.value != null && row.sufficiency.value < 100)
@@ -83,7 +83,7 @@ function DetailPanel({ row }: { row: BuiltInModelListItem }) {
               </div>
               <Progress value={row.sufficiency.value} className="h-1.5" />
               <p className="text-[11px] text-muted-foreground">
-                Gate, not ceiling — more verified examples past this still improve quality.
+                Reported counts are not proof of eligible labels or improved quality.
               </p>
             </div>
           ) : (
@@ -159,11 +159,10 @@ export function BuiltInModelsBrain({
         <p className={TYPE.eyebrow}>Catalog</p>
         <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">Built-in models</h2>
         <p className={cn(TYPE.meta, "mt-1")}>
-          Learners trained on org signals. Select a row — inspector stays closed until then.
+          Organization-specific model inventory. Inspect a model for readiness and evidence.
         </p>
         <p className={cn(TYPE.meta, "mt-2")}>
-          {health.trained + health.learning} active · {health.learning} learning · {health.collecting} need data ·{" "}
-          {health.planned} roadmap
+          {health.trained} artifacts loaded · {health.learning} rules fallback · {health.collecting} below reported threshold
         </p>
       </section>
 
@@ -181,11 +180,11 @@ export function BuiltInModelsBrain({
           {(
             [
               ["all", "All"],
-              ["active", "Active"],
+              ["active", "Artifacts loaded"],
               ["needs_data", "Need data"],
               ["roadmap", "Roadmap"],
             ] as const
-          ).map(([id, label]) => (
+          ).filter(([id]) => id !== "roadmap" || items.some((row) => ["planned", "off"].includes(statusTone(row.status)))).map(([id, label]) => (
             <button
               key={id}
               type="button"

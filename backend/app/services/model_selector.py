@@ -81,6 +81,15 @@ class ModelSelector:
                     ml_candidate = preferred
                 if await self._org_has_deployed_model(org_id, ml_candidate):
                     org_status = await get_org_model_status(org_id, ml_candidate, settings=self.settings)
+                    from app.ml.automatic_training import CONSENT_MANAGED_MODELS
+                    from app.ml.training_consent import training_is_approved
+                    permission = ml_candidate not in CONSENT_MANAGED_MODELS or await training_is_approved(org_id, ml_candidate, self.settings)
+                    if org_status.get("artifact_loaded") is not True or not permission:
+                        return await self._llm_selection_with_ledger(
+                            org_id, task_type, classification, segment_key,
+                            fallback_segment_key=fallback_segment_key,
+                            reason=f"{ml_candidate} artifact not loaded",
+                        )
                     selection = {
                         "primary_model": "ml_internal",
                         "ml_model_name": ml_candidate,

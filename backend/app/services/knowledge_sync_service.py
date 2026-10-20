@@ -413,6 +413,8 @@ def run_scheduled_knowledge_syncs(
         logger.warning("knowledge_sync_held reason=%s", held)
         return {"due_count": 0, "processed": 0, "outcomes": [], "held_reason": held}
 
+    from app.services.storage_meter import storage_quota_block_reason
+
     client = client or shared_service_client(settings, create_client)
     due = list_due_knowledge_connectors(client)
     outcomes: list[dict[str, Any]] = []
@@ -425,6 +427,11 @@ def run_scheduled_knowledge_syncs(
         if held:
             # Skipped before a sync job row is written, so nothing is queued or marked failed.
             outcomes.append({"connector_id": connector_id, "status": "held", "reason": held})
+            continue
+        quota = storage_quota_block_reason(client, settings, org_id)
+        if quota is not None:
+            # Plan storage limit reached (enforcement flag on): skipped the same way; stays due.
+            outcomes.append({"connector_id": connector_id, "status": "held", "reason": "storage_quota_exceeded"})
             continue
         env = str(connector.get("environment") or "production")
         job = create_knowledge_sync_job(
@@ -510,6 +517,10 @@ def trigger_connector_knowledge_sync(
 
     # Raises IngestionHeldError (503) only when EXISTING_INGESTION_REQUIRES_LIFECYCLE=true.
     ensure_existing_ingestion_allowed(settings, source_type)
+    from app.services.storage_meter import ensure_storage_quota
+
+    # 402 only with STORAGE_QUOTA_ENFORCEMENT_ENABLED=true and the org over its plan limit.
+    ensure_storage_quota(client, settings, org_id, action="knowledge_sync.trigger")
 
     job = create_knowledge_sync_job(
         client,

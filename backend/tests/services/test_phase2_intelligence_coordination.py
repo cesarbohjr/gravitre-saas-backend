@@ -131,3 +131,43 @@ async def test_adaptive_opt_in_and_sample_gate_are_preserved_per_org():
     assert insufficient["status"] == "insufficient_data"
     assert adaptive.load_segment_state.await_args.args[0] == "org-b"
     adaptive.ingest_response_outcome.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_updated_main_catalog_controls_survive_shared_seven_capability_router():
+    """PR #522's consent boundary must survive Phase 2 router integration."""
+    service = router()
+    with patch("app.ml.training_consent.training_is_approved", AsyncMock(return_value=False)) as consent, patch(
+        "app.ml.model_catalog.load_org_trained_catalog_model", AsyncMock(),
+    ) as load:
+        result = await service._run_enrichments("org-a", "scenario", {}, {
+            "catalog_model_inputs": {"world_model": {"inputs": [{"before": 1}]}},
+            "understanding": {"goal": "scenario"},
+        })
+    assert set(result["capabilities"]) == set(CAPABILITY_NAMES)
+    assert result["models"]["world_model"]["reason"] == "training_permission_inactive"
+    assert result["models"]["world_model"]["used_fallback"] is True
+    consent.assert_awaited_once_with("org-a", "world_model", service.settings)
+    load.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_advanced_artifact_status_retains_off_event_loop_data_read():
+    """The conflict resolution retains #522's advanced set and #520's I/O pool."""
+    from app.ml.model_catalog import _count_org_data_points, get_org_model_status
+
+    settings = SimpleNamespace()
+    registry = MagicMock()
+    registry.list_models = AsyncMock(return_value=[SimpleNamespace(name="catalog-world-model", deployed_version=2, id="model-a")])
+    registry.load_model_artifact = AsyncMock(return_value=b"validated-artifact")
+    instance = MagicMock()
+    with patch("app.ml.model_catalog.run_io", AsyncMock(return_value={"data_counts": {"outcomes": 500}})) as io, patch(
+        "app.ml.registry.get_model_registry", return_value=registry,
+    ), patch("app.ml.model_catalog.get_model_instance", return_value=instance):
+        status = await get_org_model_status("org-a", "world_model", settings=settings)
+    io.assert_awaited_once_with(_count_org_data_points, "org-a", "world_model", settings)
+    registry.list_models.assert_awaited_once_with(org_id="org-a")
+    instance.load.assert_called_once_with(b"validated-artifact")
+    assert status["artifact_loaded"] is True
+    assert status["deployed_version"] == 2
+    assert status["catalog_status"] == "planned"

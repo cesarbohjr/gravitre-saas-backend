@@ -18,27 +18,25 @@ export async function waitForManagedConnection(connectorId: string, attemptId: s
 
 export async function openManagedConnector(vendor: string, data: { name: string; connectorId?: string }): Promise<boolean> {
   const catalog = await connectorsApi.managedCatalog()
+  const provider = catalog.connectors.find((entry) => entry.vendor === vendor)
+  if (provider?.authMode && !["OAUTH1", "OAUTH2"].includes(provider.authMode)) {
+    throw new Error("Sign-in authorization is not available for this provider yet.")
+  }
   if (!managedProviderAvailable(catalog, vendor)) throw new Error("This provider needs administrator setup before accounts can connect.")
-  const { default: Nango } = await import("@nangohq/frontend")
-  const session = await connectorsApi.startManagedAuth(vendor, data)
-  return new Promise<boolean>((resolve, reject) => {
-    let settled = false
-    let confirming = false
-    const ui = new Nango().openConnectUI({
-      sessionToken: session.sessionToken,
-      onEvent: (event) => {
-        if (settled) return
-        if (event.type === "connect" && !confirming) {
-          confirming = true
-          void waitForManagedConnection(session.connectorId, session.attemptId).then(() => {
-            settled = true; ui.close(); resolve(true)
-          }).catch((error) => { settled = true; ui.close(); reject(error) })
-        } else if (event.type === "close" && !confirming) {
-          settled = true; ui.close(); resolve(false)
-        } else if (event.type === "error" && !confirming) {
-          settled = true; ui.close(); reject(new Error("Account authorization failed. Please try again."))
-        }
-      },
-    })
+  const [{ default: Nango }, { showManagedOAuthDialog }] = await Promise.all([
+    import("@nangohq/frontend"), import("./managed-oauth-dialog"),
+  ])
+  const fields = provider?.inputFields ?? []
+  const prepare = (connectionConfig: Record<string, string>) => connectorsApi.startManagedAuth(vendor, { ...data, connectionConfig })
+  const initialSession = fields.length ? undefined : await prepare({})
+  return showManagedOAuthDialog({
+    name: data.name, fields, initialSession, prepare,
+    authorize: (session) => {
+      // Invoked synchronously from the user's click, preserving browser popup permission.
+      const client = new Nango({ connectSessionToken: session.sessionToken })
+      const options = { params: session.connectionConfig ?? {}, detectClosedAuthWindow: true }
+      return (session.reconnect ? client.reconnect(session.integrationId, options) : client.auth(session.integrationId, options))
+        .then(() => waitForManagedConnection(session.connectorId, session.attemptId))
+    },
   })
 }

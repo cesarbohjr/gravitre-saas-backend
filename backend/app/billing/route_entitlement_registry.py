@@ -68,6 +68,8 @@ INLINE_GUARDED_PREFIXES: dict[str, tuple[TierRequired, str]] = {
     "/api/webhooks/triggers": ("control", "custom_webhooks"),
     "/scim/v2": ("command", "sso_saml"),
     "/api/auth/sso": ("command", "sso_saml"),
+    # Bring-your-own file storage: inline byo_storage feature check (GET reports availability).
+    "/api/settings/storage/byo": ("command", "byo_storage"),
 }
 
 # Workflow plan-feature routes (billing plan JSON features, not TIER_FEATURES).

@@ -13,6 +13,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import {
   DollarSign,
+  HardDrive,
   HeartPulse,
   LineChart,
   Users,
@@ -26,6 +27,8 @@ import { EnterpriseCommandCenter } from "@/components/settings/enterprise-comman
 import { EnterpriseWorkforce } from "@/components/settings/enterprise-workforce"
 import { EnterpriseCost } from "@/components/settings/enterprise-cost"
 import { EnterpriseRoi } from "@/components/settings/enterprise-roi"
+import { BYO_STORAGE_SWR_KEY, FileStorageTab } from "@/components/enterprise/file-storage-tab"
+import { storageApi, type ByoStorageStatus } from "@/lib/api"
 import "@/components/settings/enterprise-sections.css"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
@@ -41,6 +44,7 @@ const SECTIONS: { id: EnterpriseSectionId; label: string; description: string; i
   { id: "workforce", label: "Workforce", description: "Agent task counts by team", icon: Users },
   { id: "cost", label: "Cost attribution", description: "Spend by agent and department", icon: DollarSign },
   { id: "agent-roi", label: "Agent ROI", description: "Cost against estimated labor value", icon: LineChart },
+  { id: "file-storage", label: "File storage", description: "Keep uploaded files in your own bucket", icon: HardDrive },
 ]
 
 export default function EnterprisePage() {
@@ -56,7 +60,7 @@ function EnterprisePageContent() {
   const router = useRouter()
   const pathname = usePathname()
   // The URL is the source of truth for the section, so sections can be linked.
-  const active = resolveEnterpriseSection(searchParams.get("section"), searchParams.get("tab"))
+  const requested = resolveEnterpriseSection(searchParams.get("section"), searchParams.get("tab"))
   const movedHref = movedEnterpriseSectionHref(searchParams.get("section"), searchParams.get("tab"))
   useEffect(() => {
     if (movedHref) router.replace(movedHref)
@@ -67,6 +71,14 @@ function EnterprisePageContent() {
   const { isAdmin, showAdmin, pending } = useOrgAdmin()
   const canAct = isAdmin || isPlatformAdmin
   const canSee = showAdmin || isPlatformAdmin
+  // File storage shows only for entitled orgs with the feature switched on.
+  const { data: byoStatus } = useSWR<ByoStorageStatus>(
+    canSee ? BYO_STORAGE_SWR_KEY : null,
+    () => storageApi.getByo(),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  )
+  const sections = SECTIONS.filter((section) => section.id !== "file-storage" || Boolean(byoStatus?.available))
+  const active: EnterpriseSectionId = sections.some((section) => section.id === requested) ? requested : "command-center"
 
   const select = (id: EnterpriseSectionId) => {
     const params = new URLSearchParams(Array.from(searchParams.entries()))
@@ -91,7 +103,7 @@ function EnterprisePageContent() {
         ) : (
           <div className="ent-layout">
             <nav aria-label="Enterprise settings" className="ent-menu">
-              {SECTIONS.map((section) => {
+              {sections.map((section) => {
                 const Icon = section.icon
                 const on = section.id === active
                 return (
@@ -118,6 +130,7 @@ function EnterprisePageContent() {
               {active === "workforce" && <EnterpriseWorkforce />}
               {active === "cost" && <EnterpriseCost />}
               {active === "agent-roi" && <EnterpriseRoi isAdmin={canAct} />}
+              {active === "file-storage" && <FileStorageTab isAdmin={canAct} />}
             </div>
           </div>
         )}

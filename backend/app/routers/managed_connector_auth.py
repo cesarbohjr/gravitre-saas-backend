@@ -45,6 +45,7 @@ def _verify_nango_webhook_signature(raw_body: bytes, signature: str | None, sign
 class ManagedAuthSessionRequest(BaseModel):
     name: str = Field(..., min_length=1)
     connector_id: str | None = Field(default=None, alias="connectorId")
+    connection_config: dict[str, str] = Field(default_factory=dict, alias="connectionConfig")
 
     model_config = {"populate_by_name": True}
 
@@ -53,6 +54,9 @@ class ManagedAuthSessionResponse(BaseModel):
     connector_id: str = Field(alias="connectorId")
     session_token: str = Field(alias="sessionToken")
     attempt_id: str = Field(alias="attemptId")
+    integration_id: str = Field(alias="integrationId")
+    reconnect: bool = False
+    connection_config: dict[str, str] = Field(default_factory=dict, alias="connectionConfig")
     expires_at: str | None = Field(default=None, alias="expiresAt")
 
     model_config = {"populate_by_name": True}
@@ -114,7 +118,13 @@ def create_managed_auth_session(
         raise HTTPException(status_code=503, detail="Secure authorization setup could not be checked; retry shortly") from exc
     if not available:
         raise HTTPException(status_code=503, detail=error_detail(
-            "This provider needs administrator setup before accounts can connect", str(reason).upper()))
+            "Sign-in authorization is not available for this provider yet" if reason == "interactive_oauth_unavailable"
+            else "This provider needs administrator setup before accounts can connect", str(reason).upper()))
+    from app.connectors.managed_oauth_inputs import validate_oauth_inputs
+    try:
+        connection_config = validate_oauth_inputs(spec.vendor, body.connection_config)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     client = shared_service_client(settings, create_client)
     connector_id = body.connector_id
     reconnect = bool(connector_id)
@@ -245,6 +255,9 @@ def create_managed_auth_session(
         connector_id=str(connector_id),
         session_token=str(data["token"]),
         attempt_id=attempt_id,
+        integration_id=spec.integration_id,
+        reconnect=bool(connection_id),
+        connection_config=connection_config,
         expires_at=str(data.get("expires_at") or "") or None,
     )
 

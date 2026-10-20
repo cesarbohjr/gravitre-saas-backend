@@ -12,6 +12,7 @@ import { readNumber, readString } from "@/lib/intelligence/helpers"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import {
   getBuiltInModelGuide,
+  orgModelRuntimeStatus,
   statusTone,
   type BuiltInModelListItem,
 } from "@/lib/built-in-model-catalog"
@@ -76,12 +77,10 @@ export function useBuiltInModelItems() {
       .map((name) => {
         const entry = catalog[name] as Record<string, unknown>
         const statusRow = orgStatus[name]
-        const status = readString(
-          statusRow?.runtime_status,
-          readString(statusRow?.catalog_status, readString(entry.status, "PLANNED")),
-        )
+        const status = orgModelRuntimeStatus(statusRow)
         return {
           id: name,
+          manualTrainingSupported: data?.inventory?.[name]?.manual_training_supported === true,
           status,
           useCases: Array.isArray(entry.use_cases) ? (entry.use_cases as string[]) : [],
           sufficiency: dataSufficiencyProgress(name, status, readiness),
@@ -107,6 +106,7 @@ export function useBuiltInModelItems() {
 export function trainableBuiltInSuggestions(items: BuiltInModelListItem[]): BuiltInModelListItem[] {
   return items.filter(
     (item) =>
+      item.manualTrainingSupported === true &&
       statusTone(item.status) === "learning" &&
       item.sufficiency.required > 0 &&
       item.sufficiency.available >= item.sufficiency.required,
@@ -126,7 +126,7 @@ export function BuiltInModelsPanel() {
     let withSignal = 0
     for (const row of items) {
       const tone = statusTone(row.status)
-      if (tone === "ready" || tone === "learning") active += 1
+      if (tone === "ready") active += 1
       if (
         (tone === "ready" || tone === "learning") &&
         row.sufficiency.value != null &&
@@ -171,9 +171,9 @@ export function BuiltInModelsPanel() {
               aria-label="Built-in model counts"
             >
               <GravitreMetric
-                label="Active"
+                label="Artifacts loaded"
                 value={metrics.active}
-                hint="In use (artifact or heuristic)"
+                hint="Inference health is checked separately"
                 icon={<Pulse className="h-4 w-4" weight="duotone" aria-hidden />}
               />
               <GravitreMetric
@@ -184,9 +184,9 @@ export function BuiltInModelsPanel() {
                 icon={<Database className="h-4 w-4" weight="duotone" aria-hidden />}
               />
               <GravitreMetric
-                label="Roadmap"
-                value={metrics.roadmap}
-                hint="Planned or unavailable"
+                label="Not verified"
+                value={items.filter((row) => statusTone(row.status) === "unknown").length}
+                hint="No successful runtime check reported"
                 icon={<CircleDashed className="h-4 w-4" aria-hidden />}
               />
               <GravitreMetric

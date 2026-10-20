@@ -19,7 +19,7 @@ async def load_causal_enrichment_context(
     """
     _ = request
     analyzer = CausalImpactAnalyzer()
-    causal = await analyzer.predict_structured()
+    causal = await analyzer.predict_structured(org_id=org_id, settings=settings or get_settings())
     if causal.get("status") != "not_available":
         return causal
 

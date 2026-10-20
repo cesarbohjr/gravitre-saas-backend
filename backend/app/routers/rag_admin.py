@@ -13,6 +13,7 @@ from app.core.db import shared_service_client
 from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
 from app.config import Settings, get_settings
 from app.rag.storage import upload_raw_rag_file
+from app.services.storage_meter import ensure_storage_quota
 from app.rag.file_extract import (
     UnsupportedFileTypeError,
     extract_text_from_bytes,
@@ -217,6 +218,8 @@ def ingest_route(
     if settings.disable_ingestion:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Ingestion is disabled")
     client = shared_service_client(settings, create_client)
+    # 402 STORAGE_QUOTA_EXCEEDED only with STORAGE_QUOTA_ENFORCEMENT_ENABLED and the org over its plan limit.
+    ensure_storage_quota(client, settings, org_id, action="rag.ingest")
     source = get_source(client, org_id, str(body.source_id), environment_name=environment_name)
     if not source:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
@@ -294,6 +297,8 @@ async def ingest_file_route(
         extract_image_text_via_vision,
     )
 
+    # Refused before the file is read or anything is written (flag default off).
+    ensure_storage_quota(shared_service_client(settings, create_client), settings, org_id, action="rag.ingest.file")
     filename = (file.filename or "upload.txt").strip() or "upload.txt"
     raw = await file.read()
     try:

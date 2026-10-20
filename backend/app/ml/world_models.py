@@ -1,139 +1,101 @@
-"""World model scaffold — PLANNED; honest substitute is v9 dependency impact."""
+"""Org-local, bounded transition model; never a simulation of an entire business."""
 from __future__ import annotations
 
-import os
+import pickle
 from typing import Any
 
 import numpy as np
+from sklearn.linear_model import Ridge
+from sklearn.metrics import mean_absolute_error
 
 from app.ml.base import BaseMLModel, ModelMetrics, ModelStatus, ModelType
-from app.config import Settings, get_settings
-from app.workflows.repository import get_supabase_client
 
-SCOPE_NOTE = (
-    "WorldModelScaffold remains PLANNED until all activation prerequisites are met. "
-    "Substitute: dependency_impact_service + SimulationService for bounded scenarios."
-)
+SCOPE_NOTE = "Bounded observed transitions, not causal proof or permission to execute an action."
 
 
 class WorldModelScaffold(BaseMLModel):
-    """
-    Internal model of how business actions affect outcomes.
-    Status: PLANNED — activation checklist auto-checked per org.
-    """
-
+    """Retain the existing public class name for registry compatibility."""
     model_type = ModelType.REGRESSOR
-    catalog_status = ModelStatus.PLANNED
+    catalog_status = ModelStatus.READY
     advisory_only = True
     WORLD_MODEL_MIN_TRAJECTORIES = 500
 
     def __init__(self) -> None:
-        self._model = None
+        self._model: Ridge | None = None
+        self._features: list[str] = []
+        self._low: np.ndarray | None = None
+        self._high: np.ndarray | None = None
 
-    async def _count_measured_outcomes(self, org_id: str, settings: Settings | None = None) -> int:
-        active = settings or get_settings()
-        client = get_supabase_client(active)
-        rows = (
-            client.table("agent_action_outcomes")
-            .select("id", count="exact")
-            .eq("org_id", org_id)
-            .execute()
-        )
-        return int(rows.count or 0)
+    def _matrix(self, rows: Any) -> np.ndarray:
+        if not isinstance(rows, list) or not rows:
+            raise ValueError("Nonempty structured transition inputs required")
+        if any(not isinstance(row, dict) or set(row) != set(self._features) for row in rows):
+            raise ValueError("Transition feature schema mismatch")
+        result = np.asarray([[row[key] for key in self._features] for row in rows], dtype=float)
+        if not np.isfinite(result).all():
+            raise ValueError("Finite transition features required")
+        return result
 
-    async def check_activation_status(self, org_id: str) -> dict[str, Any]:
-        from app.ml.model_catalog import GRAVITRE_ML_CATALOG
+    async def train(self, X: Any, y: Any = None, **kwargs: Any) -> ModelMetrics:
+        if not isinstance(X, list) or len(X) < self.WORLD_MODEL_MIN_TRAJECTORIES:
+            raise ValueError("At least 500 measured transitions required")
+        if not isinstance(X[0], dict) or not X[0] or len(X[0]) > 128:
+            raise ValueError("1–128 transition features required")
+        self._features = sorted(X[0])
+        matrix = self._matrix(X)
+        targets = np.asarray(y, dtype=float)
+        if targets.ndim != 1 or len(targets) != len(matrix) or not np.isfinite(targets).all():
+            raise ValueError("One finite measured outcome per transition required")
+        split = int(len(matrix) * .8)
+        model = Ridge(alpha=1.0).fit(matrix[:split], targets[:split])
+        error = float(mean_absolute_error(targets[split:], model.predict(matrix[split:])))
+        baseline = float(mean_absolute_error(targets[split:], np.full(len(targets) - split, targets[:split].mean())))
+        # A loaded transition model must have actually outperformed the baseline.
+        if error >= baseline:
+            raise ValueError("Transition model did not beat held-out historical-mean baseline")
+        self._model = model
+        self._low, self._high = matrix[:split].min(axis=0), matrix[:split].max(axis=0)
+        return ModelMetrics(mae=error, training_samples=split, validation_samples=len(matrix)-split,
+                            custom_metrics={"baseline_mae": baseline, "method": "ridge_transition",
+                                            "causal_proof": False})
 
-        trajectory_count = await self._count_measured_outcomes(org_id)
-        causal_status = GRAVITRE_ML_CATALOG.get("causal_impact_analyzer", {}).get("status", ModelStatus.PLANNED)
-        if isinstance(causal_status, ModelStatus):
-            causal_status = causal_status.value
-        env_enabled = os.environ.get("WORLD_MODEL_ENABLED", "false").lower() == "true"
-        all_met = (
-            trajectory_count >= self.WORLD_MODEL_MIN_TRAJECTORIES
-            and causal_status == ModelStatus.TRAINED.value
-            and env_enabled
-        )
-        progress = round(
-            min(1.0, trajectory_count / max(self.WORLD_MODEL_MIN_TRAJECTORIES, 1)),
-            4,
-        )
-        return {
-            "activation_status": "active" if all_met else "planned",
-            "trajectory_progress": progress,
-            "prerequisites": {
-                "outcome_trajectories": {
-                    "current": trajectory_count,
-                    "required": self.WORLD_MODEL_MIN_TRAJECTORIES,
-                    "met": trajectory_count >= self.WORLD_MODEL_MIN_TRAJECTORIES,
-                },
-                "causal_inference": {
-                    "status": causal_status,
-                    "met": causal_status == ModelStatus.TRAINED.value,
-                },
-                "env_flag": {
-                    "value": "WORLD_MODEL_ENABLED",
-                    "met": env_enabled,
-                },
-            },
-            "all_prerequisites_met": all_met,
-            "scope_note": SCOPE_NOTE,
-            "advisory_only": True,
-        }
-
-    async def _run_world_model(self, org_id: str) -> dict[str, Any]:
-        return {
-            "status": "active",
-            "model": "WorldModelScaffold",
-            "org_id": org_id,
-            "note": "Activation prerequisites met — bounded world-model inference enabled.",
-            "advisory_only": True,
-            "scope_note": SCOPE_NOTE,
-        }
-
-    async def train(
-        self,
-        X: np.ndarray | list[dict] | None = None,
-        y: np.ndarray | list[float] | None = None,
-        **kwargs: Any,
-    ) -> ModelMetrics:
-        raise ValueError("WorldModelScaffold is PLANNED and cannot train yet.")
-
-    async def predict(
-        self,
-        X: np.ndarray | list[dict] | None = None,
-        return_probabilities: bool = False,
-        **kwargs: Any,
-    ) -> tuple[list[Any], list[dict[str, float]] | None]:
-        org_id = kwargs.get("org_id")
-        payload = await self.predict_structured(org_id=org_id)
-        return [payload], None
+    async def predict(self, X: Any, return_probabilities: bool = False, **kwargs: Any) -> tuple[list[Any], None]:
+        if self._model is None or self._low is None or self._high is None:
+            raise ValueError("No validated transition artifact loaded")
+        matrix = self._matrix(X)
+        if ((matrix < self._low) | (matrix > self._high)).any():
+            raise ValueError("Scenario outside observed transition support")
+        return self._model.predict(matrix).tolist(), None
 
     async def predict_structured(self, **kwargs: Any) -> dict[str, Any]:
-        org_id = kwargs.get("org_id")
-        if org_id:
-            status = await self.check_activation_status(str(org_id))
-            if status["all_prerequisites_met"]:
-                return await self._run_world_model(str(org_id))
-            return {
-                "status": "not_available",
-                "model": "WorldModelScaffold",
-                "activation_progress": status["prerequisites"],
-                "current_substitute": (
-                    "v9 dependency_impact_service + SimulationService for bounded scenario estimation"
-                ),
-                "advisory_only": True,
-                "scope_note": SCOPE_NOTE,
-            }
-        return {
-            "status": "not_available",
-            "model": "WorldModelScaffold",
-            "advisory_only": True,
-            "scope_note": SCOPE_NOTE,
-        }
+        if self._model is None:
+            return {"status": "dormant", "model": "world_model", "reason": "validated_transition_artifact_required",
+                    "advisory_only": True, "scope_note": SCOPE_NOTE}
+        predictions, _ = await self.predict(kwargs.get("inputs"))
+        return {"status": "ok", "model": "world_model", "predictions": predictions,
+                "method": "ridge_transition", "advisory_only": True, "scope_note": SCOPE_NOTE}
+
+    async def check_activation_status(self, org_id: str) -> dict[str, Any]:
+        from app.ml.model_catalog import get_org_model_status
+        status = await get_org_model_status(org_id, "world_model")
+        from app.config import get_settings
+        from app.ml.training_consent import training_is_approved
+        loaded = status.get("artifact_loaded") is True
+        permitted = await training_is_approved(org_id, "world_model", get_settings())
+        return {"activation_status": "ready_for_inference" if loaded and permitted else "dormant",
+                "artifact_loaded": loaded, "training_permission_approved": permitted,
+                "all_prerequisites_met": loaded and permitted, "scope_note": SCOPE_NOTE,
+                "advisory_only": True}
 
     def save(self) -> bytes:
-        return b""
+        if self._model is None:
+            raise ValueError("Cannot persist an untrained transition model")
+        return pickle.dumps({"schema": 1, "model": self._model, "features": self._features,
+                             "low": self._low, "high": self._high})
 
     def load(self, data: bytes) -> None:
-        return None
+        artifact = pickle.loads(data)
+        if not isinstance(artifact, dict) or artifact.get("schema") != 1 or not isinstance(artifact.get("model"), Ridge):
+            raise ValueError("Invalid transition artifact")
+        self._model, self._features = artifact["model"], artifact["features"]
+        self._low, self._high = artifact["low"], artifact["high"]

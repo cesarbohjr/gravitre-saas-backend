@@ -119,3 +119,17 @@ async def ingestion_held_handler(_: Request, exc: Exception) -> JSONResponse:
         "details": {},
     }
     return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=payload)
+
+
+async def storage_quota_exceeded_handler(_: Request, exc: Exception) -> JSONResponse:
+    """StorageQuotaExceededError: plan storage limit reached; new syncs/uploads refused."""
+    payload = {
+        "success": False,
+        "error": str(exc) or "Storage allowance reached",
+        "code": "STORAGE_QUOTA_EXCEEDED",
+        "details": {
+            "usedBytes": getattr(exc, "used_bytes", None),
+            "limitBytes": getattr(exc, "limit_bytes", None),
+        },
+    }
+    return JSONResponse(status_code=status.HTTP_402_PAYMENT_REQUIRED, content=payload)

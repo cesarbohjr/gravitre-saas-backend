@@ -7,7 +7,7 @@ Gravitre owns permissions, approvals, audit and workflow execution. Nango handle
 ## Implemented flow
 
 - All 47 registered managed providers are included in the connector picker. Account authorization is distinguished from executable workflow action support.
-- Add/reconnect launches the Nango frontend SDK with a server-issued session token. The UI waits for the signed webhook to confirm that exact authorization attempt before reporting success.
+- Add/reconnect uses Gravitre-owned screens and the Nango headless OAuth SDK with a server-issued session token. The UI waits for the signed webhook to confirm that exact authorization attempt before reporting success.
 - Reconnect keeps the previous connection ID and provider configuration; cancellation does not deactivate an already active account. It uses Nango's reconnect session endpoint.
 - Session/status queries are tenant/environment scoped. The webhook verifies the raw-body HMAC, provider mapping, managed routing and current attempt; activation updates are conditional on the current attempt. Deleted rows cannot be reactivated.
 - Canonical health recognizes managed connections. Live tests use Nango's current /connections/{id} endpoint and validate returned connection/integration IDs and auth errors.
@@ -31,11 +31,12 @@ Do not classify this release as production verified until those live runs have e
 
 | Setting | Value |
 | --- | --- |
-| Auth Callback URL (Nango Cloud) | `https://api.nango.dev/oauth/callback` |
+| Current Nango Cloud callback (until dashboard/provider cutover) | `https://api.nango.dev/oauth/callback` |
+| Gravitre-owned callback endpoint | `https://gravitre.app/api/connectors/oauth/callback` |
 | Primary Webhook URL | `https://gravitre-saas-backend-production.up.railway.app/api/connectors/managed-auth/webhook/nango` |
 | Secondary Webhook URL | Leave blank; no separate receiver is configured |
 
-The callback is registered with each provider OAuth application. The primary webhook receives Nango auth events in Gravitre. A custom Gravitre callback would need a deployed redirect preserving query parameters; it is not configured here.
+The callback is registered with each provider OAuth application. The primary webhook receives Nango auth events in Gravitre. The Gravitre callback relay is implemented; changing the live environment and provider registrations is pending. See [OAuth activation](gravitre-owned-oauth.md).
 
 ## Local validation
 

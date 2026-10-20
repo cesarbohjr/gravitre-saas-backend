@@ -60,12 +60,13 @@ class TrainingSignalService:
 
     async def _last_trained_at(self, org_id: str, model_name: str) -> str | None:
         try:
-            from app.ml.base import ModelType
             from app.ml.registry import get_model_registry
 
             registry = get_model_registry()
-            models = await registry.list_models(org_id=org_id, model_type=ModelType.CLASSIFIER)
-            match = next((m for m in models if m.name == model_name), None)
+            models = await registry.list_models(org_id=org_id)
+            from app.ml.intelligence_training import CATALOG_MODEL_NAMES
+
+            match = next((m for m in models if m.name == CATALOG_MODEL_NAMES.get(model_name, model_name)), None)
             if match and match.updated_at:
                 return match.updated_at.isoformat()
         except Exception:  # noqa: BLE001
@@ -83,7 +84,7 @@ class TrainingSignalService:
                 try:
                     from app.services.company_intelligence_collectors import collect_query_corpus
 
-                    corpus = await collect_query_corpus(org_id, settings=self.settings, client=client)
+                    corpus = await collect_query_corpus(self.settings, org_id, client=client)
                     signals_available = len(corpus or [])
                 except Exception:  # noqa: BLE001
                     signals_available = 0

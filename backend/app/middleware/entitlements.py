@@ -31,6 +31,11 @@ TIER_ORDER: dict[TierName, int] = {
     "command": 3,
 }
 
+_GIB = 1024**3
+
+# storage_bytes: plan storage allowance metered by services/storage_meter.py (database
+# rows incl. embeddings, audit logs and files in Supabase Storage). Enforced only when
+# STORAGE_QUOTA_ENFORCEMENT_ENABLED=true; plan features.storage_gb overrides (-1 = none).
 TIER_LIMITS: dict[TierName, dict[str, int | None]] = {
     "free": {
         "workflows": 3,
@@ -39,6 +44,7 @@ TIER_LIMITS: dict[TierName, dict[str, int | None]] = {
         "runs_per_month": 200,
         "operator_sessions_concurrent": 1,
         "lite_seats_included": 0,
+        "storage_bytes": 1 * _GIB,
     },
     "node": {
         "workflows": 10,
@@ -47,6 +53,7 @@ TIER_LIMITS: dict[TierName, dict[str, int | None]] = {
         "runs_per_month": 500,
         "operator_sessions_concurrent": 1,
         "lite_seats_included": 2,
+        "storage_bytes": 5 * _GIB,
     },
     "control": {
         "workflows": 40,
@@ -55,6 +62,7 @@ TIER_LIMITS: dict[TierName, dict[str, int | None]] = {
         "runs_per_month": 2500,
         "operator_sessions_concurrent": 5,
         "lite_seats_included": 5,
+        "storage_bytes": 25 * _GIB,
     },
     "command": {
         "workflows": 120,
@@ -63,6 +71,7 @@ TIER_LIMITS: dict[TierName, dict[str, int | None]] = {
         "runs_per_month": 10000,
         "operator_sessions_concurrent": None,
         "lite_seats_included": None,
+        "storage_bytes": 100 * _GIB,
     },
 }
 
@@ -74,6 +83,7 @@ TIER_FEATURES: dict[TierName, dict[str, bool]] = {
         "priority_support_email": False,
         "priority_support_dedicated": False,
         "cross_department_agents": False,
+        "byo_storage": False,
     },
     "node": {
         "custom_webhooks": False,
@@ -82,6 +92,7 @@ TIER_FEATURES: dict[TierName, dict[str, bool]] = {
         "priority_support_email": False,
         "priority_support_dedicated": False,
         "cross_department_agents": False,
+        "byo_storage": False,
     },
     "control": {
         "custom_webhooks": True,
@@ -90,6 +101,7 @@ TIER_FEATURES: dict[TierName, dict[str, bool]] = {
         "priority_support_email": True,
         "priority_support_dedicated": False,
         "cross_department_agents": False,
+        "byo_storage": False,
     },
     "command": {
         "custom_webhooks": True,
@@ -98,6 +110,9 @@ TIER_FEATURES: dict[TierName, dict[str, bool]] = {
         "priority_support_email": True,
         "priority_support_dedicated": True,
         "cross_department_agents": True,
+        # Enterprise: files in the org's own S3-compatible bucket (also the
+        # "byo_storage" add-on or plan feature). Needs BYO_STORAGE_ENABLED=true.
+        "byo_storage": True,
     },
 }
 
@@ -184,6 +199,14 @@ def _as_bool(value: Any) -> bool:
     return bool(value)
 
 
+def _storage_limit(plan_features: dict[str, Any], default: Any) -> int | None:
+    """Plan features.storage_gb overrides the tier default; a negative value means no limit."""
+    raw = plan_features.get("storage_gb")
+    if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+        return None if raw < 0 else int(raw * _GIB)
+    return None if default is None else int(default)
+
+
 def resolve_entitlements(settings: Settings, org_id: str) -> dict[str, Any]:
     """Resolve tier/limits from org_billing + billing_plans (same SoT as Billing UI).
 
@@ -242,6 +265,7 @@ def _compute_entitlements(client, org_id: str) -> dict[str, Any]:
         "environments": plan.get("environments_limit"),
         "ai_credits_included": plan.get("ai_credits_included"),
         "workflow_runs_included": plan.get("workflow_runs_included"),
+        "storage_bytes": _storage_limit(plan_features, tier_defaults.get("storage_bytes")),
     }
     features_source = TIER_FEATURES[tier] if tier in TIER_FEATURES else TIER_FEATURES["free"]
     features = {
@@ -259,6 +283,8 @@ def _compute_entitlements(client, org_id: str) -> dict[str, Any]:
         # Builder Meson requires Control+ plan allotment (not seat type).
         "meson_builder": bool(plan_features.get("meson"))
         or TIER_ORDER.get(tier, 0) >= TIER_ORDER["control"],
+        "byo_storage": _as_bool(plan_features.get("byo_storage", features_source.get("byo_storage")))
+        or "byo_storage" in addons,
     }
     # C1: enabled Meson addon codes become real feature flags.
     for code in addons:

@@ -256,10 +256,10 @@ async def test_label_less_trainers_refuse_without_querying(trainer: str):
 async def test_causal_loader_selects_only_real_columns():
     from app.ml.causal_analysis import CausalImpactAnalyzer
 
-    client = _Client([{"metric_value_after": 3.0, "measured_at": "2026-10-01"}])
+    client = _Client([{"metric_value_before": 1.0, "metric_value_after": 3.0, "measured_at": "2026-10-01"}])
     with patch("app.ml.causal_analysis.get_supabase_client", return_value=client):
-        series = await CausalImpactAnalyzer()._load_metric_series("org-1", "deal_amount", MagicMock())
-    assert series == [3.0]
+        series = CausalImpactAnalyzer()._load_pairs("org-1", "deal_amount", MagicMock())
+    assert series == [(1.0, 3.0)]
     for entry in client.log:
         assert _columns_used(entry) <= it.AGENT_ACTION_OUTCOMES_COLUMNS
 
@@ -421,3 +421,11 @@ async def test_completed_fine_tune_is_not_auto_deployed(monkeypatch):
 
     registry.add_version.assert_awaited_once()
     registry.deploy_version.assert_not_awaited()
+
+
+@pytest.fixture(autouse=True)
+def _approved_training_scope_for_artifact_tests():
+    """These tests exercise artifact/promotion behavior after consent is granted."""
+    from unittest.mock import AsyncMock, patch
+    with patch("app.ml.training_consent.training_is_approved", new_callable=AsyncMock, return_value=True):
+        yield

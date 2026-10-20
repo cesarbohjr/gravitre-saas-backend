@@ -50,41 +50,50 @@ _STRIKETHROUGH = re.compile(r"~~([^~\n]+)~~")
 # marker, never speakable content.
 _STRAY_ASTERISK = re.compile(r"\*+")
 
-# Cached TTS of the standing PERCEIVE draft (same sentence every operator turn).
-# Keyed by voice/model/format so Metric A is not charged a cold ElevenLabs hop
-# on every subsequent turn in this worker.
-_PERCEIVE_TTS_CACHE: dict[tuple[str, str, str], list[bytes]] = {}
+# Cached TTS of the standing drafts (the same sentence on every matching turn:
+# the PERCEIVE draft and the plan-hold draft, see voice_slo.standing_spoken_drafts).
+# Keyed by voice/model/format/text so Metric A is not charged a cold ElevenLabs
+# hop on every subsequent turn in this worker.
+_PERCEIVE_TTS_CACHE: dict[tuple[str, str, str, str], list[bytes]] = {}
+
+
+def _standing_draft_texts() -> set[str]:
+    from app.services.voice_slo import standing_spoken_drafts
+
+    return {t for t in (normalize_spoken_text(d) for d in standing_spoken_drafts()) if t}
 
 
 def warm_perceive_tts_cache(settings: Settings, *, voice_key: str | None = None) -> bool:
-    """Pre-synthesize standing PERCEIVE draft for default voice (worker startup)."""
-    from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
-
-    perceive_text = normalize_spoken_text(EARLY_PERCEIVE_DRAFT)
-    if not perceive_text:
+    """Pre-synthesize the standing drafts for the default voice (worker startup)."""
+    texts = sorted(_standing_draft_texts())
+    if not texts:
         return False
     resolved_voice = voice_key or "sarah"
     model = "eleven_flash_v2_5"
     fmt = "mp3_44100_128"
-    cache_key = (str(resolved_voice), str(model), str(fmt))
-    if cache_key in _PERCEIVE_TTS_CACHE:
-        return True
-    try:
-        chunks = list(
-            synthesize_speech_stream(
-                settings,
-                text=perceive_text,
-                voice_key=resolved_voice,
-                model_id=model,
-                output_format=fmt,
+    warmed = False
+    for spoken in texts:
+        cache_key = (str(resolved_voice), str(model), str(fmt), spoken)
+        if cache_key in _PERCEIVE_TTS_CACHE:
+            warmed = True
+            continue
+        try:
+            chunks = list(
+                synthesize_speech_stream(
+                    settings,
+                    text=spoken,
+                    voice_key=resolved_voice,
+                    model_id=model,
+                    output_format=fmt,
+                )
             )
-        )
+        except Exception as exc:  # noqa: BLE001 — best-effort warm, never fail startup
+            logger.debug("voice_standing_draft_tts_warm_failed err=%s", exc)
+            continue
         if chunks:
             _PERCEIVE_TTS_CACHE[cache_key] = chunks
-            return True
-    except Exception:  # noqa: BLE001 — best-effort warm, never fail startup
-        return False
-    return False
+            warmed = True
+    return warmed
 
 
 def peek_cached_perceive_chunks(
@@ -94,8 +103,43 @@ def peek_cached_perceive_chunks(
     output_format: str = "mp3_44100_128",
 ) -> list[bytes]:
     """In-process PERCEIVE TTS warmup (same worker). Empty on cache miss."""
+    from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
+
+    perceive_text = normalize_spoken_text(EARLY_PERCEIVE_DRAFT)
+    if not perceive_text:
+        return []
     resolved = (voice_key or "sarah").strip() or "sarah"
-    return list(_PERCEIVE_TTS_CACHE.get((str(resolved), str(model), str(output_format))) or [])
+    key = (str(resolved), str(model), str(output_format), perceive_text)
+    return list(_PERCEIVE_TTS_CACHE.get(key) or [])
+
+
+def _org_in_allowlist(raw: str | None, org_id: str | None) -> bool:
+    """Comma-separated org ids; ``*`` means every org; empty means none."""
+    org = (org_id or "").strip().lower()
+    if not org:
+        return False
+    entries = {p.strip().lower() for p in str(raw or "").split(",") if p.strip()}
+    return "*" in entries or org in entries
+
+
+def early_plan_ack_enabled_for(settings: Any, org_id: str | None) -> bool:
+    """VOICE_EARLY_PLAN_ACK_ENABLED and the org is on VOICE_EARLY_PLAN_ACK_ORG_IDS."""
+    if not bool(getattr(settings, "voice_early_plan_ack_enabled", False)):
+        return False
+    return _org_in_allowlist(getattr(settings, "voice_early_plan_ack_org_ids", ""), org_id)
+
+
+def tts_overlap_enabled_for(settings: Any, org_id: str | None) -> bool:
+    """VOICE_TTS_OVERLAP_ENABLED and the org is on VOICE_TTS_OVERLAP_ORG_IDS."""
+    if not bool(getattr(settings, "voice_tts_overlap_enabled", False)):
+        return False
+    return _org_in_allowlist(getattr(settings, "voice_tts_overlap_org_ids", ""), org_id)
+
+
+def _consume_task_result(task: asyncio.Task[Any]) -> None:
+    """Retrieve a background task's outcome so it never logs as unhandled."""
+    if not task.cancelled():
+        task.exception()
 
 
 # Short-lived barge-in cancel flags (turn_id → expiry epoch seconds).
@@ -328,7 +372,56 @@ async def stream_voice_turn_events(
     tts_output_format: str = "mp3_44100_128",
     skip_early_perceive: bool = False,
 ) -> AsyncIterator[dict[str, Any]]:
-    """Run unified-turn streaming + progressive TTS. Yields typed events."""
+    """Run unified-turn streaming + progressive TTS. Yields typed events.
+
+    Background work a turn starts (the TTS overlap workers) is cancelled when
+    the consumer stops early (client disconnect), so the engine never keeps
+    running for a turn nobody is listening to.
+    """
+    background: list[asyncio.Task[Any]] = []
+    inner = _stream_voice_turn_events(
+        settings=settings,
+        org_id=org_id,
+        user_id=user_id,
+        text=text,
+        agent=agent,
+        conversation_id=conversation_id,
+        conversation_history=conversation_history,
+        voice_id=voice_id,
+        tts_model=tts_model,
+        turn_id=turn_id,
+        should_cancel=should_cancel,
+        tts_output_format=tts_output_format,
+        skip_early_perceive=skip_early_perceive,
+        _background_tasks=background,
+    )
+    try:
+        async for event in inner:
+            yield event
+    finally:
+        for task in background:
+            if not task.done():
+                task.cancel()
+        await inner.aclose()
+
+
+async def _stream_voice_turn_events(
+    *,
+    settings: Settings,
+    org_id: str,
+    user_id: str,
+    text: str,
+    agent: dict[str, Any] | None,
+    conversation_id: str | None,
+    conversation_history: list[dict[str, Any]] | None,
+    voice_id: str | None,
+    tts_model: str | None,
+    turn_id: str | None,
+    should_cancel: Callable[[], bool] | None,
+    tts_output_format: str,
+    skip_early_perceive: bool,
+    _background_tasks: list[asyncio.Task[Any]],
+) -> AsyncIterator[dict[str, Any]]:
     t_start = time.perf_counter()
     from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
     from app.services.operator_task_intent import (
@@ -466,19 +559,14 @@ async def stream_voice_turn_events(
             return
             yield  # pragma: no cover — keeps this an async generator
         first_piece = True
-        from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
-
-        perceive_text = normalize_spoken_text(EARLY_PERCEIVE_DRAFT)
+        standing = spoken_chunk in _standing_draft_texts()
         cache_key = (
             str(resolved_voice or ""),
             str(model or ""),
             str(tts_output_format),
+            spoken_chunk,
         )
-        cached_pieces = (
-            _PERCEIVE_TTS_CACHE.get(cache_key)
-            if spoken_chunk == perceive_text
-            else None
-        )
+        cached_pieces = _PERCEIVE_TTS_CACHE.get(cache_key) if standing else None
         collected: list[bytes] = []
         try:
             if cached_pieces is not None:
@@ -497,7 +585,7 @@ async def stream_voice_turn_events(
                     )
 
                 audio_chunks = await asyncio.to_thread(_fetch_chunks)
-                if cached_pieces is None and spoken_chunk == perceive_text and audio_chunks:
+                if cached_pieces is None and standing and audio_chunks:
                     _PERCEIVE_TTS_CACHE[cache_key] = audio_chunks
             for audio in audio_chunks:
                 if _cancelled():
@@ -529,7 +617,7 @@ async def stream_voice_turn_events(
                             ms=first_audio_ms,
                             source=is_metric_a_source(
                                 first_text_preview,
-                                loop_stage="PERCEIVE" if loop_stage_spoken else None,
+                                loop_stage=(early_loop_stage or "PERCEIVE") if loop_stage_spoken else None,
                             ),
                             operator_task=operator_task or loop_stage_spoken,
                             composed=True,
@@ -545,11 +633,11 @@ async def stream_voice_turn_events(
                     "turn_id": resolved_turn_id,
                 }
                 first_piece = False
-                if cached_pieces is None and spoken_chunk == perceive_text:
+                if cached_pieces is None and standing:
                     collected.append(audio)
             if (
                 cached_pieces is None
-                and spoken_chunk == perceive_text
+                and standing
                 and collected
                 and cache_key not in _PERCEIVE_TTS_CACHE
             ):
@@ -581,33 +669,8 @@ async def stream_voice_turn_events(
             }
             return
 
-    early_perceive_draft: str | None = None
-    from app.services.cognitive_loop_controller import is_plan_without_execute_turn
-
-    if looks_like_operator_task(text) and not is_plan_without_execute_turn(text):
-        from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
-
-        early_perceive_draft = EARLY_PERCEIVE_DRAFT
-        if early_perceive_draft:
-            operator_task = True
-            loop_stage_spoken = True
-            if skip_early_perceive:
-                full_text.append(early_perceive_draft)
-            else:
-                yield {
-                    "type": "voice.text.delta",
-                    "delta": early_perceive_draft,
-                    "turn_id": resolved_turn_id,
-                }
-                if first_text_ms is None:
-                    first_text_ms = int((time.perf_counter() - t_start) * 1000)
-                    first_text_preview = early_perceive_draft[:200]
-                    yield {"type": "voice.ttft", "ms": first_text_ms, "turn_id": resolved_turn_id}
-                full_text.append(early_perceive_draft)
-                async for audio_ev in _emit_tts(early_perceive_draft):
-                    yield audio_ev
-
     from app.operators.agent_intelligence import get_agent_intelligence
+    from app.services.cognitive_loop_controller import is_plan_without_execute_turn
     from app.services.shared_turn_preparation import (
         TurnGuardrailBlocked,
         build_turn_system_prompt,
@@ -624,37 +687,98 @@ async def stream_voice_turn_events(
         voice_tier.reason,
         voice_mode,
     )
-    try:
-        base_prompt: str | None = await asyncio.to_thread(
-            build_turn_system_prompt,
-            settings,
-            org_id,
-            user_id=user_id,
-            agent_id=str((agent or {}).get("id") or "") or None,
-            query=text,
-        )
-    except Exception as exc:  # noqa: BLE001 - never make Talk unavailable
-        logger.warning("voice_http_base_prompt_build_failed org_id=%s err=%s", org_id, exc)
-        base_prompt = None
-    if base_prompt:
-        base_prompt = await harden_against_injection(
+
+    # A fixed early sentence may be said ahead of the engine, but never before
+    # the shared safety gate below has allowed the turn. Which sentence (if
+    # any) is decided from the words alone, with the same plan-hold test the
+    # engine uses, so routing and authorization never depend on it.
+    early_perceive_draft: str | None = None
+    early_loop_stage: str | None = None
+    early_ack_gated = early_plan_ack_enabled_for(settings, org_id)
+    if looks_like_operator_task(text):
+        if is_plan_without_execute_turn(text):
+            # Plan-hold: the engine says this exact sentence at its PLAN stage,
+            # but only after retrieval and planning (seconds). It is true as
+            # soon as the turn is allowed, so (behind the flag) say it then and
+            # drop the engine's copy below. Connector-status asks get no stage
+            # speech from the engine either.
+            from app.services.connector_status_reply_service import (
+                is_connector_status_question,
+            )
+
+            if early_ack_gated and not is_connector_status_question(text):
+                from app.services.voice_slo import EARLY_PLAN_HOLD_DRAFT
+
+                early_perceive_draft = EARLY_PLAN_HOLD_DRAFT
+                early_loop_stage = "PLAN"
+        else:
+            from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
+
+            early_perceive_draft = EARLY_PERCEIVE_DRAFT or None
+            early_loop_stage = "PERCEIVE" if early_perceive_draft else None
+
+    agent_id_for_turn = str((agent or {}).get("id") or "") or None
+
+    async def _build_base_prompt() -> str | None:
+        try:
+            prompt: str | None = await asyncio.to_thread(
+                build_turn_system_prompt,
+                settings,
+                org_id,
+                user_id=user_id,
+                agent_id=agent_id_for_turn,
+                query=text,
+            )
+        except Exception as exc:  # noqa: BLE001 - never make Talk unavailable
+            logger.warning("voice_http_base_prompt_build_failed org_id=%s err=%s", org_id, exc)
+            prompt = None
+        if prompt:
+            prompt = await harden_against_injection(
+                settings,
+                org_id=org_id,
+                conversation_id=resolved_conversation_id,
+                system_prompt=prompt,
+                user_text=text,
+                surface="voice",
+            )
+        return prompt
+
+    # The safety gate is the shared guard itself (kill switch, rate limit,
+    # budget, input moderation, model policy), not a voice-only check. It
+    # screens only what the caller said (guard_spoken_turn never sends the
+    # system prompt to moderation), so it does not depend on the prompt build
+    # and both start now: the turn waits for the slower of the two instead of
+    # their sum.
+    gate_started = time.perf_counter()
+    guard_task: asyncio.Task[None] = asyncio.create_task(
+        guard_spoken_turn(
             settings,
             org_id=org_id,
-            conversation_id=resolved_conversation_id,
-            system_prompt=base_prompt,
             user_text=text,
-            surface="voice",
-        )
-    try:
-        await guard_spoken_turn(
-            settings,
-            org_id=org_id,
-            user_text=text,
-            system_prompt=base_prompt or "",
+            system_prompt="",
             history=conversation_history,
             mode=voice_mode,
         )
+    )
+    prompt_task: asyncio.Task[str | None] = asyncio.create_task(_build_base_prompt())
+    guard_task.add_done_callback(_consume_task_result)
+    prompt_task.add_done_callback(_consume_task_result)
+    _background_tasks.extend((guard_task, prompt_task))
+    try:
+        await guard_task
     except TurnGuardrailBlocked as blocked:
+        # Refusal path unchanged: no early sentence, the spoken refusal is the
+        # answer. The prompt build finishes first so its injection audit is
+        # written exactly as before.
+        await prompt_task
+        if early_ack_gated:
+            yield {
+                "type": "voice.safety_gate",
+                "verdict": "refused",
+                "ms": int((time.perf_counter() - gate_started) * 1000),
+                "early_ack": False,
+                "turn_id": resolved_turn_id,
+            }
         yield {"type": "voice.text.delta", "delta": blocked.spoken, "turn_id": resolved_turn_id}
         async for audio_ev in _emit_tts(blocked.spoken):
             yield audio_ev
@@ -669,20 +793,188 @@ async def stream_voice_turn_events(
             "cancelled": False,
         }
         return
+    except BaseException:
+        prompt_task.cancel()
+        raise
+
+    early_ack_withheld: str | None = None
+    if early_perceive_draft and early_loop_stage == "PLAN":
+        from app.services.ai_guardrails import detect_prompt_injection
+
+        if getattr(settings, "prompt_injection_detection_enabled", True) and detect_prompt_injection(text)[0]:
+            # The guard allowed it, but the words look like an injection: say
+            # nothing ahead of the engine, which runs with the hardened prompt.
+            early_ack_withheld = "injection_suspected"
+        elif _cancelled():
+            early_ack_withheld = "cancelled"
+        if early_ack_withheld:
+            early_perceive_draft = None
+            early_loop_stage = None
+    if early_ack_gated:
+        yield {
+            "type": "voice.safety_gate",
+            "verdict": "allowed",
+            "ms": int((time.perf_counter() - gate_started) * 1000),
+            "early_ack": bool(early_perceive_draft and early_loop_stage == "PLAN"),
+            "withheld": early_ack_withheld,
+            "turn_id": resolved_turn_id,
+        }
+
+    # Set when an early sentence was said, so the engine's identical sentence
+    # is dropped once instead of spoken twice.
+    early_spoken: str | None = None
+    if early_perceive_draft:
+        operator_task = True
+        loop_stage_spoken = True
+        early_spoken = early_perceive_draft
+        # The router only pre-speaks the cached PERCEIVE draft.
+        if skip_early_perceive and early_loop_stage == "PERCEIVE":
+            full_text.append(early_perceive_draft)
+        else:
+            delta_event: dict[str, Any] = {
+                "type": "voice.text.delta",
+                "delta": early_perceive_draft,
+                "turn_id": resolved_turn_id,
+            }
+            if early_loop_stage == "PLAN":
+                delta_event["early_ack"] = True
+            yield delta_event
+            if first_text_ms is None:
+                first_text_ms = int((time.perf_counter() - t_start) * 1000)
+                first_text_preview = early_perceive_draft[:200]
+                yield {"type": "voice.ttft", "ms": first_text_ms, "turn_id": resolved_turn_id}
+            full_text.append(early_perceive_draft)
+            async for audio_ev in _emit_tts(early_perceive_draft):
+                yield audio_ev
+        if cancelled or _cancelled():
+            # Barge-in during the early sentence: stop here. The engine never
+            # starts, so nothing runs and nothing is said twice.
+            prompt_task.cancel()
+            spoken_partial = normalize_spoken_text("".join(full_text)) or "".join(full_text)
+            yield {
+                "type": "voice.turn.cancelled",
+                "turn_id": resolved_turn_id,
+                "conversation_id": resolved_conversation_id,
+                "reason": "barge_in_or_client_abort",
+                "partial_text": spoken_partial,
+            }
+            if agent_audio_started:
+                yield {"type": "voice.agent_speech.end", "cancelled": True, "turn_id": resolved_turn_id}
+            yield {
+                "type": "voice.session.ended",
+                "transcript": spoken_partial,
+                "cancelled": True,
+                "turn_id": resolved_turn_id,
+                "conversation_id": resolved_conversation_id,
+                "originating_modality": "voice",
+            }
+            return
+
+    base_prompt: str | None = await prompt_task
 
     intelligence = get_agent_intelligence()
-    async for event in intelligence.execute_task_streaming(
+    kernel_stream = intelligence.execute_task_streaming(
         settings=settings,
         org_id=org_id,
         user_id=user_id,
         query=text,
-        agent_id=str((agent or {}).get("id") or "") or None,
+        agent_id=agent_id_for_turn,
         conversation_history=conversation_history,
         conversation_id=resolved_conversation_id,
         spoken_mode=True,
         mode=voice_mode,
         assistant_base_prompt=base_prompt,
-    ):
+    )
+
+    # TTS overlap (flagged): finished sentences are synthesized by one
+    # background worker, in order, while the engine keeps running. Without it
+    # the engine is paused on every sentence's TTS round trip, which Metric B
+    # (time to the final composed answer) pays once per sentence. The engine,
+    # its inputs and every policy check are the same either way.
+    tts_queue: asyncio.Queue[str | None] | None = None
+    overlap_out: asyncio.Queue[tuple[str, Any]] | None = None
+    if tts_overlap_enabled_for(settings, org_id):
+        tts_queue = asyncio.Queue()
+        overlap_out = asyncio.Queue()
+
+        async def _pump_kernel() -> None:
+            assert overlap_out is not None
+            try:
+                async for kernel_event in kernel_stream:
+                    overlap_out.put_nowait(("kernel", kernel_event))
+            except Exception as exc:  # noqa: BLE001 - re-raised by the consumer
+                overlap_out.put_nowait(("kernel_error", exc))
+                return
+            overlap_out.put_nowait(("kernel_done", None))
+
+        async def _pump_audio() -> None:
+            assert tts_queue is not None and overlap_out is not None
+            while True:
+                chunk = await tts_queue.get()
+                if chunk is None:
+                    break
+                async for audio_event in _emit_tts(chunk):
+                    overlap_out.put_nowait(("audio", audio_event))
+                if cancelled:
+                    break
+            overlap_out.put_nowait(("audio_done", None))
+
+        for coro in (_pump_kernel(), _pump_audio()):
+            task = asyncio.create_task(coro)
+            task.add_done_callback(_consume_task_result)
+            _background_tasks.append(task)
+
+    async def _turn_events() -> AsyncIterator[tuple[str, Any]]:
+        if overlap_out is None:
+            async for kernel_event in kernel_stream:
+                yield "kernel", kernel_event
+            return
+        while True:
+            kind, item = await overlap_out.get()
+            if kind == "kernel_done":
+                return
+            if kind == "kernel_error":
+                raise item
+            yield kind, item
+
+    async def _speak(chunk: str) -> AsyncIterator[dict[str, Any]]:
+        if tts_queue is not None:
+            tts_queue.put_nowait(chunk)
+            return
+            yield  # pragma: no cover — keeps this an async generator
+        async for audio_event in _emit_tts(chunk):
+            yield audio_event
+
+    async def _finish_overlap_audio() -> AsyncIterator[dict[str, Any]]:
+        """After the engine is done, let the queued sentences finish speaking."""
+        if tts_queue is None or overlap_out is None:
+            return
+            yield  # pragma: no cover — keeps this an async generator
+        tts_queue.put_nowait(None)
+        while True:
+            kind, item = await overlap_out.get()
+            if kind == "audio_done":
+                return
+            if kind == "audio":
+                yield item
+
+    def _stop_background() -> None:
+        for task in _background_tasks:
+            if not task.done():
+                task.cancel()
+
+    turn_events = _turn_events()
+    async for source, event in turn_events:
+        if source == "audio":
+            yield event
+            if cancelled:
+                break
+            continue
+        if source == "audio_done":
+            # The TTS worker only stops early on a barge-in.
+            if cancelled:
+                break
+            continue
         if _cancelled():
             cancelled = True
             yield {
@@ -780,8 +1072,16 @@ async def stream_voice_turn_events(
         delta = event.payload.get("delta")
         if not isinstance(delta, str) or not delta:
             continue
-        if early_perceive_draft and delta.strip() == early_perceive_draft.strip():
-            continue
+        if early_spoken:
+            # The engine's own copy of a sentence already said: drop it,
+            # whether it arrives alone or at the head of a longer delta.
+            said = early_spoken.strip()
+            if delta.strip() == said:
+                continue
+            if delta.lstrip().startswith(said):
+                delta = delta.lstrip()[len(said):].lstrip()
+                if not delta:
+                    continue
         yield {"type": "voice.text.delta", "delta": delta, "turn_id": resolved_turn_id}
         if first_text_ms is None:
             first_text_ms = int((time.perf_counter() - t_start) * 1000)
@@ -799,13 +1099,15 @@ async def stream_voice_turn_events(
             aggressive=chunk_tuning.v2_enabled,
         )
         for chunk in chunks:
-            async for audio_ev in _emit_tts(chunk):
+            async for audio_ev in _speak(chunk):
                 yield audio_ev
             if cancelled:
                 break
         if cancelled:
             break
+    await turn_events.aclose()
     if cancelled:
+        _stop_background()
         spoken_partial = normalize_spoken_text("".join(full_text)) or "".join(full_text)
         if agent_audio_started:
             yield {"type": "voice.agent_speech.end", "cancelled": True, "turn_id": resolved_turn_id}
@@ -926,9 +1228,12 @@ async def stream_voice_turn_events(
     # Flush remainder after turn.complete so audio may continue even after text is rendered.
     rem = text_buffer.strip()
     if rem and not _cancelled():
-        async for audio_ev in _emit_tts(rem):
+        async for audio_ev in _speak(rem):
             yield audio_ev
         text_buffer = ""
+    async for audio_ev in _finish_overlap_audio():
+        yield audio_ev
+    _stop_background()
     await _finish_persist()
     if cancelled:
         spoken_partial = normalize_spoken_text("".join(full_text)) or "".join(full_text)

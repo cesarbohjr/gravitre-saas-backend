@@ -729,6 +729,34 @@ class Settings(BaseSettings):
     # (never a run or a customer message). Also needs WORK_OBJECT_PROPOSALS_ENABLED
     # and ACCOUNT_HEALTH_ENABLED.
     account_play_proposals_enabled: bool = False
+    # Storage: audit-log retention, per-org storage meter and plan quota, bring-your-own
+    # file storage. All need migration 20261020081535_storage_retention_metering.sql (and its parts).
+    # Audit-log retention (services/data_retention.py). 0 keeps audit_logs/audit_events
+    # forever; any value is raised to the 365-day compliance floor. Orgs under a legal
+    # hold (org_legal_holds) and approval/rejection rows are never deleted. Dry run only
+    # counts and writes a receipt; AUDIT_RETENTION_DRY_RUN=true stops deletion.
+    # On by default (owner decision 2026-10-20): 365 days, live delete after archive.
+    audit_retention_days: int = 365
+    audit_retention_dry_run: bool = False
+    # Gzipped JSONL copy of each batch in a private Supabase Storage bucket, per org,
+    # uploaded before the batch is deleted.
+    audit_retention_archive_enabled: bool = True
+    audit_retention_archive_bucket: str = "audit-archive"
+    # Telemetry (model_calls, ai_pipeline_latency, cognitive_turn_traces); separate
+    # switch, per-table floors. guardrail_events is never pruned here. Same dry run.
+    telemetry_retention_days: int = 365
+    audit_retention_batch_size: int = 2000
+    audit_retention_max_batches_per_run: int = 500
+    audit_retention_interval_seconds: int = 86400
+    # Daily per-org storage snapshot (compute_org_storage_usage) and its API.
+    storage_meter_enabled: bool = True
+    storage_meter_interval_seconds: int = 86400
+    # Plan storage quota: warn at 80%, refuse new connector syncs and uploads at 100%
+    # (HTTP 402 STORAGE_QUOTA_EXCEEDED). Never deletes data. Needs a snapshot to act.
+    storage_quota_enforcement_enabled: bool = True
+    # Enterprise bring-your-own S3-compatible file storage. Only files move; database rows
+    # (memories, chunks, embeddings) stay in Supabase.
+    byo_storage_enabled: bool = True
     # Shared secret for /api/watchers/agent/signal HMAC or X-Watcher-Secret header.
     watcher_agent_webhook_secret: str | None = None
     # Write authority on the invoke spine: shadow (log missing authority), enforce, off.
@@ -931,6 +959,45 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "VOICE_DEEP_ACK_SECONDS",
             "voice_deep_ack_seconds",
+        ),
+    )
+    # HTTP Talk early plan-hold acknowledgement ("I'll show the plan first.
+    # Nothing has run yet.", cached audio). On for every org by default
+    # (owner decision 2026-10-20). It applies only to the comma-separated org
+    # ids listed (``*`` = every org; empty = none), and the
+    # sentence is spoken only after the shared safety gate (guard_spoken_turn,
+    # the same guardrails text chat runs) has allowed the turn.
+    voice_early_plan_ack_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "VOICE_EARLY_PLAN_ACK_ENABLED",
+            "voice_early_plan_ack_enabled",
+        ),
+    )
+    voice_early_plan_ack_org_ids: str = Field(
+        default="*",
+        validation_alias=AliasChoices(
+            "VOICE_EARLY_PLAN_ACK_ORG_IDS",
+            "voice_early_plan_ack_org_ids",
+        ),
+    )
+    # HTTP Talk: synthesize speech for finished sentences in the background
+    # while the shared engine keeps working, instead of pausing the engine on
+    # each sentence's TTS round trip. Same allowlist rules as above; on for
+    # every org by default. Presentation only: the engine, its inputs and its policy are
+    # unchanged.
+    voice_tts_overlap_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "VOICE_TTS_OVERLAP_ENABLED",
+            "voice_tts_overlap_enabled",
+        ),
+    )
+    voice_tts_overlap_org_ids: str = Field(
+        default="*",
+        validation_alias=AliasChoices(
+            "VOICE_TTS_OVERLAP_ORG_IDS",
+            "voice_tts_overlap_org_ids",
         ),
     )
     # Per-tier voice delivery: light turns a little livelier, deep turns

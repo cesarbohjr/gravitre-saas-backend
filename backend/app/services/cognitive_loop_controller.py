@@ -207,7 +207,9 @@ def speakable_loop_stage(
     if name == "ACT" and plan_hold:
         return None
     if name == "PLAN" and plan_hold:
-        return "I'll show the plan first. Nothing has run yet."
+        from app.services.voice_slo import EARLY_PLAN_HOLD_DRAFT
+
+        return EARLY_PLAN_HOLD_DRAFT
     if name == "OBSERVE" and plan_hold:
         return None
     draft = _SPOKEN_STAGE_DRAFTS.get(name) or ""

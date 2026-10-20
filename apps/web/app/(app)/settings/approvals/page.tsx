@@ -100,6 +100,9 @@ function ApprovalsDenied() {
   )
 }
 
+/** Exported for reuse in the Trust & Safety tabbed view. */
+export { ApprovalsContent }
+
 function ApprovalsContent() {
   const { data, error, isLoading, mutate } = useSWR<{ policies: HitlPolicy[] }>(
     "/api/settings/hitl-policies",

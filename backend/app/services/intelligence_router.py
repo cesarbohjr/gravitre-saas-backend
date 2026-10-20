@@ -326,6 +326,12 @@ class IntelligenceRouter:
         context: dict[str, Any],
     ) -> dict[str, Any]:
         tasks: dict[str, Any] = {}
+        # Same extension point is used by live text and voice through the chat
+        # facade. Inputs are backend-assembled, org-authorized structured data;
+        # never run all catalog models speculatively on every utterance.
+        model_inputs = context.get("catalog_model_inputs")
+        if isinstance(model_inputs, dict):
+            tasks["models"] = self._run_catalog_capabilities(org_id, model_inputs)
         if classification.get("requires_prediction"):
             tasks["prediction"] = self._get_predictions(org_id, classification)
         if classification.get("requires_causal"):
@@ -384,6 +390,19 @@ class IntelligenceRouter:
                                  default="deferred" if context.get("defer_optional") else "not_requested"),
         }
         return enrichments
+
+    async def _run_catalog_capabilities(self, org_id: str, inputs: dict[str, Any]) -> dict[str, Any]:
+        from app.ml.model_catalog import GRAVITRE_ML_CATALOG, infer_catalog_capability
+
+        selected = [(name, value) for name, value in inputs.items()
+                    if name in GRAVITRE_ML_CATALOG and isinstance(value, dict)][:4]
+        results = await asyncio.gather(*(
+            infer_catalog_capability(org_id, name, value, settings=self.settings)
+            for name, value in selected
+        ), return_exceptions=True)
+        return {name: result if isinstance(result, dict) else {
+            "status": "not_verified", "reason": "inference_failed", "used_fallback": True,
+        } for (name, _), result in zip(selected, results)}
 
     async def _get_predictions(self, org_id: str, classification: dict[str, Any]) -> dict[str, Any]:
         from app.services.predictive_operations_engine import get_predictive_operations_engine

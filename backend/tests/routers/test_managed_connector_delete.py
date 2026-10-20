@@ -15,7 +15,9 @@ async def test_confirmed_removal_cleans_nango_or_retains_for_retry(monkeypatch,e
     monkeypatch.setattr(nango_client, "scoped_connection", lambda *a, **kw: {})
     from types import SimpleNamespace
     cid = UUID('11111111-1111-1111-1111-111111111111')
-    store = [row(id=str(cid))]
+    # Historical non-OAuth accounts remain removable after new sessions become OAuth-only.
+    store = [row(id=str(cid), vendor='freshservice', type='freshservice', config={
+        'auth_provider': 'managed', 'managed_integration_id': 'freshservice', 'managed_connection_id': 'n1'})]
     client = SimpleNamespace(table=lambda name: Query(store if name == 'connectors' else []))
     monkeypatch.setattr(routes,'create_client',lambda *a: client)
     monkeypatch.setattr(routes,'write_audit_event',lambda *a,**kw: None)

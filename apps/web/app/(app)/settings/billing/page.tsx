@@ -20,6 +20,7 @@ import {
   BillingUsageCard,
 } from "@/components/settings/billing-cards"
 import { SetNote, SetSwitch } from "@/components/settings/settings-kit"
+import { StorageUsageCard } from "@/components/settings/storage-usage-card"
 import { MspBilledGate } from "@/components/settings/msp-billed-gate"
 import { Button } from "@/components/ui/button"
 import {
@@ -458,6 +459,9 @@ function BillingPageInner({ isAdmin, adminChecking = false }: { isAdmin: boolean
       />
 
       <PromotionNotices enabled={Boolean(user)} />
+
+      {/* Hidden unless the storage meter is switched on. */}
+      <StorageUsageCard />
 
       <BillingUsageCard
         loading={loadingOverview}
