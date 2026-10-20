@@ -3446,7 +3446,7 @@ export const chatAdminApi = {
 export type MlAdminOrgModelStatus = {
   model_name: string
   catalog_status: string
-  /** Module C: real live path — trained only when an artifact is deployed. */
+  /** Runtime artifact loading evidence; never proves inference health or improvement. */
   runtime_status?: string
   live_inference_path?: string
   artifact_loaded?: boolean
@@ -3462,6 +3462,22 @@ export type MlAdminCatalogResponse = {
   catalog: Record<string, Record<string, unknown>>
   orgTrainingStatus: Record<string, MlAdminOrgModelStatus>
   outcomeScores?: Record<string, number | null>
+  inventory?: Record<string, ModelCapabilityInventory>
+  learningCapabilities?: ModelCapabilityInventory[]
+  learningActivity?: { enabled: boolean | null; activity_status: string; note: string }
+}
+
+export type ModelCapabilityInventory = {
+  id: string; label: string; capabilities: string[]
+  visibility: "operational" | "admin_technical"
+  manual_training_supported: boolean
+  training_unavailable_reason: string | null
+  data_requirement: string | null
+  artifact_readiness: string; inference_health: string; runtime_status: string
+  fallback: string | null
+  data_eligibility: { status: string; observed_counts: Record<string, number>; note: string }
+  verified_outcomes_count: number | null
+  outcome_evidence_status: string
 }
 
 export type MlAdminTrainResult = {

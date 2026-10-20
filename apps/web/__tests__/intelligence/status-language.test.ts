@@ -12,11 +12,13 @@ describe("status-language (Phase 2.5 — honest status translation)", () => {
     }
   })
 
-  it("matches the master brief's exact 8-row translation table", () => {
+  it("distinguishes artifact and deployment metadata from runtime evidence", () => {
     expect(describeStatus("untrained").phrase).toBe("Needs training")
     expect(describeStatus("training").phrase).toBe("Learning from your data")
-    expect(describeStatus("trained").phrase).toBe("Ready to use")
-    expect(describeStatus("deployed").phrase).toBe("Actively predicting")
+    expect(describeStatus("trained").phrase).toBe("Trained artifact available")
+    expect(describeStatus("deployed").phrase).toBe("Version deployed")
+    expect(describeStatus("trained").detail).toContain("does not establish successful inference")
+    expect(describeStatus("deployed").detail).toContain("requires separate evidence")
     expect(describeStatus("evaluating").phrase).toBe("Checking performance")
     expect(describeStatus("stale").phrase).toBe("Needs updating")
     expect(describeStatus("failed").phrase).toBe("Training needs attention")
@@ -24,7 +26,7 @@ describe("status-language (Phase 2.5 — honest status translation)", () => {
   })
 
   it("is case- and whitespace-insensitive on real API status strings", () => {
-    expect(describeStatus(" TRAINED ").phrase).toBe("Ready to use")
+    expect(describeStatus(" TRAINED ").phrase).toBe("Trained artifact available")
     expect(describeStatus("Heuristic").phrase).toBe("Estimating with rules")
   })
 

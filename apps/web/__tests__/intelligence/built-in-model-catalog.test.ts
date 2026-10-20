@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 import {
   BUILT_IN_MODEL_GUIDES,
   getBuiltInModelGuide,
+  orgModelRuntimeStatus,
+  statusTone,
   groupBuiltInModels,
   statusLabel,
   statusShortLabel,
@@ -26,6 +28,14 @@ function item(
 }
 
 describe("built-in-model-catalog", () => {
+  it("does not turn missing runtime evidence into trained status", () => {
+    expect(orgModelRuntimeStatus()).toBe("not_verified")
+    expect(orgModelRuntimeStatus({ runtime_status: "trained" })).toBe("not_verified")
+    expect(orgModelRuntimeStatus({ runtime_status: "trained", artifact_loaded: true })).toBe("trained")
+    expect(orgModelRuntimeStatus({ runtime_status: "heuristic" })).toBe("heuristic")
+    expect(statusTone("not_verified")).toBe("unknown")
+    expect(summarizeBrainHealth([item("intent_classifier", "not_verified", { value: null, label: "Unknown", available: 0, required: 0 })]).planned).toBe(0)
+  })
   it("exposes novice labels for catalog keys shown in the screenshot", () => {
     expect(BUILT_IN_MODEL_GUIDES.churn_risk_scorer.label).toBe("Customer churn risk")
     expect(BUILT_IN_MODEL_GUIDES.active_learning.whyItMatters.length).toBeGreaterThan(20)
@@ -56,7 +66,7 @@ describe("built-in-model-catalog", () => {
     expect(health.planned).toBe(1)
     expect(health.readyPct).toBe(50)
     expect(statusLabel("trained")).toMatch(/Trained/i)
-    expect(statusShortLabel("heuristic")).toBe("Learning")
+    expect(statusShortLabel("heuristic")).toBe("Rules fallback")
     expect(statusShortLabel("planned")).toBe("Roadmap")
   })
 })

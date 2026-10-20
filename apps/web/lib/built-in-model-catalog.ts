@@ -312,18 +312,27 @@ export function getBuiltInModelGuide(modelId: string): BuiltInModelGuide {
   )
 }
 
-export function statusTone(status: string): "ready" | "learning" | "planned" | "off" {
+export function statusTone(status: string): "ready" | "learning" | "planned" | "off" | "unknown" {
   const s = status.toLowerCase()
   if (s === "trained") return "ready"
   if (s === "heuristic") return "learning"
   if (s === "disabled") return "off"
-  return "planned"
+  if (s === "planned") return "planned"
+  if (s === "data_gate" || s === "insufficient_data") return "learning"
+  return "unknown"
+}
+
+/** Never infer organization runtime health from the static catalog designation. */
+export function orgModelRuntimeStatus(row?: { runtime_status?: string; artifact_loaded?: boolean }): string {
+  if (!row?.runtime_status) return "not_verified"
+  if (row.runtime_status === "trained" && row.artifact_loaded !== true) return "not_verified"
+  return row.runtime_status
 }
 
 export function statusLabel(status: string): string {
   const s = status.toLowerCase()
   if (s === "trained") return "Trained for your org"
-  if (s === "heuristic") return "Learning (rules + partial ML)"
+  if (s === "heuristic") return "Using fallback rules"
   if (s === "disabled") return "Unavailable"
   if (s === "planned") return "Coming later"
   return status.replace(/_/g, " ")
@@ -333,7 +342,7 @@ export function statusLabel(status: string): string {
 export function statusShortLabel(status: string): string {
   const s = status.toLowerCase()
   if (s === "trained") return "Trained"
-  if (s === "heuristic") return "Learning"
+  if (s === "heuristic") return "Rules fallback"
   if (s === "disabled") return "Off"
   if (s === "planned") return "Roadmap"
   return status.replace(/_/g, " ")
@@ -344,6 +353,7 @@ export function domainLabel(domainId: BuiltInModelDomainId): string {
 }
 
 export type BuiltInModelListItem = {
+  manualTrainingSupported?: boolean
   id: string
   status: string
   useCases: string[]
@@ -389,7 +399,7 @@ export function summarizeBrainHealth(items: BuiltInModelListItem[]): {
     } else if (tone === "learning") {
       learning += 1
       if (item.sufficiency.value != null && item.sufficiency.value < 100) collecting += 1
-    } else {
+    } else if (tone === "planned" || tone === "off") {
       planned += 1
     }
   }
