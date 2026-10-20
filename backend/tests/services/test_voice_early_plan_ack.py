@@ -191,17 +191,28 @@ def test_router_cached_perceive_draft_stays_retired() -> None:
     assert standing_spoken_drafts() == (EARLY_PLAN_HOLD_DRAFT,)
 
 
-def test_flags_default_off(mock_settings) -> None:
-    assert mock_settings.voice_early_plan_ack_enabled is False
-    assert mock_settings.voice_early_plan_ack_org_ids == ""
-    assert mock_settings.voice_tts_overlap_enabled is False
-    assert mock_settings.voice_tts_overlap_org_ids == ""
+def test_flags_default_on_for_every_org() -> None:
+    from app.config import Settings
+
+    fields = Settings.model_fields
+    assert fields["voice_early_plan_ack_enabled"].default is True
+    assert fields["voice_early_plan_ack_org_ids"].default == "*"
+    assert fields["voice_tts_overlap_enabled"].default is True
+    assert fields["voice_tts_overlap_org_ids"].default == "*"
+
+
+def test_flags_off_or_empty_allowlist_disable(mock_settings) -> None:
+    mock_settings.voice_early_plan_ack_enabled = False
+    mock_settings.voice_early_plan_ack_org_ids = "*"
+    mock_settings.voice_tts_overlap_enabled = True
+    mock_settings.voice_tts_overlap_org_ids = ""
     assert not voice_session_service.early_plan_ack_enabled_for(mock_settings, ORG)
     assert not voice_session_service.tts_overlap_enabled_for(mock_settings, ORG)
 
 
 def test_allowlist_needs_the_flag_and_the_org(mock_settings) -> None:
     smoke = "f07e57c0-1501-4000-8000-c04e57a00001"
+    mock_settings.voice_early_plan_ack_enabled = False
     mock_settings.voice_early_plan_ack_org_ids = smoke
     assert not voice_session_service.early_plan_ack_enabled_for(mock_settings, smoke)
     mock_settings.voice_early_plan_ack_enabled = True
