@@ -196,6 +196,13 @@ def create_managed_auth_session(
     if not spec.native_fallback or config.get("auth_provider") == "managed":
         config.update({"auth_type": "oauth", "auth_provider": "managed"})
     connection_id = str(config.get("managed_connection_id") or "").strip() or None
+    if connection_id:
+        from app.connectors.nango_client import scoped_connection
+        try:
+            scoped_connection(settings, connection_id=connection_id, integration_id=spec.integration_id,
+                              org_id=str(org_id), connector_id=str(connector_id))
+        except (httpx.HTTPError, ValueError) as exc:
+            raise HTTPException(status_code=502, detail="Managed account ownership could not be verified") from exc
     client.table("connectors").update({"config": config}).eq(
         "id", str(connector_id)).eq("org_id", org_id).eq(
         "environment", environment_name).execute()

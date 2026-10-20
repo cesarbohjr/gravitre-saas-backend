@@ -61,3 +61,8 @@ def test_okta_actions_have_registered_read_contracts():
         spec = get_action_spec(key)
         assert spec and spec.kind == 'read'
         assert key in list_registered_actions()
+
+
+@pytest.fixture(autouse=True)
+def managed_remote_ownership(monkeypatch):
+    monkeypatch.setattr("app.services.managed_service_desk_tools.scoped_connection", lambda *a, **kw: {"errors": []})

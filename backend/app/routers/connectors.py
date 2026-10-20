@@ -27,6 +27,7 @@ from app.connectors.repository import (
 )
 from app.core.crypto import decrypt_value, encrypt_value
 from app.core.errors import error_detail
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.core.supabase_response import response_error
 from app.billing.service import ADVANCED_CONNECTORS, get_plan_for_org, require_feature
 from app.middleware.entitlements import resolve_entitlements
@@ -827,7 +828,7 @@ def test_connector_route(
     client = shared_service_client(settings, create_client)
     row = (
         client.table("connectors")
-        .select("id, vendor, name, environment")
+        .select("id, vendor, name, environment, config")
         .eq("org_id", org_id)
         .eq("id", str(connector_id))
         .is_("deleted_at", "null")
@@ -1048,6 +1049,8 @@ def create_connector_route(
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
+    from app.connectors.nango_client import customer_connector_config
+    body.config = customer_connector_config(body.config or {})
     _user, org_id = _admin
     entitlements = resolve_entitlements(settings, org_id)
     connector_limit = (entitlements.get("limits") or {}).get("connectors")
@@ -1358,8 +1361,9 @@ async def update_connector_route(
         )
         current_config = {}
         if existing_row.data:
-            current_config = existing_row.data[0].get("config") or {}
-        payload["config"] = {**current_config, **body.config}
+            current_config = safe_normalize_stored_dict(existing_row.data[0], key="config")
+        from app.connectors.nango_client import customer_connector_config
+        payload["config"] = {**current_config, **customer_connector_config(body.config)}
     api_key_plain = (body.api_key or "").strip() or None
     if api_key_plain:
         encrypted = store_connector_api_key(client, org_id, str(connector_id), api_key_plain, settings)
@@ -1456,6 +1460,13 @@ async def _delete_connector_impl(
         if spec is None or config.get("managed_integration_id") != spec.integration_id:
             raise HTTPException(status_code=400, detail="Managed integration mismatch")
         try:
+            from app.connectors.nango_client import scoped_connection
+            try:
+                scoped_connection(settings, connection_id=str(config["managed_connection_id"]),
+                                  integration_id=spec.integration_id, org_id=org_id, connector_id=str(connector_id))
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code != 404:
+                    raise
             delete_managed_connection(settings, connection_id=str(config["managed_connection_id"]),
                                       integration_id=spec.integration_id)
         except (httpx.HTTPError, ValueError) as exc:

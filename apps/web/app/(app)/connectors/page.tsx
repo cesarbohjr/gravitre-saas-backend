@@ -845,6 +845,8 @@ function ConfigureModal({
               <p className="text-sm text-muted-foreground">
                 {connector.authStatus === "auth_expired"
                   ? `${connector.type} authorization expired or was revoked in the provider. Re-authorize to restore the connection.`
+                  : isManagedConnectorVendor(connector.type) || connector.config?.auth_provider === "managed"
+                    ? `${connector.type} uses secure account authorization. Reconnect to update its credentials.`
                   : `${connector.type} uses OAuth. API keys are not used for this connector — authorize with the provider to connect.`}
               </p>
               {onReconnectOAuth && (
@@ -854,7 +856,7 @@ function ConfigureModal({
                   onClick={() => void onReconnectOAuth(connector)}
                 >
                   <ExternalLink className="h-4 w-4" />
-                  {connector.authStatus === "auth_expired" ? `Reconnect ${connector.type}` : "Complete OAuth"}
+                  {connector.authStatus === "auth_expired" ? `Reconnect ${connector.type}` : isManagedConnectorVendor(connector.type) || connector.config?.auth_provider === "managed" ? "Complete authorization" : "Complete OAuth"}
                 </Button>
               )}
             </div>
@@ -1586,7 +1588,7 @@ function AddConnectorModal({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">{selectedType}</span>
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-[color:var(--g-emerald-deep)] font-medium">OAuth</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-[color:var(--g-emerald-deep)] font-medium">{isManagedConnectorVendor(selectedConnectorMeta()?.vendorKey || "") ? "Secure authorization" : "OAuth"}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {getSelectedConnector()?.description}

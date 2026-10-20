@@ -37,6 +37,7 @@ def row(**kwargs):
 
 @pytest.fixture
 def flow(monkeypatch):
+    monkeypatch.setattr("app.connectors.nango_client.scoped_connection", lambda *a, **kw: {})
     from app.connectors import managed_setup
     from app.connectors.nango_registry import NANGO_CONNECTOR_REGISTRY, NANGO_FALLBACK_REGISTRY
     inventory = [{"key": s.integration_id, "provider": s.provider, "missing_fields": []}
@@ -108,6 +109,20 @@ async def test_missing_signing_key_blocks_session_before_mutation(flow):
         response = await client.post('/api/connectors/managed-auth/freshservice/session',json={'name':'desk','connectorId':'c1'})
         assert response.status_code == 503
     assert store == before; session.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_foreign_remote_account_cannot_start_reconnect(flow, monkeypatch):
+    app, store, _, session = flow
+    def reject(*args, **kwargs):
+        assert kwargs["org_id"] == "o1" and kwargs["connector_id"] == "c1"
+        raise ValueError("ownership mismatch")
+    monkeypatch.setattr("app.connectors.nango_client.scoped_connection", reject)
+    before = deepcopy(store)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
+        response = await client.post('/api/connectors/managed-auth/freshservice/session', json={'name': 'desk', 'connectorId': 'c1'})
+    assert response.status_code == 502 and store == before
+    session.assert_not_called()
 
 
 @pytest.mark.asyncio

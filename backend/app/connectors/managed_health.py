@@ -42,7 +42,10 @@ def managed_auth_status(client: Any, org_id: str, connector_id: str, settings: A
             body = response.json()
             if (not isinstance(body, dict) or body.get("error") or body.get("errors")
                     or body.get("connection_id") != connection_id
-                    or body.get("provider_config_key") != spec.integration_id):
+                    or body.get("provider_config_key") != spec.integration_id
+                    or not isinstance(body.get("tags"), dict)
+                    or body["tags"].get("organization_id") != org_id
+                    or body["tags"].get("connector_id") != connector_id):
                 return "auth_expired"
         except (httpx.HTTPError, ValueError):
             return "misconfigured"

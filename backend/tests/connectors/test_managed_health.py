@@ -48,7 +48,7 @@ def test_missing_secret_is_not_connected():
 def test_remote_validation_can_recover_an_account_marked_error(monkeypatch):
     import httpx
     monkeypatch.setattr(httpx.Client, 'get', lambda self, url, **kwargs: httpx.Response(
-        200, json={'connection_id': 'n1', 'provider_config_key': 'freshservice', 'errors': []},
+        200, json={'connection_id': 'n1', 'provider_config_key': 'freshservice', 'errors': [], 'tags': {'organization_id': 'org1', 'connector_id': 'c1'}},
         request=httpx.Request('GET', url)))
     c = client({'vendor': 'freshservice', 'status': 'error', 'config': {
         'auth_provider': 'managed', 'managed_connection_id': 'n1', 'managed_integration_id': 'freshservice'}})
@@ -57,6 +57,8 @@ def test_remote_validation_can_recover_an_account_marked_error(monkeypatch):
 
 @pytest.mark.parametrize('remote_status,body,expected', [
     (200,{'connection_id':'n1','provider_config_key':'freshservice','errors':[]},'connected'),
+    (200,{'connection_id':'n1','provider_config_key':'freshservice','tags':{'organization_id':'foreign','connector_id':'c1'}},'auth_expired'),
+    (200,{'connection_id':'n1','provider_config_key':'freshservice','tags':{'organization_id':'o1','connector_id':'foreign'}},'auth_expired'),
     (200,{'connection_id':'n1','provider_config_key':'okta','errors':[]},'auth_expired'),
     (200,{'connection_id':'n1','provider_config_key':'freshservice','errors':[{'type':'auth'}]},'auth_expired'),
     (200,{},'auth_expired'),
@@ -66,6 +68,8 @@ def test_remote_validation_can_recover_an_account_marked_error(monkeypatch):
 ])
 def test_remote_health_uses_current_api_and_rejects_invalid_metadata(monkeypatch,remote_status,body,expected):
     import httpx
+    body = {**body}
+    body.setdefault("tags", {"organization_id": "o1", "connector_id": "c1"})
     captured = {}
     def get(self,url,**kwargs):
         captured.update(url=url,**kwargs)

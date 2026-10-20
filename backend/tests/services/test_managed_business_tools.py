@@ -78,3 +78,22 @@ def test_business_actions_are_registered_reads_without_demo_writes():
         assert key in registered
         vendor=get_vendor_spec(key.split(".")[0])
         assert vendor and not vendor.v2 and not vendor.v3 and not vendor.demo_workflows
+
+
+@pytest.fixture(autouse=True)
+def managed_remote_ownership(monkeypatch):
+    monkeypatch.setattr("app.services.managed_service_desk_tools.scoped_connection", lambda *a, **kw: {"errors": []})
+
+
+def test_foreign_remote_ownership_blocks_business_proxy(adapter, monkeypatch):
+    fetch, proxy = adapter
+    fetch.return_value = {"id": "c1", "org_id": "o1", "environment": "production", "vendor": "discourse",
+                          "type": "custom", "status": "active", "config": {
+                              "auth_provider": "managed", "managed_connection_id": "foreign", "managed_integration_id": "discourse"}}
+    def reject(*args, **kwargs):
+        assert kwargs["org_id"] == "o1" and kwargs["connector_id"] == "c1"
+        raise ValueError("ownership mismatch")
+    monkeypatch.setattr("app.services.managed_service_desk_tools.scoped_connection", reject)
+    with pytest.raises(ToolAuthExpiredError):
+        MANAGED_BUSINESS_TOOL_EXECUTORS["discourse.categories.list"](context(), {})
+    proxy.assert_not_called()

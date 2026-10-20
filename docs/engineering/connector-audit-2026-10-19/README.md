@@ -58,7 +58,7 @@ Harvest requires a Harvest account ID. Freshsales requires a contact ID. Pennyla
 
 1. Supply provider OAuth client ID/secret and required scopes for each of the 42 integrations listed as provider_credentials_required in nango-readback.json. Register the Nango Cloud callback https://api.nango.dev/oauth/callback with those provider apps. App verification/partner approvals remain provider-dependent. Native app credentials cannot simply be assumed valid for the Nango callback.
 2. Account owners must connect or reauthorize through Gravitre. Slack, Google Ads and Google Analytics expired accounts remain expired until consent succeeds. Selecting Nango does not repair a revoked grant without consent.
-3. Run owner acceptance for each enabled account: connect, signed webhook activation, real read, refresh, reconnect, cancellation and removal. **NOT_RUN — no owner account authorization/session available; OAuth app credentials missing for 42 integrations.** No live action tests were claimed.
+3. Run owner acceptance for each enabled account: connect, signed webhook activation, real read, refresh, reconnect, cancellation and removal. **NOT_RUN — provider account credentials/consent are unavailable; OAuth app credentials missing for 42 integrations.** The authenticated picker was verified on October 20; no live provider action tests were claimed.
 4. Resolve the existing ClickHouse DNS endpoint and the 14 accounts with no health evidence. Do not mark them healthy based on active/syncing labels.
 5. The older 45 managed options outside Freshservice/Okta still provide authorization paths only, subject to setup; actions remain pending. The CSV exposes inferred routes elsewhere in the older backend catalog. Registered executors and inferred routes are not vendor/live validation.
 
@@ -73,3 +73,15 @@ Harvest requires a Harvest account ID. Freshsales requires a contact ID. Pennyla
 ## Reproduce provider configuration audit
 
 Run scripts/nango-connector-setup.py with NANGO_SECRET_KEY in the environment and --output PATH. Default is read-only. --apply creates missing exact integration configurations only, never updates existing app credentials. Generated managed frontend metadata comes from scripts/generate-managed-connector-catalog.py; logo registry comes from apps/web/scripts/build-provider-registry.mjs.
+
+## October 20 authorization ownership follow-up
+
+The original connector release [passed full CI on rerun](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/39334515565), including backend pytest and integration smoke. Its first attempt had one voice timing assertion fail; that file also passed all 28 tests locally. The follow-up is based on current main and preserves the subsequent intelligence releases.
+
+Ordinary connector create/update configuration now strips server-owned managed routing fields. Before token retrieval, managed proxy execution, reconnect or removal, the returned Nango connection must match both its integration/connection IDs and its organization/connector tags. Remote health also rejects mismatched tags. Missing or foreign ownership fails closed; remote 404 removal remains idempotent. The explicit connection-test endpoint also now imports stored-config normalization and selects config so native-versus-managed routing works; contract tests cover native HubSpot, managed Slack and Cal.com. These checks also protect against forged identifiers introduced outside the normal signed activation flow.
+
+Managed setup screens also use "Secure authorization" for managed providers, including API-key/basic schemes, instead of labeling all of them OAuth or telling API-key users their provider never uses API keys.
+
+Local validation: 585 connector and related contract tests passed, one skipped; 1,870 frontend tests passed. The 108-test ownership suite includes foreign-organization and foreign-connector token rejection, config preservation, proxy refusal, reconnect refusal and removal refusal. No production migration is needed.
+
+Authenticated production UI inspection confirmed all 30 new connector names in discovery, the ready Cal.com setup screen, and the Aircall setup-required notice. Provider authorization/read acceptance remains NOT_RUN for the reasons above. Read-only Nango inventory on October 20 still reports 36 ready, 42 requiring provider credentials and two unsupported templates.

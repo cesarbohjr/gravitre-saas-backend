@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import quote
 
 import httpx
 
-from app.connectors.nango_client import _auth_headers, _base_url
+from app.connectors.nango_client import scoped_connection
 from app.connectors.nango_registry import NANGO_FALLBACK_REGISTRY
 from app.core.safe_dict import safe_normalize_stored_dict
 
@@ -37,11 +36,8 @@ def managed_oauth_tokens(client: Any, org_id: str, connector_id: str, settings: 
             or row.get("status") not in {"active", "healthy", "connected", "syncing"}):
         raise ValueError("Managed authorization is incomplete; reconnect this account")
     try:
-        with httpx.Client(timeout=20) as http:
-            response = http.get(f"{_base_url(settings)}/connections/{quote(connection_id, safe='')}",
-                                headers=_auth_headers(settings), params={"provider_config_key": spec.integration_id})
-        response.raise_for_status()
-        body = response.json()
+        body = scoped_connection(settings, connection_id=connection_id, integration_id=spec.integration_id,
+                                 org_id=org_id, connector_id=connector_id)
         if (not isinstance(body, dict) or body.get("connection_id") != connection_id
                 or body.get("provider_config_key") != spec.integration_id or body.get("error") or body.get("errors")):
             raise ValueError("Invalid managed connection")

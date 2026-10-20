@@ -12,7 +12,7 @@ from typing import Any
 
 import httpx
 
-from app.connectors.nango_client import proxy_request
+from app.connectors.nango_client import proxy_request, scoped_connection
 from app.connectors.repository import get_connector, get_connector_by_type
 from app.connectors.rate_limit import enforce_rate_limit
 from app.services.tool_types import (
@@ -68,6 +68,13 @@ def _managed_connector(
         )
 
     enforce_rate_limit(ctx.client, ctx.org_id, vendor, vendor, cid)
+    try:
+        remote = scoped_connection(ctx.settings, connection_id=connection_id, integration_id=integration_id,
+                                   org_id=ctx.org_id, connector_id=cid)
+        if remote.get("error") or remote.get("errors"):
+            raise ValueError("Invalid managed credentials")
+    except (httpx.HTTPError, ValueError) as exc:
+        raise ToolAuthExpiredError("Managed account ownership or authorization could not be verified") from exc
     return cid, connection_id, integration_id
 
 
