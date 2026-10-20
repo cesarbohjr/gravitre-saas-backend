@@ -7,5 +7,12 @@
   "skipped": 0,
   "outbound_network": "blocked by tests.offline_network_guard",
   "production_acceptance": "NOT RUN",
-  "live_provider_acceptance": "NOT RUN"
+  "live_provider_acceptance": "NOT RUN",
+  "follow_up": {
+    "change": "domain lookup offload and org-scoped per-turn memoization",
+    "tests": 45,
+    "failures": 0,
+    "errors": 0,
+    "scope": "local_offline_focused_after_io_correction"
+  }
 }

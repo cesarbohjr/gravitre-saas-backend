@@ -78,3 +78,15 @@ relaxed to suppress failures.
 Restored perception adds memoized org/domain lookups to shortcut turns, so live
 latency must be measured before accepting the change in production. This report
 is readiness evidence for CI and isolated live testing, not a live quality score.
+
+## Domain lookup follow-up
+
+A final review identified synchronous organization-settings I/O inside domain
+classification. That lookup now uses the existing I/O pool and per-turn memo,
+keyed by organization. Concurrent reads share one query; different organizations
+and subsequent turns do not reuse each other's results. This prevents restored
+shortcut perception from blocking the realtime event loop.
+
+After this change, 45 focused domain/perception/shared-runtime tests passed
+with outbound network blocked. The 1,722-test consolidated result above predates
+this final I/O-only correction; CI must validate the final published revision.

@@ -69,13 +69,20 @@ class DomainIntelligenceService:
 
     async def _load_org_domain_hints(self, org_id: str) -> dict[str, Any]:
         try:
-            row = (
-                get_supabase_client(self.settings)
+            from app.core.io_pool import run_io
+            from app.core.turn_read_memo import memo_read_async
+
+            client = get_supabase_client(self.settings)
+            query = (
+                client
                 .table("organizations")
                 .select("settings")
                 .eq("id", org_id)
                 .limit(1)
-                .execute()
+            )
+            row = await memo_read_async(
+                ("organizations:domain_hints", org_id), client,
+                lambda: run_io(query.execute),
             )
             if not row.data:
                 return {}
