@@ -197,8 +197,8 @@ const INITIAL: AuditTrailState = {
   open: null,
 }
 
-/** Audit trail page body inside the Settings shell (Governance / Audit trail). */
-export function AuditTrail() {
+/** Audit trail page body. Pass `standalone` to render without the SettingsShell wrapper. */
+export function AuditTrail({ standalone = false }: { standalone?: boolean } = {}) {
   const { user } = useAuth()
   const { showAdmin } = useOrgAdmin()
   const [state, setState] = useState<AuditTrailState>(INITIAL)
@@ -561,6 +561,10 @@ export function AuditTrail() {
       <SetNote icon={FileText}>Exports cover the whole date range, not just this page.</SetNote>
     </>
   )
+
+  if (standalone) {
+    return <>{user ? body : <SetNote>Sign in to view your audit trail.</SetNote>}</>
+  }
 
   return (
     <SettingsShell activeSection="audit" isAdmin={showAdmin} actions={user ? actions : undefined}>

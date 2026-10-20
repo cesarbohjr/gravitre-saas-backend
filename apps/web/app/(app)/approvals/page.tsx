@@ -100,6 +100,9 @@ export default function ApprovalsPage() {
   )
 }
 
+/** Exported for reuse in the Trust & Safety tabbed view. */
+export { DecisionQueue }
+
 function DecisionQueue() {
   const searchParams = useSearchParams()
   const router = useRouter()

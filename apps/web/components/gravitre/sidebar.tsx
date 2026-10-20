@@ -101,7 +101,7 @@ export function Sidebar({ isOpen, onClose, navExpanded = false, onToggleExpanded
             if (item.name === "Getting Started" && !onboardingComplete) {
               next = { ...next, badge: `${progress}%` }
             }
-            if (item.name === "Approvals" && pendingApprovals > 0) {
+            if (item.name === "Trust & Safety" && pendingApprovals > 0) {
               next = { ...next, badge: String(pendingApprovals) }
             }
             if (isLite && item.requiresFullSeat) {
