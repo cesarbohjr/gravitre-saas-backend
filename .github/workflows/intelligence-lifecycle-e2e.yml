@@ -1,0 +1,45 @@
+name: Intelligence lifecycle E2E acceptance
+
+# Manual and intentionally fail-closed. This workflow verifies evidence from an
+# authenticated isolated-tenant scenario; it does not manufacture or seed outcomes.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-intelligence-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: intelligence-e2e
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check isolated-tenant configuration
+        env:
+          ORG_ID: ${{ vars.GRAVITRE_E2E_ORG_ID }}
+          EVIDENCE_JSON: ${{ secrets.GRAVITRE_E2E_EVIDENCE_JSON }}
+        run: |
+          set -euo pipefail
+          test -n "$ORG_ID" || { echo "::error::Missing isolated org ID"; exit 1; }
+          test -n "$EVIDENCE_JSON" || { echo "::error::No authenticated scenario evidence supplied"; exit 1; }
+          printf '%s' "$EVIDENCE_JSON" > "$RUNNER_TEMP/intelligence-e2e-evidence.json"
+          chmod 600 "$RUNNER_TEMP/intelligence-e2e-evidence.json"
+      - name: Verify correlated approval-to-learning evidence and live delivery
+        env:
+          GRAVITRE_E2E_BEARER_TOKEN: ${{ secrets.GRAVITRE_E2E_BEARER_TOKEN }}
+          ORG_ID: ${{ vars.GRAVITRE_E2E_ORG_ID }}
+        run: |
+          python3 scripts/verify-intelligence-e2e-evidence.py \
+            --evidence "$RUNNER_TEMP/intelligence-e2e-evidence.json" \
+            --org-id "$ORG_ID" \
+            --out "$RUNNER_TEMP/intelligence-e2e-verdict.json"
+      - name: Upload verdict only (never upload credentials or evidence)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: intelligence-e2e-verdict
+          path: ${{ runner.temp }}/intelligence-e2e-verdict.json
+          if-no-files-found: ignore
