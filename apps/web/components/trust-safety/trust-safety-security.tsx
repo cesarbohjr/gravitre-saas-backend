@@ -36,7 +36,7 @@ export function TrustSafetySecurity() {
   }
 
   const copyMeta = () => {
-    const meta = `https://gravitre.io/sso/metadata`
+    const meta = `https://gravitre.app/sso/metadata`
     navigator.clipboard.writeText(meta).catch(() => {})
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -222,7 +222,7 @@ export function TrustSafetySecurity() {
               <div style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div className="gv-note">
                   <span style={{ fontSize: 13, fontFamily: "'Geist Mono',monospace", color: "#141513", flex: 1, wordBreak: "break-all" }}>
-                    https://gravitre.io/sso/metadata
+                    https://gravitre.app/sso/metadata
                   </span>
                   <button type="button" className="gv-btn line sm" onClick={copyMeta} style={{ flexShrink: 0 }}>
                     {copied ? "Copied!" : "Copy"}
