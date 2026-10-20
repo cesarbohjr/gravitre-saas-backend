@@ -31,6 +31,7 @@ import {
 } from "@/lib/intelligence/learning-filters"
 import { isSnapshotMetricsReady, type SnapshotLoadState } from "@/lib/intelligence/snapshot-state"
 import { cn } from "@/lib/utils"
+import { LearningCapabilitiesPanel } from "@/components/intelligence/learning-capabilities-panel"
 
 function LearningFilterRow({
   filters,
@@ -289,6 +290,7 @@ export function LearningStage({
 
   return (
     <div className="space-y-6 pt-6">
+      <LearningCapabilitiesPanel enabled={enabled} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <KnowledgeViewSwitch view={view} onViewChange={onViewChange} entityCount={entityCount} />
         {view === "memory" ? (

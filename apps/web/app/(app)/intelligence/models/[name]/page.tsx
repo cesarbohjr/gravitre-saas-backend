@@ -24,11 +24,13 @@ import {
   readNumber,
   readString,
 } from "@/lib/intelligence/helpers"
-import { getBuiltInModelGuide } from "@/lib/built-in-model-catalog"
+import { getBuiltInModelGuide, orgModelRuntimeStatus } from "@/lib/built-in-model-catalog"
 import { ModelStatusBadge } from "@/components/intelligence/model-status-badge"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { SixQuestionsPanel, type SixQuestionsAnswer } from "@/components/intelligence/six-questions-panel"
 
 export default function ModelProfilePage() {
+  const { isAdmin } = useOrgAdmin()
   const { user } = useAuth()
   const params = useParams<{ name: string }>()
   const modelName = decodeURIComponent(params.name)
@@ -77,10 +79,7 @@ export default function ModelProfilePage() {
   }
 
   // Module C / STA-331: prefer runtime_status (artifact load) over catalog TRAINED.
-  const status = readString(
-    statusEntry?.runtime_status,
-    readString(statusEntry?.catalog_status, readString(catalogEntry.status, "Not reported")),
-  )
+  const status = orgModelRuntimeStatus(statusEntry)
   const isPlanned = status.toUpperCase() === "PLANNED" || status.toUpperCase() === "DISABLED"
   const readinessEntry = ((readiness?.by_model as Record<string, Record<string, unknown>> | undefined) ?? {})[
     modelName
@@ -185,16 +184,23 @@ export default function ModelProfilePage() {
                 </Link>
               </Button>
               <ModelStatusBadge status={status} showDetail={false} />
-              {!isPlanned && readinessStatus === "ready" ? (
+              {isAdmin && catalogData?.inventory?.[modelName]?.manual_training_supported === true && !isPlanned ? (
                 <Button className="min-h-11" size="sm" onClick={handleTrain} disabled={training}>
                   <Play className="mr-2 h-4 w-4" weight="fill" aria-hidden />
-                  {training ? "Queuing…" : "Retrain now"}
+                  {training ? "Queuing…" : "Request training"}
                 </Button>
               ) : null}
             </div>
           }
         >
           <p className="font-mono text-xs text-muted-foreground">{modelName}</p>
+          <p className="text-sm text-muted-foreground">
+            Artifact: {catalogData?.inventory?.[modelName]?.artifact_readiness.replace(/_/g, " ") ?? "Not verified"}.
+            {" "}Inference health: {catalogData?.inventory?.[modelName]?.inference_health.replace(/_/g, " ") ?? "Not verified"}.
+            {" "}Data eligibility: {catalogData?.inventory?.[modelName]?.data_eligibility.status.replace(/_/g, " ") ?? "Not verified"}.
+            {" "}Verified outcomes: {catalogData?.inventory?.[modelName]?.verified_outcomes_count ?? "Not verified"}.
+            {" "}A loaded artifact does not prove successful inference or business improvement.
+          </p>
         </GravitrePageHeader>
 
         <div data-composition="understand" className="space-y-6 px-[var(--np-page-pad-sm)] pb-28 pt-6 sm:px-[var(--np-page-pad)]">

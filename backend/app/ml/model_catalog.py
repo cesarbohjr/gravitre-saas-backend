@@ -451,10 +451,45 @@ async def get_org_model_status(org_id: str, model_name: str, *, settings: Settin
     return payload
 
 
-async def build_ml_catalog_dashboard(org_id: str, *, settings: Settings | None = None) -> dict[str, Any]:
+def model_inventory_definition(model_name: str) -> dict[str, Any]:
+    """Product exposure and supported controls, independent of catalog TRAINED."""
+    from app.ml.intelligence_training import TRAINING_DISPATCH
+
+    meta = GRAVITRE_ML_CATALOG.get(model_name)
+    if meta is None:
+        raise ValueError(f"Unknown catalog model: {model_name}")
+    operational = meta["status"] == ModelStatus.TRAINED
+    blocked = model_name in {"sla_breach_predictor", "deal_loss_scorer"}
+    supported = operational and model_name in TRAINING_DISPATCH and not blocked
+    return {
+        "id": model_name,
+        "label": str((meta.get("use_cases") or [model_name])[0]).replace("_", " ").capitalize(),
+        "capabilities": meta.get("use_cases") or [],
+        "visibility": "operational" if operational else "admin_technical",
+        "manual_training_supported": supported,
+        "training_unavailable_reason": (
+            None if supported else "missing_training_columns" if blocked else "not_implemented"
+        ),
+        "data_requirement": meta.get("min_data") or meta.get("activation") or meta.get("note"),
+    }
+
+
+def require_supported_manual_training(model_name: str) -> None:
+    definition = model_inventory_definition(model_name)
+    if not definition["manual_training_supported"]:
+        raise ValueError(f"Manual training unavailable: {definition['training_unavailable_reason']}")
+
+
+async def build_ml_catalog_dashboard(
+    org_id: str, *, settings: Settings | None = None, include_advanced: bool = False,
+) -> dict[str, Any]:
     """Return catalog + per-org training status for Intelligence Center and admin surfaces."""
     active = settings or get_settings()
     catalog = get_catalog()
+    definitions = {name: model_inventory_definition(name) for name in catalog}
+    if not include_advanced:
+        catalog = {name: meta for name, meta in catalog.items()
+                   if definitions[name]["visibility"] == "operational"}
     org_status: dict[str, Any] = {}
     for name, meta in catalog.items():
         if meta.get("status") != "trained":
@@ -470,7 +505,38 @@ async def build_ml_catalog_dashboard(org_id: str, *, settings: Settings | None =
     except Exception as exc:  # noqa: BLE001
         logger.warning("load_model_outcome_scores failed org_id=%s error=%s", org_id, exc)
         outcome_scores = {}
-    return {"catalog": catalog, "orgTrainingStatus": org_status, "outcomeScores": outcome_scores}
+    inventory = {}
+    for name in catalog:
+        runtime = org_status.get(name) or {}
+        loaded = runtime.get("artifact_loaded") is True
+        inventory[name] = {
+            **definitions[name],
+            "artifact_readiness": "loaded" if loaded else "not_loaded" if runtime else "not_verified",
+            "inference_health": "not_verified",
+            "runtime_status": runtime.get("runtime_status") or "not_verified",
+            "fallback": runtime.get("fallback") or catalog[name].get("fallback"),
+            "data_eligibility": {
+                "status": "requires_training_validation" if definitions[name]["manual_training_supported"] else "unavailable",
+                "observed_counts": runtime.get("data_counts") or {},
+                "note": "Observed row counts are not proof of eligible labels or training readiness.",
+            },
+            "verified_outcomes_count": None,
+            "outcome_evidence_status": "not_verified",
+        }
+    from app.services.adaptive_learning_service import get_adaptive_learning_service
+
+    try:
+        enabled = await get_adaptive_learning_service(active).is_enabled_for_org(org_id)
+    except Exception:  # noqa: BLE001
+        enabled = None
+    return {
+        "catalog": catalog, "orgTrainingStatus": org_status,
+        "outcomeScores": {name: value for name, value in outcome_scores.items() if name in catalog},
+        "inventory": inventory,
+        "learningCapabilities": [row for row in inventory.values() if row["visibility"] == "operational"],
+        "learningActivity": {"enabled": enabled, "activity_status": "not_verified",
+                             "note": "This is the adaptive-learning setting, not proof of active learning or improved outcomes."},
+    }
 
 
 async def load_org_trained_catalog_model(
@@ -507,6 +573,7 @@ async def train_ml_model_for_org(org_id: str, model_name: str, *, settings: Sett
     meta = GRAVITRE_ML_CATALOG[model_name]
     if meta["status"] != ModelStatus.TRAINED:
         raise ValueError(f"{model_name} is {meta['status'].value}; training not available")
+    require_supported_manual_training(model_name)
 
     start = time.perf_counter()
 

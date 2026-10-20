@@ -12,6 +12,7 @@ from app.ml.model_catalog import (
     build_ml_catalog_dashboard,
     get_org_model_status,
     train_ml_model_for_org,
+    require_supported_manual_training,
 )
 from app.temporal.starters import start_ml_model_training_workflow
 
@@ -24,7 +25,7 @@ async def list_ml_catalog(
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    return await build_ml_catalog_dashboard(org_id, settings=settings)
+    return await build_ml_catalog_dashboard(org_id, settings=settings, include_advanced=True)
 
 
 @router.get("/models/{model_name}/status")
@@ -47,6 +48,10 @@ async def train_ml_model(
     _admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
+    try:
+        require_supported_manual_training(model_name)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if (os.environ.get("TEMPORAL_HOST") or "").strip():
         try:
             started = await start_ml_model_training_workflow(org_id, model_name)
