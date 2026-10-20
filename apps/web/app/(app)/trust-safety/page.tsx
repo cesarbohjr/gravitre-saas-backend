@@ -6,31 +6,45 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { TrustSafetyApprovals } from "@/components/trust-safety/trust-safety-approvals"
 import { TrustSafetyAudit } from "@/components/trust-safety/trust-safety-audit"
 import { TrustSafetyPolicies } from "@/components/trust-safety/trust-safety-policies"
+import { TrustSafetySecurity } from "@/components/trust-safety/trust-safety-security"
+import { TrustSafetyRoles } from "@/components/trust-safety/trust-safety-roles"
+import { TrustSafetyEnvironments } from "@/components/trust-safety/trust-safety-environments"
 import "./gv-trust.css"
 
-type Tab = "approvals" | "audit" | "policies"
+type Tab = "approvals" | "audit" | "policies" | "security" | "roles" | "envs"
 
 const CRUMB: Record<Tab, string> = {
   approvals: "Approvals",
   audit: "Audit trail",
   policies: "Policies",
+  security: "Security",
+  roles: "Role permissions",
+  envs: "Environments",
 }
 const HEADING: Record<Tab, string> = {
   approvals: "Approvals",
   audit: "Audit trail",
   policies: "Policies",
+  security: "Security",
+  roles: "Role permissions",
+  envs: "Environments",
 }
 const LEDE: Record<Tab, string> = {
   approvals: "Review and decide on every agent action that paused for a human.",
   audit: "Who did what, when, and how it turned out. Filter by actor and outcome, then export.",
   policies: "Guardrails applied to every agent, workflow and chat write in this workspace.",
+  security: "Two-factor auth, IP allowlist, session timeout, and single sign-on for your workspace.",
+  roles: "Compare what each role can do and manage member permissions across your workspace.",
+  envs: "Manage your Dev, Staging and Production environments and control what gets promoted.",
 }
+
+const ALL_TABS: Tab[] = ["approvals", "audit", "policies", "security", "roles", "envs"]
 
 function TrustSafetyContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const raw = searchParams.get("tab") as Tab | null
-  const tab: Tab = raw === "audit" || raw === "policies" ? raw : "approvals"
+  const tab: Tab = raw && ALL_TABS.includes(raw) ? raw : "approvals"
 
   const go = (next: Tab) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -40,6 +54,10 @@ function TrustSafetyContent() {
 
   const navCls = (t: Tab) => `gv-sl${tab === t ? " on" : ""}`
   const tabCls = (t: Tab) => `gv-tab${tab === t ? " on" : ""}`
+
+  // Hide action buttons that don't apply to every tab
+  const showExport = tab === "audit"
+  const showNewPolicy = tab === "policies"
 
   return (
     <div style={{ maxWidth: 1400, margin: "0 auto", padding: "24px 24px 96px", display: "flex", flexDirection: "column", gap: 24 }}>
@@ -76,15 +94,15 @@ function TrustSafetyContent() {
 
             <div>
               <div className="gv-sgrp">Related settings</div>
-              <button type="button" className="gv-sl">
+              <button type="button" className={navCls("security")} aria-current={tab === "security" ? "page" : undefined} onClick={() => go("security")}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4.5" y="10" width="15" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>
                 Security
               </button>
-              <button type="button" className="gv-sl">
+              <button type="button" className={navCls("roles")} aria-current={tab === "roles" ? "page" : undefined} onClick={() => go("roles")}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c1-3.5 3.5-5.5 6.5-5.5s5.5 2 6.5 5.5" /><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.8.8 3 2.6 3.5 5.2" /></svg>
                 Role permissions
               </button>
-              <button type="button" className="gv-sl">
+              <button type="button" className={navCls("envs")} aria-current={tab === "envs" ? "page" : undefined} onClick={() => go("envs")}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="7" rx="2" /><rect x="4" y="13" width="16" height="7" rx="2" /><path d="M8 7.5h.01M8 16.5h.01" /></svg>
                 Environments
               </button>
@@ -112,14 +130,18 @@ function TrustSafetyContent() {
                 <span className="gv-dot gv-live" style={{ background: "#19C37D" }} />
                 Live
               </span>
-              <button type="button" className="gv-btn line sm">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
-                Export report
-              </button>
-              <button type="button" className="gv-btn green sm" onClick={() => go("policies")}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-                New policy
-              </button>
+              {showExport && (
+                <button type="button" className="gv-btn line sm">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
+                  Export report
+                </button>
+              )}
+              {showNewPolicy && (
+                <button type="button" className="gv-btn green sm" onClick={() => go("policies")}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                  New policy
+                </button>
+              )}
             </div>
           </div>
 
@@ -133,6 +155,15 @@ function TrustSafetyContent() {
             </button>
             <button type="button" role="tab" className={tabCls("policies")} aria-selected={tab === "policies"} onClick={() => go("policies")}>
               Policies
+            </button>
+            <button type="button" role="tab" className={tabCls("security")} aria-selected={tab === "security"} onClick={() => go("security")}>
+              Security
+            </button>
+            <button type="button" role="tab" className={tabCls("roles")} aria-selected={tab === "roles"} onClick={() => go("roles")}>
+              Roles
+            </button>
+            <button type="button" role="tab" className={tabCls("envs")} aria-selected={tab === "envs"} onClick={() => go("envs")}>
+              Environments
             </button>
           </div>
 
@@ -150,6 +181,21 @@ function TrustSafetyContent() {
           {tab === "policies" && (
             <div role="tabpanel" aria-label="Policies">
               <TrustSafetyPolicies />
+            </div>
+          )}
+          {tab === "security" && (
+            <div role="tabpanel" aria-label="Security">
+              <TrustSafetySecurity />
+            </div>
+          )}
+          {tab === "roles" && (
+            <div role="tabpanel" aria-label="Role permissions">
+              <TrustSafetyRoles />
+            </div>
+          )}
+          {tab === "envs" && (
+            <div role="tabpanel" aria-label="Environments">
+              <TrustSafetyEnvironments />
             </div>
           )}
 
