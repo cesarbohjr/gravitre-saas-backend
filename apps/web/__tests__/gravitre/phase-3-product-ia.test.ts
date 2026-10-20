@@ -120,14 +120,12 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     const page = readFileSync(resolve(webRoot, "app/(app)/settings/page.tsx"), "utf8")
     expect(page).toMatch(/from \"@\/components\/settings\/organization-settings\"/)
     expect(page).toMatch(/from \"@\/components\/settings\/notification-settings\"/)
-    expect(page).toMatch(/from \"@\/components\/settings\/security-settings\"/)
     expect(page).toMatch(/from \"@\/components\/settings\/team-settings\"/)
     expect(page).toMatch(/from \"@\/components\/settings\/api-keys-settings\"/)
     expect(page).toMatch(/from \"@\/components\/settings\/webhooks-settings\"/)
     expect(page).toMatch(/from \"@\/components\/settings\/ai-models-settings\"/)
     expect(page).toMatch(/<OrganizationSettings/)
     expect(page).toMatch(/<NotificationSettings/)
-    expect(page).toMatch(/<SecuritySettings/)
     expect(page).toMatch(/<TeamSettings/)
     expect(page).toMatch(/<ApiKeysSettings/)
     expect(page).toMatch(/<WebhooksSettings/)
@@ -145,13 +143,8 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(notifications).toMatch(/className="gs-card clip"/)
     expect(notifications).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
 
-    const security = readFileSync(
-      resolve(webRoot, "components/settings/security-settings.tsx"),
-      "utf8",
-    )
-    expect(security).toMatch(/<b>Single sign on<\/b>/)
+    const security = readFileSync(resolve(webRoot, "components/trust-safety/sso-dialog.tsx"), "utf8")
     expect(security).toMatch(/config\.is_enabled \? "Disable" : "Enable"/)
-    expect(security).toMatch(/Sign in does not enforce it yet/)
     expect(security).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
 
     const models = readFileSync(

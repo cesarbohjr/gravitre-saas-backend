@@ -113,10 +113,9 @@ interface SettingsShellProps {
   children: React.ReactNode
 }
 
-/** "Settings / Workspace"; Governance pages read "Governance". */
+/** "Settings / Workspace". */
 function crumbFor(group: SettingsGroup | undefined): string {
   if (!group) return "Settings"
-  if (group === "governance") return "Governance"
   return `Settings / ${settingsGroupLabel(group)}`
 }
 

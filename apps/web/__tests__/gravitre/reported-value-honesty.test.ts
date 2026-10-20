@@ -18,7 +18,7 @@ describe("reported values stay reported", () => {
 
   it("environments do not invent health, resource counts, or timestamps", () => {
     const model = read("lib/settings-api/environments.ts")
-    const page = read("components/settings/env-pipeline.tsx")
+    const page = read("components/trust-safety/trust-safety-environments.tsx")
     // Counts are parsed from the payload and stay null when missing; the page shows "None yet".
     expect(model).toMatch(/workflows: count\(/)
     expect(model).toMatch(/return null/)

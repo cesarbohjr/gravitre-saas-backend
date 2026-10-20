@@ -23,7 +23,6 @@ import ModelStudioPage from "@/app/(app)/intelligence/model-studio/page"
 import GoalsPage from "@/app/(app)/goals/page"
 import PlaysPage from "@/app/(app)/plays/page"
 import SettingsPage from "@/app/(app)/settings/page"
-import SettingsApprovalsPage from "@/app/(app)/settings/approvals/page"
 import TrustSafetyPage from "@/app/(app)/trust-safety/page"
 import AiWorkspaceProofPage from "./_components/ai-workspace-proof-page"
 import AgentChatProofPage from "./_components/agent-chat-proof-page"
@@ -68,7 +67,6 @@ export const SHOT_SURFACES = {
   goals: GoalsPage,
   plays: PlaysPage,
   settings: SettingsPage,
-  "settings-approvals": SettingsApprovalsPage,
   audit: TrustSafetyPage,
   training: TrainingPage,
   "intelligence-data": IntelligenceDataPage,

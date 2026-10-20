@@ -20,11 +20,11 @@ export const ENTERPRISE_SECTION_IDS: EnterpriseSectionId[] = ["command-center", 
 const MOVED_SECTIONS: Record<string, string> = {
   "knowledge-sync": "/connectors#knowledge-sync",
   knowledge: "/connectors#knowledge-sync",
-  "data-residency": "/settings?section=security",
-  region: "/settings?section=security",
+  "data-residency": "/trust-safety?tab=security",
+  region: "/trust-safety?tab=security",
   "white-label": "/settings?section=branding",
   branding: "/settings?section=branding",
-  siem: "/settings?section=security",
+  siem: "/trust-safety?tab=security",
 }
 
 /** Old ?tab= values (CS workspace links, org-context) mapped to the new ?section= ids. */

@@ -5,7 +5,7 @@
  */
 export const PRIVATE_ROUTE_ROOTS = [
   "activity", "admin", "agents", "ai", "approvals", "assignments", "audit",
-  "chat", "connectors", "environments", "goals", "home", "intelligence",
+  "chat", "connectors", "goals", "home", "intelligence",
   "lite", "marketplace", "metrics", "models", "multi-agent-run",
   "notifications", "objectives", "platform", "plays", "runs", "schedules",
   "search", "settings", "sources", "training", "trust-safety", "workflows",

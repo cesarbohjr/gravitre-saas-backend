@@ -43,7 +43,8 @@ const navigationItems: CommandItem[] = [
   { id: "nav-approvals", type: "navigation", title: "Approvals", subtitle: "Pending reviews", icon: "approvals", href: "/approvals", keywords: ["review", "approve"] },
   { id: "nav-intelligence", type: "navigation", title: "Intelligence", subtitle: "Health, ROI, learning, models", icon: "dashboard", href: "/intelligence", keywords: ["monitor", "stats", "metrics", "insights"] },
   { id: "nav-audit", type: "navigation", title: "Audit log", subtitle: "Compliance export", icon: "history", href: "/audit", keywords: ["log", "history", "compliance"] },
-  { id: "nav-settings", type: "navigation", title: "Settings", subtitle: "Personal, organization, admin", icon: "settings", href: "/settings", keywords: ["config", "preferences", "enterprise", "federation", "environments"] },
+  { id: "nav-settings", type: "navigation", title: "Settings", subtitle: "Personal, organization, admin", icon: "settings", href: "/settings", keywords: ["config", "preferences", "enterprise", "federation"] },
+  { id: "nav-trust-safety", type: "navigation", title: "Trust & Safety", subtitle: "Approvals, audit, policies, security, roles, environments", icon: "approvals", href: "/trust-safety", keywords: ["security", "sso", "roles", "permissions", "policies", "environments", "audit", "human in the loop"] },
 ]
 
 const aiCommands: CommandItem[] = [

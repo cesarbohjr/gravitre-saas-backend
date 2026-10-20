@@ -20,10 +20,14 @@ import {
   type SessionTimeout,
 } from "@/lib/settings-api/security"
 import type { SSOConfiguration } from "@/types/api"
-import { Hero, Icon, Pill, Switch, TONE } from "./ts-ui"
+import { Hero, Icon, Note, Pill, Switch, TONE } from "./ts-ui"
+import { EnterpriseResidency } from "@/components/settings/enterprise-residency"
+import { EnterpriseSiem } from "@/components/settings/enterprise-siem"
+import "@/components/settings/settings-kit.css"
+import "@/components/settings/enterprise-sections.css"
+import { SsoDialog } from "./sso-dialog"
 
 const SSO_STEPS = ["Add Gravitre to your IdP", "Paste your IdP metadata", "Test and enable"]
-const SECURITY_HREF = "/settings?section=security"
 
 /**
  * Workspace security controls from /api/settings/security and SSO status from
@@ -43,8 +47,9 @@ export type SecurityState = ReturnType<typeof useSecurityState>
 
 export function TrustSafetySecurity({ state }: { state: SecurityState }) {
   const { isAdmin } = useOrgAdmin()
-  const { sec, sp, stage, controls, score, advice } = state
+  const { sso, sec, sp, stage, controls, score, advice } = state
   const [busy, setBusy] = useState<string | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
   const [ipDraft, setIpDraft] = useState("")
   const [copied, setCopied] = useState(false)
 
@@ -96,14 +101,51 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
 
   const ssoPill =
     stage === "enabled"
-      ? { ...TONE.ok, label: "Enabled", cta: "Manage" }
+      ? { ...TONE.ok, label: "Enabled" }
       : stage === "setup"
-        ? { ...TONE.warn, label: "Setting up", cta: "Test and enable" }
+        ? { ...TONE.warn, label: "Setting up" }
         : stage === "unavailable"
-          ? { ...TONE.mute, label: "Not on this plan", cta: "See plans" }
-          : { ...TONE.mute, label: "Not set up", cta: "Configure" }
+          ? { ...TONE.mute, label: "Not on this plan" }
+          : { ...TONE.mute, label: "Not set up" }
   const ssoStep = stage === "enabled" ? 3 : stage === "setup" ? 2 : 0
   const metadataUrl = sp.data?.metadata_url ?? null
+
+  const testSso = async () => {
+    setBusy("sso-test")
+    try {
+      const result = await ssoApi.initLogin()
+      if (!result.redirect_url) throw new Error("Missing redirect URL")
+      window.location.href = result.redirect_url
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not start the test sign in")
+      setBusy(null)
+    }
+  }
+
+  const enableSso = async () => {
+    setBusy("sso-enable")
+    try {
+      await ssoApi.enable()
+      await sso.mutate()
+      toast.success("Single sign on is on", {
+        description: "Sign in through your IdP once to check it works.",
+        action: { label: "Test sign in", onClick: () => void testSso() },
+      })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not enable single sign on")
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const ssoAction = (cls: string) =>
+    stage === "unavailable" ? (
+      <Link href="/settings/billing" className={cls}>See plans</Link>
+    ) : !isAdmin || sso.error ? null : stage === "setup" ? (
+      <button type="button" className={cls} disabled={busy != null} onClick={() => void enableSso()}>Test and enable</button>
+    ) : (
+      <button type="button" className={cls} disabled={sso.isLoading} onClick={() => setDialogOpen(true)}>{stage === "enabled" ? "Manage" : "Configure"}</button>
+    )
 
   const copyMeta = async () => {
     if (!metadataUrl) return
@@ -122,7 +164,7 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
       : !tfa
         ? <button type="button" className="ts-btn dark sm" disabled={busy != null} onClick={toggleTfa}>Turn on two factor</button>
         : stage !== "enabled"
-          ? <Link href={stage === "unavailable" ? "/settings/billing" : SECURITY_HREF} className="ts-btn dark sm">{ssoPill.cta} single sign on</Link>
+          ? ssoAction("ts-btn dark sm")
           : !ip
             ? <button type="button" className="ts-btn dark sm" disabled={busy != null} onClick={toggleIp}>Turn on IP allowlist</button>
             : <button type="button" className="ts-btn dark sm" disabled={busy != null} onClick={() => setTimeoutValue("24h")}>Set a session timeout</button>
@@ -232,11 +274,36 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button type="button" className="ts-btn line sm" disabled={!metadataUrl} onClick={() => void copyMeta()}>{copied ? "Copied" : "Copy metadata URL"}</button>
-              <Link href={stage === "unavailable" ? "/settings/billing" : SECURITY_HREF} className="ts-btn dark sm">{ssoPill.cta}</Link>
+              {stage === "setup" && isAdmin ? <button type="button" className="ts-btn line sm" onClick={() => setDialogOpen(true)}>Edit setup</button> : null}
+              {ssoAction("ts-btn dark sm")}
             </div>
           </section>
+          {controls && ((tfa && !controls.enforced.requireTwoFactor) || (ip && !controls.enforced.ipAllowlist) || (timeout !== "never" && !controls.enforced.sessionTimeout)) ? (
+            <Note>Saved for this workspace. Sign in does not enforce these controls yet, so nobody is blocked today.</Note>
+          ) : null}
         </aside>
       </div>
+      {isAdmin ? (
+        <>
+          <section aria-labelledby="ts-residency-heading" className="gv-set" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <h2 id="ts-residency-heading" className="ts-eyebrow" style={{ margin: 0 }}>Data residency</h2>
+            <EnterpriseResidency isAdmin={isAdmin} />
+          </section>
+          <section aria-labelledby="ts-siem-heading" className="gv-set" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <h2 id="ts-siem-heading" className="ts-eyebrow" style={{ margin: 0 }}>SIEM export</h2>
+            <EnterpriseSiem isAdmin={isAdmin} />
+          </section>
+        </>
+      ) : null}
+      <SsoDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        config={sso.data ?? null}
+        serviceProvider={sp.data ?? null}
+        onChanged={async () => { await sso.mutate() }}
+        onTest={() => void testSso()}
+        testing={busy === "sso-test"}
+      />
     </>
   )
 }

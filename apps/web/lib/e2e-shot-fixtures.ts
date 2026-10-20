@@ -1268,6 +1268,27 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   },
   "/api/settings/home-reports-layout": { layout: null },
   "/api/settings/hitl-policies": { policies: [] },
+  "/api/org/role-permissions": {
+    roles: ["admin", "member", "viewer"],
+    member_counts: { owner: 1, admin: 1, member: 2, viewer: 0 },
+    capabilities: [
+      { key: "view", capability: "View dashboards and intelligence", area: "Insights", access: { admin: true, member: true, viewer: true } },
+      { key: "chat", capability: "Run Gravitre AI and chat", area: "Insights", access: { admin: true, member: true, viewer: true } },
+      { key: "build", capability: "Create agents and workflows", area: "Build", access: { admin: true, member: true, viewer: false } },
+      { key: "approve", capability: "Approve write actions", area: "Govern", access: { admin: true, member: true, viewer: false } },
+      { key: "billing", capability: "Org settings and billing", area: "Govern", access: { admin: true, member: false, viewer: false } },
+    ],
+  },
+  "/api/enterprise/insights/residency": {
+    region: "us-east-1",
+    deploymentRegion: "us-east-1",
+    storagePrefix: "us",
+    migrationSupported: false,
+    regions: [
+      { id: "us-east-1", label: "United States", current: true, available: true },
+      { id: "eu-west-1", label: "European Union", current: false, available: false },
+    ],
+  },
   "/api/settings/workspace": { workspace: { accentColor: "#2E9E5B", timeZone: "America/Vancouver" } },
   "/api/settings/approval-rules": {
     rules: { customerEmailApproval: true, twoApprovalsHighRisk: true, autoApproveReadOnly: true, escalatePastDue: false, sla: "4h", slaMinutes: 240 },

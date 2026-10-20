@@ -243,7 +243,7 @@ export function buildStartNext(data: AiNativeData): StartCard[] {
     cards.push({ id: "connect", title: "Connect a data source", body: salesAgent ? `Give the ${salesAgent.name} your CRM so it can qualify leads.` : "Connect your CRM or inbox so agents can work with real records.", href: APP_ROUTES.connectors, tint: "var(--gv-blue-bg)", stroke: "#2B59E0", icon: "plug" })
   }
   if (data.approvalPolicies === 0) {
-    cards.push({ id: "policy", title: "Set an approval policy", body: "Choose which actions always pause for your decision.", href: "/settings/approvals", tint: "var(--gv-amber-bg)", stroke: "#8A5A06", icon: "shield" })
+    cards.push({ id: "policy", title: "Set an approval policy", body: "Choose which actions always pause for your decision.", href: "/trust-safety?tab=policies", tint: "var(--gv-amber-bg)", stroke: "#8A5A06", icon: "shield" })
   }
   if (!data.hasCustomReports) {
     cards.push({ id: "master", title: "Build your master view", body: "Drag KPIs into a Reports layout that fits your role.", href: "#reports", tint: "var(--gv-subtle)", stroke: "var(--gv-text)", icon: "grid" })
@@ -251,7 +251,7 @@ export function buildStartNext(data: AiNativeData): StartCard[] {
   const fill: StartCard[] = [
     { id: "assign", title: "Assign work to an agent", body: "Describe the outcome you want and pick who does it.", href: "/assignments/new", tint: "var(--gv-mint)", stroke: "#0B8A5C", icon: "assign" },
     { id: "connectors-more", title: "Connect another system", body: "More connected tools means agents can finish more on their own.", href: APP_ROUTES.connectors, tint: "var(--gv-blue-bg)", stroke: "#2B59E0", icon: "plug" },
-    { id: "policy-review", title: "Review approval rules", body: "Check which actions pause for your decision.", href: "/settings/approvals", tint: "var(--gv-amber-bg)", stroke: "#8A5A06", icon: "shield" },
+    { id: "policy-review", title: "Review approval rules", body: "Check which actions pause for your decision.", href: "/trust-safety?tab=policies", tint: "var(--gv-amber-bg)", stroke: "#8A5A06", icon: "shield" },
     { id: "reports", title: "Open your reports", body: "See runs, success rate and time saved by agent.", href: "#reports", tint: "var(--gv-subtle)", stroke: "var(--gv-text)", icon: "grid" },
   ]
   for (const f of fill) {
