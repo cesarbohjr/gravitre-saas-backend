@@ -2907,10 +2907,7 @@ class AgentIntelligence:
                 return
 
         from app.services.task_classifier import get_task_classifier
-        from app.services.chat_dialogue_settings import load_chat_dialogue_settings
-        from app.services.contextual_understanding_service import get_contextual_understanding_service
         from app.services.clarification_engine import get_clarification_engine
-        from app.services.sentiment_friction_service import get_sentiment_friction_service
         from app.services.dialogue_policy_engine import get_dialogue_policy_engine
         from app.services.persona_service import get_persona_service
         from app.services.conversation_state_service import get_conversation_state_service
@@ -3323,35 +3320,15 @@ class AgentIntelligence:
         )
         _mark("spoken_lite_decided")
 
+        # Every route uses the same perception, including conversational shortcuts.
+        from app.services.contextual_understanding_service import perceive_turn
+
+        dialogue_settings, sentiment, understanding = await perceive_turn(
+            org_id, task_text, conversation_history, settings=active_settings,
+            client=client, spoken_mode=bool(spoken_mode),
+        )
+        _mark("perception")
         if spoken_lite_path or _compiled_read_ingress:
-            # Defaults only — dialogue_settings are unused on the lite path before
-            # LIVE returns; a DB round-trip here was pure critical-path waste.
-            dialogue_settings = {
-                "sentiment_detection_enabled": False,
-                "spoken_lite_defaults": True,
-            }
-            _mark("dialogue_settings_lite")
-            sentiment = {"recommended_adaptation": "none"}
-            understanding = {
-                "goal": None,
-                "constraints": [],
-                "model_attempted": False,
-                "model_ran": False,
-                "domain": {
-                    "source": (
-                        "compiled_read_ingress"
-                        if _compiled_read_ingress
-                        else "spoken_lite_skip"
-                    ),
-                    "confidence": 0.0,
-                    "routing_active": False,
-                },
-                "skipped": (
-                    "compiled_read_ingress"
-                    if _compiled_read_ingress
-                    else "spoken_conversational_lite"
-                ),
-            }
             pipeline_classification = {
                 "intent": "informational",
                 "requires_action": False,
@@ -3371,21 +3348,6 @@ class AgentIntelligence:
             router_enrichments: dict[str, Any] = {}
             classification_confidence = 0.7
         else:
-            dialogue_settings = await load_chat_dialogue_settings(org_id, active_settings, client=client)
-            _mark("dialogue_settings_full")
-            sentiment = (
-                get_sentiment_friction_service().analyze(task_text, conversation_history)
-                if dialogue_settings.get("sentiment_detection_enabled", True)
-                else {"recommended_adaptation": "none"}
-            )
-            _mark("sentiment")
-            understanding = await get_contextual_understanding_service(active_settings).understand(
-                task_text,
-                conversation_history,
-                org_id,
-                spoken_mode=bool(spoken_mode),
-            )
-            _mark("understanding")
             # Sites 9/10 were dormant with no production signal at all: an empty goal
             # and a low-confidence domain look identical whether the model ran or
             # threw. modelRan and domainSource are what separate those.
@@ -3537,6 +3499,16 @@ class AgentIntelligence:
             _raw_classification_confidence = pipeline_classification.get("classification_confidence")
             classification_confidence = (
                 float(_raw_classification_confidence) if _raw_classification_confidence is not None else 0.55
+            )
+
+        # Carry the same closed-set perception result into LIVE and speech.
+        _adaptation = str(sentiment.get("recommended_adaptation") or "none")
+        pipeline_classification["sentiment_adaptation"] = _adaptation
+        routing_sse = {**routing_sse, "conversationalAdaptation": _adaptation}
+        if spoken_mode:
+            yield sse_intelligence_metadata(
+                message_id=message_id, confidence=None, answer_explanation=None,
+                routing={"conversationalAdaptation": _adaptation},
             )
 
         # Complexity routing Phase 1 — post-classification risk floor (escalate-only).

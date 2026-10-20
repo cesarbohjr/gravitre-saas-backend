@@ -1,0 +1,11 @@
+{
+  "scope": "local_offline_unit_and_simulated_pipeline",
+  "recorded_at": "2026-10-20T05:56:27.460677+00:00",
+  "tests": 1722,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "outbound_network": "blocked by tests.offline_network_guard",
+  "production_acceptance": "NOT RUN",
+  "live_provider_acceptance": "NOT RUN"
+}

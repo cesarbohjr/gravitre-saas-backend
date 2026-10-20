@@ -25,8 +25,16 @@ def test_full_sentence_is_released_immediately() -> None:
 
 
 def test_elevenlabs_auto_mode_only_receives_sentence_level_chunks_by_contract() -> None:
-    assert "auto_mode=True" in PIPELINE
-    assert "preserves partial phrases until sentence" in PIPELINE
+    # Construction moved to the protocol factory. Exercise its actual settings
+    # rather than matching comments/source text in the old file.
+    from app.services.pipecat_voice.tts_factory import build_live_tts_service
+    from pipecat.services.tts_service import TextAggregationMode
+
+    service = build_live_tts_service(
+        api_key="test-key", voice_id="test-voice", model="eleven_flash_v2_5", sample_rate=24000,
+    )
+    assert service._auto_mode is True
+    assert service._text_aggregation_mode == TextAggregationMode.SENTENCE
 
 
 def test_stt_input_stays_16k_while_tts_output_is_24k() -> None:

@@ -67,6 +67,19 @@ def test_delivery_tuning_can_be_turned_off() -> None:
     assert _stabilities(service) == []
 
 
+def test_sentiment_delivery_resets_and_rejects_untrusted_hints() -> None:
+    service = _service()
+
+    async def run() -> None:
+        await service._apply_tier_voice("light", "acknowledge_briefly")
+        await service._apply_tier_voice("light", "acknowledge_briefly")
+        await service._apply_tier_voice("light", "none")
+        await service._apply_tier_voice("light", {"stability": 0.0})
+
+    asyncio.run(run())
+    assert _stabilities(service) == [VOICE_TIER_STABILITY["deep"], VOICE_TIER_STABILITY["light"]]
+
+
 def test_spoken_aliases_expand_shorthand() -> None:
     assert apply_spoken_aliases("Use text, e.g. reminders.") == "Use text, for example reminders."
     assert apply_spoken_aliases("Text vs. email") == "Text versus email"
