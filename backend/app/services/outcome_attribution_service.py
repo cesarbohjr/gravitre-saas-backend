@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.config import Settings, get_settings
+from app.core.io_pool import run_io
 from app.connectors.hubspot import HubSpotAPIError, get_deal
 from app.connectors.hubspot_oauth import ensure_hubspot_access_token
 from app.connectors.repository import get_connector, get_connector_by_type
@@ -325,16 +326,15 @@ class OutcomeAttributionService:
 
     async def get_agent_outcome_summary(self, org_id: str, agent_id: str) -> dict[str, Any]:
         client = self._client()
-        rows = (
+        result = await run_io(lambda: (
             client.table("agent_action_outcomes")
             .select("*")
             .eq("org_id", org_id)
             .eq("agent_id", agent_id)
             .not_.is_("measured_at", "null")
             .execute()
-            .data
-            or []
-        )
+        ))
+        rows = result.data or []
         deltas: list[float] = []
         wins = 0
         for row in rows:
@@ -375,15 +375,14 @@ class OutcomeAttributionService:
     ) -> dict[str, Any]:
         active_settings = settings or self.settings
         client = get_supabase_client(active_settings)
-        agents = (
+        agent_result = await run_io(lambda: (
             client.table("agents")
             .select("id, name, status")
             .eq("org_id", org_id)
             .limit(200)
             .execute()
-            .data
-            or []
-        )
+        ))
+        agents = agent_result.data or []
         summaries: list[dict[str, Any]] = []
         for agent in agents:
             agent_id = str(agent.get("id") or "")
@@ -392,13 +391,13 @@ class OutcomeAttributionService:
             summary = await self.get_agent_outcome_summary(org_id, agent_id)
             summary["agentName"] = str(agent.get("name") or agent_id)
             summaries.append(summary)
-        pending = (
+        pending = await run_io(lambda: (
             client.table("agent_action_outcomes")
             .select("id", count="exact")
             .eq("org_id", org_id)
             .is_("measured_at", "null")
             .execute()
-        )
+        ))
         from app.services.post_publish_marketing_metrics_service import OBSERVABLE_MARKETING_METRICS
 
         return {

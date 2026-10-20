@@ -95,16 +95,15 @@ class KnowledgeGraphService:
             settings=active,
             client=db,
         )
-        signals = (
+        signal_result = await run_io(lambda: (
             db.table("optimization_suggestions")
             .select("id, suggestion_type, title, status, estimated_impact")
             .eq("org_id", org_id)
             .eq("status", "pending_review")
             .limit(20)
             .execute()
-            .data
-            or []
-        )
+        ))
+        signals = signal_result.data or []
         entity_signals = [
             row
             for row in signals
