@@ -564,10 +564,14 @@ export function AuditTrail({ standalone = false }: { standalone?: boolean } = {}
 
   if (standalone) {
     return (
-      <>
-        {user ? actions : null}
-        {user ? body : <SetNote>Sign in to view your audit trail.</SetNote>}
-      </>
+      <div className="gv-set flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="gs-main px-4 py-5 md:px-6">
+          {user ? (
+            <div className="gs-head-actions">{actions}</div>
+          ) : null}
+          {user ? body : <SetNote>Sign in to view your audit trail.</SetNote>}
+        </div>
+      </div>
     )
   }
 
