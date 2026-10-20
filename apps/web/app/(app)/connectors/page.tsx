@@ -1361,7 +1361,11 @@ function AddConnectorModal({
 
   const handleSelectConnector = (connector: CatalogConnector) => {
     if (isManagedConnectorVendor(connector.vendorKey || connector.type) && !managedProviderAvailable(managedCatalog, connector.vendorKey || connector.type)) {
-      toast.message("Provider setup required", { description: "An administrator must finish this provider’s authorization configuration before accounts can connect." })
+      const mode = managedCatalog?.connectors.find((entry) => entry.vendor === (connector.vendorKey || connector.type))?.authMode
+      const unsupported = mode && !["OAUTH1", "OAUTH2"].includes(mode)
+      toast.message(unsupported ? "Provider sign-in unavailable" : "Provider setup required", { description: unsupported
+        ? "This provider does not yet support the sign-in connection offered by Gravitre."
+        : "Gravitre must finish this provider’s authorization setup before accounts can connect." })
       return
     }
     if (connector.partner) {
@@ -1536,7 +1540,7 @@ function AddConnectorModal({
                               {!connector.partner && isShippedConnector(connector) && (
                                 <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-success/10 text-success">
                                   {isManagedConnectorVendor(connector.vendorKey || connector.type)
-                                    ? !managedProviderAvailable(managedCatalog, connector.vendorKey || connector.type) ? "Setup required" : connector.shipped ? "Actions supported" : "Connect account"
+                                    ? !managedProviderAvailable(managedCatalog, connector.vendorKey || connector.type) ? (managedCatalog?.connectors.find((entry) => entry.vendor === (connector.vendorKey || connector.type))?.setupReason === "interactive_oauth_unavailable" ? "Sign-in unavailable" : "Setup required") : connector.shipped ? "Actions supported" : "Connect account"
                                     : "Available"}
                                 </span>
                               )}
@@ -1616,7 +1620,7 @@ function AddConnectorModal({
                       <h3 className="text-sm font-semibold text-foreground">Connect with {selectedType}</h3>
                       <p className="text-xs text-muted-foreground mt-1">
                         {isManagedConnectorVendor(selectedConnectorMeta()?.vendorKey || "")
-                          ? `Authorize your ${selectedType} account securely. Your credentials are managed outside Gravitre.`
+                          ? `Sign in with ${selectedType} and approve access for Gravitre.`
                           : <>You&apos;ll be redirected to {selectedType} to authorize Gravitre</>}
                       </p>
                       {selectedConnectorMeta()?.vendorKey &&
@@ -1629,7 +1633,7 @@ function AddConnectorModal({
                     {MANAGED_OAUTH_FALLBACK_VENDOR_KEYS.has(selectedConnectorMeta()?.vendorKey || "") && (
                       <Button variant="link" size="sm" disabled={!canStartOAuth() || !managedProviderAvailable(managedCatalog, selectedConnectorMeta()?.vendorKey || "")}
                         onClick={() => void handleOAuthConnect(true)}>
-                        {managedProviderAvailable(managedCatalog, selectedConnectorMeta()?.vendorKey || "") ? "Connect using managed authorization" : "Managed authorization needs administrator setup"}
+                        {managedProviderAvailable(managedCatalog, selectedConnectorMeta()?.vendorKey || "") ? "Connect securely with provider" : "Provider sign-in needs platform setup"}
                       </Button>
                     )}
                     <div className="space-y-3 text-left max-w-sm mx-auto">

@@ -39,6 +39,9 @@ def integration_inventory(settings: Any, *, force_refresh: bool = False) -> list
 def provider_readiness(spec: Any, inventory: list[dict[str, Any]]) -> tuple[bool, str | None]:
     if not spec.provider:
         return False, "provider_not_supported"
+    # Interactive account consent only: client-credentials is not user OAuth.
+    if spec.auth_mode not in {"OAUTH1", "OAUTH2"}:
+        return False, "interactive_oauth_unavailable"
     integration = next((r for r in inventory if r["key"] == spec.integration_id), None)
     if not integration:
         return False, "integration_missing"
@@ -50,6 +53,7 @@ def provider_readiness(spec: Any, inventory: list[dict[str, Any]]) -> tuple[bool
 
 
 def managed_setup_catalog(settings: Any) -> dict[str, Any]:
+    from app.connectors.managed_oauth_inputs import oauth_input_fields
     from app.connectors.nango_registry import NANGO_CONNECTOR_REGISTRY, NANGO_FALLBACK_REGISTRY
     from app.services.managed_service_desk_tools import MANAGED_SERVICE_DESK_TOOL_EXECUTORS
     from app.services.managed_security_tools import MANAGED_SECURITY_TOOL_EXECUTORS
@@ -71,6 +75,7 @@ def managed_setup_catalog(settings: Any) -> dict[str, Any]:
         supported = sorted(a for a in actions if a.startswith(spec.vendor + "."))
         connectors.append({"vendor": spec.vendor, "available": available, "setupReason": reason,
                            "nativeFallback": spec.native_fallback, "authMode": spec.auth_mode,
+                           "inputFields": oauth_input_fields(spec.vendor),
                            "actions": supported, "support": "native_actions" if spec.native_fallback else
                            "actions_supported" if supported else "authorization_only"})
     return {"configured": configured, "inventoryChecked": not bool(failure), "connectors": connectors}

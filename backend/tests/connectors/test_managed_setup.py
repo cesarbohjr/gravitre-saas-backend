@@ -10,17 +10,23 @@ from app.connectors.nango_registry import get_nango_connector_spec
 
 @pytest.mark.parametrize("inventory,expected", [
     ([], (False, "integration_missing")),
-    ([{"key":"freshservice","provider":"slack","missing_fields":[]}], (False,"provider_mismatch")),
-    ([{"key":"freshservice","provider":"freshservice","missing_fields":["oauth_client_id"]}], (False,"provider_credentials_required")),
-    ([{"key":"freshservice","provider":"freshservice","missing_fields":None}], (False,"provider_credentials_required")),
-    ([{"key":"freshservice","provider":"freshservice","missing_fields":[]}], (True,None)),
+    ([{"key":"front","provider":"slack","missing_fields":[]}], (False,"provider_mismatch")),
+    ([{"key":"front","provider":"front","missing_fields":["oauth_client_id"]}], (False,"provider_credentials_required")),
+    ([{"key":"front","provider":"front","missing_fields":None}], (False,"provider_credentials_required")),
+    ([{"key":"front","provider":"front","missing_fields":[]}], (True,None)),
 ])
 def test_provider_readiness_requires_specific_matching_integration(inventory, expected):
-    assert provider_readiness(get_nango_connector_spec("freshservice"), inventory) == expected
+    assert provider_readiness(get_nango_connector_spec("front"), inventory) == expected
 
 
 def test_unknown_provider_mapping_is_not_available():
     assert provider_readiness(get_nango_connector_spec("syncro"), []) == (False,"provider_not_supported")
+
+
+@pytest.mark.parametrize("vendor", ["freshservice", "cal_com", "crowdstrike", "sage_intacct"])
+def test_non_interactive_credentials_never_count_as_user_oauth(vendor):
+    spec = get_nango_connector_spec(vendor)
+    assert provider_readiness(spec, [{"key": spec.integration_id, "provider": spec.provider, "missing_fields": []}]) == (False, "interactive_oauth_unavailable")
 
 
 def test_catalog_fails_closed_during_nango_outage(monkeypatch):
@@ -35,7 +41,7 @@ def test_catalog_fails_closed_during_nango_outage(monkeypatch):
 def test_inventory_cache_is_key_scoped_and_drops_credentials(monkeypatch):
     _cache.clear()
     call=MagicMock(side_effect=lambda *a,**kw: httpx.Response(200,json={"data":[{
-        "unique_key":"x","provider":"freshservice","missing_fields":[],"credentials":{"client_secret":"never expose"}}]},
+        "unique_key":"x","provider":"front","missing_fields":[],"credentials":{"client_secret":"never expose"}}]},
         request=httpx.Request("GET","https://api.nango.dev/integrations")))
     monkeypatch.setattr(httpx.Client,"get",call)
     one=SimpleNamespace(nango_secret_key="one",nango_api_base_url="https://api.nango.dev")

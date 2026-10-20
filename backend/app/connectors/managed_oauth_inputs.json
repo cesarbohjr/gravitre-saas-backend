@@ -1,0 +1,141 @@
+{
+  "servicenow": [
+    {
+      "key": "hostname",
+      "label": "ServiceNow Domain",
+      "required": true,
+      "format": "hostname",
+      "example": "domain.service-now.com"
+    }
+  ],
+  "zoho_crm": [
+    {
+      "key": "extension",
+      "label": "Domain Extension",
+      "required": false,
+      "enum": [
+        "com",
+        "eu",
+        "in",
+        "com.au",
+        "com.cn",
+        "jp"
+      ]
+    }
+  ],
+  "okta": [
+    {
+      "key": "subdomain",
+      "label": "Okta Domain",
+      "required": true,
+      "pattern": "^[a-z0-9_-]+$",
+      "example": "domain"
+    }
+  ],
+  "ironclad": [
+    {
+      "key": "subdomain",
+      "label": "Subdomain",
+      "required": true,
+      "enum": [
+        "na1",
+        "demo",
+        "eu1",
+        "preview"
+      ]
+    }
+  ],
+  "ninjaone": [
+    {
+      "key": "instance",
+      "label": "Instance",
+      "required": true,
+      "enum": [
+        "app.ninjarmm.com",
+        "us2.ninjarmm.com",
+        "eu.ninjarmm.com",
+        "ca.ninjarmm.com",
+        "oc.ninjarmm.com"
+      ],
+      "format": "hostname"
+    }
+  ],
+  "pandadoc": [
+    {
+      "key": "region",
+      "label": "Region",
+      "required": true,
+      "enum": [
+        "pandadoc.com",
+        "pandadoc.eu"
+      ]
+    }
+  ],
+  "smartsheet": [
+    {
+      "key": "app_host",
+      "label": "App Host",
+      "required": false,
+      "pattern": "^(app\\.smartsheet\\.com|app\\.test\\.smartsheet\\.com)$",
+      "example": "app.smartsheet.com"
+    },
+    {
+      "key": "domain",
+      "label": "Domain",
+      "required": true,
+      "enum": [
+        "smartsheet.com",
+        "smartsheet.eu",
+        "smartsheet.au",
+        "smartsheetgov.com",
+        "test.smartsheet.com"
+      ]
+    }
+  ],
+  "typeform": [
+    {
+      "key": "authHost",
+      "label": "Authorization host",
+      "required": true,
+      "enum": [
+        "api.typeform.com",
+        "api.typeform.eu"
+      ]
+    },
+    {
+      "key": "apiHost",
+      "label": "API host",
+      "required": true,
+      "enum": [
+        "api.typeform.com",
+        "api.eu.typeform.com",
+        "api.typeform.eu"
+      ]
+    }
+  ],
+  "wrike": [
+    {
+      "key": "host",
+      "label": "Domain",
+      "required": true,
+      "format": "hostname"
+    }
+  ],
+  "contentful": [
+    {
+      "key": "subdomain",
+      "label": "Contentful Domain",
+      "required": true,
+      "pattern": "^[a-z0-9_-]+$",
+      "example": "domain"
+    }
+  ],
+  "google_ads": [
+    {
+      "key": "login_customer_id",
+      "label": "Login Customer ID",
+      "required": false,
+      "pattern": "^[0-9]{10}$"
+    }
+  ]
+}

@@ -29,10 +29,10 @@ class Query:
 
 
 def row(**kwargs):
-    return {'id':'c1','org_id':'o1','vendor':'freshservice','type':'freshservice','name':'desk',
+    return {'id':'c1','org_id':'o1','vendor':'front','type':'front','name':'desk',
             'status':'active','environment':'production','deleted_at':None,
-            'config':{'auth_provider':'managed','managed_integration_id':'freshservice',
-                      'managed_connection_id':'n1','instance_url':'https://example.freshservice.com'},**kwargs}
+            'config':{'auth_provider':'managed','managed_integration_id':'front',
+                      'managed_connection_id':'n1','instance_url':'https://example.front.com'},**kwargs}
 
 
 @pytest.fixture
@@ -70,16 +70,16 @@ async def post_webhook(client,payload):
 async def test_reconnect_preserves_config_and_requires_current_webhook(flow):
     app,store,_,session = flow
     async with AsyncClient(transport=ASGITransport(app=app),base_url='http://test') as client:
-        response = await client.post('/api/connectors/managed-auth/freshservice/session',json={'name':'desk','connectorId':'c1'})
+        response = await client.post('/api/connectors/managed-auth/front/session',json={'name':'desk','connectorId':'c1'})
         assert response.status_code == 200
         attempt = response.json()['attemptId']
         assert session.call_args.kwargs['connection_id'] == 'n1'
-        assert store[0]['config']['instance_url'] == 'https://example.freshservice.com'
+        assert store[0]['config']['instance_url'] == 'https://example.front.com'
         assert store[0]['config']['managed_connection_id'] == 'n1'
         assert store[0]['status'] == 'active'
         status = (await client.get('/api/connectors/managed-auth/c1/status')).json()
         assert status.get('confirmedAttemptId') != attempt
-        payload = {'type':'auth','success':True,'operation':'override','connectionId':'n1','providerConfigKey':'freshservice',
+        payload = {'type':'auth','success':True,'operation':'override','connectionId':'n1','providerConfigKey':'front',
                    'tags':{'organization_id':'o1','connector_id':'c1','auth_attempt_id':'stale'}}
         assert (await post_webhook(client,payload)).status_code == 409
         payload['tags']['auth_attempt_id'] = attempt
@@ -94,7 +94,7 @@ async def test_reconnect_preserves_config_and_requires_current_webhook(flow):
 async def test_reconnect_and_status_cannot_cross_scope(flow,field,value):
     app,store,_,session = flow; store[0][field] = value
     async with AsyncClient(transport=ASGITransport(app=app),base_url='http://test') as client:
-        response = await client.post('/api/connectors/managed-auth/freshservice/session',json={'name':'desk','connectorId':'c1'})
+        response = await client.post('/api/connectors/managed-auth/front/session',json={'name':'desk','connectorId':'c1'})
         assert response.status_code in {400,404}
         if field != 'vendor':
             assert (await client.get('/api/connectors/managed-auth/c1/status')).status_code == 404
@@ -106,7 +106,7 @@ async def test_missing_signing_key_blocks_session_before_mutation(flow):
     app,store,settings,session = flow; settings.nango_webhook_signing_key = ''
     before = deepcopy(store)
     async with AsyncClient(transport=ASGITransport(app=app),base_url='http://test') as client:
-        response = await client.post('/api/connectors/managed-auth/freshservice/session',json={'name':'desk','connectorId':'c1'})
+        response = await client.post('/api/connectors/managed-auth/front/session',json={'name':'desk','connectorId':'c1'})
         assert response.status_code == 503
     assert store == before; session.assert_not_called()
 
@@ -120,7 +120,7 @@ async def test_foreign_remote_account_cannot_start_reconnect(flow, monkeypatch):
     monkeypatch.setattr("app.connectors.nango_client.scoped_connection", reject)
     before = deepcopy(store)
     async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
-        response = await client.post('/api/connectors/managed-auth/freshservice/session', json={'name': 'desk', 'connectorId': 'c1'})
+        response = await client.post('/api/connectors/managed-auth/front/session', json={'name': 'desk', 'connectorId': 'c1'})
     assert response.status_code == 502 and store == before
     session.assert_not_called()
 
@@ -129,7 +129,7 @@ async def test_foreign_remote_account_cannot_start_reconnect(flow, monkeypatch):
 async def test_new_session_never_reuses_staging_row(flow):
     app,store,_,session = flow; store[0]['environment'] = 'staging'
     async with AsyncClient(transport=ASGITransport(app=app),base_url='http://test') as client:
-        response = await client.post('/api/connectors/managed-auth/freshservice/session',json={'name':'desk'})
+        response = await client.post('/api/connectors/managed-auth/front/session',json={'name':'desk'})
         assert response.status_code == 200
         assert response.json()['connectorId'] != 'c1'
     assert store[0]['environment'] == 'staging'
@@ -145,7 +145,7 @@ async def test_signed_webhook_cannot_activate_native_or_wrong_integration(flow):
                    'tags':{'organization_id':'o1','connector_id':'c1'}}
         assert (await post_webhook(client,payload)).status_code == 400
         store[0]['config']['auth_provider'] = 'native'
-        payload['providerConfigKey'] = 'freshservice'
+        payload['providerConfigKey'] = 'front'
         assert (await post_webhook(client,payload)).status_code == 400
         assert (await post_webhook(client,[])).status_code == 400
 
@@ -170,9 +170,35 @@ async def test_missing_provider_setup_does_not_mutate_or_start_session(flow,monk
     app,store,_,session=flow
     before=deepcopy(store)
     async with AsyncClient(transport=ASGITransport(app=app),base_url='http://test') as client:
-        result=await client.post('/api/connectors/managed-auth/freshservice/session',json={'name':'desk','connectorId':'c1'})
+        result=await client.post('/api/connectors/managed-auth/front/session',json={'name':'desk','connectorId':'c1'})
     assert result.status_code==503 and store==before
     session.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_non_oauth_cannot_create_session_even_with_ready_credentials(flow):
+    app, store, _, session = flow
+    before = deepcopy(store)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
+        response = await client.post('/api/connectors/managed-auth/freshservice/session', json={'name': 'desk'})
+    assert response.status_code == 503 and store == before
+    assert 'Sign-in authorization is not available' in response.text
+    session.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_headless_account_settings_are_validated_before_any_mutation(flow):
+    app, store, _, session = flow
+    before = deepcopy(store)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
+        invalid = await client.post('/api/connectors/managed-auth/okta/session', json={'name': 'identity', 'connectionConfig': {'subdomain': 'https://attacker.com'}})
+        assert invalid.status_code == 400 and store == before
+        session.assert_not_called()
+        result = await client.post('/api/connectors/managed-auth/okta/session', json={'name': 'identity', 'connectionConfig': {'subdomain': 'acme'}})
+    assert result.status_code == 200
+    assert result.json()['integrationId'] == 'okta'
+    assert result.json()['reconnect'] is False
+    assert result.json()['connectionConfig'] == {'subdomain': 'acme'}
 
 
 @pytest.mark.asyncio
@@ -196,12 +222,12 @@ async def test_native_reconnect_keeps_native_auth_until_signed_confirmation(flow
 async def test_business_connector_custom_kind_has_exact_vendor_and_scoped_activation(flow):
     app,store,_,_=flow
     async with AsyncClient(transport=ASGITransport(app=app),base_url='http://test') as client:
-        result=await client.post('/api/connectors/managed-auth/discourse/session',json={'name':'Community'})
+        result=await client.post('/api/connectors/managed-auth/aircall/session',json={'name':'Community'})
         assert result.status_code==200
         created=store[-1]
-        assert created['type']=='custom' and created['vendor']=='discourse' and created['environment']=='production'
+        assert created['type']=='custom' and created['vendor']=='aircall' and created['environment']=='production'
         assert created['status']=='pending_auth'
-        payload={'type':'auth','success':True,'operation':'creation','connectionId':'community','providerConfigKey':'discourse',
+        payload={'type':'auth','success':True,'operation':'creation','connectionId':'community','providerConfigKey':'aircall',
                  'tags':{'organization_id':'o1','connector_id':created['id'],'auth_attempt_id':result.json()['attemptId']}}
         assert (await post_webhook(client,payload)).status_code==200
         assert store[-1]['status']=='active'

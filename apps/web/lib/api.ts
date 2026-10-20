@@ -1991,9 +1991,9 @@ export const connectorsApi = {
     postJson<{ status: string }>(apiUrl(`/api/connectors/${id}/sync`), { fullSync }),
   testConnection: (id: string) =>
     postJson<{ success: boolean; message?: string }>(apiUrl(`/api/connectors/${id}/test`), {}),
-  managedCatalog: () => fetcher<{ configured: boolean; inventoryChecked?: boolean; connectors: Array<{ vendor: string; available: boolean; setupReason?: string | null; nativeFallback?: boolean; actions: string[]; support: string }> }>(apiUrl("/api/connectors/managed-auth/catalog")),
-  startManagedAuth: (vendor: string, data: { name: string; connectorId?: string }) =>
-    postJson<{ connectorId: string; sessionToken: string; attemptId: string; expiresAt?: string }>(
+  managedCatalog: () => fetcher<{ configured: boolean; inventoryChecked?: boolean; connectors: Array<{ vendor: string; available: boolean; setupReason?: string | null; nativeFallback?: boolean; authMode?: string; inputFields?: import("./managed-oauth-dialog").OAuthInputField[]; actions: string[]; support: string }> }>(apiUrl("/api/connectors/managed-auth/catalog")),
+  startManagedAuth: (vendor: string, data: { name: string; connectorId?: string; connectionConfig?: Record<string, string> }) =>
+    postJson<{ connectorId: string; sessionToken: string; attemptId: string; integrationId: string; reconnect: boolean; connectionConfig: Record<string, string>; expiresAt?: string }>(
       apiUrl(`/api/connectors/managed-auth/${vendor}/session`), data
     ),
   managedAuthStatus: (connectorId: string) =>
