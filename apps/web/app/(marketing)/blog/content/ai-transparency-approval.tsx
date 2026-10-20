@@ -123,7 +123,7 @@ export const aiTransparencyApprovalPost: BlogPost = {
         </li>
         <li>
           Your company controls all of this from one place: who can approve what, and for which kinds of actions, in{" "}
-          <Link href="/settings/approvals">Settings → Approvals</Link>.
+          <Link href="/trust-safety?tab=policies">Trust &amp; Safety → Policies</Link>.
         </li>
       </ul>
       <p>

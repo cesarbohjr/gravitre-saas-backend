@@ -56,7 +56,7 @@ import {
 } from "@/components/approvals/decision-queue/model"
 import "@/components/workspace/ops-v4.css"
 
-const POLICIES_HREF = "/settings/approvals"
+const POLICIES_HREF = "/trust-safety?tab=policies"
 
 /** The inbox switches between three queues; Past SLA is a view of Waiting, picked from its stat. */
 const SEGMENTS: Array<{ id: Exclude<QueueTab, "breached">; label: string }> = [

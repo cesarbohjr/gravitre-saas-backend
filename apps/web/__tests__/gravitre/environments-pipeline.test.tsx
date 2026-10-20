@@ -2,7 +2,7 @@
 import React, { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import EnvironmentsPage from "@/app/(app)/environments/page"
+import { TrustSafetyEnvironments } from "@/components/trust-safety/trust-safety-environments"
 import {
   buildStages,
   countOrNull,
@@ -31,18 +31,6 @@ vi.mock("@/lib/settings-api/environments", async (importOriginal) => {
 })
 vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ user: { id: "env-user" } }) }))
 vi.mock("@/lib/use-org-admin", () => ({ useOrgAdmin: () => mocks.admin }))
-vi.mock("@/components/gravitre/app-shell", () => ({
-  AppShell: ({ children }: { children: React.ReactNode }) => <main>{children}</main>,
-}))
-vi.mock("@/components/settings/settings-shell", () => ({
-  SettingsShell: ({ children, actions, crumb }: { children: React.ReactNode; actions?: React.ReactNode; crumb?: string }) => (
-    <div className="gv-set">
-      <span data-testid="crumb">{crumb}</span>
-      <div data-testid="actions">{actions}</div>
-      {children}
-    </div>
-  ),
-}))
 vi.mock("sonner", () => ({ toast: { success: mocks.success, error: mocks.error } }))
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -85,7 +73,7 @@ describe("environments model", () => {
 
 let root: Root
 let container: HTMLDivElement
-const render = () => act(() => root.render(<EnvironmentsPage />))
+const render = () => act(() => root.render(<TrustSafetyEnvironments />))
 const button = (text: string) =>
   [...container.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.textContent?.trim() === text)!
 
@@ -102,27 +90,23 @@ afterEach(() => {
   container.remove()
 })
 
-describe("environments page", () => {
-  it("renders the design tiles from real data with None yet where nothing is counted", () => {
+describe("Trust & Safety environments tab", () => {
+  it("renders the hero tiles from real data with None yet where nothing is counted", () => {
     render()
-    expect(container.querySelector('[data-testid="crumb"]')?.textContent).toBe("Governance / Infrastructure")
-    const totals = container.querySelector('[aria-label="Environment totals"]')!.textContent
-    expect(totals).toContain("Online1Environments running")
-    expect(totals).toContain("WorkflowsNone yetShows after the first deploy")
-    expect(totals).toContain("AgentsNone yetShows after the first deploy")
-    expect(totals).toContain("Configured1Of 3 stages")
+    expect(container.textContent).toContain("of 3 stages live")
+    expect(container.textContent).toContain("1 of 3Configured")
+    expect(container.textContent).toContain("None yetWorkflows")
+    expect(container.textContent).toContain("None yetAgents")
     expect(container.textContent).toContain("2 stages not set up")
     expect(container.textContent).not.toContain("Not reported")
   })
 
-  it("shows the selected production detail with real counts and a disabled copy", () => {
+  it("shows the selected production detail with real counts", () => {
     render()
-    const detail = container.querySelector('[aria-label="Production environment"]')!
-    expect(detail.textContent).toContain("Default")
-    expect(detail.textContent).toContain("Connectors3")
-    expect(detail.textContent).toContain("WorkflowsNone yet")
-    expect(detail.textContent).toContain("Numbers appear after the first deploy.")
-    expect(container.querySelector<HTMLButtonElement>('[aria-label="Copy API endpoint"]')!.disabled).toBe(true)
+    expect(container.textContent).toContain("Default")
+    expect(container.textContent).toContain("Connectors3")
+    expect(container.textContent).toContain("WorkflowsNone yet")
+    expect(container.textContent).toContain("No endpoint yet. It appears after the first deploy.")
   })
 
   it("selects a stage that is not set up and creates it through the real endpoint", async () => {
@@ -138,30 +122,30 @@ describe("environments page", () => {
     expect(mocks.success).toHaveBeenCalledWith("Staging created")
   })
 
-  it("keeps create disabled for non admins and explains why", () => {
+  it("hides create for non admins and explains who can", () => {
     mocks.admin = { isAdmin: false, showAdmin: false, loading: false }
     render()
     const stage = [...container.querySelectorAll<HTMLButtonElement>('[aria-label="Pipeline stages"] button')][0]
     act(() => stage.click())
-    expect(button("Create Development").disabled).toBe(true)
-    expect(container.textContent).toContain("Admin role required to create environments.")
-    expect(container.textContent).toContain("Admin access required.")
-    expect(button("New environment").disabled).toBe(true)
+    expect(button("Create Development")).toBeUndefined()
+    expect(button("New environment")).toBeUndefined()
+    expect(container.textContent).toContain("An owner or admin can create it.")
   })
 
   it("respects the plan limit for new environments", () => {
     mocks.swr.data = { environments: [PROD], environmentsLimit: 1 }
     render()
-    expect(button("New environment").disabled).toBe(true)
+    expect(button("New environment")).toBeUndefined()
     const stage = [...container.querySelectorAll<HTMLButtonElement>('[aria-label="Pipeline stages"] button')][1]
     act(() => stage.click())
-    expect(container.textContent).toContain("Your plan includes 1 environment. Upgrade to add more.")
+    expect(button("Create Staging").disabled).toBe(true)
+    expect(container.textContent).toContain("Your plan includes 1 environment.")
   })
 
   it("shows a retryable error instead of an empty pipeline when loading fails", () => {
     mocks.swr = { data: undefined, error: new Error("boom"), isLoading: false }
     render()
-    expect(container.textContent).toContain("Could not load environments.")
+    expect(container.textContent).toContain("Environments could not be loaded.")
     act(() => button("Try again").click())
     expect(mocks.mutate).toHaveBeenCalledOnce()
   })

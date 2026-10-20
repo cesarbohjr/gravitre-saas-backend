@@ -11,7 +11,6 @@ import { useAuth } from "@/lib/auth-context"
 import type { User } from "@/types/api"
 import { OrganizationSettings } from "@/components/settings/organization-settings"
 import { NotificationSettings } from "@/components/settings/notification-settings"
-import { SecuritySettings } from "@/components/settings/security-settings"
 import { TeamSettings } from "@/components/settings/team-settings"
 import { ApiKeysSettings } from "@/components/settings/api-keys-settings"
 import { AIModelsSettings } from "@/components/settings/ai-models-settings"
@@ -19,8 +18,6 @@ import { WebhooksSettings } from "@/components/settings/webhooks-settings"
 import { MesonAddonsSettings } from "@/components/settings/meson-addons-settings"
 import { LiteSeatsSettings } from "@/components/settings/lite-seats-settings"
 import { EnterpriseWhiteLabel } from "@/components/settings/enterprise-white-label"
-import { EnterpriseResidency } from "@/components/settings/enterprise-residency"
-import { EnterpriseSiem } from "@/components/settings/enterprise-siem"
 import "@/components/settings/enterprise-sections.css"
 import { SettingsShell, canAccessSettingsSection } from "@/components/settings/settings-shell"
 import { SETTINGS_SECTIONS, settingsHrefForSection, type SettingsSectionId } from "@/lib/settings-sections"
@@ -29,7 +26,6 @@ import { useOrgAdmin } from "@/lib/use-org-admin"
 /** Redesigned sections that render their own SetHeader (title, lede and header actions). */
 const OWN_HEADER_SECTIONS = new Set<SettingsSectionId>([
   "meson-addons",
-  "security",
   "api-keys",
   "notifications",
   "ai-models",
@@ -59,10 +55,6 @@ function SettingsContent() {
       router.replace("/settings/federation")
       return
     }
-    if (section === "environments") {
-      router.replace("/environments")
-      return
-    }
     if (section === "profile") {
       router.replace("/settings/profile")
       return
@@ -73,14 +65,6 @@ function SettingsContent() {
     }
     if (section === "billing" || section === "billing-usage") {
       router.replace("/settings/billing")
-      return
-    }
-    if (section === "approvals") {
-      router.replace("/settings/approvals")
-      return
-    }
-    if (section === "permissions") {
-      router.replace("/settings/team/permissions")
       return
     }
     if (section === "audit") {
@@ -150,27 +134,6 @@ function SettingsContent() {
           />
         )
       case "ai-models": return <AIModelsSettings isAdmin={isAdmin} />
-      case "security":
-        // Data residency and SIEM export moved here from Enterprise: both are
-        // about where workspace data lives and leaves, which admins look for
-        // next to the access controls.
-        return (
-          <>
-            <SecuritySettings isAdmin={isAdmin} />
-            {isAdmin ? (
-              <>
-                <section aria-labelledby="security-residency-heading" className="mt-8 flex flex-col gap-3">
-                  <h2 id="security-residency-heading" className="gs-eyebrow">Data residency</h2>
-                  <EnterpriseResidency isAdmin={isAdmin} />
-                </section>
-                <section aria-labelledby="security-siem-heading" className="mt-8 flex flex-col gap-3">
-                  <h2 id="security-siem-heading" className="gs-eyebrow">SIEM export</h2>
-                  <EnterpriseSiem isAdmin={isAdmin} />
-                </section>
-              </>
-            ) : null}
-          </>
-        )
       case "branding": return <EnterpriseWhiteLabel isAdmin={isAdmin} />
       case "api-keys": return <ApiKeysSettings isAdmin={isAdmin} />
       case "notifications": return <NotificationSettings isAdmin={isAdmin} />
@@ -194,12 +157,9 @@ function SettingsContent() {
       case "webhooks": return <WebhooksSettings isAdmin={isAdmin} />
       case "billing-usage":
       case "billing":
-      case "approvals":
-      case "permissions":
       case "audit":
       case "enterprise":
       case "federation":
-      case "environments":
       case "profile":
       case "organizations":
       case "mcp-servers":

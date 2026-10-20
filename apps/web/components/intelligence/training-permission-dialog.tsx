@@ -83,7 +83,7 @@ export function TrainingPermissionDialog() {
             <p className="text-xs text-muted-foreground">{current.eligibility_note} Approval does not guarantee promotion or improved results.</p>
             <p className="text-xs">Security scope: organization only. Changing access or retention requires your organization’s existing security settings; this dialog does not broaden them.</p>
             {saveError ? <p role="alert" className="text-sm text-destructive">{saveError}</p> : null}
-            <Link href="/settings?section=security" className="text-sm underline">Open organization security settings</Link>
+            <Link href="/trust-safety?tab=security" className="text-sm underline">Open organization security settings</Link>
             <div className="flex flex-wrap gap-2">
               <Button disabled={pending || current.consent_state === "approved"} onClick={() => update(current, "approved")}>{current.consent_state === "paused" ? "Resume automatic training" : "Approve automatic training"}</Button>
               {current.consent_state === "approved" ? <Button variant="outline" disabled={pending} onClick={() => update(current, "paused")}>Pause</Button> : null}

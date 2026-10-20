@@ -6,16 +6,11 @@ import {
   Building,
   Building2,
   CreditCard,
-  Hand,
   HandCoins,
   KeyRound,
   Link2,
-  ListChecks,
-  Lock,
   Palette,
   PlugZap,
-  Server,
-  ShieldCheck,
   Sparkles,
   UserRound,
   Users,
@@ -25,15 +20,14 @@ import {
 
 export type SettingsTier = "personal" | "organization" | "admin"
 
-/** Left-nav groups from the Settings Pages Redesign: Account, Workspace, People and plan, Advanced, Governance. */
-export type SettingsGroup = "account" | "workspace" | "people" | "advanced" | "governance"
+/** Left-nav groups from the Settings Pages Redesign: Account, Workspace, People and plan, Advanced. */
+export type SettingsGroup = "account" | "workspace" | "people" | "advanced"
 
 export const SETTINGS_GROUPS: { id: SettingsGroup; label: string; locked?: boolean }[] = [
   { id: "account", label: "Account" },
   { id: "workspace", label: "Workspace" },
   { id: "people", label: "People and plan" },
   { id: "advanced", label: "Advanced" },
-  { id: "governance", label: "Governance" },
 ]
 
 export type SettingsSectionId =
@@ -41,7 +35,6 @@ export type SettingsSectionId =
   | "organizations"
   | "organization"
   | "ai-models"
-  | "security"
   | "api-keys"
   | "notifications"
   | "team"
@@ -50,12 +43,9 @@ export type SettingsSectionId =
   | "billing-usage"
   | "billing"
   | "webhooks"
-  | "permissions"
-  | "approvals"
   | "audit"
   | "enterprise"
   | "federation"
-  | "environments"
   | "clients"
   | "branding"
   | "mcp-servers"
@@ -135,15 +125,6 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     href: "/settings?section=ai-models",
   },
   {
-    id: "security",
-    title: "Security",
-    description: "Sign in, single sign on, access controls, where your data is stored and SIEM export.",
-    group: "workspace",
-    icon: Lock,
-    tier: "organization",
-    href: "/settings?section=security",
-  },
-  {
     id: "api-keys",
     title: "API keys",
     description: "Keys let your own systems call Gravitre. Each key only sees what its scope allows.",
@@ -217,26 +198,6 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     href: "/settings?section=webhooks",
   },
   {
-    id: "permissions",
-    title: "Role permissions",
-    description: "What each workspace role can do. Roles come from your organization\'s role definitions.",
-    group: "people",
-    icon: ShieldCheck,
-    tier: "admin",
-    href: "/settings/team/permissions",
-    adminOnly: true,
-  },
-  {
-    id: "approvals",
-    title: "Human in the loop",
-    description: "Decide which agent actions wait for a person, and how fast someone must answer.",
-    group: "governance",
-    icon: Hand,
-    tier: "admin",
-    href: "/settings/approvals",
-    adminOnly: true,
-  },
-  {
     id: "enterprise",
     title: "Enterprise",
     description: "Reports for admins: integration health, agent work by team, cost and agent ROI.",
@@ -266,19 +227,9 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     href: "/marketplace/capabilities?filter=mcp#mcp-servers",
     adminOnly: true,
   },
-  {
-    id: "environments",
-    title: "Environments",
-    description: "Where your agents and workflows run, and how changes move from testing to production.",
-    group: "governance",
-    icon: Server,
-    tier: "admin",
-    href: "/environments",
-    adminOnly: true,
-  },
 ]
-// Note: Audit trail has moved to the Trust & Safety hub (/trust-safety?tab=audit).
-// It is no longer surfaced in Settings — Settings is configuration-only.
+// Security, role permissions, approval rules, environments and the audit trail
+// live in Trust & Safety (/trust-safety), not in Settings.
 
 export const PRIMARY_SETTINGS_SECTIONS = SETTINGS_SECTIONS.filter((section) => !section.footer)
 export const FOOTER_SETTINGS_SECTIONS = SETTINGS_SECTIONS.filter((section) => section.footer)
@@ -293,13 +244,9 @@ export const WIDE_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   "profile",
   "organizations",
   "billing",
-  "approvals",
-  "permissions",
   "enterprise",
   "federation",
-  "environments",
   "team",
-  "security",
   "api-keys",
   "webhooks",
   "lite-seats",
@@ -331,13 +278,11 @@ const GROUP_ORDER: Partial<Record<SettingsSectionId, number>> = {
   organizations: 0,
   organization: 1,
   branding: 1.5,
-  security: 2,
   "api-keys": 3,
   notifications: 4,
   webhooks: 5,
   "ai-models": 6,
   team: 0,
-  permissions: 1,
   "lite-seats": 2,
   "meson-addons": 3,
   billing: 4,
@@ -345,8 +290,6 @@ const GROUP_ORDER: Partial<Record<SettingsSectionId, number>> = {
   federation: 0,
   enterprise: 1,
   "mcp-servers": 2,
-  environments: 0,
-  approvals: 1,
 }
 
 export function settingsSectionsForGroup(group: SettingsGroup, isAdmin: boolean): SettingsSection[] {
