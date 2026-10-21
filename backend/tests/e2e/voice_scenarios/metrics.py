@@ -148,6 +148,21 @@ def run_metrics(result: Any) -> dict[str, Any]:
     played = [c for c in kept if c["played_end"] > c["start"]]
     msgs = _messages(run)
     m: dict[str, Any] = {"seed": result.seed, "error": result.error}
+    # Phase 3 incident replay: bounded, metadata-only event sequence.
+    # No transcript, message text, connector payload, or identifying context.
+    if scenario.id == "S8":
+        kinds = {"user_speech_start", "user_speech_end", "brain_start",
+                 "write_gate_checked", "write_commit", "write_blocked",
+                 "spec_start", "spec_adopted", "brain_end"}
+        retained = {"token_generation", "token_cancelled", "bound_token",
+                    "session_token_cancelled", "same_turn_token",
+                    "user_turn_starts", "user_speaking", "stop_requested",
+                    "committed", "speculative", "call_id"}
+        m["safety_trace"] = [
+            {"virtual_s": round(t, 4), "event": kind,
+             **{k: v for k, v in data.items() if k in retained}}
+            for t, kind, data in run.rec.events if kind in kinds
+        ][:80]
 
     end = run.marks.get("request_end")
     end_reply = run.mark_replies.get("request_end", 0)
