@@ -44,34 +44,48 @@ function ExtensionConnectInner() {
     try {
       const chromeApi = (
         window as unknown as {
-          chrome?: { runtime?: { sendMessage?: (id: string, msg: unknown, cb: (r: unknown) => void) => void } }
+          chrome?: {
+            runtime?: {
+              sendMessage?: (id: string, msg: unknown, cb: (r: unknown) => void) => void
+              lastError?: { message?: string }
+            }
+          }
         }
       ).chrome
-      if (!chromeApi?.runtime?.sendMessage) {
+      const runtime = chromeApi?.runtime
+      if (!runtime?.sendMessage) {
         setStatus("Open this page from Chrome with the extension installed.")
         setBusy(false)
         return
       }
-      chromeApi.runtime.sendMessage(
-        extId,
-        {
-          type: "GRAVITRE_AUTH",
-          accessToken: session.access_token,
-          orgId,
-          environment: "production",
-          apiBase: PRODUCTION_BACKEND_URL,
-          appBase: publicAppUrl(),
-        },
-        (response: unknown) => {
-          setBusy(false)
-          const typed = response as { ok?: boolean; error?: string } | undefined
-          if (typed?.ok) {
-            setStatus("Connected. You can close this tab and use the extension.")
-          } else {
-            setStatus(typed?.error || "Extension did not accept the session.")
-          }
-        },
-      )
+      const payload = {
+        accessToken: session.access_token,
+        orgId,
+        environment: "production",
+        apiBase: PRODUCTION_BACKEND_URL,
+        appBase: publicAppUrl(),
+      }
+      type AuthResult = { ok?: boolean; error?: string; transportError?: string }
+      const send = (type: string) =>
+        new Promise<AuthResult>((resolve) => {
+          runtime.sendMessage!(extId, { type, ...payload }, (response: unknown) => {
+            const transportError = runtime.lastError?.message
+            resolve({ ...((response as AuthResult | undefined) || {}), transportError })
+          })
+        })
+      let result = await send("GRAVITRE_AUTH")
+      // Store builds packaged before the brand rename only accept the legacy type.
+      if (!result.ok && !result.transportError) result = await send("GRAVITREE_AUTH")
+      setBusy(false)
+      if (result.ok) {
+        setStatus("Connected. You can close this tab and use the extension.")
+      } else if (result.transportError) {
+        setStatus(
+          `Could not reach the extension (${result.transportError}). Update or reinstall it, then reopen this page from the extension.`,
+        )
+      } else {
+        setStatus(result.error || "Extension did not accept the session.")
+      }
     } catch (err) {
       setBusy(false)
       setStatus(err instanceof Error ? err.message : "Connect failed")

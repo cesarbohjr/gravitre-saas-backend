@@ -54,6 +54,7 @@ const ALLOWED_DUAL_READ = new Set([
   "backend/tests/services/test_ensure_owned_conversation.py",
   "apps/extension/background.js",
   "apps/extension/content/shared.js",
+  "apps/web/app/extension/connect/page.tsx",
   "apps/web/lib/conversation-smoke-guard.ts",
   "apps/web/lib/connectors.ts",
   "apps/web/__tests__/lib/connectors-hub-visibility.test.ts",
