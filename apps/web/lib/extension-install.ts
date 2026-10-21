@@ -2,15 +2,15 @@
  * Chrome Web Store listing URL. `NEXT_PUBLIC_CHROME_WEB_STORE_URL` on Vercel
  * overrides the published listing below.
  *
- * The listing's store slug is "gravitree" (its store name); the extension id is
- * what matters. An earlier id (`iegkidilloajngolbpgfkaeglblnklol`) was never a
+ * The id-only URL (no name slug) is on purpose: the store resolves it to the
+ * listing whatever the store name is. An earlier id (`iegkidilloajngolbpgfkaeglblnklol`) was never a
  * live listing and showed "This item is not available".
  *
  * Do not use Chrome Web Store Dev Console URLs (…/devconsole/…) — those require
  * Google sign-in and are not installable by customers.
  */
 export const PUBLISHED_CHROME_WEB_STORE_URL =
-  "https://chromewebstore.google.com/detail/gravitree/mdjhabfjkieockbppehakknkoeoalonj"
+  "https://chromewebstore.google.com/detail/mdjhabfjkieockbppehakknkoeoalonj"
 
 export const CHROME_WEB_STORE_URL = (
   process.env.NEXT_PUBLIC_CHROME_WEB_STORE_URL || PUBLISHED_CHROME_WEB_STORE_URL

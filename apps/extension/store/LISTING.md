@@ -2,9 +2,9 @@
 
 **Status:** PUBLISHED. Public listing for extension id `mdjhabfjkieockbppehakknkoeoalonj` (confirmed 2026-10-21):
 
-`https://chromewebstore.google.com/detail/gravitree/mdjhabfjkieockbppehakknkoeoalonj`
+`https://chromewebstore.google.com/detail/mdjhabfjkieockbppehakknkoeoalonj`
 
-The store name currently reads "Gravitree" (a typo). Rename it to "Gravitre" in the Developer Dashboard. The old id `iegkidilloajngolbpgfkaeglblnklol` was never live, so don't use it.
+The store name is misspelled with a double "e". The store takes the name from the uploaded package's `manifest.json`, so the dashboard can't edit it. Fix it by uploading a new package (manifest name "Gravitre", version 0.5.1 or higher) and submitting it for review. The old id `iegkidilloajngolbpgfkaeglblnklol` was never live, so don't use it.
 
 This URL is the default in `apps/web/lib/extension-install.ts`. `NEXT_PUBLIC_CHROME_WEB_STORE_URL` on Vercel overrides it. A load-unpacked zip is also published to the rolling GitHub release `extension-latest` by `.github/workflows/extension-release.yml`.
 

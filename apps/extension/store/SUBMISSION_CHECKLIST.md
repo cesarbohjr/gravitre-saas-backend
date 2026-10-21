@@ -6,7 +6,7 @@ First-time publish **cannot** be completed by API alone: Google requires Store l
 
 - Zip: `apps/extension/dist/gravitre-extension-chrome.zip`
 - Rebuild: `python scripts/package-extension-chrome-store.py`
-- Manifest version: `0.5.0` (MV3)
+- Manifest version: `0.5.1` (MV3)
 
 ## Dashboard steps
 
