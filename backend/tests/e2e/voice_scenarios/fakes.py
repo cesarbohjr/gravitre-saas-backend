@@ -707,11 +707,11 @@ class ScriptedBrain:
             )
 
     def _write_blocked(self, action: str, conversation_id: Any) -> bool:
-        """The production last-line write gate (``raise_if_barge_in_blocks_invoke``)."""
+        """Execute the complete production pre-provider gate, including pause control."""
         from types import SimpleNamespace
 
         from app.services.tool_types import ToolValidationError
-        from app.services.voice_barge_in_write import raise_if_barge_in_blocks_invoke
+        from app.services.voice_barge_in_write import begin_write_effect, finish_write_effect, STATUS_COMPLETED
 
         ctx = SimpleNamespace(org_id=self.org_id, conversation_id=conversation_id, settings=self.settings)
         from app.services.turn_cancellation import current_turn_cancellation
@@ -733,7 +733,8 @@ class ScriptedBrain:
             pause_holds_write=holds_writes(str(self.org_id), str(conversation_id or "")),
         )
         try:
-            raise_if_barge_in_blocks_invoke(ctx, action)
+            handle = begin_write_effect(ctx, action)
+            finish_write_effect(handle, STATUS_COMPLETED)
         except ToolValidationError:
             return True
         return False
