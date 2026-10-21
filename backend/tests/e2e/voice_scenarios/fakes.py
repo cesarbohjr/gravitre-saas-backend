@@ -636,6 +636,7 @@ class ScriptedBrain:
             spec_run["call"] = call
         self.rec.brain_calls.append(call)
         self.rec.log("brain_start", call_id=call.call_id, query=query, speculative=call.speculative)
+        self.rec.log("approval_query_shape", has_stop_word=any(w in query.lower().split() for w in ("wait", "stop", "hold")), bare_confirmation=query.strip().lower() in ("yes", "send it", "go ahead"), token_count=len(query.split()))
         conversation_id = kwargs.get("conversation_id")
         text_parts: list[str] = []
         tool_results: list[dict[str, Any]] = []
@@ -715,6 +716,7 @@ class ScriptedBrain:
         ctx = SimpleNamespace(org_id=self.org_id, conversation_id=conversation_id, settings=self.settings)
         from app.services.turn_cancellation import current_turn_cancellation
         from app.services.chat_turn_cancel_service import is_stop_requested
+        from app.services.voice_pause_gate import holds_writes
         token = current_turn_cancellation()
         session = getattr(self.rec, "voice_session", None)
         self.rec.log(
@@ -728,6 +730,7 @@ class ScriptedBrain:
             user_turn_starts=getattr(session, "user_turn_starts", None),
             user_speaking=bool(getattr(session, "user_speaking", False)),
             stop_requested=is_stop_requested(str(self.org_id), str(conversation_id or ""), settings=self.settings),
+            pause_holds_write=holds_writes(str(self.org_id), str(conversation_id or "")),
         )
         try:
             raise_if_barge_in_blocks_invoke(ctx, action)
