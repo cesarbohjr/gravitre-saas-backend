@@ -35,16 +35,27 @@ Writes always use the server confirmation token gate — the extension cannot sk
 
 ## Install
 
-### Option A — Chrome Web Store
+Works in **Chrome, Edge, and Brave** (desktop). The same pack runs in all three.
 
-When a public or unlisted listing is available, open the store link from [Browser extension](/features/extension) and click **Add to Chrome**. Edge/Brave users can often install from the same Chromium store listing when published.
+### Option A — Chrome Web Store (recommended)
 
-### Option B — Load unpacked (developer / private beta)
+Open the [Gravitre listing](https://chromewebstore.google.com/detail/mdjhabfjkieockbppehakknkoeoalonj) (also linked as **Add to Chrome** on [Browser extension](/features/extension)) and click **Add to Chrome**. Edge and Brave install from the same listing. In Edge, click **Allow extensions from other stores** first if it asks.
 
-1. Get the `apps/extension` pack from your Gravitre deployment or engineering contact.
-2. Chrome / Edge / Brave → **Extensions** → enable **Developer mode**.
-3. **Load unpacked** → select the extension folder.
-4. Pin the Gravitre icon.
+### Option B — Download and load the extension
+
+Use this when the store isn't an option (for example, managed browsers that block it).
+
+1. Download **[gravitre-extension.zip](https://github.com/cesarbohjr/gravitre-saas-backend/releases/download/extension-latest/gravitre-extension.zip)**.
+2. Unzip it to a folder you will keep, for example `Documents/Gravitre Extension`. The browser loads the extension from this folder, so do not delete or move it afterwards.
+3. Open your browser's extensions page:
+   - Chrome: `chrome://extensions`
+   - Edge: `edge://extensions`
+   - Brave: `brave://extensions`
+4. Turn on **Developer mode** (top right in Chrome and Brave, left sidebar in Edge).
+5. Click **Load unpacked** and select the unzipped folder (the one that contains `manifest.json`).
+6. Click the puzzle icon in the toolbar and **pin** Gravitre.
+
+To update a loaded copy, download the zip again, replace the folder's contents, and click the reload icon on the Gravitre card in the extensions page.
 
 ## Connect your org
 

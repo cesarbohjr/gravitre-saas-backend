@@ -9,6 +9,8 @@ import {
   NucleoWorkflow,
 } from "@/components/icons/nucleo/semantic"
 import {
+  EXTENSION_SETUP_GUIDE_HREF,
+  EXTENSION_ZIP_URL,
   extensionInstallCtaLabel,
   extensionInstallHref,
 } from "@/lib/extension-install"
@@ -37,7 +39,7 @@ const activationSteps = [
   {
     n: "1",
     title: "Install",
-    body: "Add Gravitre from the Chrome Web Store (works in Chrome, Edge, and Brave).",
+    body: "Add Gravitre in Chrome, Edge, or Brave — from the Chrome Web Store when listed, or download the pack and load it from the setup guide.",
   },
   {
     n: "2",
@@ -98,9 +100,15 @@ export function ExtensionPage() {
           >
             {installLabel}
           </Button>
-          <Button as={Link} href="/docs/guides/how-to/browser-extension" variant="secondary">
-            Setup guide
-          </Button>
+          {storeListing ? (
+            <Button as={Link} href={EXTENSION_SETUP_GUIDE_HREF} variant="secondary">
+              Setup guide
+            </Button>
+          ) : (
+            <Button as="a" href={EXTENSION_ZIP_URL} variant="secondary">
+              Download extension (.zip)
+            </Button>
+          )}
         </div>
         <ul
           aria-label="Supported browsers"

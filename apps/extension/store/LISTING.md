@@ -1,10 +1,12 @@
 # Chrome Web Store listing draft (Gravitre extension)
 
-**Status:** PUBLISHED — public listing live for extension id `iegkidilloajngolbpgfkaeglblnklol`.
+**Status:** PUBLISHED. Public listing for extension id `mdjhabfjkieockbppehakknkoeoalonj` (confirmed 2026-10-21):
 
-Marketing default install URL (also overridable via Vercel):
+`https://chromewebstore.google.com/detail/mdjhabfjkieockbppehakknkoeoalonj`
 
-`NEXT_PUBLIC_CHROME_WEB_STORE_URL=https://chromewebstore.google.com/detail/gravitre/iegkidilloajngolbpgfkaeglblnklol`
+The store name is misspelled with a double "e". The store takes the name from the uploaded package's `manifest.json`, so the dashboard can't edit it. Fix it by uploading a new package (manifest name "Gravitre", version 0.5.1 or higher) and submitting it for review. The old id `iegkidilloajngolbpgfkaeglblnklol` was never live, so don't use it.
+
+This URL is the default in `apps/web/lib/extension-install.ts`. `NEXT_PUBLIC_CHROME_WEB_STORE_URL` on Vercel overrides it. A load-unpacked zip is also published to the rolling GitHub release `extension-latest` by `.github/workflows/extension-release.yml`.
 
 Note: Chrome Web Store **Dev Console** URLs (`chrome.google.com/webstore/devconsole/…`) are not customer install links.
 

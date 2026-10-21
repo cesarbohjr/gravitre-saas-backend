@@ -56,6 +56,72 @@ export async function fetchDesktopReleaseManifest(
   }
 }
 
+const DESKTOP_RELEASES_API =
+  "https://api.github.com/repos/cesarbohjr/gravitre-saas-backend/releases?per_page=20"
+
+type GithubReleaseAsset = { name: string; browser_download_url: string }
+type GithubRelease = {
+  tag_name: string
+  html_url: string
+  draft: boolean
+  prerelease: boolean
+  published_at: string | null
+  assets: GithubReleaseAsset[]
+}
+
+function pickAsset(
+  assets: GithubReleaseAsset[],
+  test: (name: string) => boolean,
+  label: string,
+): DesktopDownload | undefined {
+  const asset = assets.find((a) => test(a.name))
+  return asset ? { url: asset.browser_download_url, label, filename: asset.name } : undefined
+}
+
+/**
+ * Build a manifest from the newest published `desktop-v*` GitHub release, so
+ * /download follows CI releases without a web redeploy. Returns null when the
+ * release is missing any primary installer (callers keep the bundled manifest).
+ */
+export function manifestFromGithubReleases(
+  releases: GithubRelease[],
+): DesktopReleaseManifest | null {
+  const release = releases.find(
+    (r) => !r.draft && !r.prerelease && r.tag_name.startsWith("desktop-v"),
+  )
+  if (!release) return null
+  const assets = release.assets || []
+  const macos = pickAsset(assets, (n) => /_aarch64\.dmg$/.test(n), "macOS (Apple Silicon)")
+  const windows = pickAsset(assets, (n) => /_x64-setup\.exe$/.test(n), "Windows")
+  const linux = pickAsset(assets, (n) => /\.AppImage$/.test(n), "Linux")
+  if (!macos || !windows || !linux) return null
+  return {
+    version: release.tag_name.replace(/^desktop-v/, ""),
+    publishedAt: release.published_at || undefined,
+    signed: DESKTOP_RELEASE_MANIFEST.signed,
+    releaseUrl: release.html_url,
+    downloads: { macos, windows, linux },
+    alsoAvailable: {
+      macosIntel: pickAsset(assets, (n) => /_x64\.dmg$/.test(n), "macOS (Intel)"),
+      windowsMsi: pickAsset(assets, (n) => /\.msi$/.test(n), "Windows (.msi)"),
+    },
+  }
+}
+
+/** Browser-side lookup of the newest desktop release; null on any failure. */
+export async function fetchLatestGithubDesktopRelease(): Promise<DesktopReleaseManifest | null> {
+  try {
+    const res = await fetch(DESKTOP_RELEASES_API, {
+      headers: { Accept: "application/vnd.github+json" },
+      cache: "no-store",
+    })
+    if (!res.ok) return null
+    return manifestFromGithubReleases((await res.json()) as GithubRelease[])
+  } catch {
+    return null
+  }
+}
+
 export function detectDesktopPlatform(
   userAgent: string | null | undefined,
 ): DesktopPlatformKey | null {
