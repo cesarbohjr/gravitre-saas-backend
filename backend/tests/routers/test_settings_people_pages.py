@@ -319,7 +319,7 @@ def test_role_permissions_include_areas_descriptions_and_people(monkeypatch):
             "organization_members": [
                 {"org_id": ORG, "role": "owner"},
                 {"org_id": ORG, "role": "admin"},
-                {"org_id": ORG, "role": "member"},
+                {"org_id": ORG, "role": "member", "user_id": USER},
                 {"org_id": ORG, "role": "Viewer"},
                 {"org_id": ORG_B, "role": "member"},
             ]
@@ -331,7 +331,48 @@ def test_role_permissions_include_areas_descriptions_and_people(monkeypatch):
     assert result["role_descriptions"]["viewer"]
     assert {cap["area"] for cap in result["capabilities"]} == {"Insights", "Build", "Govern"}
     assert len(result["capabilities"]) == 9
+    assert result["my_role"] == "member"
+    assert "approve_writes" in result["my_capabilities"] and "team_roles" not in result["my_capabilities"]
     assert org_router.get_role_permissions({"user_id": USER}, None, MagicMock())["member_counts"] is None
+
+
+def test_role_permissions_put_saves_edits_custom_roles_and_audits(monkeypatch):
+    client = _Client(
+        {
+            "organization_members": [{"org_id": ORG, "role": "admin"}, {"org_id": ORG, "role": "member"}],
+            "organizations": [{"id": ORG, "settings": {"theme": "dark"}}],
+        }
+    )
+    _use(monkeypatch, org_router, client)
+    audits: list[dict] = []
+    monkeypatch.setattr(org_router, "write_audit_event", lambda _c, **kw: audits.append(kw))
+    monkeypatch.setattr(org_router, "invalidate_org_state", lambda *_a: None)
+    body = org_router.RolePermissionsUpdate(
+        roles=[
+            {"key": "admin", "name": "Admin", "capabilities": []},
+            {"key": "member", "name": "Member", "capabilities": ["run_ai_chat"]},
+            {"key": "viewer", "name": "Viewer", "capabilities": ["view_intelligence", "run_ai_chat"]},
+            {"name": "Support lead", "description": "Handles approvals", "capabilities": ["approve_writes"]},
+        ]
+    )
+    result = org_router.update_role_permissions(body, ({"user_id": USER}, ORG), MagicMock())
+    saved = client.store["organizations"][0]["settings"]
+    assert saved["theme"] == "dark"
+    assert [row["key"] for row in saved["role_permissions"]["roles"]] == ["admin", "member", "viewer", "support_lead"]
+    assert result["custom_roles"] == ["support_lead"]
+    assert result["member_counts"] == {"owner": 0, "admin": 1, "member": 1, "viewer": 0}
+    assert audits[-1]["action"] == "settings.role_permissions.updated"
+    assert audits[-1]["metadata"]["added_roles"] == ["support_lead"]
+    assert audits[-1]["metadata"]["changed_roles"] == ["member"]
+
+    # A built in role can't be dropped, and a role with people on it can't be deleted.
+    client.store["organization_members"].append({"org_id": ORG, "role": "support_lead"})
+    with pytest.raises(HTTPException) as exc:
+        org_router.update_role_permissions(
+            org_router.RolePermissionsUpdate(roles=body.roles[:3]), ({"user_id": USER}, ORG), MagicMock()
+        )
+    assert exc.value.status_code == 400
+    assert "Support lead" in exc.value.detail
 
 
 # ---------- invites ----------

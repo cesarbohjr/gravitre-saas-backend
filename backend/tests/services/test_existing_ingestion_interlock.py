@@ -174,14 +174,16 @@ def overrides():
         get_environment_context,
         get_org_context,
         require_admin,
+        require_capability,
     )
     from app.main import app
 
     app.dependency_overrides[require_admin] = lambda: ({"user_id": "admin-1"}, ORG)
+    app.dependency_overrides[require_capability("manage_connectors")] = lambda: ({"user_id": "admin-1"}, ORG)
     app.dependency_overrides[get_org_context] = lambda: ORG
     app.dependency_overrides[get_environment_context] = lambda: "production"
     yield app
-    for dep in (require_admin, get_org_context, get_environment_context, get_settings):
+    for dep in (require_admin, require_capability("manage_connectors"), get_org_context, get_environment_context, get_settings):
         app.dependency_overrides.pop(dep, None)
 
 

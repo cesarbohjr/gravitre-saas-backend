@@ -14,6 +14,7 @@ import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspac
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
+import { useMyCapability } from "@/lib/use-my-capability"
 import { approvalsApi } from "@/lib/api"
 import { resolveProvider } from "@/lib/provider-registry"
 import { cn } from "@/lib/utils"
@@ -109,6 +110,7 @@ function DecisionQueue() {
   const { mutate: mutateCache } = useSWRConfig()
   const { user } = useAuth()
   const { isAdmin, loading: adminLoading } = useOrgAdmin()
+  const canApproveWrites = useMyCapability("approve_writes")
   const [tab, setTab] = useState<QueueTab>("pending")
   const [query, setQuery] = useState("")
   const [oldestFirst, setOldestFirst] = useState(true)
@@ -233,7 +235,7 @@ function DecisionQueue() {
   }
 
   const canDecide = (a: Approval) =>
-    adminLoading || isAdmin || (isExtensionGate(a) && Boolean(user?.id) && a.requestedById === user?.id)
+    adminLoading || isAdmin || canApproveWrites || (isExtensionGate(a) && Boolean(user?.id) && a.requestedById === user?.id)
 
   const nextAfter = (id: string) => {
     const idx = visible.findIndex((a) => a.id === id)

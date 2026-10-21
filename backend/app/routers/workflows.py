@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field
 
 from app.core.safe_dict import safe_normalize_stored_dict
 from app.core.safe_dict import safe_normalize_stored_dict
-from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
+from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin, require_capability
+from app.auth.org_role_permissions import capability_denied_detail, has_capability
 from app.billing.service import (
     apply_usage_with_overage,
     build_ai_usage_metadata,
@@ -60,6 +61,7 @@ from app.workflows.policy import (
     check_concurrency,
     get_user_role,
     resolve_policy,
+    widen_to_member_role,
     validate_execute_steps,
 )
 from app.workflows.audit import write_audit_event
@@ -646,7 +648,7 @@ def get_workflow_builder(
 def save_workflow_builder(
     workflow_id: UUID,
     body: BuilderSaveRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -721,7 +723,7 @@ def save_workflow_builder(
 def create_workflow_node_route(
     workflow_id: UUID,
     body: WorkflowNodeCreateRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -791,7 +793,7 @@ def create_workflow_node_route(
 def update_workflow_node_positions(
     workflow_id: UUID,
     body: WorkflowNodePositionsUpdateRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -837,7 +839,7 @@ def update_workflow_node_positions(
 def update_workflow_node_route(
     node_id: UUID,
     body: WorkflowNodeUpdateRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -903,7 +905,7 @@ def update_workflow_node_route(
 @router.delete("/nodes/{node_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_workflow_node_route(
     node_id: UUID,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
@@ -922,7 +924,7 @@ async def delete_workflow_node_route(
 async def delete_workflow_node_alias(
     workflow_id: UUID,
     node_id: UUID,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
@@ -954,7 +956,7 @@ def list_workflow_edges_route(
 async def create_workflow_edge_route(
     workflow_id: UUID,
     body: WorkflowEdgeCreateRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -988,7 +990,7 @@ async def create_workflow_edge_route(
 @router.delete("/edges/{edge_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_workflow_edge_route(
     edge_id: UUID,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
@@ -1007,7 +1009,7 @@ async def delete_workflow_edge_route(
 async def create_workflow_connection_route(
     workflow_id: UUID,
     body: WorkflowEdgeCreateRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -1019,7 +1021,7 @@ async def create_workflow_connection_route(
 async def delete_workflow_connection_route(
     workflow_id: UUID,
     connection_id: UUID,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
@@ -2564,7 +2566,7 @@ def list_workflow_schedules_route(
 def create_workflow_schedule_route(
     workflow_id: UUID,
     body: ScheduleCreateRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -2611,7 +2613,7 @@ def create_workflow_schedule_route(
 async def update_workflow_schedule_route(
     schedule_id: UUID,
     body: ScheduleUpdateRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -2690,7 +2692,7 @@ async def update_workflow_schedule_alias(
     workflow_id: UUID,
     schedule_id: UUID,
     body: ScheduleUpdateRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -2709,7 +2711,7 @@ async def update_workflow_schedule_alias(
 @router.delete("/schedules/{schedule_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_workflow_schedule_route(
     schedule_id: UUID,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
@@ -2728,7 +2730,7 @@ async def delete_workflow_schedule_route(
 async def delete_workflow_schedule_alias(
     workflow_id: UUID,
     schedule_id: UUID,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
@@ -2872,19 +2874,18 @@ async def approve_run(
             detail="Run is not pending approval",
         )
     try:
-        role = get_user_role(client, org_id, current_user["user_id"])
+        role = widen_to_member_role(get_user_role, client, org_id, current_user["user_id"])
     except PolicyResolutionError as e:
         logger.error("approve_role_failure org_id=%s user_id=%s error=%s stop_condition", org_id, current_user["user_id"], e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Role validation failed",
         ) from e
-    from app.auth.platform_admin import is_org_admin_role
 
-    if not is_org_admin_role(role):
+    if not has_capability(client, org_id, role, "approve_writes"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin role required",
+            detail=capability_denied_detail("approve_writes"),
         )
     insert_run_approval(
         client=client,
@@ -3052,19 +3053,18 @@ async def reject_run(
             detail="Run is not pending approval",
         )
     try:
-        role = get_user_role(client, org_id, current_user["user_id"])
+        role = widen_to_member_role(get_user_role, client, org_id, current_user["user_id"])
     except PolicyResolutionError as e:
         logger.error("reject_role_failure org_id=%s user_id=%s error=%s stop_condition", org_id, current_user["user_id"], e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Role validation failed",
         ) from e
-    from app.auth.platform_admin import is_org_admin_role
 
-    if not is_org_admin_role(role):
+    if not has_capability(client, org_id, role, "approve_writes"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin role required",
+            detail=capability_denied_detail("approve_writes"),
         )
     insert_run_approval(
         client=client,
@@ -3161,7 +3161,7 @@ def resume_graph_run(
             detail="Run is not awaiting in-graph approval",
         )
     try:
-        role = get_user_role(client, org_id, current_user["user_id"])
+        role = widen_to_member_role(get_user_role, client, org_id, current_user["user_id"])
     except PolicyResolutionError as e:
         logger.error(
             "resume_graph_role_failure org_id=%s user_id=%s error=%s stop_condition",
@@ -3173,12 +3173,11 @@ def resume_graph_run(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Role validation failed",
         ) from e
-    from app.auth.platform_admin import is_org_admin_role
 
-    if not is_org_admin_role(role):
+    if not has_capability(client, org_id, role, "approve_writes"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin role required",
+            detail=capability_denied_detail("approve_writes"),
         )
 
     from app.workflows.execution_engine import GraphValidationError, resume_workflow_graph
@@ -3223,7 +3222,7 @@ def _require_graph_approval_admin(
 ) -> None:
     require_feature(get_plan_for_org(client, org_id), "approvals")
     try:
-        role = get_user_role(client, org_id, user_id)
+        role = widen_to_member_role(get_user_role, client, org_id, user_id)
     except PolicyResolutionError as e:
         logger.error(
             "approval_batch_role_failure org_id=%s user_id=%s error=%s stop_condition",
@@ -3235,12 +3234,11 @@ def _require_graph_approval_admin(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Role validation failed",
         ) from e
-    from app.auth.platform_admin import is_org_admin_role
 
-    if not is_org_admin_role(role):
+    if not has_capability(client, org_id, role, "approve_writes"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin role required",
+            detail=capability_denied_detail("approve_writes"),
         )
 
 
@@ -3878,20 +3876,19 @@ async def approve_run_alias(
             reviewer_id=str(current_user.get("user_id") or ""), approve=True,
         )
     if chat_rows and str(chat_rows[0].get("type") or "") == "connector_chat":
-        from app.auth.platform_admin import is_org_admin_role
         from app.services.chat_connector_execution_service import (
             get_chat_connector_execution_service,
         )
-        from app.workflows.policy import PolicyResolutionError, get_user_role
+        from app.workflows.policy import PolicyResolutionError, get_user_role, widen_to_member_role
 
         if str(chat_rows[0].get("status") or "") != "pending":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Approval already resolved")
         try:
-            role = get_user_role(client, org_id, str(current_user.get("user_id") or ""))
+            role = widen_to_member_role(get_user_role, client, org_id, str(current_user.get("user_id") or ""))
         except PolicyResolutionError as exc:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-        if not is_org_admin_role(role):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin approval required")
+        if not has_capability(client, org_id, role, "approve_writes"):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=capability_denied_detail("approve_writes"))
 
         ctx = chat_rows[0].get("context") if isinstance(chat_rows[0].get("context"), dict) else {}
         params = ctx.get("parameters") if isinstance(ctx.get("parameters"), dict) else {}
@@ -4051,17 +4048,16 @@ async def reject_run_alias(
             reviewer_id=str(current_user.get("user_id") or ""), approve=False,
         )
     if chat_rows and str(chat_rows[0].get("type") or "") == "connector_chat":
-        from app.auth.platform_admin import is_org_admin_role
-        from app.workflows.policy import PolicyResolutionError, get_user_role
+        from app.workflows.policy import PolicyResolutionError, get_user_role, widen_to_member_role
 
         if str(chat_rows[0].get("status") or "") != "pending":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Approval already resolved")
         try:
-            role = get_user_role(client, org_id, str(current_user.get("user_id") or ""))
+            role = widen_to_member_role(get_user_role, client, org_id, str(current_user.get("user_id") or ""))
         except PolicyResolutionError as exc:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-        if not is_org_admin_role(role):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin approval required")
+        if not has_capability(client, org_id, role, "approve_writes"):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=capability_denied_detail("approve_writes"))
         ctx = chat_rows[0].get("context") if isinstance(chat_rows[0].get("context"), dict) else {}
         update: dict = {
             "status": "rejected",
@@ -4735,7 +4731,7 @@ def workflow_org_stats(
 @router.post("/from-goal", status_code=status.HTTP_201_CREATED)
 async def create_workflow_from_goal(
     request: GoalWorkflowRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
     goal_service: GoalService = Depends(get_goal_service),
@@ -4899,7 +4895,7 @@ async def get_workflow(
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_workflow_route(
     body: WorkflowCreateRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -4956,7 +4952,7 @@ def create_workflow_route(
 async def update_workflow_route(
     workflow_id: UUID,
     body: WorkflowUpdateRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -5004,7 +5000,7 @@ async def update_workflow_route(
 @router.post("/{workflow_id}/schema-sync/from-contract")
 def sync_workflow_schema_from_contract(
     workflow_id: UUID,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -5037,7 +5033,7 @@ def sync_workflow_schema_from_contract(
 def update_workflow_stage(
     workflow_id: UUID,
     body: WorkflowStageUpdateRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("create_agents_workflows"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:

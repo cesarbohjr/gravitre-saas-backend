@@ -11,9 +11,20 @@ from supabase import create_client
 from app.core.db import shared_service_client
 from app.core.org_state_cache import invalidate_org_and_users, invalidate_org_state, invalidate_user_state
 
-from app.auth.dependencies import get_current_user, get_org_context, require_admin
-from app.auth.platform_admin import is_org_admin_role
-from app.auth.org_role_permissions import get_org_role_permissions_matrix
+from app.auth.dependencies import get_current_user, get_org_context, require_admin, require_capability
+from app.auth.org_role_permissions import (
+    ROLE_PERMISSIONS_SETTINGS_KEY,
+    RolePermissionsError,
+    assignable_role_keys,
+    capability_denied_detail,
+    get_org_role_permissions_matrix,
+    has_capability,
+    load_org_settings,
+    membership_role,
+    role_capabilities,
+    stored_role_definitions,
+    validate_role_definitions,
+)
 from app.config import Settings, get_settings
 from app.billing.service import DEFAULT_PLANS, PLAN_CODE_ALIASES
 from app.services.org_member_invite_service import (
@@ -22,7 +33,7 @@ from app.services.org_member_invite_service import (
     normalize_org_member_role,
 )
 from app.workflows.audit import write_audit_event
-from app.services.org_member_guard import assert_member_change_allowed, load_member
+from app.services.org_member_guard import assert_invite_role_allowed, assert_member_change_allowed, load_member
 
 router = APIRouter(prefix="/api/org", tags=["org"])
 organizations_router = APIRouter(prefix="/api/organizations", tags=["organizations"])
@@ -35,8 +46,10 @@ AUDIT_ORG_MEMBER_REMOVED = "org.member.removed"
 AUDIT_ORG_MEMBER_INVITE_RESENT = "org.member.invite_resent"
 
 
+# Built in roles or a custom role key from Trust & Safety > Role permissions; the
+# endpoint checks the role exists in this workspace.
 class PatchMemberRequest(BaseModel):
-    role: str = Field(..., pattern="^(admin|member|viewer)$")
+    role: str = Field(..., pattern="^[a-z][a-z0-9_]{0,39}$")
 
 
 class InviteRequest(BaseModel):
@@ -57,12 +70,12 @@ class OrganizationUpdateRequest(BaseModel):
 
 class OrganizationMemberInviteRequest(BaseModel):
     email: str = Field(..., min_length=3)
-    role: str = Field(default="member", pattern="^(admin|member|viewer)$")
+    role: str = Field(default="member", pattern="^[a-z][a-z0-9_]{0,39}$")
     send_invite: bool = Field(default=True, description="Send Supabase invite email")
 
 
 class OrganizationMemberRoleRequest(BaseModel):
-    role: str = Field(..., pattern="^(admin|member|viewer)$")
+    role: str = Field(..., pattern="^[a-z][a-z0-9_]{0,39}$")
 
 
 class TransferOwnershipRequest(BaseModel):
@@ -96,28 +109,39 @@ def _is_member(client, org_id: str, user_id: str) -> bool:
     return bool(membership.data)
 
 
-def _is_admin(client, org_id: str, user_id: str) -> bool:
-    membership = (
-        client.table("organization_members")
-        .select("role")
-        .eq("org_id", org_id)
-        .eq("user_id", user_id)
-        .limit(1)
-        .execute()
-    )
-    if not membership.data:
-        return False
-    return is_org_admin_role((membership.data[0].get("role") or "").strip().lower())
-
-
 def _require_org_member(client, org_id: str, user_id: str) -> None:
     if not _is_member(client, org_id, user_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this organization")
 
 
-def _require_org_admin(client, org_id: str, user_id: str) -> None:
-    if not _is_admin(client, org_id, user_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
+def _require_org_capability(client, org_id: str, user_id: str, capability: str) -> None:
+    """Owners and admins, or a member whose role holds ``capability`` in this workspace."""
+    role = membership_role(client, org_id, user_id)
+    if role is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this organization")
+    if not has_capability(client, org_id, role, capability):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=capability_denied_detail(capability))
+
+
+def _write_member_role(write) -> None:
+    """Run a role update; a custom role before the custom-roles migration is a clear 409, not a 500."""
+    try:
+        write()
+    except Exception as exc:  # noqa: BLE001
+        if "organization_members_role_check" in str(exc) or "23514" in str(exc):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This workspace can't put people on custom roles until the custom roles database update is applied.",
+            ) from exc
+        raise
+
+
+def _assert_assignable_role(client, org_id: str, role: str) -> str:
+    """The role key if people can be given it here (built in or one of this workspace's custom roles)."""
+    normalized = (role or "").strip().lower()
+    if normalized not in assignable_role_keys(load_org_settings(client, org_id)):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown role: {normalized}")
+    return normalized
 
 
 def _normalize_org_row(row: dict) -> dict:
@@ -135,7 +159,7 @@ def _normalize_org_row(row: dict) -> dict:
 
 @router.get("/members")
 def list_members(
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("team_roles"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """List org members. Admin only."""
@@ -176,9 +200,17 @@ def _member_role_counts(client, org_id: str) -> dict[str, int] | None:
         return None
     counts = {"owner": 0, "admin": 0, "member": 0, "viewer": 0}
     for row in rows.data or []:
-        role = str(row.get("role") or "member").strip().lower()
-        counts[role if role in counts else "member"] += 1
+        role = str(row.get("role") or "member").strip().lower() or "member"
+        counts[role] = counts.get(role, 0) + 1
     return counts
+
+
+def _org_settings_row(client, org_id: str) -> dict:
+    row = client.table("organizations").select("settings").eq("id", org_id).limit(1).execute()
+    if not row.data:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    value = row.data[0].get("settings") or {}
+    return value if isinstance(value, dict) else {}
 
 
 @router.get("/role-permissions")
@@ -187,11 +219,78 @@ def get_role_permissions(
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
-    """Return org role capability matrix for Settings → Permissions, plus people per role."""
-    matrix = get_org_role_permissions_matrix()
-    matrix["member_counts"] = (
-        _member_role_counts(shared_service_client(settings, create_client), org_id) if org_id else None
+    """Return this workspace's role capability matrix, plus people per role."""
+    if not org_id:
+        matrix = get_org_role_permissions_matrix()
+        matrix["member_counts"] = None
+        return matrix
+    client = shared_service_client(settings, create_client)
+    try:
+        org_settings = _org_settings_row(client, org_id)
+    except Exception:  # noqa: BLE001 - fall back to the default roles
+        org_settings = {}
+    matrix = get_org_role_permissions_matrix(org_settings)
+    matrix["member_counts"] = _member_role_counts(client, org_id)
+    try:
+        my_role = membership_role(client, org_id, str(_user.get("user_id") or ""))
+    except Exception:  # noqa: BLE001 - the matrix still renders without the caller's row
+        my_role = None
+    matrix["my_role"] = my_role
+    matrix["my_capabilities"] = sorted(role_capabilities(org_settings, my_role)) if my_role else []
+    return matrix
+
+
+class RoleDefinitionBody(BaseModel):
+    key: str | None = Field(default=None, max_length=40)
+    name: str = Field(min_length=1, max_length=40)
+    description: str | None = Field(default=None, max_length=160)
+    capabilities: list[str] = Field(default_factory=list, max_length=50)
+
+
+class RolePermissionsUpdate(BaseModel):
+    roles: list[RoleDefinitionBody] = Field(min_length=1, max_length=20)
+
+
+@router.put("/role-permissions")
+def update_role_permissions(
+    body: RolePermissionsUpdate,
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Replace this workspace's roles: capabilities per role, new roles and removed ones."""
+    user, org_id = admin
+    client = shared_service_client(settings, create_client)
+    org_settings = _org_settings_row(client, org_id)
+    current = stored_role_definitions(org_settings)
+    counts = _member_role_counts(client, org_id)
+    try:
+        roles = validate_role_definitions(
+            [row.model_dump() for row in body.roles], member_counts=counts, current=current
+        )
+    except RolePermissionsError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    org_settings[ROLE_PERMISSIONS_SETTINGS_KEY] = {"roles": roles}
+    updated = client.table("organizations").update({"settings": org_settings}).eq("id", org_id).execute()
+    invalidate_org_state(org_id)
+    if not updated.data:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    before = {row["key"]: row["capabilities"] for row in current}
+    after = {row["key"]: row["capabilities"] for row in roles}
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=user["user_id"],
+        action="settings.role_permissions.updated",
+        resource_type="organization",
+        resource_id=org_id,
+        metadata={
+            "added_roles": sorted(set(after) - set(before)),
+            "removed_roles": sorted(set(before) - set(after)),
+            "changed_roles": sorted(k for k in set(after) & set(before) if after[k] != before[k]),
+        },
     )
+    matrix = get_org_role_permissions_matrix(updated.data[0].get("settings") or org_settings)
+    matrix["member_counts"] = counts
     return matrix
 
 
@@ -281,7 +380,7 @@ def list_pending_invites(
 @router.post("/invites/{user_id}/resend")
 def resend_invite(
     user_id: UUID,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("team_roles"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Send the invite email again to a member who has not accepted yet. Admin only."""
@@ -326,7 +425,7 @@ def resend_invite(
 @router.post("/members/invite")
 def invite_member(
     body: InviteRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("team_roles"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Stub: create invite token (no email sent). Admin only."""
@@ -349,7 +448,7 @@ def invite_member(
 def update_member(
     member_id: UUID,
     body: PatchMemberRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("team_roles"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Update member role. Owner/admin only; owners change only by an owner; the org keeps an owner and an admin."""
@@ -359,11 +458,12 @@ def update_member(
     target = load_member(client, org_id, member_id=mid)
     if target is not None and target.role == body.role:
         return {"id": mid, "user_id": target.user_id, "role": body.role}
+    _assert_assignable_role(client, org_id, body.role)
     target = assert_member_change_allowed(
         client, org_id, actor_user_id=_user["user_id"], target=target, new_role=body.role
     )
 
-    client.table("organization_members").update({"role": body.role}).eq("id", mid).eq("org_id", org_id).execute()
+    _write_member_role(lambda: client.table("organization_members").update({"role": body.role}).eq("id", mid).eq("org_id", org_id).execute())
     invalidate_org_and_users(org_id, [target.user_id])
     write_audit_event(
         client,
@@ -380,7 +480,7 @@ def update_member(
 @router.delete("/members/{member_id}")
 def remove_member(
     member_id: UUID,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("team_roles"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Remove member from org. Owner/admin only; owners removed only by an owner; the org keeps an owner and an admin."""
@@ -564,7 +664,7 @@ def update_organization(
 ) -> dict:
     org_id_str = str(org_id)
     client = shared_service_client(settings, create_client)
-    _require_org_admin(client, org_id_str, current_user["user_id"])
+    _require_org_capability(client, org_id_str, current_user["user_id"], "org_settings_billing")
 
     payload = {k: v for k, v in body.model_dump().items() if v is not None}
     # The plan is set by billing, never by an org admin through this endpoint.
@@ -701,13 +801,15 @@ async def invite_organization_member(
 ) -> dict:
     org_id_str = str(org_id)
     client = shared_service_client(settings, create_client)
-    _require_org_admin(client, org_id_str, current_user["user_id"])
+    _require_org_capability(client, org_id_str, current_user["user_id"], "team_roles")
+    role = _assert_assignable_role(client, org_id_str, body.role)
+    assert_invite_role_allowed(client, org_id_str, actor_user_id=current_user["user_id"], role=role)
     invite_result = invite_org_member_by_email(
         client,
         settings,
         org_id=org_id_str,
         email=body.email,
-        role=normalize_org_member_role(body.role),
+        role=role,
         invited_by_user_id=current_user["user_id"],
         send_invite=body.send_invite,
         invite_context="organization_members_invite",
@@ -741,6 +843,7 @@ def update_organization_member_role(
     org_id_str = str(org_id)
     member_user_id = str(user_id)
     client = shared_service_client(settings, create_client)
+    _assert_assignable_role(client, org_id_str, body.role)
     target = assert_member_change_allowed(
         client,
         org_id_str,
@@ -748,9 +851,11 @@ def update_organization_member_role(
         target=load_member(client, org_id_str, user_id=member_user_id),
         new_role=body.role,
     )
-    client.table("organization_members").update({"role": body.role}).eq("org_id", org_id_str).eq(
-        "user_id", member_user_id
-    ).execute()
+    _write_member_role(
+        lambda: client.table("organization_members").update({"role": body.role}).eq("org_id", org_id_str).eq(
+            "user_id", member_user_id
+        ).execute()
+    )
     invalidate_org_and_users(org_id_str, [member_user_id])
     write_audit_event(
         client,

@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
+from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin, require_capability
 from app.config import Settings, get_settings
 from app.main import app
 
@@ -33,6 +33,7 @@ def _authenticate_admin(org_id: str = "org-1") -> None:
     app.dependency_overrides[get_settings] = lambda: _settings()
     app.dependency_overrides[get_environment_context] = lambda: "production"
     app.dependency_overrides[require_admin] = lambda: ({"user_id": "user-1"}, org_id)
+    app.dependency_overrides[require_capability("install_marketplace")] = lambda: ({"user_id": "user-1"}, org_id)
 
 
 def test_install_knowledge_pack_route(monkeypatch):

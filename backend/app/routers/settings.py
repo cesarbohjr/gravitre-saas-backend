@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from supabase import create_client
 from app.core.db import shared_service_client
 
-from app.auth.dependencies import get_current_user, get_org_context, require_admin
+from app.auth.dependencies import get_current_user, get_org_context, require_admin, require_capability
 from app.config import Settings, get_settings
 from app.core.org_state_cache import invalidate_org_state
 from app.core.supabase_response import response_error
@@ -149,7 +149,7 @@ def get_settings_route(
 @router.patch("")
 def update_settings_route(
     body: SettingsUpdateRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("org_settings_billing"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
@@ -1199,7 +1199,7 @@ def get_workspace_defaults_route(
 @router.patch("/workspace")
 def update_workspace_defaults_route(
     body: WorkspaceDefaultsUpdateRequest,
-    admin: Annotated[tuple, Depends(require_admin)],
+    admin: Annotated[tuple, Depends(require_capability("org_settings_billing"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     from app.services.branding_service import merge_branding

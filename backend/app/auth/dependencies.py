@@ -1,5 +1,6 @@
 """BE-00: Auth and org context. Supabase Auth (email + magic link); org from DB (single-org-per-user)."""
 import asyncio
+import functools
 import time
 from typing import Annotated
 
@@ -16,6 +17,7 @@ from app.auth.platform_admin import (
     is_org_member_role,
     is_platform_admin,
 )
+from app.auth.org_role_permissions import CAPABILITY_KEYS, capability_denied_detail, has_capability
 from app.config import Settings, get_settings
 from app.core.logging import get_logger, org_id_ctx, user_id_ctx
 
@@ -436,6 +438,58 @@ async def require_org_member(
             detail="Not a member of this organization",
         )
     return current_user, org_id, role
+
+
+@functools.cache
+def require_capability(capability: str):
+    """Dependency factory: org member whose role holds ``capability`` in this workspace.
+
+    Roles and their capabilities are edited in Trust & Safety > Role permissions
+    (organizations.settings["role_permissions"]). Owners, admins and platform
+    admins always pass. Returns (user, org_id) like ``require_admin``. Cached, so
+    ``require_capability(key)`` is one dependency per key (tests can override it).
+    """
+    if capability not in CAPABILITY_KEYS:
+        raise ValueError(f"Unknown capability: {capability}")
+
+    async def _require_capability(
+        current_user: Annotated[dict, Depends(get_current_user)],
+        org_id: Annotated[str | None, Depends(get_org_context)],
+        settings: Annotated[Settings, Depends(get_settings)],
+    ) -> tuple[dict, str]:
+        if org_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Organization context required",
+            )
+        client = _get_cached_service_client(settings)
+        if is_platform_admin(client, current_user["user_id"]):
+            return current_user, org_id
+        r = (
+            client.table("organization_members")
+            .select("role")
+            .eq("org_id", org_id)
+            .eq("user_id", current_user["user_id"])
+            .limit(1)
+            .execute()
+        )
+        if not r.data:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not a member of this organization",
+            )
+        role = (r.data[0].get("role") or "member").strip().lower()
+        if is_org_admin_role(role):
+            return current_user, org_id
+        if not is_org_member_role(role) or not has_capability(client, org_id, role, capability):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=capability_denied_detail(capability),
+            )
+        return current_user, org_id
+
+    _require_capability.__name__ = f"require_capability_{capability}"
+    return _require_capability
 
 
 async def require_platform_admin(

@@ -5,7 +5,7 @@ import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
 
-from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
+from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin, require_capability
 from app.config import Settings, get_settings
 from app.main import app
 
@@ -37,6 +37,7 @@ def _authenticate_admin(org_id: str = ORG_ID) -> None:
     app.dependency_overrides[get_settings] = lambda: _settings()
     app.dependency_overrides[get_environment_context] = lambda: "production"
     app.dependency_overrides[require_admin] = lambda: ({"user_id": "user-1"}, org_id)
+    app.dependency_overrides[require_capability("install_marketplace")] = lambda: ({"user_id": "user-1"}, org_id)
 
 
 def _deny_admin() -> tuple[dict, str]:
@@ -73,6 +74,7 @@ def test_asset_entitlement_route(monkeypatch):
 def test_asset_checkout_requires_admin():
     _authenticate_admin()
     app.dependency_overrides[require_admin] = _deny_admin
+    app.dependency_overrides[require_capability("install_marketplace")] = _deny_admin
     response = client.post(
         "/api/marketplace/assets/paid-pack/checkout",
         json={

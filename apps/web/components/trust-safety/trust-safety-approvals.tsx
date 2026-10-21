@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
+import { useMyCapability } from "@/lib/use-my-capability"
 import { approvalsApi } from "@/lib/api"
 import { resolveProvider } from "@/lib/provider-registry"
 import {
@@ -74,6 +75,7 @@ function appName(slug: string | null): string | null {
 export function TrustSafetyApprovals({ onViewPast }: { onViewPast: () => void }) {
   const { user } = useAuth()
   const { isAdmin, loading: adminLoading } = useOrgAdmin()
+  const canApproveWrites = useMyCapability("approve_writes")
   const { mutate: mutateCache } = useSWRConfig()
   const { pending, history, waiting, loading, error, mutatePending, mutateHistory } = useApprovalCounts()
 
@@ -112,7 +114,7 @@ export function TrustSafetyApprovals({ onViewPast }: { onViewPast: () => void })
       return r !== 0 ? r : (parseTime(x.requestedAt) ?? 0) - (parseTime(y.requestedAt) ?? 0)
     })
 
-  const canDecide = (a: Approval) => adminLoading || isAdmin || (isExtensionGate(a) && Boolean(user?.id) && a.requestedById === user?.id)
+  const canDecide = (a: Approval) => adminLoading || isAdmin || canApproveWrites || (isExtensionGate(a) && Boolean(user?.id) && a.requestedById === user?.id)
 
   const approve = async (a: Approval) => {
     if (busyId) return

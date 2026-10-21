@@ -12,7 +12,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.auth.dependencies import get_current_user, require_admin
+from app.auth.dependencies import get_current_user, require_admin, require_capability
 from app.config import get_settings
 from app.routers import org as org_router
 
@@ -120,6 +120,7 @@ def env(monkeypatch):
         return ({"user_id": state["user"]}, ORG)
 
     app.dependency_overrides[require_admin] = _admin
+    app.dependency_overrides[require_capability("team_roles")] = _admin
     return TestClient(app), db, state, audits
 
 
@@ -244,3 +245,61 @@ def test_only_an_owner_deletes_the_organization(env):
     assert db.tables["organizations"]
     _as(state, OWNER)
     assert client.delete(f"/api/organizations/{ORG}").status_code == 200
+
+
+# ------------------------------------------------- custom roles and team_roles
+
+SUPPORT = "aaaaaaaa-0000-4000-8000-000000000006"
+
+
+def _with_roles(db, *, member_caps=None, custom=None):
+    roles = [
+        {"key": "admin", "name": "Admin", "capabilities": []},
+        {"key": "member", "name": "Member", "capabilities": member_caps or []},
+        {"key": "viewer", "name": "Viewer", "capabilities": ["view_intelligence"]},
+    ]
+    roles += custom or []
+    db.tables["organizations"][0]["settings"] = {"role_permissions": {"roles": roles}}
+
+
+def test_admin_puts_a_member_on_a_custom_role(env):
+    client, db, state, audits = env
+    _with_roles(db, custom=[{"key": "support_lead", "name": "Support lead", "capabilities": ["approve_writes"]}])
+    _as(state, ADMIN)
+    resp = client.patch(f"/api/organizations/{ORG}/members/{MEMBER}", json={"role": "support_lead"})
+    assert resp.status_code == 200, resp.text
+    assert db.role(MEMBER) == "support_lead"
+    assert audits[-1]["metadata"] == {"old_role": "member", "new_role": "support_lead"}
+
+
+def test_unknown_role_is_rejected(env):
+    client, db, state, _ = env
+    _as(state, ADMIN)
+    resp = client.patch(f"/api/organizations/{ORG}/members/{MEMBER}", json={"role": "support_lead"})
+    assert resp.status_code == 400
+    assert db.role(MEMBER) == "member"
+    assert client.patch(f"/api/organizations/{ORG}/members/{MEMBER}", json={"role": "owner"}).status_code == 400
+
+
+def test_team_roles_capability_lets_a_member_manage_non_admins(env):
+    client, db, state, _ = env
+    _with_roles(db, member_caps=["team_roles"])
+    db.tables["organization_members"].append({"id": "bbbbbbbb-0000-4000-8000-000000000006", "org_id": ORG, "user_id": SUPPORT, "role": "viewer"})
+    _as(state, MEMBER)
+    assert client.patch(f"/api/organizations/{ORG}/members/{SUPPORT}", json={"role": "member"}).status_code == 200
+    assert db.role(SUPPORT) == "member"
+    # ...but can't make admins or touch them.
+    assert client.patch(f"/api/organizations/{ORG}/members/{SUPPORT}", json={"role": "admin"}).status_code == 403
+    assert client.patch(f"/api/organizations/{ORG}/members/{ADMIN}", json={"role": "viewer"}).status_code == 403
+    assert client.delete(f"/api/organizations/{ORG}/members/{ADMIN}").status_code == 403
+    assert db.role(SUPPORT) == "member"
+    assert db.role(ADMIN) == "admin"
+
+
+def test_member_without_team_roles_still_cannot_change_roles(env):
+    client, db, state, _ = env
+    _with_roles(db, member_caps=["approve_writes"])
+    _as(state, MEMBER)
+    resp = client.patch(f"/api/organizations/{ORG}/members/{MEMBER}", json={"role": "viewer"})
+    assert resp.status_code == 403
+    assert "Role permissions" in resp.json()["detail"]

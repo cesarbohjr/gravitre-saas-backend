@@ -16,7 +16,7 @@ from app.auth.dependencies import (
     get_current_user,
     get_environment_context,
     get_org_context,
-    require_admin,
+    require_capability,
     require_org_member,
     require_platform_admin,
 )
@@ -2009,7 +2009,7 @@ def create_public_checkout(
 
 @router.post("/portal")
 def create_portal(
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("org_settings_billing"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
@@ -2046,7 +2046,7 @@ def create_portal(
 @router.post("/seats")
 def update_seats(
     body: SeatsRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("org_settings_billing"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
@@ -2078,7 +2078,7 @@ def update_seats(
 @router.post("/cancel")
 async def cancel_subscription(
     body: CancelRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("org_settings_billing"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
@@ -2184,7 +2184,7 @@ async def cancel_subscription(
 
 @router.post("/reactivate")
 async def reactivate_subscription(
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("org_settings_billing"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     _user, org_id = _admin
