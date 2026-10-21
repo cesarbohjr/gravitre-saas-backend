@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'backend/app/services/pipecat_voice/cognitive_llm.py'
+      - 'backend/tests/e2e/voice_scenarios/fakes.py'
+      - 'backend/tests/e2e/voice_scenarios/metrics.py'
       - '.github/workflows/issue-535-voice-confirmation.yml'
   workflow_dispatch:
 jobs:
