@@ -153,11 +153,12 @@ def run_metrics(result: Any) -> dict[str, Any]:
     if scenario.id == "S8":
         kinds = {"user_speech_start", "user_speech_end", "brain_start",
                  "write_gate_checked", "write_commit", "write_blocked",
-                 "spec_start", "spec_adopted", "brain_end"}
+                 "spec_start", "spec_adopted", "brain_end", "approval_query_shape"}
         retained = {"token_generation", "token_cancelled", "bound_token",
                     "session_token_cancelled", "same_turn_token",
                     "user_turn_starts", "user_speaking", "stop_requested",
-                    "committed", "speculative", "call_id"}
+                    "committed", "speculative", "call_id", "pause_holds_write",
+                    "has_stop_word", "bare_confirmation", "token_count"}
         m["safety_trace"] = [
             {"virtual_s": round(t, 4), "event": kind,
              **{k: v for k, v in data.items() if k in retained}}
