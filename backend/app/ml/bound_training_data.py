@@ -55,7 +55,8 @@ def collect_bound_records(org_id: str, model_name: str, settings: Settings, *, i
             continue
         if include_inputs and (not isinstance(row.get("input"), str) or not row["input"].strip() or len(row["input"]) > 65536):
             continue
-        valid.append(row)
+        valid.append({**row, "training_target_definition": next(iter(definitions))}
+                     if model_name == "graph_neural_network" else row)
     # Monitor the newest bounded window so new imports can unblock a model,
     # then restore source order for downstream chronological validation.
     return list(reversed(valid))

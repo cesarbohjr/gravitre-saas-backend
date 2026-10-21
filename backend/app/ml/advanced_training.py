@@ -91,7 +91,8 @@ async def train_bound_catalog_model(org_id: str, model_name: str, *, settings: S
         return {"trained": False, "reason": "eligible_bound_training_records_required", "current": len(records), "required": required}
     instance = get_model_instance(model_name)
     if model_name == "graph_neural_network":
-        inputs = [safe_normalize_stored_dict(row["input"]) for row in records]
+        inputs = [{**safe_normalize_stored_dict(row["input"]),
+                   "target_definition": row.get("training_target_definition")} for row in records]
         try:
             inputs_and_labels = sorted(zip(inputs, [int(row["expected_output"]) for row in records]),
                                        key=lambda pair: datetime.fromisoformat(str(pair[0].get("observed_at", "")).replace("Z", "+00:00")))

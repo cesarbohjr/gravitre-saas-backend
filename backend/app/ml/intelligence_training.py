@@ -182,6 +182,15 @@ def champion_challenger_decision(
             return False, "not_deployed_first_version_not_better_than_chance", evaluation
         return True, "first_deployment_with_held_out_metric", evaluation
     champion_metrics = _metrics_dict(champion)
+    from app.core.safe_dict import safe_normalize_stored_dict
+    challenger_custom = safe_normalize_stored_dict(challenger_metrics.get("custom_metrics"))
+    champion_custom = safe_normalize_stored_dict(champion_metrics.get("custom_metrics"))
+    if any(payload.get("algorithm") == "mean_graph_convolution"
+           for payload in (challenger_custom, champion_custom)):
+        keys = ("algorithm", "graph_target_definition", "graph_feature_schema")
+        if any(not challenger_custom.get(key) or challenger_custom.get(key) != champion_custom.get(key)
+               for key in keys):
+            return False, "not_deployed_incomparable_graph_semantics", {}
     for name, higher_is_better in PRIMARY_METRIC_PRIORITY:
         new_value = _finite(challenger_metrics.get(name))
         old_value = _finite(champion_metrics.get(name))

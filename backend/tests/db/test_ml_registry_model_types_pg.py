@@ -24,13 +24,13 @@ INSERT INTO public.trained_models(model_type) VALUES ('classifier');
 def test_all_runtime_types_fit_existing_registry_after_migration():
     with pg_cluster(BOOTSTRAP) as db:
         with pytest.raises(subprocess.CalledProcessError):
-            db.sql("INSERT INTO public.trained_models(model_type) VALUES ('regressor')")
-        db.sql(MIGRATION.read_text())
+            db.psql("INSERT INTO public.trained_models(model_type) VALUES ('regressor')")
+        db.psql(MIGRATION.read_text())
         for model_type in ModelType:
-            db.sql(f"INSERT INTO public.trained_models(model_type) VALUES ('{model_type.value}')")
-        assert db.sql("SELECT count(*) FROM public.trained_models") == str(len(ModelType)+1)
-        assert db.sql("SELECT relrowsecurity FROM pg_class WHERE oid='public.trained_models'::regclass") == "t"
+            db.psql(f"INSERT INTO public.trained_models(model_type) VALUES ('{model_type.value}')")
+        assert db.value("SELECT count(*) FROM public.trained_models") == str(len(ModelType)+1)
+        assert db.value("SELECT relrowsecurity FROM pg_class WHERE oid='public.trained_models'::regclass") == "t"
         with pytest.raises(subprocess.CalledProcessError):
-            db.sql("INSERT INTO public.trained_models(model_type) VALUES ('invented')")
+            db.psql("INSERT INTO public.trained_models(model_type) VALUES ('invented')")
         with pytest.raises(subprocess.CalledProcessError):
-            db.sql("INSERT INTO public.trained_models(model_type,status) VALUES ('classifier','trained')")
+            db.psql("INSERT INTO public.trained_models(model_type,status) VALUES ('classifier','trained')")

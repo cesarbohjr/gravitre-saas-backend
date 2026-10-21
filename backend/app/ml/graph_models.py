@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+import json
 from datetime import datetime
 from typing import Any
 
@@ -26,6 +27,19 @@ class GraphNeuralNetworkScorer(BaseMLModel):
 
     def __init__(self) -> None:
         self._weights: dict[str, np.ndarray] | None = None
+        self._contract: tuple[str, tuple[str, ...]] | None = None
+
+    @staticmethod
+    def _schema(row: Any) -> tuple[str, tuple[str, ...]]:
+        if not isinstance(row, dict):
+            raise ValueError("Graph object required")
+        target, names = row.get("target_definition"), row.get("feature_names")
+        if (not isinstance(target, str) or not target.strip() or len(target) > 512
+                or not isinstance(names, list) or not 1 <= len(names) <= 32
+                or any(not isinstance(name, str) or not name.strip() or len(name) > 128 for name in names)
+                or len(set(names)) != len(names)):
+            raise ValueError("Graph target definition and ordered unique feature names required")
+        return target.strip(), tuple(names)
 
     @staticmethod
     def _aggregate(row: Any) -> np.ndarray:
@@ -68,6 +82,10 @@ class GraphNeuralNetworkScorer(BaseMLModel):
 
     def _fit(self, X: Any, y: Any) -> ModelMetrics:
         matrix = self._matrix(X)
+        contracts = [self._schema(row) for row in X]
+        contract = contracts[0]
+        if any(value != contract for value in contracts) or len(contract[1]) != matrix.shape[2]:
+            raise ValueError("Graph target and ordered feature schema must be consistent")
         if len(matrix) < self.MIN_TRAINING_EXAMPLES:
             raise ValueError("100 independently labeled graph examples required")
         if not isinstance(y, list) or len(y) != len(X) or any(type(v) not in {int, bool} or v not in {0, 1} for v in y):
@@ -110,10 +128,13 @@ class GraphNeuralNetworkScorer(BaseMLModel):
         if auc <= .5 or loss >= baseline_loss or not all(np.isfinite(value).all() for value in w.values()):
             raise ValueError("Graph predictor did not beat prior baseline on temporal holdout")
         self._weights = w
+        self._contract = contract
         return ModelMetrics(auc_roc=auc, accuracy=float(accuracy_score(y[split:], probabilities >= .5)),
                             training_samples=split, validation_samples=len(y)-split,
                             custom_metrics={"algorithm": "mean_graph_convolution", "holdout_log_loss": loss,
-                                            "prior_log_loss": baseline_loss, "cross_org_training": False})
+                                            "prior_log_loss": baseline_loss, "cross_org_training": False,
+                                            "graph_target_definition": contract[0],
+                                            "graph_feature_schema": json.dumps(contract[1])})
 
     async def train(self, X: Any, y: Any = None, **kwargs: Any) -> ModelMetrics:
         return await asyncio.to_thread(self._fit, X, y)
@@ -122,6 +143,8 @@ class GraphNeuralNetworkScorer(BaseMLModel):
         if self._weights is None:
             raise ValueError("Validated graph artifact required")
         matrix = self._matrix(X)
+        if self._contract is None or any(self._schema(row) != self._contract for row in X):
+            raise ValueError("Graph target or ordered feature semantics do not match artifact")
         w = self._weights
         if matrix.shape[2] != len(w["mean"]):
             raise ValueError("Graph feature schema does not match artifact")
@@ -145,23 +168,29 @@ class GraphNeuralNetworkScorer(BaseMLModel):
                 "advisory_only": True, "scope": "Provided graph features and measured training target only"}
 
     def save(self) -> bytes:
-        if self._weights is None:
+        if self._weights is None or self._contract is None:
             raise ValueError("Untrained graph model")
         buffer = io.BytesIO()
-        np.savez_compressed(buffer, schema=np.array([1]), **self._weights)
+        np.savez_compressed(buffer, schema=np.array([2]),
+                            target_definition=np.array(self._contract[0]),
+                            feature_names=np.array(self._contract[1]), **self._weights)
         return buffer.getvalue()
 
     def load(self, data: bytes) -> None:
         if len(data) > 1000000:
             raise ValueError("Graph artifact exceeds bounded model size")
         with np.load(io.BytesIO(data), allow_pickle=False) as archive:
-            if set(archive.files) != {"schema", "projection", "bias", "output", "intercept", "mean", "scale"} or archive["schema"].tolist() != [1]:
+            if set(archive.files) != {"schema", "target_definition", "feature_names", "projection", "bias", "output", "intercept", "mean", "scale"} or archive["schema"].tolist() != [2]:
                 raise ValueError("Invalid graph artifact schema")
-            w = {name: archive[name].copy() for name in archive.files if name != "schema"}
+            contract = self._schema({"target_definition": archive["target_definition"].item(),
+                                     "feature_names": archive["feature_names"].tolist()})
+            w = {name: archive[name].copy() for name in archive.files
+                 if name not in {"schema", "target_definition", "feature_names"}}
         features = len(w["mean"])
-        if (not 1 <= features <= 32 or w["mean"].shape != (features,) or w["scale"].shape != (features,)
+        if (not 1 <= features <= 32 or len(contract[1]) != features or w["mean"].shape != (features,) or w["scale"].shape != (features,)
                 or w["projection"].shape != (features, 16) or w["bias"].shape != (16,)
                 or w["output"].shape != (32,) or w["intercept"].shape != (1,)
                 or not all(np.isfinite(value).all() for value in w.values()) or np.any(w["scale"] <= 0)):
             raise ValueError("Invalid graph artifact weights")
         self._weights = w
+        self._contract = contract

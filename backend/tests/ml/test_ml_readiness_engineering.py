@@ -18,7 +18,8 @@ def graph_examples(n=120):
         positive = i % 2
         features = rng.normal(0, .05, (4, 2))
         features[2, 0] = 2 if positive else -2
-        rows.append({"node_features": features.tolist(), "edges": [[0, 2], [1, 3]],
+        rows.append({"target_definition": "human-reviewed relationship outcome",
+                     "feature_names": ["observed_signal", "context_signal"], "node_features": features.tolist(), "edges": [[0, 2], [1, 3]],
                      "source": 0, "target": 1, "graph_id": f"snapshot-{i}",
                      "observed_at": (datetime(2025, 1, 1, tzinfo=UTC)+timedelta(days=i)).isoformat()})
         labels.append(positive)
@@ -286,3 +287,46 @@ async def test_new_bound_draft_does_not_delay_first_automatic_training():
     assert train.call_args.args == ("org-a", "graph_neural_network")
     assert result["models"]["graph_neural_network"]["reason"] == "eligible_bound_training_records_required"
     lock.release.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_graph_artifact_rejects_same_width_with_different_semantics():
+    rows, labels = graph_examples()
+    model = GraphNeuralNetworkScorer()
+    await model.train(rows, labels)
+    restored = GraphNeuralNetworkScorer()
+    restored.load(model.save())
+    for change in ({"target_definition": "different business outcome"},
+                   {"feature_names": list(reversed(rows[0]["feature_names"]))}):
+        with pytest.raises(ValueError, match="semantics"):
+            await restored.predict([{**rows[-1], **change}])
+
+
+def test_graph_champion_metrics_require_same_target_and_feature_meaning():
+    from app.ml.intelligence_training import champion_challenger_decision
+    custom = {"algorithm": "mean_graph_convolution", "graph_target_definition": "reviewed outcome",
+              "graph_feature_schema": '["amount", "age"]'}
+    champion = {"auc_roc": .8, "custom_metrics": custom}
+    challenger = {"auc_roc": .95, "custom_metrics": {**custom, "graph_target_definition": "other outcome"}}
+    assert champion_challenger_decision(challenger, champion, has_champion=True)[1] == "not_deployed_incomparable_graph_semantics"
+    challenger["custom_metrics"] = custom.copy()
+    assert champion_challenger_decision(challenger, champion, has_champion=True)[0]
+
+
+@pytest.mark.asyncio
+async def test_graph_training_rejects_mixed_targets_before_creating_artifact():
+    rows, labels = graph_examples()
+    rows[-1]["target_definition"] = "different target"
+    model = GraphNeuralNetworkScorer()
+    with pytest.raises(ValueError, match="must be consistent"):
+        await model.train(rows, labels)
+    with pytest.raises(ValueError, match="Untrained"):
+        model.save()
+
+
+def test_legacy_graph_artifact_cannot_claim_known_feature_semantics():
+    import io
+    archive = io.BytesIO()
+    np.savez_compressed(archive, schema=np.array([1]))
+    with pytest.raises(ValueError, match="schema"):
+        GraphNeuralNetworkScorer().load(archive.getvalue())

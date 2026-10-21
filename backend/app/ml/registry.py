@@ -154,10 +154,35 @@ class ModelRegistry:
         if not result.data:
             raise ValueError(f"Model {model_id} not found")
         model_data = result.data[0]
-        deploy_version = version or model_data["current_version"]
-        version_result = client.table("model_versions").select("id").eq("model_id", model_id).eq("version", deploy_version).execute()
+        # Keep manual API deployment and automatic promotion on the same gates.
+        # Catalog status is implementation metadata, never deployment evidence.
+        from app.ml.automatic_training import CONSENT_MANAGED_MODELS
+        from app.ml.intelligence_training import CATALOG_MODEL_NAMES, champion_challenger_decision
+        from app.ml.training_consent import training_is_approved
+
+        catalog_name = next((key for key, name in CATALOG_MODEL_NAMES.items()
+                             if name == model_data.get("name")), model_data.get("base_model"))
+        deploy_version = version if version is not None else model_data["current_version"]
+        if type(deploy_version) is not int or deploy_version < 1:
+            raise ValueError("A positive artifact version is required")
+        if catalog_name in CONSENT_MANAGED_MODELS:
+            org_id = model_data.get("org_id")
+            if not org_id or not await training_is_approved(org_id, catalog_name, self.settings):
+                raise ValueError("training_consent_required")
+            challenger = await self.get_version_metrics(model_id, deploy_version)
+            champion_version = model_data.get("deployed_version")
+            champion = (await self.get_version_metrics(model_id, champion_version)
+                        if champion_version is not None else None)
+            permitted, reason, _ = champion_challenger_decision(
+                challenger, champion, has_champion=champion_version is not None,
+            )
+            if not permitted:
+                raise ValueError(reason)
+        version_result = client.table("model_versions").select("id,artifact_url").eq("model_id", model_id).eq("version", deploy_version).execute()
         if not version_result.data:
             raise ValueError(f"Version {deploy_version} not found for model {model_id}")
+        if catalog_name in CONSENT_MANAGED_MODELS and not version_result.data[0].get("artifact_url"):
+            raise ValueError("catalog_artifact_required")
         client.table("trained_models").update(
             {
                 "deployed_version": deploy_version,
