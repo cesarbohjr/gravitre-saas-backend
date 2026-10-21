@@ -31,6 +31,12 @@ jobs:
           OPENAI_API_KEY: fake-phase3-key
           ANTHROPIC_API_KEY: fake-phase3-key
           GEMINI_API_KEY: fake-phase3-key
+      - name: Run virtual-clock voice turn benchmark (scripted providers; not physical voice)
+        run: python scripts/bench_voice_scenarios.py --runs 5 --seed 1000 --profile production_inferred --out "${{ runner.temp }}/gravitre-phase3-evidence/voice-virtual-clock" --label phase3-pr534
+        env:
+          OPENAI_API_KEY: fake-phase3-key
+          ANTHROPIC_API_KEY: fake-phase3-key
+          GEMINI_API_KEY: fake-phase3-key
       - name: Upload full evidence even on failure
         if: always()
         uses: actions/upload-artifact@v4
