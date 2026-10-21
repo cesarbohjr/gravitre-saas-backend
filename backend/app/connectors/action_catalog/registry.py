@@ -120,6 +120,9 @@ def catalog_scopes_by_tool() -> dict[str, list[str]]:
         for action in spec.all_actions():
             tool_key = action.id
             scopes[tool_key] = list(action.scopes)
+    from app.connectors.action_catalog.native_actions import NATIVE_ACTION_SPECS
+    for action in NATIVE_ACTION_SPECS.values():
+        scopes[action.id] = list(action.scopes)
     return scopes
 
 
@@ -169,6 +172,9 @@ def get_action_spec(action_key: str) -> ActionSpec | None:
 
     key = catalog_action_key(action_key.strip().lower() if action_key else "")
     from app.connectors.action_catalog.native_actions import NATIVE_ACTION_SPECS
+    from app.connectors.action_catalog.action_id_aliases import CANONICAL_TO_ALIASES
+    if key not in NATIVE_ACTION_SPECS:
+        key = next((alias for alias in CANONICAL_TO_ALIASES.get(key,()) if alias in NATIVE_ACTION_SPECS),key)
     if key in NATIVE_ACTION_SPECS:
         return NATIVE_ACTION_SPECS[key]
     if "." not in key:

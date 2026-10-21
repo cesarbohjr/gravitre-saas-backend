@@ -126,3 +126,12 @@ CI 39545685982 found eight advisories against the newly pinned Pillow 12.3.0. Up
 Security follow-up validation: **739 focused tests passed**, including actual FFmpeg raster/audio/video decoding, TIFF rejection and embedded private-metadata removal. This focused selection omits the four unrelated current-main SIEM tests included in the prior 742-count run and adds one codec security case. New local audit and full CI remain pending for this follow-up; earlier full/broad counts cover the preceding implementation.
 
 Dedicated actual Flower/PyDP CI [39545685666](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/39545685666) passed dependency installation, real component imports, actual bundle build and offline runtime contracts on ac958d5f. This does not establish a deployed federation, independent audit or tenant approval.
+
+
+### Final catalog audit and local integration limits
+
+The corrected dependency audit passed both existing targets without new exceptions. A broader offline full-backend run found three genuine image ActionSpec declaration omissions (use-case cue, irreversible-write flag and canonical alias); these are now corrected. Native action scope inventory and canonical alias lookup preserve the same ActionSpec/write authority rather than creating another executor. Expanded connector/ML/lint/write-contract checks: **1,225 passed, 1 skipped**; final native schema/alias/write-approval regression after the last lookup change: **28 passed**.
+
+The broad offline full-backend attempt reported 11,593 passed, 263 skipped, three catalog failures (fixed above), and nine Redis integration setup errors because outbound sockets were deliberately prohibited, including localhost:6379. This is **not** a passing full-backend result. No tests were weakened or audit exceptions added. Local Redis server binaries are unavailable; CI installs Redis and runs that integration file separately. Fresh final-head full CI is required before any merge. Earlier successful 7,681 affected backend checks and 1,896 frontend tests remain recorded above with their source limitations.
+
+Production release and Phase 1/2 closure are still not claimed. External audited runtime/consents and live provider/model/consumer evidence are missing; per-org federation candidate adoption remains unfinished and never bypasses promotion gates. User migration/release authorization remains conditional on completing the advanced gaps, and does not authorize tenant/provider/federation consent.

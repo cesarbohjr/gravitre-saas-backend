@@ -238,3 +238,13 @@ def test_raster_allowlist_rejects_tiff_and_reencoding_removes_embedded_private_m
     assert b'private-marker-that-must-not-leave' not in encoded
     with Image.open(io.BytesIO(encoded)) as image:
         assert not image.info.get('Comment') and image.size == (16,16)
+
+
+def test_native_image_action_canonical_alias_preserves_scope_and_write_authority():
+    from app.connectors.action_catalog.registry import get_action_spec, catalog_scopes_by_tool
+    from app.services.catalog_write_authority import invoke_action_requires_write_approval
+    original = get_action_spec('assistant.generate_image')
+    assert get_action_spec('assistant.images.generate') is original
+    assert original.destructive and original.requires_approval
+    assert catalog_scopes_by_tool()[original.id] == ['platform:artifacts:write']
+    assert invoke_action_requires_write_approval('assistant.images.generate')

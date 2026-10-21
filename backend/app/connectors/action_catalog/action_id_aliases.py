@@ -6,6 +6,7 @@ from __future__ import annotations
 
 # short / legacy → canonical vendor.resource.verb
 ACTION_ID_ALIASES: dict[str, str] = {
+    "assistant.generate_image": "assistant.images.generate",
     "email.send": "email.messages.send",
     "webhook.post": "webhook.http.post",
     "salesforce.query": "salesforce.soql.query",

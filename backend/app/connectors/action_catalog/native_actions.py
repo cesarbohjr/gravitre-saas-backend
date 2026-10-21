@@ -6,8 +6,8 @@ from app.connectors.action_catalog.models import ActionSpec, ActionWorkflowSchem
 
 GENERATE_IMAGE = ActionSpec(
     id="assistant.generate_image", name="Generate private image", tier="v2", kind="write",
-    description="Generate one private draft asset through the reviewed organization provider budget. Does not publish or send it.",
-    scopes=("platform:artifacts:write",), requires_approval=True, risk_class="financial",
+    description="Use when the user explicitly requests one private draft image. Generate it through the reviewed organization provider budget; does not publish or send it.",
+    scopes=("platform:artifacts:write",), destructive=True, requires_approval=True, risk_class="financial",
     input_schema={"type":"object", "properties":{"prompt":{"type":"string","minLength":1,"maxLength":8000}},
                   "required":["prompt"],"additionalProperties":False},
     workflow_schema=ActionWorkflowSchema(intent_label="generate_image", required_fields=(
