@@ -221,3 +221,20 @@ def test_generated_image_completion_mapper_requires_actual_private_artifact_proo
     assert 'unconfirmed' in summarize_write_action(action='assistant.generate_image',result_data={'status':'ok'})
     result = {'status':'ok','artifact_verified':True,'sha256':'a'*64,'storage_path':'org/generated-images/image.png','hostedFiles':[{'id':'image'}]}
     assert 'verified the stored file' in summarize_write_action(action='assistant.generate_image',result_data=result)
+
+
+def test_raster_allowlist_rejects_tiff_and_reencoding_removes_embedded_private_metadata():
+    from PIL.PngImagePlugin import PngInfo
+    buffer = io.BytesIO()
+    Image.new('RGB',(16,16),'blue').save(buffer,format='TIFF')
+    with pytest.raises(ValueError,match='container'):
+        image_part(buffer.getvalue())
+    metadata = PngInfo()
+    metadata.add_text('Comment','private-marker-that-must-not-leave')
+    buffer = io.BytesIO()
+    Image.new('RGB',(16,16),'blue').save(buffer,format='PNG',pnginfo=metadata)
+    from app.ml.media_inputs import reencode_image
+    encoded = reencode_image(buffer.getvalue(),output_format='png')
+    assert b'private-marker-that-must-not-leave' not in encoded
+    with Image.open(io.BytesIO(encoded)) as image:
+        assert not image.info.get('Comment') and image.size == (16,16)

@@ -55,6 +55,5 @@ boto3>=1.34.0,<2.0
 prometheus-client>=0.20.0,<1.0
 sentry-sdk>=2.0.0,<3.0
 
-# Advanced media decoding and signed federation composition accounting.
-Pillow==12.3.0
+# Signed federation composition accounting; media uses system FFmpeg.
 opacus==1.6.0

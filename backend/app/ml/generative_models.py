@@ -4,12 +4,10 @@ from __future__ import annotations
 import asyncio
 import base64
 import hashlib
-import io
 import json
 from typing import Any
 from uuid import UUID
 
-from PIL import Image
 
 from app.ml.base import ModelStatus, ModelType
 from app.core.safe_dict import safe_normalize_stored_dict
@@ -84,12 +82,10 @@ class DiffusionModelConnector(CatalogScaffoldModel):
             if not isinstance(encoded, str) or len(encoded) > 28_000_000:
                 raise ValueError("Generation returned no bounded image")
             raw = base64.b64decode(encoded, validate=True)
-            with Image.open(io.BytesIO(raw)) as image:
-                if image.format != "PNG" or image.size != (1024, 1024):
-                    raise ValueError("Generated image does not match requested format/dimensions")
-                output = io.BytesIO()
-                image.convert("RGB").save(output, format="PNG")
-                data = output.getvalue()
+            from app.ml.media_inputs import reencode_image
+            if not raw.startswith(b'\x89PNG\r\n\x1a\n'):
+                raise ValueError('Generated PNG container required')
+            data = await asyncio.to_thread(reencode_image,raw,output_format='png',expected_size=(1024,1024))
             path = f"{org_id}/generated-images/{operation_id}.png"
             await asyncio.to_thread(put_org_file, client, settings, org_id=org_id, logical_bucket=bucket,
                                     path=path, data=data, content_type="image/png", purpose="generated_image", upsert=False, expected_storage=destination)

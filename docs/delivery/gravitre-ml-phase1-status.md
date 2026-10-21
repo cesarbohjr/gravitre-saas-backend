@@ -117,3 +117,12 @@ Final focused combined-main regression: **742 passed** across ML, lint, action o
 ### Final broad local verification
 
 Combined-current-main backend ML/services/lint regression: **7,681 passed, 2 skipped** in 182.48 seconds. Provider dispatch remained blocked. The two skips are existing conditional cases, not passing native PostgreSQL or live-provider proof. Final focused checks: 742 passed. Frontend: 297 files / 1,896 tests, TypeScript passed, lint zero errors / four existing warnings. Actual Flower bundle build succeeded. These results cover the code tree published first as `523916e857d17b6e710e3dc9b83dae23d3611e69`; the follow-up changes only this evidence document. PR #528 remains draft, with fresh full CI and dedicated optional Flower/PyDP checks required. Earlier green CI at 60cc335d does not cover this implementation. No production migration, merge, deployment, paid model invocation or tenant training was performed.
+
+
+### Dependency audit correction and media isolation
+
+CI 39545685982 found eight advisories against the newly pinned Pillow 12.3.0. Upstream Pillow 13.0.0 is patched, but the installed supported Pipecat voice line (including its available 1.13 wheel) requires Pillow <13. The new media/generation implementation now has **no Pillow dependency**: it reuses installed FFmpeg for allowlisted PNG/JPEG/WebP decode, explicit dimensions/allocation/output/time bounds, one-frame re-encoding and metadata/side-data removal. The introduced Pillow pin was removed; voice requirements and audit exceptions are unchanged. This fixes the introduced dependency issue without claiming remediation of every pre-existing optional voice dependency. Primary release notes: https://pillow.readthedocs.io/en/stable/releasenotes/13.0.0.html .
+
+Security follow-up validation: **739 focused tests passed**, including actual FFmpeg raster/audio/video decoding, TIFF rejection and embedded private-metadata removal. This focused selection omits the four unrelated current-main SIEM tests included in the prior 742-count run and adds one codec security case. New local audit and full CI remain pending for this follow-up; earlier full/broad counts cover the preceding implementation.
+
+Dedicated actual Flower/PyDP CI [39545685666](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/39545685666) passed dependency installation, real component imports, actual bundle build and offline runtime contracts on ac958d5f. This does not establish a deployed federation, independent audit or tenant approval.
