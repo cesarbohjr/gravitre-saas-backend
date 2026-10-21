@@ -175,7 +175,7 @@ def confirmation_hold_seconds(settings: Any) -> float:
         ms = float(getattr(settings, "voice_incomplete_turn_hold_ms", 600) or 0)
     except (TypeError, ValueError):
         ms = 600.0
-    return max(0.0, min(INCOMPLETE_TURN_HOLD_MAX_S, ms / 1000.0))
+    # Allow for Flux finalization + a resumed short correction after an early\n    # commit on a pause. The incomplete-sentence 0.7s cap is too short\n    # for approvals; a premature write is worse than a longer spoken yes.\n    return max(1.4, min(1.5, ms / 1000.0))
 
 
 def answers_assistant_question(user_text: str, history: list[dict[str, Any]] | None) -> bool:
