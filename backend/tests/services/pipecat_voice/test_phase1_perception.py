@@ -34,6 +34,8 @@ async def test_perception_survives_shortcuts_and_respects_org_setting(monkeypatc
     assert result["already_known_from_history"] == ["it"]
     assert sentiment["recommended_adaptation"] == ("offer_options" if enabled else "none")
     assert detector.analyze.call_count == int(enabled)
+    if not enabled:
+        assert sentiment["status"] == "disabled"
 
 
 def test_live_pcm_preserves_rate_scope_and_clears_buffer(monkeypatch):

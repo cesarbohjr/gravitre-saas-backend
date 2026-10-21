@@ -1,5 +1,7 @@
 # Phase 2 — shared seven-capability coordination
 
+Current follow-up: [router coordination and consumer verification, October 21](phase2-router-coordination-20261021.md). The implementation and test counts below are the earlier October 20 baseline.
+
 Scope confirmed by the user on 2026-10-20: connect sentiment, contextual,
 causal, temporal, relational, adaptive and predictive intelligence through the
 existing router, shared by text and voice. Baseline: `8c8793c48` on main, which

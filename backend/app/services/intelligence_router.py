@@ -7,6 +7,7 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.correlational_causal_context import load_causal_enrichment_context
 from app.services.source_reliability_resolver import resolve_average_source_reliability
 from app.services.agent_selector import get_agent_selector
@@ -42,6 +43,17 @@ logger = get_logger(__name__)
 
 CAPABILITY_NAMES = ("contextual", "sentiment", "causal", "temporal", "relational", "adaptive", "predictive")
 ENRICHMENT_TIMEOUT_SECONDS = 1.5
+# Semantic consumers of the existing catalog, not additional intelligence engines.
+CATALOG_CAPABILITIES = {
+    "intent_classifier": "contextual", "query_clusterer": "contextual",
+    "domain_specific_llm": "contextual", "multimodal_router": "contextual",
+    "diffusion_model": "contextual", "cf_matrix_factorizer": "adaptive",
+    "self_supervised_embeddings": "contextual", "neuro_symbolic": "contextual",
+    "agentic_planning": "contextual", "graph_neural_network": "relational",
+    "causal_impact_analyzer": "causal", "retrieval_ranker": "adaptive",
+    "retrieval_memory_learner": "adaptive", "memory_promotion_scorer": "adaptive",
+    "active_learning": "adaptive", "meta_learning": "adaptive", "federated_learning": "adaptive",
+}
 
 
 def intelligence_context_block(enrichments: dict[str, Any] | None) -> str:
@@ -170,7 +182,8 @@ class IntelligenceRouter:
             return wrapped
 
         context = await self._context_assembler.assemble(org_id, user_id, request, classification)
-        context.update(understanding=understanding, sentiment=sentiment)
+        context.update(understanding=understanding, sentiment=sentiment,
+                       sentiment_detection_enabled=dialogue_settings.get("sentiment_detection_enabled", True))
         context["connected_integrations"] = context.get("connected_integrations") or []
 
         risk_evaluation: dict[str, Any] = {"requires_approval": False, "can_proceed_without_approval": True}
@@ -326,17 +339,18 @@ class IntelligenceRouter:
         context: dict[str, Any],
     ) -> dict[str, Any]:
         tasks: dict[str, Any] = {}
+        deferred = context.get("defer_optional") is True
         # Same extension point is used by live text and voice through the chat
         # facade. Inputs are backend-assembled, org-authorized structured data;
         # never run all catalog models speculatively on every utterance.
         model_inputs = context.get("catalog_model_inputs")
-        if isinstance(model_inputs, dict):
+        if isinstance(model_inputs, dict) and not deferred:
             tasks["models"] = self._run_catalog_capabilities(org_id, model_inputs)
-        if classification.get("requires_prediction"):
+        if classification.get("requires_prediction") and not deferred:
             tasks["prediction"] = self._get_predictions(org_id, classification)
-        if classification.get("requires_causal"):
+        if classification.get("requires_causal") and not deferred:
             tasks["causal"] = self._get_causal_analysis(org_id, request)
-        if classification.get("requires_graph") and not context.get("graph_context"):
+        if classification.get("requires_graph") and not context.get("graph_context") and not deferred:
             entity_type = classification.get("entity_type") or "unknown"
             entity_id = classification.get("entity_id") or "unknown"
             if entity_type != "unknown" and entity_id != "unknown":
@@ -346,8 +360,12 @@ class IntelligenceRouter:
                     str(entity_id),
                     settings=self.settings,
                 )
-        adaptive_relevant = bool(context.get("retrieval_plan") or tasks)
-        if adaptive_relevant and not context.get("defer_optional"):
+            else:
+                # Reuse the scoped resolver/traversal instead of inventing an
+                # entity ID from a name or abandoning normal relationship turns.
+                tasks["graph"] = self._get_relational_context(org_id, request)
+        adaptive_relevant = bool(context.get("retrieval_plan") or tasks or classification.get("department"))
+        if adaptive_relevant and not deferred:
             tasks["adaptive"] = self._get_adaptive_context(org_id, classification)
 
         async def bounded(awaitable: Any) -> dict[str, Any]:
@@ -363,8 +381,19 @@ class IntelligenceRouter:
 
         results = await asyncio.gather(*(bounded(task) for task in tasks.values()))
         enrichments = dict(zip(tasks, results))
-        understanding = context.get("understanding") or {}
-        sentiment = context.get("sentiment") or {}
+        understanding = safe_normalize_stored_dict(context.get("understanding"))
+        sentiment = safe_normalize_stored_dict(context.get("sentiment"))
+        if context.get("sentiment_detection_enabled") is False:
+            sentiment = {"status": "disabled"}
+        if isinstance(model_inputs, dict):
+            from app.ml.model_catalog import GRAVITRE_ML_CATALOG
+            selected = [name for name, value in model_inputs.items()
+                        if name in GRAVITRE_ML_CATALOG and isinstance(value, dict)][:4]
+            failure = enrichments.get("models", {})
+            if deferred or failure.get("status") == "unavailable":
+                enrichments["models"] = {name: {"status": "deferred" if deferred else "unavailable",
+                    "reason": "optional_work_deferred" if deferred else failure.get("reason"),
+                    "used_fallback": True, "advisory_only": True} for name in selected}
         graph = context.get("graph_context") or enrichments.get("graph")
 
         def evidence(source: str, value: Any, *, default: str = "not_requested") -> dict[str, Any]:
@@ -376,35 +405,43 @@ class IntelligenceRouter:
             return {"status": value.get("status", "available") if isinstance(value, dict) else "available",
                     "source": source, "data": data, "advisory_only": True}
 
-        predictive = enrichments.get("prediction")
-        model_results = enrichments.get("models")
-        if isinstance(model_results, dict) and model_results:
-            # Catalog results previously stopped at the extension point and
-            # never reached the fenced evidence consumed by text/voice. Keep
-            # fallbacks visible and preserve the existing seven-slot contract.
-            predictive = {
-                "status": "available" if any(
-                    isinstance(row, dict) and row.get("status") == "ok" and not row.get("used_fallback")
-                    for row in model_results.values()
-                ) else "insufficient_data",
-                "domain_predictions": predictive,
-                "catalog_models": model_results,
-                "advisory_only": True,
-            }
-
+        temporal = {"references": understanding.get("temporal_references") or [],
+                    "freshness": safe_normalize_stored_dict(context.get("retrieval_plan")).get("freshness_label")}
+        if not temporal["references"] and not temporal["freshness"]:
+            temporal = None
         enrichments["capabilities"] = {
             "contextual": evidence("contextual_understanding", understanding, default="unavailable"),
             "sentiment": evidence("sentiment_friction", sentiment, default="disabled_or_unavailable"),
-            "temporal": evidence("contextual_understanding.temporal_references", {
-                "references": understanding.get("temporal_references") or [],
-                "freshness": (context.get("retrieval_plan") or {}).get("freshness_label"),
-            }),
-            "relational": evidence("knowledge_graph", graph, default="missing_entity" if classification.get("requires_graph") else "not_requested"),
-            "causal": evidence("causal_enrichment", enrichments.get("causal")),
-            "predictive": evidence("predictive_operations", predictive),
+            "temporal": evidence("contextual_understanding.temporal_references", temporal),
+            "relational": evidence("knowledge_graph", graph, default=(
+                "deferred" if deferred else "missing_entity") if classification.get("requires_graph") else "not_requested"),
+            "causal": evidence("causal_enrichment", enrichments.get("causal"),
+                default="deferred" if deferred and classification.get("requires_causal") else "not_requested"),
+            "predictive": evidence("predictive_operations", enrichments.get("prediction"),
+                default="deferred" if deferred and classification.get("requires_prediction") else "not_requested"),
             "adaptive": evidence("adaptive_learning", enrichments.get("adaptive"),
-                                 default="deferred" if context.get("defer_optional") else "not_requested"),
+                                 default="deferred" if deferred else "not_requested"),
         }
+        # Preserve the domain/service evidence and its uncertainty disclosures.
+        # A successful graph/causal/adaptive artifact is not a predictive result.
+        model_results = safe_normalize_stored_dict(enrichments.get("models"))
+        grouped: dict[str, dict[str, Any]] = {}
+        for name, result in model_results.items():
+            grouped.setdefault(CATALOG_CAPABILITIES.get(name, "predictive"), {})[name] = result
+        for capability, models in grouped.items():
+            slot = enrichments["capabilities"][capability]
+            successful = any(isinstance(row, dict) and row.get("status") == "ok"
+                             and row.get("used_fallback") is False for row in models.values())
+            base_status = slot["status"]
+            status = "available" if successful else base_status
+            if base_status in {"not_requested", "missing_entity", "unavailable", "disabled_or_unavailable"} and not successful:
+                status = ("deferred" if deferred else "unavailable" if any(
+                    isinstance(row, dict) and row.get("status") == "unavailable" for row in models.values()
+                ) else "insufficient_data")
+            enrichments["capabilities"][capability] = evidence(slot["source"], {
+                "status": status, "service_evidence": slot.get("data"),
+                "catalog_models": models, "advisory_only": True,
+            })
         return enrichments
 
     async def _run_catalog_capabilities(self, org_id: str, inputs: dict[str, Any]) -> dict[str, Any]:
@@ -420,11 +457,27 @@ class IntelligenceRouter:
             "status": "not_verified", "reason": "inference_failed", "used_fallback": True,
         } for (name, _), result in zip(selected, results)}
 
+    async def _get_relational_context(self, org_id: str, request: str) -> dict[str, Any]:
+        from app.core.io_pool import run_io
+        from app.services.graph_query_intent import resolve_entity_from_knowledge_nodes
+        from app.workflows.repository import get_supabase_client
+
+        def resolve():
+            return resolve_entity_from_knowledge_nodes(org_id, request, client=get_supabase_client(self.settings))
+        entity = await run_io(resolve)
+        if not entity:
+            return {"status": "insufficient_entity_match", "advisory_only": True}
+        # No speculative LLM entity-identification call and no guessed entity ID.
+        return await get_knowledge_graph_service().explain_entity(
+            org_id, entity["entity_type"], entity["entity_id"], settings=self.settings,
+        )
+
     async def _get_predictions(self, org_id: str, classification: dict[str, Any]) -> dict[str, Any]:
         from app.services.predictive_operations_engine import get_predictive_operations_engine
 
-        domain_meta = classification.get("domain") or {}
-        domain = str(classification.get("department") or domain_meta.get("department_key") or "").lower()
+        domain_meta = classification.get("domain")
+        domain = str(classification.get("department") or
+                     (domain_meta.get("department_key") if isinstance(domain_meta, dict) else domain_meta) or "").strip().lower()
         engine = get_predictive_operations_engine(self.settings)
         if domain not in engine.DOMAIN_PREDICTION_PACKS:
             return {"status": "not_available", "reason": "unsupported_domain", "advisory_only": True}

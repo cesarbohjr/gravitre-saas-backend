@@ -169,12 +169,14 @@ async def test_catalog_result_reaches_fenced_shared_text_voice_evidence():
     router = IntelligenceRouter.__new__(IntelligenceRouter)
     router.settings = MagicMock()
     router._run_catalog_capabilities = AsyncMock(return_value={"graph_neural_network": {
-        "status": "ok", "predictions": [.75], "registry_ref": {"model_id": "graph-a", "version": 1}}})
+        "status": "ok", "used_fallback": False, "predictions": [.75], "registry_ref": {"model_id": "graph-a", "version": 1}}})
+    router._get_adaptive_context = AsyncMock(return_value={"status": "disabled"})
     result = await router._run_enrichments("org-a", "review", {}, {"catalog_model_inputs": {
-        "graph_neural_network": {"inputs": [1]}}, "defer_optional": True})
+        "graph_neural_network": {"inputs": [1]}}})
     block = intelligence_context_block(result)
     assert 'graph_neural_network' in block and 'graph-a' in block
-    assert result["capabilities"]["predictive"]["status"] == "available"
+    assert result["capabilities"]["relational"]["status"] == "available"
+    assert result["capabilities"]["predictive"]["status"] == "not_requested"
 
 
 @pytest.mark.asyncio
