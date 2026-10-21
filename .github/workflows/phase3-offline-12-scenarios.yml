@@ -37,6 +37,8 @@ jobs:
           OPENAI_API_KEY: fake-phase3-key
           ANTHROPIC_API_KEY: fake-phase3-key
           GEMINI_API_KEY: fake-phase3-key
+      - name: Enforce all graded voice replay safety outcomes
+        run: python scripts/phase3_voice_replay_gate.py "${{ runner.temp }}/gravitre-phase3-evidence/voice-virtual-clock/results.json"
       - name: Upload full evidence even on failure
         if: always()
         uses: actions/upload-artifact@v4
