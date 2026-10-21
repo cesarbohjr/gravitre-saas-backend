@@ -22,9 +22,18 @@ jobs:
         with: { python-version: "3.12" }
       - name: Install backend test dependencies
         run: pip install -r backend/requirements-dev.txt
-      - name: Run Plays regression battery
+      - name: Run Plays regression battery and catalog-wide synthetic audit inventory
         working-directory: backend
+        env:
+          PLAYS_AUDIT_REPORT_PATH: ../plays-synthetic-audit-inventory.json
         run: python -m pytest -q tests/test_play_*.py tests/routers/test_plays.py
+      - name: Upload Play-by-Play audit inventory (not E2E certification)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plays-synthetic-audit-inventory
+          path: plays-synthetic-audit-inventory.json
+          if-no-files-found: warn
 
   authenticated-production-read:
     # Gate 1 of 3: automated read-only acceptance on the smoke org. Owner-tenant
