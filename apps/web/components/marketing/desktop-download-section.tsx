@@ -5,6 +5,7 @@ import { AlertTriangle, Download } from "lucide-react"
 import {
   DESKTOP_RELEASE_FALLBACK,
   detectDesktopPlatform,
+  fetchLatestGithubDesktopRelease,
   type DesktopPlatformKey,
   type DesktopReleaseManifest,
 } from "@/lib/desktop-release"
@@ -84,6 +85,12 @@ export function DesktopDownloadSection({
     let cancelled = false
     ;(async () => {
       try {
+        // Newest published GitHub release wins; latest.json is the fallback.
+        const fromGithub = await fetchLatestGithubDesktopRelease()
+        if (fromGithub) {
+          if (!cancelled) setManifest(fromGithub)
+          return
+        }
         const res = await fetch("/desktop/latest.json", { cache: "no-store" })
         if (!res.ok) return
         const data = (await res.json()) as DesktopReleaseManifest
@@ -230,13 +237,29 @@ export function DesktopDownloadSection({
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] p-5 shadow-[var(--g-shadow-surface)]">
                 <p className="text-sm font-semibold text-foreground">
-                  Windows — “Windows protected your PC”
+                  Windows — download stuck or “Windows protected your PC”
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  SmartScreen may block the installer. Click{" "}
-                  <strong className="text-foreground">More info</strong>, then{" "}
-                  <strong className="text-foreground">Run anyway</strong>. Only continue if you
-                  downloaded from this page or the official GitHub release.
+                <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm leading-relaxed text-muted-foreground">
+                  <li>
+                    If the download stalls as <em>Unconfirmed….crdownload</em>, open your
+                    browser’s downloads (<strong className="text-foreground">Ctrl+J</strong>).
+                  </li>
+                  <li>
+                    On the Gravitre item, open the <strong className="text-foreground">…</strong>{" "}
+                    menu → <strong className="text-foreground">Keep</strong> →{" "}
+                    <strong className="text-foreground">Show more</strong> →{" "}
+                    <strong className="text-foreground">Keep anyway</strong>. In Chrome, choose{" "}
+                    <strong className="text-foreground">Download dangerous file</strong> or{" "}
+                    <strong className="text-foreground">Keep</strong>.
+                  </li>
+                  <li>
+                    Run the installer. If SmartScreen says “Windows protected your PC”, click{" "}
+                    <strong className="text-foreground">More info</strong> →{" "}
+                    <strong className="text-foreground">Run anyway</strong>.
+                  </li>
+                </ol>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  Only continue if you downloaded from this page or the official GitHub release.
                 </p>
               </div>
               <div className="rounded-2xl border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-2)] p-5 shadow-[var(--g-shadow-surface)]">
@@ -261,7 +284,7 @@ export function DesktopDownloadSection({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                desktop-v0.1.0 on GitHub
+                desktop-v{manifest.version} on GitHub
               </a>
               .
             </p>

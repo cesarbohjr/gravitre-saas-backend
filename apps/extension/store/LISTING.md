@@ -1,10 +1,12 @@
 # Chrome Web Store listing draft (Gravitre extension)
 
-**Status:** PUBLISHED — public listing live for extension id `iegkidilloajngolbpgfkaeglblnklol`.
+**Status:** NOT LIVE (checked 2026-10-21). The store page for item id `iegkidilloajngolbpgfkaeglblnklol` says "This item is not available". Check the item's status in the Developer Dashboard and finish the steps in `SUBMISSION_CHECKLIST.md`.
 
-Marketing default install URL (also overridable via Vercel):
+Until the listing is installable, /features/extension shows **Install guide** and a zip download (rolling GitHub release `extension-latest`, built by `.github/workflows/extension-release.yml`).
 
-`NEXT_PUBLIC_CHROME_WEB_STORE_URL=https://chromewebstore.google.com/detail/gravitre/iegkidilloajngolbpgfkaeglblnklol`
+Once the listing is public or unlisted and approved, set this in Vercel (Production) and redeploy:
+
+`NEXT_PUBLIC_CHROME_WEB_STORE_URL=https://chromewebstore.google.com/detail/gravitre/<EXTENSION_ID>`
 
 Note: Chrome Web Store **Dev Console** URLs (`chrome.google.com/webstore/devconsole/…`) are not customer install links.
 

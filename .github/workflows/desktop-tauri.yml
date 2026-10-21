@@ -1,5 +1,10 @@
 name: Desktop Tauri
 
+# Push to main publishes a GitHub release for a new version (bump
+# apps/desktop/src-tauri/tauri.conf.json). A push that keeps the version only
+# builds. Run workflow (dispatch) rebuilds and republishes the current version.
+# Builds upload to a draft that is published only after every platform passes,
+# and /download picks up the newest published desktop-v* release by itself.
 on:
   workflow_dispatch:
   push:
@@ -8,11 +13,56 @@ on:
       - "apps/desktop/**"
       - ".github/workflows/desktop-tauri.yml"
 
+concurrency:
+  group: desktop-tauri-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      publish: ${{ steps.plan.outputs.publish }}
+      release_id: ${{ steps.plan.outputs.release_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decide whether to publish, and prepare the draft release
+        id: plan
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          VERSION=$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)
+          TAG="desktop-v${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          # Newest release carrying this tag (an old stale draft may share it).
+          RELEASE=$(gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+            --jq "[.[] | select(.tag_name == \"${TAG}\")] | sort_by(.draft) | .[0] // empty")
+          if [ -n "$RELEASE" ] && [ "$(jq -r .draft <<<"$RELEASE")" = "false" ] && [ "$EVENT" != "workflow_dispatch" ]; then
+            echo "${TAG} is already published; building without publishing."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "$RELEASE" ]; then
+            RELEASE_ID=$(jq -r .id <<<"$RELEASE")
+          else
+            RELEASE_ID=$(gh api "repos/${GITHUB_REPOSITORY}/releases" -X POST \
+              -f tag_name="${TAG}" -f target_commitish="${GITHUB_SHA}" \
+              -f name="Gravitre Desktop v${VERSION}" \
+              -f body="Gravitre Desktop v${VERSION}. Early unsigned builds: see https://gravitre.app/download for install steps." \
+              -F draft=true -F prerelease=false --jq .id)
+          fi
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+          echo "release_id=${RELEASE_ID}" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: plan
     strategy:
       fail-fast: false
       matrix:
@@ -70,8 +120,20 @@ jobs:
           # APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID, TAURI_SIGNING_PRIVATE_KEY, …
         with:
           projectPath: apps/desktop
-          tagName: desktop-v__VERSION__
-          releaseName: "Gravitre Desktop v__VERSION__"
-          releaseDraft: true
-          prerelease: false
+          # Empty releaseId = build only (version already published).
+          releaseId: ${{ needs.plan.outputs.publish == 'true' && needs.plan.outputs.release_id || '' }}
           args: ${{ matrix.args }}
+
+  publish:
+    needs: [plan, build]
+    if: needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Publish the release (all platforms built)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.plan.outputs.release_id }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" -X PATCH \
+            -F draft=false -f make_latest=true --jq '.html_url' 
