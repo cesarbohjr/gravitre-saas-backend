@@ -713,6 +713,22 @@ class ScriptedBrain:
         from app.services.voice_barge_in_write import raise_if_barge_in_blocks_invoke
 
         ctx = SimpleNamespace(org_id=self.org_id, conversation_id=conversation_id, settings=self.settings)
+        from app.services.turn_cancellation import current_turn_cancellation
+        from app.services.chat_turn_cancel_service import is_stop_requested
+        token = current_turn_cancellation()
+        session = getattr(self.rec, "voice_session", None)
+        self.rec.log(
+            "write_gate_checked",
+            action_is_write=True,
+            bound_token=token is not None,
+            token_generation=getattr(token, "generation", None),
+            token_cancelled=bool(getattr(token, "cancelled", False)),
+            session_token_cancelled=bool(getattr(getattr(session, "turn_cancellation", None), "cancelled", False)),
+            same_turn_token=token is getattr(session, "turn_cancellation", None),
+            user_turn_starts=getattr(session, "user_turn_starts", None),
+            user_speaking=bool(getattr(session, "user_speaking", False)),
+            stop_requested=is_stop_requested(str(self.org_id), str(conversation_id or ""), settings=self.settings),
+        )
         try:
             raise_if_barge_in_blocks_invoke(ctx, action)
         except ToolValidationError:
