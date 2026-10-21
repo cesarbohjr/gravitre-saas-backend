@@ -62,8 +62,8 @@ def test_yes_to_a_question_is_held_and_nothing_else_is() -> None:
 
 
 def test_hold_is_on_by_default_capped_and_switchable() -> None:
-    assert confirmation_hold_seconds(SimpleNamespace()) == 0.6
-    assert confirmation_hold_seconds(SimpleNamespace(voice_incomplete_turn_hold_ms=5000)) == 0.7
+    assert confirmation_hold_seconds(SimpleNamespace()) == 1.4  # conservative voice-write settlement
+    assert confirmation_hold_seconds(SimpleNamespace(voice_incomplete_turn_hold_ms=5000)) == 1.5
     assert confirmation_hold_seconds(SimpleNamespace(voice_confirmation_hold_v1=False)) == 0.0
 
 
