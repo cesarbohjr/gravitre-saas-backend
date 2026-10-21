@@ -136,6 +136,7 @@ import type {
   EnterpriseCostAttribution,
   AgentRoiReport,
   EnterpriseSiemConfig,
+  EnterpriseSiemEventType,
   EnterpriseSiemTestResult,
   PrivateConnectorBundle,
   IntegrationHealthScore,
@@ -4168,7 +4169,7 @@ export const enterpriseApi = {
 
   // SIEM
   getSiem: () => fetcher<EnterpriseSiemConfig>(apiUrl("/api/enterprise/siem")),
-  updateSiem: (data: { enabled?: boolean; endpoint?: string | null; secret?: string | null }) =>
+  updateSiem: (data: { enabled?: boolean; endpoint?: string | null; secret?: string | null; events?: EnterpriseSiemEventType[] }) =>
     putJson<EnterpriseSiemConfig>(apiUrl("/api/enterprise/siem"), data),
   testSiem: () => postJson<EnterpriseSiemTestResult>(apiUrl("/api/enterprise/siem/test"), {}),
 

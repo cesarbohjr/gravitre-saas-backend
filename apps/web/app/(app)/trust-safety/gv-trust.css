@@ -127,3 +127,5 @@
 .ts-art .g-reach{animation:tsgreach 3.4s ease-in-out infinite;transform-box:fill-box;transform-origin:0% 100%}
 @keyframes tsgreach{0%,100%{transform:rotate(0)}50%{transform:rotate(-5deg)}}
 @media (prefers-reduced-motion: reduce){.ts-art [class*="g-"]{animation:none!important}.ts-art .art-root:hover svg{transform:none}}
+.ts-sechead{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;padding:0 4px;margin-bottom:-8px}
+.ts-input.bad{border-color:#C4434F;box-shadow:0 0 0 3px rgba(196,67,79,.12)}

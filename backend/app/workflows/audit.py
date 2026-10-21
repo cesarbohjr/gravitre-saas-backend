@@ -13,7 +13,7 @@ from uuid import UUID
 from supabase import Client
 
 from app.services.compliance_service import redact_metadata
-from app.services.siem_export_service import build_siem_event, dispatch_siem_event
+from app.services.siem_export_service import build_siem_event, dispatch_siem_event, siem_should_forward
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +70,8 @@ def _dispatch_siem_event(client: Client, org_id: str, action: str, resource_type
             return
         siem = enterprise.get("siem")
         if not isinstance(siem, dict) or not siem.get("enabled"):
+            return
+        if not siem_should_forward(siem, action):
             return
         endpoint = str(siem.get("endpoint") or "").strip()
         secret = resolve_siem_secret(siem, settings)

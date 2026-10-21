@@ -35,7 +35,12 @@ from app.services.data_residency_service import (
 )
 from app.services.domain_verification_service import build_verification_instructions, verify_custom_domain
 from app.services.enterprise_secrets_service import encrypt_enterprise_secret, resolve_siem_secret
-from app.services.siem_export_service import build_siem_event, dispatch_siem_event
+from app.services.siem_export_service import (
+    SIEM_EVENT_TYPES,
+    build_siem_event,
+    dispatch_siem_event,
+    siem_selected_events,
+)
 from app.services.workforce_analytics_service import build_workforce_analytics
 from app.services.agent_cost_service import aggregate_agent_costs
 from app.services.agent_roi_service import fetch_agent_roi
@@ -78,6 +83,8 @@ class SiemConfigUpdate(BaseModel):
     endpoint: str
     secret: str | None = None
     enabled: bool = True
+    # Event groups to forward; None keeps the saved choice.
+    events: list[str] | None = None
 
 
 class SiemTestRequest(BaseModel):
@@ -796,6 +803,7 @@ def get_siem_config(
         "enabled": bool(siem.get("enabled")),
         "endpoint": siem.get("endpoint"),
         "hasSecret": has_secret,
+        "events": siem_selected_events(siem),
     }
 
 
@@ -815,10 +823,18 @@ def update_siem_config(
         secret_plain = resolve_siem_secret(existing_siem, settings) or ""
     if not secret_plain:
         raise HTTPException(status_code=400, detail="SIEM signing secret is required")
+    if body.events is not None:
+        unknown = sorted(set(body.events) - set(SIEM_EVENT_TYPES))
+        if unknown:
+            raise HTTPException(status_code=400, detail=f"Unknown SIEM event types: {', '.join(unknown)}")
+        events = [t for t in SIEM_EVENT_TYPES if t in body.events]
+    else:
+        events = siem_selected_events(existing_siem)
     enterprise["siem"] = {
         "enabled": body.enabled,
         "endpoint": body.endpoint.strip(),
         "secretEnc": encrypt_enterprise_secret(secret_plain, settings),
+        "events": events,
     }
     org_settings["enterprise"] = enterprise
     _save_org_settings(client, org_id, org_settings)
@@ -829,9 +845,9 @@ def update_siem_config(
         action="enterprise.siem.updated",
         resource_type="organization",
         resource_id=org_id,
-        metadata={"enabled": body.enabled},
+        metadata={"enabled": body.enabled, "events": events},
     )
-    return {"enabled": body.enabled, "endpoint": body.endpoint.strip(), "hasSecret": True}
+    return {"enabled": body.enabled, "endpoint": body.endpoint.strip(), "hasSecret": True, "events": events}
 
 
 @router.post("/siem/test")

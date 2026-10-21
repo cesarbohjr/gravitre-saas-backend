@@ -16,6 +16,40 @@ from app.services.compliance_service import redact_metadata
 logger = logging.getLogger(__name__)
 
 
+# Event groups an admin can choose to forward (Trust & Safety > Security).
+# A config saved before groups existed has no list and forwards everything.
+SIEM_EVENT_TYPES: tuple[str, ...] = ("audit", "auth", "approvals", "policy", "agent")
+
+_AUTH_PREFIXES = ("auth.", "sso.", "login", "session", "settings.security", "enterprise.siem", "member", "invite", "role")
+_POLICY_PREFIXES = ("hitl_policy.", "policy.", "settings.approval_rules")
+_AGENT_PREFIXES = ("agent.", "agent_", "workflow.run", "workflow.execute")
+
+
+def siem_event_type(action: str) -> str:
+    """Group an audit action into one of SIEM_EVENT_TYPES."""
+    name = (action or "").lower()
+    if name.startswith(_AUTH_PREFIXES):
+        return "auth"
+    if name.startswith("approval"):
+        return "approvals"
+    if name.startswith(_POLICY_PREFIXES):
+        return "policy"
+    if name.startswith(_AGENT_PREFIXES):
+        return "agent"
+    return "audit"
+
+
+def siem_selected_events(siem: dict[str, Any]) -> list[str]:
+    raw = siem.get("events")
+    if not isinstance(raw, list):
+        return list(SIEM_EVENT_TYPES)
+    return [t for t in SIEM_EVENT_TYPES if t in raw]
+
+
+def siem_should_forward(siem: dict[str, Any], action: str) -> bool:
+    return siem_event_type(action) in siem_selected_events(siem)
+
+
 def sign_payload(secret: str, body: bytes) -> str:
     digest = hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
     return f"sha256={digest}"
