@@ -112,3 +112,8 @@ Combined-main frontend validation: **297 files / 1,896 tests passed**, TypeScrip
 
 
 Final focused combined-main regression: **742 passed** across ML, lint, action output/enrichment contracts, write-approval catalog coverage, success-verification declarations and current-main SIEM filtering. Frontend lint: zero errors, four pre-existing unused type-import warnings in `lib/api.ts`. These are synthetic/offline results, not production acceptance. Broader service regression and remote CI remain pending.
+
+
+### Final broad local verification
+
+Combined-current-main backend ML/services/lint regression: **7,681 passed, 2 skipped** in 182.48 seconds. Provider dispatch remained blocked. The two skips are existing conditional cases, not passing native PostgreSQL or live-provider proof. Final focused checks: 742 passed. Frontend: 297 files / 1,896 tests, TypeScript passed, lint zero errors / four existing warnings. Actual Flower bundle build succeeded. These results cover the code tree published first as `523916e857d17b6e710e3dc9b83dae23d3611e69`; the follow-up changes only this evidence document. PR #528 remains draft, with fresh full CI and dedicated optional Flower/PyDP checks required. Earlier green CI at 60cc335d does not cover this implementation. No production migration, merge, deployment, paid model invocation or tenant training was performed.
