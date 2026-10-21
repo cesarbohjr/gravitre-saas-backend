@@ -1,0 +1,57 @@
+name: Issue 535 voice confirmation replay
+on:
+  pull_request:
+    paths:
+      - 'backend/app/services/pipecat_voice/cognitive_llm.py'
+      - '.github/workflows/issue-535-voice-confirmation.yml'
+  workflow_dispatch:
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio
+      - name: Confirmation and turn-taking regression
+        run: python -m pytest -q -p tests.offline_network_guard tests/services/pipecat_voice/test_confirmation_hold.py tests/services/pipecat_voice/test_interruption_correctness.py tests/services/pipecat_voice/test_reconnect_and_approval_contract.py
+        env:
+          OPENAI_API_KEY: fake-issue-535
+          ANTHROPIC_API_KEY: fake-issue-535
+          GEMINI_API_KEY: fake-issue-535
+      - name: Reproduce approval race on 20 seeded runs
+        run: python scripts/bench_voice_scenarios.py --runs 20 --seed 1000 --profile production_inferred --scenarios S8 --out "${{ runner.temp }}/voice-approval-replay"
+        env:
+          OPENAI_API_KEY: fake-issue-535
+          ANTHROPIC_API_KEY: fake-issue-535
+          GEMINI_API_KEY: fake-issue-535
+      - name: Require zero premature writes
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'voice-approval-replay/results.json'
+          r=json.loads(p.read_text())['scenarios']['S8']
+          acc=r['aggregate']['accuracy']
+          assert acc['n']==20 and acc['pass']==20, (acc,r['aggregate']['outcomes'])
+          assert r['aggregate']['outcomes'].get('email_sent',0)==0, r['aggregate']['outcomes']
+          print('PASS: S8 20/20, no premature writes')
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-535-voice-replay-${{ github.sha }}
+          path: ${{ runner.temp }}/voice-approval-replay/
+          if-no-files-found: warn
