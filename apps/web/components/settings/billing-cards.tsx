@@ -1,7 +1,7 @@
 "use client"
 
 /** Presentational cards for Billing and plan (design p16). Handlers live in the page. */
-import type { ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import Link from "next/link"
 import { Activity, CreditCard, Crown, Download, Loader2, TrendingUp } from "lucide-react"
 import {
@@ -12,7 +12,8 @@ import {
   type InvoiceRow,
   type UsageTile,
 } from "@/lib/settings-api/billing"
-import { SetArt, SetError, SetIco, SetPill, SetSkeleton, SetSwitch } from "./settings-kit"
+import { pageSlice } from "@/lib/settings-api/lite"
+import { SetArt, SetError, SetIco, SetPager, SetPill, SetSkeleton, SetSwitch } from "./settings-kit"
 import "./billing.css"
 
 export function BillingPlanCard({
@@ -192,6 +193,8 @@ export function BillingUsageCard({
   )
 }
 
+const INVOICE_PAGE_SIZE = 10
+
 export function BillingInvoicesCard({
   loading,
   error,
@@ -207,6 +210,9 @@ export function BillingInvoicesCard({
   onDownload: (row: InvoiceRow) => void
   onDownloadAll: () => void
 }) {
+  const [page, setPage] = useState(1)
+  // Ten invoices per page; pageSlice clamps the page if the list shrinks.
+  const slice = pageSlice(rows, page, INVOICE_PAGE_SIZE)
   return (
     <section className="gs-card clip bl-invoices" aria-label="Invoices">
       <div className="bl-card-head">
@@ -227,7 +233,7 @@ export function BillingInvoicesCard({
         </div>
       ) : (
         <div className="gs-tbl stack" style={{ ["--cols" as string]: "minmax(0,1fr) 110px 110px 60px" }}>
-          {rows.map((v) => (
+          {slice.rows.map((v) => (
             <div key={v.id} className="gs-row">
               <div className="gs-td">
                 <div style={{ fontWeight: 500 }}>{v.label}</div>
@@ -248,6 +254,17 @@ export function BillingInvoicesCard({
           ))}
         </div>
       )}
+      {rows.length > 0 ? (
+        <SetPager
+          page={slice.page}
+          pageCount={slice.pageCount}
+          from={slice.from}
+          to={slice.to}
+          total={slice.total}
+          onPage={setPage}
+          noun="invoices"
+        />
+      ) : null}
       <p className="bl-foot-note">
         Need older invoices? <Link href="/support">Contact support</Link>
       </p>
