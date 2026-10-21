@@ -38,10 +38,11 @@ import {
 } from "@/components/ui/alert-dialog"
 import { organizationsApi, settingsApi } from "@/lib/api"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
+import { ROLE_PERMISSIONS_KEY, type RolePermissionsResponse } from "@/lib/settings-api/roles"
 import {
+  assignableRoles,
   buildTeamRows,
   filterTeamRows,
-  INVITE_ROLES,
   INVITES_KEY,
   LITE_SEATS_KEY,
   roleTitle,
@@ -72,6 +73,12 @@ export function TeamSettings({
 }) {
   const invites = useSWR<InvitesResponse>(INVITES_KEY, apiFetcher, { revalidateOnFocus: false })
   const liteSeats = useSWR<LiteSeatsResponse>(LITE_SEATS_KEY, apiFetcher, { revalidateOnFocus: false })
+  const rolePermissions = useSWR<RolePermissionsResponse>(ROLE_PERMISSIONS_KEY, apiFetcher, { revalidateOnFocus: false })
+  const roleNames = rolePermissions.data?.role_names ?? null
+  const roleOptions = useMemo(
+    () => assignableRoles(rolePermissions.data?.custom_roles, rolePermissions.data?.role_names),
+    [rolePermissions.data],
+  )
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteRole, setInviteRole] = useState("member")
@@ -285,7 +292,7 @@ export function TeamSettings({
               <label className="gs-field">
                 Role
                 <select id="invite-role" value={inviteRole} onChange={(event) => setInviteRole(event.target.value)}>
-                  {INVITE_ROLES.map((role) => (
+                  {roleOptions.map((role) => (
                     <option key={role.id} value={role.id}>
                       {role.label}
                     </option>
@@ -376,7 +383,7 @@ export function TeamSettings({
                   </div>
                 </div>
                 <div className="gs-td" role="cell">
-                  <span className="gs-chip">{roleTitle(row.role)}</span>
+                  <span className="gs-chip">{roleTitle(row.role, roleNames)}</span>
                 </div>
                 <div className="gs-td" role="cell">
                   {row.status === "active" ? (
@@ -464,7 +471,7 @@ export function TeamSettings({
               className="h-11 w-full rounded-md border border-border bg-secondary px-3 text-sm"
               disabled={!isAdmin || isSavingRole}
             >
-              {INVITE_ROLES.map((role) => (
+              {roleOptions.map((role) => (
                 <option key={role.id} value={role.id}>
                   {role.id === "viewer" ? "Viewer (Lite)" : role.label}
                 </option>

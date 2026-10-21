@@ -7,7 +7,7 @@ import pytest
 
 import app.operators.agent_jobs as jobs
 import app.routers.agent_jobs as jobs_router
-from app.auth.dependencies import get_current_user, get_org_context
+from app.auth.dependencies import get_current_user, get_org_context, require_capability
 from app.config import get_settings
 from app.main import app
 
@@ -170,6 +170,7 @@ def _clear():
 def _auth(org="org-1"):
     app.dependency_overrides[get_current_user] = lambda: {"user_id": "u1"}
     app.dependency_overrides[get_org_context] = lambda: org
+    app.dependency_overrides[require_capability("approve_writes")] = lambda: ({"user_id": "u1"}, org)
 
 
 async def test_enqueue_returns_202(async_client, monkeypatch):

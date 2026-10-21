@@ -29,11 +29,13 @@ def _settings():
         "membership_created": True,
     },
 )
-@patch("app.routers.org._require_org_admin")
+@patch("app.routers.org.assert_invite_role_allowed")
+@patch("app.routers.org._require_org_capability")
 @patch("app.routers.org.create_client")
 async def test_invite_organization_member_returns_invite_metadata(
     mock_create_client,
-    _mock_require_org_admin,
+    _mock_require_capability,
+    _mock_invite_role_allowed,
     mock_invite_member,
     mock_audit,
 ):
@@ -72,11 +74,13 @@ async def test_invite_organization_member_returns_invite_metadata(
         "membership_created": False,
     },
 )
-@patch("app.routers.org._require_org_admin")
+@patch("app.routers.org.assert_invite_role_allowed")
+@patch("app.routers.org._require_org_capability")
 @patch("app.routers.org.create_client")
 async def test_invite_organization_member_honors_send_invite_false(
     mock_create_client,
-    _mock_require_org_admin,
+    _mock_require_capability,
+    _mock_invite_role_allowed,
     mock_invite_member,
     _mock_audit,
 ):

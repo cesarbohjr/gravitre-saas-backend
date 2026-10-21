@@ -1270,6 +1270,9 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   "/api/settings/hitl-policies": { policies: [] },
   "/api/org/role-permissions": {
     roles: ["admin", "member", "viewer"],
+    role_names: { admin: "Admin", member: "Member", viewer: "Viewer" },
+    custom_roles: [],
+    locked_roles: ["admin"],
     member_counts: { owner: 1, admin: 1, member: 2, viewer: 0 },
     capabilities: [
       { key: "view", capability: "View dashboards and intelligence", area: "Insights", access: { admin: true, member: true, viewer: true } },

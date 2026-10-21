@@ -3,7 +3,9 @@
 Every endpoint that changes a member's role or removes a member calls
 ``assert_member_change_allowed`` before writing. The rules:
 
-* the actor must be an owner or admin of the org;
+* the actor must be an owner or admin of the org, or hold the "team_roles"
+  capability (Trust & Safety > Role permissions); such an actor can't change,
+  remove or create owners and admins;
 * the target must be a member of the same org (otherwise 404, so ids from other
   orgs reveal nothing);
 * only an owner may change or remove an owner, or make someone an owner;
@@ -19,6 +21,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from fastapi import HTTPException, status
+
+from app.auth.org_role_permissions import capability_denied_detail, has_capability
 
 OWNER = "owner"
 ADMIN_ROLES = frozenset({"owner", "admin"})
@@ -52,6 +56,22 @@ def _org_roles(client: Any, org_id: str) -> list[tuple[str, str]]:
     return [(str(r.get("user_id")), _role(r.get("role"))) for r in rows]
 
 
+def _require_team_manager(client: Any, org_id: str, actor_user_id: str) -> MemberRow:
+    actor = load_member(client, org_id, user_id=actor_user_id)
+    if actor is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
+    if actor.role not in ADMIN_ROLES and not has_capability(client, org_id, actor.role, "team_roles"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=capability_denied_detail("team_roles"))
+    return actor
+
+
+def assert_invite_role_allowed(client: Any, org_id: str, *, actor_user_id: str, role: str) -> None:
+    """Only owners and admins invite people as admins; others need team_roles and pick a lower role."""
+    actor = _require_team_manager(client, org_id, actor_user_id)
+    if actor.role not in ADMIN_ROLES and _role(role) in ADMIN_ROLES:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only an owner or admin can invite admins")
+
+
 def assert_member_change_allowed(
     client: Any,
     org_id: str,
@@ -64,12 +84,12 @@ def assert_member_change_allowed(
 
     ``new_role=None`` means remove the member. Returns the target row.
     """
-    actor = load_member(client, org_id, user_id=actor_user_id)
-    if actor is None or actor.role not in ADMIN_ROLES:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
+    actor = _require_team_manager(client, org_id, actor_user_id)
     if target is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
     wanted = _role(new_role) if new_role is not None else None
+    if actor.role not in ADMIN_ROLES and (target.role in ADMIN_ROLES or wanted in ADMIN_ROLES):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only an owner or admin can change admins")
 
     touches_owner = target.role == OWNER or wanted == OWNER
     if touches_owner and actor.role != OWNER:

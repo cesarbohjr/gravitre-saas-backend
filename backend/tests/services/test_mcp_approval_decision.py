@@ -88,7 +88,7 @@ async def test_rejection_never_dispatches(state):
 @pytest.mark.parametrize("change,code", [("member", 403), ("other_org", 404), ("args", 409), ("reviewed_args", 409), ("target", 409), ("old_contract", 409)])
 async def test_no_unauthorized_or_changed_proposal_dispatches(state, change, code):
     org = "org"
-    if change == "member": state.role[0] = "member"
+    if change == "member": state.role[0] = "viewer"  # viewers don't hold approve_writes by default
     elif change == "other_org": org = "other"
     elif change == "args": state.execution["input"]["to"] = "changed@example.test"
     elif change == "reviewed_args": state.approval["context"]["parameters"] = {"to": "changed@example.test"}

@@ -192,10 +192,11 @@ def test_rows_without_a_binding_are_refused(api):
     api.execute.assert_not_awaited()
 
 
-def test_non_admin_cannot_approve(api):
+def test_role_without_approve_writes_cannot_approve(api):
     import app.workflows.policy as policy
 
-    api.monkeypatch.setattr(policy, "get_user_role", lambda *_a: "member")
+    # Members approve by default (Trust & Safety > Role permissions); viewers don't.
+    api.monkeypatch.setattr(policy, "get_user_role", lambda *_a: "viewer")
     row = _row()
     _use(api, [row])
     resp = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})

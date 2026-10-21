@@ -33,16 +33,16 @@ async def decide_mcp_approval(
     limit. execute_tool's atomic consume admits at most one provider dispatch.
     Consent, dispatch and independently verified success remain distinct.
     """
-    from app.auth.platform_admin import is_org_admin_role
+    from app.auth.org_role_permissions import capability_denied_detail, has_capability
     from app.workflows.audit import write_audit_event
-    from app.workflows.policy import PolicyResolutionError, get_user_role
+    from app.workflows.policy import PolicyResolutionError, get_user_role, widen_to_member_role
 
     try:
-        role = await run_io(get_user_role, client, org_id, reviewer_id)
+        role = await run_io(widen_to_member_role, get_user_role, client, org_id, reviewer_id)
     except PolicyResolutionError as exc:
         raise HTTPException(403, "Organization administrator required") from exc
-    if not is_org_admin_role(role):
-        raise HTTPException(403, "Organization administrator required")
+    if not await run_io(has_capability, client, org_id, role, "approve_writes"):
+        raise HTTPException(403, capability_denied_detail("approve_writes"))
     rows = await run_io(lambda: (client.table("approvals")
         .select("id,type,status,context,reviewed_at,consumed_at")
         .eq("id", approval_id).eq("org_id", org_id).limit(1).execute().data or []))

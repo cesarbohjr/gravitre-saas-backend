@@ -7,11 +7,13 @@ from unittest.mock import MagicMock
 
 from fastapi.testclient import TestClient
 
+from app.auth.org_role_permissions import CAPABILITY_KEYS
 from app.auth.dependencies import (
     get_current_user,
     get_environment_context,
     get_org_context,
     require_admin,
+    require_capability,
 )
 from app.config import Settings, get_settings
 from app.main import app
@@ -50,6 +52,8 @@ def authenticate(
     app.dependency_overrides[get_settings] = lambda: make_test_settings()
     if as_admin:
         app.dependency_overrides[require_admin] = lambda: ({"user_id": user_id, "email": email}, org_id)
+        for capability in CAPABILITY_KEYS:
+            app.dependency_overrides[require_capability(capability)] = lambda: ({"user_id": user_id, "email": email}, org_id)
 
 
 def chain_mock(*, data: list | None = None, count: int | None = None) -> MagicMock:

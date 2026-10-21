@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { toast } from "sonner"
@@ -19,6 +19,7 @@ import {
 } from "@/lib/settings-api/audit"
 import { eventActor, eventEntity, eventTitle, isErrorEvent, pageCountFor } from "@/components/settings/audit-model"
 import { Hero, Icon, Pill, TONE } from "./ts-ui"
+import { AuditEventPanel, auditErrorText } from "./trust-safety-audit-detail"
 
 const PAGE_SIZE = 6
 const COLS = "minmax(0,2.2fr) minmax(0,1.4fr) minmax(0,1.8fr) 110px"
@@ -51,10 +52,7 @@ function timeOf(iso: string): string {
     : d.toLocaleDateString(undefined, { month: "short", day: "numeric" })
 }
 
-function errorText(log: AuditEvent): string {
-  const raw = log.error_message ?? (typeof log.details?.error === "string" ? log.details.error : null)
-  return raw ? String(raw) : "Failed"
-}
+const errorText = auditErrorText
 
 function pagesFor(page: number, count: number): Array<number | "…"> {
   if (count <= 5) return Array.from({ length: count }, (_, i) => i + 1)
@@ -75,6 +73,8 @@ export function TrustSafetyAudit() {
   const [outcome, setOutcome] = useState<AuditOutcomeFilter>("all")
   const [page, setPage] = useState(1)
   const [exporting, setExporting] = useState(false)
+  const [selected, setSelected] = useState<AuditEvent | null>(null)
+  const closeDetails = useCallback(() => setSelected(null), [])
   const q = useDebounced(search.trim())
 
   useEffect(() => setPage(1), [q, range, category, outcome])
@@ -199,7 +199,22 @@ export function TrustSafetyAudit() {
               const tone = err ? TONE.bad : cfg ? TONE.warn : TONE.ok
               const entity = eventEntity(log)
               return (
-                <div key={log.id} className="ts-row" style={{ ["--cols" as string]: COLS, padding: "0 8px" }}>
+                <div
+                  key={log.id}
+                  className={`ts-row ts-click${selected?.id === log.id ? " sel" : ""}`}
+                  style={{ ["--cols" as string]: COLS, padding: "0 8px" }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Show details for ${eventTitle(log)}`}
+                  aria-expanded={selected?.id === log.id}
+                  onClick={() => setSelected((cur) => (cur?.id === log.id ? null : log))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      setSelected((cur) => (cur?.id === log.id ? null : log))
+                    }
+                  }}
+                >
                   <div className="ts-td" style={{ display: "flex", gap: 12, alignItems: "center" }}>
                     <span className={tone.ico} style={{ width: 32, height: 32, borderRadius: 9 }}><Icon name="events" size={15} /></span>
                     <div style={{ minWidth: 0 }}>
@@ -242,6 +257,7 @@ export function TrustSafetyAudit() {
           </div>
         </div>
       </section>
+      {selected ? <AuditEventPanel log={selected} onClose={closeDetails} /> : null}
     </>
   )
 }

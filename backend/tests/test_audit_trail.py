@@ -112,7 +112,7 @@ def test_audit_filters_by_date_range(mock_plan, mock_create):
 @patch("app.routers.audit.get_plan_for_org", return_value=DEFAULT_PLANS["node"])
 def test_audit_export_csv(mock_plan, mock_create):
     mock_create.return_value = table_client({"audit_logs": chain_mock(data=_audit_rows())})
-    authenticate()
+    authenticate(as_admin=True)  # exporting needs audit_export
     response = client.get("/api/audit/export?format=csv")
     assert response.status_code == 200
     assert "text/csv" in response.headers["content-type"]
@@ -123,7 +123,7 @@ def test_audit_export_csv(mock_plan, mock_create):
 @patch("app.routers.audit.get_plan_for_org", return_value=DEFAULT_PLANS["node"])
 def test_audit_export_json(mock_plan, mock_create):
     mock_create.return_value = table_client({"audit_logs": chain_mock(data=_audit_rows())})
-    authenticate()
+    authenticate(as_admin=True)  # exporting needs audit_export
     response = client.get("/api/audit/export?format=json")
     assert response.status_code == 200
     body = response.json()

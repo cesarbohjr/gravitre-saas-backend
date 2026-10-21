@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from supabase import create_client
 from app.core.db import shared_service_client
 
-from app.auth.dependencies import get_current_user, get_environment_context, get_org_context
+from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_capability
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.operators import agent_jobs as jobs
@@ -233,12 +233,10 @@ def retry(
 def approve_job_endpoint(
     job_id: str,
     body: AssignmentDecisionRequest,
-    current_user: Annotated[dict, Depends(get_current_user)],
-    org_id: Annotated[str | None, Depends(get_org_context)],
+    approver: Annotated[tuple, Depends(require_capability("approve_writes"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
-    if org_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    current_user, org_id = approver
     notes = (body.notes or body.comment or "").strip() or None
     job = jobs.approve_job(
         _client(settings),
@@ -259,12 +257,10 @@ def approve_job_endpoint(
 def reject_job_endpoint(
     job_id: str,
     body: AssignmentDecisionRequest,
-    current_user: Annotated[dict, Depends(get_current_user)],
-    org_id: Annotated[str | None, Depends(get_org_context)],
+    approver: Annotated[tuple, Depends(require_capability("approve_writes"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
-    if org_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    current_user, org_id = approver
     reason = (body.reason or body.notes or body.comment or "").strip() or None
     job = jobs.reject_job(
         _client(settings),

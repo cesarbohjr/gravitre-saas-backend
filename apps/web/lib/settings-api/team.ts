@@ -49,7 +49,8 @@ export interface TeamRow {
   email: string | null
   avatarUrl: string | null
   subtitle: string | null
-  role: TeamRole
+  /** A built in role or a custom role key (Trust & Safety > Role permissions). */
+  role: string
   status: TeamStatus
   invitedAt: string | null
   member: TeamApiMember | null
@@ -59,13 +60,27 @@ export const TEAM_KEY = "/api/settings/team"
 export const INVITES_KEY = "/api/org/invites"
 export const LITE_SEATS_KEY = "/api/settings/lite-seats"
 
-export function normalizeRole(role: unknown): TeamRole {
+const CUSTOM_ROLE_KEY = /^[a-z][a-z0-9_]{0,39}$/
+
+export function normalizeRole(role: unknown): string {
   const value = String(role ?? "member").trim().toLowerCase()
-  return value === "owner" || value === "admin" || value === "viewer" ? value : "member"
+  return CUSTOM_ROLE_KEY.test(value) ? value : "member"
 }
 
-export function roleTitle(role: TeamRole): string {
-  return role.charAt(0).toUpperCase() + role.slice(1)
+/** Display name; custom roles use the name saved in Role permissions when given. */
+export function roleTitle(role: string, names?: Record<string, string> | null): string {
+  const saved = names?.[role]
+  if (saved) return saved
+  const words = role.replace(/_/g, " ")
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
+
+/** Invite and edit choices: the built in roles plus this workspace's custom roles. */
+export function assignableRoles(
+  customRoles: string[] | null | undefined,
+  names?: Record<string, string> | null,
+): { id: string; label: string }[] {
+  return [...INVITE_ROLES, ...(customRoles ?? []).map((id) => ({ id, label: roleTitle(id, names) }))]
 }
 
 /** Merge memberships with pending invites. Invites with no member row still show (by email). */
