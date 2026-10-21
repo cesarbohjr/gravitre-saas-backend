@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 import asyncio
 
@@ -131,17 +131,24 @@ async def list_training_permissions(
 async def update_training_permission(
     model_name: str,
     payload: TrainingPermissionUpdate,
+    background_tasks: BackgroundTasks,
     org_id: Annotated[str, Depends(get_org_context)],
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     from app.ml.automatic_training import CONSENT_MANAGED_MODELS
     from app.ml.training_consent import save_training_consent
-    if model_name not in CONSENT_MANAGED_MODELS:
-        raise HTTPException(status_code=400, detail="Automatic training is not available for this model")
+    if model_name not in {*CONSENT_MANAGED_MODELS, "multimodal_router", "diffusion_model", "federated_learning"}:
+        raise HTTPException(status_code=400, detail="No implemented processing permission for this model")
     try:
-        return await asyncio.to_thread(save_training_consent, org_id, model_name, admin[0]["user_id"],
-                                       payload.state, payload.scope_digest, settings)
+        result = await asyncio.to_thread(save_training_consent, org_id, model_name, admin[0]["user_id"],
+                                        payload.state, payload.scope_digest, settings)
+        if payload.state == "approved" and model_name in {*CONSENT_MANAGED_MODELS, "federated_learning"}:
+            from app.services.company_intelligence_orchestrator import run_company_intelligence_for_org_sync
+            # Reuse the existing guarded job immediately after approval. Paid
+            # generation/media execution is never started by this callback.
+            background_tasks.add_task(run_company_intelligence_for_org_sync, org_id, settings)
+        return result
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -169,3 +176,30 @@ async def list_model_lifecycle(
     return {"models": models, "scope": "backend_model_lifecycle_only",
             "phase1_acceptance": "not_complete", "phase2_acceptance": "not_complete",
             "note": "Execution evidence does not prove accuracy, downstream consumption, or business outcomes."}
+
+
+@router.get("/federation/consent/{tenant_id}", include_in_schema=False)
+def federation_consent_readback(
+    tenant_id: str,
+    authorization: Annotated[str | None, Header()] = None,
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Consent-only service credential; cannot read model weights or records."""
+    import hmac
+    from uuid import UUID
+    from app.ml.federated_learning import verified_privacy_profile
+    from app.ml.training_consent import consent_is_approved, load_training_consents
+    from app.core.safe_dict import safe_normalize_stored_dict
+    secret = settings.federated_consent_service_secret
+    if not isinstance(secret,str) or len(secret) < 32 or not hmac.compare_digest(authorization or '', 'Bearer '+secret):
+        raise HTTPException(status_code=403,detail="Consent service credential required")
+    try:
+        tenant_id = str(UUID(tenant_id))
+        _, digest = verified_privacy_profile(settings)
+        consents = load_training_consents(tenant_id,settings)
+        approval = safe_normalize_stored_dict(consents.get('federated_learning'))
+        return {'org_id':tenant_id, 'audit_digest':digest,
+                'approved':consent_is_approved(consents,'federated_learning') and approval.get('audit_digest') == digest,
+                'ranker_approved':consent_is_approved(consents,'retrieval_ranker')}
+    except Exception:
+        return {'org_id':tenant_id,'approved':False,'ranker_approved':False,'audit_digest':None}

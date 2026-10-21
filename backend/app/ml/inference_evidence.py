@@ -16,7 +16,7 @@ from app.core.safe_dict import safe_normalize_stored_dict
 from app.workflows.repository import get_supabase_client
 
 PROOF_TYPE = "validated_catalog_execution_v1"
-SOURCES = frozenset({"internal", "intelligence_router", "predictive_operations", "memory_review"})
+SOURCES = frozenset({"internal", "intelligence_router", "predictive_operations", "memory_review", "decision_service", "domain_classification"})
 
 
 async def record_execution(org_id: str, model_name: str, registry_ref: Any, latency_ms: int, source: str) -> dict[str, Any]:

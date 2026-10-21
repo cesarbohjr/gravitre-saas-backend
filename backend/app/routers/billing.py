@@ -768,7 +768,7 @@ def _fetch_invoices_and_payment_methods(
         return datetime.fromtimestamp(int(ts_value), tz=timezone.utc).isoformat()
 
     try:
-        stripe_invoices = stripe.Invoice.list(customer=customer_id, limit=20)
+        stripe_invoices = stripe.Invoice.list(customer=customer_id, limit=100)
         for invoice in stripe_invoices.data:
             invoices.append(
                 {

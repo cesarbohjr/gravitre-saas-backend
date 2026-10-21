@@ -26,7 +26,7 @@ class Message(TypedDict):
     """Canonical internal message: role + content."""
 
     role: Literal["system", "user", "assistant"]
-    content: str
+    content: str | list[dict[str, Any]]
 
 
 @dataclass

@@ -17,6 +17,7 @@ IMPORTANT — OpenAI fine-tuning constraints (verified May 2026)
 from __future__ import annotations
 
 import json
+import os
 import pickle
 import tempfile
 from typing import Any
@@ -83,9 +84,12 @@ class FineTunedLLM(BaseMLModel):
                 for example in data:
                     f.write(json.dumps({"messages": example.messages}) + "\n")
                 f.flush()
-                with open(f.name, "rb") as upload_file:
-                    response = await client.files.create(file=upload_file, purpose=purpose)
-                    return response.id
+                try:
+                    with open(f.name, "rb") as upload_file:
+                        response = await client.files.create(file=upload_file, purpose=purpose)
+                        return response.id
+                finally:
+                    os.unlink(f.name)
 
         self._training_file_id = await upload_jsonl(train_examples, "fine-tune")
         if val_examples:

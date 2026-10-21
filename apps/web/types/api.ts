@@ -1688,10 +1688,14 @@ export interface AgentRoiReport {
   }
 }
 
+export type EnterpriseSiemEventType = "audit" | "auth" | "approvals" | "policy" | "agent"
+
 export interface EnterpriseSiemConfig {
   enabled: boolean
   endpoint: string | null
   hasSecret: boolean
+  /** Event groups forwarded; older configs without a list forward all of them. */
+  events?: EnterpriseSiemEventType[]
 }
 
 export interface EnterpriseSiemTestResult {

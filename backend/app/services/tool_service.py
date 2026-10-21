@@ -4956,6 +4956,9 @@ from app.services.priority_connector_tools import PRIORITY_CONNECTOR_TOOLS
 from app.services.intelligence_pack_tools import INTELLIGENCE_PACK_TOOL_EXECUTORS
 from app.connectors.catalog_http.registry import build_catalog_http_executors
 
+from app.services.generated_image_tool import execute_generate_image
+_TOOL_REGISTRY["assistant.generate_image"] = execute_generate_image
+
 _TOOL_REGISTRY.update(PRIORITY_CONNECTOR_TOOLS)
 _TOOL_REGISTRY.update(INTELLIGENCE_PACK_TOOL_EXECUTORS)
 _TOOL_REGISTRY.update(build_catalog_http_executors(skip=set(_TOOL_REGISTRY.keys())))
@@ -5205,7 +5208,7 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
         raise ToolNotFoundError(f"Unknown tool action: {action}")
 
     connector_id = params.get("connector_id") or ctx.connector_id
-    connector_type = action.split(".", 1)[0] if "." in action else action
+    connector_type = "platform" if action == "assistant.generate_image" else action.split(".", 1)[0] if "." in action else action
     cid = str(connector_id) if connector_id else None
     try:
         from app.services.hipaa_service import HipaaComplianceError, enforce_hipaa_for_tool_invoke

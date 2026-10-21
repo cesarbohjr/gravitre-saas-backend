@@ -9,9 +9,6 @@ from typing import Any
 
 ON_DEMAND_MODELS = frozenset({"active_learning", "neuro_symbolic", "causal_impact_analyzer"})
 EXTERNAL_BLOCKERS = {
-    "multimodal_router": ["complete_provider_execution_and_media_validation"],
-    "domain_specific_llm": ["approved_department_corpus", "held_out_domain_evaluation", "tenant_provider_training_and_routing_adapter"],
-    "diffusion_model": ["configured_generation_provider", "governed_paid_generation_tool", "output_security_and_artifact_handling"],
     "federated_learning": ["explicit_cross_tenant_consent", "legal_owner_approval", "audited_secure_aggregation",
                            "validated_differential_privacy_accounting", "deployed_federated_runtime", "100_participating_tenants"],
 }
@@ -22,9 +19,14 @@ def model_lifecycle_contract(name: str) -> dict[str, Any]:
     from app.ml.automatic_training import CONSENT_MANAGED_MODELS, AUTOMATIC_MODELS
     if name not in GRAVITRE_ML_CATALOG:
         raise ValueError("Unknown catalog model")
+    if name in {"multimodal_router", "diffusion_model"}:
+        return {"mode": "governed_provider_tool", "monitor": "explicit_authorized_request",
+                "state": "provider_prerequisites_unverified",
+                "blockers": ["current_provider_processing_consent", "reviewed_provider_budget", "provider_access", "real_execution_readback"],
+                "consent_prompt_supported": True, "automatic_training_supported": False}
     if name in EXTERNAL_BLOCKERS:
         return {"mode": "specialized_infrastructure", "monitor": "technical_inventory",
-                "state": "engineering_blocked", "blockers": EXTERNAL_BLOCKERS[name],
+                "state": "infrastructure_prerequisites_unverified", "blockers": EXTERNAL_BLOCKERS[name],
                 "consent_prompt_supported": False, "automatic_training_supported": False}
     if name in ON_DEMAND_MODELS:
         return {"mode": "on_demand_advisory", "monitor": "request_data_validation",
@@ -47,7 +49,7 @@ def model_lifecycle_contract(name: str) -> dict[str, Any]:
 def resolve_lifecycle(name: str, runtime: dict[str, Any], permission: dict[str, Any] | None,
                       execution: dict[str, Any] | None = None) -> dict[str, Any]:
     contract = model_lifecycle_contract(name)
-    if contract["mode"] in {"specialized_infrastructure", "on_demand_advisory", "unassigned"}:
+    if contract["mode"] in {"specialized_infrastructure", "on_demand_advisory", "unassigned", "governed_provider_tool"}:
         return contract
     result = {**contract, "artifact_loaded": runtime.get("artifact_loaded") is True,
               "inference_verified": False, "downstream_consumption": "not_verified"}

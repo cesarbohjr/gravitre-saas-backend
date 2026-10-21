@@ -30,6 +30,7 @@ F1_WRITE_CATALOG_ACTIONS: frozenset[str] = frozenset(
 # join the always-approve decision.
 ALWAYS_APPROVE_WRITE_ACTIONS: frozenset[str] = frozenset(
     {
+        "assistant.generate_image",
         "hubspot.sequences.enroll",
         "apollo.sequences.add",
         "clay.crm.sync",

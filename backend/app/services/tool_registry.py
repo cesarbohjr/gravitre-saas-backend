@@ -6,6 +6,7 @@ Bridges LLM tool calls (OpenAI function format) to the unified connector layer i
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -777,6 +778,26 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
             always_available=False,
         ),
         AgentToolSpec(
+            name="assistant_classify_domain",
+            description="Classify a case using the organization's deployed, independently evaluated department model. The department and declared target must match the saved artifact; no base-model substitution is reported as trained inference.",
+            parameters={"type":"object", "properties":{"department":{"type":"string"},"target":{"type":"string"},"prompt":{"type":"string","maxLength":8000}},
+                        "required":["department","target","prompt"],"additionalProperties":False},
+            invoke_action="assistant.classify_domain", integration="platform", always_available=False,
+        ),
+        AgentToolSpec(
+            name="assistant_analyze_media",
+            description="Analyze an existing organization media object using images, an audio transcript or sampled video frames. Technical administrators only; requires current media-processing permission. Does not fetch URLs or accept uploads.",
+            parameters={"type": "object", "properties": {"prompt": {"type": "string"}, "storagePath": {"type": "string"}, "mimeType": {"type": "string", "enum": ["image/png", "image/jpeg", "image/webp", "audio/wav", "audio/mpeg", "audio/mp4", "video/mp4"]}}, "required": ["prompt", "storagePath", "mimeType"], "additionalProperties": False},
+            invoke_action="assistant.analyze_media", integration="platform", always_available=False,
+        ),
+        AgentToolSpec(
+            name="platform_generate_image",
+            description="Generate one private draft image on an explicit image request. Requires current organization provider-processing consent and a reviewed generation budget. Never publishes or sends the image.",
+            parameters={"type": "object", "properties": {"prompt": {"type": "string", "maxLength": 8000}}, "required": ["prompt"], "additionalProperties": False},
+            invoke_action="assistant.generate_image",
+            integration="platform", always_available=False,
+        ),
+        AgentToolSpec(
             name="assistant_generate_document",
             description="Generate a markdown document on a topic.",
             parameters={"type": "object", "properties": {"topic": {"type": "string"}}, "required": ["topic"]},
@@ -973,6 +994,10 @@ class ToolRegistry:
         # Phase 3: gravitre-managed sources use platform keys — available without tenant OAuth
         if spec.integration in {"fred", "nvd"}:
             return True
+        if spec.integration == "platform" and spec.name in {"platform_generate_image", "assistant_analyze_media", "assistant_classify_domain"}:
+            # These are Gravitre provider operations, not OAuth connectors.
+            # Permission/budget/identity checks still execute before any egress.
+            return True
         connected = {str(c).strip().lower() for c in connected_integrations}
         return spec.integration in connected
 
@@ -1135,6 +1160,9 @@ class ToolRegistry:
             audit_extra["error_code"] = (
                 "write_approval_required" if status == "pending_approval" else status or "failed"
             )
+            if tool_name in {"assistant_analyze_media", "assistant_classify_domain"} and payload.get("status") != "ok":
+                return {"success": False, "tool": tool_name, "result": payload,
+                        "error": payload.get("reason") or "Provider execution not confirmed"}
             if payload.get("error"):
                 audit_extra["error"] = str(payload.get("error"))[:200]
         await asyncio.to_thread(
@@ -1509,7 +1537,7 @@ class ToolRegistry:
                 return cached
 
         try:
-            timeout_s = int(ctx.connector_timeout_seconds or 30)
+            timeout_s = max(150, int(ctx.connector_timeout_seconds or 30)) if invoke_action == "assistant.generate_image" else int(ctx.connector_timeout_seconds or 30)
             result = await asyncio.wait_for(
                 asyncio.to_thread(invoke_tool, ctx, invoke_action, invoke_params),
                 timeout=timeout_s,
@@ -1778,6 +1806,34 @@ class ToolRegistry:
                 payload = assistant_tools_module.tool_analytics(
                     org_id, settings, user_id=user_id
                 )
+            elif tool_name == "assistant_classify_domain":
+                from app.ml.model_catalog import load_org_trained_catalog_model
+                from app.ml.inference_evidence import record_execution
+                instance = await load_org_trained_catalog_model(org_id, "domain_specific_llm", settings=settings)
+                if not getattr(instance, "registry_ref", None):
+                    raise ValueError("No validated deployed domain artifact for this organization")
+                started = time.perf_counter()
+                payload = await instance.predict_structured(org_id=org_id, settings=settings,
+                    department=args.get("department"), target_definition=args.get("target"), inputs=[args.get("prompt")])
+                if payload.get("status") == "ok":
+                    payload["execution_evidence"] = await record_execution(org_id, "domain_specific_llm", instance.registry_ref,
+                        int((time.perf_counter()-started)*1000), "domain_classification")
+            elif tool_name == "assistant_analyze_media":
+                import base64
+                from app.ml.multimodal_models import MultimodalRouter
+                from app.ml.provider_execution import require_permission
+                from app.services.byo_storage import read_org_file
+                if not user_id:
+                    raise ValueError("Authenticated actor required")
+                membership = await asyncio.to_thread(lambda: ctx.client.table("organization_members")
+                    .select("role").eq("org_id", org_id).eq("user_id", user_id).limit(1).execute())
+                if not membership.data or membership.data[0].get("role") not in {"owner", "admin"}:
+                    raise ValueError("Technical administrator required for raw media access")
+                await require_permission(org_id, "multimodal_router", settings)
+                data = await asyncio.to_thread(read_org_file, ctx.client, settings, org_id=org_id,
+                    logical_bucket=settings.rag_uploads_bucket, path=args.get("storagePath", ""), max_bytes=20*1024*1024)
+                payload = await MultimodalRouter().predict_structured(org_id=org_id, settings=settings,
+                    prompt=args.get("prompt"), media={"base64": base64.b64encode(data).decode("ascii"), "mime_type": args.get("mimeType")})
             elif tool_name == "assistant_generate_document":
                 topic = str(args.get("topic") or args.get("query") or "").strip()
                 payload = await assistant_tools_module.tool_generate_document(org_id, topic, settings)

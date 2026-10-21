@@ -120,6 +120,7 @@ MUTATING_ADVANCED_VERB_TOKENS: frozenset[str] = frozenset(
 # Seed set (hand-tuned mappers) plus write + advanced batches cleared via generic summarizer.
 _SEED_VERIFIED_OUTPUT_ACTIONS: frozenset[str] = frozenset(
     {
+        "assistant.generate_image",  # Inline private-file SHA256 readback; bounded completion mapper.
         "apollo.lists.create",
         "apollo.lists.add",
         "slack.post_message",

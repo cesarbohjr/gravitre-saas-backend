@@ -138,7 +138,8 @@ def read_tools_for_vendor(vendor: str) -> list[str]:
 
 
 def all_catalog_action_specs() -> list[ActionSpec]:
-    specs: list[ActionSpec] = []
+    from app.connectors.action_catalog.native_actions import NATIVE_ACTION_SPECS
+    specs: list[ActionSpec] = list(NATIVE_ACTION_SPECS.values())
     for vendor_spec in get_vendor_catalog().values():
         specs.extend(vendor_spec.all_actions())
     return specs
@@ -167,6 +168,9 @@ def get_action_spec(action_key: str) -> ActionSpec | None:
     from app.connectors.action_catalog.f1_read_slice import catalog_action_key
 
     key = catalog_action_key(action_key.strip().lower() if action_key else "")
+    from app.connectors.action_catalog.native_actions import NATIVE_ACTION_SPECS
+    if key in NATIVE_ACTION_SPECS:
+        return NATIVE_ACTION_SPECS[key]
     if "." not in key:
         return None
     vendor = key.split(".", 1)[0]

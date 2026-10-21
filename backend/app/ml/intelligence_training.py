@@ -57,6 +57,7 @@ CATALOG_MODEL_NAMES = {
     "sla_breach_predictor": "catalog-sla-breach",
     "deal_loss_scorer": "catalog-deal-loss",
     "capacity_forecaster": "catalog-capacity-forecast",
+    "domain_specific_llm": "catalog-domain-specific-llm",
     "meta_learning": "catalog-meta-learning",
     "graph_neural_network": "catalog-graph-neural-network",
     "self_supervised_embeddings": "catalog-self-supervised-embeddings",
@@ -182,6 +183,19 @@ def champion_challenger_decision(
             return False, "not_deployed_first_version_not_better_than_chance", evaluation
         return True, "first_deployment_with_held_out_metric", evaluation
     champion_metrics = _metrics_dict(champion)
+    from app.core.safe_dict import safe_normalize_stored_dict
+    new_domain = safe_normalize_stored_dict(challenger_metrics.get("custom_metrics"))
+    old_domain = safe_normalize_stored_dict(champion_metrics.get("custom_metrics"))
+    if any(payload.get("algorithm") == "domain_classification_sft" for payload in (new_domain, old_domain)):
+        keys = ("algorithm", "department", "target_definition", "domain_labels")
+        if any(not new_domain.get(key) or new_domain.get(key) != old_domain.get(key) for key in keys):
+            return False, "not_deployed_incomparable_domain_semantics", {}
+        evaluated_id = new_domain.get("compared_champion_model")
+        score = _finite(new_domain.get("compared_champion_accuracy"))
+        if (not evaluated_id or evaluated_id != old_domain.get("fine_tuned_model")
+                or score is None or not 0 <= score <= 1):
+            return False, "not_deployed_domain_champion_not_evaluated_on_current_holdout", {}
+        champion_metrics = {**champion_metrics, "accuracy": score}
     from app.core.safe_dict import safe_normalize_stored_dict
     challenger_custom = safe_normalize_stored_dict(challenger_metrics.get("custom_metrics"))
     champion_custom = safe_normalize_stored_dict(champion_metrics.get("custom_metrics"))
@@ -977,7 +991,10 @@ async def train_causal_impact_analyzer(
 from app.ml.advanced_training import train_world_model, train_agentic_planning, train_graph_neural_network, train_self_supervised_embeddings, train_meta_learning
 
 
+from app.ml.domain_llm import enqueue_domain_training
+
 TRAINING_DISPATCH: dict[str, Any] = {
+    "domain_specific_llm": enqueue_domain_training,
     "meta_learning": train_meta_learning,
     "graph_neural_network": train_graph_neural_network,
     "self_supervised_embeddings": train_self_supervised_embeddings,

@@ -18,8 +18,12 @@ def test_all_26_models_have_assigned_lifecycles_without_silent_activation():
         assert model_lifecycle_contract(name)["mode"] != "unassigned"
     core = {name for name, meta in GRAVITRE_ML_CATALOG.items() if meta["status"] == ModelStatus.TRAINED}
     assert len(core) == 14 and core <= set(CONSENT_MANAGED_MODELS)
-    assert model_lifecycle_contract("federated_learning")["state"] == "engineering_blocked"
-    assert not model_lifecycle_contract("diffusion_model")["consent_prompt_supported"]
+    assert model_lifecycle_contract("federated_learning")["state"] == "infrastructure_prerequisites_unverified"
+    # Generation now has an implemented governed tool, never training controls.
+    image = model_lifecycle_contract("diffusion_model")
+    assert image["consent_prompt_supported"]
+    assert image["mode"] == "governed_provider_tool"
+    assert not image["automatic_training_supported"]
 
 
 def test_lifecycle_never_uses_catalog_or_artifact_as_inference_proof():

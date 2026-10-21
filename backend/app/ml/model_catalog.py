@@ -236,10 +236,10 @@ _MODEL_CLASS_MAP: dict[str, Callable[[], Any]] = {
 # Implementation availability is separate from the legacy catalog designation.
 # Advanced entries remain admin-only even after an implementation is available.
 IMPLEMENTED_ADVANCED_MODELS = frozenset({
-    "active_learning", "neuro_symbolic", "causal_impact_analyzer",
+    "federated_learning", "active_learning", "neuro_symbolic", "causal_impact_analyzer", "multimodal_router", "diffusion_model", "domain_specific_llm",
     "agentic_planning", "world_model", "self_supervised_embeddings", "graph_neural_network", "meta_learning",
 })
-ARTIFACT_ADVANCED_MODELS = frozenset({"agentic_planning", "world_model", "self_supervised_embeddings", "graph_neural_network", "meta_learning"})
+ARTIFACT_ADVANCED_MODELS = frozenset({"agentic_planning", "world_model", "self_supervised_embeddings", "graph_neural_network", "meta_learning", "domain_specific_llm"})
 
 
 def get_catalog() -> dict[str, dict[str, Any]]:
@@ -459,6 +459,7 @@ def model_inventory_definition(model_name: str) -> dict[str, Any]:
         "manual_training_supported": supported,
         "implementation_status": "implemented" if operational or model_name in IMPLEMENTED_ADVANCED_MODELS else "scaffolded",
         "activation_mode": "automatic_after_consent" if model_name in CONSENT_MANAGED_MODELS else
+            "governed_provider_tool" if model_name in {"multimodal_router", "diffusion_model"} else
             "on_demand" if model_name in {"active_learning", "neuro_symbolic", "causal_impact_analyzer"} else "unavailable",
         "automatic_training_supported": model_name in CONSENT_MANAGED_MODELS,
         "customer_activation_control": False,
@@ -658,6 +659,11 @@ async def infer_catalog_capability(
         if not isinstance(rows, list) or not 1 <= len(rows) <= 100:
             return {"status": "dormant", "model": model_name, "reason": "one_to_100_real_input_rows_required",
                     "used_fallback": True, "advisory_only": True}
+    if model_name in {"multimodal_router", "diffusion_model", "domain_specific_llm"}:
+        # Provider side effects never run speculatively through the bounded
+        # intelligence-enrichment hook. The tool path owns durable identity.
+        return {"status": "dormant", "model": model_name, "reason": "governed_media_tool_required",
+                "used_fallback": True, "advisory_only": True}
     # Scope and runtime dependencies must come from the caller's authenticated
     # context, never from model inputs or stored user payloads.
     args = {key: value for key, value in inputs.items() if key not in {"org_id", "settings"}}

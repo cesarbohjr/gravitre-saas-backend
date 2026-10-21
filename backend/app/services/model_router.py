@@ -203,7 +203,10 @@ class ModelRouter:
         trained_model_id: str | None = None,
         trained_model_version: int | None = None,
         used_fallback: bool = False,
+        image_parts: list[dict[str, Any]] | None = None,
     ) -> ModelResponse:
+        if image_parts:
+            use_cache = False
         complexity = TASK_COMPLEXITY.get(task_type.value, "medium")
         model = model_override or self._resolve_model(
             task_type
@@ -334,6 +337,22 @@ class ModelRouter:
         user_prompt = redact_pii(prompt) if redact else prompt
         messages.append({"role": "user", "content": fence_untrusted(user_prompt)})
 
+        if image_parts:
+            # Only locally decoded JPEG data URLs enter this path; no remote
+            # fetches and no silent fallback to a text-only provider.
+            import base64
+            from app.ml.media_inputs import image_part
+            if not org_id or len(image_parts) > 6:
+                raise ValueError("Organization and at most six validated images required")
+            validated = []
+            for part in image_parts:
+                url = part.get("image_url", {}).get("url", "")
+                prefix = "data:image/jpeg;base64,"
+                if not isinstance(url, str) or not url.startswith(prefix) or len(url) > 6_000_000:
+                    raise ValueError("Locally decoded JPEG data required")
+                validated.append(image_part(base64.b64decode(url[len(prefix):], validate=True)))
+            messages[-1]["content"] = [{"type": "text", "text": messages[-1]["content"]}, *validated]
+
         # Build the failover priority chain.
         if model_override:
             fallback = (
@@ -351,6 +370,15 @@ class ModelRouter:
             )
         else:
             priority = [("openai", MODEL_TIERS[complexity]["openai"])]
+
+        if image_parts:
+            vision_model = model_override or MODEL_TIERS["vision"]["openai"]
+            if resolve_provider_for_model(vision_model) != "openai":
+                raise ValueError("Validated media execution currently requires an OpenAI vision model")
+            # Unlike legacy text policy reads, media policy lookup fails closed.
+            policy = await asyncio.to_thread(load_org_model_policy, get_supabase_client(self.settings), org_id)
+            assert_model_allowed(policy, provider="openai", model=vision_model)
+            priority = [("openai", vision_model)]
 
         options = CompletionOptions(
             temperature=temperature,

@@ -1,5 +1,9 @@
 {
   "actions": {
+    "assistant.generate_image": {
+      "mode": "accepted_async",
+      "reason": "Executor independently reads private artifact bytes and verifies SHA256 before returning artifact_verified. Generic follow-up remains conservative; a missing inline proof cannot report completion."
+    },
     "absorb_lms.batch.enroll": {
       "mode": "accepted_async",
       "reason": "No catalog sibling GET declared for independent confirmation; outcome stays accepted_async until a follow-up read is wired"
@@ -1622,6 +1626,6 @@
     }
   },
   "generated_by": "write_success_verification.generate_success_verification_catalog",
-  "mutating_action_count": 364,
+  "mutating_action_count": 365,
   "version": 1
 }

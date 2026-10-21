@@ -136,6 +136,7 @@ import type {
   EnterpriseCostAttribution,
   AgentRoiReport,
   EnterpriseSiemConfig,
+  EnterpriseSiemEventType,
   EnterpriseSiemTestResult,
   PrivateConnectorBundle,
   IntegrationHealthScore,
@@ -3503,6 +3504,9 @@ export type TrainingPermission = {
   consent_state: "pending" | "approved" | "paused" | "revoked" | "deferred";
   candidate_data_detected: boolean; observed_count: number | null; required_count: number | null;
   eligibility_note: string;
+  permission_visible?: boolean;
+  processing_kind?: "training" | "inference" | "generation" | "federation";
+  sharing_scope?: string;
 }
 
 export const mlAdminApi = {
@@ -4168,7 +4172,7 @@ export const enterpriseApi = {
 
   // SIEM
   getSiem: () => fetcher<EnterpriseSiemConfig>(apiUrl("/api/enterprise/siem")),
-  updateSiem: (data: { enabled?: boolean; endpoint?: string | null; secret?: string | null }) =>
+  updateSiem: (data: { enabled?: boolean; endpoint?: string | null; secret?: string | null; events?: EnterpriseSiemEventType[] }) =>
     putJson<EnterpriseSiemConfig>(apiUrl("/api/enterprise/siem"), data),
   testSiem: () => postJson<EnterpriseSiemTestResult>(apiUrl("/api/enterprise/siem/test"), {}),
 

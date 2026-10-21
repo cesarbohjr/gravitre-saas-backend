@@ -6,6 +6,22 @@
   "generator_model": "gpt-4o-mini",
   "taxonomy_version": 1,
   "actions": {
+    "assistant.generate_image": {
+      "examples": [
+        "Generate one private draft image from this approved prompt",
+        "Create a private illustration for review within the organization generation budget",
+        "Make a draft image asset without publishing or sending it"
+      ],
+      "tags": [
+        "platform",
+        "image",
+        "generation",
+        "private",
+        "draft",
+        "approval",
+        "artifact"
+      ]
+    },
     "absorb_lms.batch.enroll": {
       "examples": [
         "How do I batch enroll learners in absorb_lms?",

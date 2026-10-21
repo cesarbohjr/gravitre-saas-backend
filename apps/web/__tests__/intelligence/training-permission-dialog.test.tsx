@@ -66,4 +66,21 @@ describe("training consent dialog", () => {
     await click("Review"); await click("Pause")
     expect(state.update).toHaveBeenCalledExactlyOnceWith("world_model", "paused", "a".repeat(64))
   })
+  it("discloses provider processing without claiming generation is training", async () => {
+    state.models = [{ ...model, model_name: "diffusion_model", what: "Generate an image", processing_kind: "generation",
+      sharing_scope: "organization_only", security: "External provider processing for the stated purpose" }]
+    await render()
+    expect(document.body.textContent).toContain("does not start execution")
+    expect(document.body.textContent).not.toContain("data for training the Generate an image")
+    await click("Approve stated purpose")
+    expect(state.update).toHaveBeenCalledExactlyOnceWith("diffusion_model", "approved", "a".repeat(64))
+  })
+  it("shows federation as an explicit cross-tenant permission", async () => {
+    state.models = [{ ...model, model_name: "federated_learning", what: "Federated learning", processing_kind: "federation",
+      sharing_scope: "cross_tenant_private_updates", security: "Audited aggregation and bounded privacy program required" }]
+    await render()
+    expect(document.body.textContent).toContain("explicit privacy-protected cross-tenant updates")
+    expect(state.update).not.toHaveBeenCalled()
+  })
+
 })

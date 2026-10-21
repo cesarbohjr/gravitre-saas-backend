@@ -163,6 +163,14 @@ def summarize_write_action(
     args: dict[str, Any] | None = None,
 ) -> str:
     """Non-empty completion line suitable for ExecutionResult.body."""
+    if action == 'assistant.generate_image':
+        import re
+        payload = result_data if isinstance(result_data,dict) else {}
+        if (payload.get('status') == 'ok' and payload.get('artifact_verified') is True
+                and re.fullmatch(r'[a-f0-9]{64}',str(payload.get('sha256','')))
+                and payload.get('storage_path') and payload.get('hostedFiles')):
+            return 'Generated one private draft image and verified the stored file. It is available in the attached artifact.'
+        return 'Image generation has no verified stored artifact; completion is unconfirmed.'
     verb_phrase, resource = _humanize_action(action)
     label = extract_resource_label(result_data, args=args)
     resource_id = extract_resource_id(result_data, args=args)
