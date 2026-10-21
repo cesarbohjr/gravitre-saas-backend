@@ -45,7 +45,7 @@ async def perceive_turn(
     sentiment = (
         get_sentiment_friction_service().analyze(message, history)
         if dialogue.get("sentiment_detection_enabled", True)
-        else {"recommended_adaptation": "none"}
+        else {"recommended_adaptation": "none", "status": "disabled"}
     )
     understanding = await get_contextual_understanding_service(settings).understand(
         message, history, org_id, spoken_mode=spoken_mode,

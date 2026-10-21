@@ -207,6 +207,11 @@ class PredictiveOperationsEngine:
                     "advisory_only": True,
                 }
 
+            except Exception:  # One unavailable runtime must not erase valid siblings.
+                logger.warning("predictive_ops_model_unavailable model=%s org_id=%s", model_name, org_id)
+                return model_name, {"status": "unavailable", "model": model_name,
+                                    "reason": "inference_unavailable", "advisory_only": True}
+
         pairs = await asyncio.gather(*[_one(name) for name in pack]) if pack else []
         results = {name: payload for name, payload in pairs}
         return {
