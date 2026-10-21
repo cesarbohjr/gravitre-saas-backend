@@ -154,7 +154,12 @@ async def deploy_model(
     model = await registry.get_model(model_id)
     if not model or model.org_id != org_id:
         raise HTTPException(status_code=404, detail="Model not found")
-    await registry.deploy_version(model_id, body.version)
+    try:
+        deployed = await registry.deploy_version(model_id, body.version)
+        if not deployed:
+            raise HTTPException(status_code=409, detail="Model champion changed concurrently; reload before deployment")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"ok": True, "deployed_version": body.version or model.current_version}
 
 

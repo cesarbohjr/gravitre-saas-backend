@@ -87,14 +87,22 @@ class InferenceService:
             raise ValueError("No model version available for inference")
 
         runtime = await self._load_runtime_model(
-            model_id, selected_version, model.model_type, base_model=getattr(model, "base_model", None)
+            model_id, selected_version, model.model_type, base_model=base
         )
+        if base in {"retrieval_ranker","retrieval_memory_learner"}:
+            from app.ml.federated_adoption import artifact_permission
+            if not await artifact_permission(org_id,runtime,get_settings()):
+                raise ValueError("Current federated artifact permission required")
         if getattr(model, "base_model", None) == "success_predictor" and hasattr(runtime, "predict_success"):
             results = await runtime.predict_success(inputs)
             predictions = [row["prediction"] for row in results]
             probabilities = [{k: float(v) for k, v in row.items() if k.endswith("_probability")} for row in results]
         else:
-            predictions, probabilities = await runtime.predict(inputs, return_probabilities=return_probabilities)
+            predictions, probabilities = await runtime.predict(inputs, return_probabilities=return_probabilities, org_id=org_id)
+        from app.ml.inference_validation import normalize_inference_result, validate_inference_result
+        checked = normalize_inference_result({"status": "ok", "predictions": predictions, "probabilities": probabilities})
+        validate_inference_result(checked)
+        predictions, probabilities = checked["predictions"], checked["probabilities"]
         latency_ms = (time.perf_counter() - start) * 1000
         result = PredictionResult(
             model_id=model_id,

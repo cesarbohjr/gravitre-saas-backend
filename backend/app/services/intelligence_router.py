@@ -376,6 +376,22 @@ class IntelligenceRouter:
             return {"status": value.get("status", "available") if isinstance(value, dict) else "available",
                     "source": source, "data": data, "advisory_only": True}
 
+        predictive = enrichments.get("prediction")
+        model_results = enrichments.get("models")
+        if isinstance(model_results, dict) and model_results:
+            # Catalog results previously stopped at the extension point and
+            # never reached the fenced evidence consumed by text/voice. Keep
+            # fallbacks visible and preserve the existing seven-slot contract.
+            predictive = {
+                "status": "available" if any(
+                    isinstance(row, dict) and row.get("status") == "ok" and not row.get("used_fallback")
+                    for row in model_results.values()
+                ) else "insufficient_data",
+                "domain_predictions": predictive,
+                "catalog_models": model_results,
+                "advisory_only": True,
+            }
+
         enrichments["capabilities"] = {
             "contextual": evidence("contextual_understanding", understanding, default="unavailable"),
             "sentiment": evidence("sentiment_friction", sentiment, default="disabled_or_unavailable"),
@@ -385,7 +401,7 @@ class IntelligenceRouter:
             }),
             "relational": evidence("knowledge_graph", graph, default="missing_entity" if classification.get("requires_graph") else "not_requested"),
             "causal": evidence("causal_enrichment", enrichments.get("causal")),
-            "predictive": evidence("predictive_operations", enrichments.get("prediction")),
+            "predictive": evidence("predictive_operations", predictive),
             "adaptive": evidence("adaptive_learning", enrichments.get("adaptive"),
                                  default="deferred" if context.get("defer_optional") else "not_requested"),
         }
@@ -397,7 +413,7 @@ class IntelligenceRouter:
         selected = [(name, value) for name, value in inputs.items()
                     if name in GRAVITRE_ML_CATALOG and isinstance(value, dict)][:4]
         results = await asyncio.gather(*(
-            infer_catalog_capability(org_id, name, value, settings=self.settings)
+            infer_catalog_capability(org_id, name, value, settings=self.settings, source="intelligence_router")
             for name, value in selected
         ), return_exceptions=True)
         return {name: result if isinstance(result, dict) else {

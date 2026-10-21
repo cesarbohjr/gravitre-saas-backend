@@ -201,52 +201,54 @@ def _implementation_status(
 def build_connector_execution_matrix() -> tuple[ConnectorActionMatrixEntry, ...]:
     registered = set(list_registered_actions())
     entries: list[ConnectorActionMatrixEntry] = []
-    for vendor, spec in get_vendor_catalog().items():
-        for action in spec.all_actions():
-            catalog_key = action.id if "." in action.id and action.id.startswith(f"{vendor}.") else f"{vendor}.{action.id}"
-            registry_key = resolve_registry_action(catalog_key, registered)
-            implemented = registry_key in registered
-            impl_status = (
-                _implementation_status(
-                    catalog_key,
-                    registered,
-                    kind=action.kind,
-                    destructive=action.destructive,
-                    requires_approval=action.requires_approval,
-                    scopes=action.scopes,
-                )
-                if implemented
-                else "not_implemented"
-            )
-            tool_key = _tool_registry_key(vendor, catalog_key)
-            chat_executable = implemented
-            needs_approval = catalog_action_requires_write_approval(
+    from app.connectors.action_catalog.native_actions import NATIVE_ACTION_SPECS
+    actions = [(vendor, action) for vendor, spec in get_vendor_catalog().items() for action in spec.all_actions()]
+    actions.extend(("platform", action) for action in NATIVE_ACTION_SPECS.values())
+    for vendor, action in actions:
+        catalog_key = action.id if action.id in NATIVE_ACTION_SPECS or ("." in action.id and action.id.startswith(f"{vendor}.")) else f"{vendor}.{action.id}"
+        registry_key = resolve_registry_action(catalog_key, registered)
+        implemented = registry_key in registered
+        impl_status = (
+            _implementation_status(
+                catalog_key,
+                registered,
                 kind=action.kind,
                 destructive=action.destructive,
                 requires_approval=action.requires_approval,
                 scopes=action.scopes,
             )
-            entries.append(
-                ConnectorActionMatrixEntry(
-                    connector_id=vendor,
-                    action_key=catalog_key,
-                    display_name=action.name,
-                    description=action.description,
-                    action_type=action.kind,
-                    kind=action.kind,
-                    destructive=action.destructive,
-                    requires_approval=needs_approval,
-                    required_scopes=action.scopes,
-                    implementation_status=impl_status,
-                    registry_key=registry_key,
-                    tool_registry_key=tool_key,
-                    invoke_tool_handler=registry_key if implemented else "",
-                    chat_executable=chat_executable,
-                    chat_phrases=_chat_phrases(vendor, catalog_key, action.name, action.kind),
-                    fallback_behavior="not_supported" if not implemented else "invoke_tool",
-                    tier=action.tier,
-                )
+            if implemented
+            else "not_implemented"
+        )
+        tool_key = _tool_registry_key(vendor, catalog_key)
+        chat_executable = implemented
+        needs_approval = catalog_action_requires_write_approval(
+            kind=action.kind,
+            destructive=action.destructive,
+            requires_approval=action.requires_approval,
+            scopes=action.scopes,
+        )
+        entries.append(
+            ConnectorActionMatrixEntry(
+                connector_id=vendor,
+                action_key=catalog_key,
+                display_name=action.name,
+                description=action.description,
+                action_type=action.kind,
+                kind=action.kind,
+                destructive=action.destructive,
+                requires_approval=needs_approval,
+                required_scopes=action.scopes,
+                implementation_status=impl_status,
+                registry_key=registry_key,
+                tool_registry_key=tool_key,
+                invoke_tool_handler=registry_key if implemented else "",
+                chat_executable=chat_executable,
+                chat_phrases=_chat_phrases(vendor, catalog_key, action.name, action.kind),
+                fallback_behavior="not_supported" if not implemented else "invoke_tool",
+                tier=action.tier,
             )
+        )
     return tuple(entries)
 
 

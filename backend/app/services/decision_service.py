@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import re
+import asyncio
+import json
+import math
 from enum import StrEnum
 from typing import Any
 
@@ -47,6 +50,7 @@ class DecisionResult(BaseModel):
     requires_human_approval: bool
     rule_matches: list[dict] | None
     ai_reasoning: dict | None
+    model_advice: dict[str, Any] = Field(default_factory=dict)
     # Module C honesty fields (label_confidence) — required on AI-decided branches.
     confidence_is_estimate: bool = True
     confidence_source: str = "heuristic"
@@ -71,6 +75,11 @@ class DecisionService:
     ) -> DecisionResult:
         rule_matches = self._evaluate_rules(input_data, rules or [])
         rule_scores = self._score_paths_from_rules(rule_matches)
+        model_advice = await self._catalog_advice(org_id, input_data, available_paths, rules or [])
+        if model_advice:
+            from app.services.ai_guardrails import fence_untrusted
+            advisory = json.dumps({"advisory_only": True, "model_outputs": model_advice}, default=str)[:12000]
+            rag_context = (rag_context or "") + "\nMeasured-model advice, never execution authority:\n" + fence_untrusted(advisory)
 
         ai_result: DecisionAIReasoning | None = None
         if decision_type in {DecisionType.AI_ASSISTED, DecisionType.HYBRID, DecisionType.AUTONOMOUS}:
@@ -132,11 +141,46 @@ class DecisionService:
             requires_human_approval=requires_human,
             rule_matches=rule_matches or None,
             ai_reasoning=ai_payload,
+            model_advice=model_advice,
             confidence_is_estimate=bool(conf_label.get("confidence_is_estimate")),
             confidence_source=str(conf_label.get("confidence_source") or conf_source),
         )
         self._persist_decision(org_id, workflow_id, run_id, node_id, decision_type, result)
         return result
+
+    async def _catalog_advice(self, org_id: str, facts: dict[str, Any], paths: list[DecisionPath], rules: list[dict]) -> dict[str, Any]:
+        from app.ml.model_catalog import infer_catalog_capability, load_org_trained_catalog_model
+        calls = {}
+        aliases = {"equals": "eq", "greater_than": "gt", "less_than": "lt", "greater_or_equal": "gte", "less_or_equal": "lte", "in": "in"}
+        vetted = [{"id": f"workflow-rule-{index}", "field": rule.get("field"),
+                   "operator": aliases[rule["operator"]], "value": rule.get("value"), "effect": rule.get("path_id")}
+                  for index, rule in enumerate(rules[:100]) if isinstance(rule, dict) and rule.get("operator") in aliases]
+        if vetted:
+            calls["neuro_symbolic"] = {"facts": facts, "rules": vetted}
+        amount = facts.get("deal_amount_before")
+        if type(amount) in {int, float} and math.isfinite(amount) and 1 <= len(paths) <= 10:
+            calls["agentic_planning"] = {"inputs": [{"action": path.id, "deal_amount_before": amount} for path in paths]}
+            # The artifact owns the one-hot vocabulary. Unknown actions and
+            # arbitrary feature schemas never become invented zero-filled rows.
+            try:
+                world = await asyncio.wait_for(load_org_trained_catalog_model(org_id, "world_model"), timeout=1)
+                names = getattr(world, "_features", [])
+                actions = [name[len("action:"):] for name in names if name.startswith("action:")]
+                if (getattr(world, "registry_ref", None) and actions
+                        and set(names) == {"deal_amount_before", *[f"action:{action}" for action in actions]}
+                        and all(path.id in actions for path in paths)):
+                    calls["world_model"] = {"inputs": [{"deal_amount_before": amount,
+                        **{f"action:{action}": float(path.id == action) for action in actions}} for path in paths]}
+            except Exception:
+                pass
+        async def execute(name, inputs):
+            try:
+                result = await asyncio.wait_for(infer_catalog_capability(org_id, name, inputs, source="decision_service"), timeout=2)
+                return name, result if result.get("status") == "ok" else None
+            except Exception:
+                return name, None
+        results = await asyncio.gather(*(execute(name, inputs) for name, inputs in calls.items()))
+        return {name: result for name, result in results if result is not None}
 
     async def _get_ai_reasoning(
         self,

@@ -3504,6 +3504,9 @@ export type TrainingPermission = {
   consent_state: "pending" | "approved" | "paused" | "revoked" | "deferred";
   candidate_data_detected: boolean; observed_count: number | null; required_count: number | null;
   eligibility_note: string;
+  permission_visible?: boolean;
+  processing_kind?: "training" | "inference" | "generation" | "federation";
+  sharing_scope?: string;
 }
 
 export const mlAdminApi = {

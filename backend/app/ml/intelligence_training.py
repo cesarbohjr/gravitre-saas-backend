@@ -57,6 +57,10 @@ CATALOG_MODEL_NAMES = {
     "sla_breach_predictor": "catalog-sla-breach",
     "deal_loss_scorer": "catalog-deal-loss",
     "capacity_forecaster": "catalog-capacity-forecast",
+    "domain_specific_llm": "catalog-domain-specific-llm",
+    "meta_learning": "catalog-meta-learning",
+    "graph_neural_network": "catalog-graph-neural-network",
+    "self_supervised_embeddings": "catalog-self-supervised-embeddings",
     "world_model": "catalog-world-model",
     "agentic_planning": "catalog-agentic-planning",
 }
@@ -159,6 +163,12 @@ def champion_challenger_decision(
     caller's existing non-ML fallback when there is none, in place.
     """
     challenger_metrics = _metrics_dict(challenger)
+    from app.core.safe_dict import safe_normalize_stored_dict
+    from app.ml.federated_adoption import ALGORITHM, promotion_decision
+    if safe_normalize_stored_dict(challenger_metrics.get("custom_metrics")).get("algorithm") == ALGORITHM:
+        if not has_champion:
+            return False, "federated_source_champion_required", {}
+        return promotion_decision(challenger_metrics)
     # A challenger that was measured against a baseline on a time split (churn
     # entity features) must beat it by the margin on enough labels first.
     from app.ml.churn_time_split_eval import baseline_gate_refusal
@@ -179,6 +189,28 @@ def champion_challenger_decision(
             return False, "not_deployed_first_version_not_better_than_chance", evaluation
         return True, "first_deployment_with_held_out_metric", evaluation
     champion_metrics = _metrics_dict(champion)
+    from app.core.safe_dict import safe_normalize_stored_dict
+    new_domain = safe_normalize_stored_dict(challenger_metrics.get("custom_metrics"))
+    old_domain = safe_normalize_stored_dict(champion_metrics.get("custom_metrics"))
+    if any(payload.get("algorithm") == "domain_classification_sft" for payload in (new_domain, old_domain)):
+        keys = ("algorithm", "department", "target_definition", "domain_labels")
+        if any(not new_domain.get(key) or new_domain.get(key) != old_domain.get(key) for key in keys):
+            return False, "not_deployed_incomparable_domain_semantics", {}
+        evaluated_id = new_domain.get("compared_champion_model")
+        score = _finite(new_domain.get("compared_champion_accuracy"))
+        if (not evaluated_id or evaluated_id != old_domain.get("fine_tuned_model")
+                or score is None or not 0 <= score <= 1):
+            return False, "not_deployed_domain_champion_not_evaluated_on_current_holdout", {}
+        champion_metrics = {**champion_metrics, "accuracy": score}
+    from app.core.safe_dict import safe_normalize_stored_dict
+    challenger_custom = safe_normalize_stored_dict(challenger_metrics.get("custom_metrics"))
+    champion_custom = safe_normalize_stored_dict(champion_metrics.get("custom_metrics"))
+    if any(payload.get("algorithm") == "mean_graph_convolution"
+           for payload in (challenger_custom, champion_custom)):
+        keys = ("algorithm", "graph_target_definition", "graph_feature_schema")
+        if any(not challenger_custom.get(key) or challenger_custom.get(key) != champion_custom.get(key)
+               for key in keys):
+            return False, "not_deployed_incomparable_graph_semantics", {}
     for name, higher_is_better in PRIMARY_METRIC_PRIORITY:
         new_value = _finite(challenger_metrics.get(name))
         old_value = _finite(champion_metrics.get(name))
@@ -265,7 +297,9 @@ async def register_trained_artifact_detailed(
     )
     new_version = getattr(version, "version", None)
     if deploy:
-        await registry.deploy_version(model_id, new_version)
+        deployed = await registry.deploy_version(model_id, new_version)
+        if not deployed:
+            deploy, reason = False, "not_deployed_concurrent_champion_change"
     else:
         logger.info(
             "catalog_training_challenger_not_deployed org_id=%s name=%s champion_version=%s "
@@ -482,6 +516,9 @@ async def train_v5_retrieval_ranker(
 ) -> dict[str, Any]:
     active = settings or get_settings()
     db = client or get_supabase_client(active)
+    from app.ml.federated_adoption import pending_adoption
+    if await pending_adoption(org_id,active,db):
+        return {"trained":False,"reason":"federated_independent_holdout_pending"}
     example_count = await count_training_examples(org_id, db)
     if example_count < RetrievalRanker.MIN_TRAINING_EXAMPLES:
         return {
@@ -516,7 +553,11 @@ async def train_retrieval_memory_learner(
     client: Any | None = None,
 ) -> dict[str, Any]:
     """Unified v3 + v4 + v5/v7 training pass."""
+    from app.ml.training_consent import training_is_approved
     active = settings or get_settings()
+    for component in ("retrieval_memory_learner", "retrieval_ranker", "query_clusterer", "memory_promotion_scorer"):
+        if not await training_is_approved(org_id, component, active):
+            return {"trained": False, "reason": "component_training_permission_inactive", "component": component}
     db = client or get_supabase_client(active)
     v3 = await train_v3_query_clusterer(org_id, settings=active, client=db, persist_clusters=True)
     v4 = await train_v4_memory_promotion_scorer(org_id, settings=active, client=db)
@@ -832,54 +873,14 @@ async def train_cf_matrix_factorizer(
     }
 
 
-async def train_sla_breach_predictor(
-    org_id: str,
-    *,
-    settings: Settings | None = None,
-    client: Any | None = None,
-) -> dict[str, Any]:
-    """Not trainable from the current schema.
-
-    The predictor needs per-ticket SLA features and a breached/not-breached
-    label. agent_action_outcomes stores only metric_value_before/after per
-    action (no payload, no success flag), so there is no honest label source.
-    Return a clear reason instead of querying columns that do not exist.
-    """
-    _ = settings, client
-    from app.ml.predictive_ops_models import SLA_FEATURE_KEYS
-
-    return {
-        "trained": False,
-        "reason": REASON_MISSING_TRAINING_COLUMNS,
-        "table": "agent_action_outcomes",
-        "missing": ["sla feature payload", "sla_breached label"],
-        "feature_keys": list(SLA_FEATURE_KEYS),
-        "org_id": org_id,
-    }
+async def train_sla_breach_predictor(org_id: str, *, settings: Settings | None = None, client: Any | None = None) -> dict[str, Any]:
+    from app.ml.bound_risk_training import train_bound_risk_model
+    return await train_bound_risk_model(org_id, "sla_breach_predictor", settings=settings)
 
 
-async def train_deal_loss_scorer(
-    org_id: str,
-    *,
-    settings: Settings | None = None,
-    client: Any | None = None,
-) -> dict[str, Any]:
-    """Not trainable from the current schema.
-
-    Needs per-deal features and a won/lost label; agent_action_outcomes has
-    neither (no outcome_payload / outcome_success). Return a clear reason.
-    """
-    _ = settings, client
-    from app.ml.predictive_ops_models import DEAL_FEATURE_KEYS
-
-    return {
-        "trained": False,
-        "reason": REASON_MISSING_TRAINING_COLUMNS,
-        "table": "agent_action_outcomes",
-        "missing": ["deal feature payload", "won/lost label"],
-        "feature_keys": list(DEAL_FEATURE_KEYS),
-        "org_id": org_id,
-    }
+async def train_deal_loss_scorer(org_id: str, *, settings: Settings | None = None, client: Any | None = None) -> dict[str, Any]:
+    from app.ml.bound_risk_training import train_bound_risk_model
+    return await train_bound_risk_model(org_id, "deal_loss_scorer", settings=settings)
 
 
 async def train_capacity_forecaster(
@@ -998,10 +999,16 @@ async def train_causal_impact_analyzer(
     return {"trained": False, "reason": "on_demand_observational_estimator", **structured}
 
 
-from app.ml.advanced_training import train_world_model, train_agentic_planning
+from app.ml.advanced_training import train_world_model, train_agentic_planning, train_graph_neural_network, train_self_supervised_embeddings, train_meta_learning
 
+
+from app.ml.domain_llm import enqueue_domain_training
 
 TRAINING_DISPATCH: dict[str, Any] = {
+    "domain_specific_llm": enqueue_domain_training,
+    "meta_learning": train_meta_learning,
+    "graph_neural_network": train_graph_neural_network,
+    "self_supervised_embeddings": train_self_supervised_embeddings,
     "world_model": train_world_model,
     "agentic_planning": train_agentic_planning,
     "intent_classifier": train_v2_intent_classifier,

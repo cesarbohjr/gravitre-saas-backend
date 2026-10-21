@@ -160,3 +160,20 @@ async def test_complete_for_agent_falls_back_to_base_model():
     assert router.complete.await_count == 2
     audit.assert_called_once()
     assert audit.call_args.kwargs["metadata"]["usedFallback"] is True
+
+
+@pytest.mark.parametrize("pointer", [None, 0, -1, True])
+def test_fine_tune_assignment_never_activates_undeployed_current_version(pointer):
+    client = MagicMock()
+    client.table.return_value = _chainable([{
+        "id": "model-1", "org_id": "org-1", "model_type": "fine_tuned_llm",
+        "status": "ready", "base_model": "gpt-4.1", "current_version": 3,
+        "deployed_version": pointer,
+    }])
+    result = resolve_agent_inference_model(client, "org-1", {
+        "id": "agent-1", "model": "gpt-4.1", "trained_model_id": "model-1",
+    })
+    assert result.fine_tuned_openai_id is None
+    assert result.trained_model_version is None
+    assert result.base_model == "gpt-4.1"
+    assert [call.args[0] for call in client.table.call_args_list] == ["trained_models"]

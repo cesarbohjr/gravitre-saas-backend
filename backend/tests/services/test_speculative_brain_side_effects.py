@@ -12,6 +12,8 @@ with the real ConversationStateService behind it:
 from __future__ import annotations
 
 import asyncio
+import itertools
+import uuid
 import re
 from types import SimpleNamespace
 from typing import Any
@@ -124,7 +126,17 @@ async def _run_turn(db: FakeSupabaseDB, scope: SpeculativeScope | None) -> Assis
         ):
             events.append(event)
 
+    # Stable generated IDs keep the real PII redactor from treating a random
+    # UUID's digit run as a card in just one of the two otherwise equal turns.
+    generated_ids = itertools.count(1)
+    def generated_uuid():
+        value, suffix = next(generated_ids), ""
+        for _ in range(12):
+            value, digit = divmod(value, 6)
+            suffix = "abcdef"[digit] + suffix
+        return uuid.UUID(hex="a" * 20 + suffix, version=4)
     with (
+        patch("uuid.uuid4", side_effect=generated_uuid),
         patch("app.core.db.shared_service_client", return_value=db),
         patch("app.services.intent_gateway.evaluate_intent_gateway", gateway),
         patch("app.services.mcp_client_service.get_mcp_client_service") as mcp_svc,

@@ -48,12 +48,13 @@ class RetrievalMemoryLearner(BaseMLModel):
         **kwargs: Any,
     ) -> tuple[list[Any], list[dict[str, float]] | None]:
         org_id = kwargs.get("org_id")
-        if not org_id and isinstance(X, list) and X and isinstance(X[0], dict):
-            org_id = X[0].get("org_id")
-        if not org_id:
-            raise ValueError("org_id required for RetrievalMemoryLearner.predict")
-        summary = await self.get_retrieval_quality_summary(str(org_id))
-        return [summary], None
+        if not isinstance(org_id, str) or not org_id:
+            raise ValueError("Authenticated org_id required for RetrievalMemoryLearner.predict")
+        if self._ranker.model is None:
+            raise ValueError("Validated retrieval-ranker component required")
+        # Runtime inference uses the actual shared ranker. Summary counts remain
+        # available through get_retrieval_quality_summary, never as predictions.
+        return await self._ranker.predict(X, return_probabilities=return_probabilities)
 
     async def train_for_org(self, org_id: str) -> dict[str, Any]:
         from app.ml.intelligence_training import train_retrieval_memory_learner

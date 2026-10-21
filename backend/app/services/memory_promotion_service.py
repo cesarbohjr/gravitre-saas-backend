@@ -1082,6 +1082,36 @@ class MemoryPromotionService:
 
         return {"org_id": org_id, "expired": expired_count, "ttl_reset": reset_count}
 
+    async def list_candidates_with_ml_advice(self, org_id: str, **filters: Any) -> dict[str, Any]:
+        """Attach advisory model scores to review rows; never approve or reorder.
+
+        The existing list remains the source of tenant-authorized candidates.
+        Counts-only consumers keep using list_candidates without inference.
+        """
+        from app.core.io_pool import run_io
+        from app.ml.model_catalog import infer_catalog_capability
+
+        result = await run_io(self.list_candidates, org_id, **filters)
+        items = result.get("items") or []
+        if not items:
+            return result
+        try:
+            inference = await infer_catalog_capability(
+                org_id, "memory_promotion_scorer", {"inputs": items[:100]}, settings=self.settings, source="memory_review",
+            )
+            probabilities = inference.get("probabilities")
+            if (inference.get("status") == "ok" and isinstance(probabilities, list)
+                    and len(probabilities) == len(items[:100])):
+                result["items"] = [
+                    {**item, "mlAdvice": {"approval_probability": probabilities[index].get("approve"),
+                                         "registry_ref": inference.get("registry_ref"), "advisory_only": True}}
+                    if index < len(probabilities) else item for index, item in enumerate(items)
+                ]
+            result["ml_inference_status"] = inference.get("status", "not_verified")
+        except Exception:  # Optional scores must not hide the human review queue.
+            result["ml_inference_status"] = "not_verified"
+        return result
+
     def list_candidates(
         self,
         org_id: str,

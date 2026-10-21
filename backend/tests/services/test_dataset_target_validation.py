@@ -48,7 +48,7 @@ def test_play_workflow_and_agent_use_existing_canonical_sources(monkeypatch):
 def test_model_department_and_evaluation_are_tenant_scoped():
     client = _Client(
         {
-            "ml_models": [
+            "trained_models": [
                 {"id": "model-1", "org_id": "org-1"},
                 {"id": "model-2", "org_id": "org-2"},
             ],

@@ -21,6 +21,8 @@ logger = get_logger(__name__)
 AUTOMATIC_MODELS = (
     "revenue_forecaster", "churn_risk_scorer", "cf_matrix_factorizer",
     "capacity_forecaster", "agentic_planning", "world_model",
+    "sla_breach_predictor", "deal_loss_scorer",
+    "graph_neural_network", "self_supervised_embeddings", "meta_learning", "domain_specific_llm",
 )
 # These already train in CompanyIntelligenceOrchestrator; require the same
 # reviewed consent without adding duplicate training work.
@@ -58,7 +60,10 @@ async def reconcile_automatic_models(org_id: str, settings: Settings) -> dict[st
                 continue
             registered = next((m for m in models if m.name == CATALOG_MODEL_NAMES[name]), None)
             updated = registered.updated_at if registered else None
-            if updated is not None:
+            # An explicitly bound target starts as a draft registry row. Its
+            # creation timestamp is not a previous training run and must not
+            # delay the first valid, consented training attempt for 14 days.
+            if updated is not None and registered.current_version > 0:
                 if updated.tzinfo is None:
                     updated = updated.replace(tzinfo=timezone.utc)
                 if now - updated < COOLDOWN:
@@ -69,6 +74,12 @@ async def reconcile_automatic_models(org_id: str, settings: Settings) -> dict[st
             except Exception as exc:
                 logger.warning("automatic_model_check_failed org_id=%s model=%s error=%s", org_id, name, exc)
                 results[name] = {"trained": False, "reason": "training_check_failed"}
+        if consent_is_approved(consents, "federated_learning"):
+            from app.ml.federated_learning import FederatedLearningCoordinator
+            try:
+                results["federated_learning"] = await FederatedLearningCoordinator().reconcile(org_id=org_id, settings=settings)
+            except Exception:
+                results["federated_learning"] = {"status": "dormant", "reason": "privacy_runtime_prerequisites_unverified"}
         return {"status": "checked", "models": results}
     finally:
         try:

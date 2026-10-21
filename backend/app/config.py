@@ -360,8 +360,21 @@ class Settings(BaseSettings):
     rag_store_raw_files: bool = True
     # Phase 2 — durable chat artifacts (md/docx/csv/pdf/html) for file-reference chips
     chat_artifacts_bucket: str = "chat-artifacts"
+
+    # Independently reviewed federation infrastructure. Missing material means
+    # dormant; these are deployment credentials, never customer feature toggles.
+    federated_runtime_url: str = ""
+    federated_runtime_ca_file: str = ""
+    federated_runtime_cert_file: str = ""
+    federated_runtime_key_file: str = ""
+    federated_audit_public_key: str = ""
+    federated_audit_manifest: str = ""
+    federated_node_registry_file: str = ""
+    federated_consent_service_url: str = ""
+    federated_consent_service_secret: str = ""
     chat_store_hosted_files: bool = True
     blob_read_write_token: str = ""
+    blob_store_id: str = ""
     ml_default_classifier: str = "random_forest"
     ml_anomaly_contamination: float = 0.1
     ml_forecast_horizon: int = 7

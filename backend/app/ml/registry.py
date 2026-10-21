@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import asyncio
+import re
+from urllib.parse import urlparse
 from typing import Any
 from uuid import uuid4
 
@@ -154,17 +157,63 @@ class ModelRegistry:
         if not result.data:
             raise ValueError(f"Model {model_id} not found")
         model_data = result.data[0]
-        deploy_version = version or model_data["current_version"]
-        version_result = client.table("model_versions").select("id").eq("model_id", model_id).eq("version", deploy_version).execute()
+        # Keep manual API deployment and automatic promotion on the same gates.
+        # Catalog status is implementation metadata, never deployment evidence.
+        from app.ml.automatic_training import CONSENT_MANAGED_MODELS
+        from app.ml.intelligence_training import CATALOG_MODEL_NAMES, champion_challenger_decision
+        from app.ml.training_consent import training_is_approved
+
+        catalog_name = next((key for key, name in CATALOG_MODEL_NAMES.items()
+                             if name == model_data.get("name")), model_data.get("base_model"))
+        deploy_version = version if version is not None else model_data["current_version"]
+        if type(deploy_version) is not int or deploy_version < 1:
+            raise ValueError("A positive artifact version is required")
+        if catalog_name in CONSENT_MANAGED_MODELS:
+            org_id = model_data.get("org_id")
+            if not org_id or not await training_is_approved(org_id, catalog_name, self.settings):
+                raise ValueError("training_consent_required")
+            challenger = await self.get_version_metrics(model_id, deploy_version)
+            champion_version = model_data.get("deployed_version")
+            from app.core.safe_dict import safe_normalize_stored_dict
+            from app.ml.federated_adoption import ALGORITHM
+            custom = safe_normalize_stored_dict(safe_normalize_stored_dict(challenger).get("custom_metrics"))
+            if custom.get("algorithm") == ALGORITHM:
+                if (custom.get("compared_champion_model") != model_id
+                        or custom.get("compared_champion_version") != champion_version):
+                    raise ValueError("federated_source_champion_changed")
+                if not await training_is_approved(org_id,"federated_learning",self.settings):
+                    raise ValueError("federated_consent_required")
+            champion = (await self.get_version_metrics(model_id, champion_version)
+                        if champion_version is not None else None)
+            permitted, reason, _ = champion_challenger_decision(
+                challenger, champion, has_champion=champion_version is not None,
+            )
+            if not permitted:
+                raise ValueError(reason)
+        version_result = client.table("model_versions").select("id,artifact_url").eq("model_id", model_id).eq("version", deploy_version).execute()
         if not version_result.data:
             raise ValueError(f"Version {deploy_version} not found for model {model_id}")
-        client.table("trained_models").update(
+        if catalog_name in CONSENT_MANAGED_MODELS and not version_result.data[0].get("artifact_url"):
+            raise ValueError("catalog_artifact_required")
+        if catalog_name == "retrieval_ranker" and custom.get("algorithm") == ALGORITHM:
+            from app.ml.learning_to_rank import RetrievalRanker
+            from app.ml.federated_adoption import artifact_permission
+            loaded = RetrievalRanker()
+            loaded.load(await self.load_model_artifact(model_id,deploy_version))
+            if (loaded.federation != {"round_id":custom.get("federated_round"),"audit_digest":custom.get("federated_audit_digest")}
+                    or not await artifact_permission(org_id,loaded,self.settings)):
+                raise ValueError("federated_artifact_permission_or_provenance_required")
+        query = client.table("trained_models").update(
             {
                 "deployed_version": deploy_version,
                 "status": ModelStatus.DEPLOYED.value,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
-        ).eq("id", model_id).execute()
+        ).eq("id", model_id).eq("org_id",model_data["org_id"])
+        previous_version = model_data.get("deployed_version")
+        query = query.is_("deployed_version","null") if previous_version is None else query.eq("deployed_version",previous_version)
+        if not query.execute().data:
+            return False
         logger.info("model_deployed model_id=%s version=%s", model_id, deploy_version)
         return True
 
@@ -281,7 +330,7 @@ class ModelRegistry:
         if not version_result.data:
             raise ValueError(f"Version {load_version} not found")
         artifact_url = version_result.data[0]["artifact_url"]
-        return await self._download_artifact(artifact_url)
+        return await self._download_artifact(artifact_url,model_id=model_id,version=load_version)
 
     async def log_prediction(
         self,
@@ -293,7 +342,7 @@ class ModelRegistry:
         latency_ms: float,
     ) -> None:
         client = self._get_client()
-        client.table("model_predictions").insert(
+        query = client.table("model_predictions").insert(
             {
                 "org_id": org_id,
                 "model_id": model_id,
@@ -302,7 +351,8 @@ class ModelRegistry:
                 "prediction": prediction,
                 "latency_ms": int(latency_ms),
             }
-        ).execute()
+        )
+        await run_io(query.execute)
 
     async def _upload_artifact(self, model_id: str, version: int, data: bytes) -> str:
         """Upload via current Vercel Blob put API (pathname query + access header)."""
@@ -334,17 +384,48 @@ class ModelRegistry:
                 )
             response.raise_for_status()
             result = response.json()
+        self._validate_artifact_url(result["url"],model_id,version)
         return result["url"]
 
-    async def _download_artifact(self, url: str) -> bytes:
-        headers: dict[str, str] = {}
+    def _validate_artifact_url(self,url: str,model_id: str,version: int) -> None:
+        # Same store-id normalization as Vercel's resolveBlobAuth helper.
+        # A tenant-editable registry URL must not receive the global Blob key
+        # or point at another model's private artifact in the same store.
         blob_token = self.settings.blob_read_write_token
-        if blob_token:
-            headers["Authorization"] = f"Bearer {blob_token}"
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.get(url, headers=headers)
-            response.raise_for_status()
-        return response.content
+        parts = blob_token.split('_') if isinstance(blob_token,str) else []
+        store = parts[3] if len(parts) >= 4 and parts[:3] == ['vercel','blob','rw'] else ''
+        configured = getattr(self.settings,'blob_store_id','')
+        if configured:
+            configured = configured.removeprefix('store_')
+        parsed = urlparse(url)
+        if (not re.fullmatch(r'[A-Za-z0-9-]+',store)
+                or configured and configured.lower() != store.lower()
+                or not isinstance(model_id,str) or not re.fullmatch(r'[A-Za-z0-9-]{1,80}',model_id)
+                or type(version) is not int or version < 1
+                or parsed.scheme != 'https' or parsed.username or parsed.password or parsed.port not in {None,443}
+                or parsed.hostname != store.lower()+'.private.blob.vercel-storage.com'
+                or parsed.path != f'/models/{model_id}/v{version}.pkl' or parsed.query or parsed.fragment):
+            raise ValueError('Artifact must belong to the configured private store and requested model/version')
+
+    async def _download_artifact(self, url: str, *, model_id: str, version: int) -> bytes:
+        self._validate_artifact_url(url,model_id,version)
+        limit = 128*1024*1024
+        async with asyncio.timeout(60):
+            async with httpx.AsyncClient(timeout=60.0,follow_redirects=False) as client:
+                async with client.stream('GET',url,headers={'Authorization':f'Bearer {self.settings.blob_read_write_token}'}) as response:
+                    response.raise_for_status()
+                    if response.status_code != 200:
+                        raise ValueError('Artifact redirect or incomplete response refused')
+                    if int(response.headers.get('content-length','0')) > limit:
+                        raise ValueError('Artifact exceeds bounded model size')
+                    content = bytearray()
+                    async for chunk in response.aiter_bytes():
+                        content.extend(chunk)
+                        if len(content) > limit:
+                            raise ValueError('Artifact exceeds bounded model size')
+        if not content:
+            raise ValueError('Empty model artifact')
+        return bytes(content)
 
 
 _registry: ModelRegistry | None = None

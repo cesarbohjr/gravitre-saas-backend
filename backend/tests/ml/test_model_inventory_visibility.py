@@ -32,12 +32,14 @@ async def test_member_catalog_filters_advanced_but_admin_inventory_is_complete()
 
 def test_dispatch_placeholder_is_not_manual_training_support():
     assert model_inventory_definition('intent_classifier')['manual_training_supported'] is True
-    for name in ['sla_breach_predictor', 'deal_loss_scorer', 'federated_learning']:
+    assert model_inventory_definition('sla_breach_predictor')['manual_training_supported'] is True
+    assert model_inventory_definition('deal_loss_scorer')['manual_training_supported'] is True
+    for name in ['federated_learning']:
         assert model_inventory_definition(name)['manual_training_supported'] is False
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('name', ['world_model', 'federated_learning', 'sla_breach_predictor', 'unknown'])
+@pytest.mark.parametrize('name', ['world_model', 'federated_learning', 'unknown'])
 async def test_unsupported_training_cannot_be_queued_in_temporal(name, monkeypatch):
     monkeypatch.setenv('TEMPORAL_HOST', 'temporal.example')
     with patch('app.routers.ml_admin.start_ml_model_training_workflow', AsyncMock()) as queue:
@@ -91,5 +93,6 @@ def test_technical_inventory_and_training_enforce_actual_member_role():
         client = TestClient(app)
         assert client.get('/api/admin/ml/models').status_code == 403
         assert client.post('/api/admin/ml/models/intent_classifier/train').status_code == 403
+        assert client.get('/api/admin/ml/lifecycle').status_code == 403
         build.assert_not_awaited()
         train.assert_not_awaited()

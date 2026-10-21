@@ -59,6 +59,10 @@ class AgentPlanningModel(BaseMLModel):
         if self._model is None:
             raise ValueError("Validated planning artifact required")
         rows = self._rows(X)
+        known_actions = {name[len("action="):] for name in self._vectorizer.get_feature_names_out()
+                         if name.startswith("action=")}
+        if any(row["action"] not in known_actions for row in rows):
+            raise ValueError("Candidate action was not represented in measured training history")
         matrix = self._vectorizer.transform(rows)
         probability = self._model.predict_proba(matrix)[:, 1]
         return probability.tolist(), None

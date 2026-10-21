@@ -324,6 +324,7 @@ def put_org_file(
     content_type: str | None,
     purpose: str,
     upsert: bool = True,
+    expected_storage: tuple[str, str] | None = None,
 ) -> dict[str, Any]:
     """Store one uploaded file and return its metadata. Raises on upload failure.
 
@@ -333,6 +334,10 @@ def put_org_file(
     meta: dict[str, Any] = {"storage_bucket": logical_bucket, "storage_path": path, "storage_bytes": len(data)}
     flag_on = getattr(settings, "byo_storage_enabled", False) is True
     target = active_target(client, settings, org_id) if flag_on else None
+    if expected_storage is not None:
+        actual = ("byo", storage_target_fingerprint(target)) if target else ("supabase", logical_bucket)
+        if actual != expected_storage:
+            raise ByoStorageError("Artifact storage changed after privacy verification")
     if target is not None:
         key = object_key(target, logical_bucket, path)
         extra: dict[str, Any] = {"ContentType": content_type} if content_type else {}
@@ -420,3 +425,68 @@ def resolve_download_url(
     bucket = str((record or {}).get("bucket") or logical_bucket)
     key = str((record or {}).get("object_key") or path)
     return {"location": "supabase", "url": _supabase_signed_url(client, bucket, key, int(ttl)), "expiresIn": int(ttl)}
+
+
+def read_org_file(client: Any, settings: Any, *, org_id: str, logical_bucket: str,
+                  path: str, max_bytes: int) -> bytes:
+    """Read a private organization object without accepting remote URLs."""
+    if not org_id or path.split("/", 1)[0] != org_id or any(p in {"", ".", ".."} for p in path.split("/")):
+        raise ByoStorageError("File not found.")
+    if not 1 <= max_bytes <= 20 * 1024 * 1024:
+        raise ByoStorageError("Invalid object read bound")
+    # A failed object-location lookup cannot redirect a BYO object to another
+    # store. The existing record is authoritative when this feature is enabled.
+    record = None
+    if getattr(settings, "byo_storage_enabled", False) is True:
+        response = (client.table(OBJECTS_TABLE).select("location,bucket,object_key,byte_size")
+                    .eq("org_id", org_id).eq("logical_bucket", logical_bucket)
+                    .eq("logical_path", path).limit(1).execute())
+        record = response.data[0] if response.data else None
+    if record and record.get("location") == "byo":
+        target = load_target(client, org_id)
+        if not target:
+            raise ByoStorageUnavailableError("Organization storage unavailable")
+        response = s3_client(settings, target).get_object(Bucket=record["bucket"], Key=record["object_key"])
+        body = response["Body"]
+        try:
+            if not 0 < response["ContentLength"] <= max_bytes:
+                raise ByoStorageError("Object exceeds read bound")
+            data = body.read(max_bytes + 1)
+        finally:
+            body.close()
+    else:
+        storage = client.storage.from_(logical_bucket)
+        folder, filename = path.rsplit("/", 1)
+        rows = storage.list(folder, {"search": filename, "limit": 100})
+        row = next((item for item in rows if item.get("name") == filename), None)
+        from app.core.safe_dict import safe_normalize_stored_dict
+        metadata = safe_normalize_stored_dict((row or {}).get("metadata"))
+        size = metadata.get("size")
+        if type(size) is not int or not 0 < size <= max_bytes:
+            raise ByoStorageError("Object size unavailable or exceeds read bound")
+        # Stream from the configured Supabase origin rather than accepting an
+        # object URL. Recheck actual bytes, including when metadata races a
+        # connector update; SDK download() otherwise buffers the whole object.
+        from urllib.parse import quote
+        import httpx
+        origin = str(settings.supabase_url).rstrip("/")
+        endpoint = origin + "/storage/v1/object/authenticated/" + quote(logical_bucket, safe="") + "/" + quote(path, safe="/")
+        chunks, total = [], 0
+        with httpx.Client(timeout=30, follow_redirects=False) as transport:
+            with transport.stream("GET", endpoint, headers={"Authorization": "Bearer " + settings.supabase_service_role_key}) as response:
+                response.raise_for_status()
+                for chunk in response.iter_bytes(chunk_size=65536):
+                    total += len(chunk)
+                    if total > max_bytes:
+                        raise ByoStorageError("Object exceeds read bound")
+                    chunks.append(chunk)
+        data = b"".join(chunks)
+    if not isinstance(data, bytes) or not 0 < len(data) <= max_bytes:
+        raise ByoStorageError("Object exceeds read bound")
+    return data
+
+
+def storage_target_fingerprint(target: dict[str, Any]) -> str:
+    import hashlib
+    import json
+    return hashlib.sha256(json.dumps(target, sort_keys=True, default=str).encode()).hexdigest()

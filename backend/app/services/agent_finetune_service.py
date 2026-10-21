@@ -91,8 +91,10 @@ def resolve_agent_inference_model(client: Any, org_id: str, agent: dict[str, Any
             fine_tuned_openai_id=None,
         )
 
-    version = row.get("deployed_version") or row.get("current_version")
-    if not version:
+    # Assignment and a newer trained version do not promote an artifact.
+    # Continue using the explicit deployed champion, or the base provider model.
+    version = row.get("deployed_version")
+    if type(version) is not int or version < 1:
         return AgentInferenceModel(
             agent_id=agent_id,
             base_model=(row.get("base_model") or base_model),

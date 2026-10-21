@@ -41,7 +41,7 @@ def dataset_target_exists(
 
     if kind == "model":
         rows = (
-            client.table("ml_models")
+            client.table("trained_models")
             .select("id")
             .eq("org_id", org_id)
             .eq("id", target)

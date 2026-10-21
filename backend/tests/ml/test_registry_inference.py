@@ -60,7 +60,7 @@ async def test_inference_predict_with_stubbed_runtime(monkeypatch):
 @pytest.mark.asyncio
 async def test_upload_artifact_uses_vercel_blob_put_api(monkeypatch):
     registry = ModelRegistry()
-    registry._settings = SimpleNamespace(blob_read_write_token="vercel_blob_rw_test")
+    registry._settings = SimpleNamespace(blob_read_write_token="vercel_blob_rw_example_testonly")
 
     captured: dict = {}
 
@@ -72,7 +72,7 @@ async def test_upload_artifact_uses_vercel_blob_put_api(monkeypatch):
             return None
 
         def json(self):
-            return {"url": "https://example.public.blob.vercel-storage.com/models/m1/v1.pkl"}
+            return {"url": "https://example.private.blob.vercel-storage.com/models/m1/v1.pkl"}
 
     class _Client:
         def __init__(self, *args, **kwargs):
@@ -97,7 +97,7 @@ async def test_upload_artifact_uses_vercel_blob_put_api(monkeypatch):
     assert url.endswith("/models/m1/v1.pkl")
     assert captured["url"] == "https://blob.vercel-storage.com/"
     assert captured["params"] == {"pathname": "models/m1/v1.pkl"}
-    assert captured["headers"]["Authorization"] == "Bearer vercel_blob_rw_test"
+    assert captured["headers"]["Authorization"] == "Bearer vercel_blob_rw_example_testonly"
     assert captured["headers"]["x-api-version"] == "12"
     assert captured["headers"]["x-vercel-blob-access"] == "private"
     assert captured["content"] == b"pickle-bytes"

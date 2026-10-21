@@ -108,7 +108,7 @@ async def test_model_missing_structured_interface_degrades_honestly():
     engine = PredictiveOperationsEngine()
 
     class _NoStructuredInterface:
-        """Stands in for AnomalyDetector et al — no predict_structured method."""
+        """Stands in for a legacy model — no predict_structured method."""
 
     mock_instance = _NoStructuredInterface()
     with patch(
@@ -119,10 +119,10 @@ async def test_model_missing_structured_interface_degrades_honestly():
             "app.ml.model_catalog.load_org_trained_catalog_model",
             AsyncMock(return_value=mock_instance),
         ):
-            result = await engine._predict_model("org-1", "workflow_anomaly_detector")
+            result = await engine._predict_model("org-1", "capacity_forecaster")
 
     assert result["status"] == "not_available"
-    assert result["model"] == "workflow_anomaly_detector"
+    assert result["model"] == "capacity_forecaster"
     assert result["advisory_only"] is True
 
 
@@ -150,4 +150,4 @@ async def test_run_domain_predictions_never_500s_when_one_model_lacks_interface(
 
     assert result["domain"] == "support"
     statuses = {name: payload.get("status") for name, payload in result["predictions"].items()}
-    assert statuses["workflow_anomaly_detector"] == "not_available"
+    assert statuses["capacity_forecaster"] == "not_available"

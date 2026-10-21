@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 # for the same trainers (hyphenated / product names). Anything else fails
 # fast with a message that lists what is supported.
 _CLASSIFIER_BASES = frozenset({"classifier", "random_forest", "xgboost", "logistic", "gradient_boosting"})
-_SUPPORTED_BASES = _CLASSIFIER_BASES | {"intent_classifier", "anomaly_detector", "forecaster", "success_predictor"}
+_SUPPORTED_BASES = _CLASSIFIER_BASES | {"intent_classifier", "anomaly_detector", "forecaster", "success_predictor", "domain_specific_llm"}
 MODEL_BASE_ALIASES: dict[str, str] = {
     "random-forest": "random_forest",
     "logistic-regression": "logistic",
@@ -83,15 +83,25 @@ class TrainingWorker:
                 logger.error("job_not_found job_id=%s", job_id)
                 return
             job = result.data[0]
+            if job.get("model_base") == "domain_specific_llm":
+                from app.ml.domain_llm import execute_domain_training
+                # Compare-and-set prevents two queue deliveries from dispatching
+                # the same provider job. Running jobs require reconciliation.
+                claimed = client.table("training_jobs").update({"status": "training",
+                    "started_at": datetime.now(timezone.utc).isoformat()}).eq("id", job_id).eq("status", "queued").execute()
+                if not claimed.data:
+                    return
+                await execute_domain_training(job, self.settings)
+                return
             client.table("training_jobs").update(
                 {"status": "training", "started_at": datetime.now(timezone.utc).isoformat()}
             ).eq("id", job_id).execute()
 
-            dataset_result = client.table("training_datasets").select("*").eq("id", job["dataset_id"]).execute()
+            dataset_result = client.table("training_datasets").select("*").eq("id", job["dataset_id"]).eq("org_id", job["org_id"]).execute()
             if not dataset_result.data:
                 raise ValueError(f"Dataset {job['dataset_id']} not found")
             dataset = dataset_result.data[0]
-            records_result = client.table("training_records").select("*").eq("dataset_id", job["dataset_id"]).execute()
+            records_result = client.table("training_records").select("*").eq("dataset_id", job["dataset_id"]).eq("org_id", job["org_id"]).execute()
             records = records_result.data or []
             if not records:
                 raise ValueError("No training records found")
