@@ -1298,12 +1298,12 @@ class GravitreCognitiveLLMService(LLMService):
             return
         confirm_hold_s = confirmation_hold_seconds(self._app_settings)
         bare_yes = is_bare_confirmation(user_text)
-        if confirm_hold_s > 0 and bare_yes and (
-            self._approval_read_back_here() or answers_assistant_question(user_text, history)
-        ):
-            # voice_confirmation_hold_v1: before the brain runs (so before any
-            # approval is consumed or write executed) make sure the go-ahead
-            # is final. Raises _TurnYieldedToUser when the user went on.
+        if confirm_hold_s > 0 and bare_yes:
+            # Voice STT can split "yes ... wait" into two committed turns.
+            # History may omit the question while speech is still playing,
+            # so never use prompt recognition to bypass the settle barrier.
+            # Even a bare confirmation in an ordinary spoken turn must be
+            # final before downstream approval or write handling runs.
             await self._hold_bare_confirmation(user_text, confirm_hold_s)
         if self._interrupt_reporter is not None:
             # A confirmed new user turn ends the interrupted one: let its
