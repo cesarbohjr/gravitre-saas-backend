@@ -1,6 +1,6 @@
 # Private retrieval federation runtime
 
-This optional deployment reuses the existing retrieval ranker. It does not introduce a new intelligence engine or automatically promote aggregates. Main API runtime does not install Flower or PyDP.
+This optional deployment reuses the existing retrieval ranker. It does not introduce a new intelligence engine. Aggregates remain candidates until the existing backend validates independent future tenant-local feedback and passes the shared promotion gate. Main API runtime does not install Flower or PyDP.
 
 ## Deployment contract
 
@@ -30,3 +30,5 @@ The existing company-learning reconciler detects 100 distinct currently approved
 The controller persists the Flower run ID and reads official `flwr ls` source state. On restart, GET round readback reconciles a known run without redispatching. Unknown dispatch identity remains blocked. Privacy reservations are never refunded or reset by failure/restart. Operators must reconcile an unknown reservation from the actual source record rather than delete ledgers.
 
 Output is a private aggregate **candidate**, never a deployed artifact or proof of customer outcomes. Adoption still requires independent per-organization held-out validation and the existing promotion gate. No production federation is authorized by synthetic tests. An independent privacy review, provisioned authenticated compute and at least 100 real tenant approvals are mandatory deployment prerequisites.
+
+Candidate adoption and the independent privacy review/live acceptance packet are documented in `docs/delivery/federation-privacy-review-and-live-acceptance.md` at the repository root. Source feature snapshots require the reviewed observation migration before program activation.

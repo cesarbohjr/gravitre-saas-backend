@@ -164,7 +164,7 @@ def test_list_rejects_unknown_category(mock_plan, mock_create):
 @patch("app.routers.audit.get_plan_for_org", return_value=DEFAULT_PLANS["node"])
 def test_export_applies_the_same_filters_to_the_whole_range(mock_plan, mock_create):
     mock_create.return_value = _client()
-    authenticate()
+    authenticate(as_admin=True)  # exporting needs audit_export
     body = client.get("/api/audit/export?format=json&outcome=err&range=7d").json()
     assert body["total"] == 2
     assert {log["id"] for log in body["logs"]} == {"e-1", "e-3"}

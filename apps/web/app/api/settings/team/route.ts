@@ -12,6 +12,14 @@ function normalizeUserRole(role: unknown): "owner" | "admin" | "member" | "viewe
   return "member"
 }
 
+const CUSTOM_ROLE_KEY = /^[a-z][a-z0-9_]{0,39}$/
+
+/** Membership role as stored: a built in role or a custom role key from Trust & Safety > Role permissions. */
+function membershipRole(role: unknown): string {
+  const value = String(role ?? "member").trim().toLowerCase()
+  return CUSTOM_ROLE_KEY.test(value) ? value : "member"
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = createSupabaseRouteClient(request)
@@ -66,7 +74,7 @@ export async function GET(request: NextRequest) {
         membershipId: member.id,
         orgId,
         userId: authUserId,
-        role: normalizeUserRole(member.role),
+        role: membershipRole(member.role),
         createdAt: member.created_at ?? null,
         email: user?.email ?? null,
         name: user?.full_name ?? null,
@@ -145,7 +153,10 @@ export async function PATCH(request: NextRequest) {
     }
 
     const updates: Record<string, unknown> = {}
-    if (snake.role !== undefined) updates.role = normalizeUserRole(snake.role)
+    // public.users.role is a display copy limited to the built in roles; the
+    // membership (changed by the backend below) can hold a custom role.
+    const requestedRole = snake.role !== undefined ? membershipRole(snake.role) : null
+    if (requestedRole !== null) updates.role = normalizeUserRole(requestedRole)
     if (snake.full_name !== undefined || snake.name !== undefined) {
       updates.full_name = String(snake.full_name ?? snake.name ?? "").trim() || null
     }
@@ -177,7 +188,7 @@ export async function PATCH(request: NextRequest) {
       if (callerRole !== "owner" && callerRole !== "admin") {
         return NextResponse.json({ error: "Only an org admin can change roles" }, { status: 403 })
       }
-      if (updates.role === "owner") {
+      if (requestedRole === "owner") {
         return NextResponse.json({ error: "Ownership cannot be assigned here" }, { status: 400 })
       }
 
@@ -194,7 +205,7 @@ export async function PATCH(request: NextRequest) {
         request,
         `/api/organizations/${encodeURIComponent(orgId)}/members/${encodeURIComponent(String(targetUser.auth_user_id))}`,
         "PATCH",
-        { role: updates.role },
+        { role: requestedRole },
         orgId,
       )
       if (!roleChange.ok) {

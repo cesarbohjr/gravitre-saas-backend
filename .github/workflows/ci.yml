@@ -209,6 +209,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: Install bounded media decoder
+        run: sudo apt-get update -y -q && sudo apt-get install -y -q ffmpeg
+
       # tests/db/*_pg.py start a throwaway PostgreSQL from the runner's server
       # binaries; the retrieval migration test also needs pgvector. Best effort:
       # without it that one test module skips.

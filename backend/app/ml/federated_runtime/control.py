@@ -87,8 +87,9 @@ async def attestation():
                 raise ValueError('An existing privacy program cannot reset its audit or expenditure')
             reserved = db.execute('SELECT count(*) FROM rounds WHERE program=?',(profile['program_id'],)).fetchone()[0]
             running = db.execute("SELECT count(*) FROM rounds WHERE program=? AND state IN ('accepted','running','uncertain')",(profile['program_id'],)).fetchone()[0]
+            completed = [row[0] for row in db.execute("SELECT round FROM rounds WHERE program=? AND state='completed' ORDER BY ordinal",(profile['program_id'],))]
         return {'deployment_sha256':profile['deployment_sha256'], 'audit_digest':digest,
-                'reserved_rounds':reserved, 'in_progress':bool(running)}
+                'reserved_rounds':reserved, 'in_progress':bool(running), 'completed_rounds':completed}
     except Exception as exc:
         raise HTTPException(503, 'Audited privacy runtime unavailable: '+type(exc).__name__) from None
 
@@ -129,7 +130,7 @@ async def run_round(round_id: str):
                 raise ValueError('Flower source readback did not include the dispatched run')
             status = row.get('status','')
             if status == 'finished:completed':
-                candidate = data_root()/f'candidate-{round_id}.npz'
+                candidate = data_root()/f'candidate-{round_id}.json'
                 if not candidate.is_file():
                     raise ValueError('Completed Flower run has no aggregate candidate')
                 state = 'completed'
@@ -204,7 +205,7 @@ async def get_round(round_id: str):
             result = await flower_json('ls','production','--run-id',run_id)
             source = next((item for item in result.get('runs',[]) if str(item.get('run-id')) == run_id),None)
             status = source.get('status') if source else None
-            if status == 'finished:completed' and (data_root()/f'candidate-{round_id}.npz').is_file():
+            if status == 'finished:completed' and (data_root()/f'candidate-{round_id}.json').is_file():
                 state = 'completed'
             elif status in {'finished:failed','finished:stopped'}:
                 state = 'failed'
@@ -215,3 +216,37 @@ async def get_round(round_id: str):
         except Exception:
             state = 'uncertain'
     return {'round_id':round_id,'state':state, 'candidate_available':state=='completed', 'model_promoted':False}
+
+
+@app.get('/v1/rounds/{round_id}/candidate/{tenant_id}')
+async def read_candidate(round_id: str, tenant_id: UUID):
+    """Private aggregate only; caller identity is the source API's mTLS cert."""
+    import re
+    import math
+    from app.core.safe_dict import safe_normalize_stored_dict
+    if not re.fullmatch(r'[a-f0-9]{64}',round_id):
+        raise HTTPException(404,'Round not found')
+    profile,digest = runtime_profile()
+    state = await get_round(round_id)
+    if state['state'] != 'completed':
+        raise HTTPException(409,'Round is not confirmed complete')
+    request_path = data_root()/f'round-{round_id}.json'
+    if not request_path.is_file() or request_path.stat().st_size > 1_000_000:
+        raise HTTPException(409,'Bounded source round required')
+    request = safe_normalize_stored_dict(request_path.read_text())
+    if (not isinstance(request.get('participants'),list) or len(set(request['participants'])) != 100
+            or str(tenant_id) not in request['participants'] or request['audit_digest'] != digest
+            or request['program_id'] != profile['program_id']):
+        raise HTTPException(403,'Current cohort membership required')
+    await asyncio.to_thread(current_permission,str(tenant_id),runtime_settings(),digest)
+    candidate = data_root()/f'candidate-{round_id}.json'
+    if not candidate.is_file() or candidate.stat().st_size > 8192:
+        raise HTTPException(409,'Bounded aggregate candidate required')
+    artifact = safe_normalize_stored_dict(candidate.read_text())
+    values = artifact.get('parameters')
+    if (artifact.get('schema') != 1 or artifact.get('audit_digest') != digest
+            or artifact.get('round_id') != round_id or artifact.get('feature_schema_sha256') != profile['feature_schema_sha256']
+            or not isinstance(values,list) or len(values) != 5
+            or any(type(value) not in {int,float} or not math.isfinite(value) for value in values)):
+        raise HTTPException(409,'Aggregate candidate integrity failed')
+    return artifact

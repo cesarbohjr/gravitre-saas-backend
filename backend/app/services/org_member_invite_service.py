@@ -1,6 +1,7 @@
 """Shared org-member invite + membership attach helpers."""
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -10,13 +11,17 @@ from app.core.supabase_response import response_error
 from app.public_urls import PRODUCTION_APP_URL
 
 _ORG_MEMBER_ROLES = {"admin", "member", "viewer"}
+# Custom roles from Trust & Safety > Role permissions. Owner is never given by invite.
+_CUSTOM_ROLE_KEY = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
 
 
 def normalize_org_member_role(role: str | None, *, default: str = "member") -> str:
     normalized = str(role or default).strip().lower()
-    if normalized not in _ORG_MEMBER_ROLES:
-        return default
-    return normalized
+    if normalized in _ORG_MEMBER_ROLES:
+        return normalized
+    if normalized != "owner" and _CUSTOM_ROLE_KEY.match(normalized):
+        return normalized
+    return default
 
 
 def _invite_redirect_url(settings: Settings) -> str:

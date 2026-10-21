@@ -1,6 +1,7 @@
 """Platform (master) admin registry — service-role only, no broad RLS weakening."""
 from __future__ import annotations
 
+import re
 from typing import Any
 
 ORG_ADMIN_ROLES = frozenset({"admin", "owner"})
@@ -12,8 +13,14 @@ def is_org_admin_role(role: str | None) -> bool:
     return (role or "").strip().lower() in ORG_ADMIN_ROLES
 
 
+# Custom roles a workspace defines in Trust & Safety > Role permissions use keys like
+# "support_lead"; a membership on one is still a membership.
+_CUSTOM_ROLE_KEY = re.compile(r"^[a-z][a-z0-9_]{0,39}$")
+
+
 def is_org_member_role(role: str | None) -> bool:
-    return (role or "").strip().lower() in ORG_MEMBER_ROLES
+    normalized = (role or "").strip().lower()
+    return normalized in ORG_MEMBER_ROLES or bool(_CUSTOM_ROLE_KEY.match(normalized))
 
 
 def can_trigger_knowledge_sync(role: str | None) -> bool:

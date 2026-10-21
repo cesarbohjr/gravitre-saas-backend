@@ -34,4 +34,4 @@ jobs:
           python -c "from app.ml.federated_runtime import server, client; assert server.app and client.app"
           flwr build --app federated-runtime
       - name: Offline runtime contracts
-        run: python -m pytest -p tests.offline_network_guard tests/ml/test_federated_runtime.py -q
+        run: python -m pytest -p tests.offline_network_guard tests/ml/test_federated_runtime.py tests/ml/test_federated_adoption.py tests/ml/test_federated_adoption_boundaries.py -q

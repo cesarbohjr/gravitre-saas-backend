@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
+from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin, require_capability
 from app.config import Settings, get_settings
 from app.main import app
 
@@ -36,6 +36,7 @@ def _authenticate(org_id: str = "org-1", admin: bool = True) -> None:
     app.dependency_overrides[get_environment_context] = lambda: "production"
     if admin:
         app.dependency_overrides[require_admin] = lambda: ({"user_id": "user-1"}, org_id)
+        app.dependency_overrides[require_capability("install_marketplace")] = lambda: ({"user_id": "user-1"}, org_id)
 
 
 def test_list_role_packs_requires_org():

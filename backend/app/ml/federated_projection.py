@@ -10,6 +10,7 @@ import base64
 import hashlib
 import json
 import secrets
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -86,7 +87,7 @@ async def prepare_contributions(participants: list[str], round_id: str, profile:
                     return None
                 coefficients = model.coef_[0]/scaler.scale_
                 vector = np.concatenate([coefficients,[model.intercept_[0]-np.dot(coefficients,scaler.mean_)]])
-                return org_id,seal_parameters(vector,org_id,round_id,digest,keys[org_id])
+                return org_id,seal_parameters(vector,org_id,round_id,digest,keys[org_id]),ranker.registry_ref,datetime.now(timezone.utc).isoformat()
             except Exception:
                 # One unavailable/incompatible artifact excludes this tenant;
                 # it cannot weaken the 100-distinct-participant threshold.
@@ -95,4 +96,9 @@ async def prepare_contributions(participants: list[str], round_id: str, profile:
     eligible = sorted([item for item in results if item is not None],key=lambda item:item[0])[:100]
     if len(eligible) < 100:
         raise ValueError('100 enrolled, approved tenants with compatible deployed rankers required')
-    return dict(eligible)
+    from app.ml.federated_adoption import save_source_anchor
+    from app.workflows.repository import get_supabase_client
+    client = get_supabase_client(settings)
+    for org_id,_,reference,captured_at in eligible:
+        await asyncio.to_thread(save_source_anchor,client,org_id,round_id,digest,reference,captured_at)
+    return {org_id:envelope for org_id,envelope,_,_ in eligible}

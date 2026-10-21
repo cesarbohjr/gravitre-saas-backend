@@ -57,14 +57,14 @@ def training_disclosure(model_name: str) -> dict[str, Any]:
                           "data": "Explicitly bound, human-reviewed domain examples and held-out evaluation prompts/answers are sent to OpenAI.",
                           "why": "Improve a declared departmental task only when independent held-out results beat the base model. Account eligibility and provider model availability remain required."})
     if model_name == "federated_learning":
-        scope.update({"policy_version": 2, "processing_kind": "federation", "sharing_scope": "cross_tenant_private_updates",
+        scope.update({"policy_version": 3, "processing_kind": "federation", "sharing_scope": "cross_tenant_private_updates",
             "what": "Organization-level privacy-protected federated learning",
             "data": "Only clipped, noisy, cryptographically masked model updates from approved tenant runtimes. No raw documents, CRM records, prompts, outputs or unmasked per-tenant gradients.",
             "why": "Learn shared parameters across at least 100 explicitly consenting organizations under a reviewed, bounded privacy program.",
             "where": "A separately deployed Flower SecAgg+ runtime with mutual TLS and an independently signed deployment/privacy audit.",
             "security": "This is separate cross-tenant permission. Organization-only training approval is insufficient. Legal review, audited secure aggregation, composed differential privacy accounting and current per-tenant permission are mandatory.",
-            "when": "Only after an independently signed privacy program is configured, the runtime attests to that deployment and at least 100 current tenant approvals exist. No manual activation toggle.",
-            "controls": "Pause or revoke this permission in Intelligence. The runtime must recheck permission before releasing each aggregate; completed privacy expenditure cannot be undone.",
+            "when": "Only after an independently signed privacy program is configured, the runtime attests to that deployment and at least 100 current tenant approvals exist. Each candidate needs 100 independent future retrieval-feedback observations in your organization within 14 days and must pass the local champion comparison before use. No manual activation toggle.",
+            "controls": "Pause or revoke this permission in Intelligence. Current permission is checked before aggregate release and use of adopted federated artifacts. Previously released privacy-protected aggregates cannot be recalled, and completed privacy expenditure cannot be undone. Incomplete candidate validation expires after 14 days.",
         })
     if model_name == "federated_learning":
         try:

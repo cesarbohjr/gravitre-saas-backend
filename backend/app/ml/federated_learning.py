@@ -111,7 +111,20 @@ class FederatedLearningCoordinator(CatalogScaffoldModel):
                     and consent.get("sharing_scope") == "cross_tenant_private_updates"):
                 participants.append(row["id"])
         participants = sorted(set(participants))
-        if org_id not in participants or len(participants) < 100:
+        from app.ml.federated_adoption import LEDGER, TERMINAL, MAX_ADOPTION_AGE, timestamp, update_anchor
+        own = next((row for row in rows.data or [] if row.get("id") == org_id),{})
+        anchors = safe_normalize_stored_dict(safe_normalize_stored_dict(own.get("settings")).get(LEDGER))
+        terminal = TERMINAL
+        for key,raw in anchors.items():
+            entry = safe_normalize_stored_dict(raw)
+            if (entry.get('audit_digest') == digest and entry.get('state') not in terminal
+                    and datetime.now(timezone.utc)-timestamp(entry.get('captured_at')) >= MAX_ADOPTION_AGE):
+                await asyncio.to_thread(update_anchor,client,org_id,key,lambda current:{**current,'state':'expired'})
+        pending = {key:value for key,raw in anchors.items()
+                   if (value := safe_normalize_stored_dict(raw)).get("audit_digest") == digest
+                   and value.get("state") not in terminal
+                   and datetime.now(timezone.utc)-timestamp(value.get('captured_at')) < MAX_ADOPTION_AGE}
+        if org_id not in participants or len(participants) < 100 and not pending:
             return {"status": "dormant", "reason": "100_current_distinct_tenant_approvals_required", "participants": len(participants)}
         url = getattr(settings, "federated_runtime_url", "")
         parsed = urlparse(url)
@@ -134,8 +147,41 @@ class FederatedLearningCoordinator(CatalogScaffoldModel):
                 attestation = response.json()
                 if attestation.get("deployment_sha256") != profile["deployment_sha256"] or attestation.get("audit_digest") != digest:
                     raise ValueError("Runtime differs from independently audited deployment")
+                adopted = {}
+                completed_rounds = attestation.get("completed_rounds",[])
+                if not isinstance(completed_rounds,list) or len(completed_rounds) > 1000:
+                    raise ValueError("Bounded completed-round source readback required")
+                from app.ml.federated_adoption import adopt_candidate
+                for candidate_round in pending:
+                    if candidate_round not in completed_rounds or not re.fullmatch(r'[a-f0-9]{64}',candidate_round):
+                        continue
+                    async with runtime.stream('GET',url.rstrip('/')+'/v1/rounds/'+candidate_round+'/candidate/'+org_id) as candidate_response:
+                        candidate_response.raise_for_status()
+                        encoded = bytearray()
+                        async for chunk in candidate_response.aiter_bytes():
+                            encoded.extend(chunk)
+                            if len(encoded) > 16384:
+                                raise ValueError('Aggregate candidate exceeds bounded contract')
+                    candidate = json.loads(encoded)
+                    if not isinstance(candidate,dict):
+                        raise ValueError('Aggregate candidate object required')
+                    adopted[candidate_round] = await adopt_candidate(org_id,candidate_round,candidate,settings,client)
                 if attestation.get("in_progress") is True:
-                    return {"status": "already_running"}
+                    return {"status": "already_running", "adoption":adopted}
+                # Do not consume another privacy round while the current
+                # cohort is still collecting/evaluating its independent data.
+                cohort_pending = any(
+                    item.get('audit_digest') == digest and item.get('state') not in terminal
+                    and datetime.now(timezone.utc)-timestamp(item.get('captured_at')) < MAX_ADOPTION_AGE
+                    for row in rows.data or []
+                    if row.get('id') in participants
+                    for key,raw in safe_normalize_stored_dict(safe_normalize_stored_dict(row.get('settings')).get(LEDGER)).items()
+                    if key in completed_rounds
+                    if (item := safe_normalize_stored_dict(raw)))
+                if cohort_pending:
+                    return {"status":"awaiting_candidate_adoption","adoption":adopted}
+                if len(participants) < 100:
+                    return {"status":"dormant","reason":"100_current_distinct_tenant_approvals_required","adoption":adopted}
                 completed = attestation.get("reserved_rounds")
                 if type(completed) is not int or not 0 <= completed < profile["max_rounds"]:
                     return {"status": "dormant", "reason": "privacy_round_budget_exhausted_or_unverified"}

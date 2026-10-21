@@ -83,6 +83,42 @@ def get_user_role(client: Client, org_id: str, user_id: str) -> str:
     return role
 
 
+def get_member_role(client: Client, org_id: str, user_id: str) -> str:
+    """Like ``get_user_role`` but accepts every membership role, viewers and custom roles included.
+
+    For checks that go through the workspace's role permissions matrix
+    (``app.auth.org_role_permissions.has_capability``) instead of a fixed role list.
+    """
+    from app.auth.platform_admin import is_org_member_role
+
+    r = (
+        client.table("organization_members")
+        .select("role")
+        .eq("org_id", org_id)
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    if not r.data:
+        raise PolicyResolutionError("User has no organization membership")
+    role = (r.data[0].get("role") or "").strip().lower()
+    if not is_org_member_role(role):
+        raise PolicyResolutionError(f"Invalid or missing role: {role!r}")
+    return role
+
+
+def widen_to_member_role(resolve, client: Client, org_id: str, user_id: str) -> str:
+    """``resolve`` (normally ``get_user_role``), falling back to ``get_member_role``.
+
+    Viewers and custom roles fail ``get_user_role``'s fixed list; checks that go
+    through the role permissions matrix still need their role.
+    """
+    try:
+        return resolve(client, org_id, user_id)
+    except PolicyResolutionError:
+        return get_member_role(client, org_id, user_id)
+
+
 def can_approve(role: str, approver_roles: list[str]) -> bool:
     """Check if role is in approver_roles."""
     return role in (approver_roles or [])

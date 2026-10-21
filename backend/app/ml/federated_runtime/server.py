@@ -66,10 +66,11 @@ class ApprovedCohortStrategy(FedAvg):
                 raise ValueError("Unmasked individual update returned instead of a secure aggregate")
         # Candidate only. Existing per-org validation/promotion must independently
         # approve adoption; a completed FL round is not inference/outcome proof.
-        destination = data_root()/f"candidate-{self.round_id}.npz"
+        destination = data_root()/f"candidate-{self.round_id}.json"
         temporary = destination.with_suffix('.pending')
-        with temporary.open('wb') as output:
-            np.savez_compressed(output, schema=np.array([1]), parameters=aggregate[0], audit_digest=np.array(self.digest))
+        temporary.write_text(json.dumps({'schema':1,'parameters':aggregate[0].tolist(),
+            'audit_digest':self.digest,'round_id':self.round_id,'feature_schema_sha256':feature_schema_digest()},
+            allow_nan=False,separators=(',',':')))
         os.chmod(temporary, 0o600)
         temporary.replace(destination)
         return ndarrays_to_parameters(aggregate), {}
@@ -87,7 +88,8 @@ def main(grid, context):
     round_id = context.run_config.get('round-id')
     if not isinstance(round_id, str) or not re.fullmatch(r'[a-f0-9]{64}', round_id):
         raise ValueError('Control-plane round identity required')
-    request = json.loads((data_root()/f'round-{round_id}.json').read_text())
+    from app.core.safe_dict import safe_normalize_stored_dict
+    request = safe_normalize_stored_dict((data_root()/f'round-{round_id}.json').read_text())
     if request['audit_digest'] != digest or request['program_id'] != profile['program_id']:
         raise ValueError('Round request belongs to a different audited program')
     from app.ml.federated_projection import audited_enrollment
@@ -99,5 +101,5 @@ def main(grid, context):
     secure = SecAggPlusWorkflow(num_shares=1.0, reconstruction_threshold=1.0,
                                 max_weight=1, clipping_range=max(profile['clipping_norm'],12*sigma), timeout=120)
     DefaultWorkflow(fit_workflow=secure)(grid, legacy)
-    if not (data_root()/f'candidate-{round_id}.npz').is_file():
+    if not (data_root()/f'candidate-{round_id}.json').is_file():
         raise ValueError('Secure round produced no validated candidate')

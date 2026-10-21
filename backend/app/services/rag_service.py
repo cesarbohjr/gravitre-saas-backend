@@ -330,6 +330,7 @@ class RAGService:
                     message_id=message_id,
                     rows=reranked,
                     retrieval_latency_ms=retrieval_latency_ms,
+                    reliability_scores=reliability_scores,
                     client=client,
                 )
             )

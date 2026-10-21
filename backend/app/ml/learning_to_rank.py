@@ -44,6 +44,7 @@ class RetrievalRanker(BaseMLModel):
         self.model: LogisticRegression | None = None
         self.scaler = StandardScaler()
         self.learned_reliability_weight: float | None = None
+        self.federation: dict[str, Any] | None = None
 
     async def train(
         self,
@@ -74,6 +75,7 @@ class RetrievalRanker(BaseMLModel):
 
         self.model = LogisticRegression(max_iter=1000, class_weight="balanced")
         self.model.fit(x_train_scaled, y_train)
+        self.federation = None
 
         rel_idx = FEATURE_NAMES.index("source_reliability_score")
         raw_coef = float(self.model.coef_[0][rel_idx])
@@ -130,11 +132,17 @@ class RetrievalRanker(BaseMLModel):
             "scaler": self.scaler,
             "learned_reliability_weight": self.learned_reliability_weight,
             "feature_names": FEATURE_NAMES,
+            "federation": self.federation,
         }
         return pickle.dumps(payload)
 
     def load(self, data: bytes) -> None:
         payload = pickle.loads(data)
+        from app.core.safe_dict import safe_normalize_stored_dict
+        raw_federation = payload.get("federation")
+        self.federation = safe_normalize_stored_dict(raw_federation) if raw_federation is not None else None
+        if raw_federation is not None and not self.federation:
+            raise ValueError("Invalid federation artifact provenance")
         self.model = payload.get("model")
         self.scaler = payload.get("scaler") or StandardScaler()
         self.learned_reliability_weight = payload.get("learned_reliability_weight")
@@ -223,6 +231,9 @@ async def get_weight_for_org(org_id: str, settings: Any, client: Any) -> float:
         artifact = await registry.load_model_artifact(ranker_model.id, ranker_model.deployed_version)
         ranker = RetrievalRanker()
         ranker.load(artifact)
+        from app.ml.federated_adoption import artifact_permission
+        if not await artifact_permission(org_id, ranker, settings):
+            return RELIABILITY_WEIGHT
         weight = ranker.get_learned_weight()
         if weight is not None:
             return clip_reliability_weight(weight)

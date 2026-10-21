@@ -374,6 +374,7 @@ class Settings(BaseSettings):
     federated_consent_service_secret: str = ""
     chat_store_hosted_files: bool = True
     blob_read_write_token: str = ""
+    blob_store_id: str = ""
     ml_default_classifier: str = "random_forest"
     ml_anomaly_contamination: float = 0.1
     ml_forecast_horizon: int = 7

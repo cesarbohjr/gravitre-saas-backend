@@ -163,6 +163,12 @@ def champion_challenger_decision(
     caller's existing non-ML fallback when there is none, in place.
     """
     challenger_metrics = _metrics_dict(challenger)
+    from app.core.safe_dict import safe_normalize_stored_dict
+    from app.ml.federated_adoption import ALGORITHM, promotion_decision
+    if safe_normalize_stored_dict(challenger_metrics.get("custom_metrics")).get("algorithm") == ALGORITHM:
+        if not has_champion:
+            return False, "federated_source_champion_required", {}
+        return promotion_decision(challenger_metrics)
     # A challenger that was measured against a baseline on a time split (churn
     # entity features) must beat it by the margin on enough labels first.
     from app.ml.churn_time_split_eval import baseline_gate_refusal
@@ -291,7 +297,9 @@ async def register_trained_artifact_detailed(
     )
     new_version = getattr(version, "version", None)
     if deploy:
-        await registry.deploy_version(model_id, new_version)
+        deployed = await registry.deploy_version(model_id, new_version)
+        if not deployed:
+            deploy, reason = False, "not_deployed_concurrent_champion_change"
     else:
         logger.info(
             "catalog_training_challenger_not_deployed org_id=%s name=%s champion_version=%s "
@@ -508,6 +516,9 @@ async def train_v5_retrieval_ranker(
 ) -> dict[str, Any]:
     active = settings or get_settings()
     db = client or get_supabase_client(active)
+    from app.ml.federated_adoption import pending_adoption
+    if await pending_adoption(org_id,active,db):
+        return {"trained":False,"reason":"federated_independent_holdout_pending"}
     example_count = await count_training_examples(org_id, db)
     if example_count < RetrievalRanker.MIN_TRAINING_EXAMPLES:
         return {

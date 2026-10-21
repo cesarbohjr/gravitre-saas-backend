@@ -14,7 +14,7 @@ from app.core.db import shared_service_client
 
 logger = logging.getLogger(__name__)
 
-from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin
+from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_admin, require_capability
 from app.config import Settings, get_settings
 from app.connectors.repository import (
     create_connector,
@@ -406,7 +406,7 @@ def list_integrations_route(
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_integration_route(
     body: CreateIntegrationRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("manage_connectors"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -482,7 +482,7 @@ def get_integration_route(
 def update_integration_route(
     integration_id: UUID,
     body: UpdateIntegrationRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("manage_connectors"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -506,7 +506,7 @@ def update_integration_route(
 async def set_connector_secret(
     integration_id: UUID,
     body: SetSecretRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("manage_connectors"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -528,7 +528,7 @@ async def set_connector_secret(
 @router.post("/{integration_id}/sync", status_code=status.HTTP_202_ACCEPTED)
 def sync_integration_route(
     integration_id: UUID,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("manage_connectors"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -947,7 +947,7 @@ def test_connector_route(
 async def set_connector_secret_alias(
     connector_id: UUID,
     body: SetSecretRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("manage_connectors"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -958,7 +958,7 @@ async def set_connector_secret_alias(
 @connectors_router.post("/{connector_id}/sync", status_code=status.HTTP_202_ACCEPTED)
 async def sync_connector_route_alias(
     connector_id: UUID,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("manage_connectors"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
     body: ConnectorSyncRequest | None = None,
@@ -1045,7 +1045,7 @@ async def sync_connector_route_alias(
 @connectors_router.post("", status_code=status.HTTP_201_CREATED)
 def create_connector_route(
     body: ConnectorCreateRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("manage_connectors"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -1279,7 +1279,7 @@ def create_connector_route(
 @connectors_router.post("/{connector_id}/activate-gravitre")
 async def activate_gravitre_connector_route(
     connector_id: UUID,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("manage_connectors"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Activate a gravitre_managed stub (needs_connection → active) using platform credentials."""
@@ -1321,7 +1321,7 @@ async def activate_gravitree_connector_route_alias(
 async def update_connector_route(
     connector_id: UUID,
     body: ConnectorUpdateRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("manage_connectors"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -1528,7 +1528,7 @@ async def _delete_connector_impl(
 async def delete_connector_route(
     connector_id: UUID,
     body: ConnectorDeleteRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("manage_connectors"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -1539,7 +1539,7 @@ async def delete_connector_route(
 async def delete_connector_post_route(
     connector_id: UUID,
     body: ConnectorDeleteRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("manage_connectors"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
@@ -1616,7 +1616,7 @@ def plaid_status(
 @connectors_router.post("/plaid/link-token")
 def plaid_create_link_token(
     body: PlaidLinkTokenRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("manage_connectors"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Create a Plaid Link token (Sandbox). Uses Railway PLAID_CLIENT_ID / PLAID_SECRET."""
@@ -1654,7 +1654,7 @@ def plaid_create_link_token(
 @connectors_router.post("/plaid/exchange")
 def plaid_exchange_public_token(
     body: PlaidExchangeRequest,
-    _admin: Annotated[tuple, Depends(require_admin)],
+    _admin: Annotated[tuple, Depends(require_capability("manage_connectors"))],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:

@@ -50,7 +50,7 @@ def test_real_flower_server_rejects_sybil_nodes_and_plaintext_fedavg(tmp_path, m
         assert len(fit) == 100 and len(set(strategy.selected.values())) == 100
         results = [(node,SimpleNamespace(parameters=parameters)) for node in nodes]
         aggregate,_ = strategy.aggregate_fit(1,results,[])
-        assert (tmp_path/('candidate-'+'a'*64+'.npz')).is_file()
+        assert (tmp_path/('candidate-'+'a'*64+'.json')).is_file()
         results[-1] = (nodes[-1],SimpleNamespace(parameters=ndarrays_to_parameters([np.ones(5)])))
         with pytest.raises(ValueError,match='individual update'): strategy.aggregate_fit(1,results,[])
         strategy.enrollment['99']='org-0'
@@ -108,7 +108,7 @@ async def test_controller_restart_reads_source_without_redispatch_or_privacy_ref
     with patch.object(control,'runtime_profile'),patch.object(control,'flower_json',source):
         # A source success without the candidate is still uncertain.
         assert (await control.get_round('round'))['state'] == 'uncertain'
-        (tmp_path/'candidate-round.npz').write_bytes(b'test-only-candidate')
+        (tmp_path/'candidate-round.json').write_bytes(b'test-only-candidate')
         result = await control.get_round('round')
         assert result['state'] == 'completed' and result['model_promoted'] is False
         assert all(call.args[0] == 'ls' for call in source.call_args_list)

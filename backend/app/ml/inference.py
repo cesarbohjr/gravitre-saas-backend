@@ -89,6 +89,10 @@ class InferenceService:
         runtime = await self._load_runtime_model(
             model_id, selected_version, model.model_type, base_model=base
         )
+        if base in {"retrieval_ranker","retrieval_memory_learner"}:
+            from app.ml.federated_adoption import artifact_permission
+            if not await artifact_permission(org_id,runtime,get_settings()):
+                raise ValueError("Current federated artifact permission required")
         if getattr(model, "base_model", None) == "success_predictor" and hasattr(runtime, "predict_success"):
             results = await runtime.predict_success(inputs)
             predictions = [row["prediction"] for row in results]

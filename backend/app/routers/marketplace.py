@@ -16,6 +16,7 @@ from app.auth.dependencies import (
     get_environment_context,
     get_org_context,
     require_admin,
+    require_capability,
     require_platform_admin,
 )
 from app.auth.platform_admin import is_platform_admin
@@ -829,7 +830,7 @@ def marketplace_private_bundle_upload(
 @router.post("/private-bundles/{bundle_id}/activate")
 def marketplace_private_bundle_activate(
     bundle_id: str,
-    admin_ctx: Annotated[tuple, Depends(require_admin)],
+    admin_ctx: Annotated[tuple, Depends(require_capability("install_marketplace"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Activate a signed private bundle for sandbox invoke_tool execution."""
@@ -856,7 +857,7 @@ def marketplace_private_bundle_activate(
 @router.post("/private-bundles/{bundle_id}/disable")
 def marketplace_private_bundle_disable(
     bundle_id: str,
-    admin_ctx: Annotated[tuple, Depends(require_admin)],
+    admin_ctx: Annotated[tuple, Depends(require_capability("install_marketplace"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin_ctx
@@ -911,7 +912,7 @@ def get_role_pack(
 @router.post("/role-packs/{pack_id}/install")
 def install_role_pack(
     pack_id: str,
-    admin: Annotated[tuple, Depends(require_admin)],
+    admin: Annotated[tuple, Depends(require_capability("install_marketplace"))],
     settings: Annotated[Settings, Depends(get_settings)],
     environment_name: Annotated[str, Depends(get_environment_context)],
 ) -> dict:
@@ -1652,7 +1653,7 @@ def unsave_marketplace_asset(
 @router.post("/assets/{asset_ref}/uninstall")
 def uninstall_marketplace_asset_route(
     asset_ref: str,
-    admin: Annotated[tuple, Depends(require_admin)],
+    admin: Annotated[tuple, Depends(require_capability("install_marketplace"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Mark org install inactive (MKT-AUDIT-8.1)."""
@@ -1710,7 +1711,7 @@ def list_marketplace_asset_versions(
 def rollback_marketplace_asset_version(
     asset_ref: str,
     body: RollbackAssetRequest,
-    admin: Annotated[tuple, Depends(require_admin)],
+    admin: Annotated[tuple, Depends(require_capability("install_marketplace"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     """Restore an org-owned asset from ``marketplace_asset_versions`` (MKT-9.4)."""
@@ -1771,7 +1772,7 @@ def marketplace_asset_entitlement(
 def marketplace_asset_checkout(
     asset_ref: str,
     body: AssetCheckoutRequest,
-    admin: Annotated[tuple, Depends(require_admin)],
+    admin: Annotated[tuple, Depends(require_capability("install_marketplace"))],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict:
     user, org_id = admin
@@ -1841,7 +1842,7 @@ def get_marketplace_publisher_analytics(
 @router.post("/connector-category-templates/{template_id}/install")
 def marketplace_connector_category_template_install(
     template_id: str,
-    admin: Annotated[tuple, Depends(require_admin)],
+    admin: Annotated[tuple, Depends(require_capability("install_marketplace"))],
     settings: Annotated[Settings, Depends(get_settings)],
     environment_name: Annotated[str, Depends(get_environment_context)],
 ) -> dict:
@@ -1889,7 +1890,7 @@ def marketplace_list_connector_category_templates(
 @router.post("/assets/{asset_ref}/install")
 def marketplace_asset_install(
     asset_ref: str,
-    admin: Annotated[tuple, Depends(require_admin)],
+    admin: Annotated[tuple, Depends(require_capability("install_marketplace"))],
     settings: Annotated[Settings, Depends(get_settings)],
     environment_name: Annotated[str, Depends(get_environment_context)],
     body: InstallAssetRequest | None = None,

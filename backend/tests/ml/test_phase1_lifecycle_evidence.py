@@ -77,6 +77,10 @@ async def test_wrapper_loads_existing_ranker_and_requires_both_permissions():
     model = SimpleNamespace(name="company-retrieval-ranker", id="ranker-a", deployed_version=2)
     registry = SimpleNamespace(list_models=AsyncMock(return_value=[model]), load_model_artifact=AsyncMock(return_value=b"ranker"))
     instance = MagicMock()
+    # This fixture represents a local ranker, not an invented federated tag
+    # returned by MagicMock's dynamic attribute creation.
+    instance.federation = None
+    instance._ranker.federation = None
     with patch("app.ml.training_consent.training_is_approved", AsyncMock(return_value=True)), patch(
         "app.ml.registry.get_model_registry", return_value=registry
     ), patch("app.ml.model_catalog.get_model_instance", return_value=instance):

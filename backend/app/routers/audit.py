@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse, Response
 from supabase import create_client
 from app.core.db import shared_service_client
 
-from app.auth.dependencies import get_current_user, get_org_context
+from app.auth.dependencies import get_current_user, get_org_context, require_capability
 from app.billing.service import get_plan_for_org, require_feature
 from app.config import Settings, get_settings
 from app.core.errors import error_detail
@@ -524,8 +524,7 @@ def audit_summary(
 @router.get("/export")
 def export_audit(
     *,
-    _user: Annotated[dict, Depends(get_current_user)],
-    org_id: Annotated[str | None, Depends(get_org_context)],
+    exporter: Annotated[tuple, Depends(require_capability("audit_export"))],
     settings: Annotated[Settings, Depends(get_settings)],
     format: Annotated[str, Query(pattern="^(csv|json)$")] = "csv",
     user_id: Annotated[str | None, Query()] = None,
@@ -538,7 +537,7 @@ def export_audit(
     to_ts: Annotated[str | None, Query(alias="to")] = None,
     range_value: Annotated[str | None, Query(alias="range")] = None,
 ) -> Response:
-    org_id = _require_org(org_id)
+    _user, org_id = exporter
     client = shared_service_client(settings, create_client)
     require_feature(get_plan_for_org(client, org_id), "audit_logs")
     logs, truncated = _prepare_logs(
