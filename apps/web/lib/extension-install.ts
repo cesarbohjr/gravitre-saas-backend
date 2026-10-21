@@ -1,14 +1,20 @@
 /**
- * Chrome Web Store listing URL, from `NEXT_PUBLIC_CHROME_WEB_STORE_URL` on Vercel.
+ * Chrome Web Store listing URL. `NEXT_PUBLIC_CHROME_WEB_STORE_URL` on Vercel
+ * overrides the published listing below.
  *
- * Only set it once the listing is publicly installable (Public or Unlisted and
- * approved). Until then the install CTA points at the setup guide and the zip
- * below, never at a store page that says "This item is not available".
+ * The listing's store slug is "gravitree" (its store name); the extension id is
+ * what matters. An earlier id (`iegkidilloajngolbpgfkaeglblnklol`) was never a
+ * live listing and showed "This item is not available".
  *
  * Do not use Chrome Web Store Dev Console URLs (…/devconsole/…) — those require
  * Google sign-in and are not installable by customers.
  */
-export const CHROME_WEB_STORE_URL = (process.env.NEXT_PUBLIC_CHROME_WEB_STORE_URL || "").trim()
+export const PUBLISHED_CHROME_WEB_STORE_URL =
+  "https://chromewebstore.google.com/detail/gravitree/mdjhabfjkieockbppehakknkoeoalonj"
+
+export const CHROME_WEB_STORE_URL = (
+  process.env.NEXT_PUBLIC_CHROME_WEB_STORE_URL || PUBLISHED_CHROME_WEB_STORE_URL
+).trim()
 
 /** Load-unpacked pack, refreshed by .github/workflows/extension-release.yml. */
 export const EXTENSION_ZIP_URL =
