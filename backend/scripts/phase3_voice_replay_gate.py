@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Fail offline voice acceptance when any graded replay scenario misses its expected outcome."""
+"""Fail offline voice acceptance when any graded replay scenario misses its expected outcome.
+
+The replay must exercise the production begin_write_effect gate, including
+voice pause enforcement, as corrected in PR #536 on the merged base.
+"""
 import json
 import sys
 from pathlib import Path
