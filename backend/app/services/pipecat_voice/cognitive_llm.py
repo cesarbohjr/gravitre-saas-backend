@@ -175,9 +175,7 @@ def confirmation_hold_seconds(settings: Any) -> float:
         ms = float(getattr(settings, "voice_incomplete_turn_hold_ms", 600) or 0)
     except (TypeError, ValueError):
         ms = 600.0
-    # Allow Flux finalization and a resumed correction after an early commit.
-    # The incomplete-sentence 0.7s cap is too short for approved writes.
-    return max(1.4, min(1.5, ms / 1000.0))
+    return max(0.0, min(INCOMPLETE_TURN_HOLD_MAX_S, ms / 1000.0))
 
 
 def answers_assistant_question(user_text: str, history: list[dict[str, Any]] | None) -> bool:
@@ -1300,12 +1298,12 @@ class GravitreCognitiveLLMService(LLMService):
             return
         confirm_hold_s = confirmation_hold_seconds(self._app_settings)
         bare_yes = is_bare_confirmation(user_text)
-        if confirm_hold_s > 0 and bare_yes:
-            # Voice STT can split "yes ... wait" into two committed turns.
-            # History may omit the question while speech is still playing,
-            # so never use prompt recognition to bypass the settle barrier.
-            # Even a bare confirmation in an ordinary spoken turn must be
-            # final before downstream approval or write handling runs.
+        if confirm_hold_s > 0 and bare_yes and (
+            self._approval_read_back_here() or answers_assistant_question(user_text, history)
+        ):
+            # voice_confirmation_hold_v1: before the brain runs (so before any
+            # approval is consumed or write executed) make sure the go-ahead
+            # is final. Raises _TurnYieldedToUser when the user went on.
             await self._hold_bare_confirmation(user_text, confirm_hold_s)
         if self._interrupt_reporter is not None:
             # A confirmed new user turn ends the interrupted one: let its
