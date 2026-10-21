@@ -5,6 +5,7 @@ on:
       - 'backend/app/services/pipecat_voice/cognitive_llm.py'
       - 'backend/tests/e2e/voice_scenarios/fakes.py'
       - 'backend/tests/e2e/voice_scenarios/metrics.py'
+      - 'backend/tests/services/pipecat_voice/test_phase3_provider_commit_gate.py'
       - '.github/workflows/issue-535-voice-confirmation.yml'
   workflow_dispatch:
 jobs:
@@ -27,7 +28,7 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio
       - name: Confirmation and turn-taking regression
-        run: python -m pytest -q -p tests.offline_network_guard tests/services/pipecat_voice/test_confirmation_hold.py tests/services/pipecat_voice/test_interruption_correctness.py tests/services/pipecat_voice/test_reconnect_and_approval_contract.py
+        run: python -m pytest -q -p tests.offline_network_guard tests/services/pipecat_voice/test_confirmation_hold.py tests/services/pipecat_voice/test_interruption_correctness.py tests/services/pipecat_voice/test_reconnect_and_approval_contract.py tests/services/pipecat_voice/test_phase3_provider_commit_gate.py
         env:
           OPENAI_API_KEY: fake-issue-535
           ANTHROPIC_API_KEY: fake-issue-535
