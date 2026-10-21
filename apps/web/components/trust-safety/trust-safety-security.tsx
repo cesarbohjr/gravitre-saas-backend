@@ -20,12 +20,14 @@ import {
   type SessionTimeout,
 } from "@/lib/settings-api/security"
 import type { SSOConfiguration } from "@/types/api"
+import { enterpriseApi } from "@/lib/api"
+import { fetcher } from "@/lib/fetcher"
+import { RESIDENCY_KEY, type ResidencyOverview } from "@/lib/settings-api/enterprise"
+import type { EnterpriseSiemConfig } from "@/types/api"
 import { Hero, Icon, Note, Pill, Switch, TONE } from "./ts-ui"
-import { EnterpriseResidency } from "@/components/settings/enterprise-residency"
-import { EnterpriseSiem } from "@/components/settings/enterprise-siem"
-import "@/components/settings/settings-kit.css"
-import "@/components/settings/enterprise-sections.css"
 import { SsoDialog } from "./sso-dialog"
+import { TrustSafetyResidency } from "./trust-safety-residency"
+import { siemForwarding, TrustSafetySiem } from "./trust-safety-siem"
 
 const SSO_STEPS = ["Add Gravitre to your IdP", "Paste your IdP metadata", "Test and enable"]
 
@@ -34,20 +36,24 @@ const SSO_STEPS = ["Add Gravitre to your IdP", "Paste your IdP metadata", "Test 
  * /api/auth/sso/config. The page reads the score for the tab badge.
  */
 export function useSecurityState() {
+  const { isAdmin } = useOrgAdmin()
+  // Residency and SIEM are admin-only endpoints.
+  const residency = useSWR<ResidencyOverview>(isAdmin ? RESIDENCY_KEY : null, fetcher, { revalidateOnFocus: false })
+  const siem = useSWR<EnterpriseSiemConfig>(isAdmin ? "enterprise-siem" : null, () => enterpriseApi.getSiem(), { revalidateOnFocus: false })
   const sso = useSWR<SSOConfiguration | null>(SSO_CONFIG_KEY, () => ssoApi.getConfig(), { revalidateOnFocus: false })
   const sec = useSWR(SECURITY_KEY, () => securityApi.get(), { revalidateOnFocus: false })
   const sp = useSWR(SSO_SP_KEY, () => securityApi.serviceProvider(), { revalidateOnFocus: false })
   const stage = ssoStage(sso.data, sso.error)
   const controls = sec.data?.security ?? null
   const posture = securityPosture({ ssoEnabled: stage === "enabled", controls })
-  return { sso, sec, sp, stage, controls, score: posture.score, advice: posture.advice }
+  return { sso, sec, sp, residency, siem, stage, controls, score: posture.score, advice: posture.advice }
 }
 
 export type SecurityState = ReturnType<typeof useSecurityState>
 
 export function TrustSafetySecurity({ state }: { state: SecurityState }) {
   const { isAdmin } = useOrgAdmin()
-  const { sso, sec, sp, stage, controls, score, advice } = state
+  const { sso, sec, sp, residency, siem, stage, controls, score, advice } = state
   const [busy, setBusy] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [ipDraft, setIpDraft] = useState("")
@@ -169,7 +175,8 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
             ? <button type="button" className="ts-btn dark sm" disabled={busy != null} onClick={toggleIp}>Turn on IP allowlist</button>
             : <button type="button" className="ts-btn dark sm" disabled={busy != null} onClick={() => setTimeoutValue("24h")}>Set a session timeout</button>
 
-  const timeoutLabel = SESSION_TIMEOUT_OPTIONS.find((o) => o.id === timeout)?.label ?? "Never"
+  const currentRegion = residency.data?.regions.find((r) => r.current)?.label ?? null
+  const forwarding = siemForwarding(siem.data)
 
   return (
     <>
@@ -182,81 +189,35 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
         advice={controls ? advice : sec.error ? "Security settings could not be loaded." : "Loading security settings."}
         actions={next}
         tiles={[
-          { value: ssoPill.label, label: "Single sign on", tone: stage === "enabled" ? "good" : undefined },
           { value: tfa ? "Required" : "Off", label: "Two factor", tone: tfa ? "good" : undefined },
-          { value: ip ? `${ranges.length} ${ranges.length === 1 ? "range" : "ranges"}` : "Off", label: "IP allowlist" },
-          { value: timeoutLabel, label: "Session timeout" },
+          { value: ssoPill.label, label: "Single sign on", tone: stage === "enabled" ? "good" : undefined },
+          { value: currentRegion ?? "–", label: "Data region" },
+          { value: !isAdmin || !siem.data ? "–" : forwarding ? "On" : "Off", label: "SIEM export", tone: forwarding ? "good" : undefined },
         ]}
       />
-      <div className="ts-cols">
-        <div className="ts-colmain">
-          <section className="ts-card" style={{ overflow: "hidden" }}>
-            <div className="ts-sec">
-              <span className="ts-ico"><Icon name="shieldCheck" /></span>
-              <div style={{ flex: "1 1 260px", minWidth: 0 }}>
-                <div style={{ fontWeight: 600 }}>Require two factor authentication</div>
-                <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>Everyone confirms sign in with an authenticator app</div>
-              </div>
-              <Switch on={tfa} label="Require two factor authentication" disabled={locked || busy != null} onToggle={toggleTfa} />
-            </div>
-            <div className="ts-sec">
-              <span className="ts-ico"><Icon name="globe" /></span>
-              <div style={{ flex: "1 1 260px", minWidth: 0 }}>
-                <div style={{ fontWeight: 600 }}>IP allowlist</div>
-                <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>Only allow sign in from these networks</div>
-              </div>
-              <Switch on={ip} label="IP allowlist" disabled={locked || busy != null} onToggle={toggleIp} />
-              {ip ? (
-                <div className="ts-sub">
-                  {ranges.map((r) => (
-                    <span key={r} className="ts-chip ts-mono" style={{ cursor: "default" }}>
-                      {r}
-                      {!locked ? (
-                        <button type="button" aria-label={`Remove ${r}`} onClick={() => removeRange(r)} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 0, color: "#8A8B85", display: "inline-flex" }}>
-                          <Icon name="x" size={12} width={2.2} />
-                        </button>
-                      ) : null}
-                    </span>
-                  ))}
-                  {!locked ? (
-                    <>
-                      <label className="ts-input" style={{ flex: "0 1 240px", minHeight: 36 }}>
-                        <input
-                          aria-label="Add IP range"
-                          placeholder="Add a range, e.g. 10.0.0.0/24"
-                          value={ipDraft}
-                          onChange={(e) => setIpDraft(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") void addRange() }}
-                        />
-                      </label>
-                      <button type="button" className="ts-btn line sm" disabled={busy != null} onClick={() => void addRange()}>Add</button>
-                    </>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-            <div className="ts-sec">
-              <span className="ts-ico"><Icon name="clock" /></span>
-              <div style={{ flex: "1 1 260px", minWidth: 0 }}>
-                <div style={{ fontWeight: 600 }}>Session timeout</div>
-                <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>Sign people out after a period of inactivity</div>
-              </div>
-              <select className="ts-select sm" aria-label="Session timeout" value={timeout} disabled={locked || busy != null} onChange={(e) => setTimeoutValue(e.target.value as SessionTimeout)}>
-                {SESSION_TIMEOUT_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-              </select>
-            </div>
-          </section>
-        </div>
-        <aside className="ts-colside" aria-label="Single sign on">
-          <section className="ts-card ts-side">
-            <div className="ts-sidetitle" style={{ justifyContent: "space-between" }}>
-              <span style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <span className="ts-ico sm"><Icon name="lock" size={15} /></span>
-                Single sign on
-              </span>
+      <div className="ts-sechead">
+        <span className="ts-eyebrow">Sign in and access</span>
+        <span style={{ fontSize: 13, color: "#6A6B64" }}>How people prove who they are and where they can sign in from</span>
+      </div>
+      <section className="ts-card" style={{ overflow: "hidden" }}>
+        <div className="ts-sec">
+          <span className="ts-ico"><Icon name="key" /></span>
+          <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ fontWeight: 600 }}>Single sign on</span>
               <Pill bg={ssoPill.bg} fg={ssoPill.fg} dot={ssoPill.dot}>{ssoPill.label}</Pill>
             </div>
-            <div style={{ fontSize: 13, color: "#6A6B64" }}>SAML or OIDC through your identity provider</div>
+            <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>SAML or OIDC through your identity provider</div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button type="button" className="ts-btn line sm" disabled={!metadataUrl} onClick={() => void copyMeta()}>
+              <Icon name="copy" size={15} />
+              {copied ? "Copied" : "Copy metadata URL"}
+            </button>
+            {stage === "setup" && isAdmin ? <button type="button" className="ts-btn line sm" onClick={() => setDialogOpen(true)}>Edit setup</button> : null}
+            {ssoAction("ts-btn dark sm")}
+          </div>
+          <div className="ts-sub" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
             {SSO_STEPS.map((label, i) => {
               const done = i < ssoStep
               const cur = i === ssoStep && stage !== "enabled"
@@ -269,30 +230,73 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
                 </div>
               )
             })}
-            <div className="ts-mono" style={{ fontSize: 12, color: "#6A6B64", overflowWrap: "anywhere", background: "#F7F7F4", borderRadius: 10, padding: "10px 12px" }}>
-              {metadataUrl ?? "https://gravitre.app/api/auth/sso/metadata"}
+          </div>
+          <div className="ts-sub ts-mono" style={{ fontSize: 12, color: "#6A6B64", overflowWrap: "anywhere" }}>
+            SP metadata: {metadataUrl ?? "https://gravitre.app/api/auth/sso/metadata"}
+          </div>
+        </div>
+        <div className="ts-sec">
+          <span className="ts-ico"><Icon name="shieldCheck" /></span>
+          <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+            <div style={{ fontWeight: 600 }}>Require two factor authentication</div>
+            <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>Everyone confirms sign in with an authenticator app</div>
+          </div>
+          <Switch on={tfa} label="Require two factor authentication" disabled={locked || busy != null} onToggle={toggleTfa} />
+        </div>
+        <div className="ts-sec">
+          <span className="ts-ico"><Icon name="globe" /></span>
+          <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+            <div style={{ fontWeight: 600 }}>IP allowlist</div>
+            <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>Only allow sign in from these networks</div>
+          </div>
+          <Switch on={ip} label="IP allowlist" disabled={locked || busy != null} onToggle={toggleIp} />
+          {ip ? (
+            <div className="ts-sub">
+              {ranges.map((r) => (
+                <span key={r} className="ts-chip ts-mono" style={{ cursor: "default" }}>
+                  {r}
+                  {!locked ? (
+                    <button type="button" aria-label={`Remove ${r}`} onClick={() => removeRange(r)} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 0, color: "#8A8B85", display: "inline-flex" }}>
+                      <Icon name="x" size={12} width={2.2} />
+                    </button>
+                  ) : null}
+                </span>
+              ))}
+              {!locked ? (
+                <>
+                  <label className="ts-input" style={{ flex: "0 1 240px", minHeight: 36 }}>
+                    <input
+                      aria-label="Add IP range"
+                      placeholder="Add a range, e.g. 10.0.0.0/24"
+                      value={ipDraft}
+                      onChange={(e) => setIpDraft(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") void addRange() }}
+                    />
+                  </label>
+                  <button type="button" className="ts-btn line sm" disabled={busy != null} onClick={() => void addRange()}>Add</button>
+                </>
+              ) : null}
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button type="button" className="ts-btn line sm" disabled={!metadataUrl} onClick={() => void copyMeta()}>{copied ? "Copied" : "Copy metadata URL"}</button>
-              {stage === "setup" && isAdmin ? <button type="button" className="ts-btn line sm" onClick={() => setDialogOpen(true)}>Edit setup</button> : null}
-              {ssoAction("ts-btn dark sm")}
-            </div>
-          </section>
-          {controls && ((tfa && !controls.enforced.requireTwoFactor) || (ip && !controls.enforced.ipAllowlist) || (timeout !== "never" && !controls.enforced.sessionTimeout)) ? (
-            <Note>Saved for this workspace. Sign in does not enforce these controls yet, so nobody is blocked today.</Note>
           ) : null}
-        </aside>
-      </div>
+        </div>
+        <div className="ts-sec">
+          <span className="ts-ico"><Icon name="clock" /></span>
+          <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+            <div style={{ fontWeight: 600 }}>Session timeout</div>
+            <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>Sign people out after a period of inactivity</div>
+          </div>
+          <select className="ts-select sm" aria-label="Session timeout" value={timeout} disabled={locked || busy != null} onChange={(e) => setTimeoutValue(e.target.value as SessionTimeout)}>
+            {SESSION_TIMEOUT_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
+        </div>
+      </section>
+      {controls && ((tfa && !controls.enforced.requireTwoFactor) || (ip && !controls.enforced.ipAllowlist) || (timeout !== "never" && !controls.enforced.sessionTimeout)) ? (
+        <Note>Saved for this workspace. Sign in does not enforce these controls yet, so nobody is blocked today.</Note>
+      ) : null}
       {isAdmin ? (
         <>
-          <section aria-labelledby="ts-residency-heading" className="gv-set" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <h2 id="ts-residency-heading" className="ts-eyebrow" style={{ margin: 0 }}>Data residency</h2>
-            <EnterpriseResidency isAdmin={isAdmin} />
-          </section>
-          <section aria-labelledby="ts-siem-heading" className="gv-set" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <h2 id="ts-siem-heading" className="ts-eyebrow" style={{ margin: 0 }}>SIEM export</h2>
-            <EnterpriseSiem isAdmin={isAdmin} />
-          </section>
+          <TrustSafetyResidency residency={residency} />
+          <TrustSafetySiem siem={siem} />
         </>
       ) : null}
       <SsoDialog

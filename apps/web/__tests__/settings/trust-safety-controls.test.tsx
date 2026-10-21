@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   createHitlPolicy: vi.fn(),
   updateHitlPolicy: vi.fn(),
   deleteHitlPolicy: vi.fn(),
+  updateSiem: vi.fn(),
+  testSiem: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
 }))
@@ -29,6 +31,7 @@ vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ user: null }) }))
 vi.mock("@/lib/use-org-admin", () => ({ useOrgAdmin: () => mocks.admin }))
 vi.mock("@/lib/api", () => ({
   ssoApi: { getConfig: vi.fn(), saveConfig: vi.fn(), enable: mocks.enableSso, disable: vi.fn(), deleteConfig: vi.fn(), initLogin: vi.fn() },
+  enterpriseApi: { getSiem: vi.fn(), updateSiem: mocks.updateSiem, testSiem: mocks.testSiem, updateDataRegion: vi.fn() },
   settingsApi: {
     updateApprovalRules: mocks.updateApprovalRules,
     createHitlPolicy: mocks.createHitlPolicy,
@@ -40,8 +43,6 @@ vi.mock("@/lib/settings-api/security", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/settings-api/security")>()
   return { ...actual, securityApi: { ...actual.securityApi, update: mocks.updateSecurity } }
 })
-vi.mock("@/components/settings/enterprise-residency", () => ({ EnterpriseResidency: () => <div>Residency stub</div> }))
-vi.mock("@/components/settings/enterprise-siem", () => ({ EnterpriseSiem: () => <div>SIEM stub</div> }))
 
 import { TrustSafetySecurity, useSecurityState } from "@/components/trust-safety/trust-safety-security"
 import { TrustSafetyPolicies, usePolicyState } from "@/components/trust-safety/trust-safety-policies"
@@ -73,6 +74,16 @@ const controls = (over: Record<string, unknown> = {}) => ({
   ...over,
 })
 const sp = { metadata_url: "https://gravitre.app/api/auth/sso/metadata", entity_id: "https://gravitre.app/api/auth/sso/metadata", acs_url: "https://gravitre.app/api/auth/sso/callback" }
+const residency = {
+  region: "us",
+  deploymentRegion: "us",
+  storagePrefix: "us/org-1",
+  migrationSupported: false,
+  regions: [
+    { id: "eu", label: "European Union", current: false, available: false },
+    { id: "us", label: "United States", current: true, available: true },
+  ],
+}
 const rules = { customerEmailApproval: true, twoApprovalsHighRisk: false, autoApproveReadOnly: false, escalatePastDue: false, sla: "4h", slaMinutes: 240 }
 
 function SecurityTab() {
@@ -102,14 +113,56 @@ describe("Trust & Safety security tab", () => {
       "/api/auth/sso/config": { data: null },
       "/api/auth/sso/service-provider": { data: sp },
       "/api/settings/security": { data: { security: controls({ requireTwoFactor: true }) } },
+      "/api/enterprise/insights/residency": { data: residency },
+      "enterprise-siem": { data: { enabled: false, endpoint: null, hasSecret: false } },
     }
     render(<SecurityTab />)
     expect(byLabel("Require two factor authentication")?.getAttribute("aria-checked")).toBe("true")
-    expect(container.textContent).toContain("https://gravitre.app/api/auth/sso/metadata")
+    expect(container.textContent).toContain("SP metadata: https://gravitre.app/api/auth/sso/metadata")
     expect(container.textContent).toContain("Sign in does not enforce these controls yet")
     expect(button("Configure")).toBeTruthy()
-    expect(container.textContent).toContain("Residency stub")
-    expect(container.textContent).toContain("SIEM stub")
+    expect(container.textContent).toContain("Where your data lives")
+    expect(container.textContent).toContain("us/org-1")
+    expect(container.textContent).toContain("Not available")
+    expect(container.textContent).toContain("Forwarding off")
+  })
+
+  it("saves SIEM forwarding with the chosen events and a new signing secret", async () => {
+    mocks.swr = {
+      "/api/auth/sso/config": { data: null },
+      "/api/auth/sso/service-provider": { data: sp },
+      "/api/settings/security": { data: { security: controls() } },
+      "/api/enterprise/insights/residency": { data: residency },
+      "enterprise-siem": { data: { enabled: false, endpoint: null, hasSecret: false } },
+    }
+    mocks.updateSiem.mockResolvedValue({ enabled: true, endpoint: "https://siem.example.com/hook", hasSecret: true, events: ["audit", "auth", "approvals", "policy"] })
+    render(<SecurityTab />)
+    await click(byLabel("Forward events"))
+    const url = container.querySelector<HTMLInputElement>("#siem-url")!
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(url, "https://siem.example.com/hook")
+      url.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+    expect(container.textContent).toContain("Forwarding on")
+    await click(button("Agent runs"))
+    await click(button("Save"))
+    expect(mocks.updateSiem).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: true, endpoint: "https://siem.example.com/hook", events: ["audit", "auth", "approvals", "policy"], secret: expect.stringMatching(/^whsec_[0-9a-f]{32}$/) }),
+    )
+  })
+
+  it("flags a non https SIEM endpoint", () => {
+    mocks.swr = {
+      "/api/auth/sso/config": { data: null },
+      "/api/auth/sso/service-provider": { data: sp },
+      "/api/settings/security": { data: { security: controls() } },
+      "/api/enterprise/insights/residency": { data: residency },
+      "enterprise-siem": { data: { enabled: true, endpoint: "http://siem.example.com", hasSecret: true, events: ["audit"] } },
+    }
+    render(<SecurityTab />)
+    expect(container.textContent).toContain("Use an https endpoint")
+    expect(container.textContent).toContain("Needs an endpoint")
+    expect(button("Reveal")?.hasAttribute("disabled")).toBe(true)
   })
 
   it("saves the session timeout and enables single sign on from the setup stage", async () => {
@@ -140,7 +193,8 @@ describe("Trust & Safety security tab", () => {
     expect((byLabel("Require two factor authentication") as HTMLButtonElement).disabled).toBe(true)
     expect((byLabel("Session timeout") as HTMLSelectElement).disabled).toBe(true)
     expect(button("Configure")).toBeUndefined()
-    expect(container.textContent).not.toContain("Residency stub")
+    expect(container.textContent).not.toContain("Where your data lives")
+    expect(container.textContent).not.toContain("Forward events")
   })
 
   it("links to plans when single sign on is not on the plan", () => {

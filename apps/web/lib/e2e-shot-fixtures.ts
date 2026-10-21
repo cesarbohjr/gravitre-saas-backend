@@ -1280,15 +1280,16 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     ],
   },
   "/api/enterprise/insights/residency": {
-    region: "us-east-1",
-    deploymentRegion: "us-east-1",
-    storagePrefix: "us",
+    region: "us",
+    deploymentRegion: "us",
+    storagePrefix: "us/cbbf993b-b22f-41ce-964b-1fc25e0dd9ea",
     migrationSupported: false,
     regions: [
-      { id: "us-east-1", label: "United States", current: true, available: true },
-      { id: "eu-west-1", label: "European Union", current: false, available: false },
+      { id: "eu", label: "European Union", current: false, available: false },
+      { id: "us", label: "United States", current: true, available: true },
     ],
   },
+  "/api/enterprise/siem": { enabled: false, endpoint: null, hasSecret: false },
   "/api/settings/workspace": { workspace: { accentColor: "#2E9E5B", timeZone: "America/Vancouver" } },
   "/api/settings/approval-rules": {
     rules: { customerEmailApproval: true, twoApprovalsHighRisk: true, autoApproveReadOnly: true, escalatePastDue: false, sla: "4h", slaMinutes: 240 },

@@ -30,6 +30,10 @@ const ICON_PATHS = {
   dash: <path d="M5 12h14" />,
   x: <path d="M6 6l12 12M18 6 6 18" />,
   plus: <path d="M12 5v14M5 12h14" />,
+  key: <><circle cx="8" cy="15" r="4" /><path d="m10.8 12.2 8.7-8.7M16 6l2.5 2.5M14 8l2 2" /></>,
+  keySm: <><circle cx="8" cy="15" r="4" /><path d="m10.8 12.2 8.7-8.7M16 6l2.5 2.5" /></>,
+  copy: <><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>,
+  forward: <><path d="M4 12h11M11 7l5 5-5 5" /><path d="M19 5v14" /></>,
 } as const
 
 export type IconName = keyof typeof ICON_PATHS
@@ -160,10 +164,10 @@ export function Hero({
   )
 }
 
-export function Pill({ bg, fg, dot, live, children, style }: { bg: string; fg: string; dot: string; live?: boolean; children: ReactNode; style?: CSSProperties }) {
+export function Pill({ bg, fg, dot, live, children, style }: { bg: string; fg: string; dot?: string; live?: boolean; children: ReactNode; style?: CSSProperties }) {
   return (
     <span className="ts-pill" style={{ background: bg, color: fg, ...style }}>
-      <span className={`ts-dot${live ? " ts-live" : ""}`} style={{ background: dot }} />
+      {dot ? <span className={`ts-dot${live ? " ts-live" : ""}`} style={{ background: dot }} /> : null}
       {children}
     </span>
   )
