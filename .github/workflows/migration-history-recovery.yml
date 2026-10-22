@@ -55,6 +55,8 @@ jobs:
             cd /tmp/pgvector-0.8.0
             make PG_CONFIG=/usr/lib/postgresql/17/bin/pg_config
             make PG_CONFIG=/usr/lib/postgresql/17/bin/pg_config install
+            sed -i "s/default_version = '\''0.8.2'\''/default_version = '\''0.8.0'\''/" /usr/share/postgresql/17/extension/vector.control
+            grep "default_version = '\''0.8.0'\''" /usr/share/postgresql/17/extension/vector.control
           '
           docker exec supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'DROP EXTENSION IF EXISTS vector CASCADE;'
           docker exec supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector WITH SCHEMA public VERSION '\''0.8.0'\'';'
