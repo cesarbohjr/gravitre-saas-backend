@@ -6,11 +6,12 @@ import { useAuth } from "@/lib/auth-context"
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { PRODUCTION_BACKEND_URL, publicAppUrl } from "@/lib/public-urls"
 import { Button } from "@/components/ui/button"
+import { createCompanionSession } from "@/lib/companion-session"
 
 /**
  * Auth bridge for the Chrome extension.
- * Opens from the extension; sends Supabase access token + org id via
- * chrome.runtime.sendMessage (externally_connectable).
+ * Opens from the extension; mints a separate session for it and sends that
+ * session + org id via chrome.runtime.sendMessage (externally_connectable).
  */
 function ExtensionConnectInner() {
   const params = useSearchParams()
@@ -58,8 +59,11 @@ function ExtensionConnectInner() {
         setBusy(false)
         return
       }
+      const companion = await createCompanionSession(session.access_token, "extension")
       const payload = {
-        accessToken: session.access_token,
+        accessToken: companion.accessToken,
+        refreshToken: companion.refreshToken,
+        expiresAt: companion.expiresAt,
         orgId,
         environment: "production",
         apiBase: PRODUCTION_BACKEND_URL,

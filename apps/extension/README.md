@@ -1,6 +1,10 @@
-# Gravitre Chrome extension (v1)
+# Gravitre Chrome extension
 
-Overlay-and-approve enrichment on LinkedIn, Gmail, Outlook, and company sites (activeTab). Writes use the same catalog + Module A path as the web app.
+- **Popup:** workspace, approvals waiting, Enrich this page, Ask about this page, connected apps.
+- **Side panel:** Ask (about the active tab, continues on gravitre.app), Approvals (approve, or reject with a reason), Activity.
+- **Overlay:** enrichment on LinkedIn, Gmail, Outlook, Salesforce, Slack and company sites (activeTab). Writes use the same catalog + Module A path as the web app.
+
+The extension holds its own renewable session (minted by `/extension/connect` through `POST /api/auth/companion-session`, renewed with `/api/auth/companion-refresh`). `ui.css` / `ui.js` carry the same tokens and components as the desktop app. `providers.js` (vendor logo lookup) is generated from the web provider registry by `scripts/package-extension-chrome-store.py`; the logo files load from gravitre.app.
 
 ## Develop
 

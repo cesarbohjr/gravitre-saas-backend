@@ -2,21 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Gravitre</title>
-    <link rel="stylesheet" href="popup.css" />
+    <link rel="stylesheet" href="ui.css" />
   </head>
-  <body>
-    <main>
-      <header><h1>Gravitre</h1><p class="muted">Your workspace, on this page.</p></header>
-      <section class="gvt-section" aria-label="Status">
-        <div class="gvt-section-title">Status</div>
-        <p id="status" class="muted" role="status" aria-live="polite">Checking session…</p>
-      </section>
-      <section class="gvt-section" aria-label="Action">
-        <div class="gvt-section-title">Action</div>
-        <div id="actions" class="actions"></div>
-      </section>
-    </main>
+  <body class="popup">
+    <header class="ph">
+      <span id="mark" class="row" title="Gravitre"></span>
+      <span class="grow"></span>
+      <button id="open-app" class="ib hidden" title="Open Gravitre" aria-label="Open Gravitre"></button>
+    </header>
+    <main id="body" class="pb" aria-live="polite"></main>
+    <footer id="foot" class="pf hidden"></footer>
+    <script src="providers.js"></script>
+    <script src="ui.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>
