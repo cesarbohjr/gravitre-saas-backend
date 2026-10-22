@@ -54,7 +54,7 @@ def render(p,c,cols,local_cols):
         out.append(sql+';')
     for r in p['triggers']:
         if r not in c['triggers']:
-            out.append(f'DROP TRIGGER IF EXISTS {q(r["name"])} ON public.{q(r["table"])};')
+            out.append(f'DROP TRIGGER IF EXISTS {q(r["name"])} ON {q(r.get('schema','public'))}.{q(r["table"])};')
             out.append(r['definition']+';')
     privileges=dict(U='USAGE',a='INSERT',r='SELECT',w='UPDATE',d='DELETE',D='TRUNCATE',x='REFERENCES',t='TRIGGER',m='MAINTAIN',X='EXECUTE')
     for r in p.get('views') or []:
@@ -77,6 +77,16 @@ def render(p,c,cols,local_cols):
                     option=' WITH GRANT OPTION' if rights[i+1:i+2]=='*' else ''
                     out.append(f'GRANT {privileges[char]} ON {target} TO '+(q(role) if role else 'PUBLIC')+option+';')
             if kind=='functions' and r.get('acl') is None: out.append(f'GRANT EXECUTE ON {target} TO PUBLIC;')
+    kinds={'r':'TABLES','S':'SEQUENCES','f':'FUNCTIONS'}
+    for r in p.get('defaults') or []:
+        target=f'ALTER DEFAULT PRIVILEGES FOR ROLE {q(r["role"])} IN SCHEMA {q(r["schema"])}'
+        out.append(target+f' REVOKE ALL ON {kinds[r["type"]]} FROM PUBLIC,anon,authenticated,service_role,postgres;')
+        for entry in r['acl']:
+            role,tail=entry.split('=',1); rights=tail.split('/',1)[0]
+            for i,char in enumerate(rights):
+                if char=='*': continue
+                option=' WITH GRANT OPTION' if rights[i+1:i+2]=='*' else ''
+                out.append(target+f' GRANT {privileges[char]} ON {kinds[r["type"]]} TO '+(q(role) if role else 'PUBLIC')+option+';')
     out.append('SET check_function_bodies=on;')
     return out
 

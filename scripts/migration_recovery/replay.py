@@ -38,7 +38,7 @@ def main():
     raw = args.history.read_bytes()
     rows = validate_history(json.loads(raw))
     report = {'history_sha256': hashlib.sha256(raw).hexdigest(), 'migration_count': len(rows),
-              'applied': [], 'passed': False, 'source': 'original recorded SQL; no compatibility rewrites'}
+              'applied': [], 'passed': False, 'source': 'input SQL arrays; no runtime compatibility rewrites'}
     try:
         with psycopg.connect(args.database_url, autocommit=True) as conn:
             # Refuse a database that already contains Gravitre application tables.

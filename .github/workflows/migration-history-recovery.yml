@@ -76,7 +76,9 @@ jobs:
           test-results/migration-history-schema-parity.json
       - name: Generate data-free baseline from verified isolated schema
         run: |
-          docker exec supabase_db_gravitre-operator-ai pg_dump -U postgres --schema-only --schema public --no-owner postgres > test-results/production-schema-baseline.sql
+          supabase db dump --help > "$RUNNER_TEMP/migration-recovery/db-dump-help.txt"
+          supabase db dump --local --schema public --file test-results/production-schema-baseline.sql --workdir "$RUNNER_TEMP/migration-recovery/local"
+          python scripts/migration_recovery/append_dependencies.py "$RUNNER_TEMP/migration-recovery/production-inventory.json" test-results/production-schema-baseline.sql
           sha256sum test-results/production-schema-baseline.sql > test-results/production-schema-baseline.sha256
       - name: Restore baseline into a fresh database and verify without repairs
         run: |
