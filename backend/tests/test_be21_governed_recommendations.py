@@ -63,3 +63,88 @@ def test_service_only_schema_prevents_user_approval_forgery():
     assert "ENABLE ROW LEVEL SECURITY" in sql
     assert "CREATE POLICY" not in sql
     assert "org_members" not in sql
+
+
+@pytest.mark.parametrize(
+    "returned, expected_status",
+    [
+        ({"run_id": "run-pending", "status": "pending_approval"}, "pending_approval"),
+        ({"run_id": "run-running", "status": "running"}, "running"),
+        ({"run_id": "run-completed", "status": "completed"}, "running"),
+    ],
+)
+def test_execution_acceptance_never_claims_provider_verified(monkeypatch, returned, expected_status):
+    """Even canonical executor 'completed' cannot establish independent provider readback here."""
+    recommendation = {
+        "recommendation": {
+            "workflow_id": "81c97e93-5726-434d-8106-cb6a0319cf84",
+            "parameters": {},
+            "environment": "production",
+        }
+    }
+    monkeypatch.setattr(mod, "_single_claim", lambda *args, **kwargs: recommendation)
+    monkeypatch.setattr(mod, "_execute_workflow_with_context", lambda **kwargs: returned)
+    client = MagicMock()
+    monkeypatch.setattr(mod, "shared_service_client", lambda *args: client)
+    result = mod.confirm("workflow-param-suggester", mod.ConfirmationRequest(
+        recommendation_id="a4e2ded9-d0b8-4bd4-b709-39c55f01bb6d", confirmed=True
+    ), {"user_id": "owner"}, "org", "production", MagicMock())
+    assert result["verified"] is False
+    assert result["status"] == expected_status
+    assert result["status"] != "executed"
+
+
+def test_rejected_confirmation_never_runs_workflow(monkeypatch):
+    monkeypatch.setattr(mod, "_single_claim", lambda *args, **kwargs: {"id": "rec"})
+    dispatcher = MagicMock(side_effect=AssertionError("rejection must not dispatch"))
+    monkeypatch.setattr(mod, "_execute_workflow_with_context", dispatcher)
+    monkeypatch.setattr(mod, "shared_service_client", lambda *args: MagicMock())
+    result = mod.confirm("workflow-param-suggester", mod.ConfirmationRequest(
+        recommendation_id="a4e2ded9-d0b8-4bd4-b709-39c55f01bb6d", confirmed=False
+    ), {"user_id": "owner"}, "org", "production", MagicMock())
+    assert result == {
+        "recommendation_id": "a4e2ded9-d0b8-4bd4-b709-39c55f01bb6d",
+        "status": "rejected", "verified": False,
+    }
+    dispatcher.assert_not_called()
+
+
+@pytest.mark.parametrize("dispatch", [
+    {"status": "failed", "run_id": "failed-run"},
+    {"status": "cancelled", "run_id": "cancelled-run"},
+    {"status": "rejected", "run_id": "denied-run"},
+    {"status": "running", "run_id": ""},
+])
+def test_failed_cancelled_or_unrecorded_dispatch_is_never_success(monkeypatch, dispatch):
+    monkeypatch.setattr(mod, "_single_claim", lambda *args, **kwargs: {
+        "recommendation": {
+            "workflow_id": "81c97e93-5726-434d-8106-cb6a0319cf84",
+            "parameters": {},
+            "environment": "production",
+        }
+    })
+    monkeypatch.setattr(mod, "_execute_workflow_with_context", lambda **kwargs: dispatch)
+    monkeypatch.setattr(mod, "shared_service_client", lambda *args: MagicMock())
+    with pytest.raises(HTTPException) as err:
+        mod.confirm("workflow-param-suggester", mod.ConfirmationRequest(
+            recommendation_id="a4e2ded9-d0b8-4bd4-b709-39c55f01bb6d", confirmed=True
+        ), {"user_id": "owner"}, "org", "production", MagicMock())
+    assert err.value.status_code in (409, 503)
+
+
+def test_interrupted_or_unknown_execution_keeps_claim_for_manual_reconciliation(monkeypatch):
+    monkeypatch.setattr(mod, "_single_claim", lambda *args, **kwargs: {
+        "recommendation": {
+            "workflow_id": "81c97e93-5726-434d-8106-cb6a0319cf84",
+            "parameters": {}, "environment": "production",
+        }
+    })
+    monkeypatch.setattr(mod, "_execute_workflow_with_context",
+                        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("network interruption")))
+    monkeypatch.setattr(mod, "shared_service_client", lambda *args: MagicMock())
+    with pytest.raises(HTTPException) as err:
+        mod.confirm("workflow-param-suggester", mod.ConfirmationRequest(
+            recommendation_id="a4e2ded9-d0b8-4bd4-b709-39c55f01bb6d", confirmed=True
+        ), {"user_id": "owner"}, "org", "production", MagicMock())
+    assert err.value.status_code == 503
+    assert "uncertain" in err.value.detail
