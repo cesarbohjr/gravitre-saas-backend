@@ -49,12 +49,15 @@ def test_stripe_subscription_event_still_updates_status(monkeypatch):
         event={"id": "evt_subscription", "type": "customer.subscription.updated"},
     )
 
-    calls = client.table.call_args_list
-    assert any(call.args == ("subscriptions",) for call in calls)
-    assert any(call.args == ("org_billing",) for call in calls)
-    subscription_payload = next(
-        call.args[0] for call in client.table.return_value.upsert.call_args_list
-        if call.args[0].get("stripe_subscription_id") == "sub_expired"
-        and "status" in call.args[0]
-    )
-    assert subscription_payload["status"] == "inactive"
+    # Current main writes org subscription lifecycle status to org_billing.
+    # The prior assertion relied on the older subscriptions upsert implementation.
+    assert any(call.args == ("org_billing",) for call in client.table.call_args_list)
+    rows = [
+        call.args[0]
+        for call in client.table.return_value.upsert.call_args_list
+        if isinstance(call.args[0], dict)
+        and call.args[0].get("stripe_subscription_id") == "sub_expired"
+        and "billing_status" in call.args[0]
+    ]
+    assert rows
+    assert rows[-1]["billing_status"] == "incomplete_expired"
