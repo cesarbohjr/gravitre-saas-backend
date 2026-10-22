@@ -123,7 +123,7 @@ def confirm(
     except Exception:
         # Preserve claim: automatic retries may duplicate a write if the provider ran.
         raise HTTPException(503, "Workflow result uncertain; reconcile run before any retry")
-    run_id = str(result.get("run_id") or "")
+    if str(result.get("status") or "").lower() in {"failed", "error", "rejected", "cancelled"}:\n        raise HTTPException(409, "Workflow was rejected or failed; reconcile the durable run before retry")\n    run_id = str(result.get("run_id") or "")
     run_status = str(result.get("status") or "running")
     if not run_id:
         raise HTTPException(503, "Workflow did not return a durable run ID; reconcile before retry")
