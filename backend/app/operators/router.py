@@ -2518,3 +2518,8 @@ async def execute_operator_action_route(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+# BE-21 operator recommendation endpoints use the governed workflow execution spine.
+from app.operators.governed_recommendations import router as governed_recommendations_router
+router.include_router(governed_recommendations_router)
