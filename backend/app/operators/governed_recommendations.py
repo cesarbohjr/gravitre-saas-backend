@@ -48,7 +48,7 @@ def _single_claim(client, *, rec_id: str, org_id: str, operator_type: str, statu
         client.table("operator_recommendations")
         .update({"status": status, "confirmed_by": user_id, "updated_at": now})
         .eq("id", rec_id).eq("org_id", org_id)
-        .eq("operator_type", operator_type).eq("status", "pending")
+        .eq("operator_type", operator_type).eq("created_by", user_id).eq("status", "pending")
         .gt("expires_at", now).select("id, recommendation, status").execute()
     )
     rows = result.data or []
