@@ -63,8 +63,11 @@ jobs:
             cd /tmp/pgvector-0.8.0
             make PG_CONFIG="$(command -v pg_config)"
             make PG_CONFIG="$(command -v pg_config)" install
-            sed -i "s/default_version = '\''0.8.2'\''/default_version = '\''0.8.0'\''/" /usr/share/postgresql/17/extension/vector.control
-            grep "default_version = '\''0.8.0'\''" /usr/share/postgresql/17/extension/vector.control
+            sharedir="$(pg_config --sharedir)"
+            control="$sharedir/extension/vector.control"
+            test -f "$control" || { echo "pgvector control not installed at $control" >&2; exit 1; }
+            sed -i -E "s/^default_version[[:space:]]*=.*/default_version = '\''0.8.0'\''/" "$control"
+            grep -E "^default_version[[:space:]]*=[[:space:]]*'\''0.8.0'\''" "$control"
           '
           docker exec supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'DROP EXTENSION IF EXISTS vector CASCADE;'
           docker exec supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector WITH SCHEMA public VERSION '\''0.8.0'\'';'
