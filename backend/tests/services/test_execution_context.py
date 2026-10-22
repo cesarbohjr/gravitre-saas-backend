@@ -53,3 +53,14 @@ def test_execution_context_keeps_intentional_repeat_as_context_not_dedupe_instru
     assert context["recent_user_messages"] == ["Send another one to John"]
     assert "dedupe" not in context
     assert "block_repeat" not in context
+
+
+def test_provider_accepted_or_generic_completed_never_claims_verified_action():
+    context = build_execution_context(
+        task_state={"recent_connector_invocations": [
+            {"id": "accepted", "status": "accepted_async"},
+            {"id": "completed", "status": "completed"},
+            {"id": "verified", "verification_status": "verified"},
+        ]}
+    )
+    assert [a["id"] for a in context["prior_verified_actions"]] == ["verified"]
