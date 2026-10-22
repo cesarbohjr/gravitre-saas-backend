@@ -20,3 +20,5 @@ ALTER TABLE public.operator_recommendations ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.operator_recommendations FROM PUBLIC, anon, authenticated;
 -- No member policies or auth.role checks. Backend service-role bypasses RLS.
 -- The API checks org ownership and canonical workflow permission at execution.
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.operator_recommendations TO service_role;
