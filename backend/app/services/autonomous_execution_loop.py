@@ -44,7 +44,7 @@ def _provider_write_verified(task_state: dict[str, Any], observations: list[dict
     if isinstance(evidence, dict):
         status = str(evidence.get("verification_status") or evidence.get("status") or "").lower()
         if status == "verified" and evidence.get("verified") is True and (
-            evidence.get("provider_record_id") or evidence.get("provider_id") or evidence.get("verified") is True
+            evidence.get("provider_record_id") or evidence.get("provider_id") or evidence.get("vendor_proof")
         ):
             return True
     for row in reversed(observations):
@@ -133,6 +133,10 @@ def decide_execution_loop(
             )
         plan.terminal_status = "partial" if any(row.get("success") for row in obs) else "failed"
         return ExecutionLoopDecision("stop", "no_safe_replan_available", plan, terminal=True)
+
+    if any(step.status not in {"completed", "failed", "pending"} for step in plan.steps):
+        plan.terminal_status = "running"
+        return ExecutionLoopDecision("verify", "steps_not_terminal", plan)
 
     pending = _pending_step(plan)
     if pending is not None:
