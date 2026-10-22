@@ -42,6 +42,23 @@ jobs:
           sed -i 's/major_version = 15/major_version = 17/' "$RUNNER_TEMP/migration-recovery/local/supabase/config.toml"
           cd "$RUNNER_TEMP/migration-recovery/local"
           supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+      - name: Pin local pgvector extension to production version (0.8.0)
+        run: |
+          # The local Supabase PG17 image ships 0.8.2, while production uses
+          # pgvector 0.8.0. Build the exact extension version in disposable
+          # CI PostgreSQL, rather than exempting version drift from parity.
+          git clone --depth 1 --branch v0.8.0 https://github.com/pgvector/pgvector.git "$RUNNER_TEMP/pgvector-0.8.0"
+          docker cp "$RUNNER_TEMP/pgvector-0.8.0" supabase_db_gravitre-operator-ai:/tmp/pgvector-0.8.0
+          docker exec --user root supabase_db_gravitre-operator-ai bash -ec '
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq build-essential postgresql-server-dev-17
+            cd /tmp/pgvector-0.8.0
+            make PG_CONFIG=/usr/lib/postgresql/17/bin/pg_config
+            make PG_CONFIG=/usr/lib/postgresql/17/bin/pg_config install
+          '
+          docker exec supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'DROP EXTENSION IF EXISTS vector CASCADE;'
+          docker exec supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector WITH SCHEMA public VERSION '\''0.8.0'\'';'
+          docker exec supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 -Atc "SELECT extversion FROM pg_extension WHERE extname='vector'" | grep -x 0.8.0
       - name: Reproduce original history failure and validate exact SQLSTATE
         run: |
           python scripts/migration_recovery/replay.py --history "$RUNNER_TEMP/migration-recovery/original-history.json" --database-url postgresql://postgres:postgres@127.0.0.1:54322/postgres --report test-results/migration-history-original.json && exit 1
