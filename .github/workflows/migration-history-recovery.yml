@@ -90,6 +90,24 @@ jobs:
           python scripts/migration_recovery/acceptance.py
           postgresql://postgres:postgres@127.0.0.1:54322/postgres
           test-results/migration-history-acceptance.json
+      - name: Prepare supported CLI metadata baseline and forced-failure rollback drill
+        run: |
+          mkdir -p "$RUNNER_TEMP/migration-recovery/supported/supabase/migrations"
+          cp "$RUNNER_TEMP/migration-recovery/local/supabase/config.toml" "$RUNNER_TEMP/migration-recovery/supported/supabase/config.toml"
+          cp -a supabase/templates "$RUNNER_TEMP/migration-recovery/supported/supabase/templates"
+          cp test-results/production-schema-baseline.sql "$RUNNER_TEMP/migration-recovery/supported/supabase/migrations/20261022162553_production_replay_baseline.sql"
+          python scripts/migration_recovery/metadata_drill.py prepare postgresql://postgres:postgres@127.0.0.1:54322/postgres "$RUNNER_TEMP/migration-recovery/original-history.json" 20261022162553 test-results/migration-history-supported-baseline.json
+          supabase migration squash --help > "$RUNNER_TEMP/migration-recovery/squash-help.txt"
+          if supabase migration squash --db-url postgresql://postgres:postgres@127.0.0.1:54322/postgres --version 20261022162553 --workdir "$RUNNER_TEMP/migration-recovery/supported" --yes; then
+            echo 'Expected deliberate baseline INSERT rejection; refusing an unproven rollback.'
+            exit 1
+          fi
+          python scripts/migration_recovery/metadata_drill.py check-rollback postgresql://postgres:postgres@127.0.0.1:54322/postgres "$RUNNER_TEMP/migration-recovery/original-history.json" 20261022162553 test-results/migration-history-supported-baseline.json
+      - name: Apply supported CLI baseline to disposable metadata and verify schema is unchanged
+        run: |
+          supabase migration squash --db-url postgresql://postgres:postgres@127.0.0.1:54322/postgres --version 20261022162553 --workdir "$RUNNER_TEMP/migration-recovery/supported" --yes
+          python scripts/migration_recovery/metadata_drill.py check-success postgresql://postgres:postgres@127.0.0.1:54322/postgres "$RUNNER_TEMP/migration-recovery/original-history.json" 20261022162553 test-results/migration-history-supported-baseline.json
+          python scripts/migration_recovery/validate_baseline.py postgresql://postgres:postgres@127.0.0.1:54322/postgres "$RUNNER_TEMP/migration-recovery" test-results/migration-history-supported-schema-unchanged.json --verify-only
       - name: Preserve sanitized failure or success evidence
         if: always()
         uses: actions/upload-artifact@v4
