@@ -135,11 +135,7 @@ function renderSignedIn(session, me, approvals) {
             "div",
             { class: "stack", style: { gap: "6px", paddingTop: "4px" } },
             h("span", { class: "eyebrow" }, "Connected"),
-            h("div", { class: "logos" }, integrations.slice(0, 12).map((s) => {
-              const b = gvBadge(s)
-              if (b) b.title = gvAppName(s)
-              return b
-            })),
+            h("div", { class: "logos" }, integrations.slice(0, 12).map((s) => gvBadge(s, 26))),
           )
         : h("span", { class: "sub" }, "No apps connected yet. Connect them on gravitre.app."),
     ),
@@ -164,6 +160,7 @@ async function refresh() {
   const res = await gvSend({ type: "GET_SESSION" })
   if (!res.ok) return renderSignedOut(res.code === "not_authenticated" ? "Your session ended. Connect again to keep going." : null)
   if (!res.signedIn) return renderSignedOut(null)
+  gvSetAppBase(res.cfg?.appBase)
   const [me, appr] = await Promise.all([gvSend({ type: "GET_ME" }), gvSend({ type: "LIST_APPROVALS" })])
   renderSignedIn(res.session || {}, me.ok ? me.me : null, appr.ok ? appr.approvals.map(gvApproval) : [])
 }

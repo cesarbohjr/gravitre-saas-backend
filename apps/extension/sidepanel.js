@@ -406,6 +406,7 @@ async function start() {
   const res = await gvSend({ type: "GET_SESSION" })
   if (!res.ok || !res.signedIn) return signedOut()
   state.signedIn = true
+  gvSetAppBase(res.cfg?.appBase)
   tabsEl.classList.remove("hidden")
   openAppEl.classList.remove("hidden")
   const picked = (await chrome.storage.session?.get("panelTab"))?.panelTab

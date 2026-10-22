@@ -91,12 +91,38 @@ function gvAvatar(name, size = 26) {
   )
 }
 
-function gvBadge(slug) {
+let gvAppBase = "https://gravitre.app"
+
+function gvSetAppBase(base) {
+  if (typeof base === "string" && /^https?:\/\//.test(base)) gvAppBase = base.replace(/\/$/, "")
+}
+
+/** The web app's registry entry for a connector type, vendor key or name (see providers.js). */
+function gvProvider(slug) {
+  if (typeof GV_PROVIDERS === "undefined") return null
+  const id = GV_PROVIDERS.lookup[String(slug || "").toLowerCase().replace(/[^a-z0-9]/g, "")]
+  const e = id && GV_PROVIDERS.entries[id]
+  return e ? { id, name: e[0], src: e[1], srcDark: e[2], lightPlate: Boolean(e[3]), darkPlate: Boolean(e[4]) } : null
+}
+
+function gvInitials(slug) {
   const s = String(slug || "").toLowerCase()
-  if (!s) return null
   const known = { hubspot: "HS", salesforce: "SF", slack: "SL", gmail: "GM", google: "G", apollo: "AP", linear: "LN", notion: "NO", zendesk: "ZD", stripe: "ST" }
-  const key = s.split(/[._\s-]/)[0]
-  return h("span", { class: "logo" }, known[key] || s.slice(0, 2).toUpperCase())
+  return known[s.split(/[._\s-]/)[0]] || s.slice(0, 2).toUpperCase()
+}
+
+/** Vendor logo served by gravitre.app, the same mark the web app shows; initials if it can't load. */
+function gvBadge(slug, size = 20) {
+  if (!String(slug || "").trim()) return null
+  const p = gvProvider(slug)
+  const box = { width: `${size}px`, height: `${size}px` }
+  if (!p) return h("span", { class: "logo", style: box, title: gvAppName(slug) }, gvInitials(slug))
+  const dark = window.matchMedia?.("(prefers-color-scheme: dark)").matches
+  const plate = (!dark && p.lightPlate) ? " plate-ink" : (dark && p.darkPlate) ? " plate-bone" : ""
+  const img = h("img", { src: `${gvAppBase}${dark ? p.srcDark : p.src}`, alt: "", draggable: "false" })
+  const wrap = h("span", { class: `vlogo${plate}`, style: box, title: p.name, role: "img", "aria-label": p.name }, img)
+  img.addEventListener("error", () => wrap.replaceWith(h("span", { class: "logo", style: box, title: p.name }, gvInitials(slug))))
+  return wrap
 }
 
 function gvAgo(iso) {
@@ -148,7 +174,7 @@ function gvHumanize(key) {
 const GV_APP_NAMES = { hubspot: "HubSpot", salesforce: "Salesforce", gmail: "Gmail", slack: "Slack", linkedin: "LinkedIn", zendesk: "Zendesk", notion: "Notion", linear: "Linear", stripe: "Stripe", apollo: "Apollo", outlook: "Outlook" }
 
 function gvAppName(slug) {
-  return GV_APP_NAMES[String(slug).toLowerCase()] || gvHumanize(slug)
+  return GV_APP_NAMES[String(slug).toLowerCase()] || gvProvider(slug)?.name || gvHumanize(slug)
 }
 
 function gvValue(v) {

@@ -92,3 +92,8 @@ body.panel{background:var(--cv);height:100vh;display:flex;flex-direction:column}
 .empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:32px 12px;color:var(--t3);font-size:13px}
 .empty b{color:var(--t1);font-size:14px;font-weight:600}
 .sp-body>*{flex-shrink:0}
+.vlogo{display:inline-flex;align-items:center;justify-content:center;flex:none;border-radius:6px;border:1px solid var(--bd);background:var(--s1);padding:3px}
+.vlogo img{width:100%;height:100%;object-fit:contain;display:block}
+.vlogo.plate-ink{background:#141513;border-color:#141513}
+.vlogo.plate-bone{background:#f4f4f1;border-color:#f4f4f1}
+.logos{gap:6px}
