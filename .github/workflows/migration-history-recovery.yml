@@ -85,6 +85,9 @@ jobs:
       - name: Recreate empty local database and build corrected replay candidate
         run: |
           supabase db reset --local --no-seed --workdir "$RUNNER_TEMP/migration-recovery/local"
+          docker exec supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'DROP EXTENSION IF EXISTS vector CASCADE;'
+          docker exec supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector WITH SCHEMA public VERSION '\''0.8.0'\'';'
+          docker exec supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 -Atc "SELECT extversion FROM pg_extension WHERE extname='vector'" | grep -x 0.8.0
           python scripts/migration_recovery/candidate.py "$RUNNER_TEMP/migration-recovery/original-history.json" "$RUNNER_TEMP/migration-recovery/candidate-history.json"
       - name: Replay all corrected recorded migrations on real PostgreSQL
         run: >-
@@ -113,6 +116,9 @@ jobs:
       - name: Restore baseline into a fresh database and verify without repairs
         run: |
           supabase db reset --local --no-seed --workdir "$RUNNER_TEMP/migration-recovery/local"
+          docker exec supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'DROP EXTENSION IF EXISTS vector CASCADE;'
+          docker exec supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector WITH SCHEMA public VERSION '\''0.8.0'\'';'
+          docker exec supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 -Atc "SELECT extversion FROM pg_extension WHERE extname='vector'" | grep -x 0.8.0
           docker exec -i supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 < test-results/production-schema-baseline.sql
           python scripts/migration_recovery/validate_baseline.py postgresql://postgres:postgres@127.0.0.1:54322/postgres "$RUNNER_TEMP/migration-recovery" test-results/migration-history-baseline-restore.json --verify-only
       - name: Real PostgreSQL concurrency, authorization and fail-closed acceptance on restored baseline
