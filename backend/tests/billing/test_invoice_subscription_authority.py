@@ -15,6 +15,7 @@ def test_invoice_payment_does_not_mutate_subscription_status(monkeypatch, event_
     client = MagicMock()
     write_event = MagicMock()
     monkeypatch.setattr(stripe_webhook, "_write_event", write_event)
+    monkeypatch.setattr("app.billing.msp_billing.is_wholesale_event", lambda *args: False)
 
     stripe_webhook._apply_stripe_event(
         client=client,
@@ -33,6 +34,7 @@ def test_invoice_payment_does_not_mutate_subscription_status(monkeypatch, event_
 def test_stripe_subscription_event_still_updates_status(monkeypatch):
     client = MagicMock()
     monkeypatch.setattr(stripe_webhook, "_write_event", MagicMock())
+    monkeypatch.setattr("app.billing.msp_billing.is_wholesale_event", lambda *args: False)
 
     stripe_webhook._apply_stripe_event(
         client=client,
